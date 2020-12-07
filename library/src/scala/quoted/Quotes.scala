@@ -2442,7 +2442,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MatchType` */
     trait MatchTypeModule { this: MatchType.type =>
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType
-      def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[TypeRepr])]
+      def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[MatchTypeCase])]
     }
 
     /** Makes extension methods on `MatchType` available without any imports */
@@ -2453,9 +2453,45 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: MatchType):
         def bound: TypeRepr
         def scrutinee: TypeRepr
-        def cases: List[TypeRepr]
+        def cases: List[MatchTypeCase]
       end extension
     end MatchTypeMethods
+
+    /** Case of a match type `case U => S`. */
+    type MatchTypeCase <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchTypeCase` */
+    given MatchTypeCaseTypeTest: TypeTest[TypeRepr, MatchTypeCase]
+
+    /** Module object of `case U => S` */
+    val MatchTypeCase: MatchTypeCaseModule
+
+    /** Methods of the module object of `case U => S` */
+    trait MatchTypeCaseModule { this: MatchTypeCase.type =>
+      def apply(pattern: TypeRepr, body: TypeRepr): MatchTypeCase
+
+      def apply(
+        paramNames: List[String],
+        boundsFn: TypeLambda => List[TypeBounds],
+        patternFn: TypeLambda => TypeRepr,
+        bodyFn: TypeLambda => TypeRepr,
+      ): MatchTypeCase
+
+      def unapply(x: MatchTypeCase): Option[(List[String], List[TypeBounds], TypeRepr, TypeRepr)]
+    }
+
+    /** Makes extension methods on `MatchTypeCase` available without any imports */
+    given MatchTypeCaseMethods: MatchTypeCaseMethods
+
+    /** Extension methods of `MatchTypeCase` */
+    trait MatchTypeCaseMethods:
+      extension (self: MatchTypeCase):
+        def paramNames: List[String]
+        def paramBounds: List[TypeBounds]
+        def pattern: TypeRepr
+        def body: TypeRepr
+      end extension
+    end MatchTypeCaseMethods
 
     /** Type of a by by name parameter */
     type ByNameType <: TypeRepr

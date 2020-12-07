@@ -1881,6 +1881,47 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end MatchTypeMethods
 
+    type MatchTypeCase = dotc.core.Types.Type
+
+    object MatchTypeCaseTypeTest extends TypeTest[TypeRepr, MatchTypeCase]:
+      def unapply(x: TypeRepr): Option[MatchTypeCase & x.type] =
+        MatchTypeCase.unapply(x.asInstanceOf[MatchTypeCase]).map(_ => x.asInstanceOf[MatchTypeCase & x.type])
+    end MatchTypeCaseTypeTest
+
+    object MatchTypeCase extends MatchTypeCaseModule:
+      def apply(pattern: TypeRepr, body: TypeRepr): MatchTypeCase =
+        Types.AppliedType(ctx.definitions.MatchCaseClass.typeRef, List(pattern, body))
+
+      def apply(
+        paramNames: List[String],
+        boundsFn: TypeLambda => List[TypeBounds],
+        patternFn: TypeLambda => TypeRepr,
+        bodyFn: TypeLambda => TypeRepr,
+      ): MatchTypeCase =
+        reflect.TypeLambda(paramNames, boundsFn, tl => MatchTypeCase(patternFn(tl), bodyFn(tl)))
+
+      def unapply(x: MatchTypeCase): Option[(List[String], List[TypeBounds], TypeRepr, TypeRepr)] = x match
+        case AppliedType(tycon, Seq(from, to)) if tycon.isRef(ctx.definitions.MatchCaseClass) =>
+          Some((Nil, Nil, from, to))
+        case TypeLambda(paramNames, paramBounds, AppliedType(tycon, Seq(from, to))) if tycon.isRef(ctx.definitions.MatchCaseClass) =>
+          Some((paramNames.map(_.toString), paramBounds, from, to))
+        case _ =>
+          None
+    end MatchTypeCase
+
+    given MatchTypeCaseMethods: MatchTypeCaseMethods with
+      extension (self: MatchTypeCase):
+        def paramNames: List[String] = unwrap(self)(0)
+        def paramBounds: List[TypeBounds] = unwrap(self)(1)
+        def pattern: TypeRepr = unwrap(self)(2)
+        def body: TypeRepr = unwrap(self)(3)
+      end extension
+
+      private def unwrap(x: MatchTypeCase) =
+        // should never throw within limits of the API
+        MatchTypeCase.unapply(x).get
+    end MatchTypeCaseMethods
+
     type ByNameType = dotc.core.Types.ExprType
 
     object ByNameTypeTypeTest extends TypeTest[TypeRepr, ByNameType]:

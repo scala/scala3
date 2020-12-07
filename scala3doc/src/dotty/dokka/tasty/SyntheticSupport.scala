@@ -96,13 +96,3 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
-
-  object MatchTypeCase:
-    def unapply(tpe: TypeRepr): Option[(TypeRepr, TypeRepr)] =
-      tpe match
-        case AppliedType(t, Seq(from, to)) /*if t == MatchCaseType*/ =>
-            Some((from, to))
-        case TypeLambda(paramNames, paramTypes, AppliedType(t, Seq(from, to))) /*if t == MatchCaseType*/ =>
-            Some((from, to))
-        case _ =>
-          None
