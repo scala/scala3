@@ -494,11 +494,11 @@ class ScalaPageContentBuilder(
             Signature("Exported from ", signatureName)
           case _ => Nil
         }
-
+        val styles: Set[Style] = if documentable.deprecated.isDefined then Set(TextStyle.Strikethrough) else Set.empty
         DocumentableElement(
           buildAnnotations(documentable),
           signatureBuilder.preName.reverse,
-          documentable.getName,
+          DocumentableNameWithStyles(documentable.getName, styles),
           signatureBuilder.names.reverse,
           docs.fold(Nil)(d => reset().rawComment(d.getRoot)),
           originInfo,

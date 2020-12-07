@@ -86,7 +86,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
   }
 
   override def wrapGroup(f: FlowContent, node: ContentGroup, pageContext: ContentPage, childrenCallback: FlowContentConsumer) = {
-    val additionalClasses = node.getStyle.asScala.map(_.toString.toLowerCase).mkString("", ",", "")
+    val additionalClasses = node.getStyle.asScala.map(_.toString.toLowerCase).mkString("", " ", "")
     def buildSymbol: String = div(cls := s"symbol $additionalClasses")(
       raw(
         buildWithKotlinx(childrenCallback).toString
@@ -128,7 +128,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
             span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
             span(cls := "kind")(kind.map(renderElement)),
           ),
-          renderLink(element.name, element.params.dri, cls := "documentableName monospace"),
+          renderLink(element.nameWithStyles.name, element.params.dri, cls := s"documentableName monospace ${element.nameWithStyles.styles.map(_.toString.toLowerCase).mkString(" ")}"),
           span(cls := "signature monospace")(element.signature.map(renderElement)),
           div(
             div(cls := "originInfo")(element.originInfo.map(renderElement)),

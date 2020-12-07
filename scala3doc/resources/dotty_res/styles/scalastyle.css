@@ -292,6 +292,9 @@ th {
   padding-top: 0;
 }
 
+span[data-unresolved-link].strikethrough, a.strikethrough, div.strikethrough {
+  text-decoration: line-through;
+}
 .brief {
   white-space: pre-wrap;
   overflow: hidden;

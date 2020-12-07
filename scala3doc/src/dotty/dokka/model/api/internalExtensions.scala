@@ -24,7 +24,7 @@ private [model] case class MemberExtension(
   visibility: Visibility,
   modifiers: Seq[dotty.dokka.model.api.Modifier],
   kind: Kind,
-  val annotations: List[Annotation],
+  annotations: List[Annotation],
   signature: Signature,
   sources: Option[TastyDocumentableSource] = None,
   origin: Origin = Origin.DefinedWithin,

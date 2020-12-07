@@ -17,16 +17,17 @@ trait BasicSupport:
     val dri = annotTerm.tpe.typeSymbol.dri
     val params = annotTerm match
       case Apply(target, appliedWith) => {
-        appliedWith.map {
-          case Literal(constant) => Annotation.PrimitiveParameter(None, constant.value match {
+        appliedWith.flatMap {
+          case Literal(constant) => Some(Annotation.PrimitiveParameter(None, constant.value match {
             case s: String => "\"" + s"$s" + "\""
             case other => other.toString()
-          })
-          case Select(qual, name) =>
-            val dri = qual.tpe.termSymbol.companionClass.dri
-            Annotation.LinkParameter(None, dri, s"${dri.getClassNames}.$name") // TODO this is a nasty hack!
-
-          case other => Annotation.UnresolvedParameter(None, other.show)
+          }))
+          case NamedArg(name, Literal(constant)) => Some(Annotation.PrimitiveParameter(Some(name), constant.value match
+            case s: String => "\"" + s"$s" + "\""
+            case other => other.toString()
+          ))
+          case x @ Select(qual, name) => None
+          case other => Some(Annotation.UnresolvedParameter(None, other.show))
         }
       }
 

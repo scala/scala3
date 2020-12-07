@@ -104,7 +104,7 @@ abstract class SignatureTest(
       case c: ContentComposite =>
           c.getChildren.asScala.flatMap(flattenToText).toSeq
       case l: DocumentableElement =>
-          (l.annotations ++ Seq(" ") ++ l.modifiers ++ Seq(l.name) ++ l.signature).map {
+          (l.annotations ++ Seq(" ") ++ l.modifiers ++ Seq(l.nameWithStyles.name) ++ l.signature).map {
               case s: String => s
               case Link(s: String, _) => s
           }

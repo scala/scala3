@@ -88,10 +88,15 @@ abstract class ScalaContentNode(params: ContentNodeParams) extends ContentNode:
   override def getExtra = params.extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = newInstance(params.copy(extra = p))
 
+case class DocumentableNameWithStyles(
+  name: String,
+  styles: Set[Style] = Set.empty,
+)
+
 case class DocumentableElement(
   annotations: Signature,
   modifiers: Signature,
-  name: String,
+  nameWithStyles: DocumentableNameWithStyles,
   signature: Signature,
   brief: Seq[ContentNode],
   originInfo: Signature,
