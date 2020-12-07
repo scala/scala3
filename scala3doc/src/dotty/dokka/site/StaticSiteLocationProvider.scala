@@ -30,6 +30,10 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
   extends DokkaLocationProvider(pageNode, ctx, ".html"):
     private def updatePageEntry(page: PageNode, jpath: JList[String]): JList[String] =
       page match
+        case page: ContentPage if page.getDri.contains(docsDRI) =>
+           JList("docs", "index")
+        case page: ContentPage if page.getDri.contains(docsRootDRI) =>
+           JList("index")
         case page: StaticPageNode =>
           summon[DocContext].staticSiteContext.fold(jpath) { context =>
             val rawFilePath = context.root.toPath.relativize(page.template.file.toPath)
@@ -55,8 +59,6 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
             }
           }
 
-        case page: ContentPage if page.getDri.contains(docsDRI) =>
-           JList("docs", "index")
         case page: ContentPage if page.getDri.contains(apiPageDRI) =>
           JList("api", "index")
         case _ if jpath.size() > 1 && jpath.get(0) ==   "--root--" && jpath.get(1) == "-a-p-i" =>

@@ -41,6 +41,12 @@ class SiteGeneratationTest:
       val found = d.select(selector).eachText.asScala
       assertEquals(niceMsg(s"Context does not match for '$selector'"), expected.toList, found.toList)
 
+    def assertAttr(selector: String, attr: String, expected: String*) =
+      assertFalse(niceMsg("Selector not found"), d.select(selector).isEmpty)
+      val found = d.select(selector).eachAttr(attr).asScala
+      assertEquals(niceMsg(s"Attribute $attr does not match for '$selector'"), expected.toList, found.toList)
+
+
   def withHtmlFile(path: Path)(op: DocumentContext => Unit) = {
     assertTrue(s"File at $path does not exisits!", Files.exists(path))
     val content = new String(Files.readAllBytes(path), Charset.defaultCharset())
@@ -51,16 +57,24 @@ class SiteGeneratationTest:
   @Test
   def basicTest() = withGeneratedSite(testDocPath.resolve("basic")){ dest =>
 
-    def checkFile(path: String)(title: String, header: String, parents: Seq[String] = Nil) =
-      withHtmlFile(dest.resolve(path)){ content  =>
-        content.assertTextsIn(".projectName", projectName)
-        content.assertTextsIn(".projectVersion", projectVersion)
-        content.assertTextsIn("h1", header)
-        content.assertTextsIn("title", title)
-        content.assertTextsIn(".breadcrumbs a", (parents :+ title):_*)
-    }
+    def checkFile(path: String)(
+      title: String,
+      header: String,
+      parents: Seq[String] = Nil,
+      checks: DocumentContext => Unit = _ => ()) =
+        withHtmlFile(dest.resolve(path)){ content  =>
+          content.assertTextsIn(".projectName", projectName)
+          content.assertTextsIn(".projectVersion", projectVersion)
+          content.assertTextsIn("h1", header)
+          content.assertTextsIn("title", title)
+          content.assertTextsIn(".breadcrumbs a", (parents :+ title):_*)
+          checks(content)
+        }
 
-    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName))
+    def indexLinks(content: DocumentContext) =
+        content.assertAttr("p a","href", "docs/index.html","docs/index.html" )
+
+    checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName), indexLinks)
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
     checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))
