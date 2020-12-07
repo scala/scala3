@@ -88,7 +88,7 @@ class ScalaPageCreator(
       .addChildren(contentForComments(m).asScala.toSeq)
       .groupingBlock(
         "Packages",
-        List("" -> m.getPackages.asScala.toList),
+        List("" -> m.getPackages.asScala.toList.filter(_.allMembers.nonEmpty)),
         kind = ContentKind.Packages,
         sourceSets = m.getSourceSets.asScala.toSet
       )(
