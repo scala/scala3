@@ -2156,7 +2156,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given ConstantMethods: ConstantMethods with
       extension (self: Constant):
         def value: Any = self.value
-        def show(using printer: Printer[Constant]): String = printer.show(self)
+        def show: String = Extractors.showConstant(using QuotesImpl.this)(self)
       end extension
     end ConstantMethods
 
@@ -2693,18 +2693,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       lazy val TypeReprStructure: Printer[TypeRepr] = new Printer[TypeRepr]:
         def show(tpe: TypeRepr): String =
           Extractors.showType(using QuotesImpl.this)(tpe)
-
-      lazy val ConstantCode: Printer[Constant] = new Printer[Constant]:
-        def show(const: Constant): String =
-          SourceCode.showConstant(using QuotesImpl.this)(const)(SyntaxHighlight.plain, fullNames = true)
-
-      lazy val ConstantAnsiCode: Printer[Constant] = new Printer[Constant]:
-        def show(const: Constant): String =
-          SourceCode.showConstant(using QuotesImpl.this)(const)(SyntaxHighlight.ANSI, fullNames = true)
-
-      lazy val ConstantCase: Printer[Constant] = new Printer[Constant]:
-        def show(const: Constant): String =
-          Extractors.showConstant(using QuotesImpl.this)(const)
 
     end Printer
   end reflect
