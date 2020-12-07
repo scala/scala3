@@ -8,5 +8,6 @@ class MarkdownConverterTests {
     assertEquals(("a", "b c d"), MarkdownConverter.splitWikiLink("a b c d"))
     assertEquals(("a", "b\\ c d"), MarkdownConverter.splitWikiLink("a b\\ c d"))
     assertEquals(("a\\ b", "c d"), MarkdownConverter.splitWikiLink("a\\ b c d"))
+    assertEquals(("a\\\\", "b c d"), MarkdownConverter.splitWikiLink("a\\\\ b c d"))
   }
 }
