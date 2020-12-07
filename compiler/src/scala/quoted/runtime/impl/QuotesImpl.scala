@@ -77,7 +77,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     }
   end extension
 
-  object reflect extends Reflection:
+  object reflect extends reflectModule:
 
     type Tree = tpd.Tree
 

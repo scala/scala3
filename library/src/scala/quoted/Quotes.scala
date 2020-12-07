@@ -10,8 +10,6 @@ inline def quotes(using q: Quotes): q.type = q
  *
  *  It contains the low-level Typed AST API metaprogramming API.
  *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
- *
- *  @param tasty Typed AST API. Usage: `def f(qctx: Quotes) = { import quotes.reflect._; ... }`.
  */
 trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
@@ -66,14 +64,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     def asExprOf(using Type[X]): Expr[X]
   end extension
 
-  /** Low-level Typed AST API metaprogramming API.
-   *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
-   */
-  val reflect: Reflection
-
-  /** AST reflection interface.
+  /** Low-level Typed AST metaprogramming API.
    *
-   *  Provides all functionality related with AST based metaprogramming.
+   *  Provides all functionality related to AST-based metaprogramming.
+   *
+   *  Usage:
+   *  ```scala
+   *  import scala.quoted._
+   *  def f(expr: Expr[Int])(using Quotes) =
+   *    import quotes.reflect._
+   *    val tree: Tree = Term.of(expr)
+   *    ...
+   *  ```
+   *
+   *  See `reflectModule` for full API.
+   *
+   *  @syntax markdown
+   */
+  val reflect: reflectModule
+
+  /** Low-level Typed AST metaprogramming API.
+   *
+   *  Provides all functionality related to AST-based metaprogramming.
    *
    *  Each type `XYZ` in the API is defined as an abstract type `type XYZ`.
    *  Methods on `XYZ` are provided by a `given XYZMethods` which implements extension methods on `XYZ` in the trait `XYZMethods`.
@@ -184,7 +196,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    * @syntax markdown
    */
-  trait Reflection { self: reflect.type =>
+  trait reflectModule { self: reflect.type =>
 
     ///////////////
     //   TREES   //
@@ -3013,7 +3025,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       *  It is the meta-programmer's responsibility to provide exactly one corresponding definition by passing
       *  this symbol to the ValDef constructor.
       *
-      *  Note: Also see Reflection.let
+      *  Note: Also see reflect.let
       *
       *  @param flags extra flags to with which the symbol should be constructed
       *  @param privateWithin the symbol within which this new method symbol should be private. May be noSymbol.
@@ -3768,7 +3780,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     //   UTILS   //
     ///////////////
 
-    /** TASTy Reflect tree accumulator.
+    /** Customizable Tree accumulator.
     *
     *  Usage:
     *  ```
@@ -3871,7 +3883,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end TreeAccumulator
 
 
-    /** TASTy Reflect tree traverser.
+    /** Customizable tree traverser.
     *
     *  Usage:
     *  ```
@@ -3891,7 +3903,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     end TreeTraverser
 
-    /** TASTy Reflect tree map.
+    /** Customizable tree mapper.
     *
     *  Usage:
     *  ```
