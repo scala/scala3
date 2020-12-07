@@ -233,7 +233,15 @@ object SourceFile {
         // As we already check that the prefix matches, the special handling for
         // Windows is not needed.
 
-        refPath.relativize(sourcePath).toString
+        // We also consistently use forward slashes as path element separators
+        // for relative paths. If we didn't do that, it'd be impossible to parse
+        // them back, as one would need to know whether they were created on Windows
+        // and use both slashes as separators, or on other OS and use forward slash
+        // as separator, backslash as file name character.
+
+        import scala.jdk.CollectionConverters._
+        val path = refPath.relativize(sourcePath)
+        path.iterator.asScala.mkString("/")
       else
         sourcePath.toString
   }
