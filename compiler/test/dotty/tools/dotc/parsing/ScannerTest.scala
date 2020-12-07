@@ -6,55 +6,32 @@ import dotty.tools.io._
 import scala.io.Codec
 import util._
 import Tokens._, Scanners._
-import org.junit.Test
+import reporting.Diagnostic
 
-class ScannerTest extends DottyTest {
-
-  val blackList = List(
-      "/scaladoc/scala/tools/nsc/doc/html/page/Index.scala",
-      "/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
-    )
+trait ScannerTest extends DottyTest:
+  import ParserTest._
 
   def scan(name: String): Unit = scan(new PlainFile(File(name)))
 
-  def scan(file: PlainFile): Unit = {
+  def scan(file: PlainFile): Unit = scanSourceEither(new SourceFile(file, Codec.UTF8)).toTry.get
+
+  def reset() = resetCtx()
+
+  private def scanSourceEither(source: SourceFile): Either[ParserError, Unit] =
     //println("***** scanning " + file)
-    val source = new SourceFile(file, Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
-    while (scanner.token != EOF) {
+    while scanner.token != EOF do
 //    print("[" + scanner.token.show +"]")
       scanner.nextToken()
 //      i += 1
 //      if (i % 10 == 0) println()
-    }
-  }
 
-  def scanDir(path: String): Unit = scanDir(Directory(path))
+    if getCtx.reporter.hasErrors || getCtx.reporter.hasWarnings then
+      val result = Left(ParserError(getCtx.reporter.allErrors))
+      reset()
+      result
+    else Right(())
 
-  def scanDir(dir: Directory): Unit = {
-    if (blackList exists (dir.jpath.toString endsWith _))
-      println(s"blacklisted package: ${dir.toAbsolute.jpath}")
-    else
-      for (f <- dir.files)
-        if (f.name.endsWith(".scala"))
-          if (blackList exists (f.jpath.toString endsWith _))
-            println(s"blacklisted file: ${f.toAbsolute.jpath}")
-          else
-            scan(new PlainFile(f))
-    for (d <- dir.dirs)
-      scanDir(d.path)
-  }
-
-  @Test
-  def scanList() = {
-    println(System.getProperty("user.dir"))
-    scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
-    scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
-  }
-
-  @Test
-  def scanDotty() = {
-    scanDir("src")
-  }
-}
+  def scanTextEither(code: String): Either[ParserError, Unit] = scanSourceEither(SourceFile.virtual("<code>", code))
+  def scanText(code: String): Unit = scanTextEither(code).toTry.get

@@ -38,6 +38,10 @@ trait DottyTest extends ContextEscapeDetection {
   override def clearCtx() = {
     ctx = null
   }
+  def resetCtx() = {
+    clearCtx()
+    ctx = initialCtx
+  }
 
   protected def initializeCtx(fc: FreshContext): Unit = {
     fc.setSetting(fc.settings.encoding, "UTF8")
