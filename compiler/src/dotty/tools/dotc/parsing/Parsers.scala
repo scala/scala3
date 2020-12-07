@@ -439,6 +439,14 @@ object Parsers {
       finally staged = saved
     }
 
+    private var strictIndent = false
+    private def withStrictIndent[T](body: => T): T = {
+      val saved = strictIndent
+      strictIndent = true
+      try body
+      finally strictIndent = saved
+    }
+
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
     /** Convert tree to formal parameter list
@@ -1281,16 +1289,21 @@ object Parsers {
             in.sourcePos())
           patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(isNew: Boolean = false): Unit =
+    def possibleTemplateStart[A](isNew: Boolean = false)(rest: => A): A =
       in.observeColonEOL()
-      if in.token == COLONEOL || in.token == WITHEOL then
-        if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
+      val indented =
+        if in.token == COLONEOL || in.token == WITHEOL then
+          if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
+          else
+            in.nextToken()
+            if in.token != INDENT && in.token != LBRACE then
+              syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
+          true
         else
-          in.nextToken()
-          if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
-      else
-        newLineOptWhenFollowedBy(LBRACE)
+          newLineOptWhenFollowedBy(LBRACE)
+          false
+      if indented then withStrictIndent(rest)
+      else rest
 
     def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
@@ -2309,18 +2322,21 @@ object Parsers {
     def newExpr(): Tree =
       val start = in.skipToken()
       def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
-      possibleTemplateStart()
-      val parents =
-        if in.isNestedStart then Nil
-        else constrApps(commaOK = false)
-      colonAtEOLOpt()
-      possibleTemplateStart(isNew = true)
-      parents match {
-        case parent :: Nil if !in.isNestedStart =>
-          reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
-        case _ =>
-          New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
+      possibleTemplateStart() {
+        val parents =
+          if in.isNestedStart then Nil
+          else constrApps(commaOK = false)
+        colonAtEOLOpt()
+        possibleTemplateStart(isNew = true) {
+          parents match {
+            case parent :: Nil if !in.isNestedStart =>
+              reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
+            case _ =>
+              New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
+          }
+        }
       }
+
 
     /**   ExprsInParens     ::=  ExprInParens {`,' ExprInParens}
      */
@@ -3660,12 +3676,13 @@ object Parsers {
           tokenSeparated(COMMA, () => convertToTypeId(qualId()))
         }
         else Nil
-      possibleTemplateStart()
-      if (isEnum) {
-        val (self, stats) = withinEnum(templateBody())
-        Template(constr, parents, derived, self, stats)
+      possibleTemplateStart() {
+        if (isEnum) {
+          val (self, stats) = withinEnum(templateBody())
+          Template(constr, parents, derived, self, stats)
+        }
+        else templateBodyOpt(constr, parents, derived)
       }
-      else templateBodyOpt(constr, parents, derived)
     }
 
     /** TemplateOpt = [Template]
@@ -3675,12 +3692,13 @@ object Parsers {
       if in.token == EXTENDS || isIdent(nme.derives) then
         template(constr)
       else
-        possibleTemplateStart()
-        if in.isNestedStart then
-          template(constr)
-        else
-          checkNextNotIndented()
-          Template(constr, Nil, Nil, EmptyValDef, Nil)
+        possibleTemplateStart() {
+          if in.isNestedStart then
+            template(constr)
+          else
+            checkNextNotIndented()
+            Template(constr, Nil, Nil, EmptyValDef, Nil)
+        }
 
     /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
      *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
@@ -3705,10 +3723,11 @@ object Parsers {
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
       if in.token != WITHEOL then accept(WITH)
-      possibleTemplateStart() // consumes a WITHEOL token
-      val (self, stats) = templateBody()
-      Template(constr, parents, Nil, self, stats)
-        .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
+      possibleTemplateStart() { // consumes a WITHEOL token
+        val (self, stats) = templateBody()
+        Template(constr, parents, Nil, self, stats)
+          .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
+      }
 
 /* -------- STATSEQS ------------------------------------------- */
 
@@ -3778,6 +3797,7 @@ object Parsers {
     def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
       var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
+      var firstStatIndent: Option[IndentWidth] = None
       if (isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
@@ -3793,6 +3813,9 @@ object Parsers {
           in.nextToken()
         }
         else {
+          val indent = in.indentWidth(in.offset)
+          if (firstStatIndent.isEmpty) firstStatIndent = Some(indent)
+          else ()
           stats += first
           acceptStatSepUnlessAtEnd(stats)
         }
@@ -3800,6 +3823,12 @@ object Parsers {
       var exitOnError = false
       while (!isStatSeqEnd && !exitOnError) {
         setLastStatOffset()
+        val indent = in.indentWidth(in.offset)
+        if (firstStatIndent.isEmpty) firstStatIndent = Some(indent)
+        else if (strictIndent && firstStatIndent != Some(indent))
+          syntaxErrorOrIncomplete(s"unexpected indent: found $indent expected ${firstStatIndent.get}")
+        else ()
+
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
@@ -3919,18 +3948,19 @@ object Parsers {
           else
             val pkg = qualId()
             var continue = false
-            possibleTemplateStart()
-            if in.token == EOF then
-              ts += makePackaging(start, pkg, List())
-            else if in.isNestedStart then
-              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
-              continue = true
-            else
-              acceptStatSep()
-              ts += makePackaging(start, pkg, topstats())
-            if continue then
-              acceptStatSepUnlessAtEnd(ts)
-              ts ++= topStatSeq()
+            possibleTemplateStart() {
+              if in.token == EOF then
+                ts += makePackaging(start, pkg, List())
+              else if in.isNestedStart then
+                ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
+                continue = true
+              else
+                acceptStatSep()
+                ts += makePackaging(start, pkg, topstats())
+              if continue then
+                acceptStatSepUnlessAtEnd(ts)
+                ts ++= topStatSeq()
+            }
         }
         else
           ts ++= topStatSeq(outermost = true)

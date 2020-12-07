@@ -5,7 +5,7 @@ package parsing
 import ast.untpd._
 import org.junit.Test
 
-class IndentTest extends ScannerTest:
+class IndentTest extends ParserTest:
 
   @Test
   def parseBraces: Unit =
@@ -14,15 +14,25 @@ class IndentTest extends ScannerTest:
       |  val x = 1
       |    val y = 2
       |}""".stripMargin
-    assert(scanTextEither(code).isRight)
+    assert(parseTextEither(code).isRight)
 
   @Test
   def parseIndents: Unit =
     val code = s"""
       |class A:
       |  val x = 1
+      |  val y = 2
       |""".stripMargin
-    assert(scanTextEither(code).isRight)
+    assert(parseTextEither(code).isRight)
+
+  @Test
+  def innerClassIndents: Unit =
+    val code = s"""
+      |class A:
+      |  class B:
+      |    val x = 1
+      |""".stripMargin
+    assert(parseTextEither(code).isRight)
 
   @Test
   def superfluousIndents: Unit =
@@ -31,4 +41,13 @@ class IndentTest extends ScannerTest:
       |  val x = 1
       |    val y = 2
       |""".stripMargin
-    assert(scanTextEither(code).isLeft)
+    assert(parseTextEither(code).isLeft)
+
+  @Test
+  def superfluousIndents2: Unit =
+    val code = s"""
+      |class Test:
+      |  test("hello")
+      |    assert(1 == 1)
+      |""".stripMargin
+    assert(parseTextEither(code).isLeft)
