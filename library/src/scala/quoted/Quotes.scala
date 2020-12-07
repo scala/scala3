@@ -31,6 +31,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     def matches(that: Expr[Any]): Boolean
 
+    @deprecated("Use `.value` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
+    def unlift(using FromExpr[T]): Option[T] = self.value
+
+    @deprecated("Use `.unliftOrError` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
+    def unliftOrError(using FromExpr[T]): T = self.valueOrError
+
     /** Return the value of this expression.
      *
      *  Returns `None` if the expression does not represent a value or possibly contains side effects.
