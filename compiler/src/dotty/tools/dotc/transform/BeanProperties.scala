@@ -3,6 +3,7 @@ package transform
 
 import core._
 import ast.tpd._
+import Annotations._
 import Contexts._
 import SymDenotations._
 import Symbols.newSymbol
@@ -10,6 +11,7 @@ import Decorators._
 import Flags._
 import Names._
 import Types._
+import util.Spans._
 
 import DenotTransformers._
 
@@ -24,26 +26,28 @@ class BeanProperties(thisPhase: DenotTransformer):
   def generateAccessors(valDef: ValDef)(using Context): List[Tree] =
     import Symbols.defn
 
-    def generateGetter(valDef: ValDef)(using Context) : Tree =
-      val prefix = if valDef.symbol.denot.hasAnnotation(defn.BooleanBeanPropertyAnnot) then "is" else "get"
+    def generateGetter(valDef: ValDef, annot: Annotation)(using Context) : Tree =
+      val prefix = if annot matches defn.BooleanBeanPropertyAnnot then "is" else "get"
       val meth = newSymbol(
         owner = ctx.owner,
         name = prefixedName(prefix, valDef.name),
         flags = Method | Synthetic,
-        info = MethodType(Nil, valDef.denot.info))
-        .enteredAfter(thisPhase).asTerm
+        info = MethodType(Nil, valDef.denot.info),
+        coord = annot.tree.span
+      ).enteredAfter(thisPhase).asTerm
       meth.addAnnotations(valDef.symbol.annotations)
       val body: Tree = ref(valDef.symbol)
       DefDef(meth, body)
 
-    def maybeGenerateSetter(valDef: ValDef)(using Context): Option[Tree] =
+    def maybeGenerateSetter(valDef: ValDef, annot: Annotation)(using Context): Option[Tree] =
       Option.when(valDef.denot.asSymDenotation.flags.is(Mutable)) {
         val owner = ctx.owner
         val meth = newSymbol(
           owner,
           name = prefixedName("set", valDef.name),
           flags = Method | Permanent | Synthetic,
-          info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType)
+          info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
+          coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
         meth.addAnnotations(valDef.symbol.annotations)
         def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
@@ -54,7 +58,9 @@ class BeanProperties(thisPhase: DenotTransformer):
       (prefix + valName.lastPart.toString.capitalize).toTermName
 
     val symbol = valDef.denot.symbol
-    if symbol.hasAnnotation(defn.BeanPropertyAnnot) || symbol.hasAnnotation(defn.BooleanBeanPropertyAnnot) then
-      generateGetter(valDef) +: maybeGenerateSetter(valDef) ++: Nil
-    else Nil
+    symbol.getAnnotation(defn.BeanPropertyAnnot)
+      .orElse(symbol.getAnnotation(defn.BooleanBeanPropertyAnnot))
+      .toList.flatMap { annot =>
+        generateGetter(valDef, annot) +: maybeGenerateSetter(valDef, annot) ++: Nil
+      }
   end generateAccessors
