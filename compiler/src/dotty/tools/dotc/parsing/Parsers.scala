@@ -77,8 +77,8 @@ object Parsers {
     if source.isSelfContained then new ScriptParser(source)
     else new Parser(source)
 
-  private val InCase: Region => Region = Scanners.InCase
-  private val InCond: Region => Region = Scanners.InBraces
+  private val InCase: Region => Region = Scanners.InCase.apply
+  private val InCond: Region => Region = Scanners.InBraces.apply
 
   abstract class ParserCommon(val source: SourceFile)(using Context) {
 
