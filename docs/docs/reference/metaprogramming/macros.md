@@ -800,7 +800,7 @@ private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
   e match {
     case '{ val y: Int = $x; $body(y): Int } =>
       // body: Expr[Int => Int] where the argument represents references to y
-      evalExpr(Expr.betaReduce(body)(evalExpr(x)))
+      evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
     case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
         case (Some(a), Some(b)) => Expr(a * b)
