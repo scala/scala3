@@ -231,7 +231,7 @@ object Matcher {
             scrutinee =?= expr2
 
           /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee.symbol, pattern.symbol) =>
+          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
             ref match
               case Select(qual1, _) => qual1 =?= qual2
               case ref: Ident =>
@@ -240,7 +240,7 @@ object Matcher {
                   case _ => matched
 
           /* Match reference */
-          case (_: Ref, _: Ident) if symbolMatch(scrutinee.symbol, pattern.symbol) =>
+          case (_: Ref, _: Ident) if symbolMatch(scrutinee, pattern) =>
             matched
 
           /* Match application */
@@ -348,10 +348,19 @@ object Matcher {
      *   - The scrutinee has is in the environment and they are equivalent
      *   - The scrutinee overrides the symbol of the pattern
      */
-    private def symbolMatch(scrutinee: Symbol, pattern: Symbol)(using Env): Boolean =
-      scrutinee == pattern
-      || summon[Env].get(scrutinee).contains(pattern)
-      || scrutinee.allOverriddenSymbols.contains(pattern)
+    private def symbolMatch(scrutineeTree: Tree, patternTree: Tree)(using Env): Boolean =
+      val scrutinee = scrutineeTree.symbol
+      val devirtualizedScrutinee = scrutineeTree match
+        case Select(qual, _) =>
+          val sym = scrutinee.overridingSymbol(qual.tpe.typeSymbol)
+          if sym.exists then sym
+          else scrutinee
+        case _ => scrutinee
+      val pattern = patternTree.symbol
+
+      devirtualizedScrutinee == pattern
+      || summon[Env].get(devirtualizedScrutinee).contains(pattern)
+      || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
