@@ -3272,7 +3272,7 @@ class Typer extends Namer
           functionExpected &&
           tree.symbol.is(Module) &&
           tree.symbol.companionClass.is(Case) &&
-          !tree.tpe.widen.classSymbol.asClass.classParents.exists(defn.isFunctionType(_)) && {
+          !tree.tpe.baseClasses.exists(defn.isFunctionClass) && {
             report.warning("The method `apply` is inserted. The auto insertion will be deprecated, please write `" + tree.show + ".apply` explicitly.", tree.sourcePos)
             true
           }
