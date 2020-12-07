@@ -5,7 +5,7 @@ class A:
   def defInt: Int = 1
   @deprecated(message = "1")
   def def1: 1 = 1
-  @deprecated
+  @deprecated("reason")
   val valInt: Int = 1
   val val1: 1 = 1
   var varInt: Int = 1
