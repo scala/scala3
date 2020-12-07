@@ -3564,7 +3564,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def &(that: Flags): Flags
 
         /** Shows the flags as a String */
-        def show(using Printer[Flags]): String
+        def show: String
 
       end extension
     }
@@ -4028,9 +4028,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Default pinter for `Flags` used when calling `flags.show` */
     given ConstantPrinter: Printer[Constant] = Printer.ConstantCase
 
-    /** Default pinter for `Flags` used when calling `flags.show` */
-    given FlagsPrinter: Printer[Flags] = Printer.FlagsCombination
-
     /** Module object of `type Printer`.
      *  Contains custom printers such as `TreeCode`, `TreeAnsiCode`, `TreeCases`, `TypeReprCode`, ..., `SymbolFullName` and `FlagsCombination`.
      */
@@ -4079,8 +4076,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Prints a pattern like representation of the `Constant`. */
       def ConstantCase: Printer[Constant]
 
-      /** Prints compination of `Flags` that form this particular flag. */
-      def FlagsCombination: Printer[Flags]
     }
 
   }

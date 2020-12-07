@@ -2517,7 +2517,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def is(that: Flags): Boolean = self.isAllOf(that)
         def |(that: Flags): Flags = dotc.core.Flags.or(self, that) // TODO: Replace with dotc.core.Flags.|(self)(that)  once extension names have stabilized
         def &(that: Flags): Flags = dotc.core.Flags.and(self, that)// TODO: Replace with dotc.core.Flags.&(self)(that)  once extension names have stabilized
-        def show(using printer: Printer[Flags]): String = printer.show(self)
+        def show: String = Extractors.showFlags(using QuotesImpl.this)(self)
       end extension
     end FlagsMethods
 
@@ -2705,10 +2705,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       lazy val ConstantCase: Printer[Constant] = new Printer[Constant]:
         def show(const: Constant): String =
           Extractors.showConstant(using QuotesImpl.this)(const)
-
-      lazy val FlagsCombination: Printer[Flags] = new Printer[Flags]:
-        def show(flags: Flags): String =
-          Extractors.showFlags(using QuotesImpl.this)(flags)
 
     end Printer
   end reflect
