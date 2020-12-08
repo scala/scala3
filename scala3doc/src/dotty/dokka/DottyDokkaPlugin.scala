@@ -182,7 +182,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val scalaExternalLocationProviderFactory = extend(
     _.extensionPoint(dokkaBase.getExternalLocationProviderFactory)
-      .fromRecipe{ case c as given DokkaContext => new ScalaExternalLocationProviderFactory }
+      .fromRecipe{ case c @ given DokkaContext => new ScalaExternalLocationProviderFactory }
       .overrideExtension(dokkaBase.getDokkaLocationProvider)
   )
 
