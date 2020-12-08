@@ -23,7 +23,7 @@ LIST='- [ ] Publish artifacts to Maven via CI
   - [ ] https://github.com/scala/scala3-example-project/tree/mill
   - [ ] https://github.com/scala/scala3.g8 [![Build Status](https://travis-ci.org/scala/scala3.g8.svg?branch=master)](https://travis-ci.org/scala/scala3.g8/)
     - [ ] Committed to `master`
-  - [ ] https://github.com/lampepfl/dotty-cross.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty-cross.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-cross.g8/)
+  - [ ] https://github.com/scala/scala3-cross.g8 [![Build Status](https://travis-ci.org/scala/scala3-cross.g8.svg?branch=master)](https://travis-ci.org/scala/scala3-cross.g8/)
     - [ ] Committed to `master`
   - [ ] https://github.com/lampepfl/homebrew-brew [![Build Status](https://travis-ci.org/lampepfl/homebrew-brew.svg?branch=master)](https://travis-ci.org/lampepfl/homebrew-brew)
     - [ ] Committed to `master`

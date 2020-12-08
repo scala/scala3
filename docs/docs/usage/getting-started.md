@@ -19,7 +19,7 @@ $ sbt new scala/scala3.g8
 
 Or a Dotty project that cross compiles with Scala 2:
 ```bash
-$ sbt new lampepfl/dotty-cross.g8
+$ sbt new scala/scala3-cross.g8
 ```
 
 You can then start a Dotty REPL directly from your sbt project:

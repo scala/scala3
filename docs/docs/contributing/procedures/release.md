@@ -83,10 +83,10 @@ After releasing a new version of Dotty, we need to make sure to update the follo
   - Deploy: `git clone https://github.com/scala/scala3.g8.git`
   - Test (note the relative path as argument to `sbt new`, hence this command should be run after Deploy in the same directory as Deploy): `sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run`
   - [Commit](https://github.com/scala/scala3.g8/commit/0cde8fa843e15e916f07f22a196f35a5988b26af)
-- [Dotty G8 template with cross build support](https://github.com/lampepfl/dotty-cross.g8)
-  - Deploy: `git clone https://github.com/lampepfl/dotty-cross.g8.git`
+- [Dotty G8 template with cross build support](https://github.com/scala/scala3-cross.g8)
+  - Deploy: `git clone https://github.com/scala/scala3-cross.g8.git`
   - Test: `sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run`
-  - [Commit](https://github.com/lampepfl/dotty-cross.g8/commit/0e3ea2ae8ba8d001e63e5098ff60d728036d358f)
+  - [Commit](https://github.com/scala/scala3-cross.g8/commit/0e3ea2ae8ba8d001e63e5098ff60d728036d358f)
 - [Dotty Homebrew Formula](https://github.com/lampepfl/homebrew-brew)
   - Deploy: `git clone https://github.com/lampepfl/homebrew-brew.git && cd homebrew-brew`
   - [Commit](https://github.com/lampepfl/homebrew-brew/commit/04f7284564387754a360a354159f2f8d6156a6c7). SHA256 sum comes from the issue checklist computed for the release as specified above. The file with checksums is available at [GitHub Releases](https://github.com/lampepfl/dotty/releases) -> release in question -> assets -> `sha256sum.txt` -> `*.tar.gz` file sum.
