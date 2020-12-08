@@ -71,14 +71,14 @@ After the release is done, we document it as follows:
 ## Ecosystem
 After releasing a new version of Dotty, we need to make sure to update the following related projects:
 
-- [Example Project](https://github.com/lampepfl/dotty-example-project)
-  - To deploy locally: `git clone https://github.com/lampepfl/dotty-example-project.git && cd dotty-example-project/`
+- [Example Project](https://github.com/scala/scala3-example-project)
+  - To deploy locally: `git clone https://github.com/scala/scala3-example-project.git && cd dotty-example-project/`
   - To test locally: `sbt run`
-  - [Commit](https://github.com/lampepfl/dotty-example-project/commit/76bf0b4d708206b1901fa7f291f07cd470506e79) updating the Dotty version (only `README` and `build.sbt` files)
-- [Example Project with Mill](https://github.com/lampepfl/dotty-example-project/tree/mill)
-  - Deploy: `git clone https://github.com/lampepfl/dotty-example-project && cd dotty-example-project && git checkout mill`
+  - [Commit](https://github.com/scala/scala3-example-project/commit/76bf0b4d708206b1901fa7f291f07cd470506e79) updating the Dotty version (only `README` and `build.sbt` files)
+- [Example Project with Mill](https://github.com/scala/scala3-example-project/tree/mill)
+  - Deploy: `git clone https://github.com/scala/scala3-example-project && cd dotty-example-project && git checkout mill`
   - Test: `mill root.run`
-  - [Commit 1](https://github.com/lampepfl/dotty-example-project/commit/e1ad1905ef38d07943e0c176333ba24e306a2078) – `build.sc` only; [Commit 2](https://github.com/lampepfl/dotty-example-project/commit/23bc5df89e72b782ab8e19157d6bbcb67eef30cd)
+  - [Commit 1](https://github.com/scala/scala3-example-project/commit/e1ad1905ef38d07943e0c176333ba24e306a2078) – `build.sc` only; [Commit 2](https://github.com/scala/scala3-example-project/commit/23bc5df89e72b782ab8e19157d6bbcb67eef30cd)
 - [Dotty G8 template](https://github.com/lampepfl/dotty.g8)
   - Deploy: `git clone https://github.com/lampepfl/dotty.g8.git`
   - Test (note the relative path as argument to `sbt new`, hence this command should be run after Deploy in the same directory as Deploy): `sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run`

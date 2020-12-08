@@ -29,7 +29,7 @@ $ sbt
 scala>
 ```
 
-For more information, see the [Dotty Example Project](https://github.com/lampepfl/dotty-example-project)
+For more information, see the [Dotty Example Project](https://github.com/scala/scala3-example-project)
 
 ### IDE support
 Start using the Dotty IDE in any Dotty project by following the
