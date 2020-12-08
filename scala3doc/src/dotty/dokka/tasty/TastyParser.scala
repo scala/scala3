@@ -20,6 +20,7 @@ import dotty.dokka.model.api.withNewMembers
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
 import scala.util.Try
+import dotty.dokka.model.api._
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -62,26 +63,30 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
       .map((dri, pckgs) =>
         pckgs.reduce(_.mergeWith(_))
       )
+      .toList
+      .sortBy( pckg => pckg.dri.location.size )
+      .reverse
 
-    val byPackage = all.filter(_.getDri != null).groupBy(_.getDri().getPackageName())
-    byPackage.map {
-      case (pck, entries) => {
-        val found = packages.find(d => d.getName == pck)
-        .map( f =>
-          new DPackage(
-            f.getDri,
-            f.getFunctions,
-            f.getProperties,
-            JList(), // TODO add support for other things like type or package object entries
-            JList(),
-            f.getDocumentation,
-            null,
-            JSet(ctx.sourceSet),
-            f.getExtra
-          ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
-        )
-        found.getOrElse(throw IllegalStateException("No package for entries found"))
-      }
+
+    val byPackage = all.filter(_.dri != null).groupBy( p =>
+      packages.find(d => p.dri.location.contains(d.dri.location)).getOrElse(throw IllegalStateException("No package for entries found"))
+    )
+
+    byPackage
+      .map {
+        case (f, entries) => {
+            new DPackage(
+              f.getDri,
+              f.getFunctions,
+              f.getProperties,
+              JList(), // TODO add support for other things like type or package object entries
+              JList(),
+              f.getDocumentation,
+              null,
+              JSet(ctx.sourceSet),
+              f.getExtra
+            ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
+        }
     }.toList
 
   extension (self: DPackage) def mergeWith(other: DPackage): DPackage =

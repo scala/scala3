@@ -14,8 +14,6 @@ import java.util.stream.Collectors
 import org.jetbrains.dokka.plugability._
 import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 
-def mkDRI(packageName: String = null, extra: String = null) = new DRI(packageName, null, null, PointingToDeclaration.INSTANCE, extra)
-
 val U: kotlin.Unit = kotlin.Unit.INSTANCE
 
 def JList[T](e: T*): JList[T] = e.asJava

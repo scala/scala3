@@ -31,7 +31,7 @@ object HTML:
             case a: AppliedTag =>
               sb.append(a)
             case s: String =>
-            sb.append(s.escapeReservedTokens)
+              sb.append(s.escapeReservedTokens)
           }
       }
       sb.append(s"</$name>")

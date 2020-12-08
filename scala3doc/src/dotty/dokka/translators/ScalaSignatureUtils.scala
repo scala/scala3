@@ -50,7 +50,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
         d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
     private def buildAnnotation(a: Annotation): SignatureBuilder =
-       text("@").driLink(a.dri.getClassNames, a.dri).buildAnnotationParams(a).text(" ")
+       text("@").driLink(a.dri.location.split('.').last, a.dri).buildAnnotationParams(a).text(" ")
 
     private def buildAnnotationParams(a: Annotation): SignatureBuilder =
       if !a.params.isEmpty then

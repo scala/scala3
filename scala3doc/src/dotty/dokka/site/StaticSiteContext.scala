@@ -20,6 +20,8 @@ import util.Try
 
 import scala.collection.JavaConverters._
 
+import dotty.dokka.model.api._
+
 class StaticSiteContext(
   val root: File,
   sourceSets: Set[SourceSetWrapper],
@@ -166,7 +168,7 @@ class StaticSiteContext(
     }.toOption
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
-  def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+  def driFor(dest: Path): DRI = DRI(location = s"_.${root.toPath.relativize(dest)}")
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 

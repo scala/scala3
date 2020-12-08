@@ -141,24 +141,6 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
       res
     }
 
-    //val externalDocumentationLinks: List[Scala3docExternalDocumentationLink] = List(
-      // Scala3docExternalDocumentationLink(
-      //   List(raw".*scala\/quoted.*".r),
-      //   new URL("http://127.0.0.1:5500/scala3doc/output/scala3/"),
-      //   DocumentationKind.Scala3doc
-      // ).withPackageList(new URL("http://127.0.0.1:5500/scala3doc/output/scala3/-scala%203/package-list")),
-      // Scala3docExternalDocumentationLink(
-      //   List(raw".*java.*".r),
-      //   new URL("https://docs.oracle.com/javase/8/docs/api/"),
-      //   DocumentationKind.Javadoc
-      // ).withPackageList(new URL("https://docs.oracle.com/javase/8/docs/api/package-list")),
-      // Scala3docExternalDocumentationLink(
-      //   List(raw".*scala.*".r),
-      //   new URL("https://www.scala-lang.org/api/current/"),
-      //   DocumentationKind.Scaladoc
-      // )
-    //)
-
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
       JNil
 

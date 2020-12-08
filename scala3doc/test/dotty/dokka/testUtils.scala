@@ -53,7 +53,7 @@ class TestReporter extends ConsoleReporter:
 def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scala3doc.Args(
           name = "Test Project Name",
           output = dest,
-          tastyFiles = files
+          tastyFiles = files,
         )
 
 def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
