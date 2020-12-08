@@ -74,10 +74,10 @@ def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 ## Create a new Dotty project with staging enabled
 
 ```shell
-sbt new lampepfl/dotty-staging.g8
+sbt new scala/scala3-staging.g8
 ```
 
-From [lampepfl/dotty-staging.g8](https://github.com/lampepfl/dotty-staging.g8).
+From [scala/scala3-staging.g8](https://github.com/scala/scala3-staging.g8).
 
 It will create a project with the necessary dependencies and some examples.
 
