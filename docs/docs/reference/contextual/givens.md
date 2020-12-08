@@ -32,7 +32,7 @@ This code defines a trait `Ord` with two given instances. `intOrd` defines
 a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
-given of type `Ord[T]` for a given of type `List[Ord[T]]` to exist.
+given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
 Such conditions are expanded by the compiler to [context
 parameters](./using-clauses.html).
 
