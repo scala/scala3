@@ -15,9 +15,10 @@ trait ScannerTest extends DottyTest:
 
   def scan(file: PlainFile): Unit = scanSourceEither(new SourceFile(file, Codec.UTF8)).toTry.get
 
-  def reset() = resetCtx()
+  def reset(source: SourceFile) = resetCtx(source)
 
   private def scanSourceEither(source: SourceFile): Either[ParserError, Unit] =
+    reset(source)
     //println("***** scanning " + file)
     val scanner = new Scanner(source)
     var i = 0
@@ -29,7 +30,6 @@ trait ScannerTest extends DottyTest:
 
     if getCtx.reporter.hasErrors || getCtx.reporter.hasWarnings then
       val result = Left(ParserError(getCtx.reporter.allErrors))
-      reset()
       result
     else Right(())
 

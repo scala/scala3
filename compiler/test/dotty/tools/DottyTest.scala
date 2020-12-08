@@ -13,7 +13,8 @@ import dotc.printing.Texts._
 import dotc.reporting.ConsoleReporter
 import dotc.core.Decorators._
 import dotc.ast.tpd
-import dotc.Compiler
+import dotc.{CompilationUnit,Compiler}
+import dotc.util.SourceFile
 
 import dotc.core.Phases.Phase
 
@@ -38,9 +39,11 @@ trait DottyTest extends ContextEscapeDetection {
   override def clearCtx() = {
     ctx = null
   }
-  def resetCtx() = {
+  def resetCtx(sourceFile: SourceFile) = {
     clearCtx()
-    ctx = initialCtx
+    val c = initialCtx
+    c.setCompilationUnit(CompilationUnit(sourceFile, mustExist = false))
+    ctx = c
   }
 
   protected def initializeCtx(fc: FreshContext): Unit = {

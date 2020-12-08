@@ -447,6 +447,13 @@ object Parsers {
       finally strictIndent = saved
     }
 
+    private def withoutStrictIndent[T](body: => T): T = {
+      val saved = strictIndent
+      strictIndent = false
+      try body
+      finally strictIndent = saved
+    }
+
 /* ---------- TREE CONSTRUCTION ------------------------------------------- */
 
     /** Convert tree to formal parameter list
@@ -1301,7 +1308,7 @@ object Parsers {
           true
         else
           newLineOptWhenFollowedBy(LBRACE)
-          false
+          in.next.token == LBRACE
       if indented then withStrictIndent(rest)
       else rest
 

@@ -2,7 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import ast.untpd._
 import org.junit.Test
 
 class IndentTest extends ParserTest:
@@ -31,6 +30,15 @@ class IndentTest extends ParserTest:
       |class A:
       |  class B:
       |    val x = 1
+      |""".stripMargin
+    assert(parseTextEither(code).isRight)
+
+  @Test
+  def extendsClassIndents: Unit =
+    val code = s"""
+      |class A extends B:
+      |  override def hasUnreportedErrors: Boolean =
+      |    infos.exists(_.isInstanceOf[Error])
       |""".stripMargin
     assert(parseTextEither(code).isRight)
 

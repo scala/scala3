@@ -23,18 +23,23 @@ class ParserTest extends DottyTest {
   def reset() = {
     parsed = 0
     parsedTrees.clear()
-    resetCtx()
+  }
+
+  def reset(source: SourceFile) = {
+    parsed = 0
+    parsedTrees.clear()
+    resetCtx(source)
   }
 
   def parse(file: PlainFile): Tree = parseSourceEither(new SourceFile(file, Codec.UTF8)).toTry.get
 
   private def parseSourceEither(source: SourceFile): Either[ParserError, Tree] = {
     //println("***** parsing " + source.file)
+    reset(source)
     val parser = new Parser(source)
     val tree = parser.parse()
     if (getCtx.reporter.hasErrors) {
       val result = Left(ParserError(getCtx.reporter.allErrors))
-      reset()
       result
     }
     else {
