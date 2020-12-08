@@ -518,7 +518,7 @@ class Definitions {
   }
   private var myDottyPredefModule: Symbol = _
 
-  @tu lazy val DottyArraysModule: Symbol = requiredModule("dotty.runtime.Arrays")
+  @tu lazy val DottyArraysModule: Symbol = requiredModule("scala.runtime.Arrays")
     def newGenericArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
 
