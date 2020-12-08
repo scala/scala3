@@ -19,7 +19,7 @@ object Expr {
    */
   def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T] =
     import quotes.reflect._
-    Term.betaReduce(Term.of(expr)) match
+    Term.betaReduce(expr.asTerm) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
@@ -29,7 +29,7 @@ object Expr {
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
-    Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
+    Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Creates an expression that will construct the value `x` */

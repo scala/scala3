@@ -6,7 +6,7 @@ object Macros {
 
   def impl[T](x: Expr[T])(using q: Quotes) : Expr[Unit] = {
     import q.reflect._
-    val tree = Term.of(x)
+    val tree = x.asTerm
     given Printer[Tree] = Printer.TreeStructure
     '{
       println()

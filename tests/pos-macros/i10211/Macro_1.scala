@@ -67,11 +67,11 @@ object X:
              val tb = transform(b).asExprOf[CB[Int]]
              val mt = MethodType(List("p"))(_ => List(b.tpe.widen), _ => TypeRepr.of[Boolean])
              val mapLambda = Lambda(Symbol.spliceOwner, mt, (_, x) => Select.overloaded(obj,"==",List(),List(x.head.asInstanceOf[Term]))).asExprOf[Int=>Boolean]
-             Term.of('{ CBM.map($tb)($mapLambda) })
+             '{ CBM.map($tb)($mapLambda) }.asTerm
         case Block(stats, last) => Block(stats, transform(last))
         case Inlined(x,List(),body) => transform(body)
         case l@Literal(x) =>
-             Term.of('{ CBM.pure(${term.asExpr}) })
+             '{ CBM.pure(${term.asExpr}) }.asTerm
         case other =>
              throw RuntimeException(s"Not supported $other")
 
@@ -99,4 +99,4 @@ object X:
          }
          changes.transformTerm(body)(Symbol.spliceOwner)
 
-   transform(Term.of(f)).asExprOf[CB[T]]
+   transform(f.asTerm).asExprOf[CB[T]]

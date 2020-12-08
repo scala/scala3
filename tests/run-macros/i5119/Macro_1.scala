@@ -8,6 +8,6 @@ object Macro {
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(using q: Quotes) : Expr[String] = {
     import q.reflect._
     given Printer[Tree] = Printer.TreeStructure
-    Expr(Term.of(sc).underlyingArgument.show + "\n" + Term.of(args).underlyingArgument.show)
+    Expr(sc.asTerm.underlyingArgument.show + "\n" + args.asTerm.underlyingArgument.show)
   }
 }

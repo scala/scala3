@@ -48,17 +48,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   extension [T](self: scala.quoted.Expr[T]):
     def show: String =
-      reflect.Printer.TreeCode.show(reflect.Term.of(self))
+      reflect.Printer.TreeCode.show(reflect.asTerm(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
-      treeMatch(reflect.Term.of(self), reflect.Term.of(that)).nonEmpty
+      treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
   end extension
 
   extension [X](self: scala.quoted.Expr[Any]):
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
     def isExprOf(using scala.quoted.Type[X]): Boolean =
-      reflect.TypeReprMethods.<:<(reflect.Term.of(self).tpe)(reflect.TypeRepr.of[X])
+      reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
     def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
@@ -67,7 +67,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       else
         throw Exception(
           s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.Printer.TypeReprCode.show(reflect.Term.of(self).tpe)}
+            |of type: ${reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe)}
             |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
             |""".stripMargin
         )
@@ -76,11 +76,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object reflect extends reflectModule:
 
+    extension (expr: Expr[Any]):
+      def asTerm: Term =
+        val exprImpl = expr.asInstanceOf[ExprImpl]
+        exprImpl.checkScopeId(QuotesImpl.this.hashCode)
+        exprImpl.tree
+    end extension
+
     type Tree = tpd.Tree
 
-    object Tree extends TreeModule:
-        def of(expr: Expr[Any]): Tree = Term.of(expr)
-    end Tree
+    object Tree extends TreeModule
 
     given TreeMethods: TreeMethods with
       extension (self: Tree):
@@ -340,11 +345,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TermTypeTest
 
     object Term extends TermModule:
-      def of(expr: Expr[Any]): Term =
-        val exprImpl = expr.asInstanceOf[ExprImpl]
-        exprImpl.checkScopeId(QuotesImpl.this.hashCode)
-        exprImpl.tree
-
       def betaReduce(tree: Term): Option[Term] =
         tree match
           case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
@@ -2588,7 +2588,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.error(msg, Position.ofMacroExpansion)
 
       def error(msg: String, expr: Expr[Any]): Unit =
-        dotc.report.error(msg, Term.of(expr).pos)
+        dotc.report.error(msg, asTerm(expr).pos)
 
       def error(msg: String, pos: Position): Unit =
         dotc.report.error(msg, pos)
@@ -2609,7 +2609,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.warning(msg, Position.ofMacroExpansion)
 
       def warning(msg: String, expr: Expr[Any]): Unit =
-        dotc.report.warning(msg, Term.of(expr).pos)
+        dotc.report.warning(msg, asTerm(expr).pos)
 
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
@@ -2716,8 +2716,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
-      val scrutineeTree = reflect.Term.of(scrutinee)
-      val patternTree = reflect.Term.of(pattern)
+      val scrutineeTree = reflect.asTerm(scrutinee)
+      val patternTree = reflect.asTerm(pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 

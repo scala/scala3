@@ -100,13 +100,13 @@ trait ExprMap:
             transformTermChildren(tree, tpe)(owner)
           case _ if tree.isExpr =>
             // WARNING: Never do a cast like this in user code (accepable within the stdlib).
-            // In theory we should use `tree.asExpr match { case '{ $expr: t } => Term.of(transform(expr)) }`
+            // In theory we should use `tree.asExpr match { case '{ $expr: t } => transform(expr).asTerm }`
             // This is to avoid conflicts when re-boostrapping the library.
             type X
             val expr = tree.asExpr.asInstanceOf[Expr[X]]
             val t = tpe.asType.asInstanceOf[Type[X]]
             val transformedExpr = transform(expr)(using t)
-            Term.of(transformedExpr)
+            transformedExpr.asTerm
           case _ =>
             transformTermChildren(tree, tpe)(owner)
 
@@ -145,7 +145,7 @@ trait ExprMap:
         trees.mapConserve(x => transformTypeCaseDef(x)(owner))
 
     }
-    new MapChildren().transformTermChildren(Term.of(e), TypeRepr.of[T])(Symbol.spliceOwner).asExprOf[T]
+    new MapChildren().transformTermChildren(e.asTerm, TypeRepr.of[T])(Symbol.spliceOwner).asExprOf[T]
   }
 
 end ExprMap

@@ -21,7 +21,7 @@ object Async {
   def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using Quotes): Expr[Unit] =
     import quotes.reflect._
 
-    val fu = Term.of(f)
+    val fu = f.asTerm
     fu match
       case Inlined(_,_,Block(_,Apply(TypeApply(Select(q,n),tparams),List(param)))) =>
         param.tpe match

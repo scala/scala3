@@ -13,7 +13,7 @@ object Foo {
       if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.show(using Printer.TreeStructure))
       else '{"NO DEFINTION"}
 
-    Term.of(x) match {
+    x.asTerm match {
       case Inlined(None, Nil, arg) => definitionString(arg.symbol)
       case arg => definitionString(arg.symbol) // TODO should all by name parameters be in an inline node
     }

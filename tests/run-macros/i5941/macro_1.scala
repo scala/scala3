@@ -45,11 +45,11 @@ object Lens {
       }
     }
 
-    // exception: Term.of(getter).underlyingArgument
-    Term.of(getter) match {
+    // exception: getter.asTerm.underlyingArgument
+    getter.asTerm match {
       case Function(param :: Nil, Path(o, parts)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ${ setterBody(Term.of('s), Term.of('t), parts).asExprOf[S] }
+          val setter = (t: T) => (s: S) => ${ setterBody('s.asTerm, 't.asTerm, parts).asExprOf[S] }
           apply($getter)(setter)
         }
       case _ =>
@@ -116,9 +116,9 @@ object Iso {
       '{???}
     } else '{
       // (p: S) => p._1
-      val to = (p: S) =>  ${ Select.unique(Term.of('p), "_1").asExprOf[A] }
+      val to = (p: S) =>  ${ Select.unique('p.asTerm, "_1").asExprOf[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, Term.of('p) :: Nil).asExprOf[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, 'p.asTerm :: Nil).asExprOf[S] }
       apply(from)(to)
     }
   }

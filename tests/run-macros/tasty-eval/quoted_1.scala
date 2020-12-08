@@ -19,7 +19,7 @@ object Macros {
     override def value(e: Expr[Int])(using Quotes) : Option[Int] = {
       import quotes.reflect._
 
-      Term.of(e).tpe match {
+      e.asTerm.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>
           pre.termSymbol.tree match
             case t: ValDef =>

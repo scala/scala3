@@ -36,7 +36,7 @@ object XmlQuote {
     }
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts: List[String] = stripTyped(Term.of(receiver).underlying) match {
+    val parts: List[String] = stripTyped(receiver.asTerm.underlying) match {
       case Apply(conv, List(ctx1)) if isSCOpsConversion(conv) =>
         ctx1 match {
           case Apply(fun, List(Typed(Repeated(values, _), _))) if isStringContextApply(fun) =>
@@ -56,7 +56,7 @@ object XmlQuote {
     }
 
     // [a0, ...]: Any*
-    val args2: Expr[List[Any]] = Term.of(args).underlyingArgument match {
+    val args2: Expr[List[Any]] = args.asTerm.underlyingArgument match {
       case Typed(Repeated(args0, _), _) => // statically known args, make list directly
         Expr.ofList(args0.map(_.asExpr))
       case _ =>

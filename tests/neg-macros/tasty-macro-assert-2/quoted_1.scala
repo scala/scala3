@@ -15,7 +15,7 @@ object Asserts {
   def impl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
 
-    val tree = Term.of(cond)
+    val tree = cond.asTerm
 
     def isOps(tpe: TypeRepr): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts

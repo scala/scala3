@@ -5,7 +5,7 @@ object Macros {
   def impl[T](expr: Expr[T])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
 
-    val tree = Term.of(expr)
+    val tree = expr.asTerm
 
     val methods =
       tree.tpe.classSymbol.get.declaredMethods.map { m =>
