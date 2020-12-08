@@ -25,7 +25,7 @@ class FunctionalInterfaces extends MiniPhase {
   def phaseName: String = FunctionalInterfaces.name
 
   private val functionName = "JFunction".toTermName
-  private val functionPackage = "dotty.runtime.function.".toTermName
+  private val functionPackage = "scala.runtime.function.".toTermName
 
   override def transformClosure(tree: Closure)(using Context): Tree = {
     val cls = tree.tpe.classSymbol.asClass
