@@ -243,7 +243,7 @@ trait ClassLikeSupport:
     }.toList
 
     def getParameterModifier(parameter: Symbol): String =
-      val fieldSymbol = c.symbol.field(parameter.normalizedName)
+      val fieldSymbol = c.symbol.declaredField(parameter.normalizedName)
       if fieldSymbol.flags.is(Flags.Mutable) then "var "
       else if fieldSymbol.flags.is(Flags.ParamAccessor) && !c.symbol.flags.is(Flags.Case) && !fieldSymbol.flags.is(Flags.Private) then "val "
       else ""

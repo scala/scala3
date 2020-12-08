@@ -44,14 +44,14 @@ object TypeToolbox {
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl[T]('mem)}
   private def fieldInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect._
-    val field = TypeTree.of[T].symbol.field(mem.valueOrError)
+    val field = TypeTree.of[T].symbol.declaredField(mem.valueOrError)
     Expr(if field.isNoSymbol then "" else field.name)
   }
 
   inline def fieldsIn[T]: Seq[String] = ${fieldsInImpl[T]}
   private def fieldsInImpl[T: Type](using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect._
-    val fields = TypeTree.of[T].symbol.fields
+    val fields = TypeTree.of[T].symbol.declaredFields
     Expr(fields.map(_.name).toList)
   }
 
