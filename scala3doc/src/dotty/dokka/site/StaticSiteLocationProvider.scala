@@ -5,6 +5,7 @@ import org.jetbrains.dokka.pages.ContentPage
 import org.jetbrains.dokka.pages.PageNode
 import org.jetbrains.dokka.pages.RootPageNode
 import org.jetbrains.dokka.pages.ModulePage
+import org.jetbrains.dokka.model.DPackage
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.base.resolvers.external._
 import org.jetbrains.dokka.base.resolvers.shared._
@@ -16,6 +17,7 @@ import scala.collection.JavaConverters._
 import java.nio.file.Paths
 import java.nio.file.Path
 import scala.util.matching._
+import dotty.dokka.model.api._
 
 class StaticSiteLocationProviderFactory(using ctx: DokkaContext) extends LocationProviderFactory:
   override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
@@ -69,6 +71,13 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
 
         case _: ModulePage if summon[DocContext].staticSiteContext.isEmpty =>
           JList("index")
+        case page: ContentPage if page.getDocumentable != null =>
+          (
+            List("api") ++
+            page.getDocumentable.getDri.location.split(Array('.')).toList ++
+            (if(page.getDocumentable.isInstanceOf[DPackage]) then List("index") else List.empty) ++
+            page.getDocumentable.getDri.anchor
+          ).asJava
         case _ =>
           jpath
 
@@ -116,7 +125,7 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
 
     override def getExternalLocation(dri: DRI, sourceSets: JSet[DisplaySourceSet]): String =
       val regex = raw"\[origin:(.*)\]".r
-      val origin = regex.findFirstIn(Option(dri.getExtra).getOrElse(""))
+      val origin = regex.findFirstIn(Option(dri.extra).getOrElse(""))
       origin match {
         case Some(path) => externalLocationProviders.find { (regexes, provider) =>
           regexes.exists(r => r.matches(path))

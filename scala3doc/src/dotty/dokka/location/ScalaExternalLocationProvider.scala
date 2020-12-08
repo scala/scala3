@@ -8,6 +8,7 @@ import org.jetbrains.dokka.base.resolvers.anchors._
 import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.DisplaySourceSet
 import org.jetbrains.dokka.pages.RootPageNode
+import dotty.dokka.model.api._
 import org.jetbrains.dokka.plugability._
 import collection.JavaConverters._
 import java.util.{Set => JSet}
@@ -34,20 +35,20 @@ class ScalaExternalLocationProvider(
   }
 
   private def constructPathForJavadoc(dri: DRI): String = {
-    val packagePrefix = dri.getPackageName.replace(".","/")
-    val origin = originRegex.findFirstIn(dri.getExtra)
-    val className = origin match {
-      case Some(path) =>
-        path.split("/").last.stripSuffix(".class")
-      case None => dri.getClassNames
-    }
-    getDocURL + packagePrefix + "/" + className + extension
+    val location = "\\$+".r.replaceAllIn(dri.location.replace(".","/"), _ => ".")
+    val origin = originRegex.findFirstIn(dri.extra)
+    val anchor = dri.anchor
+    getDocURL + location + extension + anchor.fold("")(a => s"#$a")
   }
 
   private def constructPathForScaladoc(dri: DRI): String = {
-    val packagePrefix = dri.getPackageName.replace(".","/")
-    val className = dri.getClassNames
-    getDocURL + packagePrefix + "/" + className + extension
+    val location = dri.location.replace(".","/")
+    val anchor = dri.anchor
+    getDocURL + location + extension + anchor.fold("")(a => s"#$a")
   }
 
-  private def constructPathForScala3doc(dri: DRI): String = super.constructPath(dri)
+  private def constructPathForScala3doc(dri: DRI): String = {
+    val location = dri.location.replace(".","/")
+    val anchor = dri.anchor
+    getDocURL + location + anchor.fold(extension)(a => s"/$a$extension")
+  }

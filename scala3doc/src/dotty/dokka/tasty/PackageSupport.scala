@@ -34,7 +34,7 @@ trait PackageSupport:
         parseClasslike(pckObj) match {
           case clazz: DClass =>
             DPackage(
-              new DRI(pckObj.symbol.dri.getPackageName, null, null, PointingToDeclaration.INSTANCE, null),
+              new DRI(pckObj.symbol.packageName, null, null, PointingToDeclaration.INSTANCE, null),
               clazz.getFunctions,
               clazz.getProperties,
               JList(),

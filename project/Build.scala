@@ -1565,7 +1565,17 @@ object Build {
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
               "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
-              "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg")
+              "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg " +
+              "-external-mappings " + raw".*scala\/quoted.*" + "::" +
+                "scala3doc" + "::" +
+                "http://dotty.epfl.ch/api/" + ":::" +
+                raw".*java.*" + "::" +
+                "javadoc" + "::" +
+                "https://docs.oracle.com/javase/8/docs/api/" + ":::" +
+                raw".*scala.*" + "::" +
+                "scaladoc" + "::" +
+                "https://www.scala-lang.org/api/current/"
+            )
           }.value,
 
           generateScala3Documentation := Def.inputTaskDyn {
@@ -1589,7 +1599,14 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
-              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg"))
+              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
+              "-external-mappings " + raw".*java.*" + "::" +
+                "javadoc" + "::" +
+                "https://docs.oracle.com/javase/8/docs/api/" + ":::" +
+                raw".*scala.*" + "::" +
+                "scaladoc" + "::" +
+                "https://www.scala-lang.org/api/current/"
+              ))
           }.evaluated,
 
           generateTestcasesDocumentation := Def.taskDyn {
