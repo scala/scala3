@@ -492,6 +492,10 @@ class ScalaPageContentBuilder(
               case Some(dri: DRI) => SLink(name, dri)
               case None => name
             Signature("Exported from ", signatureName)
+          case Origin.Overrides(overridenMembers) => 
+            def intersperse(xs: Seq[SLink]): Seq[(String | SLink)] = 
+              xs.flatMap(Seq(_, " -> ")).dropRight(1).asInstanceOf[Seq[(String | SLink)]] // dropRight returns `Seq[Object]`
+            Signature("Definition classes: ").join(Signature(intersperse(overridenMembers.map(SLink(_, _))):_*))
           case _ => Nil
         }
         val styles: Set[Style] = if documentable.deprecated.isDefined then Set(TextStyle.Strikethrough) else Set.empty

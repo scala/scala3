@@ -71,11 +71,15 @@ enum Kind(val name: String){
 }
 
 enum Origin:
-  case InheritedFrom(name: String, dri: DRI)
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
   case ExportedFrom(name: String, dri: Option[DRI])
-  case DefinedWithin
+  case Overrides(overridenMembers: Seq[Overriden])
+  case RegularlyDefined
+
+case class Overriden(name: String, dri: DRI)
+
+case class InheritedFrom(name: String, dri: DRI)
 
 case class Annotation(val dri: DRI, val params: List[Annotation.AnnotationParameter])
 
@@ -130,7 +134,8 @@ extension[T] (member: Member):
 
   def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
   def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)
-  def origin: Origin =  memberExt.fold(Origin.DefinedWithin)(_.origin)
+  def origin: Origin =  memberExt.fold(Origin.RegularlyDefined)(_.origin)
+  def inheritedFrom: Option[InheritedFrom] = memberExt.fold(None)(_.inheritedFrom)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
   def sources: Option[TastyDocumentableSource] = memberExt.fold(None)(_.sources)
   def name = member.getName
@@ -142,7 +147,8 @@ extension[T] (member: Member):
   def directParents: Seq[Signature] = compositeMemberExt.fold(Nil)(_.directParents)
   def knownChildren: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.knownChildren)
 
-  def membersBy(op: Member => Boolean): (Seq[Member], Seq[Member]) = allMembers.filter(op).partition(_.origin == Origin.DefinedWithin)
+  def membersBy(op: Member => Boolean): Seq[Member] = allMembers.filter(op)
+  def membersByWithInheritancePartition(op: Member => Boolean): (Seq[Member], Seq[Member]) = membersBy(op).partition(_.inheritedFrom.isEmpty)
 
 
 extension (module: DModule):

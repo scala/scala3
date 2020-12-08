@@ -40,7 +40,7 @@ class ScalaPageCreator(
     page.modified(name, page.getChildren)
 
   private def pagesForMembers(p: Member): Seq[PageNode] =
-    p.allMembers.filter(_.origin == Origin.DefinedWithin).collect {
+    p.allMembers.filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty).collect {
       case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
       case c: DClass => updatePageNameForMember(pageForDClass(c), c)
     }
@@ -365,14 +365,14 @@ class ScalaPageCreator(
         }.toSeq
 
 
-      val (definedMethods, inheritedMethods) = s.membersBy(_.kind == Kind.Def)
-      val (definedFields, inheritedFiles) = s.membersBy(m => m.kind == Kind.Val || m.kind == Kind.Var)
-      val (definedClasslikes, inheritedClasslikes) = s.membersBy(m => m.kind.isInstanceOf[Classlike])
-      val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type])
-      val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given])
-      val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension])
-      val exports = s.allMembers.filter(_.kind == Kind.Exported)
-      val (definedImplicits, inheritedImplicits) = s.membersBy(_.kind.isInstanceOf[Kind.Implicit])
+      val (definedMethods, inheritedMethods) = s.membersByWithInheritancePartition(_.kind == Kind.Def)
+      val (definedFields, inheritedFiles) = s.membersByWithInheritancePartition(m => m.kind == Kind.Val || m.kind == Kind.Var)
+      val (definedClasslikes, inheritedClasslikes) = s.membersByWithInheritancePartition(m => m.kind.isInstanceOf[Classlike])
+      val (definedTypes, inheritedTypes) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Type])
+      val (definedGivens, inheritedGives) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Given])
+      val (definedExtensions, inheritedExtensions) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Extension])
+      val (definedExports, inheritedExports) = s.membersByWithInheritancePartition(_.kind == Kind.Exported)
+      val (definedImplicits, inheritedImplicits) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Implicit])
 
       b
         .contentForComments(s)
@@ -403,13 +403,14 @@ class ScalaPageCreator(
           DocumentableGroup(Some("Inherited implicits"), inheritedImplicits)
         )
         .documentableTab("Exports")(
-          DocumentableGroup(Some("Defined exports"), exports)
+          DocumentableGroup(Some("Defined exports"), definedExports),
+          DocumentableGroup(Some("Inherited exports"), inheritedExports),
         )
 
 
     def contentForEnum(c: DClass) =
       b.documentableTab("Enum entries")(
-        DocumentableGroup(None, c.membersBy(_.kind == Kind.EnumCase)._1) // Enum entries cannot be inherited
+        DocumentableGroup(None, c.membersBy(_.kind == Kind.EnumCase)) // Enum entries cannot be inherited
       )
 
 

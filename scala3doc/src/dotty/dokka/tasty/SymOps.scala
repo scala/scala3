@@ -84,6 +84,8 @@ class SymOps[Q <: Quotes](val q: Q):
 
     def isExported: Boolean = sym.flags.is(Flags.Exported)
 
+    def isOverriden: Boolean = sym.flags.is(Flags.Override)
+
     def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
 
     def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
