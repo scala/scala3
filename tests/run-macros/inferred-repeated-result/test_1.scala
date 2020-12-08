@@ -9,7 +9,7 @@ object Macros {
 
     val methods =
       tree.tpe.classSymbol.get.declaredMethods.map { m =>
-        val name = m.show
+        val name = m.fullName
         m.tree match
           case ddef: DefDef =>
             val returnType = ddef.returnTpt.tpe.show

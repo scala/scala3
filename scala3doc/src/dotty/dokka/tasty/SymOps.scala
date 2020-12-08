@@ -115,5 +115,5 @@ class SymOps[Q <: Quotes](val q: Q):
           pointsTo,
           // sym.show returns the same signature for def << = 1 and def >> = 2.
           // For some reason it contains `$$$` instrad of symbol name
-          s"${sym.name}${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
+          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )

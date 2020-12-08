@@ -7,8 +7,8 @@ object Macros {
   def impl[T: Type](using Quotes) : Expr[Unit] = {
     import quotes.reflect._
     '{
-      println(${Expr(TypeTree.of[T].showExtractors)})
-      println(${Expr(TypeRepr.of[T].showExtractors)})
+      println(${Expr(TypeTree.of[T].show(using Printer.TreeStructure))})
+      println(${Expr(TypeRepr.of[T].show(using Printer.TypeReprStructure))})
       println()
     }
   }

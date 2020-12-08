@@ -215,7 +215,7 @@ trait ClassLikeSupport:
           .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
           .flatMap(parseMember)
       }
-      c.symbol.show match {
+      c.symbol.fullName match {
         case "scala.Predef$" =>
           ownMembers ++
           extractPatchMembers(qctx.reflect.Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))

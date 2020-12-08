@@ -29,10 +29,10 @@ object QuotesImpl {
     new QuotesImpl
 
   def showDecompiledTree(tree: tpd.Tree)(using Context): String =
-    import qctx.reflect.TreeMethods.{showAnsiColored, show}
+    import qctx.reflect.Printer.{TreeCode, TreeAnsiCode}
     val qctx: QuotesImpl = new QuotesImpl(using MacroExpansion.context(tree))
-    if ctx.settings.color.value == "always" then showAnsiColored(tree)
-    else show(tree)
+    if ctx.settings.color.value == "always" then TreeAnsiCode.show(tree)
+    else TreeCode.show(tree)
 
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
@@ -48,10 +48,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   extension [T](self: scala.quoted.Expr[T]):
     def show: String =
-      reflect.TreeMethods.show(reflect.Term.of(self))
-
-    def showAnsiColored: String =
-      reflect.TreeMethods.showAnsiColored(reflect.Term.of(self))
+      reflect.Printer.TreeCode.show(reflect.Term.of(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
       treeMatch(reflect.Term.of(self), reflect.Term.of(that)).nonEmpty
@@ -70,8 +67,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       else
         throw Exception(
           s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.TypeReprMethods.show(reflect.Term.of(self).tpe)}
-            |did not conform to type: ${reflect.TypeReprMethods.show(reflect.TypeRepr.of[X])}
+            |of type: ${reflect.Printer.TypeReprCode.show(reflect.Term.of(self).tpe)}
+            |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
             |""".stripMargin
         )
     }
@@ -89,14 +86,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: Tree):
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
-        def showExtractors: String =
-          Extractors.showTree(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
-        def showShort: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
-        def showAnsiColored: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
+        def show(using printer: Printer[Tree]): String = printer.show(self)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -1607,17 +1597,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TypeReprMethods: TypeReprMethods with
       extension (self: TypeRepr):
-        def showExtractors: String =
-          Extractors.showType(using QuotesImpl.this)(self)
 
-        def show: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
-
-        def showShort: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
-
-        def showAnsiColored: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
+        def show(using printer: Printer[TypeRepr]): String = printer.show(self)
 
         def seal: scala.quoted.Type[_] = self.asType
 
@@ -2197,14 +2178,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given ConstantMethods: ConstantMethods with
       extension (self: Constant):
         def value: Any = self.value
-        def showExtractors: String =
-          Extractors.showConstant(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = true)
-        def showShort: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain, fullNames = false)
-        def showAnsiColored: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI, fullNames = true)
+        def show: String = Extractors.showConstant(using QuotesImpl.this)(self)
       end extension
     end ConstantMethods
 
@@ -2426,12 +2400,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def companionModule: Symbol = self.denot.companionModule
         def children: List[Symbol] = self.denot.children
 
-        def showExtractors: String =
-          Extractors.showSymbol(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showSymbol(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showSymbol(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show(using printer: Printer[Symbol]): String = printer.show(self)
 
       end extension
 
@@ -2570,12 +2539,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def is(that: Flags): Boolean = self.isAllOf(that)
         def |(that: Flags): Flags = dotc.core.Flags.or(self, that) // TODO: Replace with dotc.core.Flags.|(self)(that)  once extension names have stabilized
         def &(that: Flags): Flags = dotc.core.Flags.and(self, that)// TODO: Replace with dotc.core.Flags.&(self)(that)  once extension names have stabilized
-        def showExtractors: String =
-          Extractors.showFlags(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showFlags(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showFlags(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show: String = Extractors.showFlags(using QuotesImpl.this)(self)
       end extension
     end FlagsMethods
 
@@ -2693,18 +2657,53 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |
                    |
                    |The code of the definition of ${t.symbol} is
-                   |${TreeMethods.show(t)}
+                   |${Printer.TreeCode.show(t)}
                    |
                    |which was found in the code
-                   |${TreeMethods.show(tree)}
+                   |${Printer.TreeCode.show(tree)}
                    |
                    |which has the AST representation
-                   |${TreeMethods.showExtractors(tree)}
+                   |${Printer.TreeStructure.show(tree)}
                    |
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)
 
+    object Printer extends PrinterModule:
+
+      lazy val TreeCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.plain, fullNames = true)
+
+      lazy val TreeShortCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.plain, fullNames = false)
+
+      lazy val TreeAnsiCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.ANSI, fullNames = true)
+
+      lazy val TreeStructure: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          Extractors.showTree(using QuotesImpl.this)(tree)
+
+      lazy val TypeReprCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.plain, fullNames = true)
+
+      lazy val TypeReprShortCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.plain, fullNames = false)
+
+      lazy val TypeReprAnsiCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.ANSI, fullNames = true)
+
+      lazy val TypeReprStructure: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          Extractors.showType(using QuotesImpl.this)(tpe)
+
+    end Printer
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =

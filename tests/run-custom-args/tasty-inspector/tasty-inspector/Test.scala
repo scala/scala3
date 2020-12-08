@@ -21,7 +21,7 @@ class DBInspector extends TastyInspector {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: Definition =>
-          println(tree.showExtractors)
+          println(tree.show(using Printer.TreeStructure))
           super.traverseTree(tree)(owner)
         case tree =>
           super.traverseTree(tree)(owner)

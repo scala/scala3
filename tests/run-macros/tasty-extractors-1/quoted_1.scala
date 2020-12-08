@@ -9,8 +9,8 @@ object Macros {
     import quotes.reflect._
 
     val tree = Term.of(x)
-    val treeStr = Expr(tree.showExtractors)
-    val treeTpeStr = Expr(tree.tpe.showExtractors)
+    val treeStr = Expr(tree.show(using Printer.TreeStructure))
+    val treeTpeStr = Expr(tree.tpe.show(using Printer.TypeReprStructure))
 
     '{
       println(${treeStr})

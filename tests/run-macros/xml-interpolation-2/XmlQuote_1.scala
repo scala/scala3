@@ -18,7 +18,7 @@ object XmlQuote {
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
-      println(tree.showExtractors)
+      println(tree.show(using Printer.TreeStructure))
       println(tree.show)
     }
 

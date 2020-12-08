@@ -42,5 +42,5 @@ class TestInspector() extends TastyInspector:
     assert(code.contains("import Foo.this.g.{given}"), code)
     assert(code.contains("import Foo.this.g.{given scala.Int}"), code)
 
-    val extractors = root.showExtractors
+    val extractors = root.show(using Printer.TreeStructure)
     assert(extractors.contains("GivenSelector"), extractors)

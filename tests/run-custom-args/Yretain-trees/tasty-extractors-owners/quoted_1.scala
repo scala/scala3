@@ -25,12 +25,12 @@ object Macros {
         case tree @ DefDef(name, _, _, _, _) =>
           buff.append(name)
           buff.append("\n")
-          buff.append(tree.symbol.owner.tree.showExtractors)
+          buff.append(tree.symbol.owner.tree.show(using Printer.TreeStructure))
           buff.append("\n\n")
         case tree @ ValDef(name, _, _) =>
           buff.append(name)
           buff.append("\n")
-          buff.append(tree.symbol.owner.tree.showExtractors)
+          buff.append(tree.symbol.owner.tree.show(using Printer.TreeStructure))
           buff.append("\n\n")
         case _ =>
       }

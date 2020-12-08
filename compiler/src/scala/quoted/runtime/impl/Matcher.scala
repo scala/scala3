@@ -334,8 +334,8 @@ object Matcher {
                    |
                    |with environment: ${summon[Env]}
                    |
-                   |Scrutinee: ${scrutinee.showExtractors}
-                   |Pattern: ${pattern.showExtractors}
+                   |Scrutinee: ${scrutinee.show(using Printer.TreeStructure)}
+                   |Pattern: ${pattern.show(using Printer.TreeStructure)}
                    |
                    |""".stripMargin)
             notMatched

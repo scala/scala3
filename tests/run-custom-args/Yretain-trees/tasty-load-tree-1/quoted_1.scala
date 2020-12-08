@@ -10,7 +10,7 @@ object Foo {
     import quotes.reflect._
 
     def definitionString(sym: Symbol): Expr[String] =
-      if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.showExtractors)
+      if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.show(using Printer.TreeStructure))
       else '{"NO DEFINTION"}
 
     Term.of(x) match {
