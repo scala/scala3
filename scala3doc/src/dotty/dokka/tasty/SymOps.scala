@@ -114,7 +114,7 @@ class SymOps[Q <: Quotes](val q: Q):
         val originPath = {
             import q.reflect._
             import dotty.tools.dotc
-            given ctx as dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+            given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
             Option(csym.associatedFile).map(_.path).fold("")(p => s"[origin:$p]")
         }

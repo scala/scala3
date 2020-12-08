@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import scala.io.Codec
 import java.net.URL
+import scala.util.Try
 
 type CompilerContext = dotty.tools.dotc.core.Contexts.Context
 
@@ -94,23 +95,69 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
         sourceLinks
       )(using compilerContext))
 
-    val externalDocumentationLinks: List[Scala3docExternalDocumentationLink] = List(
-      Scala3docExternalDocumentationLink(
-        List(raw".*scala\/quoted.*".r),
-        new URL("http://127.0.0.1:5500/scala3doc/output/scala3/"),
-        DocumentationKind.Scala3doc
-      ).withPackageList(new URL("http://127.0.0.1:5500/scala3doc/output/scala3/-scala%203/package-list")),
-      Scala3docExternalDocumentationLink(
-        List(raw".*java.*".r),
-        new URL("https://docs.oracle.com/javase/8/docs/api/"),
-        DocumentationKind.Javadoc
-      ).withPackageList(new URL("https://docs.oracle.com/javase/8/docs/api/package-list")),
-      Scala3docExternalDocumentationLink(
-        List(raw".*scala.*".r),
-        new URL("https://www.scala-lang.org/api/current/"),
-        DocumentationKind.Scaladoc
-      )
-    )
+    def parseDocTool(docTool: String) = docTool match {
+      case "scaladoc" => Some(DocumentationKind.Scaladoc)
+      case "scala3doc" => Some(DocumentationKind.Scala3doc)
+      case "javadoc" => Some(DocumentationKind.Javadoc)
+      case other => None
+    }
+    val externalDocumentationLinks: List[Scala3docExternalDocumentationLink] = args.externalMappings.filter(_.size >= 3).flatMap { mapping =>
+      val regexStr = mapping(0)
+      val docTool = mapping(1)
+      val urlStr = mapping(2)
+      val packageListUrlStr = if mapping.size > 3 then Some(mapping(3)) else None
+      val regex = Try(regexStr.r).toOption
+      val url = Try(URL(urlStr)).toOption
+      val packageListUrl = Try(packageListUrlStr.map(URL(_)))
+        .fold(
+          e => {
+          logger.warn(s"Wrong packageListUrl parameter in external mapping. Found '$packageListUrlStr'. " +
+            s"Package list url will be omitted")
+          None},
+          res => res
+        )
+
+      val parsedDocTool = parseDocTool(docTool)
+      val res = if regexStr.isEmpty then
+        logger.warn(s"Wrong regex parameter in external mapping. Found '$regexStr'. Mapping will be omitted")
+        None
+      else if url.isEmpty then
+        logger.warn(s"Wrong url parameter in external mapping. Found '$urlStr'. Mapping will be omitted")
+        None
+      else if parsedDocTool.isEmpty then
+        logger.warn(s"Wrong doc-tool parameter in external mapping. " +
+          s"Expected one of: 'scaladoc', 'scala3doc', 'javadoc'. Found:'$docTool'.  Mapping will be omitted "
+        )
+        None
+      else
+        Some(
+          Scala3docExternalDocumentationLink(
+            List(regexStr.r),
+            URL(urlStr),
+            parsedDocTool.get,
+            packageListUrlStr.map(URL(_))
+          )
+        )
+      res
+    }
+
+    //val externalDocumentationLinks: List[Scala3docExternalDocumentationLink] = List(
+      // Scala3docExternalDocumentationLink(
+      //   List(raw".*scala\/quoted.*".r),
+      //   new URL("http://127.0.0.1:5500/scala3doc/output/scala3/"),
+      //   DocumentationKind.Scala3doc
+      // ).withPackageList(new URL("http://127.0.0.1:5500/scala3doc/output/scala3/-scala%203/package-list")),
+      // Scala3docExternalDocumentationLink(
+      //   List(raw".*java.*".r),
+      //   new URL("https://docs.oracle.com/javase/8/docs/api/"),
+      //   DocumentationKind.Javadoc
+      // ).withPackageList(new URL("https://docs.oracle.com/javase/8/docs/api/package-list")),
+      // Scala3docExternalDocumentationLink(
+      //   List(raw".*scala.*".r),
+      //   new URL("https://www.scala-lang.org/api/current/"),
+      //   DocumentationKind.Scaladoc
+      // )
+    //)
 
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
       JNil

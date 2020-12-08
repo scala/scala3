@@ -34,7 +34,10 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val revision: Setting[String] =
     StringSetting("-revision", "revision", "Revision (branch or ref) used to build project project", "")
 
-  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision)
+  val externalDocumentationMappings: Setting[String] =
+    StringSetting("-external-mappings", "external-mappings", "Mapping between regex matching class file and external documentation", "")
+
+  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision, externalDocumentationMappings)
 
 object Scala3docArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
@@ -95,6 +98,7 @@ object Scala3docArgs:
         CommentSyntax.default
       }
     }
+    val externalMappings = externalDocumentationMappings.get.split(":::").map(_.split("::").toList).toList
 
     unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
       report.warning(s"Setting ${s.name} is currently not supported.")
@@ -115,6 +119,7 @@ object Scala3docArgs:
       projectLogo.nonDefault,
       parseSyntax,
       sourceLinks.nonDefault.fold(Nil)(_.split(",").toList),
-      revision.nonDefault
+      revision.nonDefault,
+      externalMappings
     )
     (docArgs, newContext)
