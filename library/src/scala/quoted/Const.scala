@@ -1,6 +1,7 @@
 package scala.quoted
 
 /** Literal constant values */
+@deprecated("Use `scala.quoted.Expr` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
 object Const {
 
   /** Matches expressions containing literal constant values and extracts the value.
@@ -18,6 +19,7 @@ object Const {
    *
    *  To directly unlift an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
    */
+  @deprecated("Use `scala.quoted.Expr.unapply` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
   def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
     import quotes.reflect._
     def rec(tree: Term): Option[T] = tree match {
