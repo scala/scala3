@@ -16,7 +16,7 @@ import dotty.tools.dottydoc.util.syntax._
 import dotty.tools.io.AbstractFile
 import dotc.reporting.{ StoreReporter, MessageRendering }
 import dotc.interfaces.Diagnostic.ERROR
-import io.Directory
+import io.{Directory, PlainFile, Path, PlainDirectory}
 import org.junit.Assert.fail
 
 import java.io.{ BufferedWriter, OutputStreamWriter }
@@ -95,7 +95,8 @@ trait DottyDocTest extends MessageRendering {
   def checkFiles(sources: List[String])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     val c = compilerWithChecker(assertion)
     val run = c.newRun
-    run.compile(sources)
+    val files = sources.map(path => new PlainFile(Path(path)))
+    run.compile(files)
   }
 
   def checkFromSource(sourceFiles: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
@@ -104,7 +105,7 @@ trait DottyDocTest extends MessageRendering {
     run.compileSources(sourceFiles)
   }
 
-  def checkFromTasty(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
+  def checkFromTasty(tastyFiles: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     Directory.inTempDirectory { tmp =>
       val ctx = "shadow ctx"
       val out = tmp./(Directory("out"))
@@ -125,23 +126,26 @@ trait DottyDocTest extends MessageRendering {
       }
       val fromTastyCompiler = compilerWithChecker(assertion)
       val fromTastyRun = fromTastyCompiler.newRun(using fromTastyCtx)
-      fromTastyRun.compile(classNames)
+      val outDir = new PlainDirectory(out)
+      val files = tastyFiles.map(outDir.fileNamed)
+      fromTastyRun.compile(files)
+      fromTastyCtx.reporter.allErrors.foreach(println)
       assert(!fromTastyCtx.reporter.hasErrors)
     }
   }
 
-  def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit
+  def check(tastyFiles: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit
 
 }
 
 trait CheckFromSource extends DottyDocTest {
-  override def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
+  override def check(tastyFiles: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
     checkFromSource(sources)(assertion)
   }
 }
 
 trait CheckFromTasty extends DottyDocTest {
-  override def check(classNames: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
-    checkFromTasty(classNames, sources)(assertion)
+  override def check(tastyFiles: List[String], sources: List[SourceFile])(assertion: (Context, Map[String, Package]) => Unit): Unit = {
+    checkFromTasty(tastyFiles, sources)(assertion)
   }
 }

@@ -62,7 +62,7 @@ public class CompilerBridgeDriver extends Driver {
 
       Contexts.Context context = setup(args, initialCtx)._2;
 
-      if(CompilerCommand.shouldStopWithInfo(context)) {
+      if (CompilerCommand.shouldStopWithInfo(context)) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);
       }
 
@@ -85,7 +85,7 @@ public class CompilerBridgeDriver extends Driver {
         ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
         for (VirtualFile file: sortedSources)
           sourcesBuffer.append(asDottyFile(file));
-        doCompileFiles(compiler, sourcesBuffer.toList(), context);
+        doCompile(compiler, sourcesBuffer.toList(), context);
 
         for (xsbti.Problem problem: delegate.problems()) {
           callback.problem(problem.category(), problem.position(), problem.message(), problem.severity(),

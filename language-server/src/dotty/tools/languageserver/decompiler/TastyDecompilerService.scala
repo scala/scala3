@@ -7,6 +7,7 @@ import java.nio.file._
 import java.util.concurrent.CompletableFuture
 
 import dotty.tools.tasty.UnpickleException
+import dotty.tools.io.{PlainFile, Path}
 
 import dotc.fromtasty.TastyFileUtil
 
@@ -22,11 +23,13 @@ trait TastyDecompilerService {
     computeAsync(synchronize = false, fun = { cancelChecker =>
       val uri = new URI(params.textDocument.getUri)
       try {
-        TastyFileUtil.getClassName(Paths.get(uri)) match {
-          case Some((classPath, className)) =>
+        val jpath = Paths.get(uri)
+        val tastyFile = new PlainFile(Path(jpath))
+        TastyFileUtil.getClassPath(tastyFile) match {
+          case Some(classPath) =>
             val driver = thisServer.decompilerDriverFor(uri, classPath)
 
-            val (tree, source) = driver.run(className)
+            val (tree, source) = driver.run(tastyFile)
 
             TastyDecompileResult(tree, source)
           case _ =>

@@ -33,7 +33,7 @@ object CompilerCommand {
 
   def versionMsg: String = s"Scala compiler $versionString -- $copyrightString"
 
-  def shouldStopWithInfo(using ctx: Context) = {
+  def shouldStopWithInfo(using Context): Boolean = {
     val settings = ctx.settings
     import settings._
     Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)

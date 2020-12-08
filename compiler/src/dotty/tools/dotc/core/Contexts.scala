@@ -266,24 +266,31 @@ object Contexts {
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
     }
 
-    /** Sourcefile with given path name, memoized */
-    def getSource(path: TermName): SourceFile = base.sourceNamed.get(path) match {
-      case Some(source) =>
-        source
-      case None => try {
-        val f = new PlainFile(Path(path.toString))
-        val src = getSource(f)
-        base.sourceNamed(path) = src
-        src
-      } catch {
-        case ex: InvalidPathException =>
-          report.error(s"invalid file path: ${ex.getMessage}")
-          NoSource
-      }
-    }
+    /** SourceFile with given path name, memoized */
+    def getSource(path: TermName): SourceFile = getFile(path) match
+      case NoAbstractFile => NoSource
+      case file => getSource(file)
 
-    /** Sourcefile with given path, memoized */
+    /** SourceFile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
+
+    /** AbstraFile with given path name, memoized */
+    def getFile(name: TermName): AbstractFile = base.files.get(name) match
+      case Some(file) =>
+        file
+      case None =>
+        try
+          val file = new PlainFile(Path(name.toString))
+          base.files(name) = file
+          file
+        catch
+          case ex: InvalidPathException =>
+            report.error(s"invalid file path: ${ex.getMessage}")
+            NoAbstractFile
+
+    /** AbstractFile with given path, memoized */
+    def getFile(name: String): AbstractFile = getFile(name.toTermName)
+
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] = null
 
@@ -841,9 +848,9 @@ object Contexts {
     private var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
-    /** Sources that were loaded */
+    /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val sourceNamed: util.HashMap[TermName, SourceFile] = util.HashMap[TermName, SourceFile]()
+    val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
 
     // Types state
     /** A table for hash consing unique types */
@@ -927,7 +934,7 @@ object Contexts {
       emptyWildcardBounds = null
       errorTypeMsg.clear()
       sources.clear()
-      sourceNamed.clear()
+      files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
 
     // Test that access is single threaded

@@ -6,6 +6,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core._
 import dotty.tools.dotc.core.tasty.TastyHTMLPrinter
 import dotty.tools.dotc.reporting._
+import dotty.tools.io.AbstractFile
 
 import scala.quoted.runtime.impl.QuotesImpl
 
@@ -25,13 +26,13 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
 
   private val decompiler = new PartialTASTYDecompiler
 
-  def run(className: String): (String, String) = {
+  def run(tastyFile: AbstractFile): (String, String) = {
     val reporter = new StoreReporter(null) with HideNonSensicalMessages
 
     val run = decompiler.newRun(using myInitCtx.fresh.setReporter(reporter))
 
     inContext(run.runContext) {
-      run.compile(List(className))
+      run.compile(List(tastyFile))
       run.printSummary()
       val unit = ctx.run.units.head
 

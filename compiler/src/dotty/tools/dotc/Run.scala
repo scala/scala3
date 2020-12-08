@@ -124,13 +124,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
-  def compile(fileNames: List[String]): Unit =
-    val sources = fileNames.map(runContext.getSource(_))
-    compileSources(sources)
-
-  def compileFiles(files: List[AbstractFile]): Unit =
-    val sources = files.map(runContext.getSource(_))
-    compileSources(sources)
+  def compile(files: List[AbstractFile]): Unit =
+    try
+      val sources = files.map(runContext.getSource(_))
+      compileSources(sources)
+    catch
+      case NonFatal(ex) =>
+        if units != null then report.echo(i"exception occurred while compiling $units%, %")
+        else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
+        throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
@@ -139,15 +141,11 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    *  account. I think the latter would be preferable.
    */
   def compileSources(sources: List[SourceFile]): Unit =
-    try
-      if sources forall (_.exists) then
-        units = sources.map(CompilationUnit(_))
-        compileUnits()
-    catch
-      case NonFatal(ex) =>
-        if units != null then report.echo(i"exception occurred while compiling $units%, %")
-        else report.echo(s"exception occurred while compiling ${sources.map(_.name).mkString(", ")}")
-        throw ex
+    if (sources forall (_.exists)) {
+      units = sources.map(CompilationUnit(_))
+      compileUnits()
+    }
+
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
     units = us
@@ -220,7 +218,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
 
-      val unit = CompilationUnit(ctx.getSource(file.path))
+      val unit = CompilationUnit(ctx.getSource(file))
       val unitCtx = runContext.fresh
         .setCompilationUnit(unit)
         .withRootImports

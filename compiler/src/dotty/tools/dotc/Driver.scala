@@ -9,7 +9,7 @@ import core.Contexts._
 import core.{MacroClassLoader, Mode, TypeError}
 import core.StdNames.nme
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.io.{File, AbstractFile}
+import dotty.tools.io.AbstractFile
 import reporting._
 import core.Decorators._
 import config.Feature
@@ -32,28 +32,11 @@ class Driver {
 
   protected def emptyReporter: Reporter = new StoreReporter(null)
 
-  protected def doCompile(compiler: Compiler, fileNames: List[String])(using ctx: Context): Reporter =
-    if fileNames.nonEmpty then
-      try
-        val run = compiler.newRun
-        run.compile(fileNames)
-        finish(compiler, run)
-      catch
-        case ex: FatalError =>
-          report.error(ex.getMessage) // signals that we should fail compilation.
-        case ex: TypeError =>
-          println(s"${ex.toMessage} while compiling ${fileNames.mkString(", ")}")
-          throw ex
-        case ex: Throwable =>
-          println(s"$ex while compiling ${fileNames.mkString(", ")}")
-          throw ex
-    ctx.reporter
-
-  protected def doCompileFiles(compiler: Compiler,  files: List[AbstractFile])(using Context): Reporter =
+  protected def doCompile(compiler: Compiler,  files: List[AbstractFile])(using Context): Reporter =
     if files.nonEmpty then
       try
         val run = compiler.newRun
-        run.compileFiles(files)
+        run.compile(files)
         finish(compiler, run)
       catch
         case ex: FatalError =>
@@ -81,7 +64,7 @@ class Driver {
 
   protected def sourcesRequired: Boolean = true
 
-  def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+  def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
     val ictx = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(using ictx)
     ictx.setSettings(summary.sstate)
@@ -92,43 +75,37 @@ class Driver {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
-      fromTastySetup(fileNames, ctx)
+      val files = fileNames.map(ctx.getFile)
+      (files, fromTastySetup(files))
     }
   }
 
-  /** Setup extra classpath and figure out class names for tasty file inputs */
-  protected def fromTastySetup(fileNames0: List[String], ctx0: Context): (List[String], Context) =
-    given Context = ctx0
-    if (ctx0.settings.fromTasty.value) {
-      val fromTastyIgnoreList = ctx0.settings.YfromTastyIgnoreList.value.toSet
-      // Resolve classpath and class names of tasty files
-      val (classPaths, classNames) = fileNames0.flatMap { name =>
-        val path = Paths.get(name)
-        if !Files.exists(path) then
-          report.error(s"File does not exist: $name")
-          Nil
-        else if name.endsWith(".jar") then
-          new dotty.tools.io.Jar(File(name)).toList.collect {
-            case e if e.getName.endsWith(".tasty") && !fromTastyIgnoreList(e.getName) =>
-              (name, e.getName.stripSuffix(".tasty").replace("/", "."))
-          }
-        else if name.endsWith(".tasty") then
-          TastyFileUtil.getClassName(path) match
-            case Some(res) => res :: Nil
+  /** Setup extra classpath of tasty and jar files */
+  protected def fromTastySetup(files: List[AbstractFile])(using Context): Context =
+    if ctx.settings.fromTasty.value then
+      val newEntries: List[String] = files
+        .flatMap { file =>
+          if !file.exists then
+            report.error(s"File does not exist: ${file.path}")
+            None
+          else file.extension match
+            case "jar" => Some(file.path)
+            case "tasty" =>
+              TastyFileUtil.getClassPath(file) match
+                case Some(classpath) => Some(classpath)
+                case _ =>
+                  report.error(s"Could not load classname from: ${file.path}")
+                  None
             case _ =>
-              report.error(s"Could not load classname from: $name")
-              Nil
-        else
-          report.error(s"File extension is not `tasty` or `jar`: $name")
-          Nil
-      }.unzip
-      val ctx1 = ctx0.fresh
-      val classPaths1 = classPaths.distinct.filter(_ != "")
-      val fullClassPath = (classPaths1 :+ ctx1.settings.classpath.value(using ctx1)).mkString(java.io.File.pathSeparator)
+              report.error(s"File extension is not `tasty` or `jar`: ${file.path}")
+              None
+        }
+        .distinct
+      val ctx1 = ctx.fresh
+      val fullClassPath =
+        (newEntries :+ ctx.settings.classpath.value).mkString(java.io.File.pathSeparator)
       ctx1.setSetting(ctx1.settings.classpath, fullClassPath)
-      (classNames, ctx1)
-    }
-    else (fileNames0, ctx0)
+    else ctx
 
   /** Entry point to the compiler that can be conveniently used with Java reflection.
    *
@@ -205,8 +182,8 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    val (fileNames, compileCtx) = setup(args, rootCtx)
-    doCompile(newCompiler(using compileCtx), fileNames)(using compileCtx)
+    val (files, compileCtx) = setup(args, rootCtx)
+    doCompile(newCompiler(using compileCtx), files)(using compileCtx)
   }
 
   def main(args: Array[String]): Unit = {

@@ -19,7 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URLClassLoader;
 
 /**
- * The new compiler interface is [[xsbt.CompilerBridge]] that extends the new `xsbti.CompilerInterface2`.
+ * The new compiler interface is [[dotty.tools.xsbt.CompilerBridge]] that extends the new `xsbti.CompilerInterface2`.
  * This interface is kept for compatibility with Mill and the sbt 1.3.x series.
  */
 public final class CompilerInterface {

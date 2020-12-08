@@ -22,9 +22,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Class"
+    val tastyFile = "scala/Class.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors.headOption match {
@@ -45,9 +45,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Class"
+    val tastyFile = "scala/Class.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _,  _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -71,9 +71,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Class"
+    val tastyFile = "scala/Class.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -104,9 +104,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Class"
+    val tastyFile = "scala/Class.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: Class), _, _, _, _) =>
           cls.constructors match {
@@ -143,9 +143,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Class"
+    val tastyFile = "scala/Class.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(cls: CaseClass, obj: Object), _, _, _, _) =>
           cls.constructors match {
@@ -177,9 +177,9 @@ abstract class ConstructorsBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Trait"
+    val tastyFile = "scala/Trait.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           trt.traitParams match {
