@@ -35,6 +35,8 @@ sidebar:
               url: docs/reference/new-types/match-types.html
             - title: Dependent Function Types
               url: docs/reference/new-types/dependent-function-types.html
+            - title: Polymorphic Function Types
+              url: docs/reference/new-types/polymorphic-function-types.html
         - title: Enums
           subsection:
             - title: Enumerations
