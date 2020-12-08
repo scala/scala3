@@ -12,6 +12,6 @@ object FieldsImpl:
     def isProjectField(s: Symbol) =
       s.isValDef && s.tree.asInstanceOf[ValDef].tpt.tpe <:< retType
     val projectsTree = Term.of(from)
-    val symbols = TypeTree.of[V].symbol.memberMethods.filter(isProjectField)
+    val symbols = TypeTree.of[V].symbol.fields.filter(isProjectField)
     val selects = symbols.map(Select(projectsTree, _).asExprOf[T])
     '{ println(${Expr(retType.show)}); ${Varargs(selects)} }

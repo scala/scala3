@@ -535,6 +535,6 @@ object projects:
 
 end projects
 
-def allProjects = projects.fields.of[CommunityProject].sortBy(_.project)
+def allProjects = projects.reflectedFields.of[CommunityProject].sortBy(_.project)
 
 lazy val projectMap = allProjects.map(p => p.project -> p).toMap
