@@ -60,8 +60,8 @@ Here is how to implement this using polymorphic function types:
 ```scala
 def mapSubexpressions[A](e: Expr[A])(f: [B] => Expr[B] => Expr[B]): Expr[A] =
   e match
-  case Apply(fun, arg) => Apply(f(fun), f(arg))
-  case Var(n) => Var(n)
+    case Apply(fun, arg) => Apply(f(fun), f(arg))
+    case Var(n) => Var(n)
 ```
 
 And here is how to use this function to _wrap_ each subexpression
