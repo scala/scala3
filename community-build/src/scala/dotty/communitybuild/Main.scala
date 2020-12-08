@@ -25,7 +25,7 @@ object Main:
       case "publish" :: name :: Nil =>
       case "doc" :: "all" :: destStr :: Nil =>
         val dest = Paths.get(destStr)
-        Seq("rm", "-rf", "destStr").!
+        Seq("rm", "-rf", destStr).!
         Files.createDirectory(dest)
         val (toRun, ignored) =
           allProjects.partition(_.docCommand != null)
