@@ -25,7 +25,7 @@ object Macros {
       }
     }
 
-    val tree = Term.of(x)
+    val tree = x.asTerm
     traverser.traverseTree(tree)(Symbol.spliceOwner)
     '{print(${Expr(buff.result())})}
   }

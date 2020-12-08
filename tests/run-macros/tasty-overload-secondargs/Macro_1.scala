@@ -21,14 +21,14 @@ object Macro:
        mThenImpl[A,B,PartialFunction[A,B],Option[B]]('x)
     }
 
-    def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using Quotes):Expr[R]=
+    def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using Quotes):Expr[R] =
        import quotes.reflect._
-       val fun = Term.of('{X})
+       val fun = '{X}.asTerm
        val returnType = TypeRepr.of[(S) => ?]
        val firstPart = Select.overloaded(fun,"andThen",
                                  List(TypeIdent(defn.IntClass).tpe, TypeIdent(defn.IntClass).tpe),
                                  List(Literal(Constant.Int(1))),
                                  TypeRepr.of[(S) => R]
                        )
-       val r = Apply(firstPart,List(Term.of(x)))
+       val r = Apply(firstPart,List(x.asTerm))
        r.asExprOf[R]

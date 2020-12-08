@@ -21,7 +21,7 @@ object Varargs {
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
     import quotes.reflect._
-    Repeated(xs.map(Term.of).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
+    Repeated(xs.map(_.asTerm).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
 
   /** Matches a literal sequence of expressions and return a sequence of expressions.
@@ -44,7 +44,7 @@ object Varargs {
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }
-    rec(Term.of(expr))
+    rec(expr.asTerm)
   }
 
 }

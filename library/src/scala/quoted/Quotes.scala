@@ -76,7 +76,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *  import scala.quoted._
    *  def f(expr: Expr[Int])(using Quotes) =
    *    import quotes.reflect._
-   *    val tree: Tree = Term.of(expr)
+   *    val ast: Term = expr.asTerm
    *    ...
    *  ```
    *
@@ -201,10 +201,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    */
   trait reflectModule { self: reflect.type =>
 
+    /** Returns the `Term` representation this expression */
+    extension (expr: Expr[Any])
+      def asTerm: Term
+
     ///////////////
     //   TREES   //
     ///////////////
-
 
     /** Tree representing code written in the source */
     type Tree <: AnyRef
@@ -215,7 +218,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Tree` */
     trait TreeModule { this: Tree.type =>
       /** Returns the Term representation this expression */
-      def of(expr: Expr[Any]): Tree
+      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
+      def of(expr: Expr[Any]): Tree = expr.asTerm
     }
 
     /** Makes extension methods on `Tree` available without any imports */
@@ -509,7 +513,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TermModule { this: Term.type =>
 
       /** Returns the Term representation this expression */
-      def of(expr: Expr[Any]): Term
+      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
+      def of(expr: Expr[Any]): Term = expr.asTerm
 
       /** Returns a term that is functionally equivalent to `t`,
       *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`

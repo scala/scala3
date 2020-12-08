@@ -6,7 +6,7 @@ trait Show[T] {
 
 def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
   import quotes.reflect._
-  Term.of(argsExpr) match
+  argsExpr.asTerm match
     case '{ $arg: $t } => // error
     case '[ Int ] => // error
   ???

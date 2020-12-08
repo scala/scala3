@@ -14,15 +14,15 @@ private def visitExportsExprMapImpl[T: Type](e: Expr[T], f: Expr[T => Any])(usin
 private def visitExportsTreeMapImpl[T: Type](e: Expr[T], f: Expr[T => Any])(using Quotes): Expr[Any] =
   import quotes.reflect._
   object m extends TreeMap
-  '{$f(${m.transformTerm(Term.of(e))(Symbol.spliceOwner).asExprOf})}
+  '{$f(${m.transformTerm(e.asTerm)(Symbol.spliceOwner).asExprOf})}
 
 private def visitExportsShowImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
   import quotes.reflect._
-  '{println(${Expr(Term.of(e).show)})}
+  '{println(${Expr(e.asTerm.show)})}
 
 private def visitExportsShowExtractImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
   import quotes.reflect._
-  '{println(${Expr(Term.of(e).show(using Printer.TreeStructure))})}
+  '{println(${Expr(e.asTerm.show(using Printer.TreeStructure))})}
 
 private object IdempotentExprMap extends ExprMap {
 
@@ -43,7 +43,7 @@ private def traverseExportsImpl(e: Expr[Any], f: Expr[String => Any])(using Quot
   }
 
   val res =
-    ExportAccumulator.foldTree(mutable.Buffer.empty, Term.of(e))(Symbol.spliceOwner).mkString(", ")
+    ExportAccumulator.foldTree(mutable.Buffer.empty, e.asTerm)(Symbol.spliceOwner).mkString(", ")
 
   '{ $f(${Expr(res)}) }
 }

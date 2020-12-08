@@ -10,8 +10,8 @@ object Macros {
 
   def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
-    val pos = posStr(Term.of(x).underlyingArgument.pos)
-    val code = Term.of(x).underlyingArgument.show
+    val pos = posStr(x.asTerm.underlyingArgument.pos)
+    val code = x.asTerm.underlyingArgument.show
     '{
       println($pos)
       println(${Expr(code)})

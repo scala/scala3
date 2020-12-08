@@ -6,7 +6,7 @@ object scalatest {
 
   def assertImpl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
-    Term.of(x).underlyingArgument
+    x.asTerm.underlyingArgument
     '{ () }
   }
 }

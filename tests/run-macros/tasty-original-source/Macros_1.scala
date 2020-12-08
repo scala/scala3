@@ -6,7 +6,7 @@ object Macros {
 
   private def impl(arg: Expr[Any])(using Quotes) : Expr[(String, Any)] = {
     import quotes.reflect._
-    val source = Expr(Term.of(arg).underlyingArgument.pos.sourceCode.get.toString)
+    val source = Expr(arg.asTerm.underlyingArgument.pos.sourceCode.get.toString)
     '{Tuple2($source, $arg)}
   }
 

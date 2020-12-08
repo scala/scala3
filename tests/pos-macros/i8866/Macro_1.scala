@@ -17,7 +17,7 @@ object Macro {
     ValDef.let(
       Symbol.spliceOwner,
       Select.unique(
-        Term.of('{ OtherMacro }),
+        '{ OtherMacro }.asTerm,
         "apply"
       )
     )(identity).asExprOf[Int]

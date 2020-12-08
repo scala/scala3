@@ -16,6 +16,6 @@ def impl(prog: Expr[Double])(using Quotes) : Expr[Double] =
     triggerStackOverflow(0)
   } catch {
     case e =>
-      quotes.reflect.report.error(e.getMessage, Term.of(prog).pos)
+      quotes.reflect.report.error(e.getMessage, prog.asTerm.pos)
       '{ 42.0 }
   }

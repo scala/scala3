@@ -4,7 +4,7 @@ object Main {
 
   def myMacroImpl(body: Expr[_])(using Quotes) : Expr[_] = {
     import quotes.reflect._
-    val bodyTerm = Term.of(underlyingArgument(body))
+    val bodyTerm = underlyingArgument(body).asTerm
     val showed = bodyTerm.show
     '{
       println(${Expr(showed)})
@@ -18,5 +18,5 @@ object Main {
 
   def underlyingArgument[T](expr: Expr[T])(using Quotes): Expr[T] =
     import quotes.reflect._
-    Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
+    expr.asTerm.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }
