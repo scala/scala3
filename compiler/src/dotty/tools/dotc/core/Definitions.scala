@@ -246,16 +246,6 @@ class Definitions {
     @tu lazy val CompiletimeOpsPackageObjectString: Symbol = requiredModule("scala.compiletime.ops.package.string")
     @tu lazy val CompiletimeOpsPackageObjectBoolean: Symbol = requiredModule("scala.compiletime.ops.package.boolean")
 
-  /** The `scalaShadowing` package is used to safely modify classes and
-   *  objects in scala so that they can be used from dotty. They will
-   *  be visible as members of the `scala` package, replacing any objects
-   *  or classes with the same name. But their binary artifacts are
-   *  in `scalaShadowing` so they don't clash with the same-named `scala`
-   *  members at runtime.
-   *  It is used only for non-bootstrapped code
-   */
-  @tu lazy val ScalaShadowingPackage: TermSymbol = requiredPackage(nme.scalaShadowing)
-
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
    *  which would result in a double binding assertion failure.
@@ -1299,9 +1289,6 @@ class Definitions {
   def isBoxedUnitClass(cls: Symbol): Boolean =
     cls.isClass && (cls.owner eq ScalaRuntimePackageClass) && cls.name == tpnme.BoxedUnit
 
-  def isScalaShadowingPackageClass(cls: Symbol): Boolean =
-    cls.name == tpnme.scalaShadowing && cls.owner == RootClass
-
   /** Returns the erased class of the function class `cls`
    *    - FunctionN for N > 22 becomes FunctionXXL
    *    - FunctionN for 22 > N >= 0 remains as FunctionN
@@ -1738,10 +1725,6 @@ class Definitions {
   def init()(using Context): Unit = {
     this.initCtx = ctx
     if (!isInitialized) {
-      // Enter all symbols from the scalaShadowing package in the scala package
-      for (m <- ScalaShadowingPackage.info.decls)
-        ScalaPackageClass.enter(m)
-
       // force initialization of every symbol that is synthesized or hijacked by the compiler
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
 
