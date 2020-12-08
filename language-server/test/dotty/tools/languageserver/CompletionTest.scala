@@ -23,7 +23,7 @@ class CompletionTest {
       ))
   }
 
-  @Test def completionFromDottyPredef: Unit = {
+  @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }".withSource
       .completion(m1, Set(("summon", Method, "[T](using x: T): x.type")))
   }

@@ -1,4 +1,3 @@
-import dotty._
 
 case class X2[A, B](a: A, b: B)
 case class X3[A, B, C](a: A, b: B, c: C)

@@ -16,7 +16,7 @@ object Test {
   val z = depfun3(d)
   val z1: d.M = z
 
-  // Reproduced here because the one from DottyPredef is lacking a parameter dependency of the return type `ev.type`
+  // Reproduced here because the one from Predef is lacking a parameter dependency of the return type `ev.type`
   inline final def implicitly[T](implicit ev: T): ev.type = ev
 
   type IDF = (x: C) ?=> x.M
