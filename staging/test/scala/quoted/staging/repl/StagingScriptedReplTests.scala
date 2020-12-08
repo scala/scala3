@@ -1,6 +1,7 @@
 package scala.quoted.staging.repl
 
 import dotty.BootstrappedOnlyTests
+import dotty.tools.scripts
 import dotty.tools.repl.ReplTest
 import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
