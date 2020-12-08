@@ -14,7 +14,7 @@ The fastest way to create a new project compiled by Dotty is using [sbt (1.1.4+)
 
 Create a simple Dotty project:
 ```bash
-$ sbt new lampepfl/dotty.g8
+$ sbt new scala/scala3.g8
 ```
 
 Or a Dotty project that cross compiles with Scala 2:
