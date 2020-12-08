@@ -397,7 +397,8 @@ object projects:
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    sbtDocCommand  = forceDoc("coreJVM"),
+    sbtDocCommand = forceDoc("coreJVM"),
+    dependencies = List(izumiReflect)
   )
 
   lazy val munit = SbtCommunityProject(
