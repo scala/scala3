@@ -134,7 +134,7 @@ type T = A:
 given [T](using Ord[T]): Ord[List[T]] with
   def compare(x: List[T], y: List[T]) = ???
 
-extension (xs: List[Int])
+extension (xs: List[Int]):
   def second: Int = xs.tail.head
 
 new A:
