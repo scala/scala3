@@ -555,11 +555,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           meth.name == nme.apply &&
           meth.flags.is(Synthetic) &&
           meth.owner.linkedClass.is(Case) &&
-          cls.isNoInitsClass
+          cls.isNoInitsRealClass
         }
         if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
-            || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))
-            || fn.symbol.isPrimaryConstructor && fn.symbol.owner.isNoInitsClass) // TODO: include in isStable?
+            || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))) // constructors of no-inits classes are stable
           apply(fn) && args.forall(apply)
         else if (isCaseClassApply)
           args.forall(apply)
@@ -864,7 +863,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     def reduceProjection(tree: Tree)(using Context): Tree = {
       if (ctx.debug) inlining.println(i"try reduce projection $tree")
       tree match {
-        case Select(NewInstance(cls, args, prefix, precomputed), field) if cls.isNoInitsClass =>
+        case Select(NewInstance(cls, args, prefix, precomputed), field) if cls.isNoInitsRealClass =>
           def matches(param: Symbol, selection: Symbol): Boolean =
             param == selection || {
               selection.name match {

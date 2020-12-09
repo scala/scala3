@@ -181,7 +181,7 @@ class Definitions {
   }
 
   private def completeClass(cls: ClassSymbol, ensureCtor: Boolean = true): ClassSymbol = {
-    if (ensureCtor) ensureConstructor(cls, EmptyScope)
+    if (ensureCtor) ensureConstructor(cls, cls.denot.asClass, EmptyScope)
     if (cls.linkedClass.exists) cls.linkedClass.markAbsent()
     cls
   }
