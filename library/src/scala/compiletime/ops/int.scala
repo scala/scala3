@@ -1,36 +1,7 @@
 package scala.compiletime
 package ops
 
-object any {
-  /** Equality comparison of two singleton types.
-   * ```scala
-   * val eq1: 1 == 1 = true
-   * val eq2: 1 == "1" = false
-   * val eq3: "1" == "1" = true
-   * ```
-   */
-  type ==[X, Y] <: Boolean
-
-  /** Inequality comparison of two singleton types.
-   * ```scala
-   * val eq1: 1 != 1 = false
-   * val eq2: 1 != "1" = true
-   * val eq3: "1" != "1" = false
-   * ```
-   */
-  type !=[X, Y] <: Boolean
-}
-
-object string {
-  /** Concatenation of two `String` singleton types.
-   *  ```scala
-   *  val hello: "hello " + "world" = "hello world"
-   *  ```
-   */
-  type +[X <: String, Y <: String] <: String
-}
-
-object int {
+object int:
   /** Addition of two `Int` singleton types.
    *  ```scala
    *  val sum: 2 + 2 = 4
@@ -176,39 +147,3 @@ object int {
    *  ```
    */
   type ToString[X <: Int] <: String
-}
-
-object boolean {
-
-  /** Negation of a `Boolean` singleton type.
-   *  ```scala
-   *  val notFalse: ![false] = true
-   *  val notTrue: ![true] = false
-   *  ```
-   */
-  type ![X <: Boolean] <: Boolean
-
-  /** Exclusive disjunction of two `Boolean` singleton types.
-   * ```scala
-   * val a: true ^ true = false
-   * val b: false ^ true = true
-   * ```
-   */
-  type ^[X <: Boolean, Y <: Boolean] <: Boolean
-
-  /** Conjunction of two `Boolean` singleton types.
-   *  ```scala
-   *  val a: true && true = true
-   *  val b: false && true = false
-   *  ```
-   */
-  type &&[X <: Boolean, Y <: Boolean] <: Boolean
-
-  /** Disjunction of two `Boolean` singleton types.
-   * ```scala
-   * val a: true || false = true
-   * val b: false || false = false
-   * ```
-   */
-  type ||[X <: Boolean, Y <: Boolean] <: Boolean
-}
