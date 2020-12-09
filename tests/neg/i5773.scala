@@ -23,7 +23,7 @@ object Main {
 21 |    println(1 appendS 2)
    |            ^^^^^^^^^
    |value appendS is not a member of Int.
-   |An extension method was tried, but could not be fully constructed:
+   |An extension method was tried, but could not be fully constructed
    |
    |    Semigroup.sumSemigroup[Any](/* ambiguous */implicitly[Numeric[Any]]).appendS()
 one error found

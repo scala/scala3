@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Scala Syntax Summary"
+title: "Scala3 Syntax Summary"
 ---
 
 The following descriptions of Scala tokens uses literal characters `‘c’` when
@@ -261,8 +261,6 @@ Guard             ::=  ‘if’ PostfixExpr
 CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)
 CaseClause        ::=  ‘case’ Pattern [Guard] ‘=>’ Block                        CaseDef(pat, guard?, block)   // block starts at =>
 ExprCaseClause    ::=  ‘case’ Pattern [Guard] ‘=>’ Expr
-ImplicitCaseClauses ::=  ImplicitCaseClause { ImplicitCaseClause }
-ImplicitCaseClause  ::=  ‘case’ PatVar [‘:’ RefinedType] [Guard] ‘=>’ Block
 TypeCaseClauses   ::=  TypeCaseClause { TypeCaseClause }
 TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
@@ -350,7 +348,7 @@ ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelect
                     |  WildCardSelector {‘,’ WildCardSelector}
 WildCardSelector  ::=  ‘given’ [InfixType]
                     |  ‘_'
-Export            ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
+Export            ::=  [‘given’] ImportExpr {‘,’ ImportExpr}
 
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’

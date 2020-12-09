@@ -190,7 +190,7 @@ object ExtensionMethods {
         // See the documentation of `memberSignature` to understand why `.stripPoly.ensureMethodic` is needed here.
         candidates filter (c => FullParameterization.memberSignature(c.info) == imeth.info.stripPoly.ensureMethodic.signature)
       assert(matching.nonEmpty,
-       i"""no extension method found for:
+       i"""no extension method found for
           |
           |  $imeth:${imeth.info.show} with signature ${imeth.info.signature} in ${companion.moduleClass}
           |

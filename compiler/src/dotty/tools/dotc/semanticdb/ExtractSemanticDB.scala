@@ -259,7 +259,7 @@ class ExtractSemanticDB extends Phase:
 
         case _ => None
 
-      extension (tpe: Types.Type):
+      extension (tpe: Types.Type)
         private inline def isAnnotatedByUnchecked(using Context) = tpe match
           case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
           case _                             => false
@@ -490,12 +490,12 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]]):
+    extension (list: List[List[ValDef]])
       private  inline def isSingleArg = list match
         case (_::Nil)::Nil => true
         case _             => false
 
-    extension (tree: DefDef):
+    extension (tree: DefDef)
       private def isSetterDef(using Context): Boolean =
         tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
 
@@ -521,13 +521,13 @@ class ExtractSemanticDB extends Phase:
         else limit
       Span(start max limit, end)
 
-    extension (span: Span):
+    extension (span: Span)
       private def hasLength: Boolean = span.exists && !span.isZeroExtent
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
      */
-    extension (body: List[Tree]):
+    extension (body: List[Tree])
       @tailrec private def foreachUntilImport(op: Tree => Unit): List[Tree] = body match
         case ((_: Import) :: rest) => rest
         case stat :: rest =>
@@ -535,7 +535,7 @@ class ExtractSemanticDB extends Phase:
           rest.foreachUntilImport(op)
         case Nil => Nil
 
-    extension (sym: Symbol):
+    extension (sym: Symbol)
       private def adjustIfCtorTyparam(using Context) =
         if sym.isType && sym.owner.exists && sym.owner.isConstructor then
           matchingMemberType(sym, sym.owner.owner)

@@ -650,7 +650,7 @@ object Contexts {
   }
 
   given ops: AnyRef with
-    extension (c: Context):
+    extension (c: Context)
       def addNotNullInfo(info: NotNullInfo) =
         c.withNotNullInfos(c.notNullInfos.extendWith(info))
 

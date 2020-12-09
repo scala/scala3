@@ -138,7 +138,7 @@ object Test {
   common
     val minimum = Int.MinValue
 
-  extension [T : Ord] for List[T] : Ord:
+  extension [T : Ord] for List[T] : Ord
     def compareTo(that: List[T]): Int = (this, that) match
       case (Nil, Nil) => 0
       case (Nil, _) => -1

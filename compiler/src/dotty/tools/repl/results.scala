@@ -14,10 +14,10 @@ object results {
   /** Result is a type alias for an Either with left value `Errors` */
   type Result[+A] = scala.util.Either[Errors, A]
 
-  extension [A](a: A):
+  extension [A](a: A)
     def result: Result[A] = scala.util.Right(a)
 
-  extension [A](xs: Errors):
+  extension [A](xs: Errors)
     def errors: Result[A] = scala.util.Left(xs)
 
 }

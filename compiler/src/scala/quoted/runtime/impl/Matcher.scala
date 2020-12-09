@@ -135,12 +135,12 @@ object Matcher {
       case _ => notMatched
     }
 
-    extension (scrutinees: List[Tree]):
+    extension (scrutinees: List[Tree])
       /** Check that all trees match with =?= and concatenate the results with &&& */
       private def =?= (patterns: List[Tree])(using Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    extension (scrutinee0: Tree):
+    extension (scrutinee0: Tree)
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
        *
@@ -408,7 +408,7 @@ object Matcher {
     val matched: Matching = Some(Tuple())
     def matched(x: Any): Matching = Some(Tuple1(x))
 
-    extension (self: Matching):
+    extension (self: Matching)
       def asOptionOfTuple: Option[Tuple] = self
 
       /** Concatenates the contents of two successful matchings or return a `notMatched` */

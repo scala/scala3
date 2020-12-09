@@ -9,7 +9,7 @@ import ast.untpd
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
 object ContextOps:
 
-  extension (ctx: Context):
+  extension (ctx: Context)
 
     /** Enter symbol into current class, if current class is owner of current context,
     *  or into current scope, if not. Should always be called instead of scope.enter

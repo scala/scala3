@@ -64,7 +64,7 @@ object Parsers {
     val Spliced = 2
   }
 
-  extension (buf: ListBuffer[Tree]):
+  extension (buf: ListBuffer[Tree])
     def +++=(x: Tree) = x match {
       case x: Thicket => buf ++= x.trees
       case x => buf += x
@@ -3565,8 +3565,6 @@ object Parsers {
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val extParams = paramClause(0, prefix = true)
       val givenParamss = paramClauses(givenOnly = true)
-      in.observeColonEOL()
-      if (in.token == COLONEOL) in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
           extMethod() :: Nil

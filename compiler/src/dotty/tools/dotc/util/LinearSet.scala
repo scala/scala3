@@ -12,7 +12,7 @@ object LinearSet:
 
   def empty[Elem >: Null <: AnyRef]: LinearSet[Elem] = immutable.Set.empty[Elem]
 
-  extension [Elem >: Null <: AnyRef](s: LinearSet[Elem]):
+  extension [Elem >: Null <: AnyRef](s: LinearSet[Elem])
 
     def contains(elem: Elem): Boolean = (s: @unchecked) match
       case s: immutable.AbstractSet[Elem] @unchecked => s.contains(elem)

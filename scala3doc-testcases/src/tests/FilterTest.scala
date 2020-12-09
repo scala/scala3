@@ -120,8 +120,8 @@ class FilterTest extends FilterTestBase with FilterTestBaseTrait:
   /** doc */
   protected given namedSeq: Seq[String | Int | Double] = List(1)
 
-extension (e: FilterTest):
+extension (e: FilterTest)
   def extensionMethod(name: FilterTest): FilterTest = ???
 
-extension (e: FilterTestBase):
+extension (e: FilterTestBase)
   def extensionMethodBase(name: FilterTest): FilterTest = ???
