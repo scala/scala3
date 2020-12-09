@@ -1369,5 +1369,5 @@ object ParallelTesting {
   }
 
   def isTastyFile(f: JFile): Boolean =
-    f.getName.endsWith(".hasTasty") || f.getName.endsWith(".tasty")
+    f.getName.endsWith(".tasty")
 }
