@@ -59,7 +59,7 @@ enum Assertion:
   case AfterPagesTransformation(fn: RootPageNode => Unit)
   case AfterRendering(fn: (RootPageNode, DokkaContext) => Unit)
 
-extension (s: Seq[Assertion]):
+extension (s: Seq[Assertion])
   def asTestMethods: TestMethods =
     import Assertion._
     TestMethods(
@@ -74,5 +74,5 @@ extension (s: Seq[Assertion]):
       ((root, context) => s.collect { case AfterRendering(fn) => fn(root, context)}.kUnit)
     )
 
-extension [T] (s: T):
+extension [T] (s: T)
   private def kUnit = kotlin.Unit.INSTANCE

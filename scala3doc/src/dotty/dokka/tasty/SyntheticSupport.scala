@@ -7,7 +7,7 @@ trait SyntheticsSupport:
 
   import qctx.reflect._
 
-  extension (t: TypeRepr):
+  extension (t: TypeRepr)
     def isTupleType: Boolean = hackIsTupleType(using qctx)(t)
 
     def isCompiletimeAppliedType: Boolean = hackIsCompiletimeAppliedType(using qctx)(t)
@@ -24,7 +24,7 @@ trait SyntheticsSupport:
       val tpe = rtpe.asInstanceOf[dotc.core.Types.Type]
       ctx.definitions.isCompiletimeAppliedType(tpe.typeSymbol)
 
-  extension (s: Symbol):
+  extension (s: Symbol)
     def isSyntheticFunc: Boolean = s.flags.is(Flags.Synthetic) || s.flags.is(Flags.FieldAccessor) || isDefaultHelperMethod
 
     def isSuperBridgeMethod: Boolean = s.name.contains("$super$")

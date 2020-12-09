@@ -4,7 +4,7 @@ package extensionMethodSignatures
 class ClassOne
 {
   // Commented cases won't work for now
-  // extension ClassTwoOps on (c: ClassTwo):
+  // extension ClassTwoOps on (c: ClassTwo)
   //     def getA() = c.a
   extension (c: ClassTwo)
     def getB(): String
@@ -23,7 +23,7 @@ class ClassOne
       = ???
 
   extension (c:ClassTwo)
-  :
+
     def getString(a: String): String
        = a
 

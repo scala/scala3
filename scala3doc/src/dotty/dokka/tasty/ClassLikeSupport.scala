@@ -188,7 +188,7 @@ trait ClassLikeSupport:
     case other => parseMember(other)
   ).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
 
-  extension (c: ClassDef):
+  extension (c: ClassDef)
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =

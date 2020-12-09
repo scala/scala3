@@ -31,7 +31,7 @@ def getFromExtra[V](e: WithExtraProperties[_], k: ExtraProperty.Key[_, V]): Opti
   Option(e.getExtra.getMap.get(k)).asInstanceOf[Option[V]]
 
 
-extension (f: DFunction):
+extension (f: DFunction)
   def isRightAssociative(): Boolean = f.getName.endsWith(":")
 
 def modifyContentGroup(originalContentNodeWithParents: Seq[ContentGroup], modifiedContentNode: ContentGroup): ContentGroup =

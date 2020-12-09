@@ -46,7 +46,7 @@ object Scala3docArgs:
       processArguments(initialSummary, processAll = true, skipped = Nil)
     val newContext = rootCtx.fresh
 
-    extension[T](arg: Setting[T]):
+    extension[T](arg: Setting[T])
       def get = arg.valueIn(summary.sstate)
       def withDefault(default: => T) =
         if arg.get == arg.default then default else arg.get

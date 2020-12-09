@@ -14,7 +14,7 @@ class SymOps[Q <: Quotes](val q: Q):
   import q.reflect._
 
   given Q = q
-  extension (sym: Symbol):
+  extension (sym: Symbol)
     def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName

@@ -57,7 +57,7 @@ private def createMessage(
       case throwable: Throwable =>
          s"$localizedMessage \ncaused by: ${throwableToString(throwable)}"
 
-extension (r: report.type):
+extension (r: report.type)
   def error(m: String, f: File, e: Throwable | Null = null)(using CompilerContext): Unit =
     r.error(createMessage(m, f, e), sourcePostionFor(f))
 

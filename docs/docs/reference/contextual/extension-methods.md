@@ -99,11 +99,11 @@ By contrast, using clauses can be defined for the `extension` as well as per `de
 
 Sometimes, one wants to define several extension methods that share the same
 left-hand parameter type. In this case one can "pull out" the common parameters into
-a single extension and enclose all methods in braces or an indented region following a '`:`'.
+a single extension and enclose all methods in braces or an indented region.
 Example:
 
 ```scala
-extension (ss: Seq[String]):
+extension (ss: Seq[String])
 
   def longestStrings: Seq[String] =
     val maxLength = ss.map(_.length).max
@@ -144,7 +144,7 @@ extension (ss: Seq[String])
 Collective extensions also can take type parameters and have using clauses. Example:
 
 ```scala
-extension [T](xs: List[T])(using Ordering[T]):
+extension [T](xs: List[T])(using Ordering[T])
   def smallest(n: Int): List[T] = xs.sorted.take(n)
   def smallestIndices(n: Int): List[Int] =
     val limit = smallest(n).max

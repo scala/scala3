@@ -94,7 +94,7 @@ type Signature = Seq[String | Link]
 object Signature:
   def apply(names: (String | Link)*): Signature = names // TO batter dotty shortcommings in union types
 
-extension (s: Signature):
+extension (s: Signature)
   def join(a: Signature): Signature = s ++ a
 
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
@@ -116,7 +116,7 @@ object Member:
   def unapply(d: Documentable): Option[(String, DRI, Visibility, Kind, Origin)] =
     d.memberExt.map(v => (d.getName, d.getDri, v.visibility, v.kind, v.origin))
 
-extension[T] (member: Member):
+extension[T] (member: Member)
 
   private[api] def memberExt = MemberExtension.getFrom(member)
 
@@ -145,7 +145,7 @@ extension[T] (member: Member):
   def membersBy(op: Member => Boolean): (Seq[Member], Seq[Member]) = allMembers.filter(op).partition(_.origin == Origin.DefinedWithin)
 
 
-extension (module: DModule):
+extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)

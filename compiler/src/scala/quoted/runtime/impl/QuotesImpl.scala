@@ -46,7 +46,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
   private val yCheck: Boolean =
     ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
 
-  extension [T](self: scala.quoted.Expr[T]):
+  extension [T](self: scala.quoted.Expr[T])
     def show: String =
       reflect.Printer.TreeCode.show(reflect.asTerm(self))
 
@@ -55,7 +55,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   end extension
 
-  extension [X](self: scala.quoted.Expr[Any]):
+  extension [X](self: scala.quoted.Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
     def isExprOf(using scala.quoted.Type[X]): Boolean =
       reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
@@ -76,7 +76,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object reflect extends reflectModule:
 
-    extension (expr: Expr[Any]):
+    extension (expr: Expr[Any])
       def asTerm: Term =
         val exprImpl = expr.asInstanceOf[ExprImpl]
         exprImpl.checkScopeId(QuotesImpl.this.hashCode)
@@ -88,7 +88,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Tree extends TreeModule
 
     given TreeMethods: TreeMethods with
-      extension (self: Tree):
+      extension (self: Tree)
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
         def show(using printer: Printer[Tree]): String = printer.show(self)
@@ -112,7 +112,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           QuotesImpl.this.asExprOf[T](self.asExpr)(using tp)
       end extension
 
-      extension [ThisTree <: Tree](self: ThisTree):
+      extension [ThisTree <: Tree](self: ThisTree)
         def changeOwner(newOwner: Symbol): ThisTree =
           tpd.TreeOps(self).changeNonLocalOwners(newOwner).asInstanceOf[ThisTree]
       end extension
@@ -137,7 +137,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end PackageClause
 
     given PackageClauseMethods: PackageClauseMethods with
-      extension (self: PackageClause):
+      extension (self: PackageClause)
         def pid: Ref = self.pid
         def stats: List[Tree] = self.stats
       end extension
@@ -161,7 +161,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Import
 
     given ImportMethods: ImportMethods with
-      extension (self: Import):
+      extension (self: Import)
         def expr: Term = self.expr
         def selectors: List[Selector] = self.selectors
       end extension
@@ -181,7 +181,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Export
 
     given ExportMethods: ExportMethods with
-      extension (self: Export):
+      extension (self: Export)
         def expr: Term = self.expr
         def selectors: List[Selector] = self.selectors
       end extension
@@ -208,7 +208,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Definition extends DefinitionModule
 
     given DefinitionMethods: DefinitionMethods with
-      extension (self: Definition):
+      extension (self: Definition)
         def name: String = self match
           case self: tpd.MemberDef => self.name.toString
       end extension
@@ -233,7 +233,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
-      extension (self: ClassDef):
+      extension (self: ClassDef)
         def constructor: DefDef =
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
@@ -265,7 +265,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end DefDef
 
     given DefDefMethods: DefDefMethods with
-      extension (self: DefDef):
+      extension (self: DefDef)
         def typeParams: List[TypeDef] = self.tparams
         def paramss: List[List[ValDef]] = self.vparamss
         def returnTpt: TypeTree = self.tpt
@@ -302,7 +302,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ValDef
 
     given ValDefMethods: ValDefMethods with
-      extension (self: ValDef):
+      extension (self: ValDef)
         def tpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -326,7 +326,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeDef
 
     given TypeDefMethods: TypeDefMethods with
-      extension (self: TypeDef):
+      extension (self: TypeDef)
         def rhs: Tree = self.rhs
       end extension
     end TypeDefMethods
@@ -360,7 +360,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Term
 
     given TermMethods: TermMethods with
-      extension (self: Term):
+      extension (self: Term)
         def seal: scala.quoted.Expr[Any] =
           if self.isExpr then new ExprImpl(self, QuotesImpl.this.hashCode)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
@@ -439,7 +439,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Ident
 
     given IdentMethods: IdentMethods with
-      extension (self: Ident):
+      extension (self: Ident)
         def name: String = self.name.toString
       end extension
     end IdentMethods
@@ -471,7 +471,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Select
 
     given SelectMethods: SelectMethods with
-      extension (self: Select):
+      extension (self: Select)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
         def signature: Option[Signature] =
@@ -498,7 +498,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Literal
 
     given LiteralMethods: LiteralMethods with
-      extension (self: Literal):
+      extension (self: Literal)
         def constant: Constant = self.const
       end extension
     end LiteralMethods
@@ -521,7 +521,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end This
 
     given ThisMethods: ThisMethods with
-      extension (self: This):
+      extension (self: This)
         def id: Option[String] = optional(self.qual).map(_.name.toString)
       end extension
     end ThisMethods
@@ -543,7 +543,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end New
 
     given NewMethods: NewMethods with
-      extension (self: New):
+      extension (self: New)
         def tpt: TypeTree = self.tpt
       end extension
     end NewMethods
@@ -566,7 +566,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end NamedArg
 
     given NamedArgMethods: NamedArgMethods with
-      extension (self: NamedArg):
+      extension (self: NamedArg)
         def name: String = self.name.toString
         def value: Term = self.arg
       end extension
@@ -590,7 +590,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Apply
 
     given ApplyMethods: ApplyMethods with
-      extension (self: Apply):
+      extension (self: Apply)
         def fun: Term = self.fun
         def args: List[Term] = self.args
       end extension
@@ -614,7 +614,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeApply
 
     given TypeApplyMethods: TypeApplyMethods with
-      extension (self: TypeApply):
+      extension (self: TypeApply)
         def fun: Term = self.fun
         def args: List[TypeTree] = self.args
       end extension
@@ -638,7 +638,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Super
 
     given SuperMethods: SuperMethods with
-      extension (self: Super):
+      extension (self: Super)
         def qualifier: Term = self.qual
         def id: Option[String] = optional(self.mix).map(_.name.toString)
         def idPos: Position = self.mix.sourcePos
@@ -663,7 +663,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Typed
 
     given TypedMethods: TypedMethods with
-      extension (self: Typed):
+      extension (self: Typed)
         def expr: Term = self.expr
         def tpt: TypeTree = self.tpt
       end extension
@@ -687,7 +687,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Assign
 
     given AssignMethods: AssignMethods with
-      extension (self: Assign):
+      extension (self: Assign)
         def lhs: Term = self.lhs
         def rhs: Term = self.rhs
       end extension
@@ -711,7 +711,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Block
 
     given BlockMethods: BlockMethods with
-      extension (self: Block):
+      extension (self: Block)
         def statements: List[Statement] = self.stats
         def expr: Term = self.expr
       end extension
@@ -735,7 +735,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Closure
 
     given ClosureMethods: ClosureMethods with
-      extension (self: Closure):
+      extension (self: Closure)
         def meth: Term = self.meth
         def tpeOpt: Option[TypeRepr] = optional(self.tpt).map(_.tpe)
       end extension
@@ -772,7 +772,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end If
 
     given IfMethods: IfMethods with
-      extension (self: If):
+      extension (self: If)
         def cond: Term = self.cond
         def thenp: Term = self.thenp
         def elsep: Term = self.elsep
@@ -800,7 +800,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Match
 
     given MatchMethods: MatchMethods with
-      extension (self: Match):
+      extension (self: Match)
         def scrutinee: Term = self.selector
         def cases: List[CaseDef] = self.cases
         def isInline: Boolean = self.isInline
@@ -825,7 +825,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SummonFrom
 
     given SummonFromMethods: SummonFromMethods with
-      extension (self: SummonFrom):
+      extension (self: SummonFrom)
         def cases: List[CaseDef] = self.cases
       end extension
     end SummonFromMethods
@@ -848,7 +848,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Try
 
     given TryMethods: TryMethods with
-      extension (self: Try):
+      extension (self: Try)
         def body: Term = self.expr
         def cases: List[CaseDef] = self.cases
         def finalizer: Option[Term] = optional(self.finalizer)
@@ -873,7 +873,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Return
 
     given ReturnMethods: ReturnMethods with
-      extension (self: Return):
+      extension (self: Return)
         def expr: Term = self.expr
         def from: Symbol = self.from.symbol
       end extension
@@ -897,7 +897,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Repeated
 
     given RepeatedMethods: RepeatedMethods with
-      extension (self: Repeated):
+      extension (self: Repeated)
         def elems: List[Term] = self.elems
         def elemtpt: TypeTree = self.elemtpt
       end extension
@@ -921,7 +921,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Inlined
 
     given InlinedMethods: InlinedMethods with
-      extension (self: Inlined):
+      extension (self: Inlined)
         def call: Option[Tree] = optional(self.call)
         def bindings: List[Definition] = self.bindings
         def body: Term = self.expansion
@@ -949,7 +949,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SelectOuter
 
     given SelectOuterMethods: SelectOuterMethods with
-      extension (self: SelectOuter):
+      extension (self: SelectOuter)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
         def level: Int =
@@ -976,7 +976,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end While
 
     given WhileMethods: WhileMethods with
-      extension (self: While):
+      extension (self: While)
         def cond: Term = self.cond
         def body: Term = self.body
       end extension
@@ -997,7 +997,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeTree
 
     given TypeTreeMethods: TypeTreeMethods with
-      extension (self: TypeTree):
+      extension (self: TypeTree)
         def tpe: TypeRepr = self.tpe.stripTypeVar
       end extension
     end TypeTreeMethods
@@ -1035,7 +1035,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeIdent
 
     given TypeIdentMethods: TypeIdentMethods with
-      extension (self: TypeIdent):
+      extension (self: TypeIdent)
         def name: String = self.name.toString
       end extension
     end TypeIdentMethods
@@ -1058,7 +1058,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeSelect
 
     given TypeSelectMethods: TypeSelectMethods with
-      extension (self: TypeSelect):
+      extension (self: TypeSelect)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
       end extension
@@ -1080,7 +1080,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeProjection
 
     given TypeProjectionMethods: TypeProjectionMethods with
-      extension (self: TypeProjection):
+      extension (self: TypeProjection)
         def qualifier: TypeTree = self.qualifier
         def name: String = self.name.toString
       end extension
@@ -1104,7 +1104,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Singleton
 
     given SingletonMethods: SingletonMethods with
-      extension (self: Singleton):
+      extension (self: Singleton)
         def ref: Term = self.ref
       end extension
     end SingletonMethods
@@ -1125,7 +1125,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Refined
 
     given RefinedMethods: RefinedMethods with
-      extension (self: Refined):
+      extension (self: Refined)
         def tpt: TypeTree = self.tpt
         def refinements: List[Definition] = self.refinements.asInstanceOf[List[Definition]]
       end extension
@@ -1149,7 +1149,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Applied
 
     given AppliedMethods: AppliedMethods with
-      extension (self: Applied):
+      extension (self: Applied)
         def tpt: TypeTree = self.tpt
         def args: List[Tree] = self.args
       end extension
@@ -1173,7 +1173,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Annotated
 
     given AnnotatedMethods: AnnotatedMethods with
-      extension (self: Annotated):
+      extension (self: Annotated)
         def arg: TypeTree = self.arg
         def annotation: Term = self.annot
       end extension
@@ -1197,7 +1197,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end MatchTypeTree
 
     given MatchTypeTreeMethods: MatchTypeTreeMethods with
-      extension (self: MatchTypeTree):
+      extension (self: MatchTypeTree)
         def bound: Option[TypeTree] = optional(self.bound)
         def selector: TypeTree = self.selector
         def cases: List[TypeCaseDef] = self.cases
@@ -1222,7 +1222,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ByName
 
     given ByNameMethods: ByNameMethods with
-      extension (self: ByName):
+      extension (self: ByName)
         def result: TypeTree = self.result
       end extension
     end ByNameMethods
@@ -1245,7 +1245,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end LambdaTypeTree
 
     given LambdaTypeTreeMethods: LambdaTypeTreeMethods with
-      extension (self: LambdaTypeTree):
+      extension (self: LambdaTypeTree)
         def tparams: List[TypeDef] = self.tparams
         def body: Tree = self.body
       end extension
@@ -1267,7 +1267,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeBind
 
     given TypeBindMethods: TypeBindMethods with
-      extension (self: TypeBind):
+      extension (self: TypeBind)
         def name: String = self.name.toString
         def body: Tree = self.body
       end extension
@@ -1291,7 +1291,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeBlock
 
     given TypeBlockMethods: TypeBlockMethods with
-      extension (self: TypeBlock):
+      extension (self: TypeBlock)
         def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
         def tpt: TypeTree = self.expr
       end extension
@@ -1319,7 +1319,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeBoundsTree
 
     given TypeBoundsTreeMethods: TypeBoundsTreeMethods with
-      extension (self: TypeBoundsTree):
+      extension (self: TypeBoundsTree)
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
         def low: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.lo
@@ -1344,7 +1344,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end WildcardTypeTree
 
     given WildcardTypeTreeMethods: WildcardTypeTreeMethods with
-      extension (self: WildcardTypeTree):
+      extension (self: WildcardTypeTree)
         def tpe: TypeRepr = self.tpe.stripTypeVar
       end extension
     end WildcardTypeTreeMethods
@@ -1367,7 +1367,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end CaseDef
 
     given CaseDefMethods: CaseDefMethods with
-      extension (self: CaseDef):
+      extension (self: CaseDef)
         def pattern: Tree = self.pat
         def guard: Option[Term] = optional(self.guard)
         def rhs: Term = self.body
@@ -1392,7 +1392,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeCaseDef
 
     given TypeCaseDefMethods: TypeCaseDefMethods with
-      extension (self: TypeCaseDef):
+      extension (self: TypeCaseDef)
         def pattern: TypeTree = self.pat
         def rhs: TypeTree = self.body
       end extension
@@ -1416,7 +1416,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Bind
 
     given BindMethods: BindMethods with
-      extension (self: Bind):
+      extension (self: Bind)
         def name: String = self.name.toString
         def pattern: Tree = self.body
       end extension
@@ -1440,7 +1440,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Unapply
 
     given UnapplyMethods: UnapplyMethods with
-      extension (self: Unapply):
+      extension (self: Unapply)
         def fun: Term = selfUnApply(self).fun
         def implicits: List[Term] = selfUnApply(self).implicits
         def patterns: List[Tree] = effectivePatterns(selfUnApply(self).patterns)
@@ -1473,7 +1473,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Alternatives
 
     given AlternativesMethods: AlternativesMethods with
-      extension (self: Alternatives):
+      extension (self: Alternatives)
         def patterns: List[Tree] = self.trees
       end extension
     end AlternativesMethods
@@ -1495,7 +1495,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SimpleSelector
 
     given SimpleSelectorMethods: SimpleSelectorMethods with
-      extension (self: SimpleSelector):
+      extension (self: SimpleSelector)
         def name: String = self.imported.name.toString
         def namePos: Position = self.imported.sourcePos
       end extension
@@ -1514,7 +1514,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RenameSelector
 
     given RenameSelectorMethods: RenameSelectorMethods with
-      extension (self: RenameSelector):
+      extension (self: RenameSelector)
         def fromName: String = self.imported.name.toString
         def fromPos: Position = self.imported.sourcePos
         def toName: String = self.renamed.asInstanceOf[untpd.Ident].name.toString
@@ -1539,7 +1539,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end OmitSelector
 
     given OmitSelectorMethods: OmitSelectorMethods with
-      extension (self: OmitSelector):
+      extension (self: OmitSelector)
         def name: String = self.imported.toString
         def namePos: Position = self.imported.sourcePos
       end extension
@@ -1560,7 +1560,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end GivenSelector
 
     given GivenSelectorMethods: GivenSelectorMethods with
-      extension (self: GivenSelector):
+      extension (self: GivenSelector)
         def bound: Option[TypeTree] =
           self.bound match
             case untpd.TypedSplice(tpt) => Some(tpt)
@@ -1596,7 +1596,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeRepr
 
     given TypeReprMethods: TypeReprMethods with
-      extension (self: TypeRepr):
+      extension (self: TypeRepr)
 
         def show(using printer: Printer[TypeRepr]): String = printer.show(self)
 
@@ -1666,7 +1666,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end NamedTypeTypeTest
 
     given NamedTypeMethods: NamedTypeMethods with
-      extension (self: NamedType):
+      extension (self: NamedType)
         def qualifier: TypeRepr = self.prefix
         def name: String = self.name.toString
       end extension
@@ -1701,7 +1701,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeRef
 
     given TypeRefMethods: TypeRefMethods with
-      extension (self: TypeRef):
+      extension (self: TypeRef)
         def isOpaqueAlias: Boolean = self.symbol.isOpaqueAlias
         def translucentSuperType: TypeRepr = self.translucentSuperType
       end extension
@@ -1723,7 +1723,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SuperType
 
     given SuperTypeMethods: SuperTypeMethods with
-      extension (self: SuperType):
+      extension (self: SuperType)
         def thistpe: TypeRepr = self.thistpe
         def supertpe: TypeRepr = self.thistpe
       end extension
@@ -1749,7 +1749,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Refinement
 
     given RefinementMethods: RefinementMethods with
-      extension (self: Refinement):
+      extension (self: Refinement)
         def parent: TypeRepr = self.parent
         def name: String = self.refinedName.toString
         def info: TypeRepr = self.refinedInfo
@@ -1770,7 +1770,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AppliedType
 
     given AppliedTypeMethods: AppliedTypeMethods with
-      extension (self: AppliedType):
+      extension (self: AppliedType)
         def tycon: TypeRepr = self.tycon
         def args: List[TypeRepr] = self.args
       end extension
@@ -1792,7 +1792,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AnnotatedType
 
     given AnnotatedTypeMethods: AnnotatedTypeMethods with
-      extension (self: AnnotatedType):
+      extension (self: AnnotatedType)
         def underlying: TypeRepr = self.underlying.stripTypeVar
         def annotation: Term = self.annot.tree
       end extension
@@ -1807,7 +1807,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AndOrTypeTypeTest
 
     given AndOrTypeMethods: AndOrTypeMethods with
-      extension (self: AndOrType):
+      extension (self: AndOrType)
         def left: TypeRepr = self.tp1.stripTypeVar
         def right: TypeRepr = self.tp2.stripTypeVar
       end extension
@@ -1855,7 +1855,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end MatchType
 
     given MatchTypeMethods: MatchTypeMethods with
-      extension (self: MatchType):
+      extension (self: MatchType)
         def bound: TypeRepr = self.bound
         def scrutinee: TypeRepr = self.scrutinee
         def cases: List[TypeRepr] = self.cases
@@ -1876,7 +1876,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ByNameType
 
     given ByNameTypeMethods: ByNameTypeMethods with
-      extension (self: ByNameType):
+      extension (self: ByNameType)
         def underlying: TypeRepr = self.resType.stripTypeVar
       end extension
     end ByNameTypeMethods
@@ -1896,7 +1896,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ParamRef
 
     given ParamRefMethods: ParamRefMethods with
-      extension (self: ParamRef):
+      extension (self: ParamRef)
         def binder: LambdaType = self.binder.asInstanceOf[LambdaType] // Cast to tpd
         def paramNum: Int = self.paramNum
       end extension
@@ -1915,7 +1915,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ThisType
 
     given ThisTypeMethods: ThisTypeMethods with
-      extension (self: ThisType):
+      extension (self: ThisType)
         def tref: TypeRepr = self.tref
       end extension
     end ThisTypeMethods
@@ -1934,7 +1934,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
 
     given RecursiveThisMethods: RecursiveThisMethods with
-      extension (self: RecursiveThis):
+      extension (self: RecursiveThis)
         def binder: RecursiveType = self.binder
       end extension
     end RecursiveThisMethods
@@ -1954,7 +1954,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RecursiveType
 
     given RecursiveTypeMethods: RecursiveTypeMethods with
-      extension (self: RecursiveType):
+      extension (self: RecursiveType)
         def underlying: TypeRepr = self.underlying.stripTypeVar
         def recThis: RecursiveThis = self.recThis
       end extension
@@ -1969,7 +1969,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end LambdaTypeTypeTest
 
     given LambdaTypeMethods: LambdaTypeMethods with
-      extension (self: LambdaType):
+      extension (self: LambdaType)
         def paramNames: List[String] = self.paramNames.map(_.toString)
         def paramTypes: List[TypeRepr] = self.paramInfos
         def resType: TypeRepr = self.resType
@@ -2000,7 +2000,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end MethodType
 
     given MethodTypeMethods: MethodTypeMethods with
-      extension (self: MethodType):
+      extension (self: MethodType)
         def isErased: Boolean = self.isErasedMethod
         def isImplicit: Boolean = self.isImplicitMethod
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
@@ -2023,7 +2023,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end PolyType
 
     given PolyTypeMethods: PolyTypeMethods with
-      extension (self: PolyType):
+      extension (self: PolyType)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
         def paramBounds: List[TypeBounds] = self.paramInfos
       end extension
@@ -2045,7 +2045,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeLambda
 
     given TypeLambdaMethods: TypeLambdaMethods with
-      extension (self: TypeLambda):
+      extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
         def paramBounds: List[TypeBounds] = self.paramInfos
       end extension
@@ -2068,7 +2068,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeBounds
 
     given TypeBoundsMethods: TypeBoundsMethods with
-      extension (self: TypeBounds):
+      extension (self: TypeBounds)
         def low: TypeRepr = self.lo.stripLazyRef
         def hi: TypeRepr = self.hi.stripLazyRef
       end extension
@@ -2176,7 +2176,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Constant
 
     given ConstantMethods: ConstantMethods with
-      extension (self: Constant):
+      extension (self: Constant)
         def value: Any = self.value
         def show: String = Extractors.showConstant(using QuotesImpl.this)(self)
       end extension
@@ -2199,7 +2199,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ImplicitSearchSuccessTypeTest
 
     given ImplicitSearchSuccessMethods: ImplicitSearchSuccessMethods with
-      extension (self: ImplicitSearchSuccess):
+      extension (self: ImplicitSearchSuccess)
         def tree: Term = self
       end extension
     end ImplicitSearchSuccessMethods
@@ -2214,7 +2214,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ImplicitSearchFailureTypeTest
 
     given ImplicitSearchFailureMethods: ImplicitSearchFailureMethods with
-      extension (self: ImplicitSearchFailure):
+      extension (self: ImplicitSearchFailure)
         def explanation: String =
           self.tpe.asInstanceOf[dotc.typer.Implicits.SearchFailureType].explanation
       end extension
@@ -2268,7 +2268,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Symbol
 
     given SymbolMethods: SymbolMethods with
-      extension (self: Symbol):
+      extension (self: Symbol)
         def owner: Symbol = self.denot.owner
         def maybeOwner: Symbol = self.denot.maybeOwner
         def flags: Flags = self.denot.flags
@@ -2433,7 +2433,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Signature
 
     given SignatureMethods: SignatureMethods with
-      extension (self: Signature):
+      extension (self: Signature)
         def paramSigs: List[String | Int] =
           self.paramsSig.map {
             case paramSig: dotc.core.Names.TypeName =>
@@ -2546,7 +2546,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Flags
 
     given FlagsMethods: FlagsMethods with
-      extension (self: Flags):
+      extension (self: Flags)
         def is(that: Flags): Boolean = self.isAllOf(that)
         def |(that: Flags): Flags = dotc.core.Flags.or(self, that) // TODO: Replace with dotc.core.Flags.|(self)(that)  once extension names have stabilized
         def &(that: Flags): Flags = dotc.core.Flags.and(self, that)// TODO: Replace with dotc.core.Flags.&(self)(that)  once extension names have stabilized
@@ -2564,7 +2564,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end Position
 
     given PositionMethods: PositionMethods with
-      extension (self: Position):
+      extension (self: Position)
         def start: Int = self.start
         def end: Int = self.end
         def sourceFile: SourceFile = self.source
@@ -2585,7 +2585,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     }
 
     given SourceFileMethods: SourceFileMethods with
-      extension (self: SourceFile):
+      extension (self: SourceFile)
         def jpath: java.nio.file.Path = self.file.jpath
         def content: Option[String] =
           // TODO detect when we do not have a source and return None

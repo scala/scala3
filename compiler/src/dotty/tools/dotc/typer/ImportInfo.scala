@@ -35,7 +35,7 @@ object ImportInfo {
 
     ImportInfo(sym, selectors, None, isRootImport = true)
 
-  extension (c: Context):
+  extension (c: Context)
     def withRootImports(rootRefs: List[RootRef])(using Context): Context =
       rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
 

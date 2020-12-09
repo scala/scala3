@@ -159,7 +159,7 @@ class ScalaPageCreator(
 
   override def contentForFunction(f: DFunction) = contentForMember(f)
 
-  extension (b: DocBuilder):
+  extension (b: DocBuilder)
     def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
       val desc = this.contentForDescription(d).asScala.toSeq
       val res = if desc.isEmpty then b else b
