@@ -76,7 +76,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object reflect extends reflectModule:
 
-    extension (expr: Expr[Any]):
+    extension (expr: Expr[Any])
       def asTerm: Term =
         val exprImpl = expr.asInstanceOf[ExprImpl]
         exprImpl.checkScopeId(QuotesImpl.this.hashCode)
