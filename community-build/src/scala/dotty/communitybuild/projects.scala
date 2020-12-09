@@ -609,6 +609,7 @@ object projects:
   lazy val scissLucre = SbtCommunityProject(
     project           = "Lucre",
     sbtTestCommand    = "adjunctJVM/test;baseJVM/test;confluentJVM/test;coreJVM/test;dataJVM/test;expr0JVM/test;expr1JVM/test;exprJVM/test;geomJVM/test;lucre-bdb/test;testsJVM/test",
+    extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
     dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
   )
