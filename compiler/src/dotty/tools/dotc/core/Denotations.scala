@@ -1226,11 +1226,8 @@ object Denotations {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)
       def isPackageFromCoreLibMissing: Boolean =
-        owner.symbol == defn.RootClass &&
-        (
-          selector == nme.scala || // if the scala package is missing, the stdlib must be missing
-          selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
-        )
+        // if the scala package is missing, the stdlib must be missing
+        owner.symbol == defn.RootClass && selector == nme.scala
       if (owner.exists) {
         val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
         if (result.exists) result

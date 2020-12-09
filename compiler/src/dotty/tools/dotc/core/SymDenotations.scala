@@ -1824,8 +1824,6 @@ object SymDenotations {
         val nxt = this.nextInRun
         if (nxt.validFor.code > this.validFor.code)
           this.nextInRun.asSymDenotation.asClass.enter(sym)
-        if (defn.isScalaShadowingPackageClass(sym.owner))
-          defn.ScalaPackageClass.enter(sym)  // ScalaShadowing members are mirrored in ScalaPackage
       }
     }
 
