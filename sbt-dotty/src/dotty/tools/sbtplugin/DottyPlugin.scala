@@ -136,15 +136,18 @@ object DottyPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  /** Patches the IncOptions so that .tasty and .hasTasty files are pruned as needed.
+  /** Patches the IncOptions so that .tasty files are pruned as needed.
    *
    *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
-   *  to do the exact same thing but for classfiles.
+   *  to do the exact same thing but for .sjsir files.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .tasty and .hasTasty files emitted by the Dotty
+   *  IncOptions with one that is aware of .tasty files emitted by the Dotty
    *  compiler. This makes sure that, when a .class file must be deleted, the
-   *  corresponding .tasty or .hasTasty file is also deleted.
+   *  corresponding .tasty file is also deleted.
+   *
+   *  To support older versions of dotty, this also takes care of .hasTasty
+   *  files, although they are not used anymore.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val tastyFileManager = new TastyFileManager
