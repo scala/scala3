@@ -1666,7 +1666,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end NamedTypeTypeTest
 
     given NamedTypeMethods: NamedTypeMethods with
-      extension (self: NamedType):
+      extension (self: NamedType)
         def qualifier: TypeRepr = self.prefix
         def name: String = self.name.toString
       end extension
@@ -1807,7 +1807,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AndOrTypeTypeTest
 
     given AndOrTypeMethods: AndOrTypeMethods with
-      extension (self: AndOrType):
+      extension (self: AndOrType)
         def left: TypeRepr = self.tp1.stripTypeVar
         def right: TypeRepr = self.tp2.stripTypeVar
       end extension
@@ -1969,7 +1969,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end LambdaTypeTypeTest
 
     given LambdaTypeMethods: LambdaTypeMethods with
-      extension (self: LambdaType):
+      extension (self: LambdaType)
         def paramNames: List[String] = self.paramNames.map(_.toString)
         def paramTypes: List[TypeRepr] = self.paramInfos
         def resType: TypeRepr = self.resType
