@@ -9,12 +9,26 @@ on:
 env:
   DOTTY_CI_RUN: true
 
+# In this file, we set `--cpu-shares 4096` on every job. This might seem useless
+# since it means that every container has the same weight which should be
+# equivalent to doing nothing, but it turns out that OpenJDK computes
+# `Runtime.getRuntime.availableProcessors` by dividing the cpu-shares value if
+# it exists by 1024 (cf
+# http://mail.openjdk.java.net/pipermail/hotspot-dev/2019-January/036087.html),
+# so this means that we effectively run every job with 4 cores. This is much
+# nicer than setting `--cpus 4` because the latter enforces CPU quotas and ends
+# up slowing our jobs more than needed. It's equivalent to running the JVM with
+# `-XX:ActiveProcessorCount=4`, but since our tests can spawn new JVM in many
+# places, it would be very hard to ensure that this option is always passed to
+# `java` (we could use the `_JAVA_OPTIONS` environment variable, but this prints
+# text on stderr and so can break tests which check the output of a program).
+
 jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -54,7 +68,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -149,7 +163,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -185,7 +199,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -221,7 +235,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -257,7 +271,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -300,7 +314,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -335,7 +349,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -377,7 +391,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -460,7 +474,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
-      options: --cpus=4
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
@@ -505,6 +519,7 @@ jobs:
     runs-on: [self-hosted, Linux]
     container:
       image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
