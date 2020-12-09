@@ -32,7 +32,6 @@ trait DottyDocTest extends MessageRendering {
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YcookComments, true)
     ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
-    ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.wikiSyntax, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
     ctx.setSetting(
