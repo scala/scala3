@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Scala3 Syntax Summary"
+title: "Scala 3 Syntax Summary"
 ---
 
 The following descriptions of Scala tokens uses literal characters `‘c’` when
