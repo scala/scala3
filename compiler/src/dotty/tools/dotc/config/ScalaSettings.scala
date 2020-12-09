@@ -160,7 +160,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val Yscala2Unpickler: Setting[String] = StringSetting("-Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting("-Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
-  val YnoInline: Setting[Boolean] = BooleanSetting("-Yno-inline", "Suppress inlining.")
   val YnoGenericSig: Setting[Boolean] = BooleanSetting("-Yno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val YnoPredef: Setting[Boolean] = BooleanSetting("-Yno-predef", "Compile without importing Predef.")
   val Yskip: Setting[List[String]] = PhasesSetting("-Yskip", "Skip")
