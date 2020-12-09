@@ -3,6 +3,6 @@ title: Basic test
 ---
 # Header
 
-[Link to docs](docs/index.html) [Link to docs2](docs/index.md)
+[Link to docs](docs/index.html)
 
 And a text!

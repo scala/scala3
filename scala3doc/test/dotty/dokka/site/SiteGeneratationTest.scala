@@ -72,7 +72,7 @@ class SiteGeneratationTest:
         }
 
     def indexLinks(content: DocumentContext) =
-        content.assertAttr("p a","href", "docs/index.html","docs/index.html" )
+        content.assertAttr("p a","href", "docs/index.html")
 
     checkFile("index.html")(title = "Basic test", header = "Header", parents = Seq(projectName), indexLinks)
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
