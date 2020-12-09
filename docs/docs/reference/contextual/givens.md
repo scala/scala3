@@ -106,6 +106,29 @@ instance named `ctx` is established by matching against the first half of the `p
 
 In each case, a pattern-bound given instance consists of `given` and a type `T`. The pattern matches exactly the same selectors as the type ascription pattern `_: T`.
 
+## Negated Givens
+
+Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement the analogue of a "negated" search in implicit resolution, where a query Q1 fails if some other query Q2 succeeds and Q1 succeeds if Q2 fails. With the new cleaned up behavior these techniques no longer work. But there is now a new special type `scala.util.NotGiven` which implements negation directly.
+
+For any query type `Q`, `NotGiven[Q]` succeeds if and only if the implicit
+search for `Q` fails, for example:
+
+```scala
+import scala.util.NotGiven
+
+trait Tagged[A]
+
+case class Foo[A](value: Boolean)
+object Foo:
+  given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
+  given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
+
+@main def test() =
+  given Tagged[Int] with {}
+  assert(implicitly[Foo[Int]].value) // fooTagged is found
+  assert(!implicitly[Foo[String]].value) // fooNotTagged is found
+```
+
 ## Given Instance Initialization
 
 A given instance without type or context parameters is initialized on-demand, the first
