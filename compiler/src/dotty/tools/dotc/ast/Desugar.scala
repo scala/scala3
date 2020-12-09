@@ -676,28 +676,6 @@ object desugar {
           mods.is(Private) || (!mods.is(Protected) && mods.hasPrivateWithin)
         }
 
-        /** Does one of the parameter's types (in the first param clause)
-         *  mention a preceding parameter?
-         */
-        def isParamDependent = constrVparamss match
-          case vparams :: _ =>
-            val paramNames = vparams.map(_.name).toSet
-            vparams.exists(_.tpt.existsSubTree {
-              case Ident(name: TermName) => paramNames.contains(name)
-              case _ => false
-            })
-          case _ => false
-
-        val companionParent =
-          if constrTparams.nonEmpty
-             || constrVparamss.length > 1
-             || mods.is(Abstract)
-             || restrictedAccess
-             || isParamDependent
-             || isEnumCase
-          then anyRef
-          else
-            constrVparamss.foldRight(classTypeRef)((vparams, restpe) => Function(vparams map (_.tpt), restpe))
         val applyMeths =
           if (mods.is(Abstract)) Nil
           else {
@@ -727,7 +705,7 @@ object desugar {
         val toStringMeth =
           DefDef(nme.toString_, Nil, Nil, TypeTree(), Literal(Constant(className.toString))).withMods(Modifiers(Override | Synthetic))
 
-        companionDefs(companionParent, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
+        companionDefs(anyRef, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
       }
       else if (companionMembers.nonEmpty || companionDerived.nonEmpty || isEnum)
         companionDefs(anyRef, companionMembers)

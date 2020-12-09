@@ -330,12 +330,12 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (isProp)
         genExportProperty(alts, jsName, static)
       else
-        genExportMethod(alts.map(Exported), jsName, static)
+        genExportMethod(alts.map(Exported.apply), jsName, static)
     }
   }
 
   def genJSConstructorDispatch(alts: List[Symbol]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
-    val exporteds = alts.map(Exported)
+    val exporteds = alts.map(Exported.apply)
 
     val isConstructorOfNestedJSClass = exporteds.head.isConstructorOfNestedJSClass
     assert(exporteds.tail.forall(_.isConstructorOfNestedJSClass == isConstructorOfNestedJSClass),
@@ -391,7 +391,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
         val List(arg) = formalArgsRegistry.genFormalArgs()
-        val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported), static, None)
+        val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported.apply), static, None)
         Some((arg, body))
       }
     }

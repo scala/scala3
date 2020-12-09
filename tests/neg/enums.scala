@@ -22,7 +22,7 @@ enum E4 {
   case C4(x: Int)
 }
 object E4 {
-  val x1: Int => E4 = C4    // error: found: C4, required: Int => E4
+  val x1: Int => E4 = C4    // ok
   val x2: Int => E4 = C4(_) // ok
 }
 

@@ -150,7 +150,7 @@ final case class SbtCommunityProject(
   )
 
   private val baseCommand =
-    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
+    "clean; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
     ++ s"""set dependencyOverrides in ThisBuild ++= ${dependencyOverrides.mkString("Seq(", ", ", ")")}; """
     ++ s"++$compilerVersion!; "
 

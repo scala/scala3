@@ -13,5 +13,5 @@ trait AA {
 }
 
 class BB extends AA {
-  case class C(v: Int)
+  case class C(v: Int) // error
 }

@@ -79,10 +79,10 @@ trait ScaladocSupport { self: TastyParser =>
     addOpt(parsed.version)(dkkd.Version(_))
     addOpt(parsed.since)(dkkd.Since(_))
     addOpt(parsed.deprecated)(dkkd.Deprecated(_))
-    addSeq(parsed.todo)(ScalaTagWrapper.Todo)
-    addSeq(parsed.see)(ScalaTagWrapper.See)
-    addSeq(parsed.note)(ScalaTagWrapper.Note)
-    addSeq(parsed.example)(ScalaTagWrapper.Example)
+    addSeq(parsed.todo)(ScalaTagWrapper.Todo.apply)
+    addSeq(parsed.see)(ScalaTagWrapper.See.apply)
+    addSeq(parsed.note)(ScalaTagWrapper.Note.apply)
+    addSeq(parsed.example)(ScalaTagWrapper.Example.apply)
 
     addOpt(parsed.constructor)(dkkd.Constructor(_))
     addSeq(parsed.valueParams){ case (name, tag) =>

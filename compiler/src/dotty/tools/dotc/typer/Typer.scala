@@ -84,6 +84,14 @@ object Typer {
    */
   private[typer] val HiddenSearchFailure = new Property.Key[List[SearchFailure]]
 
+  /** Is tree a compiler-generated `.apply` node that refers to the
+   *  apply of a function class?
+   */
+  private[typer] def isSyntheticApply(tree: tpd.Tree): Boolean = tree match {
+    case tree: tpd.Select => tree.hasAttachment(InsertedApply)
+    case _ => false
+  }
+
   /** Add `fail` to the list of search failures attached to `tree` */
   def rememberSearchFailure(tree: tpd.Tree, fail: SearchFailure) =
     tree.putAttachment(HiddenSearchFailure,
@@ -2843,11 +2851,6 @@ class Typer extends Namer
       case _ => false
     }
 
-    def isSyntheticApply(tree: Tree): Boolean = tree match {
-      case tree: Select => tree.hasAttachment(InsertedApply)
-      case _ => false
-    }
-
     def tryApply(using Context) = {
       val pt1 = pt.withContext(ctx)
       val sel = typedSelect(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt1)
@@ -3222,9 +3225,6 @@ class Typer extends Namer
       *  Examples for these cases are found in run/implicitFuns.scala and neg/i2006.scala.
       */
     def adaptNoArgsUnappliedMethod(wtp: MethodType, functionExpected: Boolean, arity: Int): Tree = {
-      def isExpandableApply =
-        defn.isContextFunctionClass(tree.symbol.maybeOwner) && functionExpected
-
       /** Is reference to this symbol `f` automatically expanded to `f()`? */
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor
@@ -3241,7 +3241,7 @@ class Typer extends Namer
           !tree.symbol.isConstructor &&
           !tree.symbol.isAllOf(InlineMethod) &&
           !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !isExpandableApply)) {
+          !(isSyntheticApply(tree) && !functionExpected)) {
         if (!defn.isFunctionType(pt))
           pt match {
             case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
@@ -3266,16 +3266,26 @@ class Typer extends Namer
         defn.isContextFunctionClass(underlying.classSymbol)
     }
 
-    def adaptNoArgsOther(wtp: Type): Tree = {
-      if (isContextFunctionRef(wtp) &&
-          !untpd.isContextualClosure(tree) &&
+    def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
+      val implicitFun = isContextFunctionRef(wtp) && !untpd.isContextualClosure(tree)
+      def caseCompanion =
+          functionExpected &&
+          tree.symbol.is(Module) &&
+          tree.symbol.companionClass.is(Case) &&
+          !tree.tpe.baseClasses.exists(defn.isFunctionClass) && {
+            report.warning("The method `apply` is inserted. The auto insertion will be deprecated, please write `" + tree.show + ".apply` explicitly.", tree.sourcePos)
+            true
+          }
+
+      if ((implicitFun || caseCompanion) &&
           !isApplyProto(pt) &&
           pt != AssignProto &&
           !ctx.mode.is(Mode.Pattern) &&
           !ctx.isAfterTyper &&
           !ctx.isInlineContext) {
         typr.println(i"insert apply on implicit $tree")
-        typed(untpd.Select(untpd.TypedSplice(tree), nme.apply), pt, locked)
+        val sel = untpd.Select(untpd.TypedSplice(tree), nme.apply).withAttachment(InsertedApply, ())
+        try typed(sel, pt, locked) finally sel.removeAttachment(InsertedApply)
       }
       else if (ctx.mode is Mode.Pattern) {
         checkEqualityEvidence(tree, pt)
@@ -3388,7 +3398,7 @@ class Typer extends Namer
             }
           adaptNoArgsUnappliedMethod(wtp, funExpected, arity)
         case _ =>
-          adaptNoArgsOther(wtp)
+          adaptNoArgsOther(wtp, functionExpected)
       }
     }
 
