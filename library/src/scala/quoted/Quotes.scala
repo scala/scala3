@@ -2216,7 +2216,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Extension methods of `NamedType` */
     trait NamedTypeMethods:
-      extension (self: NamedType):
+      extension (self: NamedType)
         def qualifier: TypeRepr
         def name: String
       end extension
@@ -2378,7 +2378,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Extension methods of `AndOrType` */
     trait AndOrTypeMethods:
-      extension (self: AndOrType):
+      extension (self: AndOrType)
         def left: TypeRepr
         def right: TypeRepr
       end extension
@@ -2586,7 +2586,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Extension methods of `LambdaType` */
     trait LambdaTypeMethods:
-      extension (self: LambdaType):
+      extension (self: LambdaType)
         def paramNames: List[String]
         def paramTypes: List[TypeRepr]
         def resType: TypeRepr
