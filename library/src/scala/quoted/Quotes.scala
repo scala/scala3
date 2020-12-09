@@ -3159,11 +3159,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Does this symbol represent a definition? */
         def exists: Boolean
 
-        /** Fields directly declared in the class */
-        def fields: List[Symbol]
-
         /** Field with the given name directly declared in the class */
-        def field(name: String): Symbol
+        def declaredField(name: String): Symbol
+
+        /** Fields directly declared in the class */
+        def declaredFields: List[Symbol]
+
+        /** Get named non-private fields declared or inherited */
+        def memberField(name: String): Symbol
+
+        /** Get all non-private fields declared or inherited */
+        def memberFields: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
         def declaredMethod(name: String): List[Symbol]

@@ -2335,11 +2335,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.is(dotc.core.Flags.Case, butNot = Enum | Module) && !self.isClass
         def isNoSymbol: Boolean = self == Symbol.noSymbol
         def exists: Boolean = self != Symbol.noSymbol
-        def fields: List[Symbol] = self.unforcedDecls.filter(isField)
 
-        def field(name: String): Symbol =
+        def declaredField(name: String): Symbol =
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
+
+        def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
+
+        def memberField(name: String): Symbol =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).find {
+            sym => isField(sym) && sym.name.toString == name
+          }.getOrElse(dotc.core.Symbols.NoSymbol)
+
+        def memberFields: List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isField(sym) => sym.asTerm
+          }.toList
 
         def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
