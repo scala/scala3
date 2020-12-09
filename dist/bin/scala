@@ -38,8 +38,10 @@ addDotcOptions () {
 source "$PROG_HOME/bin/common"
 
 declare -a residual_args
+declare -a script_args
 execute_repl=false
 execute_run=false
+execute_script=false
 with_compiler=false
 class_path_count=0
 CLASS_PATH=""
@@ -79,13 +81,28 @@ while [[ $# -gt 0 ]]; do
       addDotcOptions "${1}"
       shift ;;
     *)
-      residual_args+=("$1")
+      if [ $execute_script == false ]; then
+        if [[ "$1" == *.scala ]]; then
+          execute_script=true
+          target_script="$1"
+        else
+          residual_args+=("$1")
+        fi
+      else
+        script_args+=("$1")
+      fi
       shift
       ;;
 
   esac
 done
-if [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
+
+if [ $execute_script == true ]; then
+  if [ "$CLASS_PATH" ]; then
+    cp_arg="-classpath \"$CLASS_PATH\""
+  fi
+  eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
