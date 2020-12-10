@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package config
 
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.io.{ Directory, PlainDirectory, AbstractFile }
+import dotty.tools.io.{ Directory, PlainDirectory, AbstractFile, JDK9Reflectors }
 import PathResolver.Defaults
 import rewrites.Rewrites
 import Settings.Setting
@@ -72,6 +72,19 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
 }
 
 class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
+  private val minTargetVersion = 8
+  private val maxTargetVersion = 15
+
+  private def supportedTargetVersions: List[String] =
+    (minTargetVersion to maxTargetVersion).toList.map(_.toString)
+
+  protected def supportedReleaseVersions: List[String] =
+    if scala.util.Properties.isJavaAtLeast("9") then
+      val jdkVersion = JDK9Reflectors.runtimeVersionMajor(JDK9Reflectors.runtimeVersion()).intValue()
+      val maxVersion = Math.min(jdkVersion, maxTargetVersion)
+      (minTargetVersion to maxVersion).toList.map(_.toString)
+    else List()
+
   /** Path related settings */
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
@@ -80,8 +93,8 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.") withAbbreviation "--explain"
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.") withAbbreviation "--feature"
   val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.") withAbbreviation "--help"
+  val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", supportedReleaseVersions, "").withAbbreviation("--release")
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "3.1", "3.0-migration", "3.1-migration"), "3.0").withAbbreviation("--source")
-  val target: Setting[String] = ChoiceSetting("-target", "target", "Target platform for object files.", List("jvm-1.8", "jvm-9"), "jvm-1.8") withAbbreviation "--target"
   val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).") withAbbreviation "--scalajs"
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.") withAbbreviation "--unchecked"
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.") withAbbreviation "--unique-id"
@@ -123,6 +136,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val XignoreScala2Macros: Setting[Boolean] = BooleanSetting("-Xignore-scala2-macros", "Ignore errors when compiling code that calls Scala2 macros, these will fail at runtime.")
   val XimportSuggestionTimeout: Setting[Int] = IntSetting("-Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
   val Xsemanticdb: Setting[Boolean] = BooleanSetting("-Xsemanticdb", "Store information in SemanticDB.").withAbbreviation("-Ysemanticdb")
+  val Xtarget: Setting[String] = ChoiceSetting("-Xtarget", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. When on JDK 9+, consider -release as a safer alternative.", supportedTargetVersions, "") withAbbreviation "--Xtarget"
 
   val XmixinForceForwarders = ChoiceSetting(
     name    = "-Xmixin-force-forwarders",

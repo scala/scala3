@@ -57,8 +57,6 @@ class ClassfileParser(
     classRoot: ClassDenotation,
     moduleRoot: ClassDenotation)(ictx: Context) {
 
-  //println(s"parsing ${classRoot.name.debugString} ${moduleRoot.name.debugString}")
-
   import ClassfileConstants._
   import ClassfileParser._
 
@@ -600,17 +598,8 @@ class ClassfileParser(
    *  return None.
    */
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using ctx: Context, in: DataReader): Option[ClassfileAnnotation] = try {
-    val attrType = pool.getType(attrNameIndex)
-    attrType match
-      case tp: TypeRef =>
-        // Silently ignore missing annotation classes like javac
-        if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] then
-          if ctx.debug then
-            report.warning(i"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
-          return None
-      case _ =>
-
-    val nargs = in.nextChar
+    val attrType = pool.getType(attrNameIndex.toInt)
+    val nargs = in.nextChar.toInt
     val argbuf = new ListBuffer[(NameOrString, untpd.Tree | EnumTag)]
     var hasError = false
     for (i <- 0 until nargs) {
@@ -623,8 +612,15 @@ class ClassfileParser(
           hasError = !skip
       }
     }
-    if (hasError || skip) None
-    else Some(ClassfileAnnotation(attrType, argbuf.toList))
+    attrType match
+      case tp: TypeRef if tp.denot.infoOrCompleter.isInstanceOf[StubInfo] =>
+        // Silently ignore missing annotation classes like javac
+        if ctx.debug then
+          report.warning(i"Error while parsing annotations in ${classfile}: annotation class $tp not present on classpath")
+        None
+      case _ =>
+        if (hasError || skip) None
+        else Some(ClassfileAnnotation(attrType, argbuf.toList))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
