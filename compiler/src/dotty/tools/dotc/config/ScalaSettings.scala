@@ -22,7 +22,6 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp" withAbbreviation "--class-path"
   val outputDir: Setting[AbstractFile] = OutputSetting("-d", "directory|jar", "Destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
-  val priorityclasspath: Setting[String] = PathSetting("-priorityclasspath", "Class path that takes precedence over all other paths (for testing only).", "") withAbbreviation "--priority-class-path"
   val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/) withAbbreviation "--color"
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.") withAbbreviation "--verbose"
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.") withAbbreviation "--version"
