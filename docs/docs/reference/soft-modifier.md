@@ -9,7 +9,6 @@ TODO this is most likely outdated should at least contain `extension` in additio
 Worth maintaining? or maybe better refer to internal/syntax.md ? 
 -->
 
-It is treated as a potential modifier of a definition, if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `class`, `case class`, `trait`, `object`, `case object`, `enum`). Between the two words there may be a sequence of newline tokens and soft modifiers.
+It is treated as a potential modifier of a definition if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `given`, `class`, `trait`, `object`, `enum`, `case class`, `case object`). Between the two words there may be a sequence of newline tokens and soft modifiers. In addition, `inline` is a keyword for `inline if`, `inline ... match`, and inline parameters.
 
 It is treated as a potential modifier of a parameter binding unless it is followed by `:`.
-
