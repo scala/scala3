@@ -205,7 +205,7 @@ class ScalaPageCreator(
 
     def contentForConstructors(c: DClass) =
        b.documentableTab("Constructors")(
-        DocumentableGroup(None, c.membersBy(_.kind.isInstanceOf[Kind.Constructor])._1)
+        DocumentableGroup(None, c.membersBy(_.kind.isInstanceOf[Kind.Constructor]))
       )
 
 

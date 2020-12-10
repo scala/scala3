@@ -29,6 +29,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
 
   def tableRow(name: String, content: AppliedTag) = Seq(dt(name), dd(content))
 
+  def defintionClasses(m: Member) = m.origin match
+    case Origin.Overrides(defs) =>
+      def renderDef(d: Overriden): Seq[TagArg] =
+        Seq(signatureRenderer.renderLink(d.name, d.dri), " -> ")
+
+      val nodes: Seq[TagArg] = defs.flatMap(renderDef).dropRight(1) // drop trailing arrow
+      tableRow("Definition Classes", div(nodes:_*))
+
+    case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
 
@@ -102,6 +111,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
           docAttributes(m),
           companion(m),
           deprecation(m),
+          defintionClasses(m),
           source(m),
         )
       )

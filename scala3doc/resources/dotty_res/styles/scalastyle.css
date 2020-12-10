@@ -367,7 +367,7 @@ dl.attributes > dt.implicit {
 }
 dl.attributes > dd {
   display: block;
-  padding-left: 5em;
+  padding-left: 6em;
   margin-bottom: 5px;
   min-height: 15px;
 }
@@ -462,7 +462,7 @@ footer .pull-right {
 
 .expand .modifiers {
   display: inline-table;
-  min-width: 4em;
+  min-width: 7em;
 }
 
 .signature {
@@ -517,6 +517,10 @@ footer .pull-right {
 
 .expand .doc {
   margin-left: 6.5em;
+}
+
+.doc code {
+  padding: 0;
 }
 
 .documentableElement:hover {
