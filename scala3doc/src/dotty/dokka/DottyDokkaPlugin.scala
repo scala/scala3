@@ -187,7 +187,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .overrideExtension(dokkaBase.getDokkaLocationProvider)
   )
 
-extension (ctx: DokkaContext):
+extension (ctx: DokkaContext)
   def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DocContext].staticSiteContext
   def args: Scala3doc.Args = ctx.getConfiguration.asInstanceOf[DocContext].args
 

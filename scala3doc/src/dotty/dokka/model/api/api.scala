@@ -182,7 +182,7 @@ extension (members: Seq[Member]) def byInheritance =
 extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
 
-extension (dri: DRI):
+extension (dri: DRI)
   def withNoOrigin = dri._copy(
     extra = Option(dri.getExtra).fold(null)(e => raw"\[origin:(.*)\]".r.replaceAllIn(e, ""))
   )
