@@ -36,7 +36,9 @@ object Macros {
           TypeLambda(
             List("t"),
             _ => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
-            tl => TypeRepr.of[scala.runtime.MatchCase].appliedTo(List(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0)))))
+            tl => MatchCase(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0))),
+          MatchCase(TypeRepr.of[Int], TypeRepr.of[Int])
+        )
       )
 
     assert(x1T =:= TypeRepr.of[1])
@@ -46,7 +48,10 @@ object Macros {
     assert(x5T =:= TypeRepr.of[RefineMe { type T = Int }])
     assert(x6T =:= TypeRepr.of[List[Int]])
     assert(x7T =:= TypeRepr.of[7 @TestAnnotation])
-    assert(x8T =:= TypeRepr.of[List[8] match { case List[t] => t }])
+    assert(x8T =:= TypeRepr.of[List[8] match {
+      case List[t] => t
+      case Int => Int
+    }])
 
     '{
       println("Ok")
