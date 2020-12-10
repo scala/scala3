@@ -279,7 +279,8 @@ class CompilationTests {
     assertExists(s"out/$tastyCoreGroup/tastyCore/")
     assertExists(s"out/$dotty1Group/dotty1/")
     assertExists(s"out/$dotty2Group/dotty2/")
-    compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
+    // FIXME see #10739
+    // compileList("idempotency", List("tests/idempotency/BootstrapChecker.scala", "tests/idempotency/IdempotencyCheck.scala"), defaultOptions).checkRuns()
 
     tests.foreach(_.delete())
   }
