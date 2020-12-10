@@ -247,6 +247,13 @@ object opaques:
     extension [T](arr: IArray[T]) def takeWhile(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).takeWhile(p)
 
+    /** Returns the underlying _mutable_ array; use with caution. Like `unsafeFromArray`,
+     *  the returned array must _not_ be mutated after this or the guaranteed immutablity
+     *  of IArray will be violated.
+     */
+    extension [T](arr: IArray[T]) def unsafeToArray: Array[T] =
+      arr.asInstanceOf[Array[T]]
+
     /** Converts an array of pairs into an array of first elements and an array of second elements. */
     extension [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) def unzip: (IArray[U], IArray[V]) =
       genericArrayOps(arr).unzip

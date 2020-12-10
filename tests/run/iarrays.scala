@@ -70,4 +70,9 @@ object Test extends App {
   val cs: Array[Double] = bs.asInstanceOf[Array[Double]]
   cs(1) = 3.0
   assert(bs(1) == 3.0)
+
+  // Check unsafeFromArray andThen unsafeToArray is an identity
+  val ds: Array[Double] = Array(1.0, 2.0)
+  val es: Array[Double] = IArray.unsafeFromArray(ds).unsafeToArray
+  assert(ds eq es)
 }
