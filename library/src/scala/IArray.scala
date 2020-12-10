@@ -259,6 +259,10 @@ object opaques:
     extension [T](arr: IArray[T]) def takeWhile(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).takeWhile(p)
 
+    /** Returns a mutable copy of this immutable array. */
+    extension [T](arr: IArray[T]) def toArray: Array[T] =
+      arr.clone.asInstanceOf[Array[T]]
+
     /** Converts an array of pairs into an array of first elements and an array of second elements. */
     extension [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) def unzip: (IArray[U], IArray[V]) =
       genericArrayOps(arr).unzip

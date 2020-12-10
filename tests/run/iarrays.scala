@@ -79,4 +79,8 @@ object Test extends App {
   val fs: Array[Any] = new Array[Any](10)
   ds.copyToArray(fs, 5, 2)
   assert(fs.toList == List(null, null, null, null, null, 1, 2, null, null, null))
+
+  // Check toArray
+  ds.toArray(0) = 0
+  assert(ds(0) == 1)
 }
