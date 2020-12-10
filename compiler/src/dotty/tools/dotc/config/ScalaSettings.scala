@@ -77,7 +77,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.") withAbbreviation "--deprecation"
-  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.") withAbbreviation "--explain-types"
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.") withAbbreviation "--explain"
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.") withAbbreviation "--feature"
   val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.") withAbbreviation "--help"
@@ -204,6 +203,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
+  val YexplainTypes: Setting[Boolean] = BooleanSetting("-Yexplain-types", "Explain type errors in more detail.")
   val YnoDoubleBindings: Setting[Boolean] = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds: Setting[Boolean] = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds.")
 

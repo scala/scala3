@@ -123,7 +123,7 @@ object ErrorReporting {
       if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
         i"""
            |(Note that Scala's and Java's representation of this type differs)"""
-      else if (ctx.settings.explainTypes.value)
+      else if (ctx.settings.YexplainTypes.value)
         i"""
            |${ctx.typerState.constraint}
            |${TypeComparer.explained(_.isSubType(found, expected))}"""
