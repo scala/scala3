@@ -309,7 +309,9 @@ class ReplDriver(settings: Array[String],
         defs.map(rendering.renderMethod) ++
         vals.flatMap(rendering.renderVal)
 
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers)
+      val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+
+      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)
 
