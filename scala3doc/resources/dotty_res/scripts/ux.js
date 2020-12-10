@@ -5,6 +5,16 @@ window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("leftColumn").classList.toggle("open");
     };
   }
+
+  var elements = document.getElementsByClassName("documentableElement")
+  if (elements) {
+    for (i = 0; i < elements.length; i++) {
+      elements[i].onclick = function(){
+        this.classList.toggle("expand")
+      }
+    }
+  }
+
   var logo = document.getElementById("logo");
   if (logo) {
     logo.onclick = function() {

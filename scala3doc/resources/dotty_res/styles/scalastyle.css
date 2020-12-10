@@ -12,6 +12,9 @@
   --inactive-fg: #777;
   --title-fg: #00485E;
 
+  --link-sig-fd: #7c99a5;
+  --link-sig-hover-fd: #7c99a5;
+
   --leftbar-bg: #003048;
   --leftbar-fg: #fff;
   --leftbar-current-bg: #0090BB;
@@ -364,7 +367,7 @@ dl.attributes > dt.implicit {
 }
 dl.attributes > dd {
   display: block;
-  padding-left: 10em;
+  padding-left: 5em;
   margin-bottom: 5px;
   min-height: 15px;
 }
@@ -437,11 +440,43 @@ footer .pull-right {
   margin-left: auto;
 }
 
+
 .modifiers {
-  width: 12em;
   display: table-cell;
-  text-align: right;
   padding-right: 0.5em;
+  min-width: 10em;
+  max-width: 10em;
+  overflow: hidden;
+  direction: rtl;
+  white-space: nowrap;
+  text-indent: 0em;
+}
+
+.modifiers .other-modifiers {
+  color: gray;
+}
+
+.other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.expand .modifiers {
+  display: inline-table;
+  min-width: 4em;
+}
+
+.signature {
+  color: gray;
+  display: table-cell;
+  padding-left: 0.5em;
+}
+
+.signature a, .signature a:visited, .signature span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.expand .signature {
+  display: inline;
 }
 
 .documentableElement {
@@ -454,15 +489,50 @@ footer .pull-right {
   font-weight: 500;
   font-size: 12px;
   background: var(--code-bg);
+  border: 0.25em solid white;
 }
 
 .documentableElement>div {
   display: table;
 }
 
-.annotations {
-  margin-left: 9em;
+.expand.documentableElement>div {
+  display: block;
+  padding-left: 3em;
 }
+
+.expand.documentableElement>div.header {
+  display: block;
+  padding-left: 7.5em;
+  text-indent: -4.5em;
+}
+
+.documentableElement>div .cover {
+  display: none;
+}
+
+.documentableElement.expand>div .cover {
+  display: block;
+}
+
+.expand .doc {
+  margin-left: 6.5em;
+}
+
+.documentableElement:hover {
+  cursor: pointer;
+  border-left: 0.25em solid var(--leftbar-bg);
+}
+
+.annotations {
+  color: gray;
+  display: none;
+}
+
+.expand .annotations {
+  display: inline-block;
+}
+
 .documentableAnchor {
   position: absolute;
   width: 24px;

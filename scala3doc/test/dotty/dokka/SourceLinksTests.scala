@@ -83,16 +83,16 @@ class SourceLinksTest:
   @Test
   def testBasicPaths =
     testLink(Seq("github://lampepfl/dotty"), Some("develop"))(
-      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala#L",
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala",
       ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala#L54",
-      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala",
       ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L54",
     )
 
     testLink(Seq("gitlab://lampepfl/dotty"), Some("develop"))(
-      "project/Build.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala#L",
+      "project/Build.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala",
       ("project/Build.scala", 54) -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala#L54",
-      ("project/Build.scala", edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala#L",
+      ("project/Build.scala", edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala",
       ("project/Build.scala", 54, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala#L54",
     )
 
@@ -113,7 +113,7 @@ class SourceLinksTest:
   @Test
   def testBasicPrefixedPaths =
     testLink(Seq("src=gitlab://lampepfl/dotty"), Some("develop"))(
-      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/src/lib/core.scala#L",
+      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/src/lib/core.scala",
       ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
       ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
       "build.sbt" -> None

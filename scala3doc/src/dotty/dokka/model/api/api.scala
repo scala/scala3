@@ -8,6 +8,7 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
+import dotty.dokka.tasty.comments.Comment
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -161,6 +162,7 @@ extension[T] (member: Member)
   def inheritedFrom: Option[InheritedFrom] = memberExt.fold(None)(_.inheritedFrom)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
   def sources: Option[TastyDocumentableSource] = memberExt.fold(None)(_.sources)
+  def docs: Option[Comment] = memberExt.fold(None)(_.rawDoc)
   def name = member.getName
   def dri = member.getDri
 
@@ -180,3 +182,5 @@ extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)
+
+type DocPart = DocTag

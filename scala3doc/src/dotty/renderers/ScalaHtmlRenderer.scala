@@ -18,7 +18,9 @@ import kotlinx.html.HTMLTag
 import kotlinx.html.DIV
 import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
+import dotty.dokka.model.api.DocPart
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
+import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
 import dotty.dokka.site.StaticPageNode
 import dotty.dokka.site.PartiallyRenderedContent
 import scala.util.Try
@@ -103,16 +105,21 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
         val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
         withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
       case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
+      case mi: MemberInfo =>
+        val memberHtml = div(renderers(pageContext)._2.memberInfo(mi.member))
+        withHtml(f, memberHtml.toString)
       case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
     }
   }
 
-
+  private def renderers(pageContext: ContentPage): (SignatureRenderer, MemberRenderer) =
+    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
+    (renderer, new MemberRenderer(renderer, buildWithKotlinx(_, pageContext, null)))
 
   private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) =
     def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null))
 
-    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
+    val (renderer, memberRenderer) = renderers(pageContext)
     import renderer._
 
     def buildDocumentable(element: DocumentableElement) =
@@ -121,21 +128,23 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
       val otherModifiers = element.modifiers.dropRight(1)
 
       div(topLevelAttr:_*)(
-        div(cls := "annotations monospace")(element.annotations.map(renderElement)),
-        div(
-          a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor"),
+        a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor"),
+        div(span(cls := "annotations monospace")(element.annotations.map(renderElement))),
+        div(cls := "header")(
           span(cls := "modifiers monospace")(
             span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
             span(cls := "kind")(kind.map(renderElement)),
           ),
           renderLink(element.nameWithStyles.name, element.params.dri, cls := s"documentableName monospace ${element.nameWithStyles.styles.map(_.toString.toLowerCase).mkString(" ")}"),
           span(cls := "signature monospace")(element.signature.map(renderElement)),
+        ),
+        div(cls := "docs")(
+          span(cls := "modifiers monospace"),
           div(
             div(cls := "originInfo")(element.originInfo.map(renderElement)),
-            div(cls := "documentableBrief")(element.brief.map(render)),
+            div(cls := "documentableBrief")(memberRenderer.memberInfo(element.member)),
           )
-        ),
-
+        )
       )
 
     div(cls := "documentableList", testId := "definitionList")(

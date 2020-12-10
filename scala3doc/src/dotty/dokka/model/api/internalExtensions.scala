@@ -19,6 +19,7 @@ import org.jetbrains.dokka.model.DModule
 import collection.JavaConverters._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import org.jetbrains.dokka.model.properties._
+import dotty.dokka.tasty.comments.Comment
 
 case class MemberExtension(
   visibility: Visibility,
@@ -30,6 +31,7 @@ case class MemberExtension(
   origin: Origin = Origin.RegularlyDefined,
   inheritedFrom: Option[InheritedFrom] = None,
   graph: HierarchyGraph = HierarchyGraph.empty,
+  rawDoc: Option[Comment] = None
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
 

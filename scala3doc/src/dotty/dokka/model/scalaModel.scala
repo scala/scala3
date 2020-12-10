@@ -8,6 +8,7 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api.Signature
 import dotty.dokka.model.api.HierarchyGraph
+import dotty.dokka.model.api.Member
 
 enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case Borderless
@@ -30,15 +31,15 @@ case class HtmlContentNode(
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
-class ScalaTagWrapper(root: DocTag) extends TagWrapper(null):
+class ScalaTagWrapper(root: DocTag, val name: String) extends TagWrapper(null):
   override def getRoot = root
 
 object ScalaTagWrapper {
 
-  case class See(root: DocTag) extends ScalaTagWrapper(root)
-  case class Todo(root: DocTag) extends ScalaTagWrapper(root)
-  case class Note(root: DocTag) extends ScalaTagWrapper(root)
-  case class Example(root: DocTag) extends ScalaTagWrapper(root)
+  case class See(root: DocTag) extends ScalaTagWrapper(root, "See")
+  case class Todo(root: DocTag) extends ScalaTagWrapper(root, "Todo")
+  case class Note(root: DocTag) extends ScalaTagWrapper(root, "Note")
+  case class Example(root: DocTag) extends ScalaTagWrapper(root, "Example")
   case class NestedNamedTag(
     name: String,
     subname: String,
@@ -101,7 +102,8 @@ case class DocumentableElement(
   brief: Seq[ContentNode],
   originInfo: Signature,
   attributes: Map[String, String],
-  params: ContentNodeParams
+  params: ContentNodeParams,
+  member: Member
 ) extends ScalaContentNode(params):
   override def newInstance(params: ContentNodeParams) = copy(params = params)
 
@@ -125,3 +127,7 @@ case class DocumentableList(
 
 case class DocumentableFilter(params: ContentNodeParams) extends ScalaContentNode(params):
   override def newInstance(params: ContentNodeParams) = copy(params = params)
+
+case class MemberInfo(member: Member, params: ContentNodeParams)
+  extends ScalaContentNode(params):
+    override def newInstance(params: ContentNodeParams) = copy(params = params)

@@ -474,6 +474,8 @@ class ScalaPageContentBuilder(
 
     type Self = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
 
+    def memberInfo(m: Member) = addChild(MemberInfo(m, asParams(m.dri)))
+
     def documentableTab(name: String)(children: DocumentableGroup*): Self =
       def buildSignature(d: Documentable) =
         ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
@@ -507,7 +509,8 @@ class ScalaPageContentBuilder(
           docs.fold(Nil)(d => reset().rawComment(d.getRoot)),
           originInfo,
           FilterAttributes.attributesFor(documentable),
-          asParams(documentable.getDri)
+          asParams(documentable.getDri),
+          documentable
         )
 
       def element(e: Documentable | DocumentableSubGroup): DocumentableElement | DocumentableElementGroup = e match

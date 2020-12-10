@@ -30,7 +30,7 @@ trait ClassLikeSupport:
         def typeArgs = classDef.getTypeParams.map(mkTypeArgument)
 
         def parameterModifier(parameter: Symbol): String =
-          val fieldSymbol = classDef.symbol.field(parameter.normalizedName)
+          val fieldSymbol = classDef.symbol.declaredField(parameter.normalizedName)
           def isVal = fieldSymbol.flags.is(Flags.ParamAccessor) &&
             !classDef.symbol.flags.is(Flags.Case) &&
             !fieldSymbol.flags.is(Flags.Private)
@@ -458,10 +458,10 @@ trait ClassLikeSupport:
         null,
         JNil,
         emptyJMap,
-        symbol.documentation.asJava,
+        emptyJMap,
         null,
         placeholderModifier,
         ctx.sourceSet.toSet,
         /*isExpectActual =*/ false,
-        PropertyContainer.Companion.empty().plus(member).plus(compositeExt)
+        PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation2)).plus(compositeExt)
     )
