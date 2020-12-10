@@ -243,7 +243,7 @@ class CompilationTests {
         defaultOptions.and("-Ycheck-reentrant",
           "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
           //  "-source", "3.1",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
-          "-priorityclasspath", defaultOutputDir))(libGroup)
+          ))(libGroup)
 
     val tastyCoreSources = sources(Paths.get("tasty/src"))
     val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
