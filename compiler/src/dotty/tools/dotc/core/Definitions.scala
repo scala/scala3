@@ -497,17 +497,6 @@ class Definitions {
     def staticsMethodRef(name: PreName): TermRef = ScalaStaticsModule.requiredMethodRef(name)
     def staticsMethod(name: PreName): TermSymbol = ScalaStaticsModule.requiredMethod(name)
 
-  // Dotty deviation: we cannot use a @tu lazy val here because @tu lazy vals in dotty
-  // will return "null" when called recursively, see #1856.
-  def DottyPredefModule: Symbol = {
-    if (myDottyPredefModule == null) {
-      myDottyPredefModule = getModuleIfDefined("dotty.DottyPredef")
-      assert(myDottyPredefModule != null)
-    }
-    myDottyPredefModule
-  }
-  private var myDottyPredefModule: Symbol = _
-
   @tu lazy val DottyArraysModule: Symbol = requiredModule("scala.runtime.Arrays")
     def newGenericArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newGenericArray")
     def newArrayMethod(using Context): TermSymbol = DottyArraysModule.requiredMethod("newArray")
@@ -1338,10 +1327,8 @@ class Definitions {
     JavaImportFns :+
     RootRef(() => ScalaPackageVal.termRef)
 
-  private val PredefImportFns: List[RootRef] = List(
-    RootRef(() => ScalaPredefModule.termRef, isPredef=true),
-    RootRef(() => DottyPredefModule.termRef)
-  )
+  private val PredefImportFns: RootRef =
+    RootRef(() => ScalaPredefModule.termRef, isPredef=true)
 
   @tu private lazy val JavaRootImportFns: List[RootRef] =
     if ctx.settings.YnoImports.value then Nil
@@ -1350,7 +1337,7 @@ class Definitions {
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
     if ctx.settings.YnoImports.value then Nil
     else if ctx.settings.YnoPredef.value then ScalaImportFns
-    else ScalaImportFns ++ PredefImportFns
+    else ScalaImportFns :+ PredefImportFns
 
   @tu private lazy val JavaRootImportTypes: List[TermRef] = JavaRootImportFns.map(_.refFn())
   @tu private lazy val ScalaRootImportTypes: List[TermRef] = ScalaRootImportFns.map(_.refFn())
@@ -1382,7 +1369,7 @@ class Definitions {
     else ScalaUnqualifiedOwnerTypes
 
   /** Names of the root import symbols that can be hidden by other imports */
-  @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef", "DottyPredef").map(_.toTermName)
+  @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef".toTermName)
 
   /** Class symbols for which no class exist at runtime */
   @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, AnyValClass, NullClass, NothingClass)
