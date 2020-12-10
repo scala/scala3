@@ -35,7 +35,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions),
       compileFilesInDir("tests/pos-macros", defaultOptions),
-      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Ysemanticdb")),
+      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
     ).checkCompile()
   }
 
