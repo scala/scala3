@@ -40,15 +40,14 @@ class ImplicitMembersExtensionTransformer(ctx: DokkaContext) extends Documentabl
 
       val MyDri = c.getDri
       def collectApplicableMembers(source: Member): Seq[Member] = source.allMembers.flatMap {
-        case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, MyDri, _)), Origin.DefinedWithin) =>
+        case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, MyDri, _)), Origin.RegularlyDefined) =>
           Seq(m.withOrigin(Origin.ExtensionFrom(source.name, source.dri)).withKind(Kind.Def))
-        case m @ Member(_, _, _, conversionProvider: ImplicitConversionProvider, Origin.DefinedWithin) =>
+        case m @ Member(_, _, _, conversionProvider: ImplicitConversionProvider, Origin.RegularlyDefined) =>
           conversionProvider.conversion match
             case Some(ImplicitConversion(MyDri, to)) =>
               classlikeMap.get(to).toSeq.flatMap { owner =>
                 val newMembers = owner.allMembers.filter(_.origin match
-                  case Origin.DefinedWithin => true
-                  case Origin.InheritedFrom(_, _) => true
+                  case Origin.RegularlyDefined => true
                   case _ => false
                 )
                 newMembers.map(_.withOrigin(Origin.ImplicitlyAddedBy(m.name, m.dri)))

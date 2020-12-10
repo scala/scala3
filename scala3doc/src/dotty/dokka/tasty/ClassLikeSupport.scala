@@ -186,7 +186,7 @@ trait ClassLikeSupport:
   private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
     case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
     case other => parseMember(other)
-  ).map(_.withOrigin(Origin.InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
+  ).map(_.withInheritedFrom(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
 
   extension (c: ClassDef)
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
@@ -320,6 +320,20 @@ trait ClassLikeSupport:
 
     val name = method.symbol.normalizedName
 
+    val memberExtension = MemberExtension(
+      methodSymbol.getVisibility(),
+      methodSymbol.getExtraModifiers(),
+      methodKind,
+      methodSymbol.getAnnotations(),
+      method.returnTpt.dokkaType.asSignature,
+      methodSymbol.source
+    )
+
+    val memberExtensionWithOrigin = 
+      if methodSymbol.isOverriden then memberExtension.copy(
+        origin = Origin.Overrides(methodSymbol.allOverriddenSymbols.map(_.owner).map(s => Overriden(s.name, s.dri)).toSeq)
+      ) else memberExtension
+
     new DFunction(
       methodSymbol.dri,
       name,
@@ -337,14 +351,7 @@ trait ClassLikeSupport:
        /*isExpectActual =*/ false,
       PropertyContainer.Companion.empty()
         plus MethodExtension(paramLists.map(_.size))
-        plus(MemberExtension(
-          methodSymbol.getVisibility(),
-          methodSymbol.getExtraModifiers(),
-          methodKind,
-          methodSymbol.getAnnotations(),
-          method.returnTpt.dokkaType.asSignature,
-          methodSymbol.source
-        ))
+        plus(memberExtensionWithOrigin)
     )
 
   def parseArgument(argument: ValDef, prefix: Symbol => String, isExtendedSymbol: Boolean = false, isGrouped: Boolean = false): DParameter =

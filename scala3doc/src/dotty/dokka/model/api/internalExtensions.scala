@@ -27,7 +27,8 @@ private [model] case class MemberExtension(
   annotations: List[Annotation],
   signature: Signature,
   sources: Option[TastyDocumentableSource] = None,
-  origin: Origin = Origin.DefinedWithin,
+  origin: Origin = Origin.RegularlyDefined,
+  inheritedFrom: Option[InheritedFrom] = None,
   graph: HierarchyGraph = HierarchyGraph.empty,
 ) extends ExtraProperty[Documentable]:
  override def getKey = MemberExtension
@@ -65,6 +66,10 @@ extension (member: Member)
 
   def withOrigin(origin: Origin): Member =
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(origin = origin)
+    putInMember(ext)
+
+  def withInheritedFrom(inheritedFrom: InheritedFrom): Member =
+    val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(inheritedFrom = Some(inheritedFrom))
     putInMember(ext)
 
   def withKind(kind: Kind): Member =

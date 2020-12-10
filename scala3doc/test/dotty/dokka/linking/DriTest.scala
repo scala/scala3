@@ -29,4 +29,4 @@ abstract class DriTest(testName: String) extends ScaladocTest(testName):
 extension (m: DModule) private def collectMembers = m.getPackages.asScala.toList.flatMap(collectFrom)
 
 private def collectFrom(m: Member): Seq[Member] =
-  m +: m.allMembers.filter(_.origin == Origin.DefinedWithin).flatMap(collectFrom)
+  m +: m.allMembers.filter(_.origin == Origin.RegularlyDefined).flatMap(collectFrom)
