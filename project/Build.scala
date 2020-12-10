@@ -274,6 +274,7 @@ object Build {
 
   // Settings used when compiling dotty with the reference compiler
   lazy val commonNonBootstrappedSettings = commonDottySettings ++ Seq(
+    semanticdbEnabled := true,
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-non-bootstrapped",
 
     version := dottyNonBootstrappedVersion,
@@ -285,6 +286,7 @@ object Build {
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+    bspEnabled := false,
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
