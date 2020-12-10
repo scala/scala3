@@ -203,7 +203,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
-  val YexplainTypes: Setting[Boolean] = BooleanSetting("-Yexplain-types", "Explain type errors in more detail.")
+  val YexplainTypes: Setting[Boolean] = BooleanSetting("-Yexplain-types", "Explain type errors in more detail.").withAbbreviation("-explain-types")
   val YnoDoubleBindings: Setting[Boolean] = BooleanSetting("-Yno-double-bindings", "Assert no namedtype is bound twice (should be enabled only if program is error-free).")
   val YshowVarBounds: Setting[Boolean] = BooleanSetting("-Yshow-var-bounds", "Print type variables with their bounds.")
 
