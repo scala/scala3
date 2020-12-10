@@ -70,4 +70,13 @@ object Test extends App {
   val cs: Array[Double] = bs.asInstanceOf[Array[Double]]
   cs(1) = 3.0
   assert(bs(1) == 3.0)
+
+  // Check copyToArray
+  val ds: IArray[Int] = IArray(1, 2, 3)
+  val es: Array[Int] = new Array[Int](10)
+  ds.copyToArray(es, 5, 2)
+  assert(es.toList == List(0, 0, 0, 0, 0, 1, 2, 0, 0, 0))
+  val fs: Array[Any] = new Array[Any](10)
+  ds.copyToArray(fs, 5, 2)
+  assert(fs.toList == List(null, null, null, null, null, 1, 2, null, null, null))
 }

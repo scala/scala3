@@ -52,6 +52,18 @@ object opaques:
       // but we can use `exists` instead, which is how `ArrayOps#contains` itself is implemented:
       genericArrayOps(arr).exists(_ == elem)
 
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U]): Int =
+      genericArrayOps(arr).copyToArray(xs)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int, len: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start, len)
+
     /** Counts the number of elements in this array which satisfy a predicate */
     extension [T](arr: IArray[T]) def count(p: T => Boolean): Int =
       genericArrayOps(arr).count(p)
