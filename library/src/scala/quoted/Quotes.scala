@@ -269,7 +269,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait PackageClauseModule { this: PackageClause.type =>
       def apply(pid: Ref, stats: List[Tree]): PackageClause
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
-      def unapply(tree: PackageClause): Some[(Ref, List[Tree])]
+      def unapply(tree: PackageClause): (Ref, List[Tree])
     }
 
     /** Makes extension methods on `PackageClause` available without any imports */
@@ -296,7 +296,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ImportModule { this: Import.type =>
       def apply(expr: Term, selectors: List[Selector]): Import
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import
-      def unapply(tree: Import): Option[(Term, List[Selector])]
+      def unapply(tree: Import): (Term, List[Selector])
     }
 
     /** Makes extension methods on `Import` available without any imports */
@@ -323,7 +323,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Export` */
     trait ExportModule { this: Export.type =>
-      def unapply(tree: Export): Option[(Term, List[Selector])]
+      def unapply(tree: Export): (Term, List[Selector])
     }
 
     /** Makes extension methods on `Export` available without any imports */
@@ -382,7 +382,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ClassDefModule { this: ClassDef.type =>
       // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
-      def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])]
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -414,7 +414,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefDefModule { this: DefDef.type =>
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
-      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])]
+      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])
     }
 
     /** Makes extension methods on `DefDef` available without any imports */
@@ -445,7 +445,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ValDefModule { this: ValDef.type =>
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
-      def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])]
+      def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
       def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term
@@ -484,7 +484,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeDefModule { this: TypeDef.type =>
       def apply(symbol: Symbol): TypeDef
       def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
-      def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)]
+      def unapply(tdef: TypeDef): (String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)
     }
 
     /** Makes extension methods on `TypeDef` available without any imports */
@@ -629,7 +629,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(name: String): Ident
 
       /** Matches a term identifier and returns its name */
-      def unapply(tree: Ident): Option[String]
+      def unapply(tree: Ident): Some[String]
     }
 
     /** Makes extension methods on `Ident` available without any imports */
@@ -673,7 +673,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
       /** Matches `<qualifier: Term>.<name: String>` */
-      def unapply(x: Select): Option[(Term, String)]
+      def unapply(x: Select): (Term, String)
     }
 
     /** Makes extension methods on `Select` available without any imports */
@@ -706,7 +706,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(constant: Constant): Literal
 
       /** Matches a literal constant */
-      def unapply(x: Literal): Option[Constant]
+      def unapply(x: Literal): Some[Constant]
     }
 
     /** Makes extension methods on `Literal` available without any imports */
@@ -737,7 +737,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(qual: Option[String]): This
 
       /** Matches `this[<id: Option[String]>` */
-      def unapply(x: This): Option[Option[String]]
+      def unapply(x: This): Some[Option[String]]
     }
 
     /** Makes extension methods on `This` available without any imports */
@@ -768,7 +768,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(tpt: TypeTree): New
 
       /** Matches a `new <tpt: TypeTree>` */
-      def unapply(x: New): Option[TypeTree]
+      def unapply(x: New): Some[TypeTree]
     }
 
     /** Makes extension methods on `New` available without any imports */
@@ -799,7 +799,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(name: String, arg: Term): NamedArg
 
       /** Matches a named argument `<name: String> = <value: Term>` */
-      def unapply(x: NamedArg): Option[(String, Term)]
+      def unapply(x: NamedArg): (String, Term)
     }
 
     /** Makes extension methods on `NamedArg` available without any imports */
@@ -831,7 +831,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply
 
       /** Matches a function application `<fun: Term>(<args: List[Term]>)` */
-      def unapply(x: Apply): Option[(Term, List[Term])]
+      def unapply(x: Apply): (Term, List[Term])
     }
 
     /** Makes extension methods on `Apply` available without any imports */
@@ -863,7 +863,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply
 
       /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]` */
-      def unapply(x: TypeApply): Option[(Term, List[TypeTree])]
+      def unapply(x: TypeApply): (Term, List[TypeTree])
     }
 
     /** Makes extension methods on `TypeApply` available without any imports */
@@ -895,7 +895,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(qual: Term, mix: Option[String]): Super
 
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>` */
-      def unapply(x: Super): Option[(Term, Option[String])]
+      def unapply(x: Super): (Term, Option[String])
     }
 
     /** Makes extension methods on `Super` available without any imports */
@@ -928,7 +928,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed
 
       /** Matches `<expr: Term>: <tpt: TypeTree>` */
-      def unapply(x: Typed): Option[(Term, TypeTree)]
+      def unapply(x: Typed): (Term, TypeTree)
     }
 
     /** Makes extension methods on `Typed` available without any imports */
@@ -960,7 +960,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign
 
       /** Matches an assignment `<lhs: Term> = <rhs: Term>` */
-      def unapply(x: Assign): Option[(Term, Term)]
+      def unapply(x: Assign): (Term, Term)
     }
 
     /** Makes extension methods on `Assign` available without any imports */
@@ -992,7 +992,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block
 
       /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }` */
-      def unapply(x: Block): Option[(List[Statement], Term)]
+      def unapply(x: Block): (List[Statement], Term)
     }
 
     /** Makes extension methods on `Block` available without any imports */
@@ -1030,7 +1030,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure
 
-      def unapply(x: Closure): Option[(Term, Option[TypeRepr])]
+      def unapply(x: Closure): (Term, Option[TypeRepr])
     }
 
     /** Makes extension methods on `Closure` available without any imports */
@@ -1098,7 +1098,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If
 
       /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>` */
-      def unapply(tree: If): Option[(Term, Term, Term)]
+      def unapply(tree: If): (Term, Term, Term)
     }
 
     /** Makes extension methods on `If` available without any imports */
@@ -1132,7 +1132,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match
 
       /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }` */
-      def unapply(x: Match): Option[(Term, List[CaseDef])]
+      def unapply(x: Match): (Term, List[CaseDef])
     }
 
     /** Makes extension methods on `Match` available without any imports */
@@ -1165,7 +1165,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom
 
       /** Matches a pattern match `given match { <cases: List[CaseDef]> }` */
-      def unapply(x: SummonFrom): Option[List[CaseDef]]
+      def unapply(x: SummonFrom): Some[List[CaseDef]]
     }
 
     /** Makes extension methods on `SummonFrom` available without any imports */
@@ -1196,7 +1196,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
       /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>` */
-      def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])]
+      def unapply(x: Try): (Term, List[CaseDef], Option[Term])
     }
 
     /** Makes extension methods on `Try` available without any imports */
@@ -1229,7 +1229,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(expr: Term, from: Symbol): Return
 
       /** Matches `return <expr: Term>` and extracts the expression and symbol of the method */
-      def unapply(x: Return): Option[(Term, Symbol)]
+      def unapply(x: Return): (Term, Symbol)
     }
 
     /** Makes extension methods on `Return` available without any imports */
@@ -1256,7 +1256,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait RepeatedModule { this: Repeated.type =>
       def apply(elems: List[Term], tpt: TypeTree): Repeated
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
-      def unapply(x: Repeated): Option[(List[Term], TypeTree)]
+      def unapply(x: Repeated): (List[Term], TypeTree)
     }
 
     /** Makes extension methods on `Repeated` available without any imports */
@@ -1283,7 +1283,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait InlinedModule { this: Inlined.type =>
       def apply(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
       def copy(original: Tree)(call: Option[Tree /* Term | TypeTree */], bindings: List[Definition], expansion: Term): Inlined
-      def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)]
+      def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term)
     }
 
     /** Makes extension methods on `Inlined` available without any imports */
@@ -1311,7 +1311,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait SelectOuterModule { this: SelectOuter.type =>
       def apply(qualifier: Term, name: String, levels: Int): SelectOuter
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
-      def unapply(x: SelectOuter): Option[(Term, String, Int)]
+      def unapply(x: SelectOuter): (Term, String, Int)
     }
 
     /** Makes extension methods on `SelectOuter` available without any imports */
@@ -1344,7 +1344,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def copy(original: Tree)(cond: Term, body: Term): While
 
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>) */
-      def unapply(x: While): Option[(Term, Term)]
+      def unapply(x: While): (Term, Term)
     }
 
     /** Makes extension methods on `While` available without any imports */
@@ -1399,7 +1399,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait InferredModule { this: Inferred.type =>
       def apply(tpe: TypeRepr): Inferred
       /** Matches a TypeTree containing an inferred type */
-      def unapply(x: Inferred): Boolean
+      def unapply(x: Inferred): true
     }
 
     /** Type tree representing a reference to definition with a given name */
@@ -1415,7 +1415,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeIdentModule { this: TypeIdent.type =>
       def apply(sym: Symbol): TypeTree
       def copy(original: Tree)(name: String): TypeIdent
-      def unapply(x: TypeIdent): Option[String]
+      def unapply(x: TypeIdent): Some[String]
     }
 
     /** Makes extension methods on `TypeIdent` available without any imports */
@@ -1441,7 +1441,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeSelectModule { this: TypeSelect.type =>
       def apply(qualifier: Term, name: String): TypeSelect
       def copy(original: Tree)(qualifier: Term, name: String): TypeSelect
-      def unapply(x: TypeSelect): Option[(Term, String)]
+      def unapply(x: TypeSelect): (Term, String)
     }
 
     /** Makes extension methods on `TypeSelect` available without any imports */
@@ -1468,7 +1468,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeProjectionModule { this: TypeProjection.type =>
       // TODO def apply(qualifier: TypeTree, name: String): Project
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
-      def unapply(x: TypeProjection): Option[(TypeTree, String)]
+      def unapply(x: TypeProjection): (TypeTree, String)
     }
 
     /** Makes extension methods on `TypeProjection` available without any imports */
@@ -1495,7 +1495,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait SingletonModule { this: Singleton.type =>
       def apply(ref: Term): Singleton
       def copy(original: Tree)(ref: Term): Singleton
-      def unapply(x: Singleton): Option[Term]
+      def unapply(x: Singleton): Some[Term]
     }
 
     /** Makes extension methods on `Singleton` available without any imports */
@@ -1521,7 +1521,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait RefinedModule { this: Refined.type =>
       // TODO def apply(tpt: TypeTree, refinements: List[Definition]): Refined
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
-      def unapply(x: Refined): Option[(TypeTree, List[Definition])]
+      def unapply(x: Refined): (TypeTree, List[Definition])
     }
 
     /** Makes extension methods on `Refined` available without any imports */
@@ -1548,7 +1548,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait AppliedModule { this: Applied.type =>
       def apply(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree /*TypeTree | TypeBoundsTree*/]): Applied
-      def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])]
+      def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])
     }
 
     /** Makes extension methods on `Applied` available without any imports */
@@ -1575,7 +1575,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait AnnotatedModule { this: Annotated.type =>
       def apply(arg: TypeTree, annotation: Term): Annotated
       def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated
-      def unapply(x: Annotated): Option[(TypeTree, Term)]
+      def unapply(x: Annotated): (TypeTree, Term)
     }
 
     /** Makes extension methods on `Annotated` available without any imports */
@@ -1602,7 +1602,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait MatchTypeTreeModule { this: MatchTypeTree.type =>
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree
-      def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])]
+      def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef])
     }
 
     /** Makes extension methods on `MatchTypeTree` available without any imports */
@@ -1630,7 +1630,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait ByNameModule { this: ByName.type =>
       def apply(result: TypeTree): ByName
       def copy(original: Tree)(result: TypeTree): ByName
-      def unapply(x: ByName): Option[TypeTree]
+      def unapply(x: ByName): Some[TypeTree]
     }
 
     /** Makes extension methods on `ByName` available without any imports */
@@ -1656,7 +1656,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait LambdaTypeTreeModule { this: LambdaTypeTree.type =>
       def apply(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree /*TypeTree | TypeBoundsTree*/): LambdaTypeTree
-      def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)]
+      def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)
     }
 
     /** Makes extension methods on `LambdaTypeTree` available without any imports */
@@ -1683,7 +1683,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeBindModule { this: TypeBind.type =>
       // TODO def apply(name: String, tree: Tree): TypeBind
       def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
-      def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)]
+      def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/)
     }
 
     /** Makes extension methods on `TypeBind` available without any imports */
@@ -1710,7 +1710,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeBlockModule { this: TypeBlock.type =>
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock
-      def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)]
+      def unapply(x: TypeBlock): (List[TypeDef], TypeTree)
     }
 
     /** Makes extension methods on `TypeBlock` available without any imports */
@@ -1739,7 +1739,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeBoundsTreeModule { this: TypeBoundsTree.type =>
       def apply(low: TypeTree, hi: TypeTree): TypeBoundsTree
       def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree
-      def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)]
+      def unapply(x: TypeBoundsTree): (TypeTree, TypeTree)
     }
 
     /** Makes extension methods on `TypeBoundsTree` available without any imports */
@@ -1770,7 +1770,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait WildcardTypeTreeModule { this: WildcardTypeTree.type =>
       def apply(tpe: TypeRepr): WildcardTypeTree
       /** Matches a TypeBoundsTree containing wildcard type bounds */
-      def unapply(x: WildcardTypeTree): Boolean
+      def unapply(x: WildcardTypeTree): true
     }
 
     /** Makes extension methods on `WildcardTypeTree` available without any imports */
@@ -1798,7 +1798,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait CaseDefModule { this: CaseDef.type =>
       def apply(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
       def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef
-      def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)]
+      def unapply(x: CaseDef): (Tree, Option[Term], Term)
     }
 
     /** Makes extension methods on `CaseDef` available without any imports */
@@ -1826,7 +1826,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TypeCaseDefModule { this: TypeCaseDef.type =>
       def apply(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
       def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef
-      def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)]
+      def unapply(tree: TypeCaseDef): (TypeTree, TypeTree)
     }
 
     /** Makes extension methods on `TypeCaseDef` available without any imports */
@@ -1855,7 +1855,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait BindModule { this: Bind.type =>
       def apply(sym: Symbol, pattern: Tree): Bind
       def copy(original: Tree)(name: String, pattern: Tree): Bind
-      def unapply(pattern: Bind): Option[(String, Tree)]
+      def unapply(pattern: Bind): (String, Tree)
     }
 
     /** Makes extension methods on `Bind` available without any imports */
@@ -1882,7 +1882,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait UnapplyModule { this: Unapply.type =>
       // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
-      def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])]
+      def unapply(x: Unapply): (Term, List[Term], List[Tree])
     }
 
     /** Makes extension methods on `Unapply` available without any imports */
@@ -1910,7 +1910,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait AlternativesModule { this: Alternatives.type =>
       def apply(patterns: List[Tree]): Alternatives
       def copy(original: Tree)(patterns: List[Tree]): Alternatives
-      def unapply(x: Alternatives): Option[List[Tree]]
+      def unapply(x: Alternatives): Some[List[Tree]]
     }
 
     /** Makes extension methods on `Alternatives` available without any imports */
@@ -1952,7 +1952,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val SimpleSelector` */
     trait SimpleSelectorModule { this: SimpleSelector.type =>
-      def unapply(x: SimpleSelector): Option[String]
+      def unapply(x: SimpleSelector): Some[String]
     }
 
     /** Makes extension methods on `SimpleSelector` available without any imports */
@@ -1977,7 +1977,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RenameSelector` */
     trait RenameSelectorModule { this: RenameSelector.type =>
-      def unapply(x: RenameSelector): Option[(String, String)]
+      def unapply(x: RenameSelector): (String, String)
     }
 
     /** Makes extension methods on `RenameSelector` available without any imports */
@@ -2004,7 +2004,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val OmitSelector` */
     trait OmitSelectorModule { this: OmitSelector.type =>
-      def unapply(x: OmitSelector): Option[String]
+      def unapply(x: OmitSelector): Some[String]
     }
 
     /** Makes extension methods on `OmitSelector` available without any imports */
@@ -2028,7 +2028,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val GivenSelector` */
     trait GivenSelectorModule { this: GivenSelector.type =>
-      def unapply(x: GivenSelector): Option[Option[TypeTree]]
+      def unapply(x: GivenSelector): Some[Option[TypeTree]]
     }
 
     /** Makes extension methods on `GivenSelector` available without any imports */
@@ -2192,7 +2192,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Type` */
     trait ConstantTypeModule { this: ConstantType.type =>
       def apply(x : Constant): ConstantType
-      def unapply(x: ConstantType): Option[Constant]
+      def unapply(x: ConstantType): Some[Constant]
     }
 
     /** Makes extension methods on `ConstantType` available without any imports */
@@ -2234,7 +2234,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TermRef` */
     trait TermRefModule { this: TermRef.type =>
       def apply(qual: TypeRepr, name: String): TermRef
-      def unapply(x: TermRef): Option[(TypeRepr, String)]
+      def unapply(x: TermRef): (TypeRepr, String)
     }
 
     /** Type of a reference to a type symbol */
@@ -2248,7 +2248,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeRef` */
     trait TypeRefModule { this: TypeRef.type =>
-      def unapply(x: TypeRef): Option[(TypeRepr, String)]
+      def unapply(x: TypeRef): (TypeRepr, String)
     }
 
     /** Makes extension methods on `TypeRef` available without any imports */
@@ -2274,7 +2274,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val SuperType` */
     trait SuperTypeModule { this: SuperType.type =>
       def apply(thistpe: TypeRepr, supertpe: TypeRepr): SuperType
-      def unapply(x: SuperType): Option[(TypeRepr, TypeRepr)]
+      def unapply(x: SuperType): (TypeRepr, TypeRepr)
     }
 
     /** Makes extension methods on `SuperType` available without any imports */
@@ -2300,7 +2300,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Refinement` */
     trait RefinementModule { this: Refinement.type =>
       def apply(parent: TypeRepr, name: String, info: TypeRepr): Refinement
-      def unapply(x: Refinement): Option[(TypeRepr, String, TypeRepr)]
+      def unapply(x: Refinement): (TypeRepr, String, TypeRepr)
     }
 
     /** Makes extension methods on `Refinement` available without any imports */
@@ -2326,7 +2326,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val AppliedType` */
     trait AppliedTypeModule { this: AppliedType.type =>
-      def unapply(x: AppliedType): Option[(TypeRepr, List[TypeRepr])]
+      def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
     }
 
     /** Makes extension methods on `AppliedType` available without any imports */
@@ -2352,7 +2352,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val AnnotatedType` */
     trait AnnotatedTypeModule { this: AnnotatedType.type =>
       def apply(underlying: TypeRepr, annot: Term): AnnotatedType
-      def unapply(x: AnnotatedType): Option[(TypeRepr, Term)]
+      def unapply(x: AnnotatedType): (TypeRepr, Term)
     }
 
     /** Makes extension methods on `AnnotatedType` available without any imports */
@@ -2396,7 +2396,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val AndType` */
     trait AndTypeModule { this: AndType.type =>
       def apply(lhs: TypeRepr, rhs: TypeRepr): AndType
-      def unapply(x: AndType): Option[(TypeRepr, TypeRepr)]
+      def unapply(x: AndType): (TypeRepr, TypeRepr)
     }
 
     /** Union type `T | U` */
@@ -2411,7 +2411,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val OrType` */
     trait OrTypeModule { this: OrType.type =>
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType
-      def unapply(x: OrType): Option[(TypeRepr, TypeRepr)]
+      def unapply(x: OrType): (TypeRepr, TypeRepr)
     }
 
     /** Type match `T match { case U => ... }` */
@@ -2426,7 +2426,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MatchType` */
     trait MatchTypeModule { this: MatchType.type =>
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType
-      def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[TypeRepr])]
+      def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr])
     }
 
     /** Makes extension methods on `MatchType` available without any imports */
@@ -2453,7 +2453,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val ByNameType` */
     trait ByNameTypeModule { this: ByNameType.type =>
       def apply(underlying: TypeRepr): TypeRepr
-      def unapply(x: ByNameType): Option[TypeRepr]
+      def unapply(x: ByNameType): Some[TypeRepr]
     }
 
     /** Makes extension methods on `ByNameType` available without any imports */
@@ -2477,7 +2477,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ParamRef` */
     trait ParamRefModule { this: ParamRef.type =>
-      def unapply(x: ParamRef): Option[(TypeRepr, Int)]
+      def unapply(x: ParamRef): (TypeRepr, Int)
     }
 
     /** Makes extension methods on `ParamRef` available without any imports */
@@ -2502,7 +2502,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ThisType` */
     trait ThisTypeModule { this: ThisType.type =>
-      def unapply(x: ThisType): Option[TypeRepr]
+      def unapply(x: ThisType): Some[TypeRepr]
     }
 
     /** Makes extension methods on `ThisType` available without any imports */
@@ -2526,7 +2526,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val RecursiveThis` */
     trait RecursiveThisModule { this: RecursiveThis.type =>
-      def unapply(x: RecursiveThis): Option[RecursiveType]
+      def unapply(x: RecursiveThis): Some[RecursiveType]
     }
 
     /** Makes extension methods on `RecursiveThis` available without any imports */
@@ -2561,7 +2561,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       */
       def apply(parentExp: RecursiveType => TypeRepr): RecursiveType
 
-      def unapply(x: RecursiveType): Option[TypeRepr]
+      def unapply(x: RecursiveType): Some[TypeRepr]
     }
 
     /** Makes extension methods on `RecursiveType` available without any imports */
@@ -2611,7 +2611,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val MethodType` */
     trait MethodTypeModule { this: MethodType.type =>
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType
-      def unapply(x: MethodType): Option[(List[String], List[TypeRepr], TypeRepr)]
+      def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr)
     }
 
     /** Makes extension methods on `MethodType` available without any imports */
@@ -2638,7 +2638,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val PolyType` */
     trait PolyTypeModule { this: PolyType.type =>
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType
-      def unapply(x: PolyType): Option[(List[String], List[TypeBounds], TypeRepr)]
+      def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr)
     }
 
     /** Makes extension methods on `PolyType` available without any imports */
@@ -2664,7 +2664,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TypeLambda` */
     trait TypeLambdaModule { this: TypeLambda.type =>
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda
-      def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], TypeRepr)]
+      def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr)
     }
 
     /** Makes extension methods on `TypeLambda` available without any imports */
@@ -2692,7 +2692,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TypeBounds` */
     trait TypeBoundsModule { this: TypeBounds.type =>
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds
-      def unapply(x: TypeBounds): Option[(TypeRepr, TypeRepr)]
+      def unapply(x: TypeBounds): (TypeRepr, TypeRepr)
       def empty: TypeBounds
       def upper(hi: TypeRepr): TypeBounds
       def lower(lo: TypeRepr): TypeBounds
@@ -2722,7 +2722,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val NoPrefix` */
     trait NoPrefixModule { this: NoPrefix.type =>
-      def unapply(x: NoPrefix): Boolean
+      def unapply(x: NoPrefix): true
     }
 
     ///////////////
@@ -3250,7 +3250,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val Signature` */
     trait SignatureModule { this: Signature.type =>
       /** Matches the method signature and returns its parameters and result type. */
-      def unapply(sig: Signature): Option[(List[String | Int], String)]
+      def unapply(sig: Signature): (List[String | Int], String)
     }
 
     /** Makes extension methods on `Signature` available without any imports */

@@ -132,8 +132,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
         tpd.cpy.PackageDef(original)(pid, stats)
-      def unapply(tree: PackageClause): Some[(Ref, List[Tree])] =
-        Some((tree.pid, tree.stats))
+      def unapply(tree: PackageClause): (Ref, List[Tree]) =
+        (tree.pid, tree.stats)
     end PackageClause
 
     given PackageClauseMethods: PackageClauseMethods with
@@ -156,8 +156,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Import(expr, selectors))
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
         tpd.cpy.Import(original)(expr, selectors)
-      def unapply(tree: Import): Option[(Term, List[Selector])] =
-        Some((tree.expr, tree.selectors))
+      def unapply(tree: Import): (Term, List[Selector]) =
+        (tree.expr, tree.selectors)
     end Import
 
     given ImportMethods: ImportMethods with
@@ -176,8 +176,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ExportTypeTest
 
     object Export extends ExportModule:
-      def unapply(tree: Export): Option[(Term, List[Selector])] =
-        Some((tree.expr, tree.selectors))
+      def unapply(tree: Export): (Term, List[Selector]) =
+        (tree.expr, tree.selectors)
     end Export
 
     given ExportMethods: ExportMethods with
@@ -227,9 +227,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
         tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
-      def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body))
+        (cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body)
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -260,8 +260,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
         tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-        Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
+      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
+        (ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
@@ -286,8 +286,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol).getOrElse(tpd.EmptyTree))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
         tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
-        Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
+      def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
+        (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
       def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
@@ -321,8 +321,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeDef(symbol.asType))
       def copy(original: Tree)(name: String, rhs: Tree): TypeDef =
         tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
-      def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-        Some((tdef.name.toString, tdef.rhs))
+      def unapply(tdef: TypeDef): (String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */) =
+        (tdef.name.toString, tdef.rhs)
     end TypeDef
 
     given TypeDefMethods: TypeDefMethods with
@@ -434,7 +434,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
       def copy(original: Tree)(name: String): Ident =
         tpd.cpy.Ident(original)(name.toTermName)
-      def unapply(tree: Ident): Option[String] =
+      def unapply(tree: Ident): Some[String] =
         Some(tree.name.toString)
     end Ident
 
@@ -466,8 +466,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
-      def unapply(x: Select): Option[(Term, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: Select): (Term, String) =
+        (x.qualifier, x.name.toString)
     end Select
 
     given SelectMethods: SelectMethods with
@@ -493,7 +493,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Literal(constant))
       def copy(original: Tree)(constant: Constant): Literal =
         tpd.cpy.Literal(original)(constant)
-      def unapply(x: Literal): Option[Constant] =
+      def unapply(x: Literal): Some[Constant] =
         Some(x.constant)
     end Literal
 
@@ -516,7 +516,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.This(cls.asClass))
       def copy(original: Tree)(qual: Option[String]): This =
         tpd.cpy.This(original)(qual.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: This): Option[Option[String]] =
+      def unapply(x: This): Some[Option[String]] =
         Some(optional(x.qual).map(_.name.toString))
     end This
 
@@ -539,7 +539,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.New(tpt))
       def copy(original: Tree)(tpt: TypeTree): New =
         tpd.cpy.New(original)(tpt)
-      def unapply(x: New): Option[TypeTree] = Some(x.tpt)
+      def unapply(x: New): Some[TypeTree] = Some(x.tpt)
     end New
 
     given NewMethods: NewMethods with
@@ -561,8 +561,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.NamedArg(name.toTermName, arg))
       def copy(original: Tree)(name: String, arg: Term): NamedArg =
         tpd.cpy.NamedArg(original)(name.toTermName, arg)
-      def unapply(x: NamedArg): Option[(String, Term)] =
-        Some((x.name.toString, x.value))
+      def unapply(x: NamedArg): (String, Term) =
+        (x.name.toString, x.value)
     end NamedArg
 
     given NamedArgMethods: NamedArgMethods with
@@ -585,8 +585,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
         tpd.cpy.Apply(original)(fun, args)
-      def unapply(x: Apply): Option[(Term, List[Term])] =
-        Some((x.fun, x.args))
+      def unapply(x: Apply): (Term, List[Term]) =
+        (x.fun, x.args)
     end Apply
 
     given ApplyMethods: ApplyMethods with
@@ -609,8 +609,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeApply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
         tpd.cpy.TypeApply(original)(fun, args)
-      def unapply(x: TypeApply): Option[(Term, List[TypeTree])] =
-        Some((x.fun, x.args))
+      def unapply(x: TypeApply): (Term, List[TypeTree]) =
+        (x.fun, x.args)
     end TypeApply
 
     given TypeApplyMethods: TypeApplyMethods with
@@ -633,8 +633,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Super(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent), dotc.core.Symbols.NoSymbol))
       def copy(original: Tree)(qual: Term, mix: Option[String]): Super =
         tpd.cpy.Super(original)(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: Super): Option[(Term, Option[String])] =
-        Some((x.qualifier, x.id))
+      def unapply(x: Super): (Term, Option[String]) =
+        (x.qualifier, x.id)
     end Super
 
     given SuperMethods: SuperMethods with
@@ -658,8 +658,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Typed(expr, tpt))
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
         tpd.cpy.Typed(original)(expr, tpt)
-      def unapply(x: Typed): Option[(Term, TypeTree)] =
-        Some((x.expr, x.tpt))
+      def unapply(x: Typed): (Term, TypeTree) =
+        (x.expr, x.tpt)
     end Typed
 
     given TypedMethods: TypedMethods with
@@ -682,8 +682,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Assign(lhs, rhs))
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign =
         tpd.cpy.Assign(original)(lhs, rhs)
-      def unapply(x: Assign): Option[(Term, Term)] =
-        Some((x.lhs, x.rhs))
+      def unapply(x: Assign): (Term, Term) =
+        (x.lhs, x.rhs)
     end Assign
 
     given AssignMethods: AssignMethods with
@@ -706,8 +706,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Block(stats, expr))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
         tpd.cpy.Block(original)(stats, expr)
-      def unapply(x: Block): Option[(List[Statement], Term)] =
-        Some((x.statements, x.expr))
+      def unapply(x: Block): (List[Statement], Term) =
+        (x.statements, x.expr)
     end Block
 
     given BlockMethods: BlockMethods with
@@ -730,8 +730,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
         tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
-      def unapply(x: Closure): Option[(Term, Option[TypeRepr])] =
-        Some((x.meth, x.tpeOpt))
+      def unapply(x: Closure): (Term, Option[TypeRepr]) =
+        (x.meth, x.tpeOpt)
     end Closure
 
     given ClosureMethods: ClosureMethods with
@@ -767,8 +767,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.If(cond, thenp, elsep))
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
         tpd.cpy.If(original)(cond, thenp, elsep)
-      def unapply(tree: If): Option[(Term, Term, Term)] =
-        Some((tree.cond, tree.thenp, tree.elsep))
+      def unapply(tree: If): (Term, Term, Term) =
+        (tree.cond, tree.thenp, tree.elsep)
     end If
 
     given IfMethods: IfMethods with
@@ -795,8 +795,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
         tpd.cpy.Match(original)(selector, cases)
 
-      def unapply(x: Match): Option[(Term, List[CaseDef])] =
-        Some((x.scrutinee, x.cases))
+      def unapply(x: Match): (Term, List[CaseDef]) =
+        (x.scrutinee, x.cases)
     end Match
 
     given MatchMethods: MatchMethods with
@@ -820,7 +820,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom =
         tpd.cpy.Match(original)(tpd.EmptyTree, cases)
-      def unapply(x: SummonFrom): Option[List[CaseDef]] =
+      def unapply(x: SummonFrom): Some[List[CaseDef]] =
         Some(x.cases)
     end SummonFrom
 
@@ -843,8 +843,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
         tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
-      def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-        Some((x.body, x.cases, optional(x.finalizer)))
+      def unapply(x: Try): (Term, List[CaseDef], Option[Term]) =
+        (x.body, x.cases, optional(x.finalizer))
     end Try
 
     given TryMethods: TryMethods with
@@ -868,8 +868,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Return(expr, from))
       def copy(original: Tree)(expr: Term, from: Symbol): Return =
         tpd.cpy.Return(original)(expr, tpd.ref(from))
-      def unapply(x: Return): Option[(Term, Symbol)] =
-        Some((x.expr, x.from.symbol))
+      def unapply(x: Return): (Term, Symbol) =
+        (x.expr, x.from.symbol)
     end Return
 
     given ReturnMethods: ReturnMethods with
@@ -892,8 +892,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
         tpd.cpy.SeqLiteral(original)(elems, elemtpt)
-      def unapply(x: Repeated): Option[(List[Term], TypeTree)] =
-        Some((x.elems, x.elemtpt))
+      def unapply(x: Repeated): (List[Term], TypeTree) =
+        (x.elems, x.elemtpt)
     end Repeated
 
     given RepeatedMethods: RepeatedMethods with
@@ -916,8 +916,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
-      def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        Some((optional(x.call), x.bindings, x.body))
+      def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
+        (optional(x.call), x.bindings, x.body)
     end Inlined
 
     given InlinedMethods: InlinedMethods with
@@ -944,8 +944,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
         tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
-      def unapply(x: SelectOuter): Option[(Term, String, Int)] =
-        Some((x.qualifier, x.name.toString, x.level))
+      def unapply(x: SelectOuter): (Term, String, Int) =
+        (x.qualifier, x.name.toString, x.level)
     end SelectOuter
 
     given SelectOuterMethods: SelectOuterMethods with
@@ -971,8 +971,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.WhileDo(cond, body))
       def copy(original: Tree)(cond: Term, body: Term): While =
         tpd.cpy.WhileDo(original)(cond, body)
-      def unapply(x: While): Option[(Term, Term)] =
-        Some((x.cond, x.body))
+      def unapply(x: While): (Term, Term) =
+        (x.cond, x.body)
     end While
 
     given WhileMethods: WhileMethods with
@@ -1013,7 +1013,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Inferred extends InferredModule:
       def apply(tpe: TypeRepr): Inferred =
         withDefaultPos(tpd.TypeTree(tpe))
-      def unapply(x: Inferred): Boolean = true
+      def unapply(x: Inferred): true = true
     end Inferred
 
     type TypeIdent = tpd.Ident
@@ -1030,7 +1030,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
       def copy(original: Tree)(name: String): TypeIdent =
         tpd.cpy.Ident(original)(name.toTypeName)
-      def unapply(x: TypeIdent): Option[String] =
+      def unapply(x: TypeIdent): Some[String] =
         Some(x.name.toString)
     end TypeIdent
 
@@ -1053,8 +1053,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: Term, name: String): TypeSelect =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: TypeSelect): Option[(Term, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: TypeSelect): (Term, String) =
+        (x.qualifier, x.name.toString)
     end TypeSelect
 
     given TypeSelectMethods: TypeSelectMethods with
@@ -1075,8 +1075,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeProjection extends TypeProjectionModule:
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: TypeProjection): Option[(TypeTree, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: TypeProjection): (TypeTree, String) =
+        (x.qualifier, x.name.toString)
     end TypeProjection
 
     given TypeProjectionMethods: TypeProjectionMethods with
@@ -1099,7 +1099,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.SingletonTypeTree(ref))
       def copy(original: Tree)(ref: Term): Singleton =
         tpd.cpy.SingletonTypeTree(original)(ref)
-      def unapply(x: Singleton): Option[Term] =
+      def unapply(x: Singleton): Some[Term] =
         Some(x.ref)
     end Singleton
 
@@ -1120,8 +1120,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Refined extends RefinedModule:
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
-      def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
-        Some((x.tpt, x.refinements.asInstanceOf[List[Definition]]))
+      def unapply(x: Refined): (TypeTree, List[Definition]) =
+        (x.tpt, x.refinements.asInstanceOf[List[Definition]])
     end Refined
 
     given RefinedMethods: RefinedMethods with
@@ -1144,8 +1144,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.AppliedTypeTree(tpt, args))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
         tpd.cpy.AppliedTypeTree(original)(tpt, args)
-      def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-        Some((x.tpt, x.args))
+      def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/]) =
+        (x.tpt, x.args)
     end Applied
 
     given AppliedMethods: AppliedMethods with
@@ -1168,8 +1168,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Annotated(arg, annotation))
       def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated =
         tpd.cpy.Annotated(original)(arg, annotation)
-      def unapply(x: Annotated): Option[(TypeTree, Term)] =
-        Some((x.arg, x.annotation))
+      def unapply(x: Annotated): (TypeTree, Term) =
+        (x.arg, x.annotation)
     end Annotated
 
     given AnnotatedMethods: AnnotatedMethods with
@@ -1192,8 +1192,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
         tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
-      def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        Some((optional(x.bound), x.selector, x.cases))
+      def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef]) =
+        (optional(x.bound), x.selector, x.cases)
     end MatchTypeTree
 
     given MatchTypeTreeMethods: MatchTypeTreeMethods with
@@ -1217,7 +1217,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ByNameTypeTree(result))
       def copy(original: Tree)(result: TypeTree): ByName =
         tpd.cpy.ByNameTypeTree(original)(result)
-      def unapply(x: ByName): Option[TypeTree] =
+      def unapply(x: ByName): Some[TypeTree] =
         Some(x.result)
     end ByName
 
@@ -1240,8 +1240,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.LambdaTypeTree(tparams, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
         tpd.cpy.LambdaTypeTree(original)(tparams, body)
-      def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((tree.tparams, tree.body))
+      def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/) =
+        (tree.tparams, tree.body)
     end LambdaTypeTree
 
     given LambdaTypeTreeMethods: LambdaTypeTreeMethods with
@@ -1262,8 +1262,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeBind extends TypeBindModule:
       def copy(original: Tree)(name: String, tpt: Tree): TypeBind =
         tpd.cpy.Bind(original)(name.toTypeName, tpt)
-      def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((x.name.toString, x.body))
+      def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/) =
+        (x.name.toString, x.body)
     end TypeBind
 
     given TypeBindMethods: TypeBindMethods with
@@ -1286,8 +1286,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Block(aliases, tpt))
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
         tpd.cpy.Block(original)(aliases, tpt)
-      def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)] =
-        Some((x.aliases, x.tpt))
+      def unapply(x: TypeBlock): (List[TypeDef], TypeTree) =
+        (x.aliases, x.tpt)
     end TypeBlock
 
     given TypeBlockMethods: TypeBlockMethods with
@@ -1314,8 +1314,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeBoundsTree(low, hi))
       def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree =
         tpd.cpy.TypeBoundsTree(original)(low, hi, tpd.EmptyTree)
-      def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)] =
-        Some((x.low, x.hi))
+      def unapply(x: TypeBoundsTree): (TypeTree, TypeTree) =
+        (x.low, x.hi)
     end TypeBoundsTree
 
     given TypeBoundsTreeMethods: TypeBoundsTreeMethods with
@@ -1340,7 +1340,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object WildcardTypeTree extends WildcardTypeTreeModule:
       def apply(tpe: TypeRepr): WildcardTypeTree = withDefaultPos(tpd.Underscore(tpe))
-      def unapply(x: WildcardTypeTree): Boolean = true
+      def unapply(x: WildcardTypeTree): true = true
     end WildcardTypeTree
 
     given WildcardTypeTreeMethods: WildcardTypeTreeMethods with
@@ -1362,8 +1362,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
       def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
         tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
-      def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)] =
-        Some((x.pat, optional(x.guard), x.body))
+      def unapply(x: CaseDef): (Tree, Option[Term], Term) =
+        (x.pat, optional(x.guard), x.body)
     end CaseDef
 
     given CaseDefMethods: CaseDefMethods with
@@ -1387,8 +1387,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.CaseDef(pattern, tpd.EmptyTree, rhs)
       def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
         tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, rhs)
-      def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)] =
-        Some((tree.pat, tree.body))
+      def unapply(tree: TypeCaseDef): (TypeTree, TypeTree) =
+        (tree.pat, tree.body)
     end TypeCaseDef
 
     given TypeCaseDefMethods: TypeCaseDefMethods with
@@ -1411,8 +1411,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.Bind(sym, pattern)
       def copy(original: Tree)(name: String, pattern: Tree): Bind =
         withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
-      def unapply(pattern: Bind): Option[(String, Tree)] =
-        Some((pattern.name.toString, pattern.pattern))
+      def unapply(pattern: Bind): (String, Tree) =
+        (pattern.name.toString, pattern.pattern)
     end Bind
 
     given BindMethods: BindMethods with
@@ -1435,8 +1435,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Unapply extends UnapplyModule:
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
         withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
-      def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
-        Some((x.fun, x.implicits, x.patterns))
+      def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
+        (x.fun, x.implicits, x.patterns)
     end Unapply
 
     given UnapplyMethods: UnapplyMethods with
@@ -1468,7 +1468,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Alternative(patterns))
       def copy(original: Tree)(patterns: List[Tree]): Alternatives =
         tpd.cpy.Alternative(original)(patterns)
-      def unapply(x: Alternatives): Option[List[Tree]] =
+      def unapply(x: Alternatives): Some[List[Tree]] =
         Some(x.patterns)
     end Alternatives
 
@@ -1491,7 +1491,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
-      def unapply(x: SimpleSelector): Option[String] = Some(x.name.toString)
+      def unapply(x: SimpleSelector): Some[String] = Some(x.name.toString)
     end SimpleSelector
 
     given SimpleSelectorMethods: SimpleSelectorMethods with
@@ -1510,7 +1510,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RenameSelectorTypeTest
 
     object RenameSelector extends RenameSelectorModule:
-      def unapply(x: RenameSelector): Option[(String, String)] = Some((x.fromName, x.toName))
+      def unapply(x: RenameSelector): (String, String) = (x.fromName, x.toName)
     end RenameSelector
 
     given RenameSelectorMethods: RenameSelectorMethods with
@@ -1535,7 +1535,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
-      def unapply(x: OmitSelector): Option[String] = Some(x.imported.name.toString)
+      def unapply(x: OmitSelector): Some[String] = Some(x.imported.name.toString)
     end OmitSelector
 
     given OmitSelectorMethods: OmitSelectorMethods with
@@ -1555,7 +1555,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end GivenSelectorTypeTest
 
     object GivenSelector extends GivenSelectorModule:
-      def unapply(x: GivenSelector): Option[Option[TypeTree]] =
+      def unapply(x: GivenSelector): Some[Option[TypeTree]] =
         Some(GivenSelectorMethods.bound(x))
     end GivenSelector
 
@@ -1650,7 +1650,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ConstantType extends ConstantTypeModule:
       def apply(const: Constant): ConstantType = Types.ConstantType(const)
-      def unapply(x: ConstantType): Option[Constant] = Some(x.constant)
+      def unapply(x: ConstantType): Some[Constant] = Some(x.constant)
     end ConstantType
 
     given ConstantTypeMethods: ConstantTypeMethods with
@@ -1683,8 +1683,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TermRef extends TermRefModule:
       def apply(qual: TypeRepr, name: String): TermRef =
         Types.TermRef(qual, name.toTermName)
-      def unapply(x: TermRef): Option[(TypeRepr, String)] =
-        Some((x.prefix, x.name.toString))
+      def unapply(x: TermRef): (TypeRepr, String) =
+        (x.prefix, x.name.toString)
     end TermRef
 
     type TypeRef = dotc.core.Types.NamedType
@@ -1696,8 +1696,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeRefTypeTest
 
     object TypeRef extends TypeRefModule:
-      def unapply(x: TypeRef): Option[(TypeRepr, String)] =
-        Some((x.prefix, x.name.toString))
+      def unapply(x: TypeRef): (TypeRepr, String) =
+        (x.prefix, x.name.toString)
     end TypeRef
 
     given TypeRefMethods: TypeRefMethods with
@@ -1718,8 +1718,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object SuperType extends SuperTypeModule:
       def apply(thistpe: TypeRepr, supertpe: TypeRepr): SuperType =
         Types.SuperType(thistpe, supertpe)
-      def unapply(x: SuperType): Option[(TypeRepr, TypeRepr)] =
-        Some((x.thistpe, x.supertpe))
+      def unapply(x: SuperType): (TypeRepr, TypeRepr) =
+        (x.thistpe, x.supertpe)
     end SuperType
 
     given SuperTypeMethods: SuperTypeMethods with
@@ -1744,8 +1744,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _: TypeBounds => name.toTypeName
             case _ => name.toTermName
         Types.RefinedType(parent, name1, info)
-      def unapply(x: Refinement): Option[(TypeRepr, String, TypeRepr)] =
-        Some((x.parent, x.name, x.info))
+      def unapply(x: Refinement): (TypeRepr, String, TypeRepr) =
+        (x.parent, x.name, x.info)
     end Refinement
 
     given RefinementMethods: RefinementMethods with
@@ -1765,8 +1765,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end AppliedTypeTypeTest
 
     object AppliedType extends AppliedTypeModule:
-      def unapply(x: AppliedType): Option[(TypeRepr, List[TypeRepr])] =
-        Some((x.tycon, x.args))
+      def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
+        (x.tycon, x.args)
     end AppliedType
 
     given AppliedTypeMethods: AppliedTypeMethods with
@@ -1787,8 +1787,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object AnnotatedType extends AnnotatedTypeModule:
       def apply(underlying: TypeRepr, annot: Term): AnnotatedType =
         Types.AnnotatedType(underlying, Annotations.Annotation(annot))
-      def unapply(x: AnnotatedType): Option[(TypeRepr, Term)] =
-        Some((x.underlying.stripTypeVar, x.annot.tree))
+      def unapply(x: AnnotatedType): (TypeRepr, Term) =
+        (x.underlying.stripTypeVar, x.annot.tree)
     end AnnotatedType
 
     given AnnotatedTypeMethods: AnnotatedTypeMethods with
@@ -1823,7 +1823,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AndType extends AndTypeModule:
       def apply(lhs: TypeRepr, rhs: TypeRepr): AndType = Types.AndType(lhs, rhs)
-      def unapply(x: AndType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
+      def unapply(x: AndType): (TypeRepr, TypeRepr) = (x.left, x.right)
     end AndType
 
     type OrType = dotc.core.Types.OrType
@@ -1836,7 +1836,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object OrType extends OrTypeModule:
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType = Types.OrType(lhs, rhs, soft = false)
-      def unapply(x: OrType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
+      def unapply(x: OrType): (TypeRepr, TypeRepr) = (x.left, x.right)
     end OrType
 
     type MatchType = dotc.core.Types.MatchType
@@ -1850,8 +1850,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MatchType extends MatchTypeModule:
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType =
         Types.MatchType(bound, scrutinee, cases)
-      def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[TypeRepr])] =
-        Some((x.bound, x.scrutinee, x.cases))
+      def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr]) =
+        (x.bound, x.scrutinee, x.cases)
     end MatchType
 
     given MatchTypeMethods: MatchTypeMethods with
@@ -1872,7 +1872,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ByNameType extends ByNameTypeModule:
       def apply(underlying: TypeRepr): TypeRepr = Types.ExprType(underlying)
-      def unapply(x: ByNameType): Option[TypeRepr] = Some(x.underlying)
+      def unapply(x: ByNameType): Some[TypeRepr] = Some(x.underlying)
     end ByNameType
 
     given ByNameTypeMethods: ByNameTypeMethods with
@@ -1891,8 +1891,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ParamRefTypeTest
 
     object ParamRef extends ParamRefModule:
-      def unapply(x: ParamRef): Option[(LambdaType, Int)] =
-        Some((x.binder, x.paramNum))
+      def unapply(x: ParamRef): (LambdaType, Int) =
+        (x.binder, x.paramNum)
     end ParamRef
 
     given ParamRefMethods: ParamRefMethods with
@@ -1911,7 +1911,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ThisTypeTypeTest
 
     object ThisType extends ThisTypeModule:
-      def unapply(x: ThisType): Option[TypeRepr] = Some(x.tref)
+      def unapply(x: ThisType): Some[TypeRepr] = Some(x.tref)
     end ThisType
 
     given ThisTypeMethods: ThisTypeMethods with
@@ -1929,7 +1929,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RecursiveThisTypeTest
 
     object RecursiveThis extends RecursiveThisModule:
-      def unapply(x: RecursiveThis): Option[RecursiveType] = Some(x.binder)
+      def unapply(x: RecursiveThis): Some[RecursiveType] = Some(x.binder)
     end RecursiveThis
 
 
@@ -1950,7 +1950,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object RecursiveType extends RecursiveTypeModule:
       def apply(parentExp: RecursiveType => TypeRepr): RecursiveType =
         Types.RecType(parentExp)
-      def unapply(x: RecursiveType): Option[TypeRepr] = Some(x.underlying)
+      def unapply(x: RecursiveType): Some[TypeRepr] = Some(x.underlying)
     end RecursiveType
 
     given RecursiveTypeMethods: RecursiveTypeMethods with
@@ -1995,8 +1995,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
-      def unapply(x: MethodType): Option[(List[String], List[TypeRepr], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramTypes, x.resType))
+      def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramTypes, x.resType)
     end MethodType
 
     given MethodTypeMethods: MethodTypeMethods with
@@ -2018,8 +2018,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
         Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
-      def unapply(x: PolyType): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+      def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end PolyType
 
     given PolyTypeMethods: PolyTypeMethods with
@@ -2040,8 +2040,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
         Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
-      def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+      def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end TypeLambda
 
     given TypeLambdaMethods: TypeLambdaMethods with
@@ -2061,7 +2061,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeBounds extends TypeBoundsModule:
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds = Types.TypeBounds(low, hi)
-      def unapply(x: TypeBounds): Option[(TypeRepr, TypeRepr)] = Some((x.low.stripLazyRef, x.hi.stripLazyRef))
+      def unapply(x: TypeBounds): (TypeRepr, TypeRepr) = (x.low.stripLazyRef, x.hi.stripLazyRef)
       def empty: TypeBounds = Types .TypeBounds.empty
       def upper(hi: TypeRepr): TypeBounds = Types .TypeBounds.upper(hi)
       def lower(lo: TypeRepr): TypeBounds = Types .TypeBounds.lower(lo)
@@ -2082,7 +2082,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end NoPrefixTypeTest
 
     object NoPrefix extends NoPrefixModule:
-      def unapply(x: NoPrefix): Boolean = true
+      def unapply(x: NoPrefix): true = true
     end NoPrefix
 
     type Constant = dotc.core.Constants.Constant
@@ -2428,8 +2428,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     type Signature = dotc.core.Signature
 
     object Signature extends SignatureModule:
-      def unapply(sig: Signature): Option[(List[String | Int], String)] =
-        Some((sig.paramSigs, sig.resultSig))
+      def unapply(sig: Signature): (List[String | Int], String) =
+        (sig.paramSigs, sig.resultSig)
     end Signature
 
     given SignatureMethods: SignatureMethods with
