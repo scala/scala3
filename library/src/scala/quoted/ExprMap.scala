@@ -77,7 +77,7 @@ trait ExprMap:
           tree
         case Match(selector, cases) =>
           Match.copy(tree)(transformTerm(selector, selector.tpe)(owner), transformCaseDefs(cases, tpe)(owner))
-        case Return(expr) =>
+        case Return(expr, from) =>
           // FIXME
           // ctx.owner seems to be set to the wrong symbol
           // Return.copy(tree)(transformTerm(expr, expr.tpe))
