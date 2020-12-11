@@ -27,8 +27,8 @@ class RepeatableAnnotations extends MiniPhase:
   private def aggregateAnnotations(annotations: Seq[Annotation])(using Context): List[Annotation] =
     val annsByType = annotations.groupBy(_.symbol)
     annsByType.flatMap {
-      case (_, a :: Nil) => Some(a)
-      case (sym, anns) =>
+      case (_, a :: Nil) => a :: Nil
+      case (sym, anns) if sym.derivesFrom(defn.ClassfileAnnotationClass) =>
         sym.annotations.find(_ matches defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
           case Some(Constant(containerTpe: Type)) =>
             val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Nil)
@@ -36,13 +36,14 @@ class RepeatableAnnotations extends MiniPhase:
               // this is the same error javac would raise in this case
               val pos = clashingAnns.map(_.tree.srcPos).minBy(_.line)
               report.error("Container must not be present at the same time as the element it contains", pos)
-              None
+              Nil
             else
               val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
-              Some(Annotation(containerTpe, NamedArg("value".toTermName, aggregated)))
+              Annotation(containerTpe, NamedArg("value".toTermName, aggregated)) :: Nil
           case _ =>
             val pos = anns.map(_.tree.srcPos).sortBy(_.line).apply(1)
             report.error("Not repeatable annotation repeated", pos)
-            None
+            Nil
+      case (_, anns) => anns
     }.toList
 
