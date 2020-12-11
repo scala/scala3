@@ -50,8 +50,6 @@ class ScalaPageCreator(
       JNil
     )
 
-  override def pageForClasslike(c: DClasslike): ClasslikePageNode = ???
-
   def pageForMember(c: Member): ClasslikePageNode = {
     val name =
       if c.kind == Kind.Object && c.companion.isDefined then

@@ -11,8 +11,10 @@ import org.jetbrains.dokka.model.properties.ExtraProperty
 // import java.util.Stream // TODO reproduction uncomment
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
+import java.util.Collections
 import org.jetbrains.dokka.plugability._
 import kotlin.jvm.JvmClassMappingKt.getKotlinClass
+import org.jetbrains.dokka.links._
 
 val U: kotlin.Unit = kotlin.Unit.INSTANCE
 
@@ -26,14 +28,42 @@ type JMap[K, V] = java.util.Map[K, V]
 type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
-private val emptyListInst = JList()
+private val emptyListInst = Collections.emptyList
 def JNil[A] = emptyListInst.asInstanceOf[JList[A]]
 
-private val emptyMapInst = JMap()
+private val emptyMapInst = Collections.emptyMap
 def emptyJMap[A, B] = emptyMapInst.asInstanceOf[JMap[A, B]]
 
 type DRI = org.jetbrains.dokka.links.DRI
 val topLevelDri = org.jetbrains.dokka.links.DRI.Companion.getTopLevel
+
+extension (dri: DRI)
+  def withNoOrigin = dri._copy(
+    extra = Option(dri.getExtra).fold(null)(e => raw"\[origin:(.*)\]".r.replaceAllIn(e, ""))
+  )
+
+  def location: String = dri.getPackageName
+
+  def anchor: Option[String] = Option(dri.getClassNames).filterNot(_.isEmpty)
+
+  def extra: String = dri.getExtra
+
+  def target: DriTarget = dri.getTarget
+
+  def _copy(
+    location: String = dri.location,
+    anchor: Option[String] = dri.anchor,
+    target: DriTarget = dri.target,
+    extra: String = dri.extra
+  ) = new DRI(location, anchor.getOrElse(""), null, target, extra)
+
+object DRI:
+  def apply(
+    location: String = "",
+    anchor: Option[String] = None,
+    target: DriTarget = PointingToDeclaration.INSTANCE,
+    extra: String = ""
+  ) = new DRI(location, anchor.getOrElse(""), null, target, extra)
 
 type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
 type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet

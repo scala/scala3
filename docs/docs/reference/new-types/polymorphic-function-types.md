@@ -80,7 +80,7 @@ println(e1) // Apply(Apply(Var(wrap),Var(f)),Apply(Var(wrap),Var(a)))
 ### Relationship With Type Lambdas
 
 Polymorphic function types are not to be confused with
-[_type lambdas_](new-types/type-lambdas.md).
+[_type lambdas_](type-lambdas.md).
 While the former describes the _type_ of a polymorphic _value_,
 the latter is an actual function value _at the type level_.
 

@@ -7,7 +7,7 @@ import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.plugability._
 import collection.JavaConverters._
-import dotty.dokka.model.api.withNoOrigin
+import dotty.dokka.withNoOrigin
 
 object ScalaPackageListService:
   val DOKKA_PARAM_PREFIX = "$dokka"

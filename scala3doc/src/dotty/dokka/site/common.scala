@@ -23,8 +23,8 @@ import org.jetbrains.dokka.pages._
 
 import scala.collection.JavaConverters._
 
-val docsRootDRI: DRI = DRI(location = "_.index.md")
-val docsDRI: DRI = DRI(location = "_.docs/index.md")
+val docsRootDRI: DRI = DRI(location = "index.md")
+val docsDRI: DRI = DRI(location = "docs.index.md")
 val apiPageDRI: DRI = DRI(location = "api", extra = "__api__")
 
 val defaultMarkdownOptions: DataHolder =

@@ -27,32 +27,32 @@ trait ClassLikeSupport:
         else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
-        def typeArgs = classDef.getTypeParams.map(mkTypeArgument)
+    def typeArgs = classDef.getTypeParams.map(mkTypeArgument)
 
-        def parameterModifier(parameter: Symbol): String =
-          val fieldSymbol = classDef.symbol.declaredField(parameter.normalizedName)
-          def isVal = fieldSymbol.flags.is(Flags.ParamAccessor) &&
-            !classDef.symbol.flags.is(Flags.Case) &&
-            !fieldSymbol.flags.is(Flags.Private)
+    def parameterModifier(parameter: Symbol): String =
+      val fieldSymbol = classDef.symbol.declaredField(parameter.normalizedName)
+      def isVal = fieldSymbol.flags.is(Flags.ParamAccessor) &&
+        !classDef.symbol.flags.is(Flags.Case) &&
+        !fieldSymbol.flags.is(Flags.Private)
 
-          if fieldSymbol.flags.is(Flags.Mutable) then "var "
-          else if isVal then "val "
-          else ""
+      if fieldSymbol.flags.is(Flags.Mutable) then "var "
+      else if isVal then "val "
+      else ""
 
-        def args = if constructorWithoutParamLists(classDef) then Nil else
-          val constr =
-            Some(classDef.constructor.symbol)
-              .filter(s => s.exists && !s.isHiddenByVisibility)
-              .map( _.tree.asInstanceOf[DefDef])
-          constr.fold(Nil)(
-            _.paramss.map(_.map(mkParameter(_, parameterModifier)))
-            )
+    def args = if constructorWithoutParamLists(classDef) then Nil else
+      val constr =
+        Some(classDef.constructor.symbol)
+          .filter(s => s.exists && !s.isHiddenByVisibility)
+          .map( _.tree.asInstanceOf[DefDef])
+      constr.fold(Nil)(
+        _.paramss.map(_.map(mkParameter(_, parameterModifier)))
+        )
 
-        if classDef.symbol.flags.is(Flags.Module) then Kind.Object
-        else if classDef.symbol.flags.is(Flags.Trait) then
-          Kind.Trait(typeArgs, args)
-        else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum
-        else Kind.Class(typeArgs, args)
+    if classDef.symbol.flags.is(Flags.Module) then Kind.Object
+    else if classDef.symbol.flags.is(Flags.Trait) then
+      Kind.Trait(typeArgs, args)
+    else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum
+    else Kind.Class(typeArgs, args)
 
   def mkClass[T >: DClass](classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,

@@ -187,10 +187,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .overrideExtension(dokkaBase.getDokkaLocationProvider)
   )
 
-extension (ctx: DokkaContext)
-  def siteContext: Option[StaticSiteContext] = ctx.getConfiguration.asInstanceOf[DocContext].staticSiteContext
-  def args: Scala3doc.Args = ctx.getConfiguration.asInstanceOf[DocContext].args
-
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
 extension [T]  (builder: ExtensionBuilder[T])
   def ordered(before: Seq[Extension[_, _, _]], after: Seq[Extension[_, _, _]]): ExtensionBuilder[T] =

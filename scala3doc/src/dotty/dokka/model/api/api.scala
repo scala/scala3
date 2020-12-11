@@ -9,7 +9,6 @@ import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
 import dotty.dokka.tasty.comments.Comment
-import org.jetbrains.dokka.links._
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -181,34 +180,6 @@ extension (members: Seq[Member]) def byInheritance =
 
 extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
-
-extension (dri: DRI)
-  def withNoOrigin = dri._copy(
-    extra = Option(dri.getExtra).fold(null)(e => raw"\[origin:(.*)\]".r.replaceAllIn(e, ""))
-  )
-
-  def location: String = dri.getPackageName
-
-  def anchor: Option[String] = Option(dri.getClassNames).filterNot(_.isEmpty)
-
-  def extra: String = dri.getExtra
-
-  def target: DriTarget = dri.getTarget
-
-  def _copy(
-    location: String = dri.location,
-    anchor: Option[String] = dri.anchor,
-    target: DriTarget = dri.target,
-    extra: String = dri.extra
-  ) = new DRI(location, anchor.getOrElse(""), null, target, extra)
-
-object DRI:
-  def apply(
-    location: String = "",
-    anchor: Option[String] = None,
-    target: DriTarget = PointingToDeclaration.INSTANCE,
-    extra: String = ""
-  ) = new DRI(location, anchor.getOrElse(""), null, target, extra)
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)
 
