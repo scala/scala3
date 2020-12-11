@@ -18,21 +18,14 @@ trait BasicSupport:
     val params = annotTerm match
       case Apply(target, appliedWith) => {
         appliedWith.flatMap {
-          case Literal(constant) => Some(Annotation.PrimitiveParameter(None, constant.value match {
-            case s: String => "\"" + s"$s" + "\""
-            case other => other.toString()
-          }))
-          case NamedArg(name, Literal(constant)) => Some(Annotation.PrimitiveParameter(Some(name), constant.value match
-            case s: String => "\"" + s"$s" + "\""
-            case other => other.toString()
-          ))
+          case Literal(constant) => Some(Annotation.PrimitiveParameter(None, constant.show))
+          case NamedArg(name, Literal(constant)) => Some(Annotation.PrimitiveParameter(Some(name), constant.show))
           case x @ Select(qual, name) => None
           case other => Some(Annotation.UnresolvedParameter(None, other.show))
         }
       }
 
     Annotation(dri, params)
-
 
   extension (sym: Symbol)
     def documentation = sym.docstring match

@@ -84,10 +84,7 @@ trait TypesSupport:
       case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)
       case ByNameType(tpe) => text("=> ") :: inner(tpe)
       case ConstantType(constant) =>
-        texts(constant.value match
-          case c: Char => s"'$c'"
-          case other => other.toString
-        )
+        texts(constant.show)
       case ThisType(tpe) => inner(tpe)
       case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
         inner(tpe) :+ text("*")
