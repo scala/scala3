@@ -175,6 +175,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- LambdaType -+- MethodOrPoly -+- MethodType
    *               |              |                +- PolyType
    *               |              +- TypeLambda
+   *               +- MatchCase
    *               +- TypeBounds
    *               +- NoPrefix
    *
@@ -2687,6 +2688,40 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def paramBounds: List[TypeBounds]
       end extension
     end TypeLambdaMethods
+
+    /** Case of a `MatchType` containing pattern `case P => R`.
+     *
+     *  Note: cases with type bindings are represented nested in a `TypeLambda`.
+     */
+    type MatchCase <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `MatchCase` */
+    given MatchCaseTypeTest: TypeTest[TypeRepr, MatchCase]
+
+    /** Module object of `type MatchCase`  */
+    val MatchCase: MatchCaseModule
+
+    /** Methods of the module object `val MatchCase` */
+    trait MatchCaseModule { this: MatchCase.type =>
+      /* Create match type case `case <pattern> => <rhs>` */
+      def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase
+      /* Matches a match type case `case <pattern> => <rhs>` */
+      def unapply(x: MatchCase): (TypeRepr, TypeRepr)
+    }
+
+    /** Makes extension methods on `MatchCase` available without any imports */
+    given MatchCaseMethods: MatchCaseMethods
+
+    /** Extension methods of `MatchCase` */
+    trait MatchCaseMethods:
+      extension (self: MatchCase)
+        /** Pattern `P` of `case P => R` in a `MatchType` */
+        def pattern: TypeRepr
+        /** RHS `R` of `case P => R` in a `MatchType` */
+        def rhs: TypeRepr
+      end extension
+    end MatchCaseMethods
+
 
     // ----- TypeBounds -----------------------------------------------
 

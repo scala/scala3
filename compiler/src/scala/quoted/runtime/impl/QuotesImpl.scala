@@ -1760,7 +1760,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedTypeTypeTest extends TypeTest[TypeRepr, AppliedType]:
       def unapply(x: TypeRepr): Option[AppliedType & x.type] = x match
-        case tpe: (Types.AppliedType & x.type) => Some(tpe)
+        case tpe: (Types.AppliedType & x.type) if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(tpe)
         case _ => None
     end AppliedTypeTypeTest
 
@@ -2050,6 +2050,27 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def paramBounds: List[TypeBounds] = self.paramInfos
       end extension
     end TypeLambdaMethods
+
+    type MatchCase = dotc.core.Types.AppliedType
+
+    given MatchCaseTypeTest: TypeTest[TypeRepr, MatchCase] with
+      def unapply(x: TypeRepr): Option[MatchCase & x.type] = x match
+        case x: (Types.AppliedType & x.type) if x.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(x)
+        case _ => None
+    end MatchCaseTypeTest
+
+    object MatchCase extends MatchCaseModule:
+      def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase =
+        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, List(pattern, rhs))
+      def unapply(x: MatchCase): (TypeRepr, TypeRepr) = (x.pattern, x.rhs)
+    end MatchCase
+
+    given MatchCaseMethods: MatchCaseMethods with
+      extension (self: MatchCase)
+        def pattern: TypeRepr = self.args(0)
+        def rhs: TypeRepr = self.args(1)
+      end extension
+    end MatchCaseMethods
 
     type TypeBounds = dotc.core.Types.TypeBounds
 

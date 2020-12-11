@@ -240,7 +240,9 @@ trait TypesSupport:
 
       case MatchType(bond, sc, cases) =>
         val casesTexts = cases.flatMap {
-          case MatchTypeCase(from, to) =>
+          case MatchCase(from, to) =>
+            texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
+          case TypeLambda(_, _, MatchCase(from, to)) =>
             texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
         }
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
