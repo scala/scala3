@@ -59,7 +59,7 @@ abstract class MacroStringInterpolator[T] {
     strCtxExpr.asTerm.underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
-          case Literal(Constant.String(str)) => str
+          case Literal(StringConstant(str)) => str
           case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
         }
         StringContext(strCtxArgs: _*)

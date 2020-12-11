@@ -21,63 +21,63 @@ object ToExpr {
   given BooleanToExpr[T <: Boolean]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Boolean(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(BooleanConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Byte]` */
   given ByteToExpr[T <: Byte]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Byte(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(ByteConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Short]` */
   given ShortToExpr[T <: Short]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Short(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(ShortConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Int]` */
   given IntToExpr[T <: Int]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Int(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(IntConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Long]` */
   given LongToExpr[T <: Long]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Long(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(LongConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Float]` */
   given FloatToExpr[T <: Float]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Float(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(FloatConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Double]` */
   given DoubleToExpr[T <: Double]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Double(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(DoubleConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Char]` */
   given CharToExpr[T <: Char]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.Char(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(CharConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[String]` */
   given StringToExpr[T <: String]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
       import quotes.reflect._
-      Literal(Constant.String(x)).asExpr.asInstanceOf[Expr[T]]
+      Literal(StringConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
   /** Default implemetation of `ToExpr[Class[T]]` */

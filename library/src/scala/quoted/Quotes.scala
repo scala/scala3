@@ -189,8 +189,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *
    *  +- SourceFile
    *
-   *  +- Constant
-   *
+   *  +- Constant -+- BooleanConstant
+   *               +- ByteConstant
+   *               +- ShortConstant
+   *               +- IntConstant
+   *               +- LongConstant
+   *               +- FloatConstant
+   *               +- DoubleConstant
+   *               +- CharConstant
+   *               +- StringConstant
+   *               +- UnitConstant
+   *               +- NullConstant
+   *               +- ClassOfConstant
    *  +- Symbol
    *
    *  +- Flags
@@ -2732,152 +2742,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Constant value represented as the constant itself */
     type Constant <: AnyRef
 
-    /** Constant value represented as the constant itself
-     *
-     * Usage:
-     * ```
-     *   Constant.Int(3) match
-     *     case Constant.Int(n) =>
-     * ```
-     */
+    /** Constant value represented as the constant itself */
     val Constant: ConstantModule
 
     /** Constant value represented as the constant itself */
-    trait ConstantModule { this: Constant.type =>
-
-      /** Constant Boolean value */
-      val Boolean: BooleanModule
-
-      /** Methods of the module object `val Boolean` */
-      trait BooleanModule { this: Boolean.type =>
-        /** Create a constant Boolean value */
-        def apply(x: Boolean): Constant
-        /** Match Boolean value constant and extract its value */
-        def unapply(constant: Constant): Option[Boolean]
-      }
-
-      /** Constant Byte value */
-      val Byte: ByteModule
-
-      /** Methods of the module object `val Byte` */
-      trait ByteModule { this: Byte.type =>
-        /** Create a constant Byte value */
-        def apply(x: Byte): Constant
-        /** Match Byte value constant and extract its value */
-        def unapply(constant: Constant): Option[Byte]
-      }
-
-      /** Constant Short value */
-      val Short: ShortModule
-
-      /** Methods of the module object `val Short` */
-      trait ShortModule { this: Short.type =>
-        /** Create a constant Short value */
-        def apply(x: Short): Constant
-        /** Match Short value constant and extract its value */
-        def unapply(constant: Constant): Option[Short]
-      }
-
-      /** Constant Int value */
-      val Int: IntModule
-
-      /** Methods of the module object `val Int` */
-      trait IntModule { this: Int.type =>
-        /** Create a constant Int value */
-        def apply(x: Int): Constant
-        /** Match Int value constant and extract its value */
-        def unapply(constant: Constant): Option[Int]
-      }
-
-      /** Constant Long value */
-      val Long: LongModule
-
-      /** Methods of the module object `val Long` */
-      trait LongModule { this: Long.type =>
-        /** Create a constant Long value */
-        def apply(x: Long): Constant
-        /** Match Long value constant and extract its value */
-        def unapply(constant: Constant): Option[Long]
-      }
-
-      /** Constant Float value */
-      val Float: FloatModule
-
-      /** Methods of the module object `val Float` */
-      trait FloatModule { this: Float.type =>
-        /** Create a constant Float value */
-        def apply(x: Float): Constant
-        /** Match Float value constant and extract its value */
-        def unapply(constant: Constant): Option[Float]
-      }
-
-      /** Constant Double value */
-      val Double: DoubleModule
-
-      /** Methods of the module object `val Double` */
-      trait DoubleModule { this: Double.type =>
-        /** Create a constant Double value */
-        def apply(x: Double): Constant
-        /** Match Double value constant and extract its value */
-        def unapply(constant: Constant): Option[Double]
-      }
-
-      /** Constant Char value */
-      val Char: CharModule
-
-      /** Methods of the module object `val Char` */
-      trait CharModule { this: Char.type =>
-        /** Create a constant Char value */
-        def apply(x: Char): Constant
-        /** Match Char value constant and extract its value */
-        def unapply(constant: Constant): Option[Char]
-      }
-
-      /** Constant String value */
-      val String: StringModule
-
-      /** Methods of the module object `val String` */
-      trait StringModule { this: String.type =>
-        /** Create a constant String value */
-        def apply(x: String): Constant
-        /** Match String value constant and extract its value */
-        def unapply(constant: Constant): Option[String]
-      }
-
-      /** Constant Unit value */
-      val Unit: UnitModule
-
-      /** Methods of the module object `val Unit` */
-      trait UnitModule { this: Unit.type =>
-        /** Create a constant Unit value */
-        def apply(): Constant
-        /** Match Unit value constant */
-        def unapply(constant: Constant): Boolean
-      }
-
-      /** Constant null value */
-      val Null: NullModule
-
-      /** Methods of the module object `val Null` */
-      trait NullModule { this: Null.type =>
-        /** Create a constant null value */
-        def apply(): Constant
-        /** Match null value constant */
-        def unapply(constant: Constant): Boolean
-      }
-
-      /** Constant class value representing a `classOf[T]` */
-      val ClassOf: ClassOfModule
-
-      /** Methods of the module object `val ClassOf` */
-      trait ClassOfModule { this: ClassOf.type =>
-        /** Create a constant class value representing `classOf[<tpe>]` */
-        def apply(tpe: TypeRepr): Constant
-        /** Match a class value constant representing `classOf[<tpe>]` and extract its type */
-        def unapply(constant: Constant): Option[TypeRepr]
-      }
-
-    }
+    trait ConstantModule { this: Constant.type => }
 
     /** Makes extension methods on `Constant` available without any imports */
     given ConstantMethods: ConstantMethods
@@ -2890,8 +2759,211 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Shows the constant as a String */
         def show: String
-
       end extension
+    }
+
+    /** Constant Boolean value */
+    type BooleanConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `BooleanConstant` */
+    given BooleanConstantTypeTest: TypeTest[Constant, BooleanConstant]
+
+    /** Module object of `type BooleanConstant` */
+    val BooleanConstant: BooleanConstantModule
+
+    /** Methods of the module object `val BooleanConstant` */
+    trait BooleanConstantModule { this: BooleanConstant.type =>
+      /** Create a constant Boolean value */
+      def apply(x: Boolean): BooleanConstant
+      /** Match Boolean value constant and extract its value */
+      def unapply(constant: BooleanConstant): Some[Boolean]
+    }
+
+    /** Constant Byte value */
+    type ByteConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ByteConstant` */
+    given ByteConstantTypeTest: TypeTest[Constant, ByteConstant]
+
+    /** Module object of `type ByteConstant` */
+    val ByteConstant: ByteConstantModule
+
+    /** Methods of the module object `val ByteConstant` */
+    trait ByteConstantModule { this: ByteConstant.type =>
+      /** Create a constant Byte value */
+      def apply(x: Byte): ByteConstant
+      /** Match Byte value constant and extract its value */
+      def unapply(constant: ByteConstant): Some[Byte]
+    }
+
+    /** Constant Short value */
+    type ShortConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ShortConstant` */
+    given ShortConstantTypeTest: TypeTest[Constant, ShortConstant]
+
+    /** Module object of `type ShortConstant` */
+    val ShortConstant: ShortConstantModule
+
+    /** Methods of the module object `val Short` */
+    trait ShortConstantModule { this: ShortConstant.type =>
+      /** Create a constant Short value */
+      def apply(x: Short): ShortConstant
+      /** Match Short value constant and extract its value */
+      def unapply(constant: ShortConstant): Some[Short]
+    }
+
+    /** Constant Int value */
+    type IntConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `IntConstant` */
+    given IntConstantTypeTest: TypeTest[Constant, IntConstant]
+
+    /** Module object of `type IntConstant` */
+    val IntConstant: IntConstantModule
+
+    /** Methods of the module object `val IntConstant` */
+    trait IntConstantModule { this: IntConstant.type =>
+      /** Create a constant Int value */
+      def apply(x: Int): IntConstant
+      /** Match Int value constant and extract its value */
+      def unapply(constant: IntConstant): Some[Int]
+    }
+
+    /** Constant Long value */
+    type LongConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `LongConstant` */
+    given LongConstantTypeTest: TypeTest[Constant, LongConstant]
+
+    /** Module object of `type LongConstant` */
+    val LongConstant: LongConstantModule
+
+    /** Methods of the module object `val LongConstant` */
+    trait LongConstantModule { this: LongConstant.type =>
+      /** Create a constant Long value */
+      def apply(x: Long): LongConstant
+      /** Match Long value constant and extract its value */
+      def unapply(constant: LongConstant): Some[Long]
+    }
+
+    /** Constant Float value */
+    type FloatConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `FloatConstant` */
+    given FloatConstantTypeTest: TypeTest[Constant, FloatConstant]
+
+    /** Module object of `type FloatConstant` */
+    val FloatConstant: FloatConstantModule
+
+    /** Methods of the module object `val FloatConstant` */
+    trait FloatConstantModule { this: FloatConstant.type =>
+      /** Create a constant Float value */
+      def apply(x: Float): FloatConstant
+      /** Match Float value constant and extract its value */
+      def unapply(constant: FloatConstant): Some[Float]
+    }
+
+    /** Constant Double value */
+    type DoubleConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `DoubleConstant` */
+    given DoubleConstantTypeTest: TypeTest[Constant, DoubleConstant]
+
+    /** Module object of `type DoubleConstant` */
+    val DoubleConstant: DoubleConstantModule
+
+    /** Methods of the module object `val DoubleConstant` */
+    trait DoubleConstantModule { this: DoubleConstant.type =>
+      /** Create a constant Double value */
+      def apply(x: Double): DoubleConstant
+      /** Match Double value constant and extract its value */
+      def unapply(constant: DoubleConstant): Some[Double]
+    }
+
+    /** Constant Char value */
+    type CharConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `CharConstant` */
+    given CharConstantTypeTest: TypeTest[Constant, CharConstant]
+
+    /** Module object of `type CharConstant` */
+    val CharConstant: CharConstantModule
+
+    /** Methods of the module object `val CharConstant` */
+    trait CharConstantModule { this: CharConstant.type =>
+      /** Create a constant Char value */
+      def apply(x: Char): CharConstant
+      /** Match Char value constant and extract its value */
+      def unapply(constant: CharConstant): Some[Char]
+    }
+
+    /** Constant String value */
+    type StringConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `StringConstant` */
+    given StringConstantTypeTest: TypeTest[Constant, StringConstant]
+
+    /** Module object of `type StringConstant` */
+    val StringConstant: StringConstantModule
+
+    /** Methods of the module object `val StringConstant` */
+    trait StringConstantModule { this: StringConstant.type =>
+      /** Create a constant String value */
+      def apply(x: String): StringConstant
+      /** Match String value constant and extract its value */
+      def unapply(constant: StringConstant): Some[String]
+    }
+
+    /** Constant Unit value */
+    type UnitConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `UnitConstant` */
+    given UnitConstantTypeTest: TypeTest[Constant, UnitConstant]
+
+    /** Module object of `type UnitConstant` */
+    val UnitConstant: UnitConstantModule
+
+    /** Methods of the module object `val UnitConstant` */
+    trait UnitConstantModule { this: UnitConstant.type =>
+      /** Create a constant Unit value */
+      def apply(): UnitConstant
+      /** Match Unit value constant */
+      def unapply(constant: UnitConstant): true
+    }
+
+    /** Constant null value */
+    type NullConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `NullConstant` */
+    given NullConstantTypeTest: TypeTest[Constant, NullConstant]
+
+    /** Module object of `type NullConstant` */
+    val NullConstant: NullConstantModule
+
+    /** Methods of the module object `val NullConstant` */
+    trait NullConstantModule { this: NullConstant.type =>
+      /** Create a constant null value */
+      def apply(): NullConstant
+      /** Match null value constant */
+      def unapply(constant: NullConstant): Boolean
+    }
+
+    /** Constant class value representing a `classOf[T]` */
+    type ClassOfConstant <: Constant
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Constant` is a `ClassOfConstant` */
+    given ClassOfConstantTypeTest: TypeTest[Constant, ClassOfConstant]
+
+    /** Module object of `type ClassOfConstant` */
+    val ClassOfConstant: ClassOfConstantModule
+
+    /** Methods of the module object `val ClassOf` */
+    trait ClassOfConstantModule { this: ClassOfConstant.type =>
+      /** Create a constant class value representing `classOf[<tpe>]` */
+      def apply(tpe: TypeRepr): ClassOfConstant
+      /** Match a class value constant representing `classOf[<tpe>]` and extract its type */
+      def unapply(constant: ClassOfConstant): Option[TypeRepr]
     }
 
     /////////////////////

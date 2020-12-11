@@ -2087,93 +2087,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     type Constant = dotc.core.Constants.Constant
 
-    object Constant extends ConstantModule:
-
-      object Boolean extends BooleanModule:
-        def apply(x: Boolean): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Boolean] =
-          if constant.tag == dotc.core.Constants.BooleanTag then Some(constant.booleanValue)
-          else None
-      end Boolean
-
-      object Byte extends ByteModule:
-        def apply(x: Byte): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Byte] =
-          if constant.tag == dotc.core.Constants.ByteTag then Some(constant.byteValue)
-          else None
-      end Byte
-
-      object Short extends ShortModule:
-        def apply(x: Short): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Short] =
-          if constant.tag == dotc.core.Constants.ShortTag then Some(constant.shortValue)
-          else None
-      end Short
-
-      object Int extends IntModule:
-        def apply(x: Int): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Int] =
-          if constant.tag == dotc.core.Constants.IntTag then Some(constant.intValue)
-          else None
-      end Int
-
-      object Long extends LongModule:
-        def apply(x: Long): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Long] =
-          if constant.tag == dotc.core.Constants.LongTag then Some(constant.longValue)
-          else None
-      end Long
-
-      object Float extends FloatModule:
-        def apply(x: Float): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Float] =
-          if constant.tag == dotc.core.Constants.FloatTag then Some(constant.floatValue)
-          else None
-      end Float
-
-      object Double extends DoubleModule:
-        def apply(x: Double): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Double] =
-          if constant.tag == dotc.core.Constants.DoubleTag then Some(constant.doubleValue)
-          else None
-      end Double
-
-      object Char extends CharModule:
-        def apply(x: Char): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Char] =
-          if constant.tag == dotc.core.Constants.CharTag then Some(constant.charValue)
-          else None
-      end Char
-
-      object String extends StringModule:
-        def apply(x: String): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[String] =
-          if constant.tag == dotc.core.Constants.StringTag then Some(constant.stringValue)
-          else None
-      end String
-
-      object Unit extends UnitModule:
-        def apply(): Constant = dotc.core.Constants.Constant(())
-        def unapply(constant: Constant): Boolean =
-          constant.tag == dotc.core.Constants.UnitTag
-      end Unit
-
-      object Null extends NullModule:
-        def apply(): Constant = dotc.core.Constants.Constant(null)
-        def unapply(constant: Constant): Boolean =
-          constant.tag == dotc.core.Constants.NullTag
-      end Null
-
-      object ClassOf extends ClassOfModule:
-        def apply(x: TypeRepr): Constant =
-          // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
-          dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[TypeRepr] =
-          if constant.tag == dotc.core.Constants.ClazzTag then Some(constant.typeValue)
-          else None
-      end ClassOf
-
-    end Constant
+    object Constant extends ConstantModule
 
     given ConstantMethods: ConstantMethods with
       extension (self: Constant)
@@ -2181,6 +2095,152 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def show: String = Extractors.showConstant(using QuotesImpl.this)(self)
       end extension
     end ConstantMethods
+
+    type BooleanConstant = dotc.core.Constants.Constant
+
+    object BooleanConstantTypeTest extends TypeTest[Constant, BooleanConstant]:
+      def unapply(x: Constant): Option[BooleanConstant & x.type] =
+        if x.tag == dotc.core.Constants.BooleanTag then Some(x.asInstanceOf[BooleanConstant & x.type]) else None
+    end BooleanConstantTypeTest
+
+    object BooleanConstant extends BooleanConstantModule:
+      def apply(x: Boolean): BooleanConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: BooleanConstant): Some[Boolean] = Some(constant.booleanValue)
+    end BooleanConstant
+
+    type ByteConstant = dotc.core.Constants.Constant
+
+    object ByteConstantTypeTest extends TypeTest[Constant, ByteConstant]:
+      def unapply(x: Constant): Option[ByteConstant & x.type] =
+        if x.tag == dotc.core.Constants.ByteTag then Some(x.asInstanceOf[ByteConstant & x.type]) else None
+    end ByteConstantTypeTest
+
+    object ByteConstant extends ByteConstantModule:
+      def apply(x: Byte): ByteConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: ByteConstant): Some[Byte] = Some(constant.byteValue)
+    end ByteConstant
+
+    type ShortConstant = dotc.core.Constants.Constant
+
+    object ShortConstantTypeTest extends TypeTest[Constant, ShortConstant]:
+      def unapply(x: Constant): Option[ShortConstant & x.type] =
+        if x.tag == dotc.core.Constants.ShortTag then Some(x.asInstanceOf[ShortConstant & x.type]) else None
+    end ShortConstantTypeTest
+
+    object ShortConstant extends ShortConstantModule:
+      def apply(x: Short): ShortConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: ShortConstant): Some[Short] = Some(constant.shortValue)
+    end ShortConstant
+
+    type IntConstant = dotc.core.Constants.Constant
+
+    object IntConstantTypeTest extends TypeTest[Constant, IntConstant]:
+      def unapply(x: Constant): Option[IntConstant & x.type] =
+        if x.tag == dotc.core.Constants.IntTag then Some(x.asInstanceOf[IntConstant & x.type]) else None
+    end IntConstantTypeTest
+
+    object IntConstant extends IntConstantModule:
+      def apply(x: Int): IntConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: IntConstant): Some[Int] = Some(constant.intValue)
+    end IntConstant
+
+    type LongConstant = dotc.core.Constants.Constant
+
+    object LongConstantTypeTest extends TypeTest[Constant, LongConstant]:
+      def unapply(x: Constant): Option[LongConstant & x.type] =
+        if x.tag == dotc.core.Constants.LongTag then Some(x.asInstanceOf[LongConstant & x.type]) else None
+    end LongConstantTypeTest
+
+    object LongConstant extends LongConstantModule:
+      def apply(x: Long): LongConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: LongConstant): Some[Long] = Some(constant.longValue)
+    end LongConstant
+
+    type FloatConstant = dotc.core.Constants.Constant
+
+    object FloatConstantTypeTest extends TypeTest[Constant, FloatConstant]:
+      def unapply(x: Constant): Option[FloatConstant & x.type] =
+        if x.tag == dotc.core.Constants.FloatTag then Some(x.asInstanceOf[FloatConstant & x.type]) else None
+    end FloatConstantTypeTest
+
+    object FloatConstant extends FloatConstantModule:
+      def apply(x: Float): FloatConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: FloatConstant): Some[Float] = Some(constant.floatValue)
+    end FloatConstant
+
+    type DoubleConstant = dotc.core.Constants.Constant
+
+    object DoubleConstantTypeTest extends TypeTest[Constant, DoubleConstant]:
+      def unapply(x: Constant): Option[DoubleConstant & x.type] =
+        if x.tag == dotc.core.Constants.DoubleTag then Some(x.asInstanceOf[DoubleConstant & x.type]) else None
+    end DoubleConstantTypeTest
+
+    object DoubleConstant extends DoubleConstantModule:
+      def apply(x: Double): DoubleConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: DoubleConstant): Some[Double] = Some(constant.doubleValue)
+    end DoubleConstant
+
+    type CharConstant = dotc.core.Constants.Constant
+
+    object CharConstantTypeTest extends TypeTest[Constant, CharConstant]:
+      def unapply(x: Constant): Option[CharConstant & x.type] =
+        if x.tag == dotc.core.Constants.CharTag then Some(x.asInstanceOf[CharConstant & x.type]) else None
+    end CharConstantTypeTest
+
+    object CharConstant extends CharConstantModule:
+      def apply(x: Char): CharConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: CharConstant): Some[Char] = Some(constant.charValue)
+    end CharConstant
+
+    type StringConstant = dotc.core.Constants.Constant
+
+    object StringConstantTypeTest extends TypeTest[Constant, StringConstant]:
+      def unapply(x: Constant): Option[StringConstant & x.type] =
+        if x.tag == dotc.core.Constants.StringTag then Some(x.asInstanceOf[StringConstant & x.type]) else None
+    end StringConstantTypeTest
+
+    object StringConstant extends StringConstantModule:
+      def apply(x: String): StringConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: StringConstant): Some[String] = Some(constant.stringValue)
+    end StringConstant
+
+    type UnitConstant = dotc.core.Constants.Constant
+
+    object UnitConstantTypeTest extends TypeTest[Constant, UnitConstant]:
+      def unapply(x: Constant): Option[UnitConstant & x.type] =
+        if x.tag == dotc.core.Constants.UnitTag then Some(x.asInstanceOf[UnitConstant & x.type]) else None
+    end UnitConstantTypeTest
+
+    object UnitConstant extends UnitConstantModule:
+      def apply(): UnitConstant = dotc.core.Constants.Constant(())
+      def unapply(constant: UnitConstant): true = true
+    end UnitConstant
+
+    type NullConstant = dotc.core.Constants.Constant
+
+    object NullConstantTypeTest extends TypeTest[Constant, NullConstant]:
+      def unapply(x: Constant): Option[NullConstant & x.type] =
+        if x.tag == dotc.core.Constants.NullTag then Some(x.asInstanceOf[NullConstant & x.type]) else None
+    end NullConstantTypeTest
+
+    object NullConstant extends NullConstantModule:
+      def apply(): NullConstant = dotc.core.Constants.Constant(null)
+      def unapply(constant: NullConstant): true = true
+    end NullConstant
+
+    type ClassOfConstant = dotc.core.Constants.Constant
+
+    object ClassOfConstantTypeTest extends TypeTest[Constant, ClassOfConstant]:
+      def unapply(x: Constant): Option[ClassOfConstant & x.type] =
+        if x.tag == dotc.core.Constants.ClazzTag then Some(x.asInstanceOf[ClassOfConstant & x.type]) else None
+    end ClassOfConstantTypeTest
+
+    object ClassOfConstant extends ClassOfConstantModule:
+      def apply(x: TypeRepr): ClassOfConstant =
+        // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
+        dotc.core.Constants.Constant(x)
+      def unapply(constant: ClassOfConstant): Some[TypeRepr] = Some(constant.typeValue)
+    end ClassOfConstant
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =

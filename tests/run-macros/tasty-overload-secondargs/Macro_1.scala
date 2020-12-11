@@ -27,7 +27,7 @@ object Macro:
        val returnType = TypeRepr.of[(S) => ?]
        val firstPart = Select.overloaded(fun,"andThen",
                                  List(TypeIdent(defn.IntClass).tpe, TypeIdent(defn.IntClass).tpe),
-                                 List(Literal(Constant.Int(1))),
+                                 List(Literal(IntConstant(1))),
                                  TypeRepr.of[(S) => R]
                        )
        val r = Apply(firstPart,List(x.asTerm))

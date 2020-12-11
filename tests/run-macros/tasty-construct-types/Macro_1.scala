@@ -13,9 +13,9 @@ object Macros {
   def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
     import quotes.reflect._
 
-    val x1T = ConstantType(Constant.Int(1))
-    val x2T = OrType(ConstantType(Constant.Int(1)), ConstantType(Constant.Int(2)))
-    val x3T = AndType(ConstantType(Constant.Int(3)), TypeRepr.of[Any])
+    val x1T = ConstantType(IntConstant(1))
+    val x2T = OrType(ConstantType(IntConstant(1)), ConstantType(IntConstant(2)))
+    val x3T = AndType(ConstantType(IntConstant(3)), TypeRepr.of[Any])
     val x4T =
       TypeLambda(
         List("A","B"),
@@ -27,7 +27,7 @@ object Macros {
         "T",
         TypeBounds(TypeRepr.of[Int], TypeRepr.of[Int]))
     val x6T = TypeRepr.of[List].appliedTo(List(TypeRepr.of[Int]))
-    val x7T = AnnotatedType(ConstantType(Constant.Int(7)), '{ new TestAnnotation }.asTerm)
+    val x7T = AnnotatedType(ConstantType(IntConstant(7)), '{ new TestAnnotation }.asTerm)
     val x8T =
       MatchType(
         TypeRepr.of[Int],
