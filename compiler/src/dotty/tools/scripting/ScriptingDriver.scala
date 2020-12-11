@@ -59,13 +59,11 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
         yield membersMainMethod
       else if target.getName.endsWith(".class") then
         val cls = cl.loadClass(targetPath)
-        val method =
-          try cls.getMethod("main", classOf[Array[String]])
-          catch
-            case _: java.lang.NoSuchMethodException => null
-
-        if method != null && Modifier.isStatic(method.getModifiers) then List(method)
-        else Nil
+        try
+          val method = cls.getMethod("main", classOf[Array[String]])
+          if Modifier.isStatic(method.getModifiers) then List(method) else Nil
+        catch
+          case _: java.lang.NoSuchMethodException => Nil
       else Nil
     end collectMainMethods
 
