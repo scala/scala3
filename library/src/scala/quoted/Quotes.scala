@@ -2758,7 +2758,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def value: Any
 
         /** Shows the constant as a String */
-        def show: String
+        def show(using Printer[Constant]): String
+
       end extension
     }
 
@@ -4113,6 +4114,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Default pinter for `TypeRepr` used when calling `tpe.show` */
     given TypeReprPrinter: Printer[TypeRepr] = Printer.TypeReprCode
 
+    /** Default pinter for `Constant` used when calling `const.show` */
+    given ConstantPrinter: Printer[Constant] = Printer.ConstantCode
+
     /** Module object of `type Printer`.
      *  Contains custom printers such as `TreeCode`, `TreeAnsiCode`, `TreeCases`, `TypeReprCode`, ..., `SymbolFullName` and `FlagsCombination`.
      */
@@ -4152,6 +4156,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def TypeReprStructure: Printer[TypeRepr]
 
+      /** Prints the constant in source code. */
+      def ConstantCode: Printer[Constant]
+
+      /** Prints a pattern like representation of the `Constant`. */
+      def ConstantStructure: Printer[Constant]
     }
 
   }
