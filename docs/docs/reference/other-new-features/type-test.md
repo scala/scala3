@@ -6,8 +6,8 @@ title: "TypeTest"
 TypeTest
 --------
 
-When pattern matching there are two situations where were a runtime type test must be performed.
-The first is kind is an explicit type test using the ascription pattern notation.
+When pattern matching there are two situations where a runtime type test must be performed.
+The first kind is an explicit type test using the ascription pattern notation.
 ```scala
 (x: X) match
   case y: Y =>
