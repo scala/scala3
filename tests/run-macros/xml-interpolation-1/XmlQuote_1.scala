@@ -46,7 +46,7 @@ object XmlQuote {
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant.String(value)) => value }
+        values.collect { case Literal(StringConstant(value)) => value }
       case tree =>
         report.error(s"String literal expected, but ${tree.show(using Printer.TreeStructure)} found")
         return '{ ??? }

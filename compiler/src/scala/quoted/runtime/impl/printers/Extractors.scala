@@ -176,19 +176,19 @@ object Extractors {
     }
 
     def visitConstant(x: Constant): this.type = x match {
-      case Constant.Unit() => this += "Constant.Unit()"
-      case Constant.Null() => this += "Constant.Null()"
-      case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
-      case Constant.Byte(value) => this += "Constant.Byte(" += value += ")"
-      case Constant.Short(value) => this += "Constant.Short(" += value += ")"
-      case Constant.Int(value) => this += "Constant.Int(" += value += ")"
-      case Constant.Long(value) => this += "Constant.Long(" += value += "L)"
-      case Constant.Float(value) => this += "Constant.Float(" += value += "f)"
-      case Constant.Double(value) => this += "Constant.Double(" += value += "d)"
-      case Constant.Char(value) => this += "Constant.Char('" += value += "')"
-      case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
-      case Constant.ClassOf(value) =>
-        this += "Constant.ClassOf("
+      case UnitConstant() => this += "UnitConstant()"
+      case NullConstant() => this += "NullConstant()"
+      case BooleanConstant(value) => this += "BooleanConstant(" += value += ")"
+      case ByteConstant(value) => this += "ByteConstant(" += value += ")"
+      case ShortConstant(value) => this += "ShortConstant(" += value += ")"
+      case IntConstant(value) => this += "IntConstant(" += value += ")"
+      case LongConstant(value) => this += "LongConstant(" += value += "L)"
+      case FloatConstant(value) => this += "FloatConstant(" += value += "f)"
+      case DoubleConstant(value) => this += "DoubleConstant(" += value += "d)"
+      case CharConstant(value) => this += "CharConstant('" += value += "')"
+      case StringConstant(value) => this += "StringConstant(\"" += value += "\")"
+      case ClassOfConstant(value) =>
+        this += "ClassOfConstant("
         visitType(value) += ")"
     }
 

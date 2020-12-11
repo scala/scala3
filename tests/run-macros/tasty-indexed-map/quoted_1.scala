@@ -28,7 +28,7 @@ object Index {
     import quotes.reflect._
 
     def name(tp: TypeRepr): String = tp match {
-      case ConstantType(Constant.String(str)) => str
+      case ConstantType(StringConstant(str)) => str
     }
 
     def names(tp: TypeRepr): List[String] = tp match {

@@ -291,7 +291,7 @@ object SourceCode {
 
       case While(cond, body) =>
         (cond, body) match {
-          case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(Constant.Unit())) =>
+          case (Block(Block(Nil, body1) :: Nil, Block(Nil, cond1)), Literal(UnitConstant())) =>
             this += highlightKeyword("do ")
             printTree(body1) += highlightKeyword(" while ")
             inParens(printTree(cond1))
@@ -562,7 +562,7 @@ object SourceCode {
           while (it.hasNext)
             extractFlatStats(it.next())
           extractFlatStats(expansion)
-        case Literal(Constant.Unit()) => // ignore
+        case Literal(UnitConstant()) => // ignore
         case stat => flatStats += stat
       }
       def extractFlatExpr(term: Term): Term = term match {
@@ -945,18 +945,18 @@ object SourceCode {
     inline private val qSc = '"'
 
     def printConstant(const: Constant): this.type = const match {
-      case Constant.Unit() => this += highlightLiteral("()")
-      case Constant.Null() => this += highlightLiteral("null")
-      case Constant.Boolean(v) => this += highlightLiteral(v.toString)
-      case Constant.Byte(v) => this += highlightLiteral(v.toString)
-      case Constant.Short(v) => this += highlightLiteral(v.toString)
-      case Constant.Int(v) => this += highlightLiteral(v.toString)
-      case Constant.Long(v) => this += highlightLiteral(v.toString + "L")
-      case Constant.Float(v) => this += highlightLiteral(v.toString + "f")
-      case Constant.Double(v) => this += highlightLiteral(v.toString)
-      case Constant.Char(v) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
-      case Constant.String(v) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
-      case Constant.ClassOf(v) =>
+      case UnitConstant() => this += highlightLiteral("()")
+      case NullConstant() => this += highlightLiteral("null")
+      case BooleanConstant(v) => this += highlightLiteral(v.toString)
+      case ByteConstant(v) => this += highlightLiteral(v.toString)
+      case ShortConstant(v) => this += highlightLiteral(v.toString)
+      case IntConstant(v) => this += highlightLiteral(v.toString)
+      case LongConstant(v) => this += highlightLiteral(v.toString + "L")
+      case FloatConstant(v) => this += highlightLiteral(v.toString + "f")
+      case DoubleConstant(v) => this += highlightLiteral(v.toString)
+      case CharConstant(v) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
+      case StringConstant(v) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
+      case ClassOfConstant(v) =>
         this += "classOf"
         inSquare(printType(v))
     }

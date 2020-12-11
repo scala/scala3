@@ -166,7 +166,7 @@ class PickleQuotes extends MacroTransform {
           val literalValue =
             if lit.const.tag == Constants.NullTag || lit.const.tag == Constants.UnitTag then Nil
             else List(body)
-          val constant = reflect.select("Constant".toTermName).select(typeName.toTermName).select(nme.apply).appliedToArgs(literalValue)
+          val constant = reflect.select(s"${typeName}Constant".toTermName).select(nme.apply).appliedToArgs(literalValue)
           val literal = reflect.select("Literal".toTermName).select(nme.apply).appliedTo(constant)
           reflect.select("TreeMethods".toTermName).select("asExpr".toTermName).appliedTo(literal).asInstance(exprType)
         }

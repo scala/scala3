@@ -58,7 +58,7 @@ object Macro {
     def extractTuple(tpe: TypeRepr, seen: Set[String]): (Set[String], (String, TypeRepr)) = {
       tpe match {
         // Tuple2(S, T) where S must be a constant string type
-        case AppliedType(parent, ConstantType(Constant.String(name)) :: (info: TypeRepr) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
+        case AppliedType(parent, ConstantType(StringConstant(name)) :: (info: TypeRepr) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
           if seen(name) then
             report.error(s"Repeated record name: $name", s)
           (seen + name, (name, info))

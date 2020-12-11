@@ -25,9 +25,7 @@ object Const {
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) =>
         c match
-          case Constant.Null() => None
-          case Constant.Unit() => None
-          case Constant.ClassOf(_) => None
+          case NullConstant() | UnitConstant() | ClassOfConstant(_) => None
           case _ => Some(c.value.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
       case Typed(e, _) => rec(e)

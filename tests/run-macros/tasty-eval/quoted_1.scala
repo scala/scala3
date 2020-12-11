@@ -24,10 +24,10 @@ object Macros {
           pre.termSymbol.tree match
             case t: ValDef =>
               t.tpt.tpe match {
-                case ConstantType(Constant.Int(i)) => Some(i)
+                case ConstantType(IntConstant(i)) => Some(i)
                 case _ => None
               }
-        case ConstantType(Constant.Int(i)) => Some(i)
+        case ConstantType(IntConstant(i)) => Some(i)
         case _ => None
       }
     }

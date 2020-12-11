@@ -23,7 +23,7 @@ object Macros {
       else enclosingParamList(owner.owner)
 
     def literal(value: String): Expr[String] =
-      Literal(Constant.String(value)).asExpr.asInstanceOf[Expr[String]]
+      Literal(StringConstant(value)).asExpr.asInstanceOf[Expr[String]]
     val paramss = enclosingParamList(Symbol.spliceOwner)
     val firstArg = paramss.flatten.head
     val ref = Select.unique(This(enclosingClass()), firstArg.name)
