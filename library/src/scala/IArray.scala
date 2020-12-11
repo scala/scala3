@@ -52,6 +52,18 @@ object opaques:
       // but we can use `exists` instead, which is how `ArrayOps#contains` itself is implemented:
       genericArrayOps(arr).exists(_ == elem)
 
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U]): Int =
+      genericArrayOps(arr).copyToArray(xs)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int, len: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start, len)
+
     /** Counts the number of elements in this array which satisfy a predicate */
     extension [T](arr: IArray[T]) def count(p: T => Boolean): Int =
       genericArrayOps(arr).count(p)
@@ -246,6 +258,10 @@ object opaques:
     /** Takes longest prefix of elements that satisfy a predicate. */
     extension [T](arr: IArray[T]) def takeWhile(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).takeWhile(p)
+
+    /** Returns a mutable copy of this immutable array. */
+    extension [T](arr: IArray[T]) def toArray: Array[T] =
+      arr.clone.asInstanceOf[Array[T]]
 
     /** Converts an array of pairs into an array of first elements and an array of second elements. */
     extension [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) def unzip: (IArray[U], IArray[V]) =
