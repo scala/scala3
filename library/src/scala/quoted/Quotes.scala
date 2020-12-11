@@ -3411,6 +3411,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class symbol of core class `scala.Any`. */
       def AnyClass: Symbol
 
+      /** The class symbol of core trait `scala.Matchable` */
+      def MatchableClass: Symbol
+
       /** The class symbol of core class `scala.AnyVal`. */
       def AnyValClass: Symbol
 
