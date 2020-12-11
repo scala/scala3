@@ -139,7 +139,7 @@ Export clauses are processed when the type information of the enclosing object o
     on demand.
  5. Determine the types of all parents of the class.
 
-With export clauses, the following steps are added:
+    With export clauses, the following steps are added:
 
  6. Compute the types of all paths in export clauses in a context logically
     inside the class but not considering any imports or exports in that class.
