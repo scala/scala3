@@ -34,47 +34,37 @@ class ScalaPageCreator(
 
   override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
 
-  private def updatePageNameForMember(page: PageNode, p: Member) =
-    val name = page.getName
-
-    page.modified(name, page.getChildren)
-
-  private def pagesForMembers(p: Member): Seq[PageNode] =
-    p.allMembers.filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty).collect {
-      case f: DFunction => updatePageNameForMember(pageForFunction(f), f)
-      case c: DClass => updatePageNameForMember(pageForDClass(c), c)
-    }
+  private def pagesForMembers(member: Member): JList[PageNode] =
+    val all = member
+      .membersBy(_.kind.isInstanceOf[Classlike])
+      .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
+    all.map(pageForMember(_)).asJava
 
   override def pageForPackage(p: DPackage): PackagePageNode =
-    val originalPage = super.pageForPackage(p)
-    val originalPages: Seq[PageNode] = originalPage.getChildren.asScala.toList
-    val allPage: Seq[PageNode] = originalPages ++ pagesForMembers(p)
-    originalPage.modified(p.getName, allPage.asJava)
-
-  override def pageForClasslike(c: DClasslike): ClasslikePageNode = c match {
-      case clazz: DClass => pageForDClass(clazz)
-      case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
-    }
-
-  def pageForDClass(c: DClass): ClasslikePageNode = {
-    val constructors = c.getConstructors
-
-    val ext = c.get(ClasslikeExtension)
-
-    val name = if c.kind == Kind.Object && ext.companion.isDefined then c.getName + "$" else c.getName
-
-    ClasslikePageNode(
-      name,
-      contentForClasslike(c),
-      JSet(c.getDri),
-      c,
-      (constructors.asScala.map(pageForFunction) ++
-      c.getClasslikes.asScala.map(pageForClasslike) ++
-      c.getFunctions.asScala.map(pageForFunction) ++
-      pagesForMembers(c)).asJava,
-      List.empty.asJava
+    PackagePageNode(
+      p.name,
+      contentForPackage(p),
+      JSet(p.dri),
+      p,
+      pagesForMembers(p),
+      JNil
     )
 
+  def pageForMember(c: Member): ClasslikePageNode = {
+    val name =
+      if c.kind == Kind.Object && c.companion.isDefined then
+        c.getName + "$"
+      else c.getName
+
+    // Hack, need our own page!
+    ClasslikePageNode(
+      name,
+      contentForClass(c.asInstanceOf[DClass]),
+      JSet(c.getDri),
+      c.asInstanceOf[DClass],
+      JNil,
+      JNil,
+    ).modified(name, pagesForMembers(c)) // We need override default page
   }
 
   override def pageForFunction(f: DFunction) = super.pageForFunction(f)
@@ -114,10 +104,8 @@ class ScalaPageCreator(
     contentBuilder.contentForDocumentable(p, buildBlock = buildBlock)
   }
 
-  override def contentForClasslike(c: DClasslike) = c match {
-    case d: DClass => contentForClass(d)
-    case other => throw UnsupportedOperationException("Only DClass classlike is supported.")
-  }
+  override def contentForClasslike(c: DClasslike) = throw UnsupportedOperationException(
+      s"Unable to generate DClasslike using default dokka method for $c!")
 
   def contentForClass(c: DClass) = {
     def buildBlock = (builder: DocBuilder) => builder
@@ -138,26 +126,6 @@ class ScalaPageCreator(
     contentBuilder.contentForDocumentable(c, buildBlock = buildBlock)
   }
 
-  override def contentForMember(d: Documentable) = {
-    def buildBlock = (builder: DocBuilder) => builder
-      .group(kind = ContentKind.Cover){ bd => bd.cover(d.getName)() }
-      .divergentGroup(
-        ContentDivergentGroup.GroupID("member")
-      ) { divbdr => divbdr
-        .instance(Set(d.getDri), sourceSets = d.getSourceSets.asScala.toSet) { insbdr => insbdr
-          .before(){ bbdr => bbdr
-            .contentForDescription(d)
-            .contentForComments(d)
-          }
-          .divergent(kind = ContentKind.Symbol) { dbdr => dbdr
-            .signature(d)
-          }
-        }
-      }
-    contentBuilder.contentForDocumentable(d, buildBlock = buildBlock)
-  }
-
-  override def contentForFunction(f: DFunction) = contentForMember(f)
 
   extension (b: DocBuilder)
     def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
@@ -174,208 +142,27 @@ class ScalaPageCreator(
       res
     }
 
-    def contentForComments(d: Documentable) = b
-
-    def contentForDescription(d: Documentable) = {
-      val specialTags = Set[Class[_]](classOf[Description])
-
-      type SourceSet = DokkaConfiguration$DokkaSourceSet
-
-      val tags: List[(SourceSet, TagWrapper)] =
-        d.getDocumentation.asScala.toList.flatMap( (pd, doc) => doc.getChildren.asScala.map(pd -> _).toList )
-
-      val platforms = d.getSourceSets.asScala.toSet
-
-      val description = tags.collect{ case (pd, d: Description) => (pd, d) }.drop(1).groupBy(_(0)).map( (key, value) => key -> value.map(_(1)))
-
-      /** Collect the key-value pairs from `iter` into a `Map` with a `cleanup` step,
-        * keeping the original order of the pairs.
-        */
-      def collectInMap[K, E, V](
-        iter: Iterator[(K, E)]
-      )(
-        cleanup: List[E] => V
-      ): collection.Map[K, V] = {
-        val lhm = mutable.LinkedHashMap.empty[K, ListBuffer[E]]
-        iter.foreach { case (k, e) =>
-          lhm.updateWith(k) {
-            case None => Some(ListBuffer.empty.append(e))
-            case Some(buf) =>
-              buf.append(e)
-              Some(buf)
-          }
-        }
-        lhm.iterator.map { case (key, buf) => key -> cleanup(buf.result)}.to(mutable.LinkedHashMap)
-      }
-
-      val unnamedTags: collection.Map[(SourceSet, Class[_]), List[TagWrapper]] =
-        collectInMap {
-          tags.iterator
-            .filterNot { t =>
-              t(1).isInstanceOf[NamedTagWrapper] || specialTags.contains(t(1).getClass)
-            }.map { t =>
-              (t(0), t(1).getClass) -> t(1)
-            }
-        }(cleanup = identity)
-
-      val namedTags: collection.Map[
-        String,
-        Either[
-          collection.Map[SourceSet, NamedTagWrapper],
-          collection.Map[(SourceSet, String), ScalaTagWrapper.NestedNamedTag],
-        ],
-      ] = {
-        val grouped = collectInMap {
-          tags.iterator.collect {
-            case (sourcesets, n: NamedTagWrapper) =>
-              (n.getName, n.isInstanceOf[ScalaTagWrapper.NestedNamedTag]) -> (sourcesets, n)
-          }
-        }(cleanup = identity)
-
-        grouped.iterator.map {
-          case ((name, true), values) =>
-            val groupedValues =
-              values.iterator.map {
-                case (sourcesets, t) =>
-                  val tag = t.asInstanceOf[ScalaTagWrapper.NestedNamedTag]
-                  (sourcesets, tag.subname) -> tag
-              }.to(mutable.LinkedHashMap)
-            name -> Right(groupedValues)
-          case ((name, false), values) =>
-            name -> Left(values.to(mutable.LinkedHashMap))
-        }.to(mutable.LinkedHashMap)
-      }
-
-      b.group(Set(d.getDri), styles = Set(TextStyle.Block, TableStyle.Borderless)) { bdr =>
-        val b1 = description.foldLeft(bdr){
-          case (bdr, (key, value)) => bdr
-              .group(sourceSets = Set(key)){ gbdr =>
-                value.foldLeft(gbdr) { (gbdr, tag) => gbdr
-                  .comment(tag.getRoot)
-                }
-              }
-        }
-
-        b1.table(kind = ContentKind.Comment, styles = Set(TableStyle.DescriptionList)){ tbdr =>
-          val withUnnamedTags = unnamedTags.foldLeft(tbdr){ case (bdr, (key, value) ) => bdr
-            .cell(sourceSets = Set(key(0))){ b => b
-              .text(key(1).getSimpleName, styles = Set(TextStyle.Bold))
-            }
-            .cell(sourceSets = Set(key(0))) { b => b
-              .list(value, separator = ""){ (bdr, elem) => bdr
-                .comment(elem.getRoot)
-              }
-            }
-          }
-
-          val withNamedTags = namedTags.foldLeft(withUnnamedTags){
-            case (bdr, (key, Left(value))) =>
-              value.foldLeft(bdr){ case (bdr, (sourceSets, v)) => bdr
-                .cell(sourceSets = Set(sourceSets)){ b => b
-                  .text(key)
-                }
-                .cell(sourceSets = Set(sourceSets)){ b => b
-                  .comment(v.getRoot)
-                }
-              }
-            case (bdr, (key, Right(groupedValues))) => bdr
-              .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
-                .text(key)
-              }
-              .cell(sourceSets = d.getSourceSets.asScala.toSet)(_.table(kind = ContentKind.Comment, styles = Set(TableStyle.NestedDescriptionList)){ tbdr =>
-                groupedValues.foldLeft(tbdr){ case (bdr, ((sourceSets, _), v)) => bdr
-                  .cell(sourceSets = Set(sourceSets)){ b => b
-                    .comment(v.identTag)
-                  }
-                  .cell(sourceSets = Set(sourceSets)){ b => b
-                    .comment(v.descTag)
-                  }
-                }
-              })
-          }
-
-          val withCompanion = d match {
-            case d: DClass =>
-              val ext = d.get(ClasslikeExtension)
-              val co = ext.companion
-              co.fold(withNamedTags) { co => withNamedTags
-                .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
-                  .text("Companion")
-                }
-                .cell(sourceSets = d.getSourceSets.asScala.toSet){ b => b
-                  .driLink(
-                    d.kind match {
-                      case Kind.Object => "class"
-                      case _ => "object"
-                    },
-                    co
-                  )
-                }
-              }
-            case _ => withNamedTags
-          }
-
-          val withExtensionInformation = d.kind match {
-            case Kind.Extension(on) =>
-              val sourceSets = d.getSourceSets.asScala.toSet
-              withCompanion.cell(sourceSets = sourceSets)(_.text("Extension"))
-                .cell(sourceSets = sourceSets)(_.text(s"This function is an extension on (${on.name}: ").inlineSignature(d, on.signature).text(")"))
-            case _ => withCompanion
-          }
-
-          val withSource = d match
-            case null => withExtensionInformation
-            case m: Member =>
-              ctx.sourceLinks.pathTo(m).fold(withCompanion){ link =>
-                val sourceSets = m.getSourceSets.asScala.toSet
-                withExtensionInformation.cell(sourceSets = sourceSets)(_.text("Source"))
-                  .cell(sourceSets = sourceSets)(_.resolvedLink("(source)", link))
-
-              }
-
-          d.deprecated match
-            case None => withSource
-            case Some(a) => 
-              extension (b: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) 
-                def annotationParameter(p: Option[Annotation.AnnotationParameter]): ScalaPageContentBuilder#ScalaDocumentableContentBuilder =
-                  p match
-                    case Some(Annotation.PrimitiveParameter(_, value)) => b.text(value.stripPrefix("\"").stripSuffix("\""))
-                    case Some(Annotation.LinkParameter(_, dri, text)) => b.driLink(text.stripPrefix("\"").stripSuffix("\""), dri)
-                    case Some(Annotation.UnresolvedParameter(_, value)) => b.text(value.stripPrefix("\"").stripSuffix("\""))
-                    case _ => b
-              val since = a.params.find(_.name.contains("since"))
-              val message = a.params.find(_.name.contains("message"))
-              val sourceSets = d.getSourceSets.asScala.toSet
-              withSource.cell(sourceSets = sourceSets)(_.text("Deprecated"))
-                .cell(sourceSets = sourceSets) { b =>
-                  val withPossibleSince = if (since.isDefined) b.text("(Since version ").annotationParameter(since).text(") ") else b
-                  withPossibleSince.annotationParameter(message)
-                }
-        }
-      }
-    }
+    def contentForDescription(m: Member) = b.memberInfo(m)
 
     def contentForScope(s: Documentable & WithScope & WithExtraProperties[_]) =
       def groupExtensions(extensions: Seq[Member]): Seq[DocumentableSubGroup] =
         extensions.groupBy(_.kind).map {
-          case (Kind.Extension(on), members) =>
+          case (Kind.Extension(on, _), members) =>
             val signature = Signature(s"extension (${on.name}: ") join on.signature join Signature(")")
             DocumentableSubGroup(signature, members.toSeq)
           case other => sys.error(s"unexpected value: $other")
         }.toSeq
 
-
-      val (definedMethods, inheritedMethods) = s.membersByWithInheritancePartition(_.kind == Kind.Def)
-      val (definedFields, inheritedFiles) = s.membersByWithInheritancePartition(m => m.kind == Kind.Val || m.kind == Kind.Var)
-      val (definedClasslikes, inheritedClasslikes) = s.membersByWithInheritancePartition(m => m.kind.isInstanceOf[Classlike])
-      val (definedTypes, inheritedTypes) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Type])
-      val (definedGivens, inheritedGives) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Given])
-      val (definedExtensions, inheritedExtensions) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Extension])
-      val (definedExports, inheritedExports) = s.membersByWithInheritancePartition(_.kind == Kind.Exported)
-      val (definedImplicits, inheritedImplicits) = s.membersByWithInheritancePartition(_.kind.isInstanceOf[Kind.Implicit])
+      val (definedMethods, inheritedMethods) = s.membersBy(_.kind.isInstanceOf[Kind.Def]).byInheritance
+      val (definedFields, inheritedFiles) = s.membersBy(m => m.kind == Kind.Val || m.kind == Kind.Var).byInheritance
+      val (definedClasslikes, inheritedClasslikes) = s.membersBy(m => m.kind.isInstanceOf[Classlike]).byInheritance
+      val (definedTypes, inheritedTypes) = s.membersBy(_.kind.isInstanceOf[Kind.Type]).byInheritance
+      val (definedGivens, inheritedGives) = s.membersBy(_.kind.isInstanceOf[Kind.Given]).byInheritance
+      val (definedExtensions, inheritedExtensions) = s.membersBy(_.kind.isInstanceOf[Kind.Extension]).byInheritance
+      val (definedExports, inheritedExports) = s.membersBy(_.kind.isInstanceOf[Kind.Exported]).byInheritance
+      val (definedImplicits, inheritedImplicits) = s.membersBy(_.kind.isInstanceOf[Kind.Implicit]).byInheritance
 
       b
-        .contentForComments(s)
         .documentableTab("Type members")(
           DocumentableGroup(Some("Types"), definedTypes),
           DocumentableGroup(Some("Classlikes"), definedClasslikes),
@@ -416,7 +203,7 @@ class ScalaPageCreator(
 
     def contentForConstructors(c: DClass) =
        b.documentableTab("Constructors")(
-        DocumentableGroup(None, c.getConstructors.asScala.toList)
+        DocumentableGroup(None, c.membersBy(_.kind.isInstanceOf[Kind.Constructor]))
       )
 
 

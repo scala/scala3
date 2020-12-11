@@ -6,7 +6,30 @@ import liqp.Template
 import dotty.dokka.model.api._
 import dotty.tools.dotc.core.Contexts.Context
 
-case class SourceLink(val path: Option[Path], val urlTemplate: Template)
+trait SourceLink:
+  val path: Option[Path] = None
+  def render(path: String, operation: String, line: Option[Int]): String
+
+case class PrefixedSourceLink(val myPath: Path, nested: SourceLink) extends SourceLink:
+  export nested.render
+  override val path = Some(myPath)
+
+case class TemplateSourceLink(val urlTemplate: Template) extends SourceLink:
+  override val path: Option[Path] = None
+  override def render(path: String, operation: String, line: Option[Int]): String =
+    val config = java.util.HashMap[String, Object]()
+    config.put("path", path)
+    line.foreach(l => config.put("line", l.toString))
+    config.put("operation", operation)
+
+    urlTemplate.render(config)
+
+case class WebBasedSourceLink(prefix: String, revision: String) extends SourceLink:
+  override val path: Option[Path] = None
+  override def render(path: String, operation: String, line: Option[Int]): String =
+    val action = if operation == "view" then "blob" else operation
+    val linePart = line.fold("")(l => s"#L$l")
+    s"$prefix/$action/$revision/$path$linePart"
 
 object SourceLink:
   val SubPath = "([^=]+)=(.+)".r
@@ -18,41 +41,39 @@ object SourceLink:
     "€{FILE_LINE}" -> "{{ line }}"
   )
 
-  def githubTemplate(organization: String, repo: String)(revision: String) =
-    s"""https://github.com/$organization/$repo/{{ operation | replace: "view", "blob" }}/$revision/{{ path }}#L{{ line }}""".stripMargin
+  def githubPrefix(org: String, repo: String) = s"https://github.com/$org/$repo"
 
-  def gitlabTemplate(organization: String, repo: String)(revision: String) =
-    s"""https://gitlab.com/$organization/$repo/-/{{ operation | replace: "view", "blob" }}/$revision/{{ path }}#L{{ line }}"""
+  def gitlabPrefix(org: String, repo: String) = s"https://gitlab.com/$org/$repo/-"
 
 
   private def parseLinkDefinition(s: String): Option[SourceLink] = ???
 
   def parse(string: String, revision: Option[String]): Either[String, SourceLink] =
     def asTemplate(template: String) =
-       try Right(SourceLink(None,Template.parse(template))) catch
+       try Right(TemplateSourceLink(Template.parse(template))) catch
             case e: RuntimeException =>
               Left(s"Failed to parse template: ${e.getMessage}")
 
     string match
       case KnownProvider(name, organization, repo) =>
-        def withRevision(template: String => String) =
-            revision.fold(Left(s"No revision provided"))(rev => Right(SourceLink(None, Template.parse(template(rev)))))
+        def withRevision(template: String => SourceLink) =
+          revision.fold(Left(s"No revision provided"))(r => Right(template(r)))
 
         name match
           case "github" =>
-            withRevision(githubTemplate(organization, repo))
+            withRevision(rev => WebBasedSourceLink(githubPrefix(organization, repo), rev))
           case "gitlab" =>
-            withRevision(gitlabTemplate(organization, repo))
+            withRevision(rev => WebBasedSourceLink(gitlabPrefix(organization, repo), rev))
           case other =>
             Left(s"'$other' is not a known provider, please provide full source path template.")
 
       case SubPath(prefix, config) =>
         parse(config, revision) match
           case l: Left[String, _] => l
-          case Right(SourceLink(Some(prefix), _)) =>
+          case Right(_:PrefixedSourceLink) =>
             Left(s"Source path $string has duplicated subpath setting (scm template can not contains '=')")
-          case Right(SourceLink(None, template)) =>
-            Right(SourceLink(Some(Paths.get(prefix)), template))
+          case Right(nested) =>
+            Right(PrefixedSourceLink(Paths.get(prefix), nested))
       case BrokenKnownProvider("gitlab" | "github") =>
         Left(s"Does not match known provider syntax: `<name>://organization/repository`")
       case scaladocSetting if ScalaDocPatten.findFirstIn(scaladocSetting).nonEmpty =>
@@ -70,15 +91,9 @@ type Operation = "view" | "edit"
 case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
   def pathTo(rawPath: Path, line: Option[Int] = None, operation: Operation = "view"): Option[String] =
     def resolveRelativePath(path: Path) =
-      links.find(_.path.forall(p => path.startsWith(p))).map { link =>
-        val config = java.util.HashMap[String, Object]()
-        val pathString = path.toString.replace('\\', '/')
-        config.put("path", pathString)
-        line.foreach(l => config.put("line", l.toString))
-        config.put("operation", operation)
-
-        link.urlTemplate.render(config)
-      }
+      links
+        .find(_.path.forall(p => path.startsWith(p)))
+        .map(_.render(path.toString.replace('\\', '/'), operation, line))
 
     if rawPath.isAbsolute then
       if rawPath.startsWith(projectRoot) then resolveRelativePath(projectRoot.relativize(rawPath))

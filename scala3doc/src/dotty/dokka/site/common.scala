@@ -3,6 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.Files
+import dotty.dokka.model.api._
 
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
@@ -22,9 +23,9 @@ import org.jetbrains.dokka.pages._
 
 import scala.collection.JavaConverters._
 
-val docsRootDRI: DRI = mkDRI("_.index.md")
-val docsDRI: DRI = mkDRI("_.docs/index.md")
-val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
+val docsRootDRI: DRI = DRI(location = "index.md")
+val docsDRI: DRI = DRI(location = "docs.index.md")
+val apiPageDRI: DRI = DRI(location = "api", extra = "__api__")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()

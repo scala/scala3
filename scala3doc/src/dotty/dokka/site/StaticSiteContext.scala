@@ -17,8 +17,9 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.model.DisplaySourceSet
 import util.Try
+import collection.JavaConverters._
 
-import scala.collection.JavaConverters._
+import dotty.dokka.model.api._
 
 class StaticSiteContext(
   val root: File,
@@ -166,7 +167,8 @@ class StaticSiteContext(
     }.toOption
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
-  def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+  def driFor(dest: Path): DRI =
+    DRI(location = root.toPath.relativize(dest).iterator.asScala.mkString("."))
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 

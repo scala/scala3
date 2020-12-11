@@ -17,6 +17,8 @@ class ClassOne
   extension (c: ClassTwo)
     def |||:(a: Int, b: Int, d: Int)(e: String): Int
       = 56
+    def ++:(a: Int): Int
+      = 45
 
   extension (b: Int)
     def secondGroup(): String

@@ -50,7 +50,7 @@ class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.mem
 
 class OpaqueTypes extends SignatureTest("opaqueTypes", SignatureTest.all)
 
-// class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all)
+class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all)
 
 class Annotations extends SignatureTest("annotations", SignatureTest.all)
 

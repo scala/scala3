@@ -346,7 +346,7 @@ class ScalaPageContentBuilder(
     } else this
 
     def list[T](
-      elements: List[T],
+      elements: Seq[T],
       prefix: String = "",
       suffix: String = "",
       separator: String = ", ",
@@ -474,6 +474,8 @@ class ScalaPageContentBuilder(
 
     type Self = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
 
+    def memberInfo(m: Member) = addChild(MemberInfo(m, asParams(m.dri)))
+
     def documentableTab(name: String)(children: DocumentableGroup*): Self =
       def buildSignature(d: Documentable) =
         ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
@@ -487,15 +489,11 @@ class ScalaPageContentBuilder(
         val originInfo = documentable.origin match {
           case Origin.ImplicitlyAddedBy(name, dri) => Signature("Implicitly added by ", SLink(name, dri))
           case Origin.ExtensionFrom(name, dri) => Signature("Extension method from ", SLink(name, dri))
-          case Origin.ExportedFrom(name, dri) => 
+          case Origin.ExportedFrom(name, dri) =>
             val signatureName: String | dotty.dokka.model.api.Link = dri match
               case Some(dri: DRI) => SLink(name, dri)
               case None => name
             Signature("Exported from ", signatureName)
-          case Origin.Overrides(overridenMembers) => 
-            def intersperse(xs: Seq[SLink]): Seq[(String | SLink)] = 
-              xs.flatMap(Seq(_, " -> ")).dropRight(1).asInstanceOf[Seq[(String | SLink)]] // dropRight returns `Seq[Object]`
-            Signature("Definition classes: ").join(Signature(intersperse(overridenMembers.map(SLink(_, _))):_*))
           case _ => Nil
         }
         val styles: Set[Style] = if documentable.deprecated.isDefined then Set(TextStyle.Strikethrough) else Set.empty
@@ -507,7 +505,8 @@ class ScalaPageContentBuilder(
           docs.fold(Nil)(d => reset().rawComment(d.getRoot)),
           originInfo,
           FilterAttributes.attributesFor(documentable),
-          asParams(documentable.getDri)
+          asParams(documentable.getDri),
+          documentable
         )
 
       def element(e: Documentable | DocumentableSubGroup): DocumentableElement | DocumentableElementGroup = e match

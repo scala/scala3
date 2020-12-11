@@ -64,7 +64,8 @@ object Scala3doc:
     projectLogo: Option[String] = None,
     defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
     sourceLinks: List[String] = Nil,
-    revision: Option[String] = None
+    revision: Option[String] = None,
+    externalMappings: List[List[String]] = List.empty
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =

@@ -10,6 +10,8 @@ import org.jetbrains.dokka.pages._
 
 import scala.collection.JavaConverters._
 
+import dotty.dokka.model.api._
+
 class SitePagesCreator(using ctx: DocContext) extends BaseStaticSiteProcessor:
   private def mkRootPage(input: RootPageNode, children: List[PageNode]): AContentPage =
     input match
@@ -44,7 +46,7 @@ class SitePagesCreator(using ctx: DocContext) extends BaseStaticSiteProcessor:
       val msg = s"ERROR: Multiple index pages for doc found ${indexes.map(_.template.file)}"
       report.error(msg)
 
-    def emptyContent = ctx.asContent(Text(), mkDRI(extra = "root_content")).get(0)
+    def emptyContent = ctx.asContent(Text(), DRI(extra = "root_content")).get(0)
 
     val root = ctx.indexPage().toList.map(_.copy(getDri = JSet(docsRootDRI)))
     val docsRoot = AContentPage(

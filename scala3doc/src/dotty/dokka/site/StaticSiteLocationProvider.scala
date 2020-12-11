@@ -1,18 +1,24 @@
 package dotty.dokka
 package site
 
-import org.jetbrains.dokka.base.resolvers.local.DokkaLocationProvider
-import org.jetbrains.dokka.base.resolvers.local.LocationProvider
-import org.jetbrains.dokka.base.resolvers.local.LocationProviderFactory
 import org.jetbrains.dokka.pages.ContentPage
 import org.jetbrains.dokka.pages.PageNode
 import org.jetbrains.dokka.pages.RootPageNode
 import org.jetbrains.dokka.pages.ModulePage
+import org.jetbrains.dokka.pages.ClasslikePageNode
+import org.jetbrains.dokka.model.DPackage
 import org.jetbrains.dokka.plugability.DokkaContext
+import org.jetbrains.dokka.base.resolvers.external._
+import org.jetbrains.dokka.base.resolvers.shared._
+import org.jetbrains.dokka.base.resolvers.local._
+import org.jetbrains.dokka.model.DisplaySourceSet
+import dotty.dokka.withNoOrigin
 
 import scala.collection.JavaConverters._
 import java.nio.file.Paths
 import java.nio.file.Path
+import scala.util.matching._
+import dotty.dokka.model.api._
 
 class StaticSiteLocationProviderFactory(using ctx: DokkaContext) extends LocationProviderFactory:
   override def getLocationProvider(pageNode: RootPageNode): LocationProvider =
@@ -66,6 +72,13 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
 
         case _: ModulePage if summon[DocContext].staticSiteContext.isEmpty =>
           JList("index")
+        case page: ContentPage if page.getDocumentable != null =>
+          (
+            List("api") ++
+            page.getDocumentable.getDri.location.split(Array('.')).toList ++
+            (if(page.getDocumentable.isInstanceOf[DPackage]) then List("index") else List.empty) ++
+            page.getDocumentable.getDri.anchor
+          ).asJava
         case _ =>
           jpath
 
@@ -74,14 +87,67 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
     override val getPathsIndex: JMap[PageNode, JList[String]] =
       super.getPathsIndex.asScala.mapValuesInPlace(updatePageEntry).asJava
 
+    // We should build our own provider at some point
+    val ourPages: Map[String, ClasslikePageNode] = getPathsIndex.asScala.collect {
+        case (node: ClasslikePageNode, path) => node.getDri.asScala.head.location -> node
+      }.toMap
+
+
+    override def resolve(
+      dri: DRI,
+      sourceSets: JSet[DisplaySourceSet],
+      context: PageNode): String =
+        ourPages.get(dri.location).fold(super.resolve(dri, sourceSets, context)){ page =>
+          val path = pathTo(page,context) match
+            case "" => ""
+            case path => s"$path.html"
+          dri.anchor.fold(path)(hash => s"$path#$hash")
+        }
 
     override def pathTo(node: PageNode, context: PageNode): String =
-      val nodePaths = getPathsIndex.get(node).asScala
-      val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
-      val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
+      if node == context then ""
+      else
+        val nodePaths = getPathsIndex.get(node).asScala
+        val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
+        val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
 
-      val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
-      val nodePath = nodePaths.drop(commonPaths) match
-          case l if l.isEmpty => Seq("index")
-          case l => l
-      (contextPath ++ nodePath).mkString("/")
+        val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
+        val nodePath = nodePaths.drop(commonPaths) match
+            case l if l.isEmpty => Seq("index")
+            case l => l
+        (contextPath ++ nodePath).mkString("/")
+
+    val externalLocationProviders: List[(List[Regex], ExternalLocationProvider)] =
+      val sourceSet = ctx.getConfiguration.getSourceSets.asScala(0)
+      ctx.getConfiguration
+        .asInstanceOf[DocContext]
+        .externalDocumentationLinks
+        .map { link =>
+          val emptyExtDoc = ExternalDocumentation(
+            link.documentationUrl,
+            PackageList(
+              RecognizedLinkFormat.Javadoc1, JSet(), JMap(), link.documentationUrl
+            )
+          )
+          val extDoc = link.packageListUrl.fold(emptyExtDoc)( pl => ExternalDocumentation(
+              link.documentationUrl,
+              PackageList.Companion.load(pl, sourceSet.getJdkVersion, ctx.getConfiguration.getOfflineMode)
+            )
+          )
+          (extDoc, link)
+        }
+        .map { (extDoc, link) =>
+
+          val externalLocationProvider = ScalaExternalLocationProvider(extDoc, ".html", link.kind)
+          link.originRegexes -> externalLocationProvider
+        }.toList
+
+    override def getExternalLocation(dri: DRI, sourceSets: JSet[DisplaySourceSet]): String =
+      val regex = raw"\[origin:(.*)\]".r
+      val origin = regex.findFirstIn(Option(dri.extra).getOrElse(""))
+      origin match {
+        case Some(path) => externalLocationProviders.find { (regexes, provider) =>
+          regexes.exists(r => r.matches(path))
+        }.fold(null)(_(1).resolve(dri.withNoOrigin))
+        case None => null
+      }

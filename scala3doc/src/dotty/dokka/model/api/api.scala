@@ -8,6 +8,7 @@ import collection.JavaConverters._
 import org.jetbrains.dokka.model.doc._
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
+import dotty.dokka.tasty.comments.Comment
 
 enum Visibility(val name: String):
   case Unrestricted extends Visibility("")
@@ -53,20 +54,26 @@ trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
 enum Kind(val name: String){
-  case Class extends Kind("class") with Classlike
+  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+    extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
-  case Trait extends Kind("trait") with Classlike
+  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+    extends Kind("trait") with Classlike
   case Enum extends Kind("enum") with Classlike
-  case EnumCase extends Kind("case")
-  case Def extends Kind("def")
-  case Extension(on: ExtensionTarget) extends Kind("def")
-  case Constructor extends Kind("def")
+  case EnumCase(kind: Object.type | Type | Val.type) extends Kind("case")
+  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+    extends Kind("def")
+  case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
+  case Constructor(base: Kind.Def) extends Kind("def")
   case Var extends Kind("var")
   case Val extends Kind("val")
-  case Exported extends Kind("export")
-  case Type(concreate: Boolean, opaque: Boolean) extends Kind("Type") // should we handle opaque as modifier?
-  case Given(as: Option[Signature], conversion: Option[ImplicitConversion]) extends Kind("Given") with ImplicitConversionProvider
-  case Implicit(kind: Kind, conversion: Option[ImplicitConversion]) extends Kind(kind.name)  with ImplicitConversionProvider
+  case Exported(m: Kind.Def) extends Kind("export")
+  case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
+    extends Kind("Type") // should we handle opaque as modifier?
+  case Given(kind: Def | Class, as: Option[Signature], conversion: Option[ImplicitConversion])
+    extends Kind("Given") with ImplicitConversionProvider
+  case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
+    extends Kind(kind.name)  with ImplicitConversionProvider
   case Unknown extends Kind("Unknown")
 }
 
@@ -91,6 +98,23 @@ object Annotation:
   case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
   case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
+case class Parameter(
+  annotations: Seq[Annotation],
+  modifiers: String,
+  name: String,
+  dri: DRI,
+  signature: Signature,
+  isExtendedSymbol: Boolean = false,
+  isGrouped: Boolean = false
+)
+
+case class TypeParameter(
+  variance: "" | "+" | "-",
+  name: String,
+  dri: DRI,
+  signature: Signature
+)
+
 // TODO (longterm) properly represent signatures
 case class Link(name: String, dri: DRI)
 type Signature = Seq[String | Link]
@@ -114,7 +138,7 @@ object HierarchyGraph:
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
 
 
-type Member = Documentable // with WithExtraProperty[_] // Kotlin does not add generics to ExtraProperty implemented by e.g. DFunction
+type Member = Documentable
 
 object Member:
   def unapply(d: Documentable): Option[(String, DRI, Visibility, Kind, Origin)] =
@@ -138,6 +162,7 @@ extension[T] (member: Member)
   def inheritedFrom: Option[InheritedFrom] = memberExt.fold(None)(_.inheritedFrom)
   def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
   def sources: Option[TastyDocumentableSource] = memberExt.fold(None)(_.sources)
+  def docs: Option[Comment] = memberExt.fold(None)(_.rawDoc)
   def name = member.getName
   def dri = member.getDri
 
@@ -146,12 +171,16 @@ extension[T] (member: Member)
   def parents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.parents)
   def directParents: Seq[Signature] = compositeMemberExt.fold(Nil)(_.directParents)
   def knownChildren: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.knownChildren)
+  def companion: Option[DRI] = compositeMemberExt.fold(None)(_.companion)
 
   def membersBy(op: Member => Boolean): Seq[Member] = allMembers.filter(op)
-  def membersByWithInheritancePartition(op: Member => Boolean): (Seq[Member], Seq[Member]) = membersBy(op).partition(_.inheritedFrom.isEmpty)
 
+extension (members: Seq[Member]) def byInheritance =
+  members.partition(_.inheritedFrom.isEmpty)
 
 extension (module: DModule)
   def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)
+
+type DocPart = DocTag

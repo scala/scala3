@@ -22,6 +22,7 @@ import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api._
 import org.jetbrains.dokka.CoreExtensions
 import org.jetbrains.dokka.base.DokkaBase
+import org.jetbrains.dokka.base.resolvers.shared._
 
 import dotty.dokka.site.NavigationCreator
 import dotty.dokka.site.SitePagesCreator
@@ -71,6 +72,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
   val scalaResourceInstaller = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
       .fromRecipe{ case ctx @ given DokkaContext => new ScalaResourceInstaller }
+      .name("scalaResourceInstaller")
       .after(dokkaBase.getCustomResourceInstaller)
   )
 
@@ -120,8 +122,9 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val implicitMembersExtensionTransformer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
-      .fromRecipe(ImplicitMembersExtensionTransformer(_))
-      .name("implicitMembersExtensionTransformer")
+      .fromRecipe { case ctx @ given DokkaContext =>
+        new ImplicitMembersExtensionTransformer
+      }.name("implicitMembersExtensionTransformer")
   )
 
   val customDocumentationProvider = extend(
@@ -167,6 +170,21 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(dokkaBase.getLocationProviderFactory)
       .fromRecipe { case c @ given DokkaContext => new StaticSiteLocationProviderFactory }
       .overrideExtension(dokkaBase.getLocationProvider)
+  )
+
+  val scalaPackageListCreator = extend(
+    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
+      .fromRecipe(c => ScalaPackageListCreator(c, RecognizedLinkFormat.DokkaHtml))
+      .overrideExtension(dokkaBase.getPackageListCreator)
+      .after(
+        customDocumentationProvider.getValue
+      )
+  )
+
+  val scalaExternalLocationProviderFactory = extend(
+    _.extensionPoint(dokkaBase.getExternalLocationProviderFactory)
+      .fromRecipe{ case c @ given DokkaContext => new ScalaExternalLocationProviderFactory }
+      .overrideExtension(dokkaBase.getDokkaLocationProvider)
   )
 
 // TODO (https://github.com/lampepfl/scala3doc/issues/232): remove once problem is fixed in Dokka
