@@ -5,13 +5,14 @@ import org.jetbrains.dokka.pages.ContentPage
 import org.jetbrains.dokka.pages.PageNode
 import org.jetbrains.dokka.pages.RootPageNode
 import org.jetbrains.dokka.pages.ModulePage
+import org.jetbrains.dokka.pages.ClasslikePageNode
 import org.jetbrains.dokka.model.DPackage
 import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.base.resolvers.external._
 import org.jetbrains.dokka.base.resolvers.shared._
 import org.jetbrains.dokka.base.resolvers.local._
 import org.jetbrains.dokka.model.DisplaySourceSet
-import dotty.dokka.model.api.withNoOrigin
+import dotty.dokka.withNoOrigin
 
 import scala.collection.JavaConverters._
 import java.nio.file.Paths
@@ -86,17 +87,35 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
     override val getPathsIndex: JMap[PageNode, JList[String]] =
       super.getPathsIndex.asScala.mapValuesInPlace(updatePageEntry).asJava
 
+    // We should build our own provider at some point
+    val ourPages: Map[String, ClasslikePageNode] = getPathsIndex.asScala.collect {
+        case (node: ClasslikePageNode, path) => node.getDri.asScala.head.location -> node
+      }.toMap
+
+
+    override def resolve(
+      dri: DRI,
+      sourceSets: JSet[DisplaySourceSet],
+      context: PageNode): String =
+        ourPages.get(dri.location).fold(super.resolve(dri, sourceSets, context)){ page =>
+          val path = pathTo(page,context) match
+            case "" => ""
+            case path => s"$path.html"
+          dri.anchor.fold(path)(hash => s"$path#$hash")
+        }
 
     override def pathTo(node: PageNode, context: PageNode): String =
-      val nodePaths = getPathsIndex.get(node).asScala
-      val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
-      val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
+      if node == context then ""
+      else
+        val nodePaths = getPathsIndex.get(node).asScala
+        val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
+        val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
 
-      val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
-      val nodePath = nodePaths.drop(commonPaths) match
-          case l if l.isEmpty => Seq("index")
-          case l => l
-      (contextPath ++ nodePath).mkString("/")
+        val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
+        val nodePath = nodePaths.drop(commonPaths) match
+            case l if l.isEmpty => Seq("index")
+            case l => l
+        (contextPath ++ nodePath).mkString("/")
 
     val externalLocationProviders: List[(List[Regex], ExternalLocationProvider)] =
       val sourceSet = ctx.getConfiguration.getSourceSets.asScala(0)

@@ -128,8 +128,11 @@ class SymOps[Q <: Quotes](val q: Q):
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
             Option(csym.associatedFile).map(_.path).fold("")(p => s"[origin:$p]")
         }
+        // We want package object to point to package
+        val className = sym.className.filter(_ != "package$")
+
         DRI(
-          sym.className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
+          className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
           sym.anchor.getOrElse(""), // TODO do we need any of this fields?
           null,
           pointsTo,
