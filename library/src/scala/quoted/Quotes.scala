@@ -2754,9 +2754,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Constant` */
     trait ConstantMethods {
       extension (self: Constant)
-        /** Returns the value of the constant */
-        def value: Any
-
         /** Shows the constant as a String */
         def show(using Printer[Constant]): String
 

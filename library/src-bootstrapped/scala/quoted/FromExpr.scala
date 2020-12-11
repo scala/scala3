@@ -29,69 +29,100 @@ object FromExpr {
    *  - Unlifts `'{false}` into `Some(false)`
    *  - Otherwise unlifts to `None`
    */
-  given BooleanFromExpr[T <: Boolean]: FromExpr[T] = new PrimitiveFromExpr
+  given BooleanFromExpr[T <: Boolean]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for BooleanConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Byte]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Byte`
    *  - Otherwise unlifts to `None`
    */
-  given ByteFromExpr[T <: Byte]: FromExpr[T] = new PrimitiveFromExpr
+  given ByteFromExpr[T <: Byte]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for ByteConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Short]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Short`
    *  - Otherwise unlifts to `None`
    */
-  given ShortFromExpr[T <: Short]: FromExpr[T] = new PrimitiveFromExpr
+  given ShortFromExpr[T <: Short]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for ShortConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Int]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Int`
    *  - Otherwise unlifts to `None`
    */
-  given IntFromExpr[T <: Int]: FromExpr[T] = new PrimitiveFromExpr
+  given IntFromExpr[T <: Int]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for IntConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Long]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Long`
    *  - Otherwise unlifts to `None`
    */
-  given LongFromExpr[T <: Long]: FromExpr[T] = new PrimitiveFromExpr
+  given LongFromExpr[T <: Long]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for LongConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Float]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Float`
    *  - Otherwise unlifts to `None`
    */
-  given FloatFromExpr[T <: Float]: FromExpr[T] = new PrimitiveFromExpr
+  given FloatFromExpr[T <: Float]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for FloatConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Double]`
    *  - Unlifts `'{n}` into `Some(n)` for a literal `n` of type `Double`
    *  - Otherwise unlifts to `None`
    */
-  given DoubleFromExpr[T <: Double]: FromExpr[T] = new PrimitiveFromExpr
+  given DoubleFromExpr[T <: Double]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for DoubleConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[Char]`
    *  - Unlifts `'{c}` into `Some(c)` for a literal `c` of type `Char`
    *  - Otherwise unlifts to `None`
    */
-  given CharFromExpr[T <: Char]: FromExpr[T] = new PrimitiveFromExpr
+  given CharFromExpr[T <: Char]: FromExpr[T] with
+    def unapply(expr: Expr[T])(using Quotes) =
+      import quotes.reflect._
+      for CharConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
 
   /** Default implementation of `FromExpr[String]`
    *  - Unlifts `'{str}` into `Some(str)` for a literal `str` of type `String`
    *  - Otherwise unlifts to `None`
    */
-  given StringFromExpr[T <: String]: FromExpr[T] = new PrimitiveFromExpr
-
-  /** Lift a quoted primitive value `'{ x }` into `x` */
-  private class PrimitiveFromExpr[T <: Boolean | Byte | Short | Int | Long | Float | Double | Char | String] extends FromExpr[T] {
+  given StringFromExpr[T <: String]: FromExpr[T] with
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect._
-      def rec(tree: Term): Option[T] = tree match {
-        case Literal(c) if c.value != null => Some(c.value.asInstanceOf[T])
-        case Block(Nil, e) => rec(e)
-        case Typed(e, _) => rec(e)
-        case Inlined(_, Nil, e) => rec(e)
-        case _  => None
-      }
-      rec(expr.asTerm)
-  }
+      for StringConstant(v) <- nestedConstant(expr.asTerm)
+      yield v.asInstanceOf[T]
+
+  private def nestedConstant(using Quotes)(tree: quotes.reflect.Term): Option[quotes.reflect.Constant] =
+    import quotes.reflect._
+    tree match
+      case Literal(c) => Some(c)
+      case Block(Nil, e) => nestedConstant(e)
+      case Typed(e, _) => nestedConstant(e)
+      case Inlined(_, Nil, e) => nestedConstant(e)
+      case _  => None
 
   /** Default implementation of `FromExpr[Option]`
    *  - Unlifts `'{Some(x)}` into `Some(Some(x))` if `x` is unliftable

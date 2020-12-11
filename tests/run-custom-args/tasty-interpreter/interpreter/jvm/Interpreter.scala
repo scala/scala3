@@ -83,7 +83,20 @@ class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[
 
   def interpretUnit(): AbstractAny = ().asInstanceOf[Object]
 
-  def interpretLiteral(const: Constant): Result = const.value
+  def interpretLiteral(const: Constant): Result =
+    const match
+      case UnitConstant() => ()
+      case NullConstant() => null
+      case BooleanConstant(v) => v
+      case ByteConstant(v) => v
+      case ShortConstant(v) => v
+      case IntConstant(v) => v
+      case LongConstant(v) => v
+      case FloatConstant(v) => v
+      case DoubleConstant(v) => v
+      case CharConstant(v) => v
+      case StringConstant(v) => v
+      case ClassOfConstant(v) => ???
 
   def interpretIsInstanceOf(o: AbstractAny, tpt: TypeTree): Result =
     jvmReflection.getClassOf(tpt.symbol).isInstance(o)

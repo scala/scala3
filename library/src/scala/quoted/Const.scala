@@ -26,7 +26,14 @@ object Const {
       case Literal(c) =>
         c match
           case NullConstant() | UnitConstant() | ClassOfConstant(_) => None
-          case _ => Some(c.value.asInstanceOf[T])
+          case BooleanConstant(x) => Some(x.asInstanceOf[T])
+          case ShortConstant(x) => Some(x.asInstanceOf[T])
+          case IntConstant(x) => Some(x.asInstanceOf[T])
+          case LongConstant(x) => Some(x.asInstanceOf[T])
+          case FloatConstant(x) => Some(x.asInstanceOf[T])
+          case DoubleConstant(x) => Some(x.asInstanceOf[T])
+          case CharConstant(x) => Some(x.asInstanceOf[T])
+          case StringConstant(x) => Some(x.asInstanceOf[T])
       case Block(Nil, e) => rec(e)
       case Typed(e, _) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
