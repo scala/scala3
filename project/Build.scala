@@ -1566,15 +1566,12 @@ object Build {
               classDirectory.in(Compile).value.getAbsolutePath,
               "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
               "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg " +
-              "-external-mappings " + raw".*scala\/quoted.*" + "::" +
+              "-external-mappings " + raw".*scala.*" + "::" +
                 "scala3doc" + "::" +
                 "http://dotty.epfl.ch/api/" + ":::" +
                 raw".*java.*" + "::" +
                 "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/" + ":::" +
-                raw".*scala.*" + "::" +
-                "scaladoc" + "::" +
-                "https://www.scala-lang.org/api/current/"
+                "https://docs.oracle.com/javase/8/docs/api/"
             )
           }.value,
 
@@ -1602,10 +1599,7 @@ object Build {
               "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
               "-external-mappings " + raw".*java.*" + "::" +
                 "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/" + ":::" +
-                raw".*scala.*" + "::" +
-                "scaladoc" + "::" +
-                "https://www.scala-lang.org/api/current/"
+                "https://docs.oracle.com/javase/8/docs/api/"
               ))
           }.evaluated,
 
