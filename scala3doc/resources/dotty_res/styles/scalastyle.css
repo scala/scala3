@@ -528,6 +528,9 @@ footer .pull-right {
   border-left: 0.25em solid var(--leftbar-bg);
 }
 
+.expand.documentableElement {
+  border-left: 0.25em solid var(--leftbar-bg);
+}
 .annotations {
   color: gray;
   display: none;

@@ -15,6 +15,14 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+
+  if (location.hash) {
+    var selected = document.getElementById(location.hash.substring(1));
+    if (selected){
+      selected.classList.toggle("expand");
+    }
+  }
+
   var logo = document.getElementById("logo");
   if (logo) {
     logo.onclick = function() {

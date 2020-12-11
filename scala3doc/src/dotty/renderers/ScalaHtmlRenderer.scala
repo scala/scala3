@@ -123,9 +123,14 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
     import renderer._
 
     def buildDocumentable(element: DocumentableElement) =
-      def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
+      def topLevelAttr = Seq(cls := "documentableElement")
+        ++ element.params.dri.anchor.map(id := _)
+        ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
       val kind = element.modifiers.takeRight(1)
       val otherModifiers = element.modifiers.dropRight(1)
+
+      val nameStyles = element.nameWithStyles.styles.map(_.toString.toLowerCase).mkString(" ")
+      val nameClasses = cls := s"documentableName monospace ${nameStyles.mkString(" ")}"
 
       div(topLevelAttr:_*)(
         a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor"),
@@ -135,7 +140,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
             span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
             span(cls := "kind")(kind.map(renderElement)),
           ),
-          renderLink(element.nameWithStyles.name, element.params.dri, cls := s"documentableName monospace ${element.nameWithStyles.styles.map(_.toString.toLowerCase).mkString(" ")}"),
+          renderLink(element.nameWithStyles.name, element.params.dri, nameClasses),
           span(cls := "signature monospace")(element.signature.map(renderElement)),
         ),
         div(cls := "docs")(
