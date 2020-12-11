@@ -70,7 +70,8 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
       case Nil =>
         throw ScriptingException("No main methods detected in your script")
       case _ :: _ :: _ =>
-        throw ScriptingException("More than one main method detected in your script")
+        throw ScriptingException("A script must contain only one main method. " +
+          s"Detected the following main methods:\n${candidates.mkString("\n")}")
       case m :: Nil => m
     end match
   end detectMainMethod
