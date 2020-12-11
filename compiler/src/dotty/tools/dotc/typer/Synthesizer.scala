@@ -62,7 +62,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val arg :: Nil = args
             val t = arg.tpe & tp2
             If(
-              arg.select(defn.Any_isInstanceOf).appliedToType(tp2),
+              arg.isInstance(tp2),
               ref(defn.SomeClass.companionModule.termRef).select(nme.apply)
                 .appliedToType(t)
                 .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),

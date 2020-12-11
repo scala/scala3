@@ -898,6 +898,8 @@ trait Implicits:
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)
             case _ => t
           }
+        case t: SingletonType =>
+          apply(t.widen)
         case t: RefinedType =>
           apply(t.parent)
         case _ =>

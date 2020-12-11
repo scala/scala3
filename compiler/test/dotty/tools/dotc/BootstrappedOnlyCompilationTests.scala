@@ -137,8 +137,9 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
-      if (scala.util.Properties.isWin) basicTests
+      if scala.util.Properties.isWin then basicTests
       else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+
     aggregateTests(tests: _*).checkRuns()
   }
 

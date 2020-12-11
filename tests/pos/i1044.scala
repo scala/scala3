@@ -1,3 +1,4 @@
 object Test {
-  val x = ???.getClass.getMethods.head.getParameterTypes.mkString(",")
+  def f[X](x: X) =
+    x.getClass.getMethods.head.getParameterTypes.mkString(",")
 }

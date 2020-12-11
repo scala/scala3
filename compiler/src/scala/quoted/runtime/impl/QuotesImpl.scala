@@ -2534,6 +2534,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def ScalaPackage: Symbol = dotc.core.Symbols.defn.ScalaPackageVal
       def ScalaPackageClass: Symbol = dotc.core.Symbols.defn.ScalaPackageClass
       def AnyClass: Symbol = dotc.core.Symbols.defn.AnyClass
+      def MatchableClass: Symbol = dotc.core.Symbols.defn.MatchableClass
       def AnyValClass: Symbol = dotc.core.Symbols.defn.AnyValClass
       def ObjectClass: Symbol = dotc.core.Symbols.defn.ObjectClass
       def AnyRefClass: Symbol = dotc.core.Symbols.defn.AnyRefAlias

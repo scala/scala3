@@ -259,10 +259,19 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  def MatchableType: TypeRef = MatchableClass.typeRef
+  @tu lazy val AnyValClass: ClassSymbol =
+    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
+    // Mark companion as absent, so that class does not get re-completed
+    val companion = ScalaPackageVal.info.decl(nme.AnyVal).symbol
+    companion.moduleClass.markAbsent()
+    companion.markAbsent()
+    res
+
   def AnyValType: TypeRef = AnyValClass.typeRef
 
-    @tu lazy val Any_== : TermSymbol           = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
+    @tu lazy val Any_== : TermSymbol          = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     @tu lazy val Any_!= : TermSymbol          = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
     @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
     @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
@@ -288,7 +297,7 @@ class Definitions {
   @tu lazy val ObjectClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
-    cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.info = ClassInfo(cls.owner.thisType, cls, List(AnyType, MatchableType), newScope)
     cls.setFlag(NoInits | JavaDefined)
 
     // The companion object doesn't really exist, so it needs to be marked as
@@ -444,7 +453,7 @@ class Definitions {
       MethodType(List(ThrowableType), NothingType))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val NullClass: ClassSymbol = {
     val parent = if (ctx.explicitNulls) AnyType else ObjectType
@@ -520,7 +529,7 @@ class Definitions {
     // but does not define it as an explicit class.
     enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
-      List(AnyClass.typeRef), EmptyScope)
+      List(AnyType), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
   @tu lazy val CollectionSeqType: TypeRef = requiredClassRef("scala.collection.Seq")
@@ -1144,6 +1153,8 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
+  @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
@@ -1372,7 +1383,7 @@ class Definitions {
   @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef".toTermName)
 
   /** Class symbols for which no class exist at runtime */
-  @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, AnyValClass, NullClass, NothingClass)
+  @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, MatchableClass, AnyValClass, NullClass, NothingClass)
 
   @tu lazy val SpecialClassTagClasses: Set[Symbol] = Set(UnitClass, AnyClass, AnyValClass)
 
@@ -1672,6 +1683,7 @@ class Definitions {
   @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
     SimpleIdentityMap.empty[Symbol]
       .updated(AnyClass, ObjectClass)
+      .updated(MatchableClass, ObjectClass)
       .updated(AnyValClass, ObjectClass)
       .updated(SingletonClass, ObjectClass)
       .updated(TupleClass, ProductClass)
@@ -1683,6 +1695,7 @@ class Definitions {
   @tu lazy val syntheticScalaClasses: List[TypeSymbol] = {
     val synth = List(
       AnyClass,
+      MatchableClass,
       AnyRefAlias,
       AnyKindClass,
       andType,

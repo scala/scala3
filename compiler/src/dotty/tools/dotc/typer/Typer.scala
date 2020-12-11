@@ -682,7 +682,10 @@ class Typer extends Namer
       case templ: untpd.Template =>
         import untpd._
         var templ1 = templ
-        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final) && !tp.isRef(defn.AnyClass)
+        def isEligible(tp: Type) =
+        	tp.exists
+        	&& !tp.typeSymbol.is(Final)
+        	&& (!tp.isTopType || tp.isAnyRef) // Object is the only toplevel class that can be instantiated
         if (templ1.parents.isEmpty &&
             isFullyDefined(pt, ForceDegree.flipBottom) &&
             isSkolemFree(pt) &&
@@ -769,6 +772,7 @@ class Typer extends Namer
       def handlePattern: Tree = {
         val tpt1 = typedTpt
         if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+          checkMatchable(pt, tree.srcPos, pattern = true)
           withMode(Mode.GadtConstraintInference) {
             TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
@@ -1320,7 +1324,7 @@ class Typer extends Namer
           typed(desugar.makeCaseLambda(tree.cases, checkMode, protoFormals.length).withSpan(tree.span), pt)
         }
       case _ =>
-        if (tree.isInline) checkInInlineContext("inline match", tree.srcPos)
+        if tree.isInline then checkInInlineContext("inline match", tree.srcPos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
 
@@ -3526,6 +3530,13 @@ class Typer extends Namer
             rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
         case _ =>
       }
+
+      // try an Any -> Matchable conversion
+      if pt.isMatchableBound && !wtp.derivesFrom(defn.MatchableClass) then
+        checkMatchable(wtp, tree.srcPos, pattern = false)
+        val target = AndType(tree.tpe.widenExpr, defn.MatchableType)
+        if target <:< pt then
+          return readapt(tree.cast(target))
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint

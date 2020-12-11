@@ -1246,6 +1246,11 @@ trait Checking {
         if preExisting.exists || seen.contains(tname) then
           report.error(em"@targetName annotation ${'"'}$tname${'"'} clashes with other definition in same scope", stat.srcPos)
         if stat.isDef then seen += tname
+
+  def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
+    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`3.1-migration`) then
+      val kind = if pattern then "pattern selector " else ""
+      report.warning(em"${kind}type $tp should not be scrutinized", pos)
 }
 
 trait ReChecking extends Checking {
@@ -1256,6 +1261,7 @@ trait ReChecking extends Checking {
   override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
+  override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {

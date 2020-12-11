@@ -12,13 +12,15 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
     AfterDocumentablesTransformation { m =>
       m.visitMembers { x =>
         if (x.getName == "C1") {
-          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "Any", "B1", "B2", "B3", "Object"), x.getParentsAsStrings)
+          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "Any", "B1", "B2", "B3", "Matchable", "Object"), x.getParentsAsStrings)
           assertEquals(List("B1", "B2", "B3"), x.getDirectParentsAsStrings)
           assertEquals(List("E1", "E2"), x.getKnownChildrenAsStrings)
-          val graph = MemberExtension.getFrom(x).map(_.graph)     
+          val graph = MemberExtension.getFrom(x).map(_.graph)
           assertTrue("Graph is empty!", graph.isDefined)
           assertEquals(
             Set(
+              "Object" -> "Matchable",
+              "Matchable" -> "Any",
               "Object" -> "Any",
               "A1" -> "Object",
               "A2[Int]" -> "Object",
@@ -42,15 +44,15 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
           )
         }
         if (x.getName == "E2") {
-          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "Any", "B1", "B2", "B3", "C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3", "Object"), x.getParentsAsStrings)
+          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "Any", "B1", "B2", "B3", "C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3", "Matchable", "Object"), x.getParentsAsStrings)
           assertEquals(List("C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3"), x.getDirectParentsAsStrings)
           assertEquals(List.empty, x.getKnownChildrenAsStrings)
-          val graph = MemberExtension.getFrom(x).map(_.graph)   
+          val graph = MemberExtension.getFrom(x).map(_.graph)
           assertTrue("Graph is empty!", graph.isDefined)
           assertEquals(
             Set(
               "Object" -> "Any",
-              // "A1" -> "Object", // These are not applicable beacuase of bug and its workaround 
+              // "A1" -> "Object", // These are not applicable beacuase of bug and its workaround
               // "A2[Int]" -> "Object", // More info at ClassLikeSupport.scala:37
               // "A3[Int, String]" -> "Object",
               // "B1" -> "Object",
@@ -65,6 +67,8 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
               // "C1[Int, Boolean, Any]" -> "B1",
               // "C1[Int, Boolean, Any]" -> "B2",
               // "C1[Int, Boolean, Any]" -> "B3",
+              "Object" -> "Matchable",
+              "Matchable" -> "Any",
               "E2" -> "D2[Int, Boolean]",
               "E2" -> "D3",
               "D2[Int, Boolean]" -> "Object",
@@ -75,16 +79,18 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
           )
         }
         if (x.getName == "A2") {
-          assertEquals(List("Any", "Object"), x.getParentsAsStrings)
+          assertEquals(List("Any", "Matchable", "Object"), x.getParentsAsStrings)
           assertEquals(List.empty, x.getDirectParentsAsStrings)
           assertEquals(List("B2", "B3", "C1[A, B, C]", "E1", "E2"), x.getKnownChildrenAsStrings)
-          val graph = MemberExtension.getFrom(x).map(_.graph)   
+          val graph = MemberExtension.getFrom(x).map(_.graph)
           assertTrue("Graph is empty!", graph.isDefined)
           assertEquals(
             Set(
+              "Object" -> "Matchable",
+              "Matchable" -> "Any",
               "Object" -> "Any",
               "A2[T]" -> "Object",
-              "B2" -> "A2[T]", // These are not actually true, becuase we lose information about hierarchy in subtypes and their possible mapping to supertypes other that that type itself, e. g. linking to `Object` 
+              "B2" -> "A2[T]", // These are not actually true, becuase we lose information about hierarchy in subtypes and their possible mapping to supertypes other that that type itself, e. g. linking to `Object`
               "B3" -> "A2[T]",
               "C1[A, B, C]" -> "A2[T]",
               "E1" -> "A2[T]",
@@ -95,4 +101,4 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
         }
       }
     }
-  ) 
+  )
