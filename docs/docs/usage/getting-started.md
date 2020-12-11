@@ -74,3 +74,19 @@ In case you have already installed Dotty via brew, you should instead update it:
 ```bash
 brew upgrade dotty
 ```
+
+### Scala 3 for Scripting
+If you have followed the steps in "Standalone Installation" section and have the `scala` executable on your `PATH`, you can run `*.scala` files as scripts. Given a source named Test.scala:
+
+```scala
+@main def Test(name: String): Unit =
+  println(s"Hello ${name}!")
+```
+
+You can run: `scala Test.scala World` to get an output `Hello World!`.
+
+A "script" is an ordinary Scala file which contains a main method. The semantics of the `scala Script.scala` command is as follows:
+
+- Compile `Script.scala` with `scalac` into a temporary directory.
+- Detect the main method in the `*.class` files produced by the compilation.
+- Execute the main method.
