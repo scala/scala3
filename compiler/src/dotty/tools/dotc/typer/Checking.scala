@@ -1249,8 +1249,10 @@ trait Checking {
 
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`3.1-migration`) then
-      val kind = if pattern then "pattern selector " else ""
-      report.warning(em"${kind}type $tp should not be scrutinized", pos)
+      val kind = if pattern then "pattern selector" else "value"
+      report.warning(
+        em"""${kind} should be an instance of Matchable,
+            |but it has unmatchable type $tp instead""", pos)
 }
 
 trait ReChecking extends Checking {
