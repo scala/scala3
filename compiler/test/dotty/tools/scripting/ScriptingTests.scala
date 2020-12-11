@@ -33,10 +33,7 @@ class ScriptingTests:
     do
       ScriptingDriver(
         compilerArgs = Array(
-            "-classpath", TestConfiguration.basicClasspath,
-            "-color:never",
-            "-Yerased-terms",
-          ),
+          "-classpath", TestConfiguration.basicClasspath),
         scriptFile = scriptFile,
         scriptArgs = scriptArgs
       ).compileAndRun()
