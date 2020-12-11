@@ -30,8 +30,16 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
     catch
       case e: java.lang.reflect.InvocationTargetException =>
         throw e.getCause
-
+    finally
+      deleteFile(outDir.toFile)
   end compileAndRun
+
+  private def deleteFile(target: File): Unit =
+    if target.isDirectory then
+      for member <- target.listFiles.toList
+      do deleteFile(member)
+    target.delete()
+  end deleteFile
 
   private def detectMainMethod(outDir: Path, classpath: String): Method =
     val outDirURL = outDir.toUri.toURL
