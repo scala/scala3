@@ -49,7 +49,7 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 
  1. [Given Instances](./givens.md) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
- 2. [`using` Clauses](./using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
+ 2. [Using Clauses](./using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
 
  3. ["Given" Imports](./given-imports.md) are a new class of import selectors that specifically import
     givens and nothing else.

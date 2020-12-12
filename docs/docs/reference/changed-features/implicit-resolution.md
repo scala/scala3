@@ -122,8 +122,7 @@ most (but not all) divergence errors in Scala 2 would terminate the implicit sea
   def buzz(y: A) = ???
   buzz(1)   // error: ambiguous
 ```
-**7.** The rule for picking a _most specific_ alternative among a set of overloaded or implicit alternatives is refined to take context parameters into account. All else being equal, an alternative that takes some context parameters is taken to be less specific than an alternative that takes none. If both alternatives take context parameters, we try to choose between them as if they were methods with regular parameters. The following paragraph in the [SLS §
-6.26.3](https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) is affected by this change:
+**7.** The rule for picking a _most specific_ alternative among a set of overloaded or implicit alternatives is refined to take context parameters into account. All else being equal, an alternative that takes some context parameters is taken to be less specific than an alternative that takes none. If both alternatives take context parameters, we try to choose between them as if they were methods with regular parameters. The following paragraph in the [SLS §6.26.3](https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) is affected by this change:
 
 _Original version:_
 

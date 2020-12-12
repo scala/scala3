@@ -78,8 +78,8 @@ ${'[T]} = T
 The type signatures of quotes and splices can be described using
 two fundamental types:
 
-  - `Expr[T]`: abstract syntax trees representing expressions of type `T`
-  - `Type[T]`: type structures representing type `T`.
+- `Expr[T]`: abstract syntax trees representing expressions of type `T`
+- `Type[T]`: type structures representing type `T`.
 
 Quoting takes expressions of type `T` to expressions of type `Expr[T]`
 and it takes types `T` to expressions of type `Type[T]`. Splicing
@@ -103,7 +103,7 @@ operations that will be discussed later on.
 A fundamental *phase consistency principle* (PCP) regulates accesses
 to free variables in quoted and spliced code:
 
- - _For any free variable reference `x`, the number of quoted scopes and the number of spliced scopes between the reference to `x` and the definition of `x` must be equal_.
+- _For any free variable reference `x`, the number of quoted scopes and the number of spliced scopes between the reference to `x` and the definition of `x` must be equal_.
 
 Here, `this`-references count as free variables. On the other
 hand, we assume that all imports are fully expanded and that `_root_` is
@@ -129,8 +129,8 @@ situations described above.
 
 In what concerns the range of features it covers, this form of macros introduces
 a principled metaprogramming framework that is quite close to the MetaML family of
-languages. One difference is that MetaML does not have an equivalent of the PCP
-- quoted code in MetaML _can_ access variables in its immediately enclosing
+languages. One difference is that MetaML does not have an equivalent of the PCP -
+quoted code in MetaML _can_ access variables in its immediately enclosing
 environment, with some restrictions and caveats since such accesses involve
 serialization. However, this does not constitute a fundamental gain in
 expressiveness.
@@ -632,10 +632,9 @@ It is possible to deconstruct or extract values out of `Expr` using pattern matc
 
 `scala.quoted` contains objects that can help extracting values from `Expr`.
 
-* `scala.quoted.Expr`/`scala.quoted.Exprs`: matches an expression of a value (or list of values) and returns the value (or list of values).
-* `scala.quoted.Const`/`scala.quoted.Consts`: Same as `Expr`/`Exprs` but only works on primitive values.
-* `scala.quoted.Varargs`: matches an explicit sequence of expressions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
-
+- `scala.quoted.Expr`/`scala.quoted.Exprs`: matches an expression of a value (or list of values) and returns the value (or list of values).
+- `scala.quoted.Const`/`scala.quoted.Consts`: Same as `Expr`/`Exprs` but only works on primitive values.
+- `scala.quoted.Varargs`: matches an explicit sequence of expressions and returns them. These sequences are useful to get individual `Expr[T]` out of a varargs expression of type `Expr[Seq[T]]`.
 
 These could be used in the following way to optimize any call to `sum` that has statically known values.
 ```scala
@@ -646,7 +645,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExp
     // argValues is of type Seq[Int]
     Expr(argValues.sum) // precompute result of sum
   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
-    val staticSum: Int = argExprs.map(_.value.getOrElse(0))
+    val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
     val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
     dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
   case _ =>
@@ -695,7 +694,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
 ```scala
-def f(exp: Expr[Any])(using Quotes) =
+def f(expr: Expr[Any])(using Quotes) =
   expr match
     case '{ $x: t } =>
       // If the pattern match succeeds, then there is some type `t` such that
@@ -713,10 +712,11 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
   argsExpr match {
     case Varargs(argExprs) =>
       val argShowedExprs = argExprs.map {
-        case '{ $arg: t } =>
-          Expr.summon[Show[t]] match {
+        case '{ $arg: tp } =>
+          val showTp = Type.of[Show[tp]]
+          Expr.summon(using showTp) match {
             case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None => report.error(s"could not find implicit for ${showTp.show}", arg); '{???}
+            case None           => report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
           }
       }
       val newArgsExpr = Varargs(argShowedExprs)
@@ -759,7 +759,7 @@ private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
   e match {
     case '{ val y: Int = $x; $body(y): Int } =>
       // body: Expr[Int => Int] where the argument represents references to y
-      evalExpr(Expr.betaReduce(body)(evalExpr(x)))
+      evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
     case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
         case (Some(a), Some(b)) => Expr(a * b)

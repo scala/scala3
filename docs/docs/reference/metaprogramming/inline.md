@@ -226,8 +226,7 @@ pure expressions of constant type.
 #### The definition of constant expression
 
 Right-hand sides of inline values and of arguments for inline parameters must be
-constant expressions in the sense defined by the [SLS §
-6.24](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions),
+constant expressions in the sense defined by the [SLS §6.24](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions),
 including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
@@ -501,8 +500,7 @@ val conjunction: true && true = true
 val multiplication: 3 * 5 = 15
 ```
 
-Many of these singleton operation types are meant to be used infix (as in [SLS §
-3.2.10](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#infix-types)).
+Many of these singleton operation types are meant to be used infix (as in [SLS §3.2.10](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#infix-types)).
 
 Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:

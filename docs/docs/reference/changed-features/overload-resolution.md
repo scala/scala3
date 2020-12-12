@@ -33,8 +33,7 @@ g(2)(3)(4)     // ok
 g(2)(3)("")    // ok
 ```
 
-To make this work, the rules for overloading resolution in [SLS §
-6.26.3](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) are augmented
+To make this work, the rules for overloading resolution in [SLS §6.26.3](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) are augmented
 as follows:
 
 > In a situation where a function is applied to more than one argument list, if overloading
@@ -58,8 +57,7 @@ def f(x: String, f2: String => String) = f2(x)
 f("a", _.toUpperCase)
 f(2, _ * 2)
 ```
-To make this work, the rules for overloading resolution in [SLS §
-6.26.3](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) are modified
+To make this work, the rules for overloading resolution in [SLS §6.26.3](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) are modified
 as follows:
 
 Replace the sentence
