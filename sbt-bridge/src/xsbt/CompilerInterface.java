@@ -18,6 +18,10 @@ import dotty.tools.dotc.interfaces.*;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLClassLoader;
 
+/**
+ * The new compiler interface is [[dotty.tools.xsbt.CompilerBridge]] that extends the new `xsbti.CompilerInterface2`.
+ * This interface is kept for compatibility with Mill and the sbt 1.3.x series.
+ */
 public final class CompilerInterface {
   public CachedCompiler newCompiler(String[] options, Output output, Logger initialLog, Reporter initialDelegate) {
     // The classloader that sbt uses to load the compiler bridge is broken

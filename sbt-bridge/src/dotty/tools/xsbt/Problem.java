@@ -1,4 +1,4 @@
-package xsbt;
+package dotty.tools.xsbt;
 
 import java.util.Optional;
 import xsbti.Position;

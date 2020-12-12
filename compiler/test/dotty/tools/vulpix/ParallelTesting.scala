@@ -26,6 +26,7 @@ import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.DiffUtil
+import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -472,7 +473,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
-          override def doCompile(comp: Compiler, files: List[String])(using Context) =
+          override def doCompile(comp: Compiler, files: List[AbstractFile])(using Context) =
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)

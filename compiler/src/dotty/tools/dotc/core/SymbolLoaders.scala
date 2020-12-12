@@ -173,7 +173,7 @@ object SymbolLoaders {
           Nil)
       }
 
-      val unit = CompilationUnit(ctx.getSource(src.path))
+      val unit = CompilationUnit(ctx.getSource(src))
       enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
