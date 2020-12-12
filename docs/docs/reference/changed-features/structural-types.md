@@ -42,7 +42,7 @@ Here's an example of a structural type `Person`:
     val age: Int
   }
 ```
-The person type adds a _refinement_ to its parent type `Record` that defines `name` and `age` fields. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
+The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
 program would print  "Emma is 42 years old.":
 ```scala
   val person = Record("name" -> "Emma", "age" -> 42).asInstanceOf[Person]

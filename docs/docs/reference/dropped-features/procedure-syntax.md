@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Procedure Syntax
+title: "Dropped: Procedure Syntax"
 ---
 
 Procedure syntax

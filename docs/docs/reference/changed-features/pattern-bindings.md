@@ -25,13 +25,13 @@ want to decompose it like this:
 ```scala
 val first :: rest = elems   // error
 ```
-This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the pattern with an @unchecked annotation:
+This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the pattern with an `@unchecked` annotation:
 ```scala
 val first :: rest : @unchecked = elems   // OK
 ```
 This will make the compiler accept the pattern binding. It might give an error at runtime instead, if the underlying assumption that `elems` can never be empty is wrong.
 
-## Pattern Bindings in For Expressions
+## Pattern Bindings in `for` Expressions
 
 Analogous changes apply to patterns in `for` expressions. For instance:
 

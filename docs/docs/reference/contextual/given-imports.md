@@ -18,7 +18,7 @@ object B {
 }
 ```
 
-In the code above, the `import A._` clause of object `B` will import all members
+In the code above, the `import A._` clause in object `B` imports all members
 of `A` _except_ the given instance `tc`. Conversely, the second import `import A.given` will import _only_ that given instance.
 The two import clauses can also be merged into one:
 
@@ -67,7 +67,7 @@ object Instances {
 }
 ```
 
-the import
+the import clause
 
 ```scala
 import Instances.{given Ordering[?], given ExecutionContext}

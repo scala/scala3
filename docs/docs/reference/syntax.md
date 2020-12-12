@@ -90,14 +90,14 @@ colonEol         ::=  ": at end of line that can start a template body"
 ### Regular keywords
 
 ```
-abstract  case      catch     class     def       do        else      enum
-export    extends   false     final     finally   for       given     if
-implicit  import    lazy      match     new       null      object    package
-private   protected override  return    super     sealed    then      throw
-trait     true      try       type      val       var       while     with
-yield
-:         =         <-        =>        <:        :>        #         @
-=>>       ?=>
+abstract  case      catch     class     def       do        else
+enum      export    extends   false     final     finally   for
+given     if        implicit  import    lazy      match     new
+null      object    package   private   protected override  return
+super     sealed    then      throw     trait     true      try
+type      val       var       while     with      yield
+:         =         <-        =>        <:        :>        #
+@         =>>       ?=>
 ```
 
 ### Soft keywords

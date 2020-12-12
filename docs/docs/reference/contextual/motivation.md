@@ -8,7 +8,7 @@ title: "Overview"
 Scala's implicits are its most distinguished feature. They are _the_ fundamental way to abstract over context. They represent a unified paradigm with a great variety of use cases, among them: implementing type classes, establishing context, dependency injection, expressing capabilities, computing new types and proving relationships between them.
 
 Following Haskell, Scala was the second popular language to have some form of implicits. Other languages have followed suit. E.g Rust's traits or Swift's protocol extensions. Design proposals are also on the table for Kotlin as [compile time dependency resolution](https://github.com/Kotlin/KEEP/blob/e863b25f8b3f2e9b9aaac361c6ee52be31453ee0/proposals/compile-time-dependency-resolution.md), for C# as [Shapes and Extensions](https://github.com/dotnet/csharplang/issues/164)
-or for F# as [Traits](https://github.com/MattWindsor91/visualfsharp/blob/hackathon-vs/examples/fsconcepts.md). Implicits are also a common feature of theorem provers such as Coq or Agda.
+or for F# as [Traits](https://github.com/MattWindsor91/visualfsharp/blob/hackathon-vs/examples/fsconcepts.md). Implicits are also a common feature of theorem provers such as Coq or [Agda](https://agda.readthedocs.io/en/latest/language/implicit-arguments.html).
 
 Even though these designs use widely different terminology, they are all variants of the core idea of _term inference_. Given a type, the compiler synthesizes a "canonical" term that has that type. Scala embodies the idea in a purer form than most other languages: An implicit parameter directly leads to an inferred argument term that could also be written down explicitly. By contrast, type class based designs are less direct since they hide term inference behind some form of type classification and do not offer the option of writing the inferred quantities (typically, dictionaries) explicitly.
 
@@ -49,7 +49,7 @@ The following pages introduce a redesign of contextual abstractions in Scala. Th
 
  1. [Given Instances](./givens.md) are a new way to define basic terms that can be synthesized.  They replace implicit definitions. The core principle of the proposal is that, rather than mixing the `implicit` modifier with a large number of features, we have a single way to define terms that can be synthesized for types.
 
- 2. [Using Clauses](./using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
+ 2. [`using` Clauses](./using-clauses.md) are a new syntax for implicit _parameters_ and their _arguments_. It unambiguously aligns parameters and arguments, solving a number of language warts. It also allows us to have several `using` clauses in a definition.
 
  3. ["Given" Imports](./given-imports.md) are a new class of import selectors that specifically import
     givens and nothing else.

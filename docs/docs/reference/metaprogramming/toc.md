@@ -6,7 +6,7 @@ title: "Overview"
 The following pages introduce the redesign of metaprogramming in Scala. They
 introduce the following fundamental facilities:
 
-1. [Inline](./inline.md) `inline` is a new modifier that guarantees that
+1. [`inline`](./inline.md) is a new modifier that guarantees that
    a definition will be inlined at the point of use. The primary motivation
    behind inline is to reduce the overhead behind function calls and access to
    values. The expansion will be performed by the Scala compiler during the
@@ -17,7 +17,7 @@ introduce the following fundamental facilities:
    programming), macros (enabling compile-time, generative, metaprogramming) and
    runtime code generation (multi-stage programming).
 
-2. [Macros](./macros.md) Macros are built on two well-known fundamental
+2. [Macros](./macros.md) are built on two well-known fundamental
    operations: quotation and splicing.  Quotation converts program code to
    data, specifically, a (tree-like) representation of this code. It is
    expressed as `'{...}` for expressions and as `'[...]` for types. Splicing,
