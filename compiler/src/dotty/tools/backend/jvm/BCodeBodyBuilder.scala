@@ -328,7 +328,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
               val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
               if (returnsUnit) requiredClass(("scala.runtime.function.JProcedure" + arity))
-              else if (arity <= 2) requiredClass(("scala.runtime.function.JFunction" + arity))
               else requiredClass(("scala.Function" + arity))
             }
           }
