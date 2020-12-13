@@ -79,8 +79,8 @@ numbers that can have both a decimal point and an exponent:
 ```scala
 object FromDigits {
 
-  /** A subclass of `FromDigits` that also allows to convert whole number literals
-   *  with a radix other than 10
+  /** A subclass of `FromDigits` that also allows to convert whole
+   *  number literals with a radix other than 10
    */
   trait WithRadix[T] extends FromDigits[T] {
     def fromDigits(digits: String): T = fromDigits(digits, 10)

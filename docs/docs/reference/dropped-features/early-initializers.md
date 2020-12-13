@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Early Initializers
+title: "Dropped: Early Initializers"
 ---
 
 Early initializers of the form

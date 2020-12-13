@@ -71,7 +71,7 @@ y == x          // ok
 (x: Any) == null            // ok
 ```
 
-## Working with Null
+## Working with `Null`
 
 To make working with nullable values easier, we propose adding a few utilities to the standard library.
 So far, we have found the following useful:
@@ -89,9 +89,9 @@ So far, we have found the following useful:
 
     Don't use `.nn` on mutable variables directly, because it may introduce an unknown type into the type of the variable.
 
-## Java Interop
+## Java Interoperability
 
-The compiler can load Java classes in two ways: from source or from bytecode. In either case,
+The Scala compiler can load Java classes in two ways: from source or from bytecode. In either case,
 when a Java class is loaded, we "patch" the type of its members to reflect that Java types
 remain implicitly nullable.
 
@@ -223,15 +223,17 @@ Specifically, we patch
     }
     ```
 
-    The annotation must be from the list below to be recognized as NotNull by the compiler.
+    The annotation must be from the list below to be recognized as `NotNull` by the compiler.
     Check `Definitions.scala` for an updated list.
 
     ```scala
-    // A list of annotations that are commonly used to indicate that a field/method argument or return
-    // type is not null. These annotations are used by the nullification logic in JavaNullInterop to
-    // improve the precision of type nullification.
-    // We don't require that any of these annotations be present in the class path, but we want to
-    // create Symbols for the ones that are present, so they can be checked during nullification.
+    // A list of annotations that are commonly used to indicate
+    // that a field/method argument or return type is not null.
+    // These annotations are used by the nullification logic in
+    // JavaNullInterop to improve the precision of type nullification.
+    // We don't require that any of these annotations be present
+    // in the class path, but we want to create Symbols for the
+    // ones that are present, so they can be checked during nullification.
     @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
       "javax.annotation.Nonnull" ::
       "edu.umd.cs.findbugs.annotations.NonNull" ::
@@ -391,42 +393,42 @@ while (xs != null) {
 When dealing with local mutable variables, there are two questions:
 
 1. Whether to track a local mutable variable during flow typing.
- We track a local mutable variable iff the variable is not assigned in a closure.
- For example, in the following code `x` is assigned to by the closure `y`, so we do not
- do flow typing on `x`.
+   We track a local mutable variable iff the variable is not assigned in a closure.
+   For example, in the following code `x` is assigned to by the closure `y`, so we do not
+   do flow typing on `x`.
 
- ```scala
- var x: String|Null = ???
- def y = {
-   x = null
- }
- if (x != null) {
-   // y can be called here, which would break the fact
-   val a: String = x // error: x is captured and mutated by the closure, not trackable
- }
- ```
+   ```scala
+   var x: String|Null = ???
+   def y = {
+     x = null
+   }
+   if (x != null) {
+     // y can be called here, which would break the fact
+     val a: String = x // error: x is captured and mutated by the closure, not trackable
+   }
+   ```
 
 2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
- We only want to do flow typing on a use that belongs to the same method as the definition
- of the local variable.
- For example, in the following code, even `x` is not assigned to by a closure, but we can only
- use flow typing in one of the occurrences (because the other occurrence happens within a nested
- closure).
+   We only want to do flow typing on a use that belongs to the same method as the definition
+   of the local variable.
+   For example, in the following code, even `x` is not assigned to by a closure, but we can only
+   use flow typing in one of the occurrences (because the other occurrence happens within a nested
+   closure).
 
- ```scala
- var x: String|Null = ???
- def y = {
-   if (x != null) {
-     // not safe to use the fact (x != null) here
-     // since y can be executed at the same time as the outer block
-     val _: String = x
+   ```scala
+   var x: String|Null = ???
+   def y = {
+     if (x != null) {
+       // not safe to use the fact (x != null) here
+       // since y can be executed at the same time as the outer block
+       val _: String = x
+     }
    }
- }
- if (x != null) {
-   val a: String = x // ok to use the fact here
-   x = null
- }
- ```
+   if (x != null) {
+     val a: String = x // ok to use the fact here
+     x = null
+   }
+   ```
 
 See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
 

@@ -3,7 +3,7 @@ layout: doc-page
 title: "Macros"
 ---
 
-### Macros: Quotes and Splices
+## Macros: Quotes and Splices
 
 Macros are built on two well-known fundamental operations: quotation and
 splicing.  Quotation is expressed as `'{...}` for expressions and as `'[...]`
@@ -73,7 +73,7 @@ ${'[T]} = T
 '[${T}] = T
 ```
 
-### Types for Quotations
+## Types for Quotations
 
 The type signatures of quotes and splices can be described using
 two fundamental types:
@@ -100,7 +100,7 @@ these types are provided by the system. One way to construct values of
 these types is by quoting, the other is by type-specific lifting
 operations that will be discussed later on.
 
-### The Phase Consistency Principle
+## The Phase Consistency Principle
 
 A fundamental *phase consistency principle* (PCP) regulates accesses
 to free variables in quoted and spliced code:
@@ -137,7 +137,7 @@ environment, with some restrictions and caveats since such accesses involve
 serialization. However, this does not constitute a fundamental gain in
 expressiveness.
 
-### From `Expr`s to Functions and Back
+## From `Expr`s to Functions and Back
 
 It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
 These conversions can be implemented as follows:
@@ -184,7 +184,7 @@ result of beta-reducing `f(x)` if `f` is a known lambda expression.
 Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
 ```
 
-### Lifting Types
+## Lifting Types
 
 Types are not directly affected by the phase consistency principle.
 It is possible to use types defined at any level in any other level.
@@ -225,7 +225,7 @@ to the context bound `: Type`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
 `T` would be reported as an error.
 
-### Lifting Expressions
+## Lifting Expressions
 
 Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
@@ -357,7 +357,7 @@ def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
 
-### Lifting Types
+## Lifting Types
 
 The previous section has shown that the metaprogramming framework has
 to be able to take a type `T` and convert it to a type tree of type
@@ -388,7 +388,7 @@ In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
 `quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
 is handled by the compiler, using the algorithm sketched above.
 
-### Relationship with Inline
+## Relationship with Inline
 
 Seen by itself, principled metaprogramming looks more like a framework for
 runtime metaprogramming than one for compile-time metaprogramming with macros.
@@ -488,7 +488,7 @@ private def powerCode(x: Expr[Double], n: Int)(using Quotes): Expr[Double] =
   else '{ $x * ${ powerCode(x, n - 1) } }
 ```
 
-### Scope Extrusion
+## Scope Extrusion
 
 Quotes and splices are duals as far as the PCP is concerned. But there is an
 additional restriction that needs to be imposed on splices to guarantee
@@ -531,7 +531,7 @@ appearing in splices. In a base language with side effects we would have to do t
 anyway: Since `run` runs arbitrary code it can always produce a side effect if
 the code it runs produces one.
 
-### Example Expansion
+## Example Expansion
 
 Assume we have two methods, one `map` that takes an `Expr[Array[T]]` and a
 function `f` and one `sum` that performs a sum by delegating to `map`.
@@ -615,7 +615,7 @@ while (i < arr.length) {
 sum
 ```
 
-### Find implicits within a macro
+## Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
 in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
@@ -631,7 +631,7 @@ def setForExpr[T: Type](using Quotes): Expr[Set[T]] = {
 }
 ```
 
-### Relationship with Whitebox Inline
+## Relationship with Whitebox Inline
 
 [Inline](./inline.md) documents inlining. The code below introduces a whitebox
 inline method that can calculate either a value of type `Int` or a value of type
@@ -651,7 +651,7 @@ val b: String = defaultOf("string")
 
 ```
 
-### Defining a macro and using it in a single project
+## Defining a macro and using it in a single project
 
 It is possible to define macros and use them in the same project as long as the implementation
 of the macros does not have run-time dependencies on code in the file where it is used.
@@ -663,7 +663,7 @@ If there are any suspended files when the compilation ends, the compiler will au
 compilation of the suspended files using the output of the previous (partial) compilation as macro classpath.
 In case all files are suspended due to cyclic dependencies the compilation will fail with an error.
 
-### Pattern matching on quoted expressions
+## Pattern matching on quoted expressions
 
 It is possible to deconstruct or extract values out of `Expr` using pattern matching.
 
@@ -691,7 +691,7 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExp
 }
 ```
 
-#### Quoted patterns
+### Quoted patterns
 
 Quoted pattens allow deconstructing complex code that contains a precise structure, types or methods.
 Patterns `'{ ... }` can be placed in any location where Scala expects a pattern.
@@ -728,7 +728,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
 }
 ```
 
-#### Recovering precise types using patterns
+### Recovering precise types using patterns
 
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
@@ -772,7 +772,7 @@ trait Show[-T] {
 }
 ```
 
-#### Open code patterns
+### Open code patterns
 
 Quote pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
 then the rest of the quote can refer to this definition.
@@ -820,6 +820,6 @@ eval { // expands to the code: (16: Int)
 We can also close over several bindings using `$b(a1, a2, ..., an)`.
 To match an actual application we can use braces on the function part `${b}(a1, a2, ..., an)`.
 
-### More details
+## More details
 
 [More details](./macros-spec.md)

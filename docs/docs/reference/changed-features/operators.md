@@ -47,7 +47,7 @@ one of the following conditions holds:
  - the operator is followed by an opening brace.
 
 An alphanumeric operator is an operator consisting entirely of letters, digits, the `$` and `_` characters, or
-any unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` returns `true`.
+any Unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` returns `true`.
 
 Infix operations involving symbolic operators are always allowed, so `infix` is redundant for methods with symbolic names.
 
@@ -89,9 +89,9 @@ The purpose of the `infix` modifier is to achieve consistency across a code base
  5. To smooth migration to Scala 3.0, alphanumeric operators will only be deprecated from Scala 3.1 onwards,
 or if the `-source 3.1` option is given in Dotty/Scala 3.
 
-## The @targetName Annotation
+## The `@targetName` Annotation
 
-It is recommended that definitions of symbolic operators carry a [@targetName annotation](../other-new-features/targetName.html) that provides an encoding of the operator with an alphanumeric name. This has several benefits:
+It is recommended that definitions of symbolic operators carry a [`@targetName` annotation](../other-new-features/targetName.md) that provides an encoding of the operator with an alphanumeric name. This has several benefits:
 
  - It helps interoperability between Scala and other languages. One can call
    a Scala-defined symbolic operator from another language using its target name,
@@ -115,7 +115,7 @@ def condition =
   || xs.exists(_ > 0)
   || xs.isEmpty
 ```
-Previously, these expressions would have been rejected, since the compiler's semicolon inference
+Previously, those expressions would have been rejected, since the compiler's semicolon inference
 would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separate statements.
 
 To make this syntax work, the rules are modified to not infer semicolons in front of leading infix operators.

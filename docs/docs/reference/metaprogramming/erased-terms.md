@@ -3,7 +3,7 @@ layout: doc-page
 title: "Erased Terms"
 ---
 
-# Why erased terms?
+## Why erased terms?
 
 Let's describe the motivation behind erased terms with an example. In the
 following we show a simple state machine which can be in a state `On` or `Off`.
@@ -44,7 +44,7 @@ introduce _erased terms_ to overcome this limitation: we are able to enforce the
 right constrains on terms at compile time. These terms have no run time
 semantics and they are completely erased.
 
-# How to define erased terms?
+## How to define erased terms?
 
 Parameters of methods and functions can be declared as erased, placing `erased`
 in front of a parameter list (like `given`).
@@ -76,7 +76,7 @@ erased val erasedEvidence: Ev = ...
 methodWithErasedEv(erasedEvidence)
 ```
 
-# What happens with erased values at runtime?
+## What happens with erased values at runtime?
 
 As `erased` are guaranteed not to be used in computations, they can and will be
 erased.
@@ -93,7 +93,7 @@ erased val erasedEvidence3: Ev = ... // does not exist at runtime
 methodWithErasedEv(evidence1)
 ```
 
-# State machine with erased evidence example
+## State machine with erased evidence example
 
 The following example is an extended implementation of a simple state machine
 which can be in a state `On` or `Off`. The machine can change state from `Off`
@@ -121,14 +121,16 @@ final class Off extends State
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
-  // will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
+  // will not be called at runtime for turnedOn, the
+  // compiler will only require that this evidence exists
   given IsOff[Off] = new IsOff[Off]
 }
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
 object IsOn {
-  // will not exist at runtime, the compiler will only require that this evidence exists at compile time
+  // will not exist at runtime, the compiler will only
+  // require that this evidence exists at compile time
   erased given IsOn[On] = new IsOn[On]
 }
 

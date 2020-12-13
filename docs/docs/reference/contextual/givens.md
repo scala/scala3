@@ -4,7 +4,7 @@ title: "Given Instances"
 ---
 
 Given instances (or, simply, "givens") define "canonical" values of certain types
-that serve for synthesizing arguments to [context parameters](./using-clauses.html). Example:
+that serve for synthesizing arguments to [context parameters](./using-clauses.md). Example:
 
 ```scala
 trait Ord[T] {
@@ -34,7 +34,7 @@ for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
 Such conditions are expanded by the compiler to [context
-parameters](./using-clauses.html).
+parameters](./using-clauses.md).
 
 ## Anonymous Givens
 
@@ -108,7 +108,7 @@ In each case, a pattern-bound given instance consists of `given` and a type `T`.
 
 ## Negated Givens
 
-Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement the analogue of a "negated" search in implicit resolution, where a query Q1 fails if some other query Q2 succeeds and Q1 succeeds if Q2 fails. With the new cleaned up behavior these techniques no longer work. But there is now a new special type `scala.util.NotGiven` which implements negation directly.
+Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement the analogue of a "negated" search in implicit resolution, where a query Q1 fails if some other query Q2 succeeds and Q1 succeeds if Q2 fails. With the new cleaned up behavior these techniques no longer work. But the new special type `scala.util.NotGiven` now implements negation directly.
 
 For any query type `Q`, `NotGiven[Q]` succeeds if and only if the implicit
 search for `Q` fails, for example:

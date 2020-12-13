@@ -1,9 +1,9 @@
 ---
 layout: doc-page
-title: Dropped: Existential Types
+title: "Dropped: Existential Types"
 ---
 
-Existential types using `forSome` have been dropped. The reasons for dropping them were:
+Existential types using `forSome` have been dropped. The reasons for dropping them are:
 
  - Existential types violate a type soundness principle on which DOT
    and Dotty are constructed. That principle says that every

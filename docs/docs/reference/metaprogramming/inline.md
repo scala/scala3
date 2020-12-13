@@ -142,11 +142,13 @@ funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 //    if (actual - expected).abs > computeDelta() then
 //      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
 ```
+
 ### Rules for Overriding
 
 Inline methods can override other non-inline methods. The rules are as follows:
 
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
+
     ```scala
     abstract class A {
       def f(): Int
@@ -170,6 +172,7 @@ Inline methods can override other non-inline methods. The rules are as follows:
 2. Inline methods are effectively final.
 
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
+
     ```scala
     abstract class A {
       inline def f(): Int
@@ -182,9 +185,9 @@ Inline methods can override other non-inline methods. The rules are as follows:
     a.f()         // error: cannot inline f() in A.
     ```
 
-### Relationship to @inline
+### Relationship to `@inline`
 
-Scala also defines a `@inline` annotation which is used as a hint
+Scala 2 also defines a `@inline` annotation which is used as a hint
 for the backend to inline. The `inline` modifier is a more powerful
 option: Expansion is guaranteed instead of best effort,
 it happens in the frontend instead of in the backend, and it also applies
@@ -223,8 +226,7 @@ pure expressions of constant type.
 #### The definition of constant expression
 
 Right-hand sides of inline values and of arguments for inline parameters must be
-constant expressions in the sense defined by the [SLS §
-6.24](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#constant-expressions),
+constant expressions in the sense defined by the [SLS §6.24](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions),
 including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
@@ -498,8 +500,7 @@ val conjunction: true && true = true
 val multiplication: 3 * 5 = 15
 ```
 
-Many of these singleton operation types are meant to be used infix (as in [SLS §
-3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)).
+Many of these singleton operation types are meant to be used infix (as in [SLS §3.2.10](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#infix-types)).
 
 Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:

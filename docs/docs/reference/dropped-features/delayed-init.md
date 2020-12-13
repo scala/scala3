@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Delayedinit
+title: "Dropped: Delayedinit"
 ---
 
 The special handling of the `DelayedInit` trait is no longer
