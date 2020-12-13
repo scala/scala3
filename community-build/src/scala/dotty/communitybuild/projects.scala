@@ -155,7 +155,10 @@ final case class SbtCommunityProject(
     ++ s"++$compilerVersion!; "
 
   override val testCommand = s"$baseCommand$sbtTestCommand"
-  override val publishCommand = if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+  override val publishCommand = if sbtPublishCommand eq null then null else
+    val disableDocCommand =
+      if sbtDocCommand eq null then "" else "set every useScala3doc := false;"
+    s"$baseCommand$disableDocCommand$sbtPublishCommand"
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
