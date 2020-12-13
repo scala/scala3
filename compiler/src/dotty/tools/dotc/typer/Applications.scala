@@ -848,6 +848,17 @@ trait Applications extends Compatibility {
    *  Fallback if this fails: try to convert `E` to `new E`.
    */
   def typedFunPart(fn: untpd.Tree, pt: Type)(using Context): Tree =
+    /** typedFunPart should only adapt E to new E
+     *  when we're applying E to some term parameters: val x = String() works and
+     *  expands to val x = new String(), but val x = String doesn't, it should be
+     *  the same for the aliases of String.
+     */
+    def canTryNew(pt: Type)(using Context): Boolean =
+      pt match
+        case tp: FunProto => true
+        case tp: PolyProto => canTryNew(tp.resType)
+        case _ => false
+
     tryEither {
       typedExpr(fn, pt)
     } { (result, tstate) =>
@@ -856,7 +867,8 @@ trait Applications extends Compatibility {
         then nuState.commit() // nuState messages are more interesting that tstate's "not found"
         else tstate.commit()  // it's "not found" both ways; keep original message
         result
-      if untpd.isPath(fn) then tryNew(untpd)(fn, pt, fallBack)
+      if untpd.isPath(fn) && canTryNew(pt) then
+        tryNew(untpd)(fn, pt, fallBack)
       else fallBack(ctx.typerState)
     }
 

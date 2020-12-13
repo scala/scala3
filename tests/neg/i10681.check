@@ -1,0 +1,97 @@
+-- [E006] Not Found Error: tests/neg/i10681.scala:2:15 ---------------------
+2 |val testGood = TestGood
+  |               ^^^^^^^^
+  |               Not found: TestGood
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:5:14 ---------------------
+5 |val testBad = TestBad[Nothing]
+  |              ^^^^^^^
+  |              Not found: TestBad
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:6:18 ---------------------
+6 |val testBadNoAp = TestBad
+  |                  ^^^^^^^
+  |                  Not found: TestBad
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:9:15 ---------------------
+9 |val testBad2 = TestBad2[Nothing]
+  |               ^^^^^^^^
+  |               Not found: TestBad2
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:10:19 --------------------
+10 |val testBad2NoAp = TestBad2
+   |                   ^^^^^^^^
+   |                   Not found: TestBad2
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:13:19 --------------------
+13 |val testBad3NoAp = TestBad3
+   |                   ^^^^^^^^
+   |                   Not found: TestBad3
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:14:24 --------------------
+14 |val testBad3PartialAp = TestBad3[String]
+   |                        ^^^^^^^^
+   |                        Not found: TestBad3
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:15:15 --------------------
+15 |val testBad3 = TestBad3[String][String]
+   |               ^^^^^^^^
+   |               Not found: TestBad3
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:18:18 --------------------
+18 |val testBad4Ap0 = TestBad4
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:19:18 --------------------
+19 |val testBad4Ap1 = TestBad4[Nothing]
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:20:18 --------------------
+20 |val testBad4Ap2 = TestBad4[Nothing, Nothing]
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:21:18 --------------------
+21 |val testBad4Ap3 = TestBad4[Nothing, Nothing][Nothing]
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:22:18 --------------------
+22 |val testBad4Ap4 = TestBad4[Nothing, Nothing][Nothing, Nothing]
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:23:18 --------------------
+23 |val testBad4Ap5 = TestBad4[Nothing, Nothing][Nothing, Nothing][Nothing]
+   |                  ^^^^^^^^
+   |                  Not found: TestBad4
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:27:12 --------------------
+27 |val test1 = PartialApplication[String]
+   |            ^^^^^^^^^^^^^^^^^^
+   |            Not found: PartialApplication
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i10681.scala:28:12 --------------------
+28 |val test2 = Curried[String][String]
+   |            ^^^^^^^
+   |            Not found: Curried
+
+longer explanation available when compiling with `-explain`
+16 errors found
