@@ -15,6 +15,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  $("#sideMenu2 span").on('click', function(){
+    $(this).parent().toggleClass("expanded")
+  });
+
 
   if (location.hash) {
     var selected = document.getElementById(location.hash.substring(1));
