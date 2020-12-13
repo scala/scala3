@@ -20,11 +20,22 @@ import java.io.File.pathSeparator
 trait TastyInspector:
   self =>
 
+  trait TastyVisitor(using val quotes: Quotes):
+    def processCompilationUnit(root: quotes.reflect.Tree): Unit
+    def postProcess(): Unit = ()
+
+  protected def tastyVisitor(using q: Quotes): TastyVisitor = new {
+    def processCompilationUnit(root: quotes.reflect.Tree): Unit =
+      TastyInspector.this.processCompilationUnit(root)
+    override def postProcess(): Unit =
+      TastyInspector.this.postProcess()
+  }
+
   /** Process a TASTy file using TASTy reflect */
   protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit
 
   /** Called after all compilation units are processed */
-  protected def postProcess(using Quotes): Unit = ()
+  protected def postProcess(using Quotes)(): Unit = ()
 
   /** Load and process TASTy files using TASTy reflect
    *
@@ -71,22 +82,27 @@ trait TastyInspector:
 
 
   private def inspectorDriver() =
+    var visitor: TastyVisitor = null
     class InspectorDriver extends Driver:
-      override protected def newCompiler(implicit ctx: Context): Compiler = new TastyFromClass
+      override protected def newCompiler(implicit ctx: Context): Compiler =
+        new TastyFromClass
 
     class TastyInspectorPhase extends Phase:
       override def phaseName: String = "tastyInspector"
 
+      override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+        visitor = tastyVisitor(using QuotesImpl())
+        super.runOn(units)
+
       override def run(implicit ctx: Context): Unit =
-        val qctx = QuotesImpl()
-        self.processCompilationUnit(using qctx)(ctx.compilationUnit.tpdTree.asInstanceOf[qctx.reflect.Tree])
+        val v = visitor
+        v.processCompilationUnit(ctx.compilationUnit.tpdTree.asInstanceOf[v.quotes.reflect.Tree])
 
     class TastyInspectorFinishPhase extends Phase:
       override def phaseName: String = "tastyInspectorFinish"
 
       override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-        val qctx = QuotesImpl()
-        self.postProcess(using qctx)
+        visitor.postProcess()
         units
 
       override def run(implicit ctx: Context): Unit = unsupported("run")

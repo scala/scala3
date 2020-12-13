@@ -42,7 +42,7 @@ class CommentExpanderTests {
 
       def processCompilationUnit(using quoted.Quotes)(root: quotes.reflect.Tree): Unit = ()
 
-      override def postProcess(using quoted.Quotes): Unit =
+      override def postProcess(using quoted.Quotes)(): Unit =
         check()
 
     Inspector().inspectTastyFiles(TestUtils.listOurClasses())
