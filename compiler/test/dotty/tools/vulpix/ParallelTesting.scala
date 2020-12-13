@@ -2,10 +2,11 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File => JFile}
+import java.io.{File => JFile, IOException}
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.{HashMap, Timer, TimerTask}
 import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
@@ -15,14 +16,17 @@ import scala.io.Source
 import scala.util.{Random, Try, Failure => TryFailure, Success => TrySuccess, Using}
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
+import scala.collection.mutable.ListBuffer
 
 import dotc.{Compiler, Driver}
 import dotc.core.Contexts._
 import dotc.decompiler
+import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.DiffUtil
+import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -101,7 +105,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |the test can be reproduced by running from SBT (prefix it with ./bin/ if you
             |want to run from the command line):""".stripMargin
       )
-      sb.append("\n\ndotc ")
+      sb.append("\n\nscalac ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
           sb.append(delimiter)
@@ -228,8 +232,10 @@ trait ParallelTesting extends RunnerOrchestration { self =>
      */
     final def checkFile(testSource: TestSource): Option[JFile] = (testSource match {
       case ts: JointCompilationSource =>
-        ts.files.collectFirst { case f if !f.isDirectory => new JFile(f.getPath.replaceFirst("\\.scala$", ".check")) }
-
+        ts.files.collectFirst {
+          case f if !f.isDirectory =>
+            new JFile(f.getPath.replaceFirst("\\.(scala|java)$", ".check"))
+        }
       case ts: SeparateCompilationSource =>
         Option(new JFile(ts.dir.getPath + ".check"))
     }).filter(_.exists)
@@ -447,7 +453,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       def compileWithJavac(fs: Array[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
           "javac",
-          "-encoding", "UTF-8",
+          "-encoding", StandardCharsets.UTF_8.name,
         ) ++ flags.javacFlags ++ fs
 
         val process = Runtime.getRuntime.exec(fullArgs)
@@ -467,11 +473,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
-          override def doCompile(comp: Compiler, files: List[String])(implicit ctx: Context) =
+          override def doCompile(comp: Compiler, files: List[AbstractFile])(using Context) =
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
-              ctx.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
+              report.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
               rep
             }
         }
@@ -499,11 +505,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       tastyOutput.mkdir()
       val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
 
-      def tastyFileToClassName(f: JFile): String = {
-        val pathStr = targetDir.toPath.relativize(f.toPath).toString.replace(JFile.separatorChar, '.')
-        pathStr.stripSuffix(".tasty").stripSuffix(".hasTasty")
-      }
-      val classes = flattenFiles(targetDir).filter(isTastyFile).map(tastyFileToClassName)
+      val classes = flattenFiles(targetDir).filter(isTastyFile).map(_.toString)
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -540,11 +542,18 @@ trait ParallelTesting extends RunnerOrchestration { self =>
         }
 
         pool.shutdown()
+
         if (!pool.awaitTermination(20, TimeUnit.MINUTES)) {
+          val remaining = new ListBuffer[TestSource]
+          filteredSources.lazyZip(eventualResults).foreach { (src, res) =>
+            if (!res.isDone)
+              remaining += src
+          }
+
           pool.shutdownNow()
           System.setOut(realStdout)
           System.setErr(realStderr)
-          throw new TimeoutException("Compiling targets timed out")
+          throw new TimeoutException(s"Compiling targets timed out, remaining targets: ${remaining.mkString(", ")}")
         }
 
         eventualResults.foreach { x =>
@@ -595,7 +604,11 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       testSource.sourceFiles.foreach { file =>
         if checkFiles.contains(file) then
           val checkFile = checkFiles(file)
-          val actual = Source.fromFile(file, "UTF-8").getLines().toList
+          val actual = {
+            val source = Source.fromFile(file, StandardCharsets.UTF_8.name)
+            try source.getLines().toList
+            finally source.close()
+          }
           diffTest(testSource, checkFile, actual, reporters, logger)
       }
 
@@ -678,8 +691,8 @@ trait ParallelTesting extends RunnerOrchestration { self =>
     def getErrorMapAndExpectedCount(files: Seq[JFile]): (HashMap[String, Integer], Int) = {
       val errorMap = new HashMap[String, Integer]()
       var expectedErrors = 0
-      files.filter(_.getName.endsWith(".scala")).foreach { file =>
-        Using(Source.fromFile(file, "UTF-8")) { source =>
+      files.filter(isSourceFile).foreach { file =>
+        Using(Source.fromFile(file, StandardCharsets.UTF_8.name)) { source =>
           source.getLines.zipWithIndex.foreach { case (line, lineNbr) =>
             val errors = line.toSeq.sliding("// error".length).count(_.unwrap == "// error")
             if (errors > 0)
@@ -717,7 +730,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       val pos1 = error.pos.nonInlined
       val key = if (pos1.exists) {
         def toRelative(path: String): String =  // For some reason, absolute paths leak from the compiler itself...
-          path.split("/").dropWhile(_ != "tests").mkString("/")
+          path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
         val fileName = toRelative(pos1.source.file.toString)
         s"$fileName:${pos1.line}"
 
@@ -1357,5 +1370,5 @@ object ParallelTesting {
   }
 
   def isTastyFile(f: JFile): Boolean =
-    f.getName.endsWith(".hasTasty") || f.getName.endsWith(".tasty")
+    f.getName.endsWith(".tasty")
 }

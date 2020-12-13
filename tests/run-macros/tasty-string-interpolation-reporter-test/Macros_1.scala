@@ -18,27 +18,27 @@ object TestFooErrors { // Defined in tests
 
 object Macro {
 
-  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[String] = {
+  def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
-            error(msg, parts(partIdx).unseal.pos)
+            import quotes.reflect._
+            report.error(msg, parts(partIdx).asTerm.pos)
           }
         }
         fooCore(parts, args, reporter)
     }
   }
 
-  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext): Expr[List[(Int, Int, Int, String)]] = {
+  def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.tasty._
-            val pos = parts(partIdx).unseal.pos
+            import quotes.reflect._
+            val pos = parts(partIdx).asTerm.pos
             errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }
         }
@@ -50,9 +50,9 @@ object Macro {
   }
 
 
-  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using QuoteContext): Expr[String] = {
+  private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using Quotes): Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
-      val Const(v: String) = part
+      val v = part.valueOrError
       if (v.contains("#"))
         reporter.errorOnPart("Cannot use #", idx)
     }

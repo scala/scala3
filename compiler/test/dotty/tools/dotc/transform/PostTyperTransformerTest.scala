@@ -20,7 +20,7 @@ class PostTyperTransformerTest extends DottyTest {
   @Test
   def shouldStripImports = checkCompile("typer", "class A{ import scala.collection.mutable._; val d = 1}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -40,7 +40,7 @@ class PostTyperTransformerTest extends DottyTest {
   @Test
   def shouldStripNamedArgs = checkCompile("typer", "class A{ def p(x:Int, y:Int= 2) = 1; p(1, y = 2)}") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -60,7 +60,7 @@ class PostTyperTransformerTest extends DottyTest {
   @Test
   def shouldReorderExistingObjectsInPackage = checkCompile("typer", "object A{}; class A{} ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -84,7 +84,7 @@ class PostTyperTransformerTest extends DottyTest {
   @Test
   def shouldReorderExistingObjectsInBlock = checkCompile("typer", "class D {def p = {object A{}; class A{}; 1}} ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)
@@ -108,7 +108,7 @@ class PostTyperTransformerTest extends DottyTest {
   @Test
   def shouldReorderExistingObjectsInTemplate = checkCompile("typer", "class D {object A{}; class A{}; } ") {
     (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       class EmptyTransform extends TreeTransform {
         override def name: String = "empty"
         init(ctx, ctx.period.firstPhaseId, ctx.period.lastPhaseId)

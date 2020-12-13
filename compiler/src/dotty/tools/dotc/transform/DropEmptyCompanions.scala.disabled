@@ -4,7 +4,7 @@ package transform
 import core._
 import DenotTransformers.SymTransformer
 import Phases.Phase
-import Contexts.Context
+import Contexts._
 import Flags._
 import Symbols._
 import SymDenotations.SymDenotation
@@ -33,14 +33,14 @@ class DropEmptyCompanions extends MiniPhase { thisTransform =>
   override def phaseName = "dropEmptyCompanions"
   override def runsAfter = Set(Flatten.name)
 
-  override def transformPackageDef(pdef: PackageDef)(implicit ctx: Context) = {
+  override def transformPackageDef(pdef: PackageDef)(using Context) = {
 
     /** Is `tree` an empty companion object? */
     def isEmptyCompanion(tree: Tree) = tree match {
       case TypeDef(_, impl: Template) if tree.symbol.is(SyntheticModule) &&
         tree.symbol.companionClass.exists &&
         impl.body.forall(_.symbol.isPrimaryConstructor) =>
-        ctx.log(i"removing ${tree.symbol}")
+        report.log(i"removing ${tree.symbol}")
         true
       case _ =>
         false

@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
-import Contexts.Context
+import Contexts._
 import Symbols._
 import Flags._
 import SymDenotations._
@@ -39,7 +39,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
 
   override def changesMembers: Boolean = true // the phase introduces new members with mangled names
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
       case t: DefDef =>
         val sym = t.symbol
@@ -54,7 +54,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       case _ =>
     }
 
-  private def isVCPrivateParamAccessor(d: SymDenotation)(implicit ctx: Context) =
+  private def isVCPrivateParamAccessor(d: SymDenotation)(using Context) =
     d.isTerm && d.isAllOf(PrivateParamAccessor) && isDerivedValueClass(d.owner)
 
   /** Make private terms accessed from different classes non-private.
@@ -62,7 +62,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
    *  If we change the scheme at one point to make static module class computations
    *  static members of the companion class, we should tighten the condition below.
    */
-  private def ensurePrivateAccessible(d: SymDenotation)(implicit ctx: Context) =
+  private def ensurePrivateAccessible(d: SymDenotation)(using Context) =
     if (isVCPrivateParamAccessor(d))
       d.ensureNotPrivate.installAfter(thisPhase)
     else if (d.is(PrivateTerm) && !d.owner.is(Package) && d.owner != ctx.owner.lexicallyEnclosingClass) {
@@ -78,7 +78,7 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
           j -= 1
         }
         (i < 0 || p1(i) == separatorChar) &&
-        (j < 0 || p1(j) == separatorChar)
+        (j < 0 || p2(j) == separatorChar)
       }
 
       assert(d.symbol.source.exists &&
@@ -88,17 +88,17 @@ class ExpandPrivate extends MiniPhase with IdentityDenotTransformer { thisPhase 
       d.ensureNotPrivate.installAfter(thisPhase)
     }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Ident = {
+  override def transformIdent(tree: Ident)(using Context): Ident = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Select = {
+  override def transformSelect(tree: Select)(using Context): Select = {
     ensurePrivateAccessible(tree.symbol)
     tree
   }
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): DefDef = {
+  override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     val sym = tree.symbol
     tree.rhs match {
       case Apply(sel @ Select(_: Super, _), _)

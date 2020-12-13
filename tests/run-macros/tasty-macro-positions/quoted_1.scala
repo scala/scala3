@@ -6,31 +6,30 @@ object Macros {
 
   inline def fun2(x: =>Any): Unit = ${ impl('x) }
 
-  inline def fun3[T]: Unit = ${ impl2('[T]) }
+  inline def fun3[T]: Unit = ${ impl2(using Type.of[T]) }
 
-  def impl(x: Expr[Any])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    val pos = x.unseal.underlyingArgument.pos
-    val code = x.unseal.underlyingArgument.show
+  def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect._
+    val pos = posStr(x.asTerm.underlyingArgument.pos)
+    val code = x.asTerm.underlyingArgument.show
     '{
-      println(${posStr(qctx)(pos)})
+      println($pos)
       println(${Expr(code)})
     }
   }
 
-  def impl2[T](x: quoted.Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    val pos = x.unseal.pos
-    val code = x.unseal.show
+  def impl2[T](using x: Type[T])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect._
+    val pos = posStr(TypeTree.of[T].pos)
+    val code = TypeTree.of[T].show
     '{
-      println(${posStr(qctx)(pos)})
+      println($pos)
       println(${Expr(code)})
     }
   }
 
-  def posStr(qctx: QuoteContext)(pos: qctx.tasty.Position): Expr[String] = {
-    given QuoteContext = qctx
-    import qctx.tasty._
+  def posStr(using Quotes)(pos: quotes.reflect.Position): Expr[String] = {
+    import quotes.reflect._
     Expr(s"${pos.sourceFile.jpath.getFileName.toString}:[${pos.start}..${pos.end}]")
   }
 }

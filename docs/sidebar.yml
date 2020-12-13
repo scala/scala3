@@ -15,7 +15,9 @@ sidebar:
           url: docs/usage/language-versions.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
-        - title: Dottydoc
+        - title: Scala3doc
+          url: docs/usage/scala3doc
+        - title: Dottydoc [Legacy]
           url: docs/usage/dottydoc.html
     - title: Reference
       subsection:
@@ -33,6 +35,8 @@ sidebar:
               url: docs/reference/new-types/match-types.html
             - title: Dependent Function Types
               url: docs/reference/new-types/dependent-function-types.html
+            - title: Polymorphic Function Types
+              url: docs/reference/new-types/polymorphic-function-types.html
         - title: Enums
           subsection:
             - title: Enumerations
@@ -57,7 +61,7 @@ sidebar:
               url: docs/reference/contextual/extension-methods.html
             - title: Implementing Type classes
               url: docs/reference/contextual/type-classes.html
-            - title: Type class Derivation
+            - title: Type Class Derivation
               url: docs/reference/contextual/derivation.html
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html
@@ -87,8 +91,8 @@ sidebar:
           subsection:
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
-            - title: Super Traits
-              url: docs/reference/other-new-features/super-traits.html
+            - title: Transparent Traits
+              url: docs/reference/other-new-features/transparent-traits.html
             - title: Creator Applications
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
@@ -101,10 +105,10 @@ sidebar:
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
-            - title: Tupled Function
-              url: docs/reference/other-new-features/tupled-function.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
+            - title: targetName Annotation
+              url: docs/reference/other-new-features/targetName.html
             - title: New Control Syntax
               url: docs/reference/other-new-features/control-syntax.html
             - title: Optional Braces
@@ -183,6 +187,8 @@ sidebar:
               url: docs/reference/dropped-features/nonlocal-returns.html
             - title: "[this] Qualifier"
               url: docs/reference/dropped-features/this-qualifier.html
+        - title: Syntax Summary
+          url: docs/reference/syntax.html
     - title: Contributing
       subsection:
         - title: Contribute Knowledge

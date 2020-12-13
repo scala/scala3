@@ -4,18 +4,18 @@ class M {
   type E
 }
 
-def f[T: Type](using QuoteContext) =
+def f[T: Type](using Quotes) =
   Expr.summon[M] match
-    case Some('{ $mm : $tt }) =>
+    case Some('{ $mm : tt }) =>
       '{
         val m = $mm
         type ME = m.E
-        ${ g[ME](using '[ME]) }
-        ${ g[m.E](using '[ME]) }
-        ${ g[ME](using '[m.E]) }
-        ${ g[m.E](using '[m.E]) }
-        // ${ g[ME] } // FIXME: issue seems to be in ReifyQuotes
-        // ${ g[m.E] } // FIXME: issue seems to be in ReifyQuotes
+        ${ g[ME](using Type.of[ME]) }
+        ${ g[m.E](using Type.of[ME]) }
+        ${ g[ME](using Type.of[m.E]) }
+        ${ g[m.E](using Type.of[m.E]) }
+        // ${ g[ME] } // FIXME: issue seems to be in PickleQuotes
+        // ${ g[m.E] } // FIXME: issue seems to be in PickleQuotes
       }
 
 def g[T](using Type[T]) = ???

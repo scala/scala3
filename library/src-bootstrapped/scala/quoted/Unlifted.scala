@@ -1,38 +1,14 @@
 package scala.quoted
 
-/** Value expressions */
-object Unlifted {
+@deprecated("Use `scala.quoted.Expr` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
+object Unlifted:
 
-  /** Matches expressions containing values and extracts the value.
-   *
-   *  Usage:
-   *  ```
-   *  (x: Expr[B]) match {
-   *    case Unlifted(value) => ... // value: B
-   *  }
-   *  ```
-   */
-  def unapply[T](expr: Expr[T])(using unlift: Unliftable[T], qxtc: QuoteContext): Option[T] =
-    unlift(expr)
+  @deprecated("Use `scala.quoted.Expr.unapply` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
+  def apply[T](expr: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
+    Expr.unapply(expr)
 
-  /** Matches literal sequence of literal constant value expressions and return a sequence of values.
-   *
-   *  Usage:
-   *  ```scala
-   *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
-   *  def sumExpr(argsExpr: Expr[Seq[Int]])(using QuoteContext): Expr[Int] = argsExpr match
-   *    case Varargs(Unlifted(args)) =>
-   *      // args: Seq[Int]
-   *      ...
-   *  }
-   *  ```
-   */
-  def unapply[T](exprs: Seq[Expr[T]])(using unlift: Unliftable[T], qctx: QuoteContext): Option[Seq[T]] =
-    exprs.foldRight(Option(List.empty[T])) { (elem, acc) =>
-      (elem, acc) match {
-        case (Unlifted(value), Some(lst)) => Some(value :: lst)
-        case (_, _) => None
-      }
-    }
+  @deprecated("Use `scala.quoted.Exprs.unapply` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
+  def unapply[T](exprs: Seq[Expr[T]])(using FromExpr[T])(using Quotes): Option[Seq[T]] =
+    Exprs.unapply(exprs)
 
-}
+end Unlifted

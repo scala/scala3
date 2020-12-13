@@ -6,6 +6,7 @@ import java.net.URI
 import java.io._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
+import java.nio.charset.StandardCharsets
 import java.util.zip._
 
 import scala.collection._
@@ -16,6 +17,7 @@ import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation, PlainFile,
 import ast.{Trees, tpd}
 import core._, core.Decorators._
 import Contexts._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
+import Denotations.staticRef
 import classpath._
 import reporting._
 import util._
@@ -31,7 +33,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
     val ctx = setup(settings.toArray, rootCtx)._2
-    ctx.initialize()(ctx)
+    ctx.initialize()(using ctx)
     ctx
   }
 
@@ -55,14 +57,14 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   // Presence of a file with one of these suffixes indicates that the
   // corresponding class has been pickled with TASTY.
-  private val tastySuffixes = List(".hasTasty", ".tasty")
+  private val tastySuffix = ".tasty"
 
   // FIXME: All the code doing classpath handling is very fragile and ugly,
   // improving this requires changing the dotty classpath APIs to handle our usecases.
   // We also need something like sbt server-mode to be informed of changes on
   // the classpath.
 
-  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(currentCtx) match {
+  private val (zipClassPaths, dirClassPaths) = currentCtx.platform.classPath(using currentCtx) match {
     case AggregateClassPath(cps) =>
       // FIXME: We shouldn't assume that ClassPath doesn't have other
       // subclasses. For now, the only other subclass is JrtClassPath on Java
@@ -92,7 +94,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTrees(implicit ctx: Context): List[SourceTree] = sourceTreesContaining("")
+  def sourceTrees(using Context): List[SourceTree] = sourceTreesContaining("")
 
   /**
    * The trees for all the source files in this project that contain `id`.
@@ -100,7 +102,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+  def sourceTreesContaining(id: String)(using Context): List[SourceTree] = {
     val fromBuffers = openedTrees.values.flatten.toList
     val fromCompilationOutput = {
       val classNames = new mutable.ListBuffer[TypeName]
@@ -122,7 +124,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTrees(implicit ctx: Context): List[SourceTree] = allTreesContaining("")
+  def allTrees(using Context): List[SourceTree] = allTreesContaining("")
 
   /**
    * All the trees for this project that contain `id`.
@@ -130,7 +132,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTreesContaining(id: String)(implicit ctx: Context): List[SourceTree] = {
+  def allTreesContaining(id: String)(using Context): List[SourceTree] = {
     val fromSource = openedTrees.values.flatten.toList
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       treesFromClassName(cls, id)
@@ -141,15 +143,17 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
+    import typer.ImportInfo._
+
     val previousCtx = myCtx
     try {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
-      val run = compiler.newRun(myInitCtx.fresh.setReporter(reporter))
-      myCtx = run.runContext
+      val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
+      myCtx = run.runContext.withRootImports
 
-      implicit val ctx = myCtx
+      given Context = myCtx
 
       myOpenedFiles(uri) = source
 
@@ -182,9 +186,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    *
    * @see SourceTree.fromSymbol
    */
-  private def treesFromClassName(className: TypeName, id: String)(implicit ctx: Context): List[SourceTree] = {
+  private def treesFromClassName(className: TypeName, id: String)(using Context): List[SourceTree] = {
     def trees(className: TypeName, id: String): List[SourceTree] = {
-      val clsd = ctx.base.staticRef(className)
+      val clsd = staticRef(className)
       clsd match {
         case clsd: ClassDenotation =>
           clsd.ensureCompleted()
@@ -216,11 +220,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       while (entries.hasMoreElements) {
         val entry = entries.nextElement()
         val name = entry.getName
-        tastySuffixes.find(name.endsWith) match {
-          case Some(tastySuffix) =>
-            buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-          case _ =>
-        }
+        if name.endsWith(tastySuffix) then
+          buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
       }
     }
     finally zipFile.close()
@@ -233,13 +234,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
           if (!attrs.isDirectory) {
             val name = path.getFileName.toString
-            for {
-              tastySuffix <- tastySuffixes
-              if name.endsWith(tastySuffix)
-            }
-            {
+            if name.endsWith(tastySuffix) then
               buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-            }
           }
           FileVisitResult.CONTINUE
         }
@@ -270,7 +266,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    *  of a previous run. Note that typed trees can have untyped or partially
    *  typed children if the source contains errors.
    */
-  private def cleanup(tree: tpd.Tree)(implicit ctx: Context): Unit = {
+  private def cleanup(tree: tpd.Tree)(using Context): Unit = {
     val seen = mutable.Set.empty[tpd.Tree]
     def cleanupTree(tree: tpd.Tree): Unit = {
       seen += tree
@@ -297,7 +293,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   private def toSource(uri: URI, sourceCode: String): SourceFile = {
     val path = Paths.get(uri)
     val virtualFile = new VirtualFile(path.getFileName.toString, path.toString)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(sourceCode)
     writer.close()
     new SourceFile(virtualFile, Codec.UTF8)
@@ -312,7 +308,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
    * late-compilation is needed).
    */
   private def initialize(): Unit = {
-    val run = compiler.newRun(myInitCtx.fresh)
+    val run = compiler.newRun(using myInitCtx.fresh)
     myCtx = run.runContext
     run.compileUnits(Nil, myCtx)
   }

@@ -5,7 +5,7 @@ import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.core.Comments.CommentsContext
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators.PreNamedString
+import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
@@ -61,7 +61,7 @@ class CommentPicklingTest {
     compileAndUnpickle(sources) { (trees, ctx) =>
       findTreeNamed(treeName)(trees, ctx) match {
         case Some(md: tpd.MemberDef) =>
-          val symbol = md.symbol(ctx)
+          val symbol = md.symbol(using ctx)
           val comment = for { docCtx <- ctx.docCtx
                               comment <- docCtx.docstring(symbol) } yield comment.raw
           assertEquals(expectedComment, comment)
@@ -112,7 +112,7 @@ class CommentPicklingTest {
       val trees = files.flatMap { f =>
         val unpickler = new DottyUnpickler(f.toByteArray())
         unpickler.enter(roots = Set.empty)
-        unpickler.rootTrees(ctx)
+        unpickler.rootTrees(using ctx)
       }
       fn(trees, ctx)
     }

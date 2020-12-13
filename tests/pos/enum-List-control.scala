@@ -1,7 +1,7 @@
-abstract sealed class List[T] extends Enum
+abstract sealed class List[T] extends reflect.Enum
 object List {
   final class Cons[T](x: T, xs: List[T]) extends List[T] {
-    def $ordinal = 0
+    def ordinal = 0
     def canEqual(that: Any): Boolean = that.isInstanceOf[Cons[_]]
     def productArity: Int = 2
     def productElement(n: Int): Any = n match
@@ -12,7 +12,7 @@ object List {
     def apply[T](x: T, xs: List[T]): List[T] = new Cons(x, xs)
   }
   final class Nil[T]() extends List[T], runtime.EnumValue {
-    def $ordinal = 1
+    def ordinal = 1
   }
   object Nil {
     def apply[T](): List[T] = new Nil()

@@ -4,8 +4,6 @@ package reporting
 
 import util.SourcePosition
 
-import messages._
-
 object Message {
   val nonSensicalStartTag: String = "<nonsensical>"
   val nonSensicalEndTag: String = "</nonsensical>"

@@ -3,7 +3,9 @@ package printing
 
 import core._
 import Texts._, Types._, Flags._, Names._, Symbols._, NameOps._, Constants._, Denotations._
-import Contexts.Context, Scopes.Scope, Denotations.Denotation, Annotations.Annotation
+import StdNames._
+import Contexts._
+import Scopes.Scope, Denotations.Denotation, Annotations.Annotation
 import StdNames.nme
 import ast.Trees._
 import typer.Implicits._
@@ -18,7 +20,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.
    */
-  protected implicit def ctx: Context = _ctx.addMode(Mode.Printing)
+  protected def curCtx: Context = _ctx.addMode(Mode.Printing)
+  protected given [DummyToEnforceDef]: Context = curCtx
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
@@ -36,7 +39,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     limiter.register(str)
     Texts.Str(str, lineRange)
 
-  given stringToText as Conversion[String, Text] = Str(_)
+  given stringToText: Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
@@ -46,13 +49,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
     if (homogenizedView)
       tp match {
         case tp: ThisType if tp.cls.is(Package) && !tp.cls.isEffectiveRoot =>
-          ctx.requiredPackage(tp.cls.fullName).termRef
+          requiredPackage(tp.cls.fullName).termRef
         case tp: TypeVar if tp.isInstantiated =>
           homogenize(tp.instanceOpt)
         case AndType(tp1, tp2) =>
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
+        case AnnotatedType(parent, annot)
+        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+          homogenize(parent)
         case tp: SkolemType =>
           homogenize(tp.info)
         case tp: LazyRef =>
@@ -87,7 +93,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
     || (sym.name == nme.PACKAGE)               // package
   )
 
-  def nameString(name: Name): String = name.toString
+  def nameString(name: Name): String =
+    if (name eq tpnme.FromJavaObject) && !printDebug
+    then nameString(tpnme.Object)
+    else name.toString
 
   def toText(name: Name): Text = Str(nameString(name))
 
@@ -121,11 +130,13 @@ class PlainPrinter(_ctx: Context) extends Printer {
     })
 
   /** Direct references to these symbols are printed without their prefix for convenience.
-   *  They are either aliased in scala.Predef or in the scala package object.
+   *  They are either aliased in scala.Predef or in the scala package object, as well as `Object`
    */
   private lazy val printWithoutPrefix: Set[Symbol] =
     (defn.ScalaPredefModule.termRef.typeAliasMembers
       ++ defn.ScalaPackageObject.termRef.typeAliasMembers).map(_.info.classSymbol).toSet
+    + defn.ObjectClass
+    + defn.FromJavaObjectSymbol
 
   def toText(tp: Type): Text = controlled {
     homogenize(tp) match {
@@ -175,6 +186,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
             keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
             (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
+      case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
+        "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
       case tp: ErrorType =>
         s"<error ${tp.msg.rawMessage}>"
       case tp: WildcardType =>
@@ -213,8 +226,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
         else {
           val constr = ctx.typerState.constraint
           val bounds =
-            if (constr.contains(tp)) ctx.addMode(Mode.Printing).typeComparer.fullBounds(tp.origin)
-            else TypeBounds.empty
+            if constr.contains(tp) then
+              withMode(Mode.Printing)(TypeComparer.fullBounds(tp.origin))
+            else
+              TypeBounds.empty
           if (bounds.isTypeAlias) toText(bounds.lo) ~ (Str("^") provided printDebug)
           else if (ctx.settings.YshowVarBounds.value) "(" ~ toText(tp.origin) ~ "?" ~ toText(bounds) ~ ")"
           else toText(tp.origin)
@@ -263,7 +278,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
     simpleNameString(sym) + idString(sym) // + "<" + (if (sym.exists) sym.owner else "") + ">"
 
   def fullNameString(sym: Symbol): String =
-    if (sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot)
+    if (sym eq defn.FromJavaObjectSymbol) && !printDebug then
+      fullNameString(defn.ObjectClass)
+    else if sym.isRoot || sym == NoSymbol || sym.owner.isEffectiveRoot then
       nameString(sym)
     else
       fullNameString(fullNameOwner(sym)) + "." + nameString(sym)
@@ -317,7 +334,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }
 
   protected def isOmittablePrefix(sym: Symbol): Boolean =
-    defn.UnqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
+    defn.unqualifiedOwnerTypes.exists(_.symbol == sym) || isEmptyPrefix(sym)
 
   protected def isEmptyPrefix(sym: Symbol): Boolean =
     sym.isEffectiveRoot || sym.isAnonymousClass || sym.name.isReplWrapperName
@@ -361,7 +378,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
             " = " ~ toText(tp.alias)
           case TypeBounds(lo, hi) =>
             (if (lo isRef defn.NothingClass) Text() else " >: " ~ toText(lo))
-            ~ (if hi.isAny then Text() else " <: " ~ toText(hi))
+            ~ (if hi.isAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
@@ -511,7 +528,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
-    case EnumTag => literalText(const.symbolValue.name.toString)
     case _ => literalText(String.valueOf(const.value))
   }
 

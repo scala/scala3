@@ -3,7 +3,7 @@ package transform
 
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
-import Contexts.Context
+import Contexts._
 
 /** A transformer that eliminates SeqLiteral's, transforming `SeqLiteral(elems)` to an operation
  *  equivalent to
@@ -20,12 +20,12 @@ class SeqLiterals extends MiniPhase {
   override def phaseName: String = "seqLiterals"
   override def runsAfter: Set[String] = Set(PatternMatcher.name)
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  override def checkPostCondition(tree: Tree)(using Context): Unit = tree match {
     case tpd: SeqLiteral => assert(tpd.isInstanceOf[JavaSeqLiteral])
     case _ =>
   }
 
-  override def transformSeqLiteral(tree: SeqLiteral)(implicit ctx: Context): Tree = tree match {
+  override def transformSeqLiteral(tree: SeqLiteral)(using Context): Tree = tree match {
     case tree: JavaSeqLiteral => tree
     case _ =>
       val arr = JavaSeqLiteral(tree.elems, tree.elemtpt)

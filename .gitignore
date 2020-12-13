@@ -1,7 +1,6 @@
 *.DS_Store
 *.class
 *.tasty
-*.hasTasty
 *.log
 *.swp
 *~
@@ -24,12 +23,12 @@ local.sbt
 # npm
 node_modules
 
-# VS Code 
+# VS Code
 .vscode/
 # Metals
 .bloop/
 .metals/
-project/metals.sbt
+metals.sbt
 
 # Scala-IDE specific
 .scala_dependencies
@@ -82,8 +81,13 @@ bench/compile.txt
 # The vscode app for testing
 vscode-dotty/.vscode-test
 
-community-build/dotty-bootstrapped.version
+community-build/scala3-bootstrapped.version
 community-build/sbt-dotty-sbt
+community-build/sbt-scalajs-sbt
 
 # Vulpix output files
 *.check.out
+!/dist/bin/
+
+# Bloop
+.bsp

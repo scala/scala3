@@ -15,7 +15,7 @@ import scala.collection.mutable
   * handled by dottydoc.
   */
 object CommentParsing {
-  import scala.internal.Chars._
+  import Chars._
 
   /** Returns index of string `str` following `start` skipping longest
    *  sequence of whitespace characters characters (but no newlines)

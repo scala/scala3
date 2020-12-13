@@ -1,0 +1,46 @@
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:8:15 --------------------------------------------------------------
+8 |  val a: Int = 1 // error
+  |               ^
+  |               @js.native members may only call js.native.
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:11:15 -------------------------------------------------------------
+11 |  def b: Int = 3 // error
+   |               ^
+   |               @js.native members may only call js.native.
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:14:23 -------------------------------------------------------------
+14 |  def c(x: Int): Int = x + 1 // error
+   |                       ^^^^^
+   |                       @js.native members may only call js.native.
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:21:2 --------------------------------------------------------------
+21 |  @JSBracketAccess // error
+   |  ^^^^^^^^^^^^^^^^
+   |  @JSBracketAccess is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:25:2 --------------------------------------------------------------
+25 |  @JSBracketAccess // error
+   |  ^^^^^^^^^^^^^^^^
+   |  @JSBracketAccess is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:29:2 --------------------------------------------------------------
+29 |  @JSBracketAccess // error
+   |  ^^^^^^^^^^^^^^^^
+   |  @JSBracketAccess is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:37:2 --------------------------------------------------------------
+37 |  @JSBracketCall // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSBracketCall is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:41:2 --------------------------------------------------------------
+41 |  @JSBracketCall // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSBracketCall is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:45:2 --------------------------------------------------------------
+45 |  @JSBracketCall // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSBracketCall is not allowed on @js.native vals and defs
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:53:6 --------------------------------------------------------------
+52 |  @js.native @JSGlobal("a")
+53 |  val a = js.native // error
+   |  ^
+   |  The type of a must be explicitly specified because it is JS native.
+-- Error: tests/neg-scalajs/js-native-val-defs.scala:56:6 --------------------------------------------------------------
+55 |  @js.native @JSGlobal("b")
+56 |  def b = js.native // error
+   |  ^
+   |  The type of b must be explicitly specified because it is JS native.

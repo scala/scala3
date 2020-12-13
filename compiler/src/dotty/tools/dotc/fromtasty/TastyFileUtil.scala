@@ -1,40 +1,46 @@
 package dotty.tools.dotc
 package fromtasty
 
-import java.nio.file.{Files, Path, Paths}
-import java.io
-
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.NameKinds
-import dotty.tools.dotc.core.Names.SimpleName
-import dotty.tools.dotc.core.StdNames.nme
-import dotty.tools.dotc.core.tasty.{TastyUnpickler, TreePickler}
+import dotty.tools.dotc.core.tasty.TastyClassName
 import dotty.tools.dotc.core.StdNames.nme.EMPTY_PACKAGE
+import dotty.tools.io.AbstractFile
 
 object TastyFileUtil {
-
-  /** Get the class path and the class name including packages
+  /** Get the class path of a tasty file
    *
    *  If
    *  ```scala
    *    package foo
    *    class Foo
    *  ```
-   *  then `getClassName("./out/foo/Foo.tasty") returns `Some(("./out", "foo.Foo"))`
+   *  then `getClassName("./out/foo/Foo.tasty") returns `Some("./out")`
    */
-  def getClassName(path: Path): Option[(String, String)] = {
-    assert(path.toString.endsWith(".tasty"))
-    assert(Files.exists(path))
-    val bytes = Files.readAllBytes(path)
-    val names = new core.tasty.TastyClassName(bytes).readName()
+  def getClassPath(file: AbstractFile): Option[String] =
+    getClassName(file).map { className =>
+      val classInPath = className.replace(".", java.io.File.separator) + ".tasty"
+      file.path.replace(classInPath, "")
+    }
+
+  /** Get the class path of a tasty file
+   *
+   *  If
+   *  ```scala
+   *    package foo
+   *    class Foo
+   *  ```
+   *  then `getClassName("./out/foo/Foo.tasty") returns `Some("foo.Foo")`
+   */
+  def getClassName(file: AbstractFile): Option[String] = {
+    assert(file.exists)
+    assert(file.extension == "tasty")
+    val bytes = file.toByteArray
+    val names = new TastyClassName(bytes).readName()
     names.map { case (packageName, className) =>
       val fullName = packageName match {
         case EMPTY_PACKAGE => s"${className.lastPart}"
         case _ => s"$packageName.${className.lastPart}"
       }
-      val classInPath = fullName.replace(".", io.File.separator) + ".tasty"
-      val classpath = path.toString.replace(classInPath, "")
-      (classpath, fullName)
+      fullName
     }
   }
 }

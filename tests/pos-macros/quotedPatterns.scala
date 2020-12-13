@@ -1,12 +1,12 @@
 import scala.quoted._
 object Test {
 
-  def x(using QuoteContext) = '{1 + 2}
+  def x(using Quotes) = '{1 + 2}
 
   def f(x: Int) = x
   def g(x: Int, y: Int) = x * y
 
-  def res(using QuoteContext): quoted.Expr[Int] = x match {
+  def res(using Quotes): quoted.Expr[Int] = x match {
     case '{1 + 2} => '{0}
     case '{f($y)} => y
     case '{g($y, $z)} => '{$y * $z}
@@ -25,16 +25,16 @@ object Test {
       z
     case '{ def ff[T](i: T): Int = $z; 2 } =>
       z
-    case '{ poly[$t]($x); 4 } => ???
-    case '{ type $X; poly[`$X`]($x); 4 } => ???
-    case '{ type $T; val x: `$T` = $a; val y: `$T` = x;  1 } => ???
-    case '{ type $t <: AnyRef; val x: `$t` = $a; val y: `$t` = x;  1 } => ???
+    case '{ poly[t]($x); 4 } => ???
+    case '{ type x; poly[`x`]($x); 4 } => ???
+    case '{ type t; val x: `t` = $a; val y: `t` = x;  1 } => ???
+    case '{ type t <: AnyRef; val x: `t` = $a; val y: `t` = x;  1 } => ???
     case _ => '{1}
   }
 
   def poly[T](x: T): Unit = ()
 
   object Foo {
-    def unapply[T](arg: quoted.Type[T]): Option[quoted.Type[T]] = Some(arg)
+    def unapply[T](arg: Type[T]): Option[Type[T]] = Some(arg)
   }
 }

@@ -11,7 +11,7 @@ object Deriving {
   }
 
   enum Lst[+T] {
-    case Cons(hd: T, tl: Lst[T])
+    case Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
     case Nil
   }
 

@@ -7,7 +7,7 @@ import ast.Trees._
 import core.Types._
 import core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.Spans.Span
 
@@ -46,7 +46,7 @@ class TryCatchPatterns extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit = tree match {
+  override def checkPostCondition(tree: Tree)(using Context): Unit = tree match {
     case Try(_, cases, _) =>
       cases.foreach {
         case CaseDef(Typed(_, _), guard, _) => assert(guard.isEmpty, "Try case should not contain a guard.")
@@ -57,22 +57,22 @@ class TryCatchPatterns extends MiniPhase {
     case _ =>
   }
 
-  override def transformTry(tree: Try)(implicit ctx: Context): Tree = {
+  override def transformTry(tree: Try)(using Context): Tree = {
     val (tryCases, patternMatchCases) = tree.cases.span(isCatchCase)
     val fallbackCase = mkFallbackPatterMatchCase(patternMatchCases, tree.span)
     cpy.Try(tree)(cases = tryCases ++ fallbackCase)
   }
 
   /** Is this pattern node a catch-all or type-test pattern? */
-  private def isCatchCase(cdef: CaseDef)(implicit ctx: Context): Boolean = cdef match {
+  private def isCatchCase(cdef: CaseDef)(using Context): Boolean = cdef match {
     case CaseDef(Typed(Ident(nme.WILDCARD), tpt), EmptyTree, _)          => isSimpleThrowable(tpt.tpe)
     case CaseDef(Bind(_, Typed(Ident(nme.WILDCARD), tpt)), EmptyTree, _) => isSimpleThrowable(tpt.tpe)
     case _                                                               => isDefaultCase(cdef)
   }
 
-  private def isSimpleThrowable(tp: Type)(implicit ctx: Context): Boolean = tp.stripAnnots match {
+  private def isSimpleThrowable(tp: Type)(using Context): Boolean = tp.stripAnnots match {
     case tp @ TypeRef(pre, _) =>
-      (pre == NoPrefix || pre.widen.typeSymbol.isStatic) && // Does not require outer class check
+      (pre == NoPrefix || pre.typeSymbol.isStatic) && // Does not require outer class check
       !tp.symbol.is(Flags.Trait) && // Traits not supported by JVM
       tp.derivesFrom(defn.ThrowableClass)
     case tp: AppliedType =>
@@ -87,7 +87,7 @@ class TryCatchPatterns extends MiniPhase {
     else {
       val exName = ExceptionBinderName.fresh()
       val fallbackSelector =
-        ctx.newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = span)
+        newSymbol(ctx.owner, exName, Flags.Synthetic | Flags.Case, defn.ThrowableType, coord = span)
       val sel = Ident(fallbackSelector.termRef).withSpan(span)
       val rethrow = CaseDef(EmptyTree, EmptyTree, Throw(ref(fallbackSelector)))
       Some(CaseDef(

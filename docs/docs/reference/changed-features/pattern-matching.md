@@ -241,3 +241,12 @@ def foo(f: Foo) = f match {
 
 There are plans for further simplification, in particular to factor out *product
 match* and *name-based match* into a single type of extractor.
+
+## Type testing
+
+Abstract type testing with `ClassTag` is replaced with `TypeTest` or the alias `Typeable`.
+
+- pattern `_: X` for an abstract type requires a `TypeTest` in scope
+- pattern `x @ X()` for an unapply that takes an abstract type requires a `TypeTest` in scope
+
+[More details on TypeTest](../other-new-features/type-test.md)

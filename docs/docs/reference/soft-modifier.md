@@ -3,7 +3,7 @@ layout: doc-page
 title: Soft Modifiers
 ---
 
-A soft modifier is one of the identifiers `opaque` and `inline`.
+A soft modifier is one of the identifiers `opaque`, `inline`, `open`, `transparent`, and `infix`.
 <!-- 
 TODO this is most likely outdated should at least contain `extension` in addition. 
 Worth maintaining? or maybe better refer to internal/syntax.md ? 

@@ -1,0 +1,3 @@
+package dotty
+
+object DottyPredef

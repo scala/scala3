@@ -4,6 +4,6 @@ abstract class AbstractFile {
 }
 
 class RemoteFile(url: String) extends AbstractFile {
-	val localFile: String = url.hashCode + ".tmp"  // error
+	val localFile: String = s"${url.##}.tmp"  // error: usage of `localFile` before it's initialized
 	def name: String = localFile
 }

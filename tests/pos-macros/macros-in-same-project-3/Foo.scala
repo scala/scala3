@@ -2,6 +2,6 @@ import scala.quoted._
 
 object Foo {
 
-  def hello()(using QuoteContext): Expr[Unit] = '{ println("Hello") }
+  def hello()(using Quotes): Expr[Unit] = '{ println("Hello") }
 
 }

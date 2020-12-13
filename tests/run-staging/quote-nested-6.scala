@@ -4,7 +4,7 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     val q = '{
       type T[X] = List[X]
       val x = "foo"

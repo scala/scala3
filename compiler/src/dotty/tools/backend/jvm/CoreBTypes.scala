@@ -33,7 +33,7 @@ import dotty.tools.dotc.transform.Erasure
  */
 class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) {
   import bTypes._
-  import int._
+  import int.{_, given}
   import DottyBackendInterface._
 
   //import global._
@@ -114,8 +114,8 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
    * names of NothingClass and NullClass can't be emitted as-is.
    * TODO @lry Once there's a 2.11.3 starr, use the commented argument list. The current starr crashes on the type literal `scala.runtime.Nothing$`
    */
-  lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(ctx.requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
-  lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(ctx.requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
+  lazy val RT_NOTHING : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Nothing$")) // (requiredClass[scala.runtime.Nothing$])
+  lazy val RT_NULL    : ClassBType = classBTypeFromSymbol(requiredClass("scala.runtime.Null$"))    // (requiredClass[scala.runtime.Null$])
 
   lazy val ObjectReference   : ClassBType = classBTypeFromSymbol(defn.ObjectClass)
   lazy val objArrayReference : ArrayBType = ArrayBType(ObjectReference)
@@ -124,6 +124,7 @@ class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTyp
   lazy val jlStringBuilderRef          : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuilder])
   lazy val jlStringBufferRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.StringBuffer])
   lazy val jlCharSequenceRef           : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.CharSequence])
+  lazy val jlClassRef                  : ClassBType = classBTypeFromSymbol(requiredClass[java.lang.Class[_]])
   lazy val ThrowableReference          : ClassBType = classBTypeFromSymbol(defn.ThrowableClass)
   lazy val jlCloneableReference        : ClassBType = classBTypeFromSymbol(defn.JavaCloneableClass)        // java/lang/Cloneable
   lazy val jlNPEReference              : ClassBType = classBTypeFromSymbol(defn.NullPointerExceptionClass) // java/lang/NullPointerException
@@ -248,6 +249,7 @@ final class CoreBTypesProxy[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface
   def jlStringBuilderRef          : ClassBType = _coreBTypes.jlStringBuilderRef
   def jlStringBufferRef           : ClassBType = _coreBTypes.jlStringBufferRef
   def jlCharSequenceRef           : ClassBType = _coreBTypes.jlCharSequenceRef
+  def jlClassRef                  : ClassBType = _coreBTypes.jlClassRef
   def ThrowableReference          : ClassBType = _coreBTypes.ThrowableReference
   def jlCloneableReference        : ClassBType = _coreBTypes.jlCloneableReference
   def jlNPEReference              : ClassBType = _coreBTypes.jlNPEReference

@@ -48,6 +48,9 @@ object Properties {
   /** dotty-library jar */
   def dottyLibrary: String = sys.props("dotty.tests.classes.dottyLibrary")
 
+  /** dotty-library-js jar */
+  def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
+
   /** dotty-compiler jar */
   def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
 
@@ -74,4 +77,7 @@ object Properties {
 
   /** jline-reader jar */
   def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+
+  /** scalajs-library jar */
+  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
 }

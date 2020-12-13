@@ -2,14 +2,14 @@ package adts
 object t1:
 
   enum Option[+T]:
-    case Some(x: T)
+    case Some[T](x: T) extends Option[T]
     case None
 
 object t2:
 
   enum Option[+T]:
-    case Some(x: T) extends Option[T]
-    case None       extends Option[Nothing]
+    case Some[T](x: T) extends Option[T]
+    case None          extends Option[Nothing]
 
 enum Color(val rgb: Int):
   case Red   extends Color(0xFF0000)
@@ -20,7 +20,7 @@ enum Color(val rgb: Int):
 object t3:
 
   enum Option[+T]:
-    case Some(x: T) extends Option[T]
+    case Some[T](x: T) extends Option[T]
     case None
 
     def isDefined: Boolean = this match

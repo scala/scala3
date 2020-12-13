@@ -4,15 +4,15 @@ object Test {
 
   import scala.quoted._
 
-  def impl[T](t: T)(using qctx: QuoteContext, tt: Type[T]): Expr[Any] = {
+  def impl[T](t: T)(using Quotes, Type[T]): Expr[Any] = {
 
-    import qctx.tasty._
+    import quotes.reflect._
     import util._
 
-    val foo = typeOf[Foo[String]]
-    val symbol = foo.typeSymbol.field("a")
+    val foo = TypeRepr.of[Foo[String]]
+    val symbol = foo.typeSymbol.memberField("a")
     val a = foo.select(symbol)
-    assert(a <:< defn.StringType)
+    assert(a <:< TypeRepr.of[String])
 
     '{???}
   }

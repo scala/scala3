@@ -1,17 +1,20 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
 import Types._
-import Contexts.Context
+import Contexts._
 import Symbols._
 import Decorators._
 import Denotations.{SingleDenotation, NonSymSingleDenotation}
 import SymDenotations.SymDenotation
 import DenotTransformers._
 import TypeUtils._
+import Names._
+import ast.Trees._
 
 object ElimOpaque {
   val name: String = "elimOpaque"
@@ -19,6 +22,8 @@ object ElimOpaque {
 
 /** Rewrites opaque type aliases to normal alias types */
 class ElimOpaque extends MiniPhase with DenotTransformer {
+  thisPhase =>
+  import ast.tpd._
 
   override def phaseName: String = ElimOpaque.name
 
@@ -28,7 +33,7 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
   // base types of opaque aliases change
   override def changesBaseTypes = true
 
-  def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
     val sym = ref.symbol
     ref match {
       case ref: SymDenotation if sym.isOpaqueAlias =>
@@ -52,4 +57,19 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
         ref
     }
   }
+
+  /** Resolve overloading of `==` and `!=` methods with the representation
+   *  types in order to avoid boxing.
+   */
+  override def transformApply(tree: Apply)(using Context): Tree =
+    val sym = tree.symbol
+    if sym == defn.Any_== || sym == defn.Any_!= then
+      tree match
+        case Apply(Select(receiver, name: TermName), args)
+        if atPhase(thisPhase)(receiver.tpe.widenDealias.typeSymbol.isOpaqueAlias) =>
+          applyOverloaded(receiver, name, args, Nil, defn.BooleanType)
+        case _ =>
+          tree
+    else
+      tree
 }

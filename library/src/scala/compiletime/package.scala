@@ -8,11 +8,13 @@ package object compiletime {
    *  pattern match on it. For example, given a type `Tup <: Tuple`, one can
    *  pattern-match on it as follows:
    *  ```
-   *  erasedValue[Tup] match {
+   *  inline erasedValue[Tup] match {
    *    case _: EmptyTuple => ...
    *    case _: h *: t => ...
    *  }
    *  ```
+   *  This value can only be used in an inline match and the value cannot be used in
+   *  the branches.
    */
   erased def erasedValue[T]: T = ???
 
@@ -24,51 +26,87 @@ package object compiletime {
    *  ```
    *  or
    *  ```scala
-   *  error(code"My error of this code: ${println("foo")}")
+   *  inline def errorOnThisCode(inline x: Any) =
+   *    error("My error of this code: " + codeOf(x))
    *  ```
    */
   inline def error(inline msg: String): Nothing = ???
 
-  /** Returns the string representation of interpolated elaborated code:
+  /** Returns the string representation of argument code:
    *
    *  ```scala
-   *  inline def logged(p1: => Any) = {
-   *    val c = code"code: $p1"
-   *    val res = p1
-   *    (c, p1)
-   *  }
+   *  inline def logged(inline p1: Any) =
+   *    ("code: " + codeOf(p1), p1)
+   *
    *  logged(identity("foo"))
    *  // above is equivalent to:
    *  // ("code: scala.Predef.identity("foo")", identity("foo"))
    *  ```
    *
-   * @note only by-name arguments will be displayed as "code".
+   *  The formatting of the code is not stable across version of the compiler.
+   *
+   * @note only `inline` arguments will be displayed as "code".
    *       Other values may display unintutively.
    */
-  transparent inline def (inline self: StringContext) code (inline args: Any*): String =
-    ${ dotty.internal.CompileTimeMacros.codeExpr('self, 'args) }
+  transparent inline def codeOf(arg: Any): String =
+    // implemented in dotty.tools.dotc.typer.Inliner.Intrinsics
+    error("Compiler bug: `codeOf` was not evaluated by the compiler")
+
+  /** Checks at compiletime that the provided values is a constant after
+   *  inlining and constant folding.
+   *
+   *  Usage:
+   *  ```scala
+   *  inline def twice(inline n: Int): Int =
+   *    requireConst(n) // compile-time assertion that the parameter `n` is a constant
+   *    n + n
+   *
+   *  twice(1)
+   *  val m: Int = ...
+   *  twice(m) // error: expected a constant value but found: m
+   *  ```
+   */
+  inline def requireConst(inline x: Boolean | Byte | Short | Int | Long | Float | Double | Char | String): Unit =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `requireConst` was not evaluated by the compiler")
 
   /** Same as `constValue` but returns a `None` if a constant value
    *  cannot be constructed from the provided type. Otherwise returns
    *  that value wrapped in `Some`.
    */
-  inline def constValueOpt[T]: Option[T] = ???
+  inline def constValueOpt[T]: Option[T] =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
   /** Given a constant, singleton type `T`, convert it to a value
    *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
    */
-  inline def constValue[T]: T = ???
+  inline def constValue[T]: T =
+    // implemented in dotty.tools.dotc.typer.Inliner
+    error("Compiler bug: `constValue` was not evaluated by the compiler")
+
+  /**
+   * Use this type to widen a self-type to a tuple. E.g.
+   * ```
+   * val x: (1, 3) = (1, 3)
+   * val y: Widen[x.type] = x
+   * ```
+   */
+  type Widen[Tup <: Tuple] <: Tuple = Tup match {
+    case EmptyTuple => EmptyTuple
+    case h *: t => h *: t
+  }
 
   /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
    *  `(constValue[X1], ..., constValue[Xn])`.
    */
-  inline def constValueTuple[T <: Tuple]: Tuple.Widen[T]=
+  inline def constValueTuple[T <: Tuple]: Widen[T]=
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => constValue[t] *: constValueTuple[ts]
       end match
-    res.asInstanceOf[Tuple.Widen[T]]
+    res.asInstanceOf[Widen[T]]
   end constValueTuple
 
   /** Summons first given matching one of the listed cases. E.g. in
@@ -84,8 +122,8 @@ package object compiletime {
    *
    *  the returned value would be `2`.
    */
-  transparent inline def summonFrom[T](f: Nothing => T): T = ???
-
+  transparent inline def summonFrom[T](f: Nothing => T): T =
+    error("Compiler bug: `summonFrom` was not evaluated by the compiler")
 
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *  The summoning is delayed until the call has been fully inlined.
@@ -103,13 +141,13 @@ package object compiletime {
    *  @tparam T the tuple containing the types of the values to be summoned
    *  @return the given values typed as elements of the tuple
    */
-  inline def summonAll[T <: Tuple]: Tuple.Widen[T] =
+  inline def summonAll[T <: Tuple]: Widen[T] =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => summonInline[t] *: summonAll[ts]
       end match
-    res.asInstanceOf[Tuple.Widen[T]]
+    res.asInstanceOf[Widen[T]]
   end summonAll
 
   /** Succesor of a natural number where zero is the type 0 and successors are reduced as if the definition was

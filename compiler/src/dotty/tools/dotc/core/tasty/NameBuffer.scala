@@ -9,8 +9,10 @@ import TastyBuffer._
 import collection.mutable
 import Names.{Name, chrs, SimpleName, DerivedName, TypeName}
 import NameKinds._
+import NameOps._
 import Decorators._
 import scala.io.Codec
+import NameTags.{SIGNED, TARGETSIGNED}
 
 class NameBuffer extends TastyBuffer(10000) {
   import NameBuffer._
@@ -24,8 +26,9 @@ class NameBuffer extends TastyBuffer(10000) {
         ref
       case None =>
         name1 match {
-          case SignedName(original, Signature(params, result)) =>
+          case SignedName(original, Signature(params, result), target) =>
             nameIndex(original)
+            if !original.matchesTargetName(target) then nameIndex(target)
             nameIndex(result)
             params.foreach {
               case param: TypeName =>
@@ -35,7 +38,7 @@ class NameBuffer extends TastyBuffer(10000) {
           case AnyQualifiedName(prefix, name) =>
             nameIndex(prefix); nameIndex(name)
           case AnyUniqueName(original, separator, num) =>
-            nameIndex(separator.toTermName)
+            nameIndex(separator)
             if (!original.isEmpty) nameIndex(original)
           case DerivedName(original, _) =>
             nameIndex(original)
@@ -70,29 +73,39 @@ class NameBuffer extends TastyBuffer(10000) {
 
   def pickleNameContents(name: Name): Unit = {
     val tag = name.toTermName.info.kind.tag
-    writeByte(tag)
     name.toTermName match {
       case name: SimpleName =>
+        writeByte(tag)
         val bytes =
           if (name.length == 0) new Array[Byte](0)
           else Codec.toUTF8(chrs, name.start, name.length)
         writeNat(bytes.length)
         writeBytes(bytes, bytes.length)
       case AnyQualifiedName(prefix, name) =>
+        writeByte(tag)
         withLength { writeNameRef(prefix); writeNameRef(name) }
       case AnyUniqueName(original, separator, num) =>
+        writeByte(tag)
         withLength {
-          writeNameRef(separator.toTermName)
+          writeNameRef(separator)
           writeNat(num)
           if (!original.isEmpty) writeNameRef(original)
         }
       case AnyNumberedName(original, num) =>
+        writeByte(tag)
         withLength { writeNameRef(original); writeNat(num) }
-      case SignedName(original, Signature(paramsSig, result)) =>
+      case SignedName(original, Signature(paramsSig, result), target) =>
+        val needsTarget = !original.matchesTargetName(target)
+        writeByte(if needsTarget then TARGETSIGNED else SIGNED)
         withLength(
-          { writeNameRef(original); writeNameRef(result); paramsSig.foreach(writeParamSig) },
-          if ((paramsSig.length + 2) * maxIndexWidth <= maxNumInByte) 1 else 2)
+          { writeNameRef(original)
+            if needsTarget then writeNameRef(target)
+            writeNameRef(result)
+            paramsSig.foreach(writeParamSig)
+          },
+          if ((paramsSig.length + 3) * maxIndexWidth <= maxNumInByte) 1 else 2)
       case DerivedName(original, _) =>
+        writeByte(tag)
         withLength { writeNameRef(original) }
     }
   }

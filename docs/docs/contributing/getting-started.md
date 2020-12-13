@@ -25,8 +25,8 @@ all be done from within sbt:
 
 ```bash
 $ sbt
-> dotc tests/pos/HelloWorld.scala
-> dotr HelloWorld
+> scalac tests/pos/HelloWorld.scala
+> scala HelloWorld
 hello world
 ```
 
@@ -41,10 +41,10 @@ and you will be able to run the corresponding commands directly from your consol
 
 ```shell
 # Compile code using Dotty
-$ dotc tests/pos/HelloWorld.scala
+$ scalac tests/pos/HelloWorld.scala
 
 # Run it with the proper classpath
-$ dotr HelloWorld
+$ scala HelloWorld
 ```
 
 
@@ -62,8 +62,21 @@ scala>
 or via bash:
 
 ```bash
-$ dotr
+$ scala
 ```
+Publish to local repository
+---------------------------------
+To test our cloned compiler on local projects:
+
+```bash
+$ sbt publishLocal
+```
+Then in the `build.sbt` file of a test project:
+
+```bash
+ThisBuild / scalaVersion := "<dotty-version>-bin-SNAPSHOT"
+```
+where `dotty-version` can be found in the file `project/Build.scala`, like `3.0.0-M2`
 
 
 Generating Documentation

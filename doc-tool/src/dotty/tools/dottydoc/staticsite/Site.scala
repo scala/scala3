@@ -21,7 +21,7 @@ import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.util.SourceFile
 import model.Package
 import scala.io.{ Codec, Source }
@@ -57,7 +57,7 @@ case class Site(
     * @note files that are *not* considered static are files ending in a compilable
     *       extension.
     */
-  def staticAssets(implicit ctx: Context): Array[JFile] = {
+  def staticAssets(using Context): Array[JFile] = {
     if (_staticAssets eq null) initFiles
     _staticAssets
   }
@@ -68,7 +68,7 @@ case class Site(
     *
     * @note files that are considered compilable end in `.md` or `.html`
     */
-  def compilableFiles(implicit ctx: Context): Array[JFile] = {
+  def compilableFiles(using Context): Array[JFile] = {
     if (_compilableFiles eq null) initFiles
     _compilableFiles
   }
@@ -81,7 +81,7 @@ case class Site(
     *
     * where `ext` is either markdown or html.
     */
-  def blogposts(implicit ctx: Context): Array[JFile] = {
+  def blogposts(using Context): Array[JFile] = {
     if (_blogposts eq null) initFiles
     _blogposts
   }
@@ -97,7 +97,7 @@ case class Site(
       .getOrElse(Sidebar.empty)
 
   private[this] var _blogInfo: Array[BlogPost] = _
-  protected def blogInfo(implicit ctx: Context): Array[BlogPost] = {
+  protected def blogInfo(using Context): Array[BlogPost] = {
     if (_blogInfo eq null) {
       _blogInfo =
         blogposts
@@ -124,14 +124,14 @@ case class Site(
   /** Create virtual file from string `sourceCode` */
   private def stringToSourceFile(name: String, path: String, sourceCode: String): SourceFile = {
     val virtualFile = new VirtualFile(name, path)
-    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, "UTF-8"))
+    val writer = new BufferedWriter(new OutputStreamWriter(virtualFile.output, StandardCharsets.UTF_8.name))
     writer.write(sourceCode)
     writer.close()
 
     new SourceFile(virtualFile, Codec.UTF8)
   }
 
-  def copyStaticFiles()(implicit ctx: Context): this.type =
+  def copyStaticFiles()(using Context): this.type =
     createOutput {
       // Copy user-defined static assets
       staticAssets.foreach { asset =>
@@ -155,9 +155,9 @@ case class Site(
         "js/bootstrap.min.js" -> "/js/bootstrap.min.js",
         "js/jquery.min.js" -> "/js/jquery.min.js",
         "js/highlight.pack.js" -> "/js/highlight.pack.js",
-        "images/dotty-logo.svg" -> "/images/dotty-logo.svg",
+        "images/scala3-logo.svg" -> "/images/scala3-logo.svg",
         "images/scala-logo.svg" -> "/images/scala-logo.svg",
-        "images/dotty-logo-white.svg" -> "/images/dotty-logo-white.svg",
+        "images/scala3-logo-white.svg" -> "/images/scala3-logo-white.svg",
         "images/scala-logo-white.svg" -> "/images/scala-logo-white.svg"
       )
       .transform((_, v) => getResource(v))
@@ -181,7 +181,7 @@ case class Site(
     )
 
   /* Creates output directories if allowed */
-  private def createOutput(op: => Unit)(implicit ctx: Context): this.type = {
+  private def createOutput(op: => Unit)(using Context): this.type = {
     if (!outDir.isDirectory) outDir.mkdirs()
     if (!outDir.isDirectory) ctx.docbase.error(s"couldn't create output folder: $outDir")
     else op
@@ -189,7 +189,7 @@ case class Site(
   }
 
   /** Generate HTML for the API documentation */
-  def generateApiDocs()(implicit ctx: Context): this.type =
+  def generateApiDocs()(using Context): this.type =
     createOutput {
       def genDoc(e: model.Entity): Unit = {
         ctx.docbase.echo(s"Generating doc page for: ${e.path.mkString(".")}")
@@ -235,7 +235,7 @@ case class Site(
     }
 
   /** Generate HTML files from markdown and .html sources */
-  def generateHtmlFiles()(implicit ctx: Context): this.type =
+  def generateHtmlFiles()(using Context): this.type =
     createOutput {
       compilableFiles.foreach { asset =>
         val pathFromRoot = stripRoot(asset)
@@ -255,7 +255,7 @@ case class Site(
     }
 
   /** Generate blog from files in `blog/_posts` and output in `outDir` */
-  def generateBlog()(implicit ctx: Context): this.type =
+  def generateBlog()(using Context): this.type =
     createOutput {
       blogposts.foreach { file =>
         val BlogPost.extract(year, month, day, name, ext) = file.getName
@@ -280,7 +280,7 @@ case class Site(
     }
 
   /** Create directories and issue an error if could not */
-  private def mkdirs(path: Path)(implicit ctx: Context): path.type = {
+  private def mkdirs(path: Path)(using Context): path.type = {
     val parent = path.getParent.toFile
 
     if (!parent.isDirectory && !parent.mkdirs())
@@ -307,7 +307,7 @@ case class Site(
   private[this] var _compilableFiles: Array[JFile] = _
   private[this] var _blogposts: Array[JFile] = _
 
-  private[this] def initFiles(implicit ctx: Context) = {
+  private[this] def initFiles(using Context) = {
     // Split files between compilable and static assets
     def splitFiles(f: JFile, assets: ArrayBuffer[JFile], comp: ArrayBuffer[JFile]): Unit = {
       val name = f.getName
@@ -413,7 +413,7 @@ case class Site(
   }
 
   private def toSourceFile(f: JFile): SourceFile =
-    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Using(Source.fromFile(f, "UTF-8"))(_.toArray).get)
+    new SourceFile(AbstractFile.getFile(new File(f.toPath)), Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.toArray).get)
 
   private def collectFiles(dir: JFile, includes: String => Boolean): Array[JFile] =
     dir
@@ -423,7 +423,7 @@ case class Site(
   /** Render a page to html, the resulting string is the result of the complete
     * expansion of the template with all its layouts and includes.
     */
-  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(implicit ctx: Context): Option[String] =
+  def render(page: Page, params: Map[String, AnyRef] = Map.empty)(using Context): Option[String] =
     page.yaml.get("layout").flatMap(xs => layouts.get(xs.toString)) match {
       case Some(layout) if page.html.isDefined =>
         val newParams = page.params ++ params ++ Map("page" -> page.yaml) ++ Map("content" -> page.html.get)

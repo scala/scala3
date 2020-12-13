@@ -8,10 +8,10 @@ extension [O, U](o: Lifted[O]) def flatMap(f: O => Lifted[U]): Lifted[U] = ???
 
 val error: Err = Err()
 
-lazy val ok: Lifted[String] = { // ok despite map returning a union
-  point("a").map(_ => if true then "foo" else error) // ok
+lazy val ok: Lifted[String] = {
+  point("a").flatMap(_ => if true then "foo" else error)
 }
 
 lazy val nowAlsoOK: Lifted[String] = {
-  point("a").flatMap(_ => point("b").map(_ => if true then "foo" else error))
+  point("a").flatMap(_ => point("b").flatMap(_ => if true then "foo" else error))
 }

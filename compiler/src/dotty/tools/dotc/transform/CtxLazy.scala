@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package transform
 
-import core.Contexts.Context
+import core.Contexts._
 
 /** Utility class for lazy values whose evaluation depends on a context.
  *  This should be used whenever the evaluation of a lazy expression
@@ -14,9 +14,9 @@ import core.Contexts.Context
 class CtxLazy[T](expr: Context ?=> T) {
   private var myValue: T = _
   private var forced = false
-  def apply()(implicit ctx: Context): T = {
+  def apply()(using Context): T = {
     if (!forced) {
-      myValue = expr(using ctx)
+      myValue = expr
       forced = true
     }
     myValue

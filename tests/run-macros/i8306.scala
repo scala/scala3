@@ -56,38 +56,38 @@ object Test extends Test8 {
     }
 
   def main(argv: Array[String]): Unit = {
-    println(code"compile-time: ${test1}")
-    println(s"run-time: ${test1}")
+    println(s"compile-time: ${codeOf(test1)}")
+    println(s"run-time: ${codeOf(test1)}")
 
-    println(code"compile-time: ${test2}")
-    println(s"run-time: ${test2}")
+    println(s"compile-time: ${codeOf(test2)}")
+    println(s"run-time: ${codeOf(test2)}")
 
-    println(code"compile-time: ${test3}")
-    println(s"run-time: ${test3}")
+    println(s"compile-time: ${codeOf(test3)}")
+    println(s"run-time: ${codeOf(test3)}")
 
-    println(code"compile-time: ${test4}")
-    println(s"run-time: ${test4}")
+    println(s"compile-time: ${codeOf(test4)}")
+    println(s"run-time: ${codeOf(test4)}")
 
     // this is the only test that should not be possible to fully inline,
     // because it references a non-inline value
-    println(code"compile-time: ${test5}")
-    println(s"run-time: ${test5}")
+    println(s"compile-time: ${codeOf(test5)}")
+    println(s"run-time: ${codeOf(test5)}")
 
-    println(code"compile-time: ${test6}")
-    println(s"run-time: ${test6}")
+    println(s"compile-time: ${codeOf(test6)}")
+    println(s"run-time: ${codeOf(test6)}")
 
-    println(code"compile-time: ${test7}")
-    println(s"run-time: ${test7}")
+    println(s"compile-time: ${codeOf(test7)}")
+    println(s"run-time: ${codeOf(test7)}")
 
-    println(code"compile-time: ${test8}")
-    println(s"run-time: ${test8}")
+    println(s"compile-time: ${codeOf(test8)}")
+    println(s"run-time: ${codeOf(test8)}")
 
-    println(code"compile-time: ${test9}")
-    println(s"run-time: ${test9}")
+    println(s"compile-time: ${codeOf(test9)}")
+    println(s"run-time: ${codeOf(test9)}")
 
     // with type parameter
-    println(code"compile-time: ${test10}")
-    println(s"run-time: ${test10}")
+    println(s"compile-time: ${codeOf(test10)}")
+    println(s"run-time: ${codeOf(test10)}")
   }
 }
 

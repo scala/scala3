@@ -4,7 +4,6 @@ package staging
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
@@ -23,7 +22,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
   private[this] val contextBase: ContextBase = new ContextBase
 
-  def run[T](exprBuilder: QuoteContext => Expr[T], settings: Toolbox.Settings): T =
+  def run[T](exprBuilder: Quotes => Expr[T], settings: Toolbox.Settings): T =
     val outDir: AbstractFile =
       settings.outDir match
         case Some(out) =>
@@ -57,11 +56,10 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
   override def initCtx: Context =
     val ictx = contextBase.initialCtx
-    ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(ictx)
+    ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
 
   private def setToolboxSettings(ctx: FreshContext, settings: Toolbox.Settings): ctx.type =
-    ctx.setSetting(ctx.settings.YshowRawQuoteTrees, settings.showRawTree)
     // An error in the generated code is a bug in the compiler
     // Setting the throwing reporter however will report any exception
     ctx.setReporter(new ThrowingReporter(ctx.reporter))

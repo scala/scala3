@@ -1,5 +1,5 @@
-sealed super trait TA
-sealed super trait TB
+transparent sealed trait TA
+transparent sealed trait TB
 trait S
 case object a extends S, TA, TB
 case object b extends S, TA, TB

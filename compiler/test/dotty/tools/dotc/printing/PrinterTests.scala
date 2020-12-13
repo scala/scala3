@@ -5,6 +5,8 @@ import dotty.tools.dotc.ast.{Trees,tpd}
 import dotty.tools.dotc.core.Names._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Decorators._
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -26,7 +28,7 @@ class PrinterTests extends DottyTest {
     """
 
     checkCompile("typer", source) { (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val bar = tree.find(tree => tree.symbol.name == termName("bar")).get
       assertEquals("package object foo", bar.symbol.owner.show)
     }
@@ -43,7 +45,7 @@ class PrinterTests extends DottyTest {
     """.stripMargin
 
     checkCompile("typer", source) { (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val bar @ Trees.DefDef(_, _, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get
       assertEquals("Int & (Boolean | String)", bar.tpt.show)
     }

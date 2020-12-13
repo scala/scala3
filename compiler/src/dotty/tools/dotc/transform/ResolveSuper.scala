@@ -3,16 +3,18 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts._
 import Flags._
 import SymUtils._
 import Symbols._
 import Decorators._
 import DenotTransformers._
+import Names._
+import StdNames._
 import NameOps._
 import NameKinds._
 import ResolveSuper._
-import reporting.messages.IllegalSuperAccessor
+import reporting.IllegalSuperAccessor
 
 /** This phase implements super accessors in classes that need them.
  *
@@ -34,12 +36,11 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def phaseName: String = ResolveSuper.name
 
   override def runsAfter: Set[String] = Set(ElimByName.name, // verified empirically, need to figure out what the reason is.
-                               AugmentScala2Traits.name,
                                PruneErasedDefs.name) // Erased decls make `isCurrent` work incorrectly
 
   override def changesMembers: Boolean = true // the phase adds super accessors
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass
     val ops = new MixinOps(cls, thisPhase)
     import ops._
@@ -56,10 +57,10 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
     cpy.Template(impl)(body = overrides ::: impl.body)
   }
 
-  override def transformDefDef(ddef: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(ddef: DefDef)(using Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
-      assert(ddef.rhs.isEmpty)
+      assert(ddef.rhs.isEmpty, ddef.symbol)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
       import ops._
@@ -77,15 +78,29 @@ object ResolveSuper {
    *  @param base       The class in which everything is mixed together
    *  @param acc        The symbol statically referred to by the superaccessor in the trait
    */
-  def rebindSuper(base: Symbol, acc: Symbol)(implicit ctx: Context): Symbol = {
+  def rebindSuper(base: Symbol, acc: Symbol)(using Context): Symbol = {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
-    val SuperAccessorName(memberName) = acc.name.unexpandedName
-    ctx.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+
+    def decomposeSuperName(superName: Name): (Name, TypeName) =
+      superName.unexpandedName match
+        case SuperAccessorName(ExpandPrefixName(name, mixName)) =>
+          (name, mixName.toTypeName)
+        case SuperAccessorName(name) =>
+          (name, EmptyTypeName)
+
+    val (memberName, mix) = decomposeSuperName(acc.name.unexpandedName)
+    val targetName =
+      if acc.name == acc.targetName then memberName
+      else decomposeSuperName(acc.targetName)._1
+
+    report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
+
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
-        .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
-      ctx.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
+        .filterWithPredicate(denot => mix.isEmpty || denot.symbol.owner.name == mix)
+        .matchingDenotation(base.thisType, base.thisType.memberInfo(acc), targetName)
+      report.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
       if other.exists && !other.symbol.is(Deferred) then
         sym = other.symbol
         // Having a matching denotation is not enough: it should also be a subtype
@@ -93,11 +108,11 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
-          ctx.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.sourcePos)
+          report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
 
       bcs = bcs.tail
     }
-    assert(sym.exists)
+    assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")
     sym
   }
 }

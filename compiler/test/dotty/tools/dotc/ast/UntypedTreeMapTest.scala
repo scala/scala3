@@ -22,7 +22,7 @@ class UntpdTreeMapTest extends DottyTest {
   def testMapInterpolatedString = {
     val tree = parse(""" q"hello ${2017}!" """)
     val identity = new UntypedTreeMap {
-      override def transform(tree: Tree)(implicit ctx: Context): Tree = tree match {
+      override def transform(tree: Tree)(using Context): Tree = tree match {
         case _ =>  super.transform(tree)
       }
     }

@@ -11,7 +11,7 @@ object opaques:
   private[scala] type Sup[A] >: IArray[A] <: Array[_ <: A]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps as Object {
+  given arrayOps: Object with {
 
     /** The selection operation on an immutable array.
       *
@@ -19,242 +19,258 @@ object opaques:
       *  @param n   the index of the element to select
       *  @return    the element of the array at the given index
       */
-    def (arr: IArray[Byte]) apply(n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
-    def (arr: IArray[Short]) apply(n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
-    def (arr: IArray[Char]) apply(n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
-    def (arr: IArray[Int]) apply(n: Int): Int = arr.asInstanceOf[Array[Int]].apply(n)
-    def (arr: IArray[Long]) apply(n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
-    def (arr: IArray[Float]) apply(n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
-    def (arr: IArray[Double]) apply(n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
-    def [T <: Object](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
-    def [T](arr: IArray[T]) apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+    extension (arr: IArray[Byte]) def apply(n: Int): Byte = arr.asInstanceOf[Array[Byte]].apply(n)
+    extension (arr: IArray[Short]) def apply(n: Int): Short = arr.asInstanceOf[Array[Short]].apply(n)
+    extension (arr: IArray[Char]) def apply(n: Int): Char = arr.asInstanceOf[Array[Char]].apply(n)
+    extension (arr: IArray[Int]) def apply(n: Int): Int = arr.asInstanceOf[Array[Int]].apply(n)
+    extension (arr: IArray[Long]) def apply(n: Int): Long = arr.asInstanceOf[Array[Long]].apply(n)
+    extension (arr: IArray[Float]) def apply(n: Int): Float = arr.asInstanceOf[Array[Float]].apply(n)
+    extension (arr: IArray[Double]) def apply(n: Int): Double = arr.asInstanceOf[Array[Double]].apply(n)
+    extension [T <: Object](arr: IArray[T]) def apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
+    extension [T](arr: IArray[T]) def apply (n: Int): T = arr.asInstanceOf[Array[T]].apply(n)
 
     /** The number of elements in an immutable array
       *  @param arr  the immutable array
       */
-    def (arr: IArray[Byte]) length: Int = arr.asInstanceOf[Array[Byte]].length
-    def (arr: IArray[Short]) length: Int = arr.asInstanceOf[Array[Short]].length
-    def (arr: IArray[Char]) length: Int = arr.asInstanceOf[Array[Char]].length
-    def (arr: IArray[Int]) length: Int = arr.asInstanceOf[Array[Int]].length
-    def (arr: IArray[Long]) length: Int = arr.asInstanceOf[Array[Long]].length
-    def (arr: IArray[Float]) length: Int = arr.asInstanceOf[Array[Float]].length
-    def (arr: IArray[Double]) length: Int = arr.asInstanceOf[Array[Double]].length
-    def (arr: IArray[Object]) length: Int = arr.asInstanceOf[Array[Object]].length
-    def [T](arr: IArray[T]) length: Int = arr.asInstanceOf[Array[T]].length
+    extension (arr: IArray[Byte]) def length: Int = arr.asInstanceOf[Array[Byte]].length
+    extension (arr: IArray[Short]) def length: Int = arr.asInstanceOf[Array[Short]].length
+    extension (arr: IArray[Char]) def length: Int = arr.asInstanceOf[Array[Char]].length
+    extension (arr: IArray[Int]) def length: Int = arr.asInstanceOf[Array[Int]].length
+    extension (arr: IArray[Long]) def length: Int = arr.asInstanceOf[Array[Long]].length
+    extension (arr: IArray[Float]) def length: Int = arr.asInstanceOf[Array[Float]].length
+    extension (arr: IArray[Double]) def length: Int = arr.asInstanceOf[Array[Double]].length
+    extension (arr: IArray[Object]) def length: Int = arr.asInstanceOf[Array[Object]].length
+    extension [T](arr: IArray[T]) def length: Int = arr.asInstanceOf[Array[T]].length
 
     /** Returns this array concatenated with the given array. */
-    def [T, U >: T: ClassTag](arr: IArray[T]) ++(that: IArray[U]): IArray[U] =
+    extension [T, U >: T: ClassTag](arr: IArray[T]) def ++(that: IArray[U]): IArray[U] =
       genericArrayOps(arr) ++ that
 
     /** Tests whether this array contains a given value as an element. */
-    def [T](arr: IArray[T]) contains(elem: T): Boolean =
+    extension [T](arr: IArray[T]) def contains(elem: T): Boolean =
       // `genericArrayOps(arr).contains(elem)` does not work because `elem` does not have type `arr.T`
       // but we can use `exists` instead, which is how `ArrayOps#contains` itself is implemented:
       genericArrayOps(arr).exists(_ == elem)
 
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U]): Int =
+      genericArrayOps(arr).copyToArray(xs)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start)
+
+    /** Copy elements of this array to another array. */
+    extension [T, U >: T](arr: IArray[T]) def copyToArray(xs: Array[U], start: Int, len: Int): Int =
+      genericArrayOps(arr).copyToArray(xs, start, len)
+
     /** Counts the number of elements in this array which satisfy a predicate */
-    def [T](arr: IArray[T]) count(p: T => Boolean): Int =
+    extension [T](arr: IArray[T]) def count(p: T => Boolean): Int =
       genericArrayOps(arr).count(p)
 
     /** The rest of the array without its `n` first elements. */
-    def [T](arr: IArray[T]) drop(n: Int): IArray[T] =
+    extension [T](arr: IArray[T]) def drop(n: Int): IArray[T] =
       genericArrayOps(arr).drop(n)
 
     /** The rest of the array without its `n` last elements. */
-    def [T](arr: IArray[T]) dropRight(n: Int): IArray[T] =
+    extension [T](arr: IArray[T]) def dropRight(n: Int): IArray[T] =
       genericArrayOps(arr).dropRight(n)
 
     /** Drops longest prefix of elements that satisfy a predicate. */
-    def [T](arr: IArray[T]) dropWhile(p: T => Boolean): IArray[T] =
+    extension [T](arr: IArray[T]) def dropWhile(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).dropWhile(p)
 
     /** Tests whether a predicate holds for at least one element of this array. */
-    def [T](arr: IArray[T]) exists(p: T => Boolean): Boolean =
+    extension [T](arr: IArray[T]) def exists(p: T => Boolean): Boolean =
       genericArrayOps(arr).exists(p)
 
     /** Selects all elements of this array which satisfy a predicate. */
-    def [T](arr: IArray[T]) filter(p: T => Boolean): IArray[T] =
+    extension [T](arr: IArray[T]) def filter(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).filter(p)
 
     /** Selects all elements of this array which do not satisfy a predicate. */
-    def [T](arr: IArray[T]) filterNot(p: T => Boolean): IArray[T] =
+    extension [T](arr: IArray[T]) def filterNot(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).filterNot(p)
 
     /** Finds the first element of the array satisfying a predicate, if any. */
-    def [T](arr: IArray[T]) find(p: T => Boolean): Option[T] =
+    extension [T](arr: IArray[T]) def find(p: T => Boolean): Option[T] =
       genericArrayOps(arr).find(p)
 
     /** Builds a new array by applying a function to all elements of this array
       * and using the elements of the resulting collections. */
-    def [T, U: ClassTag](arr: IArray[T]) flatMap(f: T => IterableOnce[U]): IArray[U] =
+    extension [T, U: ClassTag](arr: IArray[T]) def flatMap(f: T => IterableOnce[U]): IArray[U] =
       genericArrayOps(arr).flatMap(f)
 
     /** Flattens a two-dimensional array by concatenating all its rows
       * into a single array. */
-    def [T, U: ClassTag](arr: IArray[T]) flatten(using T => Iterable[U]): IArray[U] =
+    extension [T, U: ClassTag](arr: IArray[T]) def flatten(using T => Iterable[U]): IArray[U] =
       genericArrayOps(arr).flatten
 
     /** Folds the elements of this array using the specified associative binary operator. */
-    def [T, U >: T: ClassTag](arr: IArray[T]) fold(z: U)(op: (U, U) => U): U =
+    extension [T, U >: T: ClassTag](arr: IArray[T]) def fold(z: U)(op: (U, U) => U): U =
       genericArrayOps(arr).fold(z)(op)
 
     /** Applies a binary operator to a start value and all elements of this array,
       * going left to right. */
-    def [T, U: ClassTag](arr: IArray[T]) foldLeft(z: U)(op: (U, T) => U): U =
+    extension [T, U: ClassTag](arr: IArray[T]) def foldLeft(z: U)(op: (U, T) => U): U =
       genericArrayOps(arr).foldLeft(z)(op)
 
     /** Applies a binary operator to all elements of this array and a start value,
       * going right to left. */
-    def [T, U: ClassTag](arr: IArray[T]) foldRight(z: U)(op: (T, U) => U): U =
+    extension [T, U: ClassTag](arr: IArray[T]) def foldRight(z: U)(op: (T, U) => U): U =
       genericArrayOps(arr).foldRight(z)(op)
 
     /** Tests whether a predicate holds for all elements of this array. */
-    def [T](arr: IArray[T]) forall(p: T => Boolean): Boolean =
+    extension [T](arr: IArray[T]) def forall(p: T => Boolean): Boolean =
       genericArrayOps(arr).forall(p)
 
     /** Apply `f` to each element for its side effects. */
-    def [T, U](arr: IArray[T]) foreach(f: T => U): Unit =
+    extension [T, U](arr: IArray[T]) def foreach(f: T => U): Unit =
       genericArrayOps(arr).foreach(f)
 
     /** Selects the first element of this array. */
-    def [T](arr: IArray[T]) head: T =
+    extension [T](arr: IArray[T]) def head: T =
       genericArrayOps(arr).head
 
     /** Optionally selects the first element. */
-    def [T](arr: IArray[T]) headOption: Option[T] =
+    extension [T](arr: IArray[T]) def headOption: Option[T] =
       genericArrayOps(arr).headOption
 
     /** Finds index of first occurrence of some value in this array after or at some start index. */
-    def [T](arr: IArray[T]) indexOf(elem: T, from: Int = 0): Int =
+    extension [T](arr: IArray[T]) def indexOf(elem: T, from: Int = 0): Int =
       // `asInstanceOf` needed because `elem` does not have type `arr.T`
       // We could use `arr.iterator.indexOf(elem, from)` or `arr.indexWhere(_ == elem, from)`
       // but these would incur some overhead.
       genericArrayOps(arr).indexOf(elem.asInstanceOf, from)
 
     /** Finds index of the first element satisfying some predicate after or at some start index. */
-    def [T](arr: IArray[T]) indexWhere(p: T => Boolean, from: Int = 0): Int =
+    extension [T](arr: IArray[T]) def indexWhere(p: T => Boolean, from: Int = 0): Int =
       genericArrayOps(arr).indexWhere(p, from)
 
     /** Produces the range of all indices of this sequence. */
-    def [T](arr: IArray[T]) indices: Range =
+    extension [T](arr: IArray[T]) def indices: Range =
       genericArrayOps(arr).indices
 
     /** The initial part of the array without its last element. */
-    def [T](arr: IArray[T]) init: IArray[T] =
+    extension [T](arr: IArray[T]) def init: IArray[T] =
       genericArrayOps(arr).init
 
     /** Tests whether the array is empty. */
-    def [T](arr: IArray[T]) isEmpty: Boolean =
+    extension [T](arr: IArray[T]) def isEmpty: Boolean =
       genericArrayOps(arr).isEmpty
 
     /** An iterator yielding the elemenst of this array. */
-    def [T](arr: IArray[T]) iterator: Iterator[T] =
+    extension [T](arr: IArray[T]) def iterator: Iterator[T] =
       genericArrayOps(arr).iterator
 
     /** Selects the last element. */
-    def [T](arr: IArray[T]) last: T =
+    extension [T](arr: IArray[T]) def last: T =
       genericArrayOps(arr).last
 
     /** Optionally selects the last element. */
-    def [T](arr: IArray[T]) lastOption: Option[T] =
+    extension [T](arr: IArray[T]) def lastOption: Option[T] =
       genericArrayOps(arr).lastOption
 
     /** Finds index of last occurrence of some value in this array before or at a given end index. */
-    def [T](arr: IArray[T]) lastIndexOf(elem: T, end: Int = arr.length - 1): Int =
+    extension [T](arr: IArray[T]) def lastIndexOf(elem: T, end: Int = arr.length - 1): Int =
       // see: same issue in `indexOf`
       genericArrayOps(arr).lastIndexOf(elem.asInstanceOf, end)
 
     /** Finds index of last element satisfying some predicate before or at given end index. */
-    def [T](arr: IArray[T]) lastIndexWhere(p: T => Boolean, end: Int = arr.length - 1): Int =
+    extension [T](arr: IArray[T]) def lastIndexWhere(p: T => Boolean, end: Int = arr.length - 1): Int =
       genericArrayOps(arr).lastIndexWhere(p, end)
 
     /** Builds a new array by applying a function to all elements of this array. */
-    def [T, U: ClassTag](arr: IArray[T]) map(f: T => U): IArray[U] =
+    extension [T, U: ClassTag](arr: IArray[T]) def map(f: T => U): IArray[U] =
       genericArrayOps(arr).map(f)
 
     /** Tests whether the array is not empty. */
-    def [T](arr: IArray[T]) nonEmpty: Boolean =
+    extension [T](arr: IArray[T]) def nonEmpty: Boolean =
       genericArrayOps(arr).nonEmpty
 
     /** A pair of, first, all elements that satisfy predicate `p` and, second, all elements that do not. */
-    def [T](arr: IArray[T]) partition(p: T => Boolean): (IArray[T], IArray[T]) =
+    extension [T](arr: IArray[T]) def partition(p: T => Boolean): (IArray[T], IArray[T]) =
       genericArrayOps(arr).partition(p)
 
     /** Returns a new array with the elements in reversed order. */
-    def [T](arr: IArray[T]) reverse: IArray[T] =
+    extension [T](arr: IArray[T]) def reverse: IArray[T] =
       genericArrayOps(arr).reverse
 
     /** Computes a prefix scan of the elements of the array. */
-    def [T, U >: T: ClassTag](arr: IArray[T]) scan(z: U)(op: (U, U) => U): IArray[U] =
+    extension [T, U >: T: ClassTag](arr: IArray[T]) def scan(z: U)(op: (U, U) => U): IArray[U] =
       genericArrayOps(arr).scan(z)(op)
 
     /** Produces an array containing cumulative results of applying the binary
       * operator going left to right. */
-    def [T, U: ClassTag](arr: IArray[T]) scanLeft(z: U)(op: (U, T) => U): IArray[U] =
+    extension [T, U: ClassTag](arr: IArray[T]) def scanLeft(z: U)(op: (U, T) => U): IArray[U] =
       genericArrayOps(arr).scanLeft(z)(op)
 
     /** Produces an array containing cumulative results of applying the binary
       * operator going right to left. */
-    def [T, U: ClassTag](arr: IArray[T]) scanRight(z: U)(op: (T, U) => U): IArray[U] =
+    extension [T, U: ClassTag](arr: IArray[T]) def scanRight(z: U)(op: (T, U) => U): IArray[U] =
       genericArrayOps(arr).scanRight(z)(op)
 
     /** The size of this array. */
-    def [T](arr: IArray[T]) size: Int =
+    extension [T](arr: IArray[T]) def size: Int =
       arr.length
 
     /** Selects the interval of elements between the given indices. */
-    def [T](arr: IArray[T]) slice(from: Int, until: Int): IArray[T] =
+    extension [T](arr: IArray[T]) def slice(from: Int, until: Int): IArray[T] =
       genericArrayOps(arr).slice(from, until)
 
     /** Sorts this array according to the Ordering which results from transforming
       * an implicitly given Ordering with a transformation function. */
-    def [T, U: ClassTag](arr: IArray[T]) sortBy(f: T => U)(using math.Ordering[U]): IArray[T] =
+    extension [T, U: ClassTag](arr: IArray[T]) def sortBy(f: T => U)(using math.Ordering[U]): IArray[T] =
       genericArrayOps(arr).sortBy(f)
 
     /** Sorts this array according to a comparison function. */
-    def [T](arr: IArray[T]) sortWith(f: (T, T) => Boolean): IArray[T] =
+    extension [T](arr: IArray[T]) def sortWith(f: (T, T) => Boolean): IArray[T] =
       genericArrayOps(arr).sortWith(f)
 
     /** Sorts this array according to an Ordering. */
-    def [T](arr: IArray[T]) sorted(using math.Ordering[T]): IArray[T] =
+    extension [T](arr: IArray[T]) def sorted(using math.Ordering[T]): IArray[T] =
       genericArrayOps(arr).sorted
 
     /** Splits this array into a prefix/suffix pair according to a predicate. */
-    def [T](arr: IArray[T]) span(p: T => Boolean): (IArray[T], IArray[T]) =
+    extension [T](arr: IArray[T]) def span(p: T => Boolean): (IArray[T], IArray[T]) =
       genericArrayOps(arr).span(p)
 
     /** Splits this array into two at a given position. */
-    def [T](arr: IArray[T]) splitAt(n: Int): (IArray[T], IArray[T]) =
+    extension [T](arr: IArray[T]) def splitAt(n: Int): (IArray[T], IArray[T]) =
       genericArrayOps(arr).splitAt(n)
 
     /** Tests whether this array starts with the given array. */
-    def [T, U >: T: ClassTag](arr: IArray[T]) startsWith(that: IArray[U], offset: Int = 0): Boolean =
+    extension [T, U >: T: ClassTag](arr: IArray[T]) def startsWith(that: IArray[U], offset: Int = 0): Boolean =
       genericArrayOps(arr).startsWith(that)
 
     /** The rest of the array without its first element. */
-    def [T](arr: IArray[T]) tail: IArray[T] =
+    extension [T](arr: IArray[T]) def tail: IArray[T] =
       genericArrayOps(arr).tail
 
     /** An array containing the first `n` elements of this array. */
-    def [T](arr: IArray[T]) take(n: Int): IArray[T] =
+    extension [T](arr: IArray[T]) def take(n: Int): IArray[T] =
       genericArrayOps(arr).take(n)
 
     /** An array containing the last `n` elements of this array. */
-    def [T](arr: IArray[T]) takeRight(n: Int): IArray[T] =
+    extension [T](arr: IArray[T]) def takeRight(n: Int): IArray[T] =
       genericArrayOps(arr).takeRight(n)
 
     /** Takes longest prefix of elements that satisfy a predicate. */
-    def [T](arr: IArray[T]) takeWhile(p: T => Boolean): IArray[T] =
+    extension [T](arr: IArray[T]) def takeWhile(p: T => Boolean): IArray[T] =
       genericArrayOps(arr).takeWhile(p)
 
+    /** Returns a mutable copy of this immutable array. */
+    extension [T](arr: IArray[T]) def toArray: Array[T] =
+      arr.clone.asInstanceOf[Array[T]]
+
     /** Converts an array of pairs into an array of first elements and an array of second elements. */
-    def [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) unzip: (IArray[U], IArray[V]) =
+    extension [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) def unzip: (IArray[U], IArray[V]) =
       genericArrayOps(arr).unzip
 
     /** Returns an array formed from this array and another iterable collection
       * by combining corresponding elements in pairs.
       * If one of the two collections is longer than the other, its remaining elements are ignored. */
-    def [T, U: ClassTag](arr: IArray[T]) zip(that: IArray[U]): IArray[(T, U)] =
+    extension [T, U: ClassTag](arr: IArray[T]) def zip(that: IArray[U]): IArray[(T, U)] =
       genericArrayOps(arr).zip(that)
   }
 end opaques
@@ -266,7 +282,7 @@ object IArray {
   import opaques.Sup
 
   // A convenience to avoid having to cast everything by hand
-  private given [A] as Conversion[Array[A], IArray[A]] = identity[Sub[A]]
+  private given [A]: Conversion[Array[A], IArray[A]] = identity[Sub[A]]
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will

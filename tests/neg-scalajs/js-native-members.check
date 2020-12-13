@@ -1,0 +1,100 @@
+-- Error: tests/neg-scalajs/js-native-members.scala:9:24 ---------------------------------------------------------------
+9 |  def this(z: String) = this(z.length, z) // error
+  |                        ^^^^^^^^^^^^^^^^^
+  |                        A secondary constructor of a native JS class may only call the primary constructor
+-- Error: tests/neg-scalajs/js-native-members.scala:11:15 --------------------------------------------------------------
+11 |  val a: Int = 1 // error
+   |               ^
+   |               Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:12:15 --------------------------------------------------------------
+12 |  var b: Int = 2 // error
+   |               ^
+   |               Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:13:15 --------------------------------------------------------------
+13 |  def c: Int = 3 // error
+   |               ^
+   |               Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:14:23 --------------------------------------------------------------
+14 |  def d(x: Int): Int = x + 1 // error
+   |                       ^^^^^
+   |                       Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:17:23 --------------------------------------------------------------
+17 |  def e(x: Any): Any = x // error
+   |                       ^
+   |                       Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:19:37 --------------------------------------------------------------
+19 |  def f(x: Any)(y: String): String = y // error
+   |                                     ^
+   |                                     Concrete members of JS native types may only call js.native.
+-- Error: tests/neg-scalajs/js-native-members.scala:25:14 --------------------------------------------------------------
+25 |  private def this(x: String) = this() // error
+   |              ^
+   |    Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
+-- Error: tests/neg-scalajs/js-native-members.scala:26:18 --------------------------------------------------------------
+26 |  private[A2] def this(x: Boolean) = this() // error
+   |                  ^
+   |    Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
+-- Error: tests/neg-scalajs/js-native-members.scala:28:20 --------------------------------------------------------------
+28 |  private[this] val a: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:29:14 --------------------------------------------------------------
+29 |  private val b: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:30:18 --------------------------------------------------------------
+30 |  private[A2] val c: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:32:20 --------------------------------------------------------------
+32 |  private[this] var d: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:33:14 --------------------------------------------------------------
+33 |  private var e: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:34:18 --------------------------------------------------------------
+34 |  private[A2] var f: Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:36:20 --------------------------------------------------------------
+36 |  private[this] def g(): Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:37:14 --------------------------------------------------------------
+37 |  private def h(): Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:38:18 --------------------------------------------------------------
+38 |  private[A2] def i(): Int = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Native JS classes may not have private members. Use a public member in a private facade instead.
+-- Error: tests/neg-scalajs/js-native-members.scala:43:10 --------------------------------------------------------------
+43 |  class X1 private () extends js.Object // error
+   |          ^
+   |    Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
+-- Error: tests/neg-scalajs/js-native-members.scala:46:10 --------------------------------------------------------------
+46 |  class X2 private[A3] () extends js.Object // error
+   |          ^
+   |    Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
+-- Error: tests/neg-scalajs/js-native-members.scala:56:6 ---------------------------------------------------------------
+56 |  def foo = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^
+   |  The type of foo must be explicitly specified because it is JS native.
+-- Error: tests/neg-scalajs/js-native-members.scala:57:6 ---------------------------------------------------------------
+57 |  val bar = js.native // error
+   |  ^^^^^^^^^^^^^^^^^^^
+   |  The type of bar must be explicitly specified because it is JS native.
+-- Error: tests/neg-scalajs/js-native-members.scala:66:8 ---------------------------------------------------------------
+66 |    def apply: Int = js.native // error
+   |        ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+-- Error: tests/neg-scalajs/js-native-members.scala:77:8 ---------------------------------------------------------------
+77 |    val apply: Int = js.native // error
+   |        ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
+-- Error: tests/neg-scalajs/js-native-members.scala:88:8 ---------------------------------------------------------------
+88 |    var apply: Int = js.native // error
+   |        ^
+   |A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")

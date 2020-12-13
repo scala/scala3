@@ -29,9 +29,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Test"
+    val tastyFile = "scala/Test.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -74,9 +74,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Test"
+    val tastyFile = "scala/Test.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -120,9 +120,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Test"
+    val tastyFile = "scala/Test.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo: Def) = trt.members
@@ -169,9 +169,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Iterable"
+    val tastyFile = "scala/Iterable.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
@@ -213,9 +213,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Iterable"
+    val tastyFile = "scala/Iterable.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
       case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
         val List(map: Def) = trt.members
@@ -245,9 +245,9 @@ abstract class UsecaseBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.Test"
+    val tastyFile = "scala/Test.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           val List(foo0: Def, foo1: Def) = trt.members

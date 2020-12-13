@@ -30,7 +30,24 @@ class DocTests extends ReplTest {
     eval("/** doc */ trait Foo").andThen { implicit s =>
       assertEquals("doc", doc("new Foo"))
     }
+/*
+  @Test def docOfExtension1 =
+    eval("/** doc */ extension (x: Int) def foo = 0").andThen { implicit s =>
+      assertEquals("doc", doc("extension_foo"))
+    }
 
+  @Test def docOfExtension2 =
+    eval("extension (x: Int) /** doc */ def foo = 0").andThen { implicit s =>
+      assertEquals("doc", doc("extension_foo"))
+    }
+
+  @Test def docOfExtension3 =
+    eval("/** doc0 */ extension (x: Int) { /** doc1 */ def foo = 0; /** doc2 */ def bar = 0; def baz = 0 }").andThen { implicit s =>
+      assertEquals("doc1", doc("extension_foo"))
+      assertEquals("doc2", doc("extension_bar"))
+      assertEquals("doc0", doc("extension_baz"))
+    }
+*/
   @Test def docOfDefInObject =
     eval("object O { /** doc */ def foo = 0 }").andThen { implicit s =>
       assertEquals("doc", doc("O.foo"))
@@ -159,6 +176,12 @@ class DocTests extends ReplTest {
       """.stripMargin).andThen { implicit s =>
       assertEquals("Expansion: some-value", doc("Foo.hello"))
     }
+
+  @Test def docOfEmpty =
+    fromInitialState { implicit s =>
+    run(":doc")
+    assertEquals(":doc <expression>", storedOutput().trim)
+  }
 
   private def eval(code: String): State =
     fromInitialState { implicit s => run(code) }

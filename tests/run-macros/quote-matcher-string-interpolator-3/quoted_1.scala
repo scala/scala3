@@ -6,7 +6,7 @@ object Macros {
 
   extension (inline self: StringContext) inline def S(args: => String*): String = ${impl('self, 'args)}
 
-  private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using QuoteContext): Expr[String] = {
+  private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using Quotes): Expr[String] = {
     self match {
       case '{ StringContext(${Varargs(Consts(parts))}: _*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)

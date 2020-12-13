@@ -3,10 +3,10 @@ import scala.quoted.staging._
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
 
-    val q = '{ (using qctx: QuoteContext) =>
-      val t = '[String]
+    val q = '{ (using q: Quotes) =>
+      val t = Type.of[String]
       t
     }
 

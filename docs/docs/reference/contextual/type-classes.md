@@ -4,13 +4,14 @@ title: "Implementing Type classes"
 ---
 
 A _type class_ is an abstract, parameterized type that lets you add new behavior to any closed data type without using sub-typing. This can be useful in multiple use-cases, for example:
+
 * expressing how a type you don't own (from the standard or 3rd-party library) conforms to such behavior
 * expressing such a behavior for multiple types without involving sub-typing relationships (one `extends` another) between those types (see: [ad hoc polymorphism](https://en.wikipedia.org/wiki/Ad_hoc_polymorphism) for instance)
 
 Therefore in Scala 3, _type classes_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends` keyword, but by **given instances**.
 Here are some examples of common type classes:
 
-### Semigroups and monoids:
+### Semigroups and monoids
 
 Here's the `Monoid` type class definition:
 
@@ -31,6 +32,7 @@ given Monoid[String]:
 ```
 
 Whereas for the type `Int` one could write the following:
+
 ```scala
 given Monoid[Int]:
   extension (x: Int) def combine (y: Int): Int = x + y
@@ -58,7 +60,7 @@ def combineAll[T: Monoid](xs: List[T]): T =
   xs.foldLeft(Monoid[T].unit)(_.combine(_))
 ```
 
-### Functors:
+### Functors
 
 A `Functor` for a type provides the ability for its values to be "mapped over", i.e. apply a function that transforms inside a value while remembering its shape. For example, to modify every element of a collection without dropping or adding elements.
 We can represent all types that can be "mapped over" with `F`. It's a type constructor: the type of its values becomes concrete when provided a type argument.
@@ -69,6 +71,7 @@ The definition of a generic `Functor` would thus be written as:
 trait Functor[F[_]]:
   def map[A, B](x: F[A], f: A => B): F[B]
 ```
+
 Which could read as follows: "A `Functor` for the type constructor `F[_]` represents the ability to transform `F[A]` to `F[B]` through the application of function `f` with type `A => B`". We call the `Functor` definition here a _type class_.
 This way, we could define an instance of `Functor` for the `List` type:
 
@@ -81,6 +84,7 @@ given Functor[List]:
 With this `given` instance in scope, everywhere a `Functor` is expected, the compiler will accept a `List` to be used.
 
 For instance, we may write such a testing method:
+
 ```scala
 def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
   assert(expected == summon[Functor[F]].map(original, mapping))
@@ -117,18 +121,18 @@ It simplifies the `assertTransformation` method:
 def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
   assert(expected == original.map(mapping))
 ```
+
 The `map` method is now directly used on `original`. It is available as an extension method
 since `original`'s type is `F[A]` and a given instance for `Functor[F[A]]` which defines `map`
 is in scope.
-
 
 ### Monads
 
 Applying `map` in `Functor[List]` to a mapping function of type `A => B` results in a `List[B]`. So applying it to a mapping function of type `A => List[B]` results in a `List[List[B]]`. To avoid managing lists of lists, we may want to "flatten" the values in a single list.
 
 That's where `Monad` comes in. A `Monad` for type `F[_]` is a `Functor[F]` with two more operations:
-* `flatMap`, which turns an `F[A]` into an `F[B]` when given a function of type
-`A => F[B]`,
+
+* `flatMap`, which turns an `F[A]` into an `F[B]` when given a function of type `A => F[B]`,
 * `pure`, which creates an `F[A]` from a single value `A`.
 
 Here is the translation of this definition in Scala 3:
@@ -152,14 +156,16 @@ end Monad
 #### List
 
 A `List` can be turned into a monad via this `given` instance:
+
 ```scala
-given listMonad as Monad[List]:
+given listMonad: Monad[List] with
   def pure[A](x: A): List[A] =
     List(x)
   extension [A, B](xs: List[A])
     def flatMap(f: A => List[B]): List[B] =
       xs.flatMap(f) // rely on the existing `flatMap` method of `List`
 ```
+
 Since `Monad` is a subtype of `Functor`, `List` is also a functor. The Functor's `map`
 operation is already provided by the `Monad` trait, so the instance does not need to define
 it explicitly.
@@ -169,7 +175,7 @@ it explicitly.
 `Option` is an other type having the same kind of behaviour:
 
 ```scala
-given optionMonad as Monad[Option]:
+given optionMonad: Monad[Option] with
   def pure[A](x: A): Option[A] =
     Option(x)
   extension [A, B](xo: Option[A])
@@ -190,19 +196,23 @@ Let's define a `Config` type, and two functions using it:
 trait Config
 // ...
 def compute(i: Int)(config: Config): String = ???
-def layout(str: String)(config: Config): Unit = ???
+def show(str: String)(config: Config): Unit = ???
 ```
 
 We may want to combine `compute` and `show` into a single function, accepting a `Config` as parameter, and showing the result of the computation, and we'd like to use
 a monad to avoid passing the parameter explicitly multiple times. So postulating
 the right `flatMap` operation, we could write:
+
 ```scala
 def computeAndShow(i: Int): Config => Unit = compute(i).flatMap(show)
 ```
+
 instead of
+
 ```scala
 show(compute(i)(config))(config)
 ```
+
 Let's define this m then. First, we are going to define a type named `ConfigDependent` representing a function that when passed a `Config` produces a `Result`.
 
 ```scala
@@ -212,7 +222,7 @@ type ConfigDependent[Result] = Config => Result
 The monad instance will look like this:
 
 ```scala
-given configDependentMonad as Monad[ConfigDependent]:
+given configDependentMonad: Monad[ConfigDependent] with
 
   def pure[A](x: A): ConfigDependent[A] =
     config => x
@@ -232,9 +242,8 @@ type ConfigDependent = [Result] =>> Config => Result
 
 Using this syntax would turn the previous `configDependentMonad` into:
 
-
 ```scala
-given configDependentMonad as Monad[[Result] =>> Config => Result]
+given configDependentMonad: Monad[[Result] =>> Config => Result] with
 
   def pure[A](x: A): Config => A =
     config => x
@@ -249,7 +258,7 @@ end configDependentMonad
 It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
-given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
 
   def pure[A](x: A): Ctx => A =
     ctx => x
@@ -266,7 +275,7 @@ end readerMonad
 The definition of a _type class_ is expressed with a parameterised type with abstract members, such as a `trait`.
 The main difference between subtype polymorphism and ad-hoc polymorphism with _type classes_ is how the definition of the _type class_ is implemented, in relation to the type it acts upon.
 In the case of a _type class_, its implementation for a concrete type is expressed through a `given` instance definition, which is supplied as an implicit argument alongside the value it acts upon. With subtype polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation. The type class solution
-takes more effort to set up, but is more extensible: Adding a new interface to a class
+takes more effort to set up, but is more extensible: Adding a new interface to a
 class requires changing the source code of that class. But contrast, instances for type classes can be defined anywhere.
 
 To conclude, we have seen that traits and given instances, combined with other constructs like extension methods, context bounds and type lambdas allow a concise and natural expression of _type classes_.

@@ -8,12 +8,12 @@ object FQuote {
     inline def ff(args: => Any*): String = ${impl('this, 'args)}
   }
 
-  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+  /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
+    import quotes.reflect._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.seal
+        val head = x.asExpr
         val tail = liftListOfAny(xs)
         '{ $head :: $tail }
       case Nil => '{Nil}
@@ -31,22 +31,22 @@ object FQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.unseal.underlyingArgument match {
+    val parts = receiver.asTerm.underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant(value: String)) => value }
+        values.collect { case Literal(StringConstant(value)) => value }
       case tree =>
-        Reporting.error(s"String literal expected, but ${tree.showExtractors} found")
+        report.error(s"String literal expected, but ${tree.show(using Printer.TreeStructure)} found")
         return '{???}
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(allArgs, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = args.asTerm.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
-      if (part.startsWith("%d") && !(arg.tpe <:< defn.IntType)) {
+      if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {
         return '{s"`${${Expr(arg.show)}}` is not of type Int"}
       }
 

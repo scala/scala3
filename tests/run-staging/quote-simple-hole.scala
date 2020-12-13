@@ -4,7 +4,7 @@ import scala.quoted.staging._
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     val x = '{0}
     val y = '{$x}
     val z = '{${'{$y}}}
@@ -15,8 +15,8 @@ object Test {
     assert(x eq a)
     assert(x eq b)
 
-    val i = '[Int]
-    val j = '[$i]
+    val i = Type.of[Int]
+    val j = Type.of[i.Underlying]
     assert(i eq j)
   }
 }

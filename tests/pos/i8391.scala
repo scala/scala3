@@ -1,7 +1,7 @@
-import scala.annotation.alpha
+import scala.annotation.targetName
 
 trait Foo {
-  @alpha("intersection")
+  @targetName("intersection")
   def *(other: Foo): Foo
 }
 

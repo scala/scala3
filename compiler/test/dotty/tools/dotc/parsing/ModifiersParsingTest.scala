@@ -14,14 +14,14 @@ import core.Contexts._
 import core.Flags
 
 object ModifiersParsingTest {
-  implicit val ctx: Context = (new ContextBase).initialCtx
+  given Context = (new ContextBase).initialCtx
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()
     stats match { case List(stat) => stat; case stats => Thicket(stats) }
   }
 
-  implicit class TreeDeco(val code: Tree) extends AnyVal {
+  extension (code: Tree) {
     def firstConstrValDef: ValDef = code match {
       case d.TypeDef(_, d.Template(constr, _, _, _)) =>
         constr.vparamss.head.head
@@ -74,7 +74,7 @@ object ModifiersParsingTest {
 
 
 class ModifiersParsingTest {
-  import ModifiersParsingTest._
+  import ModifiersParsingTest.{_, given}
 
 
   @Test def valDef = {

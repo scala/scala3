@@ -3,25 +3,19 @@ package vulpix
 
 import java.io.{File => JFile}
 import org.junit.Assert._
-import org.junit.Test
+import org.junit.{ Test, AfterClass }
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 /** Unit tests for the Vulpix test suite */
-class VulpixUnitTests extends ParallelTesting {
+class VulpixUnitTests {
+  import VulpixUnitTests._
   import TestConfiguration._
 
   implicit val _: SummaryReporting = new NoSummaryReport
 
   implicit def testGroup: TestGroup = TestGroup("VulpixTests")
-
-  def maxDuration = 3.seconds
-  def numberOfSlaves = 5
-  def safeMode = sys.env.get("SAFEMODE").isDefined
-  def isInteractive = !sys.env.contains("DRONE")
-  def testFilter = None
-  def updateCheckFiles: Boolean = false
 
   // To fail with something else than an AssertionError
   def fail(): Unit = throw new Exception("didn't fail properly")
@@ -91,14 +85,28 @@ class VulpixUnitTests extends ParallelTesting {
     }
 
   @Test def runTimeout: Unit = {
-    val fileName = s"tests${JFile.separatorChar}vulpix-tests${JFile.separatorChar}unit${JFile.separatorChar}timeout.scala"
+    val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     try {
       compileFile(fileName, defaultOptions).checkRuns()
       fail()
     } catch {
       case ae: AssertionError =>
-        assertEquals(s"Run test failed, but should not, reasons:\n\n  - encountered 1 test failures(s)  - test '${fileName}' timed out",
-          ae.getMessage)
+        val expect = """(?m).*test '.+' timed out.*"""
+        val actual = ae.getMessage.linesIterator.toList.last
+        assert(actual.matches(expect), "actual = " + actual)
     }
   }
+}
+
+
+object VulpixUnitTests extends ParallelTesting {
+  def maxDuration = 3.seconds
+  def numberOfSlaves = 5
+  def safeMode = sys.env.get("SAFEMODE").isDefined
+  def isInteractive = !sys.env.contains("DRONE")
+  def testFilter = None
+  def updateCheckFiles: Boolean = false
+
+  @AfterClass
+  def tearDown() = this.cleanup()
 }

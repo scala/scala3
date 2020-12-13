@@ -21,11 +21,11 @@ In addition, an identifier `$x` starting with a `$` that appears inside
 a quoted expression or type is treated as a splice `${x}` and a quoted identifier
 `'x` that appears inside a splice is treated as a quote `'{x}`
 
-### Implementation in `dotc`
+### Implementation in `scalac`
 
 Quotes and splices are primitive forms in the generated abstract syntax trees.
 Top-level splices are eliminated during macro expansion while typing. On the
-other hand, top-level quotes are eliminated in an expansion phase `ReifyQuotes`
+other hand, top-level quotes are eliminated in an expansion phase `PickleQuotes`
 phase (after typing and pickling). PCP checking occurs while preparing the RHS
 of an inline method for top-level splices and in the `Staging` phase (after
 typing and before pickling).
@@ -191,13 +191,12 @@ With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
-given AsFunction1[T, U] as Conversion[Expr[T => U], Expr[T] => Expr[U]] {
+given AsFunction1[T, U]: Conversion[Expr[T => U], Expr[T] => Expr[U]] with
   def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
    (x: Expr[T]) => f match {
      case Lambda(g) => g(x)
      case _ => '{ ($f)($x) }
    }
-}
 ```
 This assumes an extractor
 ```scala

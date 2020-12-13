@@ -20,7 +20,7 @@ classes, [Compiler] and [Run].
 
 Package Structure
 -----------------
-Most functionality of `dotc` is implemented in subpackages of `dotc`. Here's a
+Most functionality of `scalac` is implemented in subpackages of `dotc`. Here's a
 list of sub-packages and their focus.
 
 ```
@@ -44,10 +44,10 @@ list of sub-packages and their focus.
 
 Contexts
 --------
-`dotc` has almost no global state (the only significant bit of global state is
+`scalac` has almost no global state (the only significant bit of global state is
 the name table, which is used to hash strings into unique names). Instead, all
 essential bits of information that can vary over a compiler run are collected
-in a [Context]. Most methods in `dotc` take a `Context` value as an implicit
+in a [Context]. Most methods in `scalac` take a `Context` value as an implicit
 parameter.
 
 Contexts give a convenient way to customize values in some part of the
@@ -55,7 +55,7 @@ call-graph. To run, e.g. some compiler function `f` at a given phase `phase`,
 we invoke `f` with an explicit context parameter, like this
 
 ```scala
-f(/*normal args*/)(ctx.withPhase(phase))
+f(/*normal args*/)(using ctx.withPhase(phase))
 ```
 
 This assumes that `f` is defined in the way most compiler functions are:
@@ -88,7 +88,7 @@ a problem.
 
 Compiler Phases
 ---------------
-Seen from a temporal perspective, the `dotc` compiler consists of a list of
+Seen from a temporal perspective, the `scalac` compiler consists of a list of
 phases. The current list of phases is specified in class [Compiler] as follows:
 
 ```scala
@@ -110,7 +110,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
+    List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -146,7 +146,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
          new ElimByName,             // Expand by-name parameter references
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
+         new AugmentScala2Traits,    // Augments Scala2 traits so that super accessors are made non-private
          new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new TupleOptimizations,     // Optimize generic operations on tuples
@@ -168,8 +168,7 @@ phases. The current list of phases is specified in class [Compiler] as follows:
          new Instrumentation,        // Count closure allocations under -Yinstrument-closures
          new GetClass,               // Rewrites getClass calls on primitive types.
          new LiftTry) ::             // Put try expressions that might execute on non-empty stacks into their own methods their implementations
-    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
-         new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                         // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis) ::      // Replace `this` references to static objects by global identifiers
     List(new Flatten,                // Lift all inner classes to package scope

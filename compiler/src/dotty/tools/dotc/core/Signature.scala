@@ -56,7 +56,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature)(implicit ctx: Context): Boolean = {
+  final def consistentParams(that: Signature)(using Context): Boolean = {
     @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
       if (names1.isEmpty) names2.isEmpty
       else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
@@ -87,7 +87,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  or `ParamMatch`.
    *  If the parameters are inconsistent, the result is always `NoMatch`.
    */
-  final def matchDegree(that: Signature)(implicit ctx: Context): MatchDegree =
+  final def matchDegree(that: Signature)(using Context): MatchDegree =
     if consistentParams(that) then
       if resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig) then
         FullMatch
@@ -99,7 +99,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
       NoMatch
 
   /** Does this signature potentially clash with `that` ? */
-  def clashes(that: Signature)(implicit ctx: Context): Boolean =
+  def clashes(that: Signature)(using Context): Boolean =
     matchDegree(that) == FullMatch
 
   private def isWildcard(name: TypeName) = name == tpnme.WILDCARD
@@ -109,7 +109,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prependTermParams(params: List[Type], isJava: Boolean)(implicit ctx: Context): Signature =
+  def prependTermParams(params: List[Type], isJava: Boolean)(using Context): Signature =
     Signature(params.map(p => sigName(p, isJava)) ::: paramsSig, resSig)
 
   /** Construct a signature by prepending the length of a type parameter section
@@ -117,14 +117,14 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prependTypeParams(typeParamSigsSectionLength: Int)(implicit ctx: Context): Signature =
+  def prependTypeParams(typeParamSigsSectionLength: Int)(using Context): Signature =
     Signature(typeParamSigsSectionLength :: paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
    *  of a type that still contains uninstantiated type variables.
    */
-  def isUnderDefined(implicit ctx: Context): Boolean =
+  def isUnderDefined(using Context): Boolean =
     paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
 }
 
@@ -164,7 +164,7 @@ object Signature {
    *  otherwise the signature will change once the contained type variables have
    *  been instantiated.
    */
-  def apply(resultType: Type, isJava: Boolean)(implicit ctx: Context): Signature = {
+  def apply(resultType: Type, isJava: Boolean)(using Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
     apply(Nil, sigName(resultType, isJava))
   }

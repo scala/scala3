@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 
 import transform.DocMiniPhase
 import model._
@@ -14,17 +14,17 @@ import util.MemberLookup
 import util.syntax._
 
 class LinkReturnTypes extends DocMiniPhase with TypeLinker {
-  override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
+  override def transformDef(using Context) = { case df: DefImpl =>
     val returnValue = linkReference(df, df.returnValue, ctx.docbase.packages)
     df.copy(returnValue = returnValue) :: Nil
   }
 
-  override def transformVal(implicit ctx: Context) = { case vl: ValImpl =>
+  override def transformVal(using Context) = { case vl: ValImpl =>
     val returnValue = linkReference(vl, vl.returnValue, ctx.docbase.packages)
     vl.copy(returnValue = returnValue) :: Nil
   }
 
-  override def transformTypeAlias(implicit ctx: Context) = { case ta: TypeAliasImpl =>
+  override def transformTypeAlias(using Context) = { case ta: TypeAliasImpl =>
     ta.alias.map { alias =>
       val linkedAlias = linkReference(ta, alias, ctx.docbase.packages)
       ta.copy(alias = Some(linkedAlias)) :: Nil
@@ -34,7 +34,7 @@ class LinkReturnTypes extends DocMiniPhase with TypeLinker {
 }
 
 class LinkParamListTypes extends DocMiniPhase with TypeLinker {
-  override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
+  override def transformDef(using Context) = { case df: DefImpl =>
     val newParamLists = for {
       ParamListImpl(list, isImplicit) <- df.paramLists
       newList = list.map(linkReference(df, _, ctx.docbase.packages))
@@ -45,37 +45,37 @@ class LinkParamListTypes extends DocMiniPhase with TypeLinker {
 }
 
 class LinkSuperTypes extends DocMiniPhase with TypeLinker {
-  def linkSuperTypes(ent: Entity with SuperTypes)(implicit ctx: Context): List[MaterializableLink] =
+  def linkSuperTypes(ent: Entity with SuperTypes)(using Context): List[MaterializableLink] =
     ent.superTypes.collect {
       case UnsetLink(title, query) =>
         handleEntityLink(title, lookup(Some(ent), ctx.docbase.packages, query), ent)
     }
 
-  override def transformClass(implicit ctx: Context) = { case cls: ClassImpl =>
+  override def transformClass(using Context) = { case cls: ClassImpl =>
     cls.copy(superTypes = linkSuperTypes(cls)) :: Nil
   }
 
-  override def transformCaseClass(implicit ctx: Context) = { case cc: CaseClassImpl =>
+  override def transformCaseClass(using Context) = { case cc: CaseClassImpl =>
     cc.copy(superTypes = linkSuperTypes(cc)) :: Nil
   }
 
-  override def transformTrait(implicit ctx: Context) = { case trt: TraitImpl =>
+  override def transformTrait(using Context) = { case trt: TraitImpl =>
     trt.copy(superTypes = linkSuperTypes(trt)) :: Nil
   }
 
-  override def transformObject(implicit ctx: Context) = { case obj: ObjectImpl =>
+  override def transformObject(using Context) = { case obj: ObjectImpl =>
     obj.copy(superTypes = linkSuperTypes(obj)) :: Nil
   }
 }
 
 class LinkImplicitlyAddedTypes extends DocMiniPhase with TypeLinker {
-  override def transformDef(implicit ctx: Context) = {
+  override def transformDef(using Context) = {
     case df: DefImpl if df.implicitlyAddedFrom.isDefined =>
       val implicitlyAddedFrom = linkReference(df, df.implicitlyAddedFrom.get, ctx.docbase.packages)
       df.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom)) :: Nil
   }
 
-  override def transformVal(implicit ctx: Context) = {
+  override def transformVal(using Context) = {
     case vl: ValImpl if vl.implicitlyAddedFrom.isDefined =>
       val implicitlyAddedFrom = linkReference(vl, vl.implicitlyAddedFrom.get, ctx.docbase.packages)
       vl.copy(implicitlyAddedFrom = Some(implicitlyAddedFrom)) :: Nil

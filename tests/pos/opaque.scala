@@ -35,6 +35,8 @@ object usesites {
                    // as a contextual implicit this takes precedence over the
                    // implicit scope implicit LogarithmOps.
                    // TODO: Remove any2stringadd
+  assert(l == Logarithm(1.0))
+  assert(l != l2)
   val d = l3.toDouble
   val l5: Logarithm = (1.0).asInstanceOf[Logarithm]
 }

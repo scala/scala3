@@ -8,7 +8,7 @@ object Test1 {
 
   // But not with newstyle
   /*
-  given [A] as Conversion[A, Foo[A]]:
+  given [A]: Conversion[A, Foo[A]] with
     def apply(a: A) = new Foo[A]:
       def foo[C]: C => A = _ => a
   */
@@ -21,7 +21,7 @@ object Test1 {
 object Test2 {
 
   // Works with extension method
-  extension [A, C](a: A):
+  extension [A, C](a: A)
     def foo: C => A = _ => a
 
   1.foo.foo

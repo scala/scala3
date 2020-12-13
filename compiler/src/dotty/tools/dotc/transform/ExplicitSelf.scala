@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts._
 import Types._
 import MegaPhase._
 import ast.Trees._
@@ -26,14 +26,14 @@ class ExplicitSelf extends MiniPhase {
 
   override def phaseName: String = "explicitSelf"
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree = tree.tpe match {
+  override def transformIdent(tree: Ident)(using Context): Tree = tree.tpe match {
     case tp: ThisType =>
-      ctx.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
+      report.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls).withSpan(tree.span)
     case _ => tree
   }
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = tree match {
+  override def transformSelect(tree: Select)(using Context): Tree = tree match {
     case Select(thiz: This, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
       if (cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))

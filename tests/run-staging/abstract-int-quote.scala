@@ -6,11 +6,11 @@ object Test:
   given Toolbox = Toolbox.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit =
-    def reduce[T: Type](using QuoteContext)(succ: Expr[T] => Expr[T], zero: Expr[T]): Expr[T] = '{
+    def reduce[T: Type](using Quotes)(succ: Expr[T] => Expr[T], zero: Expr[T]): Expr[T] = '{
       var z = $zero
       ${ succ('z) }
     }
-    def resCode2(using QuoteContext): Expr[Int] =
+    def resCode2(using Quotes): Expr[Int] =
       reduce[Int](x => '{$x + 1}, '{0})
 
-    println(withQuoteContext(resCode2.show))
+    println(withQuotes(resCode2.show))

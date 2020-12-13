@@ -1,10 +1,10 @@
 
-import annotation.alpha
+import annotation.targetName
 
 class Gamma {
 
   val v = 1
-  @alpha("v") val w = 2   // error: double definition
+  @targetName("v") val w = 2   // error: double definition
 
 }
 // Error when overloading polymorphic and non-polymorphic methods

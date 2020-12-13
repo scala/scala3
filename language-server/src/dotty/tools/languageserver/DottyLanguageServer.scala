@@ -19,12 +19,11 @@ import scala.io.Codec
 import dotc._
 import ast.{Trees, tpd, untpd}
 import core._, core.Decorators._
-import Annotations.AnnotInfo
 import Comments._, Constants._, Contexts._, Flags._, Names._, NameOps._, Symbols._, SymDenotations._, Trees._, Types._
 import classpath.ClassPathEntries
 import reporting._
 import typer.Typer
-import util.{Set => _, _}
+import util._
 import interactive._, interactive.InteractiveDriver._
 import decompiler.IDEDecompilerDriver
 import Interactive.Include
@@ -66,7 +65,7 @@ class DottyLanguageServer extends LanguageServer
   private[this] var myDependentProjects: mutable.Map[ProjectConfig, mutable.Set[ProjectConfig]] = _
 
   def drivers: Map[ProjectConfig, InteractiveDriver] = thisServer.synchronized {
-    if myDrivers == null
+    if myDrivers == null then
       assert(rootUri != null, "`drivers` cannot be called before `initialize`")
       val configFile = new File(new URI(rootUri + '/' + IDE_CONFIG_FILE))
       val configs: List[ProjectConfig] = (new ObjectMapper).readValue(configFile, classOf[Array[ProjectConfig]]).toList
@@ -103,12 +102,12 @@ class DottyLanguageServer extends LanguageServer
     System.gc()
     for ((_, driver, opened) <- driverConfigs; (uri, source) <- opened)
       driver.run(uri, source)
-    if Memory.isCritical()
+    if Memory.isCritical() then
       println(s"WARNING: Insufficient memory to run Scala language server on these projects.")
   }
 
   private def checkMemory() =
-    if Memory.isCritical()
+    if Memory.isCritical() then
       CompletableFutures.computeAsync { _ => restart() }
 
   /** The configuration of the project that owns `uri`. */
@@ -150,7 +149,7 @@ class DottyLanguageServer extends LanguageServer
 
   /** A mapping from project `p` to the set of projects that transitively depend on `p`. */
   def dependentProjects: Map[ProjectConfig, Set[ProjectConfig]] = thisServer.synchronized {
-    if myDependentProjects == null
+    if myDependentProjects == null then
       val idToConfig = drivers.keys.map(k => k.id -> k).toMap
       val allProjects = drivers.keySet
 
@@ -193,7 +192,7 @@ class DottyLanguageServer extends LanguageServer
             throw ex
         }
       }
-      if synchronize
+      if synchronize then
         thisServer.synchronized { computation() }
       else
         computation()
@@ -299,7 +298,7 @@ class DottyLanguageServer extends LanguageServer
     /*thisServer.synchronized*/ {}
   }
 
-  // FIXME: share code with messages.NotAMember
+  // FIXME: share code with NotAMember
   override def completion(params: CompletionParams) = computeAsync { cancelToken =>
     val uri = new URI(params.getTextDocument.getUri)
     val driver = driverFor(uri)
@@ -307,7 +306,7 @@ class DottyLanguageServer extends LanguageServer
 
     val pos = sourcePosition(driver, uri, params.getPosition)
     val items = driver.compilationUnits.get(uri) match {
-      case Some(unit) => Completion.completions(pos)(ctx.fresh.setCompilationUnit(unit))._2
+      case Some(unit) => Completion.completions(pos)(using ctx.fresh.setCompilationUnit(unit))._2
       case None => Nil
     }
 
@@ -360,10 +359,10 @@ class DottyLanguageServer extends LanguageServer
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         definitions.flatMap { definition =>
-          val name = definition.name(ctx).sourceModuleName.toString
-          val trees = remoteDriver.sourceTreesContaining(name)(ctx)
-          val matches = Interactive.findTreesMatching(trees, includes, definition)(ctx)
-          matches.map(tree => location(tree.namePos(ctx)))
+          val name = definition.name(using ctx).sourceModuleName.toString
+          val trees = remoteDriver.sourceTreesContaining(name)(using ctx)
+          val matches = Interactive.findTreesMatching(trees, includes, definition)(using ctx)
+          matches.map(tree => location(tree.namePos(using ctx)))
         }
       }
     }.toList
@@ -418,12 +417,12 @@ class DottyLanguageServer extends LanguageServer
 
           perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
             definitions.flatMap { definition =>
-              val name = definition.name(ctx).sourceModuleName.toString
-              val trees = remoteDriver.sourceTreesContaining(name)(ctx)
+              val name = definition.name(using ctx).sourceModuleName.toString
+              val trees = remoteDriver.sourceTreesContaining(name)(using ctx)
               Interactive.findTreesMatching(trees,
                                             include,
                                             definition,
-                                            t => names.exists(Interactive.sameName(t.name, _)))(ctx)
+                                            t => names.exists(Interactive.sameName(t.name, _)))(using ctx)
             }
           }
       }
@@ -535,13 +534,13 @@ class DottyLanguageServer extends LanguageServer
       val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
-        val trees = remoteDriver.sourceTrees(ctx)
+        val trees = remoteDriver.sourceTrees(using ctx)
         val predicate: NameTree => Boolean = {
-          val predicates = definitions.map(Interactive.implementationFilter(_)(ctx))
+          val predicates = definitions.map(Interactive.implementationFilter(_)(using ctx))
           tree => predicates.exists(_(tree))
         }
-        val matches = Interactive.namedTrees(trees, Include.local, predicate)(ctx)
-        matches.map(tree => location(tree.namePos(ctx)))
+        val matches = Interactive.namedTrees(trees, Include.local, predicate)(using ctx)
+        matches.map(tree => location(tree.namePos(using ctx)))
       }
     }.toList
 
@@ -733,7 +732,7 @@ object DottyLanguageServer {
   private def displayMessage(message: Message, sourceFile: SourceFile)(implicit ctx: Context): Boolean = {
     if (isWorksheet(sourceFile)) {
       message match {
-        case msg: messages.PureExpressionInStatementPosition =>
+        case msg: PureExpressionInStatementPosition =>
           val ownerSym = if (msg.exprOwner.isLocalDummy) msg.exprOwner.owner else msg.exprOwner
           !isWorksheetWrapper(ownerSym)
         case _ =>
@@ -830,15 +829,15 @@ object DottyLanguageServer {
     def completionItemKind(sym: Symbol)(implicit ctx: Context): lsp4j.CompletionItemKind = {
       import lsp4j.{CompletionItemKind => CIK}
 
-      if sym.is(Package) || sym.is(Module)
+      if sym.is(Package) || sym.is(Module) then
         CIK.Module // No CompletionItemKind.Package (https://github.com/Microsoft/language-server-protocol/issues/155)
-      else if sym.isConstructor
+      else if sym.isConstructor then
         CIK.Constructor
-      else if sym.isClass
+      else if sym.isClass then
         CIK.Class
-      else if sym.is(Mutable)
+      else if sym.is(Mutable) then
         CIK.Variable
-      else if sym.is(Method)
+      else if sym.is(Method) then
         CIK.Method
       else
         CIK.Field
@@ -856,13 +855,13 @@ object DottyLanguageServer {
       item.setDocumentation(hoverContent(None, documentation))
     }
 
-    item.setDeprecated(completion.symbols.forall(_.isDeprecated))
+    item.setDeprecated(completion.symbols.forall(_.hasAnnotation(defn.DeprecatedAnnot)))
     completion.symbols.headOption.foreach(s => item.setKind(completionItemKind(s)))
     item
   }
 
   def markupContent(content: String): lsp4j.MarkupContent = {
-    if content.isEmpty
+    if content.isEmpty then
       null
     else {
       val markup = new lsp4j.MarkupContent

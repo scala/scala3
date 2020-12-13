@@ -7,12 +7,15 @@ import org.junit.Test
 import dotc.ast.Trees._
 import dotc.core.Decorators._
 import dotc.core.Contexts._
+import dotc.core.Phases._
 import dotc.core.Types._
+import dotc.core.Symbols._
 
 import java.io.File
 import java.nio.file._
 
 class AnnotationsTest:
+
   @Test def annotTreeNotErased: Unit =
     withJavaCompiled(
       VirtualJavaSource("Annot.java",
@@ -21,11 +24,11 @@ class AnnotationsTest:
         "@Annot(values = {}) public class A {}")) { javaOutputDir =>
       inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
         val defn = ctx.definitions
-        val cls = ctx.requiredClass("A")
-        val annotCls = ctx.requiredClass("Annot")
+        val cls = requiredClass("A")
+        val annotCls = requiredClass("Annot")
         val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
 
-        ctx.atPhase(ctx.erasurePhase.next) {
+        atPhase(erasurePhase.next) {
           val annot = cls.getAnnotation(annotCls)
           // Even though we're forcing the annotation after erasure,
           // the typed trees should be unerased, so the type of
@@ -46,7 +49,7 @@ class AnnotationsTest:
         "@Annot() public class A {}")) { javaOutputDir =>
       Files.delete(javaOutputDir.resolve("Annot.class"))
       inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
-        val cls = ctx.requiredClass("A")
+        val cls = requiredClass("A")
         val annots = cls.annotations.map(_.tree)
         assert(annots == Nil,
           s"class A should have no visible annotations since Annot is not on the classpath, but found: $annots")

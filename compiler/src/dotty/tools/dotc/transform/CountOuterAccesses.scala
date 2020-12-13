@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase.MiniPhase
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import ast._
 import Trees._
 import Flags._
@@ -46,7 +46,7 @@ class CountOuterAccesses extends MiniPhase:
     override def default(s: Symbol): Int = 0
   }
 
-  private def markAccessed(tree: RefTree)(implicit ctx: Context): Tree =
+  private def markAccessed(tree: RefTree)(using Context): Tree =
     val sym = tree.symbol
     if CountOuterAccesses.mightBeDropped(sym) then outerAccessCount(sym) += 1
     tree

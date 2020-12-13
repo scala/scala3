@@ -22,7 +22,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   // Test suite configuration --------------------------------------------------
 
   def maxDuration = 60.seconds
-  def numberOfSlaves = 5
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter
@@ -35,7 +35,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions),
       compileFilesInDir("tests/pos-macros", defaultOptions),
-      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Ysemanticdb")),
+      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
     ).checkCompile()
   }
 
@@ -104,7 +104,10 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
-    compileFilesInDir("tests/neg-macros", defaultOptions).checkExpectedErrors()
+    aggregateTests(
+      compileFilesInDir("tests/neg-macros", defaultOptions),
+      compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
+    ).checkExpectedErrors()
   }
 
   @Test def negWithCompiler: Unit = {
@@ -128,12 +131,15 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
-    aggregateTests(
+    val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
       compileFilesInDir("tests/run-staging", withStagingOptions),
-      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions),
-      compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions),
-    ).checkRuns()
+      compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
+    )
+    val tests =
+      if (scala.util.Properties.isWin) basicTests
+      else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+    aggregateTests(tests: _*).checkRuns()
   }
 
   @Test def runBootstrappedOnly: Unit = {
@@ -150,11 +156,13 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def picklingWithCompiler: Unit = {
     val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
+    val runtimeFilter = FileFilter.exclude(List("Tuple.scala")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
-      compileDir("library/src/dotty/runtime", picklingWithCompilerOptions),
+      compileDir("library/src/scala/runtime/function", picklingWithCompilerOptions),
+      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions, runtimeFilter),
       compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions, jvmBackendFilter),
       compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false),

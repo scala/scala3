@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Contexts.Context
+import Contexts._
 import SymDenotations.SymDenotation
 import Types._
 import Symbols._
@@ -62,7 +62,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
 
   override def phaseName: String = Getters.name
 
-  override def transformSym(d: SymDenotation)(implicit ctx: Context): SymDenotation = {
+  override def transformSym(d: SymDenotation)(using Context): SymDenotation = {
     def noGetterNeeded =
       d.isOneOf(NoGetterNeededFlags) ||
       d.isAllOf(PrivateLocal) && !d.owner.is(Trait) && !isDerivedValueClass(d.owner) && !d.is(Lazy) ||
@@ -91,7 +91,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
   }
   private val NoGetterNeededFlags = Method | Param | JavaDefined | JavaStatic
 
-  val newSetters = mutable.HashSet[Symbol]()
+  val newSetters = util.HashSet[Symbol]()
 
   def ensureSetter(sym: TermSymbol)(using Context) =
     if !sym.setter.exists then
@@ -100,7 +100,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
         info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
       ).enteredAfter(thisPhase)
 
-  override def transformValDef(tree: ValDef)(implicit ctx: Context): Tree =
+  override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
     if !sym.is(Method) then return tree
     val getterDef = DefDef(sym.asTerm, tree.rhs).withSpan(tree.span)
@@ -110,9 +110,9 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
     val setterDef = DefDef(sym.setter.asTerm, unitLiteral)
     Thicket(getterDef, setterDef)
 
-  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree =
+  override def transformAssign(tree: Assign)(using Context): Tree =
     val lsym = tree.lhs.symbol.asTerm
-    if (lsym.is(Method))
+    if lsym.is(Method) then
       ensureSetter(lsym)
       tree.lhs.becomes(tree.rhs).withSpan(tree.span)
     else tree

@@ -1,7 +1,7 @@
 object Test {
-  import scala.Eql
+  import scala.CanEqual
 
-  given [X, Y](using Eql[X, Y]) as Eql[List[X], List[Y]] = Eql.derived
+  given [X, Y](using CanEqual[X, Y]): CanEqual[List[X], List[Y]] = CanEqual.derived
 
   val b: Byte = 1
   val c: Char = 2

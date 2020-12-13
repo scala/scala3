@@ -1,7 +1,6 @@
 package scala
 import annotation.showAsInfix
 import compiletime._
-import internal._
 
 /** Tuple of arbitrary arity */
 sealed trait Tuple extends Product {
@@ -143,18 +142,6 @@ object Tuple {
     }
   }
 
-  /**
-   * Use this type to widen a self-type to a tuple. E.g.
-   * ```
-   * val x: (1, 3) = (1, 3)
-   * val y: Widen[x.type] = x
-   * ```
-   */
-  type Widen[Tup <: Tuple] <: Tuple = Tup match {
-    case EmptyTuple => EmptyTuple
-    case h *: t => h *: t
-  }
-
   /** Given two tuples, `A1 *: ... *: An * At` and `B1 *: ... *: Bn *: Bt`
    *  where at least one of `At` or `Bt` is `EmptyTuple` or `Tuple`,
    *  returns the tuple type `(A1, B1) *: ... *: (An, Bn) *: Ct`
@@ -229,7 +216,7 @@ object Tuple {
   /** Convert an immutable array into a tuple of unknown arity and types */
   def fromIArray[T](xs: IArray[T]): Tuple = {
     val xs2: IArray[Object] = xs match {
-      case xs: IArray[Object] => xs
+      case xs: IArray[Object] @unchecked => xs
       case xs =>
         // TODO support IArray.map
         xs.asInstanceOf[Array[T]].map(_.asInstanceOf[Object]).asInstanceOf[IArray[Object]]
@@ -248,9 +235,16 @@ object Tuple {
 /** A tuple of 0 elements */
 type EmptyTuple = EmptyTuple.type
 
-/** A tuple of 0 elements; the canonical representation of a [[scala.Product0]]. */
-object EmptyTuple extends Tuple with Product0 {
+/** A tuple of 0 elements. */
+object EmptyTuple extends Tuple {
+  override def productArity: Int = 0
+
+  @throws(classOf[IndexOutOfBoundsException])
+  override def productElement(n: Int): Any =
+    throw new IndexOutOfBoundsException(n.toString())
+
   def canEqual(that: Any): Boolean = this == that
+
   override def toString(): String = "()"
 }
 

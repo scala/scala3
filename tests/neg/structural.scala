@@ -1,6 +1,6 @@
 object Test3 {
   import scala.reflect.Selectable.reflectiveSelectable
-  def g(x: { type T ; def t: T ; def f(a: T): Boolean }) = x.f(x.t) // error: no ClassTag for x.T
+  def g(x: { type T ; def t: T ; def f(a: T): Boolean }) = x.f(x.t) // error: it has a parameter type with an unstable erasure
   g(new { type T = Int; def t = 4; def f(a:T) = true })
   g(new { type T = Any; def t = 4; def f(a:T) = true })
   val y: { type T = Int; def t = 4; def f(a:T) = true }  // error: illegal refinement // error: illegal refinement

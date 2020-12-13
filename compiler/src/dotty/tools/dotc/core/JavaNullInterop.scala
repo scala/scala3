@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core
 
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags.JavaDefined
 import dotty.tools.dotc.core.StdNames.{jnme, nme}
 import dotty.tools.dotc.core.Symbols._
@@ -52,7 +52,7 @@ object JavaNullInterop {
    *
    *  But the selection can throw an NPE if the returned value is `null`.
    */
-  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(implicit ctx: Context): Type = {
+  def nullifyMember(sym: Symbol, tp: Type, isEnumValueDef: Boolean)(using Context): Type = {
     assert(ctx.explicitNulls)
     assert(sym.is(JavaDefined), "can only nullify java-defined members")
 
@@ -70,7 +70,7 @@ object JavaNullInterop {
       nullifyType(tp)
   }
 
-  private def hasNotNullAnnot(sym: Symbol)(implicit ctx: Context): Boolean =
+  private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     ctx.definitions.NotNullAnnots.exists(nna => sym.unforcedAnnotation(nna).isDefined)
 
   /** If tp is a MethodType, the parameters and the inside of return type are nullified,
@@ -78,12 +78,12 @@ object JavaNullInterop {
    *  If tp is a type of a field, the inside of the type is nullified,
    *  but the result type is not nullable.
    */
-  private def nullifyExceptReturnType(tp: Type)(implicit ctx: Context): Type =
-    new JavaNullMap(true)(ctx)(tp)
+  private def nullifyExceptReturnType(tp: Type)(using Context): Type =
+    new JavaNullMap(true)(tp)
 
   /** Nullifies a Java type by adding `| UncheckedNull` in the relevant places. */
-  private def nullifyType(tp: Type)(implicit ctx: Context): Type =
-    new JavaNullMap(false)(ctx)(tp)
+  private def nullifyType(tp: Type)(using Context): Type =
+    new JavaNullMap(false)(tp)
 
   /** A type map that implements the nullification function on types. Given a Java-sourced type, this adds `| UncheckedNull`
    *  in the right places to make the nulls explicit in Scala.
@@ -96,7 +96,7 @@ object JavaNullInterop {
    *                                       This is useful for e.g. constructors, and also so that `A & B` is nullified
    *                                       to `(A & B) | UncheckedNull`, instead of `(A|UncheckedNull & B|UncheckedNull) | UncheckedNull`.
    */
-  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(implicit ctx: Context) extends TypeMap {
+  private class JavaNullMap(var outermostLevelAlreadyNullable: Boolean)(using Context) extends TypeMap {
     /** Should we nullify `tp` at the outermost level? */
     def needsNull(tp: Type): Boolean =
       !outermostLevelAlreadyNullable && (tp match {

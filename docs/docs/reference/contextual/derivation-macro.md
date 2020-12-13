@@ -25,13 +25,13 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that
 produces a quoted instance for `Eq[T]`. Here is a possible signature,
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]]
+given derived[T: Type](using Quotes): Expr[Eq[T]]
 ```
 
 and for comparison reasons we give the same signature we had with `inline`:
 
 ```scala
-inline given derived[T] as (m: Mirror.Of[T]) => Eq[T] = ???
+inline given derived[T]: (m: Mirror.Of[T]) => Eq[T] = ???
 ```
 
 Note, that since a type is used in a subsequent stage it will need to be lifted
@@ -41,14 +41,14 @@ from the signature. The body of the `derived` method is shown below:
 
 
 ```scala
-given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-  import qctx.tasty._
+given derived[T: Type](using Quotes): Expr[Eq[T]] = {
+  import quotes.reflect._
 
-  val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+  val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
   ev match {
-    case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
-      val elemInstances = summonAll(elementTypes)
+    case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
+      val elemInstances = summonAll[elementTypes]
       val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
         elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
           case (acc, (elem, index)) =>
@@ -84,18 +84,18 @@ Instead we extract the tuple-type for element types using pattern matching over
 quotes and more specifically of the refined type:
 
 ```scala
- case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes } } => ...
+ case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} => ...
 ```
 
 The implementation of `summonAll` as a macro can be show below assuming that we
 have the given instances for our primitive types:
 
 ```scala
-  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
-    case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
-    case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
-    case '[Unit] => Nil
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
+    case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
+    case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
+    case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
+    case '[EmptyTuple] => Nil
   }
 ```
 
@@ -120,8 +120,8 @@ Alternatively and what is shown below is that we can call the `eqv` method
 directly. The `eqGen` can trigger the derivation.
 
 ```scala
-extension [T](x: =>T)
-  inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+extension [T](inline x: T)
+  inline def === (inline y: T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
 implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 ```
@@ -144,7 +144,7 @@ The full code is shown below:
 ```scala
 import scala.deriving._
 import scala.quoted._
-import scala.quoted.matching._
+
 
 trait Eq[T] {
   def eqv(x: T, y: T): Boolean
@@ -169,21 +169,21 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
-    case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
-    case '[$tpe *: $tpes]   => derived(using tpe, qctx) :: summonAll(tpes)
-    case '[Unit] => Nil
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
+    case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
+    case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
+    case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
+    case '[EmptyTuple] => Nil
   }
 
-  given derived[T: Type](using qctx: QuoteContext) as Expr[Eq[T]] = {
-    import qctx.tasty._
+  given derived[T: Type](using q: Quotes): Expr[Eq[T]] = {
+    import quotes.reflect._
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
     ev match {
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
             case (acc, (elem, index)) =>
@@ -197,8 +197,8 @@ object Eq {
           eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)})
         }
 
-      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqSumBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           val ordx = '{ $m.ordinal($x) }
           val ordy = '{ $m.ordinal($y) }
@@ -217,8 +217,8 @@ object Eq {
 }
 
 object Macro3 {
-  extension [T](x: =>T)
-    inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  extension [T](inline x: T)
+    inline def === (inline y: T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }

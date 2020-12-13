@@ -13,7 +13,7 @@ import collection.mutable
  */
 trait MainAnnotation extends StaticAnnotation:
 
-  /** The class used for argument string parsing. E.g. `scala.util.FromString`,
+  /** The class used for argument string parsing. E.g. `scala.util.CommandLineParser.FromString`,
    *  but could be something else
    */
   type ArgumentParser[T]
@@ -44,7 +44,7 @@ end MainAnnotation
 
 class main extends MainAnnotation:
 
-  type ArgumentParser[T] = util.FromString[T]
+  type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   type MainResultType = Any
 
   def command(args: Array[String]): Command = new Command:
@@ -62,7 +62,7 @@ class main extends MainAnnotation:
     /** Issue an error, and return an uncallable getter */
     private def error(msg: String): () => Nothing =
       errors += msg
-      () => assertFail("trying to get invalid argument")
+      () => throw new AssertionError("trying to get invalid argument")
 
     /** The next argument index */
     private var argIdx: Int = 0

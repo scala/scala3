@@ -7,7 +7,7 @@ import dotty.tools.dotc._
 import ast.tpd
 
 import dotty.tools.dotc.core._
-import Contexts.Context
+import Contexts._
 import Types._
 
 import dotty.tools.dotc.transform._
@@ -23,14 +23,14 @@ class Checker extends MiniPhase {
   val phaseName = "initChecker"
 
   // cache of class summary
-  private val baseEnv = Env(null, mutable.Map.empty)
+  private val baseEnv = Env(null)
 
   override val runsAfter = Set(Pickler.name)
 
-  override def isEnabled(implicit ctx: Context): Boolean =
+  override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): tpd.Tree = {
+  override def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
     if (!tree.isClassDef) return tree
 
     val cls = tree.symbol.asClass
@@ -46,13 +46,13 @@ class Checker extends MiniPhase {
 
     // A concrete class may not be instantiated if the self type is not satisfied
     if (instantiable) {
-      implicit val state = Checking.State(
-        visited = mutable.Set.empty,
+      implicit val state: Checking.State = Checking.State(
+        visited = Set.empty,
         path = Vector.empty,
         thisClass = cls,
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
-        env = baseEnv.withCtx(ctx)
+        env = baseEnv.withCtx(ctx.withOwner(cls))
       )
 
       Checking.checkClassBody(tree)

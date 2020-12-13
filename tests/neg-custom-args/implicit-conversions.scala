@@ -3,11 +3,11 @@ class B
 
 object A {
 
-  given Conversion[A, B] {
+  given Conversion[A, B] with {
     def apply(x: A): B = ???
   }
 
-  given Conversion[B, A] {
+  given Conversion[B, A] with {
     def apply(x: B): A = ???
   }
 }
@@ -15,15 +15,15 @@ object A {
 class C
 
 object D {
-  given Conversion[A, C] {
+  given Conversion[A, C] with {
     def apply(x: A): C = ???
   }
 }
 
 object Test {
-  import D.{given _}
+  import D.given
 
-  val x1: A = new B
+  val x1: A = new B  // error under -Xfatal-warnings -feature
   val x2: B = new A  // error under -Xfatal-warnings -feature
   val x3: C = new A  // error under -Xfatal-warnings -feature
 }

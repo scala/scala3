@@ -1,6 +1,6 @@
-import scala.quoted.{Expr, QuoteContext}
+import scala.quoted.{Expr, Quotes}
 object Test {
-  def fooImpl(using QuoteContext): Expr[Unit] = '{println("hi")}
+  def fooImpl(using Quotes): Expr[Unit] = '{println("hi")}
 
   inline def foo: Unit = ${fooImpl}
 

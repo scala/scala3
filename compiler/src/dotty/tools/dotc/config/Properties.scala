@@ -6,6 +6,7 @@ import scala.annotation.internal.sharable
 
 import java.io.IOException
 import java.util.jar.Attributes.{ Name => AttributeName }
+import java.nio.charset.StandardCharsets
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
@@ -88,13 +89,13 @@ trait PropertiesTrait {
   /** This is the encoding to use reading in source files, overridden with -encoding
    *  Note that it uses "prop" i.e. looks in the scala jar, not the system properties.
    */
-  def sourceEncoding: String        = scalaPropOrElse("file.encoding", "UTF-8")
+  def sourceEncoding: String        = scalaPropOrElse("file.encoding", StandardCharsets.UTF_8.name)
   def sourceReader: String          = scalaPropOrElse("source.reader", "scala.tools.nsc.io.SourceReader")
 
   /** This is the default text encoding, overridden (unreliably) with
    *  `JAVA_OPTS="-Dfile.encoding=Foo"`
    */
-  def encodingString: String        = propOrElse("file.encoding", "UTF-8")
+  def encodingString: String        = propOrElse("file.encoding", StandardCharsets.UTF_8.name)
 
   /** The default end of line character.
    */
@@ -128,6 +129,6 @@ trait PropertiesTrait {
   def jdkHome: String               = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
   def versionMsg: String            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
-  def scalaCmd: String              = if (isWin) "dotr.bat" else "dotr"
-  def scalacCmd: String             = if (isWin) "dotc.bat" else "dotc"
+  def scalaCmd: String              = if (isWin) "scala.bat" else "scala"
+  def scalacCmd: String             = if (isWin) "scalac.bat" else "scalac"
 }

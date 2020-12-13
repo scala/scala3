@@ -8,9 +8,9 @@ object Macro {
   inline def foo[T]: String =
     ${ fooImpl[T] }
 
-  def fooImpl[T](implicit t: Type[T], qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
-    val sym = t.unseal.symbol
+  def fooImpl[T](implicit t: Type[T], qctx: Quotes): Expr[String] = {
+    import quotes.reflect._
+    val sym = TypeTree.of[T].symbol
     if sym.isClassDef then '{ "symbol" }
     else if sym.isNoSymbol then '{ "no symbol" }
     else  '{ "match error" }

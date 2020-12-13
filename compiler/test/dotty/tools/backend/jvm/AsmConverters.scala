@@ -20,7 +20,7 @@ object ASMConverters {
 
   def convertMethod(meth: t.MethodNode): Method = new AsmToScala(meth).method
 
-  implicit class RichInstructionLists(val self: List[Instruction]) extends AnyVal {
+  extension (self: List[Instruction]) {
     def === (other: List[Instruction]) = equivalentBytecode(self, other)
 
     def dropLinesFrames = self.filterNot(i => i.isInstanceOf[LineNumber] || i.isInstanceOf[FrameEntry])
@@ -33,13 +33,13 @@ object ASMConverters {
       case _ => Set.empty
     }
 
-    def dropStaleLabels = {
+    def dropStaleLabels: List[Instruction] = {
       val definedLabels: Set[Instruction] = self.filter(_.isInstanceOf[Label]).toSet
-      val usedLabels: Set[Instruction] = self.iterator.flatMap(referencedLabels).toSet
+      val usedLabels: Set[Instruction] = self.iterator.flatMap(self.referencedLabels(_)).toSet
       self.filterNot(definedLabels diff usedLabels)
     }
 
-    def dropNonOp = dropLinesFrames.dropStaleLabels
+    def dropNonOp: List[Instruction] = dropLinesFrames.dropStaleLabels
 
     def summary: List[Any] = dropNonOp map {
       case i: Invoke => i.name

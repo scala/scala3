@@ -1,0 +1,1 @@
+class ScalaAnnot extends scala.annotation.StaticAnnotation

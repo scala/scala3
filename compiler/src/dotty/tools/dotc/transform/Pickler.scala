@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts._
 import Decorators._
 import tasty._
 import config.Printers.{noPrinter, pickling}
@@ -13,9 +13,17 @@ import Symbols._
 import Flags.Module
 import reporting.ThrowingReporter
 import collection.mutable
+import scala.concurrent.{Future, Await, ExecutionContext}
+import scala.concurrent.duration.Duration
 
 object Pickler {
   val name: String = "pickler"
+
+  /** If set, perform jump target compacting, position and comment pickling,
+   *  as well as final assembly in parallel with downstream phases; force
+   *  only in backend.
+   */
+  inline val ParallelPickling = true
 }
 
 /** This phase pickles trees */
@@ -25,7 +33,7 @@ class Pickler extends Phase {
   override def phaseName: String = Pickler.name
 
   // No need to repickle trees coming from TASTY
-  override def isRunnable(implicit ctx: Context): Boolean =
+  override def isRunnable(using Context): Boolean =
     super.isRunnable && !ctx.settings.fromTasty.value
 
   private def output(name: String, msg: String) = {
@@ -39,59 +47,71 @@ class Pickler extends Phase {
   private val picklers = new mutable.HashMap[ClassSymbol, TastyPickler]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
-  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(implicit ctx: Context): List[ClassSymbol] = {
+  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
     val companionModuleClasses =
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
     clss.filterNot(companionModuleClasses.contains)
   }
 
-  override def run(implicit ctx: Context): Unit = {
+  override def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     pickling.println(i"unpickling in run ${ctx.runId}")
 
-    for {
+    for
       cls <- dropCompanionModuleClasses(topLevelClasses(unit.tpdTree))
       tree <- sliceTopLevel(unit.tpdTree, cls)
-    }
-    {
+    do
       val pickler = new TastyPickler(cls)
-      if (ctx.settings.YtestPickler.value) {
+      if ctx.settings.YtestPickler.value then
         beforePickling(cls) = tree.show
         picklers(cls) = pickler
-      }
       val treePkl = pickler.treePkl
       treePkl.pickle(tree :: Nil)
-      treePkl.compactify()
-      pickler.addrOfTree = treePkl.buf.addrOfTree
-      pickler.addrOfSym = treePkl.addrOfSym
-      if (tree.span.exists)
-        new PositionPickler(pickler, treePkl.buf.addrOfTree).picklePositions(tree :: Nil)
+      val positionWarnings = new mutable.ListBuffer[String]()
+      val pickledF = inContext(ctx.fresh) {
+        Future {
+          treePkl.compactify()
+          if tree.span.exists then
+            val reference = ctx.settings.sourceroot.value
+            new PositionPickler(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, reference)
+              .picklePositions(unit.source, tree :: Nil, positionWarnings)
 
-      if (!ctx.settings.YdropComments.value)
-        new CommentPickler(pickler, treePkl.buf.addrOfTree).pickleComment(tree)
+          if !ctx.settings.YdropComments.value then
+            new CommentPickler(pickler, treePkl.buf.addrOfTree, treePkl.docString)
+              .pickleComment(tree)
 
-      // other pickle sections go here.
-      val pickled = pickler.assembleParts()
-      unit.pickled += (cls -> pickled)
+          val pickled = pickler.assembleParts()
 
-      def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
-          case (row, i) => s"${i}0: ${row.mkString(" ")}"
-        }
+          def rawBytes = // not needed right now, but useful to print raw format.
+            pickled.iterator.grouped(10).toList.zipWithIndex.map {
+              case (row, i) => s"${i}0: ${row.mkString(" ")}"
+            }
 
-      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-      if (pickling ne noPrinter) {
-        println(i"**** pickled info of $cls")
-        println(new TastyPrinter(pickled).printContents())
+          // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+          if pickling ne noPrinter then
+            pickling.synchronized {
+              println(i"**** pickled info of $cls")
+              println(TastyPrinter.show(pickled))
+            }
+          pickled
+        }(using ExecutionContext.global)
       }
-    }
+      def force(): Array[Byte] =
+        val result = Await.result(pickledF, Duration.Inf)
+        positionWarnings.foreach(report.warning(_))
+        result
+
+      if !Pickler.ParallelPickling || ctx.settings.YtestPickler.value then force()
+
+      unit.pickled += (cls -> force)
+    end for
   }
 
-  override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] = {
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
     val result = super.runOn(units)
-    if (ctx.settings.YtestPickler.value)
+    if ctx.settings.YtestPickler.value then
       testUnpickler(
-          ctx.fresh
+        using ctx.fresh
             .setPeriod(Period(ctx.runId + 1, FirstPhaseId))
             .setReporter(new ThrowingReporter(ctx.reporter))
             .addMode(Mode.ReadPositions)
@@ -100,7 +120,7 @@ class Pickler extends Phase {
     result
   }
 
-  private def testUnpickler(implicit ctx: Context): Unit = {
+  private def testUnpickler(using Context): Unit = {
     pickling.println(i"testing unpickler at run ${ctx.runId}")
     ctx.initialize()
     val unpicklers =
@@ -116,11 +136,11 @@ class Pickler extends Phase {
     }
   }
 
-  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(implicit ctx: Context) =
+  private def testSame(unpickled: String, previous: String, cls: ClassSymbol)(using Context) =
     if (previous != unpickled) {
       output("before-pickling.txt", previous)
       output("after-pickling.txt", unpickled)
-      ctx.error(s"""pickling difference for $cls in ${cls.source}, for details:
+      report.error(s"""pickling difference for $cls in ${cls.source}, for details:
                    |
                    |  diff before-pickling.txt after-pickling.txt""".stripMargin)
     }

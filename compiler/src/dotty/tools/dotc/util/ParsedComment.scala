@@ -1,7 +1,7 @@
 package dotty.tools.dotc.util
 
 import dotty.tools.dotc.core.Comments.{Comment, CommentsContext}
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.printing.SyntaxHighlighting
@@ -52,7 +52,7 @@ class ParsedComment(val comment: Comment) {
    *
    * The different sections are formatted according to the mapping in `knownTags`.
    */
-  def renderAsMarkdown(implicit ctx: Context): String = {
+  def renderAsMarkdown(using Context): String = {
     val buf = new StringBuilder
     buf.append(mainDoc + System.lineSeparator + System.lineSeparator)
     val groupedSections = CommentParsing.groupedSections(content, tagIndex)
@@ -100,7 +100,7 @@ object ParsedComment {
    * @param symbol The symbol for which to retrieve the documentation
    * @return If it exists, the `ParsedComment` for `symbol`.
    */
-  def docOf(symbol: Symbol)(implicit ctx: Context): Option[ParsedComment] = {
+  def docOf(symbol: Symbol)(using Context): Option[ParsedComment] = {
     val documentedSymbol = if (symbol.isPrimaryConstructor) symbol.owner else symbol
     for {
       docCtx <- ctx.docCtx
@@ -135,10 +135,10 @@ object ParsedComment {
    * @param items The items to format into a list.
    * @return A markdown list of descriptions.
    */
-  private def toDescriptionList(ctx: Context, items: List[String]): String = {
+  private def toDescriptionList(ctx: Context, items: List[String]): String = inContext(ctx) {
     val formattedItems = items.map { p =>
       val name :: rest = p.split(" ", 2).toList
-      s"${bold(name)(ctx)} ${rest.mkString("").trim}"
+      s"${bold(name)} ${rest.mkString("").trim}"
     }
     toMarkdownList(ctx, formattedItems)
   }
@@ -175,13 +175,14 @@ object ParsedComment {
    * @param snippet  The code snippet
    * @return `snippet`, wrapped in a code fence.
    */
-  private def toCodeFence(language: String)(ctx: Context, snippet: String): String =
-    if (colorEnabled(ctx))
-      SyntaxHighlighting.highlight(snippet)(ctx)
+  private def toCodeFence(language: String)(ctx: Context, snippet: String): String = inContext(ctx) {
+    if colorEnabled then
+      SyntaxHighlighting.highlight(snippet)
     else
       s"""```$language
          |$snippet
          |```""".stripMargin
+  }
 
   /**
    * Format the elements of documentation associated with a given tag using `fn`, and starts the
@@ -198,7 +199,7 @@ object ParsedComment {
      * @param items The items to format
      * @return If items is not empty, the items formatted using `fn`.
      */
-    def apply(items: List[String])(implicit ctx: Context): Option[String] = items match {
+    def apply(items: List[String])(using Context): Option[String] = items match {
       case Nil =>
         None
       case items =>
@@ -209,11 +210,11 @@ object ParsedComment {
   }
 
   /** Is the color enabled in the context? */
-  private def colorEnabled(implicit ctx: Context): Boolean =
+  private def colorEnabled(using Context): Boolean =
     ctx.settings.color.value != "never"
 
   /** Show `str` in bold */
-  private def bold(str: String)(implicit ctx: Context): String =
+  private def bold(str: String)(using Context): String =
     if (colorEnabled) s"$BOLD$str$RESET"
     else s"**$str**"
 }

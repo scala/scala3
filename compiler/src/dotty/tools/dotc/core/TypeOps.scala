@@ -6,7 +6,6 @@ import Contexts._, Types._, Symbols._, Names._, Flags._
 import SymDenotations._
 import util.Spans._
 import util.Stats
-import util.SourcePosition
 import NameKinds.DepParamName
 import Decorators._
 import StdNames._
@@ -20,6 +19,7 @@ import typer.ProtoTypes._
 import typer.ForceDegree
 import typer.Inferencing._
 import typer.IfBottom
+import reporting.TestingReporter
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -100,6 +100,8 @@ object TypeOps:
             val sym = tp.symbol
             if (sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)) tp
             else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+          case tp: LambdaType =>
+            mapOverLambda(tp) // special cased common case
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
           case _: BoundType =>
@@ -136,6 +138,9 @@ object TypeOps:
             tp2
           case tp1 => tp1
         }
+      case tp: AppliedType =>
+        val normed = tp.tryNormalize
+        if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
         val tvar = ctx.typerState.constraint.typeVarOfParam(tp)
         if (tvar.exists) tvar else tp
@@ -145,9 +150,19 @@ object TypeOps:
         tp.derivedAlias(simplify(tp.alias, theMap))
       case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case OrType(l, r) if !ctx.mode.is(Mode.Type) =>
+      case tp @ OrType(l, r)
+      if !ctx.mode.is(Mode.Type)
+         && (tp.isSoft || l.isBottomType || r.isBottomType) =>
+        // Normalize A | Null and Null | A to A even if the union is hard (i.e.
+        // explicitly declared), but not if -Yexplicit-nulls is set. The reason is
+        // that in this case the normal asSeenFrom machinery is not prepared to deal
+        // with Nulls (which have no base classes). Under -Yexplicit-nulls, we take
+        // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
-      case _: AppliedType | _: MatchType =>
+      case AnnotatedType(parent, annot)
+      if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+        simplify(parent, theMap)
+      case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
@@ -182,7 +197,7 @@ object TypeOps:
     /** a faster version of cs1 intersect cs2 */
     def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
       val cs2AsSet = new util.HashSet[ClassSymbol](128)
-      cs2.foreach(cs2AsSet.addEntry)
+      cs2.foreach(cs2AsSet += _)
       cs1.filter(cs2AsSet.contains)
     }
 
@@ -216,7 +231,7 @@ object TypeOps:
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                ctx.typeComparer.lubArgs(args1, args2, tycon1.typeParams))
+                TypeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -334,7 +349,10 @@ object TypeOps:
    */
   def classBound(info: ClassInfo)(using Context): Type = {
     val cls = info.cls
-    val parentType = info.parents.reduceLeft(ctx.typeComparer.andType(_, _))
+    val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
+    def isRefinable(sym: Symbol) =
+      !sym.is(Private) && !sym.isConstructor && !sym.isClass
+    val (refinableDecls, missingDecls) = info.decls.toList.partition(isRefinable)
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -345,8 +363,7 @@ object TypeOps:
       val isPolyFunctionApply = decl.name == nme.apply && (parent <:< defn.PolyFunctionType)
       val needsRefinement =
         isPolyFunctionApply
-        || !decl.isClass
-           && {
+        || {
             if inheritedInfo.exists then
               decl.info.widenExpr <:< inheritedInfo.widenExpr
               && !(inheritedInfo.widenExpr <:< decl.info.widenExpr)
@@ -354,8 +371,7 @@ object TypeOps:
               parent.derivesFrom(defn.SelectableClass)
           }
       if needsRefinement then
-        RefinedType(parent, decl.name, decl.info)
-          .reporting(i"add ref $parent $decl --> " + result, typr)
+        RefinedType(parent, decl.name, avoid(decl.info, missingDecls))
       else parent
     }
 
@@ -363,8 +379,6 @@ object TypeOps:
       tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
     }
 
-    def isRefinable(sym: Symbol) = !sym.is(Private) && !sym.isConstructor
-    val refinableDecls = info.decls.filter(isRefinable)
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
     HKTypeLambda.fromParams(cls.typeParams, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
@@ -399,7 +413,7 @@ object TypeOps:
 
       def apply(tp: Type): Type = tp match {
         case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+        if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
             case info: SingletonType => apply(info)
             case info => range(defn.NothingType, apply(info))
@@ -417,11 +431,11 @@ object TypeOps:
           }
         case tp: ThisType if toAvoid(tp.cls) =>
           range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
-        case tp: SkolemType if partsToAvoid(mutable.Set.empty, tp.info).nonEmpty =>
+        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = mapCtx.typeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)
+          val lo = TypeComparer.instanceType(
+            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
         case _ =>
@@ -461,7 +475,13 @@ object TypeOps:
   def makePackageObjPrefixExplicit(tpe: NamedType)(using Context): Type = {
     def tryInsert(pkgClass: SymDenotation): Type = pkgClass match {
       case pkg: PackageClassDenotation =>
-        val pobj = pkg.packageObjFor(tpe.symbol)
+        var sym = tpe.symbol
+        if !sym.exists && tpe.denot.isOverloaded then
+          // we know that all alternatives must come from the same package object, since
+          // otherwise we would get "is already defined" errors. So we can take the first
+          // symbol we see.
+          sym = tpe.denot.alternatives.head.symbol
+        val pobj = pkg.packageObjFor(sym)
         if (pobj.exists) tpe.derivedSelect(pobj.termRef)
         else tpe
       case _ =>
@@ -501,7 +521,7 @@ object TypeOps:
       boundss: List[TypeBounds],
       instantiate: (Type, List[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = {
+      using Context): List[BoundsViolation] = withMode(Mode.CheckBounds) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
@@ -523,74 +543,79 @@ object TypeOps:
     val skolemizedArgTypes = skolemizeWildcardArgs(argTypes, app)
     val violations = new mutable.ListBuffer[BoundsViolation]
 
-    for ((arg, bounds) <- args zip boundss) {
-      def checkOverlapsBounds(lo: Type, hi: Type): Unit = {
-        //println(i" = ${instantiate(bounds.hi, argTypes)}")
+    def checkOverlapsBounds(lo: Type, hi: Type, arg: Tree, bounds: TypeBounds): Unit = {
+      //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
-        var checkCtx = ctx  // the context to be used for bounds checking
-        if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+      var checkCtx = ctx  // the context to be used for bounds checking
+      if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
 
-          /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
-          def isLazyIn(sym: Symbol, tp: Type): Boolean = {
-            def isReference(tp: Type) = tp match {
-              case tp: LazyRef => tp.ref.isInstanceOf[TypeRef] && tp.ref.typeSymbol == sym
-              case _ => false
-            }
-            tp.existsPart(isReference, forceLazy = false)
+        /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
+        def isLazyIn(sym: Symbol, tp: Type): Boolean = {
+          def isReference(tp: Type) = tp match {
+            case tp: LazyRef => tp.ref.isInstanceOf[TypeRef] && tp.ref.typeSymbol == sym
+            case _ => false
           }
-
-          /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
-           *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
-           */
-          val lazyRefs = skolemizedArgTypes collect {
-            case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
-          }
-
-          for (sym <- lazyRefs) {
-
-            // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
-            // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
-            // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
-            // type parameter of `C`. The new bound is added as a GADT bound for `S` in
-            // `checkCtx`.
-            // This mirrors what we do for the bounds that are checked and allows us thus
-            // to bounds-check F-bounds with wildcards. A test case is pos/i6146.scala.
-
-            def massage(tp: Type): Type = tp match {
-              case tp @ AppliedType(tycon, args) =>
-                tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
-              case tp: AndOrType =>
-                tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
-              case _ => tp
-            }
-            def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
-              val bound1 = massage(bound)
-              if (bound1 ne bound) {
-                if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
-                if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
-                checkCtx.gadt.addBound(sym, bound1, fromBelow)
-                typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
-              }
-            }
-            narrowBound(sym.info.loBound, fromBelow = true)
-            narrowBound(sym.info.hiBound, fromBelow = false)
-          }
+          tp.existsPart(isReference, forceLazy = false)
         }
 
-        val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
-        val loBound = instantiate(bounds.lo, skolemizedArgTypes)
-
-        def check(implicit ctx: Context) = {
-          if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
-          if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
+        /** The argument types of the form `TypeRef(_, sym)` which appear as a LazyRef in `bounds`.
+         *  This indicates that the application is used as an F-bound for the symbol referred to in the LazyRef.
+         */
+        val lazyRefs = skolemizedArgTypes collect {
+          case tp: TypeRef if isLazyIn(tp.symbol, bounds) => tp.symbol
         }
-        check(checkCtx)
+
+        for (sym <- lazyRefs) {
+
+          // If symbol `S` has an F-bound such as `C[?, S]` that contains wildcards,
+          // add a modifieed bound where wildcards are skolemized as a GADT bound for `S`.
+          // E.g. for `C[?, S]` we would add `C[C[?, S]#T0, S]` where `T0` is the first
+          // type parameter of `C`. The new bound is added as a GADT bound for `S` in
+          // `checkCtx`.
+          // This mirrors what we do for the bounds that are checked and allows us thus
+          // to bounds-check F-bounds with wildcards. A test case is pos/i6146.scala.
+
+          def massage(tp: Type): Type = tp match {
+            case tp @ AppliedType(tycon, args) =>
+              tp.derivedAppliedType(tycon, skolemizeWildcardArgs(args, tp))
+            case tp: AndOrType =>
+              tp.derivedAndOrType(massage(tp.tp1), massage(tp.tp2))
+            case _ => tp
+          }
+          def narrowBound(bound: Type, fromBelow: Boolean): Unit = {
+            val bound1 = massage(bound)
+            if (bound1 ne bound) {
+              if (checkCtx eq ctx) checkCtx = ctx.fresh.setFreshGADTBounds
+              if (!checkCtx.gadt.contains(sym)) checkCtx.gadt.addToConstraint(sym)
+              checkCtx.gadt.addBound(sym, bound1, fromBelow)
+              typr.println("install GADT bound $bound1 for when checking F-bounded $sym")
+            }
+          }
+          narrowBound(sym.info.loBound, fromBelow = true)
+          narrowBound(sym.info.hiBound, fromBelow = false)
+        }
       }
-      arg.tpe match {
-        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi)
-        case tp => checkOverlapsBounds(tp, tp)
+      val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
+      val loBound = instantiate(bounds.lo, skolemizedArgTypes)
+
+      def check(using Context) = {
+        if (!(lo <:< hiBound)) violations += ((arg, "upper", hiBound))
+        if (!(loBound <:< hi)) violations += ((arg, "lower", loBound))
       }
+      check(using checkCtx)
     }
+
+    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
+      case arg :: args1 => boundss match
+        case bounds :: boundss1 =>
+          arg.tpe match
+            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, bounds)
+            case tp => checkOverlapsBounds(tp, tp, arg, bounds)
+          loop(args1, boundss1)
+        case _ =>
+      case _ =>
+
+    loop(args, boundss)
     violations.toList
   }
 
@@ -614,8 +639,6 @@ object TypeOps:
    *  returned. Otherwise, `NoType` is returned.
    */
   def refineUsingParent(parent: Type, child: Symbol)(using Context): Type = {
-    if (child.isTerm && child.is(Case, butNot = Module)) return child.termRef // enum vals always match
-
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
@@ -642,43 +665,69 @@ object TypeOps:
    *  Otherwise, return NoType.
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
-    /** expose abstract type references to their bounds or tvars according to variance */
-    class AbstractTypeMap(maximize: Boolean)(implicit ctx: Context) extends TypeMap {
-      def expose(lo: Type, hi: Type): Type =
-        if (variance == 0)
-          newTypeVar(TypeBounds(lo, hi))
-        else if (variance == 1)
-          if (maximize) hi else lo
-        else
-          if (maximize) lo else hi
+    // In order for a child type S to qualify as a valid subtype of the parent
+    // T, we need to test whether it is possible S <: T. Therefore, we replace
+    // type parameters in T with tvars, and see if the subtyping is true.
+    val approximateTypeParams = new TypeMap {
+      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
-      def apply(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp.dealias match {
         case _: MatchType =>
           tp // break cycles
 
-        case tp: TypeRef if isBounds(tp.underlying) =>
-          val lo = this(tp.info.loBound)
-          val hi = this(tp.info.hiBound)
-          // See tests/patmat/gadt.scala  tests/patmat/exhausting.scala  tests/patmat/t9657.scala
-          val exposed = expose(lo, hi)
-          typr.println(s"$tp exposed to =====> $exposed")
-          exposed
+        case tp: TypeRef if !tp.symbol.isClass =>
+          def lo = LazyRef(apply(tp.underlying.loBound))
+          def hi = LazyRef(apply(tp.underlying.hiBound))
+          val lookup = boundTypeParams.lookup(tp)
+          if lookup != null then lookup
+          else
+            val tv = newTypeVar(TypeBounds(lo, hi))
+            boundTypeParams(tp) = tv
+            // Force lazy ref eagerly using current context
+            // Otherwise, the lazy ref will be forced with a unknown context,
+            // which causes a problem in tests/patmat/i3645e.scala
+            lo.ref
+            hi.ref
+            tv
+          end if
 
-        case AppliedType(tycon: TypeRef, args) if isBounds(tycon.underlying) =>
-          val args2 = args.map(this)
-          val lo = this(tycon.info.loBound).applyIfParameterized(args2)
-          val hi = this(tycon.info.hiBound).applyIfParameterized(args2)
-          val exposed = expose(lo, hi)
-          typr.println(s"$tp exposed to =====> $exposed")
-          exposed
+        case AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass =>
 
-        case _ =>
+          // In tests/patmat/i3645g.scala, we need to tell whether it's possible
+          // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
+          // warnings.
+          //
+          // - K1 <: K[Foo] is possible <==>
+          // - K[Int] <: K[Foo] is possible <==>
+          // - Int <: Foo is possible <==>
+          // - Int <: Module.Foo.Type is possible
+          //
+          // If we remove this special case, we will encounter the case Int <:
+          // X[Y], where X and Y are tvars. The subtype checking will simply
+          // return false. But depending on the bounds of X and Y, the subtyping
+          // can be true.
+          //
+          // As a workaround, we approximate higher-kinded type parameters with
+          // the value types that can be instantiated from its bounds.
+          //
+          // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
+          // bound in the HKTypeLambda. This is fine, as the TypeComparer will
+          // recurse on the bounds of `TypeParamRef`.
+          val bounds: TypeBounds = tycon.underlying match {
+            case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
+              TypeBounds(tl1.resType, tl2.resType)
+            case TypeBounds(tl1: HKTypeLambda, tp2) =>
+              TypeBounds(tl1.resType, tp2)
+            case TypeBounds(tp1, tl2: HKTypeLambda) =>
+              TypeBounds(tp1, tl2.resType)
+          }
+
+          newTypeVar(bounds)
+
+        case tp =>
           mapOver(tp)
       }
     }
-
-    def minTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = false)
-    def maxTypeMap(implicit ctx: Context) = new AbstractTypeMap(maximize = true)
 
     // Prefix inference, replace `p.C.this.Child` with `X.Child` where `X <: p.C`
     // Note: we need to strip ThisType in `p` recursively.
@@ -705,37 +754,25 @@ object TypeOps:
     val tvars = tp1.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds) }
     val protoTp1 = inferThisMap.apply(tp1).appliedTo(tvars)
 
-    val force = new ForceDegree.Value(
-      tvar =>
-        !(ctx.typerState.constraint.entry(tvar.origin) `eq` tvar.origin.underlying) ||
-        (tvar `eq` inferThisMap.prefixTVar), // always instantiate prefix
-      IfBottom.flip
-    )
-
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to
     // variance. As this logic is only needed in exhaustivity check,
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
-    def parentQualify = tp1.widen.classSymbol.info.parents.exists { parent =>
-      inContext(ctx.fresh.setNewTyperState()) {
-        parent.argInfos.nonEmpty && minTypeMap.apply(parent) <:< maxTypeMap.apply(tp2)
-      }
+    def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
+      parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
     }
 
-    if (protoTp1 <:< tp2) {
+    def instantiate(): Type = {
       maximizeType(protoTp1, NoSpan, fromScala2x = false)
       wildApprox(protoTp1)
     }
+
+    if (protoTp1 <:< tp2) instantiate()
     else {
-      val protoTp2 = maxTypeMap.apply(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify)
-        if (isFullyDefined(AndType(protoTp1, protoTp2), force)) protoTp1
-        else wildApprox(protoTp1)
-      else {
-        typr.println(s"$protoTp1 <:< $protoTp2 = false")
-        NoType
-      }
+      val protoTp2 = approximateTypeParams(tp2)
+      if (protoTp1 <:< protoTp2 || parentQualify(protoTp1, protoTp2)) instantiate()
+      else NoType
     }
   }
 

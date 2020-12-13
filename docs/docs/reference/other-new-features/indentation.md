@@ -7,9 +7,9 @@ As an experimental feature, Scala 3 enforces some rules on indentation and allow
 some occurrences of braces `{...}` to be optional.
 It can be turned off with the compiler flag `-noindent`.
 
- - First, some badly indented programs are flagged with warnings.
- - Second, some occurrences of braces `{...}` are made optional. Generally, the rule
-   is that adding a pair of optional braces will not change the meaning of a well-indented program.
+- First, some badly indented programs are flagged with warnings.
+- Second, some occurrences of braces `{...}` are made optional. Generally, the rule
+  is that adding a pair of optional braces will not change the meaning of a well-indented program.
 
 ### Indentation Rules
 
@@ -58,13 +58,15 @@ There are two rules:
 
     An indentation region can start
 
-     - after the condition of an `if-else`, or
      - after the leading parameters of an `extension`, or
+     - after a `with` in a given instance, or
      - after a ": at end of line" token (see below)
      - after one of the following tokens:
+
     ```
     =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return
     ```
+
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
 
@@ -72,10 +74,15 @@ There are two rules:
 
     - the first token on the next line has an indentation width strictly less
         than the current indentation width, and
+    - the last token on the previous line is not one of the following tokens
+      which indicate that the previous statement continues:
+      ```
+      then  else  do  catch  finally  yield  match
+      ```
     - the first token on the next line is not a
         [leading infix operator](../changed-features/operators.html).
 
-     If an `<outdent>` is inserted, the top element if popped from `IW`.
+     If an `<outdent>` is inserted, the top element is popped from `IW`.
      If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
      may be inserted in a row.
 
@@ -84,27 +91,30 @@ There are two rules:
     An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
 
 It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
+
 ```scala
-if x < 0
+if x < 0 then
     -x
   else   // error: `else` does not align correctly
      x
 ```
+
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
 at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
 
 ### Optional Braces Around Template Bodies
 
-The Scala grammar uses the term _template body_ for the definitions of a class, trait, object or given instance that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
+The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
 
 If at the point where a template body can start there is a `:` that occurs at the end
 of a line, and that is followed by at least one indented statement, the recognized
 token is changed from ":" to ": at end of line". The latter token is one of the tokens
 that can start an indentation region. The Scala grammar is changed so an optional ": at end of line" is allowed in front of a template body.
 
-Analogous rules apply for enum bodies, type refinements, definitions in an instance creation expressions, and local packages containing nested definitions.
+Analogous rules apply for enum bodies and local packages containing nested definitions.
 
 With these new rules, the following constructs are all valid:
+
 ```scala
 trait A:
   def f: Int
@@ -118,15 +128,6 @@ object O:
 enum Color:
   case Red, Green, Blue
 
-type T = A:
-  def f: Int
-
-given [T](using Ord[T]) as Ord[List[T]]:
-  def compare(x: List[T], y: List[T]) = ???
-
-extension (xs: List[Int])
-  def second: Int = xs.tail.head
-
 new A:
   def f = 3
 
@@ -135,14 +136,17 @@ package p:
 package q:
   def b = 2
 ```
+In each case, the `:` at the end of line can be replaced without change of meaning by a pair of braces that enclose the following indented definition(s).
 
 The syntax changes allowing this are as follows:
+
 ```
-TemplateBody ::=  [colonEol] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
-EnumBody     ::=  [colonEol] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
-Packaging    ::=  ‘package’ QualId [colonEol] ‘{’ TopStatSeq ‘}’
-RefinedType  ::=  AnnotType {[colonEol] Refinement}
+Template    ::=  InheritClauses [colonEol] [TemplateBody]
+EnumDef     ::=  id ClassConstr InheritClauses [colonEol] EnumBody
+Packaging   ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
+SimpleExpr  ::=  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody]
 ```
+
 Here, `colonEol` stands for ": at end of line", as described above.
 The lexical analyzer is modified so that a `:` at the end of a line
 is reported as `colonEol` if the parser is at a point where a `colonEol` is
@@ -166,13 +170,14 @@ Indentation can be mixed freely with braces. For interpreting indentation inside
 
 The indentation rules for `match` expressions and `catch` clauses are refined as follows:
 
- - An indentation region is opened after a `match` or `catch` also if the following `case`
-   appears at the indentation width that's current for the `match` itself.
- - In that case, the indentation region closes at the first token at that
-   same indentation width that is not a `case`, or at any token with a smaller
-     indentation width, whichever comes first.
+- An indentation region is opened after a `match` or `catch` also if the following `case`
+  appears at the indentation width that's current for the `match` itself.
+- In that case, the indentation region closes at the first token at that
+  same indentation width that is not a `case`, or at any token with a smaller
+  indentation width, whichever comes first.
 
 The rules allow to write `match` expressions where cases are not indented themselves, as in the example below:
+
 ```scala
 x match
 case 1 => print("I")
@@ -189,6 +194,7 @@ println(".")
 Indentation-based syntax has many advantages over other conventions. But one possible problem is that it makes it hard to discern when a large indentation region ends, since there is no specific token that delineates the end. Braces are not much better since a brace by itself also contains no information about what region is closed.
 
 To solve this problem, Scala 3 offers an optional `end` marker. Example:
+
 ```scala
 def largeMethod(...) =
   ...
@@ -199,80 +205,84 @@ def largeMethod(...) =
   ... // more code
 end largeMethod
 ```
+
 An `end` marker consists of the identifier `end` and a follow-on specifier token that together constitute all the tokes of a line. Possible specifier tokens are
 identifiers or one of the following keywords
+
 ```scala
 if   while    for    match    try    new    this    val   given
 ```
+
 End markers are allowed in statement sequences. The specifier token `s` of an end marker must correspond to the statement that precedes it. This means:
 
- - If the statement defines a member `x` then `s` must be the same identifier `x`.
- - If the statement defines a constructor then `s` must be `this`.
- - If the statement defines an anonymous given, then `s` must be `given`.
- - If the statement defines an anonymous extension, then `s` must be `extension`.
- - If the statement defines an anonymous class, then `s` must be `new`.
- - If the statement is a `val` definition binding a pattern, then `s` must be `val`.
- - If the statement is a package clause that refers to package `p`, then `s` must be the same identifier `p`.
- - If the statement is an `if`, `while`, `for`, `try`, or `match` statement, then `s` must be that same token.
+- If the statement defines a member `x` then `s` must be the same identifier `x`.
+- If the statement defines a constructor then `s` must be `this`.
+- If the statement defines an anonymous given, then `s` must be `given`.
+- If the statement defines an anonymous extension, then `s` must be `extension`.
+- If the statement defines an anonymous class, then `s` must be `new`.
+- If the statement is a `val` definition binding a pattern, then `s` must be `val`.
+- If the statement is a package clause that refers to package `p`, then `s` must be the same identifier `p`.
+- If the statement is an `if`, `while`, `for`, `try`, or `match` statement, then `s` must be that same token.
 
 For instance, the following end markers are all legal:
- ```scala
-  package p1.p2:
 
-    abstract class C():
+```scala
+package p1.p2:
 
-      def this(x: Int) =
-        this()
-        if x > 0 then
-          val a :: b =
-            x :: Nil
-          end val
-          var y =
-            x
-          end y
-          while y > 0 do
-            println(y)
-            y -= 1
-          end while
-          try
-            x match
-              case 0 => println("0")
-              case _ =>
-            end match
-          finally
-            println("done")
-          end try
-        end if
-      end this
+  abstract class C():
 
-      def f: String
-    end C
+    def this(x: Int) =
+      this()
+      if x > 0 then
+        val a :: b =
+          x :: Nil
+        end val
+        var y =
+          x
+        end y
+        while y > 0 do
+          println(y)
+          y -= 1
+        end while
+        try
+          x match
+            case 0 => println("0")
+            case _ =>
+          end match
+        finally
+          println("done")
+        end try
+      end if
+    end this
 
-    object C:
-      given C =
-        new C:
-          def f = "!"
-          end f
-        end new
-      end given
-    end C
+    def f: String
+  end C
 
-    extension (x: C)
-      def ff: String = x.f ++ x.f
-    end extension
+  object C:
+    given C =
+      new C:
+        def f = "!"
+        end f
+      end new
+    end given
+  end C
 
-  end p2
+  extension (x: C)
+    def ff: String = x.f ++ x.f
+  end extension
+
+end p2
 ```
 
 #### When to Use End Markers
 
 It is recommended that `end` markers are used for code where the extent of an indentation region is not immediately apparent "at a glance". People will have different preferences what this means, but one can nevertheless give some guidelines that stem from experience. An end marker makes sense if
 
- - the construct contains blank lines, or
- - the construct is long, say 15-20 lines or more,
- - the construct ends heavily indented, say 4 indentation levels or more.
+- the construct contains blank lines, or
+- the construct is long, say 15-20 lines or more,
+- the construct ends heavily indented, say 4 indentation levels or more.
 
-If none of these criteria apply, it's often better to not use an end marker since the code will be just as clear and more concise. If there are several ending regions that satisfy one of the criteria above, we usually need an end marker only for the outermost closed reason. So cascades of end markers as in the example above are usually better avoided.
+If none of these criteria apply, it's often better to not use an end marker since the code will be just as clear and more concise. If there are several ending regions that satisfy one of the criteria above, we usually need an end marker only for the outermost closed region. So cascades of end markers as in the example above are usually better avoided.
 
 #### Syntax
 
@@ -359,14 +369,27 @@ times(10):
   println("ah")
   println("ha")
 ```
+
 or
+
 ```scala
 xs.map:
   x =>
       val y = x - 1
       y * y
 ```
-Colons at the end of lines are their own token, distinct from normal `:`.
-The Scala grammar is changed in this variant so that colons at end of lines are accepted at all points
-where an opening brace enclosing a function argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
 
+The colon is usable not only for lambdas and by-name parameters, but
+also even for ordinary parameters:
+
+```scala
+credentials ++ :
+  val file = Path.userHome / ".credentials"
+  if file.exists
+  then Seq(Credentials(file))
+  else Seq()
+```
+
+How does this syntax variant work? Colons at the end of lines are their own token, distinct from normal `:`.
+The Scala grammar is changed so that colons at end of lines are accepted at all points
+where an opening brace enclosing an argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.

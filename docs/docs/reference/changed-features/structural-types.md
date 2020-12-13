@@ -115,7 +115,7 @@ Structural calls like this tend to be much slower than normal method calls. The 
 `reflectiveSelectable` conversion. However, to warn against inefficient
 dispatch, Scala 2 requires a language import `import scala.language.reflectiveCalls`.
 
-Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using typeclasses.
+Before resorting to structural calls with Java reflection one should consider alternatives. For instance, sometimes a more a modular _and_ efficient architecture can be obtained using type classes.
 
 ## Extensibility
 
@@ -128,7 +128,7 @@ the database access example given at the beginning of this document.
 Local and anonymous classes that extend `Selectable` get more refined types
 than other classes. Here is an example:
 ```scala
-class Vehicle extends reflect.Selectable {
+trait Vehicle extends reflect.Selectable {
   val wheels: Int
 }
 val i3 = new Vehicle { // i3: Vehicle { val range: Int }
@@ -175,8 +175,8 @@ differences.
   `Selectable` is a trait which declares the access operations.
 
 - Two access operations, `selectDynamic` and `applyDynamic` are shared
-  between both approaches. In `Selectable`, `applyDynamic` also takes
-  `ClassTag` indicating the method's formal parameter types. `Dynamic`
-  comes with `updateDynamic`.
+  between both approaches. In `Selectable`, `applyDynamic` also may also take
+  `java.lang.Class` arguments indicating the method's formal parameter types.
+  `Dynamic` comes with `updateDynamic`.
 
 [More details](structural-types-spec.md)

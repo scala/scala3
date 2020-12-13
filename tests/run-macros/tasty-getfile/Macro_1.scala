@@ -6,9 +6,7 @@ object SourceFiles {
   implicit inline def getThisFile: String =
     ${getThisFileImpl}
 
-  private def getThisFileImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
-    Expr(summon[Context].source.getFileName.toString)
-  }
+  private def getThisFileImpl(using Quotes) : Expr[String] =
+    Expr(quotes.reflect.SourceFile.current.jpath.getFileName.toString)
 
 }

@@ -6,8 +6,8 @@ import Names._
 import NameOps._
 import StdNames._
 import NameTags._
-import Contexts.Context
-import collection.mutable
+import Contexts._
+import Decorators._
 
 import scala.annotation.internal.sharable
 
@@ -17,10 +17,10 @@ object NameKinds {
   // These are sharable since all NameKinds are created eagerly at the start of the program
   // before any concurrent threads are forked. for this to work, NameKinds should never
   // be created lazily or in modules that start running after compilers are forked.
-  @sharable private val simpleNameKinds = new mutable.HashMap[Int, ClassifiedNameKind]
-  @sharable private val qualifiedNameKinds = new mutable.HashMap[Int, QualifiedNameKind]
-  @sharable private val numberedNameKinds = new mutable.HashMap[Int, NumberedNameKind]
-  @sharable private val uniqueNameKinds = new mutable.HashMap[String, UniqueNameKind]
+  @sharable private val simpleNameKinds = util.HashMap[Int, ClassifiedNameKind]()
+  @sharable private val qualifiedNameKinds = util.HashMap[Int, QualifiedNameKind]()
+  @sharable private val numberedNameKinds = util.HashMap[Int, NumberedNameKind]()
+  @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
   abstract class NameInfo {
@@ -124,6 +124,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -173,6 +174,7 @@ object NameKinds {
     type ThisInfo = NumberedInfo
     case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -208,17 +210,19 @@ object NameKinds {
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName: Boolean = true
 
+    val separatorName = separator.toTermName
+
     def mkString(underlying: TermName, info: ThisInfo): String = {
       val safePrefix = str.sanitize(underlying.toString) + separator
       safePrefix + info.num
     }
 
     /** Generate fresh unique term name of this kind with given prefix name */
-    def fresh(prefix: TermName = EmptyTermName)(implicit ctx: Context): TermName =
+    def fresh(prefix: TermName = EmptyTermName)(using Context): TermName =
       ctx.compilationUnit.freshNames.newName(prefix, this)
 
     /** Generate fresh unique type name of this kind with given prefix name */
-    def fresh(prefix: TypeName)(implicit ctx: Context): TypeName =
+    def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
     uniqueNameKinds(separator) = this
@@ -226,10 +230,10 @@ object NameKinds {
 
   /** An extractor for unique names of arbitrary kind */
   object AnyUniqueName {
-    def unapply(name: DerivedName): Option[(TermName, String, Int)] = name match {
+    def unapply(name: DerivedName): Option[(TermName, TermName, Int)] = name match {
       case DerivedName(qual, info: NumberedInfo) =>
         info.kind match {
-          case unique: UniqueNameKind => Some((qual, unique.separator, info.num))
+          case unique: UniqueNameKind => Some((qual, unique.separatorName, info.num))
           case _ => None
         }
       case _ => None
@@ -295,7 +299,7 @@ object NameKinds {
   val DocArtifactName: UniqueNameKind        = new UniqueNameKind("$doc")
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")
   val InlineScrutineeName: UniqueNameKind    = new UniqueNameKind("$scrutinee")
-  val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$elem")
+  val InlineBinderName: UniqueNameKind       = new UniqueNameKind("$proxy")
 
   /** A kind of unique extension methods; Unlike other unique names, these can be
    *  unmangled.
@@ -316,6 +320,7 @@ object NameKinds {
   val PatMatStdBinderName: UniqueNameKind    = new UniqueNameKind("x")
   val PatMatAltsName: UniqueNameKind         = new UniqueNameKind("matchAlts")
   val PatMatResultName: UniqueNameKind       = new UniqueNameKind("matchResult")
+  val PatMatGivenVarName: UniqueNameKind     = new UniqueNameKind("$given")
 
   val LocalOptInlineLocalObj: UniqueNameKind = new UniqueNameKind("ilo")
 
@@ -362,20 +367,24 @@ object NameKinds {
   val ModuleClassName: SuffixNameKind = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
   val ImplMethName: SuffixNameKind = new SuffixNameKind(IMPLMETH, "$")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
+  val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {
 
-    case class SignedInfo(sig: Signature) extends Info {
+    case class SignedInfo(sig: Signature, target: TermName) extends Info {
       assert(sig ne Signature.NotAMethod)
-      override def toString: String = s"$infoString $sig"
+      override def toString: String =
+        val targetStr = if target.isEmpty then "" else s" @$target"
+        s"$infoString $sig$targetStr"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
-    def apply(qual: TermName, sig: Signature): TermName =
-      qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
-      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
+    def apply(qual: TermName, sig: Signature, target: TermName): TermName =
+      qual.derived(new SignedInfo(sig, target))
+    def unapply(name: DerivedName): Option[(TermName, Signature, TermName)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig, info.target))
       case _ => None
     }
 
@@ -390,8 +399,8 @@ object NameKinds {
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
-  def simpleNameKindOfTag      : collection.Map[Int, ClassifiedNameKind] = simpleNameKinds
-  def qualifiedNameKindOfTag   : collection.Map[Int, QualifiedNameKind]  = qualifiedNameKinds
-  def numberedNameKindOfTag    : collection.Map[Int, NumberedNameKind]   = numberedNameKinds
-  def uniqueNameKindOfSeparator: collection.Map[String, UniqueNameKind]  = uniqueNameKinds
+  def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : util.ReadOnlyMap[Int, NumberedNameKind]   = numberedNameKinds
+  def uniqueNameKindOfSeparator: util.ReadOnlyMap[String, UniqueNameKind]  = uniqueNameKinds
 }

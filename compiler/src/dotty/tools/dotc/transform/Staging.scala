@@ -5,23 +5,23 @@ import dotty.tools.dotc.ast.Trees._
 import dotty.tools.dotc.ast.{TreeTypeMap, tpd, untpd}
 import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.tasty.TreePickler.Hole
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.util.{SourceFile, SourcePosition}
+import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.util.{SourceFile, SrcPos}
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Implicits.SearchFailureType
 import dotty.tools.dotc.typer.Inliner
 
 import scala.collection.mutable
-import dotty.tools.dotc.util.SourcePosition
 
 import scala.annotation.constructorOnly
 
@@ -37,19 +37,19 @@ class Staging extends MacroTransform {
 
   override def allowsImplicitSearch: Boolean = true
 
-  override def checkPostCondition(tree: Tree)(implicit ctx: Context): Unit =
-    if (ctx.phase <= ctx.reifyQuotesPhase) {
+  override def checkPostCondition(tree: Tree)(using Context): Unit =
+    if (ctx.phase <= pickleQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
           val checker = new PCPCheckAndHeal(freshStagingContext) {
-            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
+            override protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
               def symStr =
                 if (sym.is(ModuleClass)) sym.sourceModule.show
                 else i"${sym.name}.this"
               val errMsg = s"\nin ${ctx.owner.fullName}"
               assert(
-                ctx.owner.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) ||
+                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
                 (sym.isType && levelOf(sym) > 0),
                 em"""access to $symStr from wrong staging level:
                     | - the definition is at level ${levelOf(sym)},
@@ -63,7 +63,7 @@ class Staging extends MacroTransform {
       }
 
       tree.tpe match {
-        case tpe @ TypeRef(prefix, _) if tpe.typeSymbol eq defn.QuotedType_splice =>
+        case tpe @ TypeRef(prefix, _) if tpe.typeSymbol.isTypeSplice =>
           // Type splices must have a know term ref, usually to an implicit argument
           // This is mostly intended to catch `quoted.Type[T]#splice` types which should just be `T`
           assert(prefix.isInstanceOf[TermRef] || prefix.isInstanceOf[ThisType], prefix)
@@ -72,11 +72,11 @@ class Staging extends MacroTransform {
       }
     }
 
-  override def run(implicit ctx: Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(freshStagingContext)
+  override def run(using Context): Unit =
+    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
 
-  protected def newTransformer(implicit ctx: Context): Transformer = new Transformer {
-    override def transform(tree: tpd.Tree)(implicit ctx: Context): tpd.Tree =
+  protected def newTransformer(using Context): Transformer = new Transformer {
+    override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       new PCPCheckAndHeal(ctx).transform(tree)
   }
 }

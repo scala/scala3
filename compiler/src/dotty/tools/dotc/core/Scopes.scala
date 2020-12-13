@@ -12,6 +12,7 @@ import Types.{TermRef, NoPrefix}
 import Flags._
 import Names._
 import Contexts._
+import Phases._
 import Denotations._
 import SymDenotations._
 import printing.Texts._
@@ -41,7 +42,7 @@ object Scopes {
    *  the given name in the given context. Returns `NoSymbol` if the
    *  no symbol should be synthesized for the given name.
    */
-  type SymbolSynthesizer = Name => Context => Symbol
+  type SymbolSynthesizer = Name => Context ?=> Symbol
 
   class ScopeEntry private[Scopes] (val name: Name, _sym: Symbol, val owner: Scope) {
 
@@ -80,20 +81,20 @@ object Scopes {
     /** The symbols in this scope in the order they were entered;
      *  inherited from outer ones first.
      */
-    def toList(implicit ctx: Context): List[Symbol]
+    def toList(using Context): List[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
-    def iterator(implicit ctx: Context): Iterator[Symbol] = toList.iterator
+    def iterator(using Context): Iterator[Symbol] = toList.iterator
 
     /** Is the scope empty? */
     def isEmpty: Boolean = lastEntry eq null
 
     /** Applies a function f to all Symbols of this Scope. */
-    def foreach[U](f: Symbol => U)(implicit ctx: Context): Unit = toList.foreach(f)
+    def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(implicit ctx: Context): List[Symbol] = {
+    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
       ensureComplete()
       var syms: List[Symbol] = Nil
       var e = lastEntry
@@ -106,47 +107,52 @@ object Scopes {
     }
 
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
-    def exists(p: Symbol => Boolean)(implicit ctx: Context): Boolean = filter(p).nonEmpty
+    def exists(p: Symbol => Boolean)(using Context): Boolean = filter(p).nonEmpty
 
     /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
-    def find(p: Symbol => Boolean)(implicit ctx: Context): Symbol = filter(p) match {
+    def find(p: Symbol => Boolean)(using Context): Symbol = filter(p) match {
       case sym :: _ => sym
       case _ => NoSymbol
     }
 
     /** Returns a new mutable scope with the same content as this one. */
-    def cloneScope(implicit ctx: Context): MutableScope
+    def cloneScope(using Context): MutableScope
 
     /** Lookup a symbol entry matching given name. */
-    def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry
+    def lookupEntry(name: Name)(using Context): ScopeEntry
 
     /** Lookup next entry with same name as this one */
-    def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry
+    def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry
 
     /** Lookup a symbol */
-    final def lookup(name: Name)(implicit ctx: Context): Symbol = {
+    final def lookup(name: Name)(using Context): Symbol = {
       val e = lookupEntry(name)
       if (e eq null) NoSymbol else e.sym
     }
 
     /** Returns an iterator yielding every symbol with given name in this scope.
      */
-    final def lookupAll(name: Name)(implicit ctx: Context): Iterator[Symbol] = new Iterator[Symbol] {
+    final def lookupAll(name: Name)(using Context): Iterator[Symbol] = new Iterator[Symbol] {
       var e = lookupEntry(name)
       def hasNext: Boolean = e ne null
       def next(): Symbol = { val r = e.sym; e = lookupNextEntry(e); r }
     }
 
+    /** Does this scope contain a reference to `sym` when looking up `name`? */
+    final def contains(name: Name, sym: Symbol)(using Context): Boolean =
+      var e = lookupEntry(name)
+      while e != null && e.sym != sym do e = lookupNextEntry(e)
+      e != null
+
     /** The denotation set of all the symbols with given name in this scope
      *  Symbols occur in the result in reverse order relative to their occurrence
      *  in `this.toList`.
      */
-    final def denotsNamed(name: Name, select: SymDenotation => Boolean = selectAll)(implicit ctx: Context): PreDenotation = {
+    final def denotsNamed(name: Name)(using Context): PreDenotation = {
       var syms: PreDenotation = NoDenotation
       var e = lookupEntry(name)
       while (e != null) {
-        val d = e.sym.denot
-        if (select(d)) syms = syms union d
+        syms = syms union e.sym.denot
         e = lookupNextEntry(e)
       }
       syms
@@ -156,7 +162,7 @@ object Scopes {
      *  given predicates. If all symbols match, returns the scope itself, otherwise
      *  a copy with the matching symbols.
      */
-    final def filteredScope(p: Symbol => Boolean)(implicit ctx: Context): Scope = {
+    final def filteredScope(p: Symbol => Boolean)(using Context): Scope = {
       var result: MutableScope = null
       for (sym <- iterator)
         if (!p(sym)) {
@@ -166,19 +172,19 @@ object Scopes {
       if (result == null) this else result
     }
 
-    def implicitDecls(implicit ctx: Context): List[TermRef] = Nil
+    def implicitDecls(using Context): List[TermRef] = Nil
 
     def openForMutations: MutableScope = unsupported("openForMutations")
 
     final def toText(printer: Printer): Text = printer.toText(this)
 
-    def checkConsistent()(implicit ctx: Context): Unit = ()
+    def checkConsistent()(using Context): Unit = ()
 
     /** Ensure that all elements of this scope have been entered.
      *  Overridden by SymbolLoaders.PackageLoader#PackageScope, where it
      *  makes sure that all names with `$`'s have been added.
      */
-    protected def ensureComplete()(implicit ctx: Context): Unit = ()
+    protected def ensureComplete()(using Context): Unit = ()
   }
 
   /** A subclass of Scope that defines methods for entering and
@@ -191,10 +197,9 @@ object Scopes {
       extends Scope {
 
     /** Scope shares elements with `base` */
-    protected[Scopes] def this(base: Scope)(implicit ctx: Context) = {
+    protected[Scopes] def this(base: Scope)(using Context) =
       this(base.lastEntry, base.size, base.nestingLevel + 1)
-      ensureCapacity(MinHashedScopeSize)(ctx) // WTH? it seems the implicit is not in scope for a secondary constructor call.
-    }
+      ensureCapacity(MinHashedScopeSize)
 
     def this() = this(null, 0, 0)
 
@@ -224,7 +229,7 @@ object Scopes {
 
     /** Clone scope, taking care not to force the denotations of any symbols in the scope.
      */
-    def cloneScope(implicit ctx: Context): MutableScope = {
+    def cloneScope(using Context): MutableScope = {
       val entries = new mutable.ArrayBuffer[ScopeEntry]
       var e = lastEntry
       while ((e ne null) && e.owner == this) {
@@ -241,7 +246,7 @@ object Scopes {
     }
 
     /** create and enter a scope entry with given name and symbol */
-    protected def newScopeEntry(name: Name, sym: Symbol)(implicit ctx: Context): ScopeEntry = {
+    protected def newScopeEntry(name: Name, sym: Symbol)(using Context): ScopeEntry = {
       ensureCapacity(if (hashTable ne null) hashTable.length else MinHashedScopeSize)
       val e = new ScopeEntry(name, sym, this)
       e.prev = lastEntry
@@ -253,10 +258,10 @@ object Scopes {
     }
 
     /** create and enter a scope entry */
-    protected def newScopeEntry(sym: Symbol)(implicit ctx: Context): ScopeEntry =
+    protected def newScopeEntry(sym: Symbol)(using Context): ScopeEntry =
       newScopeEntry(sym.name, sym)
 
-    private def enterInHash(e: ScopeEntry)(implicit ctx: Context): Unit = {
+    private def enterInHash(e: ScopeEntry)(using Context): Unit = {
       val idx = e.name.hashCode & (hashTable.length - 1)
       e.tail = hashTable(idx)
       assert(e.tail != e)
@@ -264,8 +269,8 @@ object Scopes {
     }
 
     /** enter a symbol in this scope. */
-    final def enter[T <: Symbol](sym: T)(implicit ctx: Context): T = {
-      if (sym.isType && ctx.phaseId <= ctx.typerPhase.id)
+    final def enter[T <: Symbol](sym: T)(using Context): T = {
+      if (sym.isType && ctx.phaseId <= typerPhase.id)
         assert(lookup(sym.name) == NoSymbol,
           s"duplicate ${sym.debugString}; previous was ${lookup(sym.name).debugString}") // !!! DEBUG
       newScopeEntry(sym)
@@ -273,15 +278,15 @@ object Scopes {
     }
 
     /** enter a symbol, asserting that no symbol with same name exists in scope */
-    final def enterUnique(sym: Symbol)(implicit ctx: Context): Unit = {
+    final def enterUnique(sym: Symbol)(using Context): Unit = {
       assert(lookup(sym.name) == NoSymbol, (sym.showLocated, lookup(sym.name).showLocated))
       enter(sym)
     }
 
-    private def ensureCapacity(tableSize: Int)(implicit ctx: Context): Unit =
+    private def ensureCapacity(tableSize: Int)(using Context): Unit =
       if (size >= tableSize * FillFactor) createHash(tableSize * 2)
 
-    private def createHash(tableSize: Int)(implicit ctx: Context): Unit =
+    private def createHash(tableSize: Int)(using Context): Unit =
       if (size > tableSize * FillFactor) createHash(tableSize * 2)
       else {
         hashTable = new Array[ScopeEntry](tableSize)
@@ -289,7 +294,7 @@ object Scopes {
         // checkConsistent() // DEBUG
       }
 
-    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(implicit ctx: Context): Unit =
+    private def enterAllInHash(e: ScopeEntry, n: Int = 0)(using Context): Unit =
       if (e ne null)
         if (n < MaxRecursions) {
           enterAllInHash(e.prev, n + 1)
@@ -306,7 +311,7 @@ object Scopes {
         }
 
     /** Remove entry from this scope (which is required to be present) */
-    final def unlink(e: ScopeEntry)(implicit ctx: Context): Unit = {
+    final def unlink(e: ScopeEntry)(using Context): Unit = {
       if (lastEntry == e)
         lastEntry = e.prev
       else {
@@ -329,11 +334,11 @@ object Scopes {
     }
 
     /** remove symbol from this scope if it is present */
-    final def unlink(sym: Symbol)(implicit ctx: Context): Unit =
+    final def unlink(sym: Symbol)(using Context): Unit =
       unlink(sym, sym.name)
 
     /** remove symbol from this scope if it is present under the given name */
-    final def unlink(sym: Symbol, name: Name)(implicit ctx: Context): Unit = {
+    final def unlink(sym: Symbol, name: Name)(using Context): Unit = {
       var e = lookupEntry(name)
       while (e ne null) {
         if (e.sym == sym) unlink(e)
@@ -344,7 +349,7 @@ object Scopes {
     /** Replace symbol `prev` (if it exists in current scope) by symbol `replacement`.
      *  @pre `prev` and `replacement` have the same name.
      */
-    final def replace(prev: Symbol, replacement: Symbol)(implicit ctx: Context): Unit = {
+    final def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       require(prev.name == replacement.name)
       var e = lookupEntry(prev.name)
       while (e ne null) {
@@ -356,7 +361,7 @@ object Scopes {
 
     /** Lookup a symbol entry matching given name.
      */
-    override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = {
+    override def lookupEntry(name: Name)(using Context): ScopeEntry = {
       var e: ScopeEntry = null
       if (hashTable ne null) {
         e = hashTable(name.hashCode & (hashTable.length - 1))
@@ -369,14 +374,14 @@ object Scopes {
           e = e.prev
       }
       if ((e eq null) && (synthesize != null)) {
-        val sym = synthesize(name)(ctx)
+        val sym = synthesize(name)
         if (sym.exists) newScopeEntry(sym) else e
       }
       else e
     }
 
     /** lookup next entry with same name as this one */
-    override final def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = {
+    override final def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = {
       var e = entry
       if (hashTable ne null)
         while ({ e = e.tail ; (e ne null) && e.name != entry.name }) ()
@@ -388,7 +393,7 @@ object Scopes {
     /** Returns all symbols as a list in the order they were entered in this scope.
      *  Does _not_ include the elements of inherited scopes.
      */
-    override final def toList(implicit ctx: Context): List[Symbol] = {
+    override final def toList(using Context): List[Symbol] = {
       if (elemsCache eq null) {
         ensureComplete()
         elemsCache = Nil
@@ -401,7 +406,7 @@ object Scopes {
       elemsCache
     }
 
-    override def implicitDecls(implicit ctx: Context): List[TermRef] = {
+    override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
       var irefs = new mutable.ListBuffer[TermRef]
       var e = lastEntry
@@ -417,12 +422,12 @@ object Scopes {
 
     /** Vanilla scope - symbols are stored in declaration order.
      */
-    final def sorted(implicit ctx: Context): List[Symbol] = toList
+    final def sorted(using Context): List[Symbol] = toList
 
     override def openForMutations: MutableScope = this
 
     /** Check that all symbols in this scope are in their correct hashtable buckets. */
-    override def checkConsistent()(implicit ctx: Context): Unit = {
+    override def checkConsistent()(using Context): Unit = {
       ensureComplete()
       var e = lastEntry
       while (e != null) {
@@ -438,10 +443,10 @@ object Scopes {
   def newScope: MutableScope = new MutableScope()
 
   /** Create a new scope nested in another one with which it shares its elements */
-  def newNestedScope(outer: Scope)(implicit ctx: Context): MutableScope = new MutableScope(outer)
+  def newNestedScope(outer: Scope)(using Context): MutableScope = new MutableScope(outer)
 
   /** Create a new scope with given initial elements */
-  def newScopeWith(elems: Symbol*)(implicit ctx: Context): MutableScope = {
+  def newScopeWith(elems: Symbol*)(using Context): MutableScope = {
     val scope = newScope
     elems foreach scope.enter
     scope
@@ -452,20 +457,16 @@ object Scopes {
    */
   def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
 
-  val selectAll: SymDenotation => Boolean = alwaysTrue
-  val selectPrivate: SymDenotation => Boolean    = d => (d.flagsUNSAFE is Flags.Private)
-  val selectNonPrivate: SymDenotation => Boolean = d => !(d.flagsUNSAFE is Flags.Private)
-
   /** The empty scope (immutable).
    */
   object EmptyScope extends Scope {
     override private[dotc] def lastEntry: ScopeEntry = null
     override def size: Int = 0
     override def nestingLevel: Int = 0
-    override def toList(implicit ctx: Context): List[Symbol] = Nil
-    override def cloneScope(implicit ctx: Context): MutableScope = unsupported("cloneScope")
-    override def lookupEntry(name: Name)(implicit ctx: Context): ScopeEntry = null
-    override def lookupNextEntry(entry: ScopeEntry)(implicit ctx: Context): ScopeEntry = null
+    override def toList(using Context): List[Symbol] = Nil
+    override def cloneScope(using Context): MutableScope = unsupported("cloneScope")
+    override def lookupEntry(name: Name)(using Context): ScopeEntry = null
+    override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry = null
   }
 
   /** A class for error scopes (mutable)

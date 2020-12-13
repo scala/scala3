@@ -12,12 +12,12 @@ object Asserts {
   inline def macroAssert(inline cond: Boolean): Unit =
     ${impl('cond)}
 
-  def impl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect._
 
-    val tree = cond.unseal
+    val tree = cond.asTerm
 
-    def isOps(tpe: TypeOrBounds): Boolean = tpe match {
+    def isOps(tpe: TypeRepr): Boolean = tpe match {
       case tpe: TermRef => tpe.termSymbol.isDefDef && tpe.name == "Ops"// TODO check that the parent is Asserts
       case _ => false
     }
@@ -33,8 +33,8 @@ object Asserts {
     tree match {
       case Inlined(_, Nil, Apply(Select(OpsTree(left), op), right :: Nil)) =>
         op match {
-          case "===" => '{assertEquals(${left.seal}, ${right.seal})}
-          case "!==" => '{assertNotEquals(${left.seal}, ${right.seal})}
+          case "===" => '{assertEquals(${left.asExpr}, ${right.asExpr})}
+          case "!==" => '{assertNotEquals(${left.asExpr}, ${right.asExpr})}
         }
       case _ =>
         '{assertTrue($cond)}

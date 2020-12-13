@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package ast
 
-import core.Contexts.Context
+import core.Contexts._
 import core.Decorators._
 import util.Spans._
 import Trees.{MemberDef, DefTree, WithLazyField}
@@ -13,7 +13,7 @@ object NavigateAST {
   /** The untyped tree corresponding to typed tree `tree` in the compilation
    *  unit specified by `ctx`
    */
-  def toUntyped(tree: tpd.Tree)(implicit ctx: Context): untpd.Tree =
+  def toUntyped(tree: tpd.Tree)(using Context): untpd.Tree =
     untypedPath(tree, exactMatch = true) match {
       case (utree: untpd.Tree) :: _ =>
         utree
@@ -37,7 +37,7 @@ object NavigateAST {
    *  defined and nothing else. So we look instead for an untyped tree approximating the
    *  envelope of the definition, and declare success if we find another DefTree.
    */
-  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(implicit ctx: Context): List[Positioned] =
+  def untypedPath(tree: tpd.Tree, exactMatch: Boolean = false)(using Context): List[Positioned] =
     tree match {
       case tree: MemberDef[?] =>
         untypedPath(tree.span) match {
@@ -55,7 +55,7 @@ object NavigateAST {
   /** The reverse part of the untyped root of the compilation unit of `ctx` to
    *  the given `span`.
    */
-  def untypedPath(span: Span)(implicit ctx: Context): List[Positioned] =
+  def untypedPath(span: Span)(using Context): List[Positioned] =
     pathTo(span, ctx.compilationUnit.untpdTree)
 
 
@@ -68,7 +68,7 @@ object NavigateAST {
    *                         end point are the same, so this is useful when trying to reconcile
    *                         nodes with source code.
    */
-  def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(implicit ctx: Context): List[Positioned] = {
+  def pathTo(span: Span, from: Positioned, skipZeroExtent: Boolean = false)(using Context): List[Positioned] = {
     def childPath(it: Iterator[Any], path: List[Positioned]): List[Positioned] = {
       var bestFit: List[Positioned] = path
       while (it.hasNext) {

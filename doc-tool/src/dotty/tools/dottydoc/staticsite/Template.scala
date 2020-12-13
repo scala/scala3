@@ -5,8 +5,9 @@ package staticsite
 import scala.util.control.NonFatal
 
 import dotc.util.SourceFile
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.util.Spans.Span
+import dotc.report
 import util.syntax._
 
 trait Template {
@@ -45,7 +46,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
       map
     }
 
-  private def protectedRender(op: => String)(implicit ctx: Context) = try {
+  private def protectedRender(op: => String)(using Context) = try {
     Some(op)
   } catch {
     case NonFatal(ex) => {
@@ -67,7 +68,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
           // mm.index is incorrect, let's compute the index manually
           // mm.line starts at 1, not 0
           val index = content.lineToOffset(mm.line-1) + mm.charPositionInLine
-          ctx.error(
+          report.error(
             if (unexpected == "EOF")
               s"unexpected end of file, expected $expected"
             else
@@ -84,7 +85,7 @@ case class LiquidTemplate(path: String, content: SourceFile) extends Template wi
     }
   }
 
-  def render(params: Map[String, AnyRef], includes: Map[String, Include])(implicit ctx: Context): Option[String] =
+  def render(params: Map[String, AnyRef], includes: Map[String, Include])(using Context): Option[String] =
     protectedRender {
       Template.parse(show, JEKYLL)
         .`with`(ResourceInclude(params, includes))

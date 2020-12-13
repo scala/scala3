@@ -7,11 +7,11 @@ class LineNumber(val value: Int) {
 object LineNumber {
 
   implicit inline def line[T >: Unit <: Unit]: LineNumber =
-    ${lineImpl('[T])}
+    ${lineImpl(Type.of[T])}
 
-  def lineImpl(x: Type[Unit])(using QuoteContext) : Expr[LineNumber] = {
-    import qctx.tasty._
-    '{new LineNumber(${Expr(rootPosition.startLine)})}
+  def lineImpl(x: Type[Unit])(using Quotes) : Expr[LineNumber] = {
+    import quotes.reflect._
+    '{new LineNumber(${Expr(Position.ofMacroExpansion.startLine)})}
   }
 
 }

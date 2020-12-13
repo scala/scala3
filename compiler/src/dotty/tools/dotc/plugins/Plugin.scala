@@ -60,7 +60,7 @@ trait ResearchPlugin extends Plugin {
    *  @param plan: the given phase plan
    *  @return the new phase plan
    */
-  def init(options: List[String], plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]]
+  def init(options: List[String], plan: List[List[Phase]])(using Context): List[List[Phase]]
 }
 
 object Plugin {
@@ -162,12 +162,12 @@ object Plugin {
       case Failure(e)  => Failure(e)
     })
 
-    val seen = mutable.HashSet[String]()
+    val seen = util.HashSet[String]()
     val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
       case (classname, loader) =>
         Plugin.load(classname, loader).flatMap {  clazz =>
           val plugin = instantiate(clazz)
-          if (seen(classname))   // a nod to scala/bug#7494, take the plugin classes distinctly
+          if (seen.contains(classname))   // a nod to scala/bug#7494, take the plugin classes distinctly
             Failure(new PluginLoadException(plugin.name, s"Ignoring duplicate plugin ${plugin.name} (${classname})"))
           else if (ignoring contains plugin.name)
             Failure(new PluginLoadException(plugin.name, s"Disabling plugin ${plugin.name}"))

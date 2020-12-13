@@ -22,7 +22,7 @@ enum E4 {
   case C4(x: Int)
 }
 object E4 {
-  val x1: Int => E4 = C4    // error: found: C4, required: Int => E4
+  val x1: Int => E4 = C4    // ok
   val x2: Int => E4 = C4(_) // ok
 }
 
@@ -35,9 +35,23 @@ enum Captured[T] {
   case Case3          extends Captured[T] // error: illegal reference to type parameter T from enum case
 }
 
-enum Option[+T] derives Eql {
-  case Some(x: T)
+enum Option[+T] derives CanEqual {
+  case Some[T](x: T) extends Option[T]
   case None
+}
+
+object DollarNew {
+
+  enum MyEnum:
+    case A
+
+  object MyEnum:
+
+    def $new: MyEnum = new MyEnum with runtime.EnumValue { // error: anonymous class in method $new extends enum MyEnum, but extending enums is prohibited.
+      override def $ordinal = 1
+    }
+
+    final val F = $new
 }
 
 object Test {
@@ -48,4 +62,3 @@ object Test {
   x == new Unrelated // error: cannot compare
 
 }
-

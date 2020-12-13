@@ -2,15 +2,13 @@ import scala.quoted._
 
 object Macros {
 
-  implicit inline def printType[T]: Unit = ${ impl('[T]) }
+  implicit inline def printType[T]: Unit = ${ impl[T] }
 
-  def impl[T](x: Type[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-
-    val tree = x.unseal
+  def impl[T: Type](using Quotes) : Expr[Unit] = {
+    import quotes.reflect._
     '{
-      println(${Expr(tree.showExtractors)})
-      println(${Expr(tree.tpe.showExtractors)})
+      println(${Expr(TypeTree.of[T].show(using Printer.TreeStructure))})
+      println(${Expr(TypeRepr.of[T].show(using Printer.TypeReprStructure))})
       println()
     }
   }

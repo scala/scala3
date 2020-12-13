@@ -1,25 +1,25 @@
 package scala.tasty.interpreter
 
-import scala.tasty.Reflection
+import scala.quoted._
 import scala.tasty.inspector.TastyInspector
 
 class TastyInterpreter extends TastyInspector {
 
-  protected def processCompilationUnit(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect.{_, given _}
+  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit = {
+    import quotes.reflect._
     object Traverser extends TreeTraverser {
 
-      override def traverseTree(tree: Tree)(implicit ctx: Context): Unit = tree match {
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         // TODO: check the correct sig and object enclosement for main
         case DefDef("main", _, _, _, Some(rhs)) =>
-          val interpreter = new jvm.Interpreter(this.reflect)
+          val interpreter = new jvm.Interpreter
 
           interpreter.eval(rhs)(using Map.empty)
         // TODO: recurse only for PackageDef, ClassDef
         case tree =>
-          super.traverseTree(tree)
+          super.traverseTree(tree)(owner)
       }
     }
-    Traverser.traverseTree(root)(reflect.rootContext)
+    Traverser.traverseTree(root)(Symbol.spliceOwner)
   }
 }

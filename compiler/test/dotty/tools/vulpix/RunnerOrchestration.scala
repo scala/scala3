@@ -4,6 +4,7 @@ package vulpix
 
 import java.io.{ File => JFile, InputStreamReader, BufferedReader, PrintStream }
 import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 
@@ -47,6 +48,9 @@ trait RunnerOrchestration {
   /** Running a `Test` class's main method from the specified `dir` */
   def runMain(classPath: String)(implicit summaryReport: SummaryReporting): Status =
     monitor.runMain(classPath)
+
+  /** Kill all processes */
+  def cleanup() = monitor.killAll()
 
   private val monitor = new RunnerMonitor
 
@@ -117,7 +121,7 @@ trait RunnerOrchestration {
           val sb = new StringBuilder
 
           if (childStdout eq null)
-            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, "UTF-8"))
+            childStdout = new BufferedReader(new InputStreamReader(process.getInputStream, StandardCharsets.UTF_8))
 
           var childOutput: String = childStdout.readLine()
 
@@ -166,14 +170,15 @@ trait RunnerOrchestration {
         .start()
     }
 
-    private val allRunners = List.fill(numberOfSlaves)(new Runner(createProcess))
-    private val freeRunners = mutable.Queue(allRunners: _*)
+    private val freeRunners = mutable.Queue.empty[Runner]
     private val busyRunners = mutable.Set.empty[Runner]
 
     private def getRunner(): Runner = synchronized {
-      while (freeRunners.isEmpty) wait()
+      while (freeRunners.isEmpty && busyRunners.size >= numberOfSlaves) wait()
 
-      val runner = freeRunners.dequeue()
+      val runner =
+        if (freeRunners.isEmpty) new Runner(createProcess)
+        else freeRunners.dequeue()
       busyRunners += runner
 
       notify()
@@ -193,7 +198,10 @@ trait RunnerOrchestration {
       result
     }
 
-    private def killAll(): Unit = allRunners.foreach(_.kill())
+    def killAll(): Unit = {
+      freeRunners.foreach(_.kill())
+      busyRunners.foreach(_.kill())
+    }
 
     // On shutdown, we need to kill all runners:
     sys.addShutdownHook(killAll())

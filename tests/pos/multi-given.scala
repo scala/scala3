@@ -5,6 +5,6 @@ trait C
 def fancy(using a: A, b: B, c: C) = "Fancy!"
 def foo(implicit a: A, b: B, c: C) = "foo"
 
-given A, B {}
+given A with B with {}
 
-given ops as A with B {}
+given ops: A with B with {}

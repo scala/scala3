@@ -13,7 +13,8 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
 import dotty.tools.dotc.core.Annotations._
 import dotty.tools.dotc.core.Constants._
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.Name
@@ -26,6 +27,7 @@ import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
 import dotty.tools.io.AbstractFile
+import dotty.tools.dotc.report
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -45,17 +47,17 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import bTypes._
   import tpd._
   import coreBTypes._
-  import int._
+  import int.{_, given}
   import DottyBackendInterface._
 
   def ScalaATTRName: String = "Scala"
   def ScalaSignatureATTRName: String = "ScalaSig"
 
-  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = ctx.requiredClass("java.lang.annotation.Retention")
-  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
-  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
-  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = ctx.requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
-  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = ctx.requiredClass("java.lang.annotation.Annotation")
+  @threadUnsafe lazy val AnnotationRetentionAttr: ClassSymbol = requiredClass("java.lang.annotation.Retention")
+  @threadUnsafe lazy val AnnotationRetentionSourceAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("SOURCE")
+  @threadUnsafe lazy val AnnotationRetentionClassAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("CLASS")
+  @threadUnsafe lazy val AnnotationRetentionRuntimeAttr: TermSymbol = requiredClass("java.lang.annotation.RetentionPolicy").linkedClass.requiredValue("RUNTIME")
+  @threadUnsafe lazy val JavaAnnotationClass: ClassSymbol = requiredClass("java.lang.annotation.Annotation")
 
   val bCodeAsmCommon: BCodeAsmCommon[int.type] = new BCodeAsmCommon(int)
   import bCodeAsmCommon._
@@ -75,9 +77,15 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       outputDirectory
     } catch {
       case ex: Throwable =>
-        ctx.error(s"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
+        report.error(s"Couldn't create file for class $cName\n${ex.getMessage}", ctx.source.atSpan(csym.span))
         null
     }
+  }
+
+  final def traitSuperAccessorName(sym: Symbol): String = {
+    val nameString = sym.javaSimpleName.toString
+    if (sym.name == nme.TRAIT_CONSTRUCTOR) nameString
+    else nameString + "$"
   }
 
   // -----------------------------------------------------------------------------------------
@@ -360,7 +368,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
       val narg = normalizeArgument(arg)
       // Transformation phases are not run on annotation trees, so we need to run
       // `constToLiteral` at this point.
-      val t = constToLiteral(narg)(ctx.withPhase(ctx.erasurePhase))
+      val t = atPhase(erasurePhase)(constToLiteral(narg))
       t match {
         case Literal(const @ Constant(_)) =>
           const.tag match {
@@ -369,14 +377,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
             case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(bcodeStore)(innerClasesStore).toASMType)
-            case EnumTag =>
-              val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
-              val evalue = const.symbolValue.javaSimpleName // value the actual enumeration value.
-              av.visitEnum(name, edesc, evalue)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-        case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(JavaEnumTrait) =>
+        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnumTrait) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -424,7 +428,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
           emitAssocs(nestedVisitor, assocs, bcodeStore)(innerClasesStore)
 
         case t =>
-          ctx.error(ex"Annotation argument is not a constant", t.sourcePos)
+          report.error(ex"Annotation argument is not a constant", t.sourcePos)
       }
     }
 
@@ -446,7 +450,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
     private def retentionPolicyOf(annot: Annotation): Symbol =
       annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-        flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
+        flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(AnnotationRetentionClassAttr)
 
     private def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
       tree match {
@@ -464,7 +468,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int._
+    import int.{_, given}
 
     def getCurrentCUnit(): CompilationUnit
 
@@ -478,7 +482,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      * @see https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.4
      */
     def getGenericSignature(sym: Symbol, owner: Symbol): String = {
-      ctx.atPhase(ctx.erasurePhase) {
+      atPhase(erasurePhase) {
         val memberTpe =
           if (sym.is(Method)) sym.denot.info
           else owner.denot.thisType.memberInfo(sym)
@@ -562,26 +566,26 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
      */
     def addForwarders(jclass: asm.ClassVisitor, jclassName: String, moduleClass: Symbol): Unit = {
       assert(moduleClass.is(ModuleClass), moduleClass)
-      ctx.debuglog(s"Dumping mirror class for object: $moduleClass")
+      report.debuglog(s"Dumping mirror class for object: $moduleClass")
 
       val linkedClass  = moduleClass.companionClass
       lazy val conflictingNames: Set[Name] = {
         (linkedClass.info.allMembers.collect { case d if d.name.isTermName => d.name }).toSet
       }
-      ctx.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
+      report.debuglog(s"Potentially conflicting names for forwarders: $conflictingNames")
 
       for (m0 <- sortedMembersBasedOnFlags(moduleClass.info, required = Method, excluded = ExcludedForwarder)) {
         val m = if (m0.is(Bridge)) m0.nextOverriddenSymbol else m0
         if (m == NoSymbol)
-          ctx.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
+          report.log(s"$m0 is a bridge method that overrides nothing, something went wrong in a previous phase.")
         else if (m.isType || m.is(Deferred) || (m.owner eq defn.ObjectClass) || m.isConstructor || m.name.is(ExpandedName))
-          ctx.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
+          report.debuglog(s"No forwarder for '$m' from $jclassName to '$moduleClass'")
         else if (conflictingNames(m.name))
-          ctx.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
+          report.log(s"No forwarder for $m due to conflict with ${linkedClass.info.member(m.name)}")
         else if (m.accessBoundary(defn.RootClass) ne defn.RootClass)
-          ctx.log(s"No forwarder for non-public member $m")
+          report.log(s"No forwarder for non-public member $m")
         else {
-          ctx.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
+          report.log(s"Adding static forwarder for '$m' from $jclassName to '$moduleClass'")
           addForwarder(jclass, moduleClass, m)
         }
       }
@@ -821,7 +825,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         * The type in the AnnotationInfo is an AnnotatedTpe. Tested in jvm/annotations.scala.
         */
       case a @ AnnotatedType(t, _) =>
-        ctx.debuglog(s"typeKind of annotated type $a")
+        report.debuglog(s"typeKind of annotated type $a")
         typeToTypeKind(t)(ct)(storage)
 
       /* The cases below should probably never occur. They are kept for now to avoid introducing
@@ -830,7 +834,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
         */
 
       case tp =>
-        ctx.warning(
+        report.warning(
           s"an unexpected type representation reached the compiler backend while compiling ${ctx.compilationUnit}: $tp. " +
             "If possible, please file a bug on https://github.com/lampepfl/dotty/issues")
 
@@ -844,7 +848,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   }
 
-  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(implicit ctx: Context): Option[String] = {
+  private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): Option[String] = {
     if (needsGenericSignature(sym)) {
       val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
       if (erasedTypeSym.isPrimitiveValueClass) {
@@ -864,13 +868,13 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     }
   }
 
-  private def verifySignature(sym: Symbol, sig: String)(implicit ctx: Context): Unit = {
+  private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {
     import scala.tools.asm.util.CheckClassAdapter
     def wrap(body: => Unit): Unit = {
       try body
       catch {
         case ex: Throwable =>
-          ctx.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
+          report.error(i"""|compiler bug: created invalid generic signature for $sym in ${sym.denot.owner.showFullName}
                       |signature: $sig
                       |if this is reproducible, please report bug at https://github.com/lampepfl/dotty/issues
                   """.trim, sym.sourcePos)
@@ -913,7 +917,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // But for now, just like we did in mixin, we just avoid writing a wrong generic signature
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
-    val memberTpe = ctx.atPhase(ctx.erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
+    val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
     val erasedMemberType = TypeErasure.erasure(memberTpe)
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
@@ -921,11 +925,11 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   }
 
   def abort(msg: String): Nothing = {
-    ctx.error(msg)
+    report.error(msg)
     throw new RuntimeException(msg)
   }
 
-  private def compilingArray(using ctx: Context) =
+  private def compilingArray(using Context) =
     ctx.compilationUnit.source.file.name == "Array.scala"
 }
 
@@ -947,5 +951,12 @@ object BCodeHelpers {
     val Special = new InvokeStyle(2) // InvokeSpecial (private methods, constructors)
     val Super   = new InvokeStyle(3) // InvokeSpecial (super calls)
   }
+
+  /** An attachment on Apply nodes indicating that it should be compiled with
+   *  `invokespecial` instead of `invokevirtual`. This is used for static
+   *  forwarders.
+   *  See BCodeSkelBuilder.makeStaticForwarder for more details.
+   */
+  val UseInvokeSpecial = new dotc.util.Property.Key[Unit]
 
 }

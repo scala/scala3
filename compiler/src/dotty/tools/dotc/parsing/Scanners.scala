@@ -6,8 +6,8 @@ import core.Names._, core.Contexts._, core.Decorators._, util.Spans._
 import core.StdNames._, core.Comments._
 import util.SourceFile
 import java.lang.Character.isDigit
-import scala.internal.Chars._
-import util.SourcePosition
+import util.Chars._
+import util.{SourcePosition, CharBuffer}
 import util.Spans.Span
 import config.Config
 import config.Printers.lexical
@@ -20,37 +20,6 @@ import rewrites.Rewrites.patch
 import config.Feature.migrateTo3
 import config.SourceVersion._
 import reporting.Message
-
-object Cbufs {
-  import java.lang.StringBuilder
-
-  private final val TargetCapacity = 256
-
-  opaque type Cbuf = StringBuilder
-  object Cbuf:
-    def apply(): Cbuf = new StringBuilder(TargetCapacity)
-
-  extension StringBuilderOps on (buf: Cbuf):
-    def clear(): Unit = {
-      if buf.capacity() > TargetCapacity then
-        buf.setLength(TargetCapacity)
-        buf.trimToSize()
-      end if
-      buf.setLength(0)
-    }
-    def toCharArray: Array[Char] = {
-      val n = buf.length()
-      val res = new Array[Char](n)
-      buf.getChars(0, n, res, 0)
-      res
-    }
-    def append(c: Char): buf.type = { buf.append(c) ; buf }
-    def isEmpty: Boolean = buf.length() == 0
-    def length: Int = buf.length()
-    def last: Char = buf.charAt(buf.length() - 1)
-}
-
-import Cbufs._
 
 object Scanners {
 
@@ -107,7 +76,7 @@ object Scanners {
     def isNestedEnd = token == RBRACE || token == OUTDENT
   }
 
-  abstract class ScannerCommon(source: SourceFile)(implicit ctx: Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
     def nextToken(): Unit
 
@@ -125,11 +94,11 @@ object Scanners {
     }
 
     def errorButContinue(msg: String, off: Offset = offset): Unit =
-      ctx.error(msg, sourcePos(off))
+      report.error(msg, sourcePos(off))
 
     /** signal an error where the input ended in the middle of a token */
     def incompleteInputError(msg: String): Unit = {
-      ctx.incompleteInputError(msg, sourcePos())
+      report.incompleteInputError(msg, sourcePos())
       token = EOF
       errOffset = offset
     }
@@ -141,22 +110,16 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    protected val litBuf = Cbuf()
+    protected val litBuf = CharBuffer()
 
     /** append Unicode character to "litBuf" buffer
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Return buffer contents and clear */
-    def flushBuf(buf: Cbuf): String = {
-      val str = buf.toString
-      buf.clear()
-      str
-    }
-
     /** Clear buffer and set name and token */
     def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
-      target.name = termName(flushBuf(litBuf))
+      target.name = termName(litBuf.chars, 0, litBuf.length)
+      litBuf.clear()
       target.token = idtoken
       if (idtoken == IDENTIFIER)
         target.token = toToken(target.name)
@@ -167,7 +130,8 @@ object Scanners {
 
     /** Clear buffer and set string */
     def setStrVal(): Unit =
-      strVal = flushBuf(litBuf)
+      strVal = litBuf.toString
+      litBuf.clear()
 
     @inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
@@ -179,13 +143,14 @@ object Scanners {
         errorButContinue("trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(implicit ctx: Context) extends ScannerCommon(source)(ctx) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
     val keepComments = !ctx.settings.YdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
     private[Scanners] var allowLeadingInfixOperators = true
 
     var debugTokenStream = false
+    val showLookAheadOnDebug = false
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
@@ -214,7 +179,12 @@ object Scanners {
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
-    /** All doc comments kept by their end position in a `Map` */
+    /** All doc comments kept by their end position in a `Map`.
+      *
+      * Note: the map is necessary since the comments are looked up after an
+      * entire definition is parsed, and a definition can contain nested
+      * definitions with their own docstrings.
+      */
     private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
@@ -226,11 +196,7 @@ object Scanners {
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
-        case ' ' | '\t' => nextPos
-        case CR | LF | FF =>
-          // if we encounter line delimiting whitespace we don't count it, since
-          // it seems not to affect positions in source
-          nextPos - 1
+        case ' ' | '\t' | CR | LF | FF => nextPos
         case _ => lookahead.charOffset - 1
       }
       docstringMap = docstringMap + (nextPos -> comment)
@@ -240,7 +206,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val commentBuf = Cbuf()
+    private val commentBuf = CharBuffer()
 
     private def handleMigration(keyword: Token): Token =
       if keyword == ERASED && !ctx.settings.YerasedTerms.value then IDENTIFIER
@@ -248,7 +214,7 @@ object Scanners {
       else keyword
 
     private def treatAsIdent(): Token =
-      ctx.errorOrMigrationWarning(
+      report.errorOrMigrationWarning(
         i"$name is now a keyword, write `$name` instead of $name to keep it as an identifier",
         sourcePos())
       patch(source, Span(offset), "`")
@@ -355,7 +321,8 @@ object Scanners {
     }
 
     final def printState() =
-      if debugTokenStream then print("[" + show + "]")
+      if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
+        print(s"[$show${if isInstanceOf[LookaheadScanner] then "(LA)" else ""}]")
 
     /** Insert `token` at assumed `offset` in front of current one. */
     def insert(token: Token, offset: Int) = {
@@ -389,7 +356,7 @@ object Scanners {
           val (what, previous) =
             if inConditional then ("Rest of line", "previous expression in parentheses")
             else ("Line", "expression on the previous line")
-          ctx.errorOrMigrationWarning(
+          report.errorOrMigrationWarning(
             em"""$what starts with an operator;
                 |it is now treated as a continuation of the $previous,
                 |not as a separate statement.""",
@@ -506,16 +473,15 @@ object Scanners {
       else if indentIsSignificant then
         if nextWidth < lastWidth
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
-          if !currentRegion.isOutermost &&
-             !isLeadingInfixOperator() &&
-             !statCtdTokens.contains(lastToken) then
+          if currentRegion.isOutermost then
+            if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
+          else if !isLeadingInfixOperator() && !statCtdTokens.contains(lastToken) then
             currentRegion match
               case r: Indented =>
                 currentRegion = r.enclosing
                 insert(OUTDENT, offset)
               case r: InBraces if !closingRegionTokens.contains(token) =>
-                ctx.warning("Line is indented too far to the left, or a `}` is missing",
-                  source.atSpan(Span(offset)))
+                report.warning("Line is indented too far to the left, or a `}` is missing", sourcePos())
               case _ =>
 
         else if lastWidth < nextWidth
@@ -523,6 +489,8 @@ object Scanners {
           if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
             insert(INDENT, offset)
+          else if lastToken == SELFARROW then
+            currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       currentRegion match {
@@ -544,12 +512,15 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    def observeColonEOL(): Unit =
-      if token == COLON then
+    private def switchAtEOL(testToken: Token, eolToken: Token): Unit =
+      if token == testToken then
         lookAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
-        if atEOL then token = COLONEOL
+        if atEOL then token = eolToken
+
+    def observeColonEOL(): Unit = switchAtEOL(COLON, COLONEOL)
+    def observeWithEOL(): Unit = switchAtEOL(WITH, WITHEOL)
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
@@ -590,7 +561,7 @@ object Scanners {
         currentRegion = r.outer
       case _ =>
 
-    /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT, SUPER + TRAIT => SUPERTRAIT
+    /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT
      *         SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
      *  - Insert missing OUTDENTs at EOF
      */
@@ -601,15 +572,11 @@ object Scanners {
         lastOffset = prev.lastOffset
         lineOffset = prev.lineOffset
       }
-      token match {
+      (token: @switch) match {
         case CASE =>
           lookAhead()
           if (token == CLASS) fuse(CASECLASS)
           else if (token == OBJECT) fuse(CASEOBJECT)
-          else reset()
-        case SUPER =>
-          lookAhead()
-          if token == TRAIT then fuse(SUPERTRAIT)
           else reset()
         case SEMI =>
           lookAhead()
@@ -637,8 +604,8 @@ object Scanners {
           if colonSyntax then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
-        case EOF if !source.maybeIncomplete =>
-          closeIndented()
+        case EOF =>
+          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
@@ -887,11 +854,15 @@ object Scanners {
       def finishComment(): Boolean = {
         if (keepComments) {
           val pos = Span(start, charOffset - 1, start)
-          val comment = Comment(pos, flushBuf(commentBuf))
+          val comment = Comment(pos, commentBuf.toString)
+          commentBuf.clear()
           commentPosBuf += pos
 
           if (comment.isDocComment)
             addComment(comment)
+          else
+            // "forward" doc comments over normal ones
+            getDocComment(start).foreach(addComment)
         }
 
         true
@@ -999,8 +970,9 @@ object Scanners {
            '|' | '\\' =>
         putChar(ch); nextChar(); getOperatorRest()
       case '/' =>
-        if (skipComment()) finishNamed()
-        else { putChar('/'); getOperatorRest() }
+        val nxch = lookaheadChar()
+        if nxch == '/' || nxch == '*' then finishNamed()
+        else { putChar(ch); nextChar(); getOperatorRest() }
       case _ =>
         if (isSpecial(ch)) { putChar(ch); nextChar(); getOperatorRest() }
         else finishNamed()
@@ -1354,7 +1326,7 @@ object Scanners {
    /* Initialization: read first char, then first token */
     nextChar()
     nextToken()
-    currentRegion = Indented(indentWidth(offset), Set(), EMPTY, null)
+    currentRegion = topLevelRegion(indentWidth(offset))
   }
   // end Scanner
 
@@ -1394,6 +1366,8 @@ object Scanners {
    */
   case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
     knownWidth = width
+
+  def topLevelRegion(width: IndentWidth) = Indented(width, Set(), EMPTY, null)
 
   enum IndentWidth {
     case Run(ch: Char, n: Int)

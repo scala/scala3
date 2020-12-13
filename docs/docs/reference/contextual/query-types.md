@@ -1,1 +1,6 @@
-The contents of this page have [moved](./context-functions.html).
+---
+layout: doc-page
+title: "Query Types"
+---
+
+The contents of this page have [moved](./context-functions.md).

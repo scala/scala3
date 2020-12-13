@@ -54,7 +54,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     val sources = List(
       mkSource("assert(true)", "()"),
       mkSource("assert(true, ???)", "()"),
-      mkSource("assert(false)", "assertFail()")
+      mkSource("assert(false)", "scala.runtime.Scala3RunTime.assertFailed()")
     )
     for (source <- sources)
       checkBCode(source) { dir =>
@@ -73,7 +73,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  @Test def inlineLocally = {
+  /** Disabled since locally comes from Predef now
+  @Test
+  def inlineLocally = {
     val source =
          """
          |class Foo {
@@ -100,6 +102,31 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       assert(instructions1 == instructions2,
         "`locally` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+  */
+
+  @Test def inlineNn = {
+    val source =
+      s"""
+         |class Foo {
+         |  def meth1(x: Int | Null): Int = x.nn
+         |  def meth2(x: Int | Null): Int = scala.runtime.Scala3RunTime.nn(x)
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Foo.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "meth1")
+      val meth2 = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`nn` was not properly inlined in `meth1`\n" +
         diffInstructions(instructions1, instructions2))
     }
   }
@@ -368,14 +395,14 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected =
         List(
-          IntOp(BIPUSH, 10)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(ICONST_1)
-          , Op(IADD)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(IRETURN)
+          IntOp(BIPUSH, 10),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(ICONST_1),
+          Op(IADD),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(IRETURN),
         )
       assert(instructions == expected,
         "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
@@ -399,22 +426,15 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected =
         List(
-          // Head tested separatly
           VarOp(ALOAD, 0),
           Invoke(INVOKEVIRTUAL, "Test", "given_Int", "()I", false),
-          Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "boxToInteger", "(I)Ljava/lang/Integer;", false),
-          Invoke(INVOKEINTERFACE, "dotty/runtime/function/JFunction1$mcZI$sp", "apply", "(Ljava/lang/Object;)Ljava/lang/Object;", true),
-          Invoke(INVOKESTATIC, "scala/runtime/BoxesRunTime", "unboxToBoolean", "(Ljava/lang/Object;)Z", false),
+          VarOp(ISTORE, 1),
+          Op(ICONST_1),
           Op(IRETURN)
         )
 
-      instructions.head match {
-        case InvokeDynamic(INVOKEDYNAMIC, "apply$mcZI$sp", "()Ldotty/runtime/function/JFunction1$mcZI$sp;", _, _) =>
-        case _ => assert(false, "`g` was not properly inlined in `test`\n")
-      }
-
-      assert(instructions.tail == expected,
-        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions.tail, expected))
+      assert(instructions == expected,
+        "`fg was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
     }
   }
@@ -431,7 +451,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       val fun = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(fun)
-      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$1", "()V", false), Op(RETURN))
+      val expected = List(Invoke(INVOKESTATIC, "Foo", "f$proxy1$1", "()V", false), Op(RETURN))
       assert(instructions == expected,
         "`inlined` was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
@@ -505,4 +525,61 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     }
   }
 
+
+  @Test def i9466 = {
+    val source = """class Test:
+                   |  inline def i(inline f: Int => Boolean): String =
+                   |   if f(34) then "a"
+                   |   else "b"
+                   |  def test = i(f = _ == 34)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Ldc(LDC, "a"),
+          Op(ARETURN)
+        )
+
+      assert(instructions == expected,
+        "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def beta_reduce_under_block = {
+    val source = """class Test:
+                   |  def test =
+                   |    {
+                   |      val a = 3
+                   |      (i: Int) => i + a
+                   |    }.apply(2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Op(ICONST_3),
+          VarOp(ISTORE, 1),
+          Op(ICONST_2),
+          VarOp(ILOAD, 1),
+          Op(IADD),
+          Op(IRETURN),
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
 }

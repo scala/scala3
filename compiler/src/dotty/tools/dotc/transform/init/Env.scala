@@ -3,7 +3,7 @@ package transform
 package init
 
 import core._
-import Contexts.Context
+import Contexts._
 import Types._
 import Symbols._
 import Decorators._
@@ -20,12 +20,11 @@ import Effects._, Potentials._, Summary._
 
 implicit def theCtx(implicit env: Env): Context = env.ctx
 
-case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary]) {
+case class Env(ctx: Context) {
   private implicit def self: Env = this
 
   // Methods that should be ignored in the checking
   lazy val ignoredMethods: Set[Symbol] = Set(
-    ctx.requiredClass("scala.runtime.EnumValues").requiredMethod("register"),
     defn.Any_getClass,
     defn.Any_isInstanceOf,
     defn.Object_eq,
@@ -46,12 +45,25 @@ case class Env(ctx: Context, summaryCache: mutable.Map[ClassSymbol, ClassSummary
     sym.isPrimitiveValueClass || sym == defn.StringClass
   }
 
-  /** Summary of a method or field */
+  /** Summary of a class */
+  private val summaryCache = mutable.Map.empty[ClassSymbol, ClassSummary]
   def summaryOf(cls: ClassSymbol): ClassSummary =
     if (summaryCache.contains(cls)) summaryCache(cls)
     else trace("summary for " + cls.show, init, s => s.asInstanceOf[ClassSummary].show) {
       val summary = Summarization.classSummary(cls)
       summaryCache(cls) = summary
       summary
+    }
+
+  /** Cache for outer this */
+  private case class OuterKey(warm: Warm, cls: ClassSymbol)
+  private val outerCache: mutable.Map[OuterKey, Potentials] = mutable.Map.empty
+  def resolveOuter(warm: Warm, cls: ClassSymbol)(implicit env: Env): Potentials =
+    val key = OuterKey(warm, cls)
+    if (outerCache.contains(key)) outerCache(key)
+    else {
+      val pots = Potentials.resolveOuter(warm.classSymbol, warm.outer.toPots, cls)
+      outerCache(key) = pots
+      pots
     }
 }

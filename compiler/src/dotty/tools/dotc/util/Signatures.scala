@@ -1,15 +1,16 @@
-package dotty.tools.dotc.util
+package dotty.tools.dotc
+package util
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Constants.Constant
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Denotations.SingleDenotation
-import dotty.tools.dotc.core.Flags.Implicit
-import dotty.tools.dotc.core.Names.TermName
-import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.core.Types.{ErrorType, MethodType, PolyType}
-import dotty.tools.dotc.reporting.messages
+import ast.Trees._
+import ast.tpd
+import core.Constants.Constant
+import core.Contexts._
+import core.Denotations.SingleDenotation
+import core.Flags.Implicit
+import core.Names.TermName
+import util.Spans.Span
+import core.Types.{ErrorType, MethodType, PolyType}
+import reporting._
 
 import scala.collection.JavaConverters._
 
@@ -48,7 +49,7 @@ object Signatures {
    * @return A triple containing the index of the parameter being edited, the index of the function
    *         being called, the list of overloads of this function).
    */
-  def callInfo(path: List[tpd.Tree], span: Span)(implicit ctx: Context): (Int, Int, List[SingleDenotation]) =
+  def callInfo(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[SingleDenotation]) =
     path match {
       case Apply(fun, params) :: _ =>
         val alreadyAppliedCount = Signatures.countParams(fun)
@@ -75,12 +76,12 @@ object Signatures {
         (0, 0, Nil)
     }
 
-  def toSignature(denot: SingleDenotation)(implicit ctx: Context): Option[Signature] = {
+  def toSignature(denot: SingleDenotation)(using Context): Option[Signature] = {
     val symbol = denot.symbol
     val docComment = ParsedComment.docOf(symbol)
     val classTree = symbol.topLevelClass.asClass.rootTree
 
-    def toParamss(tp: MethodType)(implicit ctx: Context): List[List[Param]] = {
+    def toParamss(tp: MethodType)(using Context): List[List[Param]] = {
       val rest = tp.resType match {
         case res: MethodType =>
           // Hide parameter lists consisting only of DummyImplicit,
@@ -160,11 +161,11 @@ object Signatures {
    * @return A pair composed of the index of the best alternative (0 if no alternatives
    *         were found), and the list of alternatives.
    */
-  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(implicit ctx: Context): (Int, List[SingleDenotation]) = {
+  private def alternativesFromError(err: ErrorType, params: List[tpd.Tree])(using Context): (Int, List[SingleDenotation]) = {
     val alternatives =
       err.msg match
-        case msg: messages.AmbiguousOverload  => msg.alternatives
-        case msg: messages.NoMatchingOverload => msg.alternatives
+        case msg: AmbiguousOverload  => msg.alternatives
+        case msg: NoMatchingOverload => msg.alternatives
         case _                                => Nil
 
     // If the user writes `foo(bar, <cursor>)`, the typer will insert a synthetic

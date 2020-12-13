@@ -4,13 +4,14 @@ package jvm
 
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.report
 
 /**
  * This trait contains code shared between GenBCode and GenASM that depends on types defined in
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface._
+  import interface.{_, given}
   import DottyBackendInterface.symExtensions
 
   /**
@@ -89,7 +90,7 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
   def enclosingMethodAttribute(classSym: Symbol, classDesc: Symbol => String, methodDesc: Symbol => String): Option[EnclosingMethodEntry] = {
     if (isAnonymousOrLocalClass(classSym)) {
       val methodOpt = enclosingMethodForEnclosingMethodAttribute(classSym)
-      ctx.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
+      report.debuglog(s"enclosing method for $classSym is $methodOpt (in ${methodOpt.map(_.enclosingClass)})")
       Some(EnclosingMethodEntry(
         classDesc(enclosingClassForEnclosingMethodAttribute(classSym)),
         methodOpt.map(_.javaSimpleName).orNull,

@@ -5,11 +5,11 @@ lazy val plugin = project
   .settings(
     name := "init-checker",
     version := "0.0.1",
-    organization := "ch.epfl.lamp",
+    organization := "org.scala-lang",
     scalaVersion := dottyVersion,
 
     libraryDependencies ++= Seq(
-      "ch.epfl.lamp" %% "dotty-compiler" % scalaVersion.value % "provided"
+      "org.scala-lang" %% "scala3-compiler" % scalaVersion.value % "provided"
     )
   )
 

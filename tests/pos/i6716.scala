@@ -1,7 +1,7 @@
 trait Monad[T]
 class Foo
 object Foo {
-  given Monad[Foo]
+  given Monad[Foo] with {}
 }
 
 opaque type Bar = Foo

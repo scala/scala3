@@ -212,7 +212,7 @@ def g[X]: L[X] = ???
    |  subtype LazyRef(Test.L[Int]) <:< Int
 ```
 
-Internally, `dotc` detects these cycles by turning selected stack overflows into
+Internally, `scalac` detects these cycles by turning selected stack overflows into
 type errors. If there is a stack overflow during subtyping, the exception will
 be caught and turned into a compile-time error that indicates a trace of the
 subtype tests that caused the overflow without showing a full stack trace.
@@ -243,7 +243,6 @@ main differences here are:
 
  - Conditional types only reduce if both the scrutinee and pattern are ground,
    whereas match types also work for type parameters and abstract types.
- - Match types can bind variables in type patterns.
  - Match types support direct recursion.
  - Conditional types distribute through union types.
 

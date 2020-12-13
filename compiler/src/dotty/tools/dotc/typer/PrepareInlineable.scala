@@ -12,14 +12,14 @@ import Types._
 import Decorators._
 import NameKinds._
 import StdNames.nme
-import Contexts.{Context, ctx}
+import Contexts._
 import Names.Name
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
 import Annotations._
 import transform.{AccessProxies, PCPCheckAndHeal, Splicer, TreeMapWithStages}
 import config.Printers.inlining
-import util.{Property, SourcePosition}
+import util.Property
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 
@@ -78,7 +78,7 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case tree: RefTree if needsAccessor(tree.symbol) =>
           if (tree.symbol.isConstructor) {
-            ctx.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.sourcePos)
+            report.error("Implementation restriction: cannot use private constructors in inlineinline methods", tree.srcPos)
             tree // TODO: create a proper accessor for the private constructor
           }
           else useAccessor(tree)
@@ -206,8 +206,18 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
-    else Typed(rhs, tpt)
+    if original.mods.is(Transparent) then rhs else Typed(rhs, tpt)
+
+  /** Return result of evaluating `op`, but drop `Inline` flag and `Body` annotation
+   *  of `sym` in case that leads to errors.
+   */
+  def dropInlineIfError(sym: Symbol, op: => Tree)(using Context): Tree =
+    val initialErrorCount = ctx.reporter.errorCount
+    try op
+    finally
+      if ctx.reporter.errorCount != initialErrorCount then
+        sym.resetFlag(Inline)
+        sym.removeAnnotation(defn.BodyAnnot)
 
   /** Register inline info for given inlineable method `sym`.
    *
@@ -226,33 +236,30 @@ object PrepareInlineable {
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
-            given ctx as Context = inlineCtx
-            val initialErrorCount = ctx.reporter.errorCount
-            var inlinedBody = treeExpr
-            if (ctx.reporter.errorCount == initialErrorCount) {
-              inlinedBody = ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)
-              checkInlineMethod(inlined, inlinedBody)
-              if (ctx.reporter.errorCount != initialErrorCount)
-                inlinedBody = EmptyTree
-            }
+            given ctx: Context = inlineCtx
+            var inlinedBody = dropInlineIfError(inlined, treeExpr)
+            if inlined.isInlineMethod then
+              inlinedBody = dropInlineIfError(inlined,
+                checkInlineMethod(inlined,
+                  ctx.compilationUnit.inlineAccessors.makeInlineable(inlinedBody)))
             inlining.println(i"Body to inline for $inlined: $inlinedBody")
             inlinedBody
           })
         }
     }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): Unit = {
+  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
-      ctx.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.sourcePos)
+      report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.srcPos)
     if Inliner.inInlineMethod(using ctx.outer) then
-      ctx.error(ex"Implementation restriction: nested inline methods are not supported", inlined.sourcePos)
+      report.error(ex"Implementation restriction: nested inline methods are not supported", inlined.srcPos)
 
     if (inlined.is(Macro) && !ctx.isAfterTyper) {
 
       def checkMacro(tree: Tree): Unit = tree match {
         case Spliced(code) =>
           if (code.symbol.flags.is(Inline))
-            ctx.error("Macro cannot be implemented with an `inline` method", code.sourcePos)
+            report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
           new PCPCheckAndHeal(freshStagingContext).transform(body) // Ignore output, only check PCP
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
@@ -260,13 +267,13 @@ object PrepareInlineable {
         case Typed(expr, _) => checkMacro(expr)
         case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
-          ctx.error(
+          report.error(
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.
               |
               |Place the implicit as an argument (`foo()(using X): Y`) to overcome this limitation.
-              |""".stripMargin, tree.sourcePos)
+              |""".stripMargin, tree.srcPos)
         case _ =>
-          ctx.error(
+          report.error(
             """Malformed macro.
               |
               |Expected the splice ${...} to be at the top of the RHS:
@@ -274,9 +281,10 @@ object PrepareInlineable {
               |
               | * The contents of the splice must call a static method
               | * All arguments must be quoted or inline
-            """.stripMargin, inlined.sourcePos)
+            """.stripMargin, inlined.srcPos)
       }
       checkMacro(body)
     }
+    body
   }
 }

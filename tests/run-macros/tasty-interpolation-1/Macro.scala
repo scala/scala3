@@ -1,7 +1,6 @@
 
 import scala.quoted._
 import scala.language.implicitConversions
-import scala.quoted.Reporting.error
 
 object Macro {
 
@@ -14,24 +13,25 @@ object Macro {
 }
 
 object SIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).s(${Expr.ofList(args)}: _*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}: _*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
-  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using QuoteContext): Expr[String] =
+  protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
     '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
 }
 
 // TODO put this class in the stdlib or separate project?
 abstract class MacroStringInterpolator[T] {
 
-  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[T] = {
+  final def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes) : Expr[T] = {
+    import quotes.reflect.report.error
     try interpolate(strCtxExpr, argsExpr)
     catch {
       case ex: NotStaticlyKnownError =>
@@ -49,35 +49,35 @@ abstract class MacroStringInterpolator[T] {
     }
   }
 
-  protected def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) (using QuoteContext): Expr[T] =
+  protected def interpolate(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]]) (using Quotes): Expr[T] =
     interpolate(getStaticStringContext(strCtxExpr), getArgsList(argsExpr))
 
-  protected def interpolate(strCtx: StringContext, argExprs: List[Expr[Any]]) (using QuoteContext): Expr[T]
+  protected def interpolate(strCtx: StringContext, argExprs: List[Expr[Any]]) (using Quotes): Expr[T]
 
-  protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using qctx: QuoteContext) : StringContext = {
-    import qctx.tasty._
-    strCtxExpr.unseal.underlyingArgument match {
+  protected def getStaticStringContext(strCtxExpr: Expr[StringContext])(using Quotes) : StringContext = {
+    import quotes.reflect._
+    strCtxExpr.asTerm.underlyingArgument match {
       case Select(Typed(Apply(_, List(Apply(_, List(Typed(Repeated(strCtxArgTrees, _), Inferred()))))), _), _) =>
         val strCtxArgs = strCtxArgTrees.map {
-          case Literal(Constant(str: String)) => str
-          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
+          case Literal(StringConstant(str)) => str
+          case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
         }
         StringContext(strCtxArgs: _*)
       case tree =>
-        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.seal)
+        throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
     }
   }
 
-  protected def getArgsList(argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : List[Expr[Any]] = {
-    import qctx.tasty._
-    argsExpr.unseal.underlyingArgument match {
-      case Typed(Repeated(args, _), _) => args.map(_.seal)
-      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.seal)
+  protected def getArgsList(argsExpr: Expr[Seq[Any]])(using Quotes) : List[Expr[Any]] = {
+    import quotes.reflect._
+    argsExpr.asTerm.underlyingArgument match {
+      case Typed(Repeated(args, _), _) => args.map(_.asExpr)
+      case tree => throw new NotStaticlyKnownError("Expected statically known argument list", tree.asExpr)
     }
   }
 
-  protected implicit def StringContextIsLiftable: Liftable[StringContext] = new Liftable[StringContext] {
-    def toExpr(strCtx: StringContext) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
+  protected implicit def StringContextIsToExpr: ToExpr[StringContext] = new ToExpr[StringContext] {
+    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

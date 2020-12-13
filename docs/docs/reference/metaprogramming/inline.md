@@ -268,10 +268,10 @@ val obj2 = choose(false) // static type is B
 // obj1.m() // compile-time error: `m` is not defined on `A`
 obj2.m()    // OK
 ```
-Here, the inline method `choose` returns an instance of either of the two types `A` or `B`. 
+Here, the inline method `choose` returns an instance of either of the two types `A` or `B`.
 If `choose` had not been declared to be `transparent`, the result
-of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`. 
-The inline method is a "blackbox" in the sense that details of its implementation do not leak out. 
+of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`.
+The inline method is a "blackbox" in the sense that details of its implementation do not leak out.
 But if a `transparent` modifier is given, the expansion is the type of the expanded body. If the argument `b`
 is `true`, that type is `A`, otherwise it is `B`. Consequently, calling `m` on `obj2`
 type-checks since `obj2` has the same type as the expansion of `choose(false)`, which is `B`.
@@ -499,8 +499,7 @@ val multiplication: 3 * 5 = 15
 ```
 
 Many of these singleton operation types are meant to be used infix (as in [SLS §
-3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)),
-and are annotated with [`@infix`](scala.annotation.infix) accordingly.
+3.2.8](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#infix-types)).
 
 Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:
@@ -518,9 +517,10 @@ match type can dispatch to the correct implementation:
 
 ```scala
 import scala.compiletime.ops._
+
 import scala.annotation.infix
 
-@infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
+type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
   case (Int, Int) => int.+[X, Y]
   case (String, String) => string.+[X, Y]
 }
@@ -571,16 +571,24 @@ would use it as follows:
 import scala.compiletime.summonFrom
 
 inline def setFor[T]: Set[T] = summonFrom {
-  case given ord: Ordering[T] => new TreeSet[T]
-  case _                      => new HashSet[T]
+  case ord: Ordering[T] => new TreeSet[T](using ord)
+  case _                => new HashSet[T]
 }
 ```
 A `summonFrom` call takes a pattern matching closure as argument. All patterns
 in the closure are type ascriptions of the form `identifier : Type`.
 
-Patterns are tried in sequence. The first case with a pattern `x: T` such that
-an implicit value of type `T` can be summoned is chosen. If the pattern is prefixed
-with `given`, the variable `x` is bound to the implicit value for the remainder of the case. It can in turn be used as an implicit in the right hand side of the case. It is an error if one of the tested patterns gives rise to an ambiguous implicit search.
+Patterns are tried in sequence. The first case with a pattern `x: T` such that an implicit value of type `T` can be summoned is chosen.
+
+Alternatively, one can also use a pattern-bound given instance, which avoids the explicit using clause. For instance, `setFor` could also be formulated as follows:
+```scala
+import scala.compiletime.summonFrom
+
+inline def setFor[T]: Set[T] = summonFrom {
+  case given Ordering[T] => new TreeSet[T]
+  case _                 => new HashSet[T]
+}
+```
 
 `summonFrom` applications must be reduced at compile time.
 

@@ -3,11 +3,11 @@ import scala.quoted.staging._
 
 class Foo {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def foo: Unit = withQuoteContext {
+  def foo: Unit = withQuotes {
     val e: Expr[Int] = '{3}
     val f: Expr[Int] = '{5}
-    val t: Type[Int] = '[Int]
-    val q = '{ ${ '{ ($e + $f).asInstanceOf[$t] } } }
+    val t: Type[Int] = Type.of[Int]
+    val q = '{ ${ '{ ($e + $f).asInstanceOf[t.Underlying] } } }
     println(q.show)
   }
 }

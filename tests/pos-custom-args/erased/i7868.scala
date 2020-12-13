@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 import scala.compiletime._
 
 final case class Coproduct[+Set, +Value, Index <: Int](value: Value & Set, index: Index)
@@ -11,16 +12,16 @@ object Coproduct {
 
   object At {
 
-    given atHead[Head, Tail] as At[Head +: Tail, Head, 0] {
+    given atHead[Head, Tail]: At[Head +: Tail, Head, 0] with {
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
     }
 
     given atTail[Head, Tail, Value, NextIndex <: Int]
           (using atNext: At[Tail, Value, NextIndex])
-          as At[Head +: Tail, Value, S[NextIndex]]:
+      : At[Head +: Tail, Value, S[NextIndex]] with
       val cast: Value <:< Head +: Tail = atNext.cast
 
-    given [A](using A) as (() => A)= { () => summon[A]}
+    given [A](using A): (() => A) = { () => summon[A]}
   }
 
   def upCast[A, B](a: A)(using erased evidence: (A <:< B) ): B = a.asInstanceOf[B]

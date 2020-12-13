@@ -1,10 +1,12 @@
-package dotty.tools.dotc.ast
+package dotty.tools.dotc
+package ast
 
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.Symbols._
-import dotty.tools.dotc.core.TypeError
+import Trees._
+import core.Contexts._
+import core.ContextOps.enter
+import core.Flags._
+import core.Symbols._
+import core.TypeError
 
 import scala.annotation.tailrec
 
@@ -16,7 +18,7 @@ import scala.annotation.tailrec
 class TreeMapWithImplicits extends tpd.TreeMap {
   import tpd._
 
-  def transformSelf(vd: ValDef)(implicit ctx: Context): ValDef =
+  def transformSelf(vd: ValDef)(using Context): ValDef =
     cpy.ValDef(vd)(tpt = transform(vd.tpt))
 
   /** Transform statements, while maintaining import contexts and expression contexts
@@ -24,11 +26,11 @@ class TreeMapWithImplicits extends tpd.TreeMap {
    *   - be tail-recursive where possible
    *   - don't re-allocate trees where nothing has changed
    */
-  def transformStats(stats: List[Tree], exprOwner: Symbol)(implicit ctx: Context): List[Tree] = {
+  def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
 
-    @tailrec def traverse(curStats: List[Tree])(implicit ctx: Context): List[Tree] = {
+    @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] = {
 
-      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(implicit ctx: Context): List[Tree] =
+      def recur(stats: List[Tree], changed: Tree, rest: List[Tree])(using Context): List[Tree] =
         if (stats eq curStats) {
           val rest1 = transformStats(rest, exprOwner)
           changed match {
@@ -49,8 +51,8 @@ class TreeMapWithImplicits extends tpd.TreeMap {
             case _ => ctx
           }
           val stat1 = transform(stat)(using statCtx)
-          if (stat1 ne stat) recur(stats, stat1, rest)(restCtx)
-          else traverse(rest)(restCtx)
+          if (stat1 ne stat) recur(stats, stat1, rest)(using restCtx)
+          else traverse(rest)(using restCtx)
         case nil =>
           stats
       }
@@ -58,7 +60,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     traverse(stats)
   }
 
-  private def nestedScopeCtx(defs: List[Tree])(implicit ctx: Context): Context = {
+  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     defs foreach {
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
@@ -67,12 +69,13 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     nestedCtx
   }
 
-  private def patternScopeCtx(pattern: Tree)(implicit ctx: Context): Context = {
+  private def patternScopeCtx(pattern: Tree)(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     new TreeTraverser {
-      def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+      def traverse(tree: Tree)(using Context): Unit = {
         tree match {
-          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
+          case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) =>
+            nestedCtx.enter(d.symbol)
           case _ =>
         }
         traverseChildren(tree)
@@ -88,13 +91,14 @@ class TreeMapWithImplicits extends tpd.TreeMap {
       case tree: Block =>
         super.transform(tree)(using nestedScopeCtx(tree.stats))
       case tree: DefDef =>
-        given Context = localCtx
-        cpy.DefDef(tree)(
-          tree.name,
-          transformSub(tree.tparams),
-          tree.vparamss mapConserve (transformSub(_)),
-          transform(tree.tpt),
-          transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten)))
+        inContext(localCtx) {
+          cpy.DefDef(tree)(
+            tree.name,
+            transformSub(tree.tparams),
+            tree.vparamss mapConserve (transformSub(_)),
+            transform(tree.tpt),
+            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten)))
+        }
       case EmptyValDef =>
         tree
       case _: PackageDef | _: MemberDef =>
@@ -118,7 +122,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     }
     catch {
       case ex: TypeError =>
-        ctx.error(ex, tree.sourcePos)
+        report.error(ex, tree.srcPos)
         tree
     }
   }

@@ -1,15 +1,15 @@
 import scala.quoted._
 
-class Test(using QuoteContext) {
+class Test(using Quotes) {
 
   def f[T](x: Expr[T])(implicit t: Type[T]) = '{
-    val y: $t = $x
+    val y: T = $x
     val z = $x
   }
 
-  f('{2})('[Int])
-  f('{ true })('[Boolean])
+  f('{2})(Type.of[Int])
+  f('{ true })(Type.of[Boolean])
 
   def g(es: Expr[String], t: Type[String]) =
-    f('{ ($es + "!") :: Nil })('[List[$t]])
+    f('{ ($es + "!") :: Nil })(Type.of[List[t.Underlying]])
 }

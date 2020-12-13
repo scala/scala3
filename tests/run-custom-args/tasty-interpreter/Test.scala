@@ -11,9 +11,14 @@ import scala.util.Using
 import scala.tasty.interpreter.TastyInterpreter
 
 object Test {
-  def main(args: Array[String]): Unit = {
 
-    val actualOutput = interpret("")("IntepretedMain", "InterpretedBar")
+  def main(args: Array[String]): Unit = {
+    // Artefact of the current test infrastructure
+    // TODO improve infrastructure to avoid needing this code on each test
+    val classpath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(_.contains("runWithCompiler")).get
+    val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.extension == "tasty").map(_.toString).toList
+
+    val actualOutput = interpret("")(allTastyFiles.filter(x => x.contains("IntepretedMain") || x.contains("InterpretedBar")))
     val expectedOutput =
       """42
         |
@@ -84,9 +89,15 @@ object Test {
     val out = java.nio.file.Paths.get("out/interpreted")
     if (!java.nio.file.Files.exists(out))
       java.nio.file.Files.createDirectory(out)
-    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, "tests/run/" + testFileName), reproter)
 
-    val actualOutput = interpret(out.toString)("Test")
+    val filePath = "tests" + File.separator + "run" + File.separator + testFileName
+    dotty.tools.dotc.Main.process(Array("-classpath", System.getProperty("java.class.path"), "-d", out.toString, filePath), reproter)
+
+    // Artefact of the current test infrastructure
+    // TODO improve infrastructure to avoid needing this code on each test
+    val allTastyFiles = dotty.tools.io.Path(out).walkFilter(_.extension == "tasty").map(_.toString).toList
+
+    val actualOutput = interpret(out.toString)(allTastyFiles.filter(_.endsWith("Test.tasty")))
 
     val checkFile = java.nio.file.Paths.get("tests/run/" + testFileName.stripSuffix(".scala") + ".check")
     if (java.nio.file.Files.exists(checkFile)) {
@@ -100,10 +111,10 @@ object Test {
     }
   }
 
-  def interpret(classpath: String*)(interpretedClasses: String*): String = {
+  def interpret(classpath: String*)(interpretedClasses: List[String]): String = {
     val ps = new ByteArrayOutputStream()
     try scala.Console.withOut(ps) {
-      new TastyInterpreter().inspect(classpath.mkString(java.io.File.pathSeparatorChar.toString), interpretedClasses.toList)
+      new TastyInterpreter().inspectAllTastyFiles(interpretedClasses.toList, Nil, classpath.toList)
     } catch {
       case e: Throwable => throw new Exception(ps.toString, e)
     }

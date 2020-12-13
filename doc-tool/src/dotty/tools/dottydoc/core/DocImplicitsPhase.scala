@@ -4,7 +4,7 @@ package core
 
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.core.Flags
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import util.syntax._
 
 class DocImplicitsPhase extends MiniPhase {
@@ -12,7 +12,7 @@ class DocImplicitsPhase extends MiniPhase {
 
   def phaseName = "addImplicitsPhase"
 
-  override def transformDefDef(tree: DefDef)(implicit ctx: Context): Tree = {
+  override def transformDefDef(tree: DefDef)(using Context): Tree = {
     if (
       tree.symbol.isOneOf(Flags.GivenOrImplicit) && // has to have an implicit flag
       tree.symbol.owner.isStaticOwner && // owner has to be static (e.g. top-level `object`)

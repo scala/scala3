@@ -3,7 +3,11 @@ package backend
 package jvm
 
 import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
+import java.nio.channels.ClosedByInterruptException
+import java.nio.file.Files
 import dotty.tools.io._
+import dotty.tools.dotc.report
+
 import java.util.jar.Attributes.Name
 import scala.language.postfixOps
 
@@ -16,7 +20,7 @@ class FileConflictException(msg: String, val file: AbstractFile) extends IOExcep
  */
 trait BytecodeWriters {
   val int: DottyBackendInterface
-  import int._
+  import int.{_, given}
 
   /**
    * @param clsName cls.getName
@@ -61,7 +65,7 @@ trait BytecodeWriters {
       try out.write(jclassBytes, 0, jclassBytes.length)
       finally out.flush()
 
-      ctx.informProgress("added " + label + path + " to jar")
+      report.informProgress("added " + label + path + " to jar")
     }
     override def close() = writer.close()
   }
@@ -110,8 +114,13 @@ trait BytecodeWriters {
       val outstream = new DataOutputStream(outfile.bufferedOutput)
 
       try outstream.write(jclassBytes, 0, jclassBytes.length)
+      catch case ex: ClosedByInterruptException =>
+        try
+          outfile.delete() // don't leave an empty or half-written classfile around after an interrupt
+        catch case _: Throwable =>
+        throw ex
       finally outstream.close()
-      ctx.informProgress("wrote '" + label + "' to " + outfile)
+      report.informProgress("wrote '" + label + "' to " + outfile)
     }
   }
 

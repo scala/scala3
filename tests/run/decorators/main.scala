@@ -5,7 +5,7 @@ import collection.mutable
  */
 class main extends EntryPoint.Annotation:
 
-  type ArgumentParser[T] = util.FromString[T]
+  type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   type EntryPointResult  = Unit
 
   inline def wrapperName(entryPointName: String): String =
@@ -32,7 +32,7 @@ class main extends EntryPoint.Annotation:
       /** Issue an error, and return an uncallable getter */
       private def error(msg: String): () => Nothing =
         errors += msg
-        () => assertFail("trying to get invalid argument")
+        () => throw new AssertionError("trying to get invalid argument")
 
       /** The next argument index */
       private var argIdx: Int = 0

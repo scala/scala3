@@ -17,7 +17,7 @@ object desugarPackage extends DeSugarTest {
     val buf = parsedTrees map desugarTree
     val ms2 = (System.nanoTime() - start)/1000000
     println(s"$parsed files parsed in ${ms1}ms, ${nodes - startNodes} nodes desugared in ${ms2-ms1}ms, total trees created = ${Trees.ntrees - startNodes}")
-    ctx.reporter.printSummary(ctx)
+    ctx.reporter.printSummary
   }
 
   def main(args: Array[String]): Unit = {

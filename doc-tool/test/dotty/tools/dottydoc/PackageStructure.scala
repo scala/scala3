@@ -21,9 +21,9 @@ abstract class PackageStructureBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val className = "scala.A"
+    val tastyFile = "scala/A.tasty"
 
-    check(className :: Nil, source :: Nil) { (ctx, packages) =>
+    check(tastyFile :: Nil, source :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(trt: Trait), _, _, _, _) =>
           assert(trt.annotations.isEmpty)
@@ -48,9 +48,9 @@ abstract class PackageStructureBase extends DottyDocTest {
       """.stripMargin
     )
 
-    val classNames = "scala.A" :: "scala.B" :: Nil
+    val tastyFiles = "scala/A.tasty" :: "scala/B.tasty" :: Nil
 
-    check(classNames, source1 :: source2 :: Nil) { (ctx, packages) =>
+    check(tastyFiles, source1 :: source2 :: Nil) { (ctx, packages) =>
       packages("scala") match {
         case PackageImpl(_, _, _, List(tA, tB), _, _, _, _) =>
           assert(
@@ -80,9 +80,9 @@ abstract class PackageStructureBase extends DottyDocTest {
       |trait B
       """.stripMargin)
 
-    val classNames = "scala.collection.A" :: "scala.collection.B" :: Nil
+    val tastyFiles = "scala/collection/A.tasty" :: "scala/collection/B.tasty" :: Nil
 
-    check(classNames, source1 :: source2 :: Nil) { (ctx, packages) =>
+    check(tastyFiles, source1 :: source2 :: Nil) { (ctx, packages) =>
       packages("scala.collection") match {
         case PackageImpl(_, _, "scala.collection", List(tA, tB), _, _, _, _) =>
           assert(

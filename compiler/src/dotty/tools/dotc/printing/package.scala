@@ -22,8 +22,8 @@ package object printing {
   val XprintMode: Key[Unit] = new Key
 
   /** @pre `nel` is non-empty list */
-  private[printing] implicit class ListOps[A](val nel: List[A]) extends AnyVal {
-    def intersperse(a: A): List[A] =
+  extension [A](nel: List[A])
+    private[printing] def intersperse(a: A): List[A] =
       nel.flatMap(a :: _ :: Nil).tail
-  }
+
 }

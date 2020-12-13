@@ -16,20 +16,11 @@ import scala.concurrent.duration._
 import TestSources.sources
 import vulpix._
 
-class CompilationTests extends ParallelTesting {
+class CompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import CompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 45.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -66,6 +57,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
       compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
       compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
+      compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
     ).checkCompile()
   }
 
@@ -74,7 +66,8 @@ class CompilationTests extends ParallelTesting {
 
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
-      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite"))
     ).checkRewrites()
   }
 
@@ -138,8 +131,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/i3246.scala", scala2CompatMode),
       compileFile("tests/neg-custom-args/overrideClass.scala", scala2CompatMode),
-      compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/newline-braces.scala", scala2CompatMode.and("-migration", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/ovlazy.scala", scala2CompatMode.and("-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/newline-braces.scala", scala2CompatMode.and("-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/autoTuplingTest.scala", defaultOptions.andLanguageFeature("noAutoTupling")),
       compileFile("tests/neg-custom-args/nopredef.scala", defaultOptions.and("-Yno-predef")),
       compileFile("tests/neg-custom-args/noimports.scala", defaultOptions.and("-Yno-imports")),
@@ -148,11 +141,11 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i3882.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
+      compileFile("tests/neg-custom-args/i9517.scala", defaultOptions.and("-Xprint-types")),
       compileFile("tests/neg-custom-args/interop-polytypes.scala", allowDeepSubtypes.and("-Yexplicit-nulls")),
       compileFile("tests/neg-custom-args/conditionalWarnings.scala", allowDeepSubtypes.and("-deprecation").and("-Xfatal-warnings")),
       compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings"),
       compileFile("tests/neg-custom-args/i3627.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/matchtype-loop.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Xfatal-warnings")),
       compileList("duplicate source", List(
@@ -161,7 +154,7 @@ class CompilationTests extends ParallelTesting {
         defaultOptions),
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-Yrequire-targetName", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings")),
       compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
@@ -170,6 +163,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
     ).checkExpectedErrors()
   }
 
@@ -187,6 +181,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "3.1")),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions)
@@ -237,7 +232,7 @@ class CompilationTests extends ParallelTesting {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class", "-language:postfixOps", "-Ysemanticdb")
+      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
@@ -248,7 +243,7 @@ class CompilationTests extends ParallelTesting {
         defaultOptions.and("-Ycheck-reentrant",
           "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
           //  "-source", "3.1",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
-          "-priorityclasspath", defaultOutputDir))(libGroup)
+          ))(libGroup)
 
     val tastyCoreSources = sources(Paths.get("tasty/src"))
     val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
@@ -332,7 +327,19 @@ class CompilationTests extends ParallelTesting {
 
 }
 
-object CompilationTests {
+object CompilationTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 45.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

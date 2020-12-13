@@ -15,7 +15,7 @@ import scala.tools.asm
 abstract class BTypes {
 
   val int: DottyBackendInterface
-  import int._
+  import int.{_, given}
   /**
    * A map from internal names to ClassBTypes. Every ClassBType is added to this map on its
    * construction.
@@ -58,7 +58,7 @@ abstract class BTypes {
       case DOUBLE => "D"
       case ClassBType(internalName) => "L" + internalName + ";"
       case ArrayBType(component)    => "[" + component
-      case MethodBType(args, res)   => "(" + args.mkString + ")" + res
+      case MethodBType(args, res)   => args.mkString("(", "", ")" + res)
     }
 
     /**
@@ -290,9 +290,12 @@ abstract class BTypes {
           }
 
         case LONG =>
-          if (other.isIntegralType)  LONG
-          else if (other.isRealType) DOUBLE
-          else                       uncomparable
+          other match {
+            case INT | BYTE | LONG | CHAR | SHORT => LONG
+            case DOUBLE                           => DOUBLE
+            case FLOAT                            => FLOAT
+            case _                                => uncomparable
+          }
 
         case FLOAT =>
           if (other == DOUBLE)          DOUBLE
@@ -649,14 +652,13 @@ abstract class BTypes {
 
     def innerClassAttributeEntry: Option[InnerClassEntry] = info.nestedInfo map {
       case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
+        import GenBCodeOps.addFlagIf
         InnerClassEntry(
           internalName,
           outerName.orNull,
           innerName.orNull,
-          GenBCodeOps.mkFlags(
-            info.flags,
-            if (isStaticNestedClass) asm.Opcodes.ACC_STATIC else 0
-          ) & ClassBType.INNER_CLASSES_FLAGS
+          info.flags.addFlagIf(isStaticNestedClass, asm.Opcodes.ACC_STATIC)
+            & ClassBType.INNER_CLASSES_FLAGS
         )
     }
 

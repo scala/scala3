@@ -60,38 +60,38 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
-Run provides a `QuoteContext` that can be used to show the expression in the scope of `run`.
-On the other hand `withQuoteContext` provides a `QuoteContext` without evaluating the expression.
+Run provides a `Quotes` that can be used to show the expression in the scope of `run`.
+On the other hand `withQuotes` provides a `Quotes` without evaluating the expression.
 
 ```scala
 package scala.quoted.staging
 
-def run[T](expr: QuoteContext ?=> Expr[T])(using toolbox: Toolbox): T = ...
+def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
 
-def withQuoteContext[T](thunk: QuoteContext ?=> T)(using toolbox: Toolbox): T = ...
+def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 ```
 
 ## Create a new Dotty project with staging enabled
 
 ```shell
-sbt new lampepfl/dotty-staging.g8
+sbt new scala/scala3-staging.g8
 ```
 
-From [lampepfl/dotty-staging.g8](https://github.com/lampepfl/dotty-staging.g8).
+From [scala/scala3-staging.g8](https://github.com/scala/scala3-staging.g8).
 
 It will create a project with the necessary dependencies and some examples.
 
 In case you prefer to create the project on your own, make sure to define the following dependency in your build.sbt
 
 ```scala
-libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
+libraryDependencies += "ch.epfl.lamp" %% "scala3-staging" % scalaVersion.value
 ```
 
-and in case you use `dotc`/`dotr` directly, then use the `-with-compiler` flag for both:
+and in case you use `scalac`/`scala` directly, then use the `-with-compiler` flag for both:
 
 ```shell
-dotc -with-compiler -d out Test.scala
-dotr -with-compiler -classpath out Test
+scalac -with-compiler -d out Test.scala
+scala -with-compiler -classpath out Test
 ```
 
 ## Example

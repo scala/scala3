@@ -3,13 +3,13 @@ import scala.quoted._
 
 object Macro {
 
-  inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(f: => Int => Unit): Unit = // or f: Int => Unit
+  inline def unrolledForeach(inline unrollSize: Int, seq: Array[Int])(inline f: Int => Unit): Unit = // or f: Int => Unit
     ${unrolledForeachImpl('unrollSize, 'seq, 'f)}
 
-  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using QuoteContext): Expr[Unit] =
-    unrolledForeachImpl(unrollSizeExpr.unliftOrError, seq, f)
+  private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using Quotes): Expr[Unit] =
+    unrolledForeachImpl(unrollSizeExpr.valueOrError, seq, f)
 
-  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using QuoteContext): Expr[Unit] = '{
+  private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using Quotes): Expr[Unit] = '{
     val size = $seq.length
     assert(size % (${Expr(unrollSize)}) == 0) // for simplicity of the implementation
     var i = 0
@@ -17,7 +17,7 @@ object Macro {
       println("<log> start loop")
       ${
         @tailrec def loop(j: Int, acc: Expr[Unit]): Expr[Unit] =
-        if (j >= 0) loop(j - 1, '{ ${Expr.betaReduce(f)('{$seq(i + ${Expr(j)})})}; $acc })
+        if (j >= 0) loop(j - 1, '{ ${Expr.betaReduce('{$f($seq(i + ${Expr(j)}))})}; $acc })
         else acc
         loop(unrollSize - 1, '{})
       }

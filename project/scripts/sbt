@@ -7,10 +7,7 @@ set -e
 CMD="${1:?Missing sbt command}"
 
 # run sbt with the supplied arg
-sbt -J-Xmx4096m \
-    -J-XX:ReservedCodeCacheSize=512m \
-    -J-XX:MaxMetaspaceSize=1024m \
-    -Ddotty.drone.mem=4096m \
+sbt -J-XX:ReservedCodeCacheSize=512m \
     -DSBT_PGP_USE_GPG=false \
     -no-colors \
     "$CMD"

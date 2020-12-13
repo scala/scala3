@@ -5,6 +5,9 @@
    |	    def foo(x: List[A]): A => A in class Test2 at line 13 and
    |	    def foo(x: List[B]): B => B in class Test2 at line 14
    |	    have the same type after erasure.
+   |
+   |	    Consider adding a @targetName annotation to one of the conflicting definitions
+   |	    for disambiguation.
 -- [E120] Naming Error: tests/neg/doubleDefinition.scala:21:4 ----------------------------------------------------------
 21 |	def foo(x: List[A]): Function2[B, B, B] = ??? // error
    |	    ^
@@ -43,6 +46,9 @@
    |	    def foo(x: List[A]): A => A in trait Test6 at line 54 and
    |	    def foo(x: List[B]): B => B in trait Test6 at line 55
    |	    have the same type after erasure.
+   |
+   |	    Consider adding a @targetName annotation to one of the conflicting definitions
+   |	    for disambiguation.
 -- [E120] Naming Error: tests/neg/doubleDefinition.scala:62:4 ----------------------------------------------------------
 62 |	def foo(x: List[A]): Function2[B, B, B] = ??? // error
    |	    ^

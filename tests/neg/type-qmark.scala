@@ -28,5 +28,5 @@ object J {
 }
 object K {
   class Foo[T]
-  given ?[T] as Foo[T] {} // error
+  given ?[T]: Foo[T] with {} // error
 }

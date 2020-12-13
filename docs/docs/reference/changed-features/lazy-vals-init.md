@@ -27,7 +27,7 @@ The Dotty compiler will generate code equivalent to:
 
 ```scala
 class Foo {
-  import dotty.runtime.LazyVals
+  import scala.runtime.LazyVals
   var value_0: Int = _
   var bitmap: Long = 0L
   val bitmap_offset: Long = LazyVals.getOffset(classOf[LazyCell], "bitmap")

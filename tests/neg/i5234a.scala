@@ -1,10 +1,10 @@
 object Test {
-  import implicits.Not
+  import scala.util.NotGiven
 
   class Foo
   class Bar
   implicit def foo: Foo = ???
   implicitly[Foo]
-  implicitly[Not[Foo]] // error
-  implicitly[Not[Bar]]
+  implicitly[NotGiven[Foo]] // error
+  implicitly[NotGiven[Bar]]
 }

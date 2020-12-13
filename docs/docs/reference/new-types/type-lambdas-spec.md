@@ -89,7 +89,7 @@ is treated as a shorthand for
 ```
 Abstract types and opaque type aliases remember the variances they were created with. So the type
 ```scala
-def F2[-A, +B]
+type F2[-A, +B]
 ```
 is known to be contravariant in `A` and covariant in `B` and can be instantiated only
 with types that satisfy these constraints. Likewise

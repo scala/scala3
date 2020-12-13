@@ -8,7 +8,6 @@ import dotty.tools.io._
 import Phases._
 import config.Printers.plugins.{ println => debug }
 
-
 /** Support for run-time loading of compiler plugins.
  *
  *  @author Lex Spoon
@@ -16,14 +15,14 @@ import config.Printers.plugins.{ println => debug }
  *  Updated 2009/1/2 by Anders Bach Nielsen: Added features to implement SIP 00002
  */
 trait Plugins {
-  self: Context =>
+  self: ContextBase =>
 
   /** Load a rough list of the plugins.  For speed, it
    *  does not instantiate a compiler run.  Therefore it cannot
    *  test for same-named phases or other problems that are
    *  filtered from the final list of plugins.
    */
-  protected def loadRoughPluginsList(implicit ctx: Context): List[Plugin] = {
+  protected def loadRoughPluginsList(using Context): List[Plugin] = {
     def asPath(p: String) = ClassPath split p
     val paths  = ctx.settings.plugin.value filter (_ != "") map (s => asPath(s) map Path.apply)
     val dirs   = {
@@ -35,15 +34,15 @@ trait Plugins {
     // Explicit parameterization of recover to avoid -Xlint warning about inferred Any
     errors foreach (_.recover[Any] {
       // legacy behavior ignores altogether, so at least warn devs
-      case e: MissingPluginException => warning(e.getMessage)
-      case e: Exception              => inform(e.getMessage)
+      case e: MissingPluginException => report.warning(e.getMessage)
+      case e: Exception              => report.inform(e.getMessage)
     })
 
     goods map (_.get)
   }
 
   private var _roughPluginsList: List[Plugin] = _
-  protected def roughPluginsList(implicit ctx: Context): List[Plugin] =
+  protected def roughPluginsList(using Context): List[Plugin] =
     if (_roughPluginsList == null) {
       _roughPluginsList = loadRoughPluginsList
       _roughPluginsList
@@ -54,7 +53,7 @@ trait Plugins {
    *  either have the same name as another one, or which
    *  define a phase name that another one does.
    */
-  protected def loadPlugins(implicit ctx: Context): List[Plugin] = {
+  protected def loadPlugins(using Context): List[Plugin] = {
     // remove any with conflicting names or subcomponent names
     def pick(
       plugins: List[Plugin],
@@ -65,7 +64,7 @@ trait Plugins {
       def withoutPlug       = pick(tail, plugNames)
       def withPlug          = plug :: pick(tail, plugNames + plug.name)
 
-      def note(msg: String): Unit = if (ctx.settings.verbose.value) inform(msg format plug.name)
+      def note(msg: String): Unit = if (ctx.settings.verbose.value) report.inform(msg format plug.name)
       def fail(msg: String)       = { note(msg) ; withoutPlug }
 
       if (plugNames contains plug.name)
@@ -82,20 +81,20 @@ trait Plugins {
 
     // Verify required plugins are present.
     for (req <- ctx.settings.require.value ; if !(plugs exists (_.name == req)))
-      ctx.error("Missing required plugin: " + req)
+      report.error("Missing required plugin: " + req)
 
     // Verify no non-existent plugin given with -P
     for {
       opt <- ctx.settings.pluginOptions.value
       if !(plugs exists (opt startsWith _.name + ":"))
     }
-    ctx.error("bad option: -P:" + opt)
+    report.error("bad option: -P:" + opt)
 
     plugs
   }
 
   private var _plugins: List[Plugin] = _
-  def plugins(implicit ctx: Context): List[Plugin] =
+  def plugins(using Context): List[Plugin] =
     if (_plugins == null) {
       _plugins = loadPlugins
       _plugins
@@ -103,17 +102,17 @@ trait Plugins {
     else _plugins
 
   /** A description of all the plugins that are loaded */
-  def pluginDescriptions: String =
+  def pluginDescriptions(using Context): String =
     roughPluginsList map (x => "%s - %s".format(x.name, x.description)) mkString "\n"
 
   /** Summary of the options for all loaded plugins */
-  def pluginOptionsHelp: String =
+  def pluginOptionsHelp(using Context): String =
     (for (plug <- roughPluginsList ; help <- plug.optionsHelp) yield {
       "\nOptions for plugin '%s':\n%s\n".format(plug.name, help)
     }).mkString
 
   /** Add plugin phases to phase plan */
-  def addPluginPhases(plan: List[List[Phase]])(implicit ctx: Context): List[List[Phase]] = {
+  def addPluginPhases(plan: List[List[Phase]])(using Context): List[List[Phase]] = {
     // plugin-specific options.
     // The user writes `-P:plugname:opt1,opt2`, but the plugin sees `List(opt1, opt2)`.
     def options(plugin: Plugin): List[String] = {

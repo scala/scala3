@@ -3,13 +3,13 @@ import scala.quoted._
 class Foo {
 
   inline def i(): Unit = ${ Foo.impl[Any]('{
-    val x: QuoteContext = ???
+    val x: Quotes = ???
     given x.type = x
     'this // error
   }) }
 
   inline def j(that: Foo): Unit = ${ Foo.impl[Any]('{
-    val x: QuoteContext = ???
+    val x: Quotes = ???
     given x.type = x
     'that // error
   }) }
@@ -17,5 +17,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any)(using QuoteContext): Expr[Unit] = '{}
+  def impl[T](x: Any)(using Quotes): Expr[Unit] = '{}
 }

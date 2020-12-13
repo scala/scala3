@@ -13,12 +13,11 @@ trait Ord[T] {
   extension (x: T) def > (y: T) = compare(x, y) > 0
 }
 
-given intOrd as Ord[Int] {
+given intOrd: Ord[Int] with
   def compare(x: Int, y: Int) =
     if (x < y) -1 else if (x > y) +1 else 0
-}
 
-given listOrd[T](using ord: Ord[T]) as Ord[List[T]] {
+given listOrd[T](using ord: Ord[T]): Ord[List[T]] with
 
   def compare(xs: List[T], ys: List[T]): Int = (xs, ys) match
     case (Nil, Nil) => 0
@@ -27,13 +26,13 @@ given listOrd[T](using ord: Ord[T]) as Ord[List[T]] {
     case (x :: xs1, y :: ys1) =>
       val fst = ord.compare(x, y)
       if (fst != 0) fst else compare(xs1, ys1)
-}
+
 ```
 This code defines a trait `Ord` with two given instances. `intOrd` defines
 a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
-given of type `Ord[T]` for a given of type `List[Ord[T]]` to exist.
+given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
 Such conditions are expanded by the compiler to [context
 parameters](./using-clauses.html).
 
@@ -42,8 +41,10 @@ parameters](./using-clauses.html).
 The name of a given can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
-given Ord[Int] { ... }
-given [T](using Ord[T]) as Ord[List[T]] { ... }
+given Ord[Int] with
+  ...
+given [T](using Ord[T]): Ord[List[T]] with
+  ...
 ```
 If the name of a given is missing, the compiler will synthesize a name from
 the implemented type(s).
@@ -63,17 +64,17 @@ use named instances.
 
 An alias can be used to define a given instance that is equal to some expression. E.g.:
 ```scala
-given global as ExecutionContext = new ForkJoinPool()
+given global: ExecutionContext = ForkJoinPool()
 ```
 This creates a given `global` of type `ExecutionContext` that resolves to the right
-hand side `new ForkJoinPool()`.
+hand side `ForkJoinPool()`.
 The first time `global` is accessed, a new `ForkJoinPool` is created, which is then
 returned for this and all subsequent accesses to `global`. This operation is thread-safe.
 
 Alias givens can be anonymous as well, e.g.
 ```scala
 given Position = enclosingTree.position
-given (using config: Config) as Factory = MemoizingFactory(config)
+given (using config: Config): Factory = MemoizingFactory(config)
 ```
 
 An alias given can have type parameters and context parameters just like any other given,
@@ -84,11 +85,49 @@ but it can only implement a single type.
 Given aliases can have the `inline` and `transparent` modifiers.
 Example:
 ```scala
-transparent inline given mkAnnotations[A, T] as Annotations[A, T] = ${
+transparent inline given mkAnnotations[A, T]: Annotations[A, T] = ${
   // code producing a value of a subtype of Annotations
 }
 ```
 Since `mkAnnotations` is `transparent`, the type of an application is the type of its right hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
+
+## Pattern-Bound Given Instances
+
+Given instances can also appear in patterns. Example:
+
+```scala
+for given Context <- applicationContexts do
+
+pair match
+  case (ctx @ given Context, y) => ...
+```
+In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the second fragment, a given `Context`
+instance named `ctx` is established by matching against the first half of the `pair` selector.
+
+In each case, a pattern-bound given instance consists of `given` and a type `T`. The pattern matches exactly the same selectors as the type ascription pattern `_: T`.
+
+## Negated Givens
+
+Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement the analogue of a "negated" search in implicit resolution, where a query Q1 fails if some other query Q2 succeeds and Q1 succeeds if Q2 fails. With the new cleaned up behavior these techniques no longer work. But there is now a new special type `scala.util.NotGiven` which implements negation directly.
+
+For any query type `Q`, `NotGiven[Q]` succeeds if and only if the implicit
+search for `Q` fails, for example:
+
+```scala
+import scala.util.NotGiven
+
+trait Tagged[A]
+
+case class Foo[A](value: Boolean)
+object Foo:
+  given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
+  given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
+
+@main def test() =
+  given Tagged[Int] with {}
+  assert(implicitly[Foo[Int]].value) // fooTagged is found
+  assert(!implicitly[Foo[String]].value) // fooNotTagged is found
+```
 
 ## Given Instance Initialization
 
@@ -98,12 +137,23 @@ is created for each reference.
 
 ## Syntax
 
-Here is the new syntax for given instances, seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md).
+Here is the syntax for given instances:
 
 ```
-TmplDef           ::=  ...
-                   |   ‘given’ GivenDef
-GivenDef          ::=  [GivenSig] Type ‘=’ Expr
-                   |   [GivenSig] ConstrApps [TemplateBody]
-GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘as’
+TmplDef             ::=  ...
+                     |   ‘given’ GivenDef
+GivenDef            ::=  [GivenSig] StructuralInstance
+                     |   [GivenSig] Type ‘=’ Expr
+                     |   [GivenSig] Type
+GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
+StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 ```
+
+A given instance starts with the reserved word `given` and an optional _signature_. The signature
+defines a name and/or parameters for the instance. It is followed by `:`. There are three kinds
+of given instances:
+
+ - A _structural instance_ contains one or more types or constructor applications, followed by `with` and a template body
+that contains member definitions of the instance.
+ - An _alias instance_ contains a type, followed by `=` and a right hand side expression.
+ - An _abstract instance_ contains just the type, which is not followed by anything.

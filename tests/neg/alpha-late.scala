@@ -1,5 +1,5 @@
 
-import annotation.alpha
+import annotation.targetName
 
 class Gamma {
 
@@ -8,5 +8,5 @@ class Gamma {
 }
 
 class Delta extends Gamma {      // error: name clash
-  @alpha("foo") def bar: Int = 1
+  @targetName("foo") def bar: Int = 1
 }

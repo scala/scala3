@@ -19,6 +19,9 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.util.Spans._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
+import dotty.tools.dotc.report
 
 /*
  *
@@ -30,13 +33,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import global._
   // import definitions._
   import tpd._
-  import int._
+  import int.{_, given}
   import DottyBackendInterface.symExtensions
   import bTypes._
   import coreBTypes._
   import BCodeBodyBuilder._
 
-  private val primitives = new DottyPrimitives(ctx)
+  protected val primitives: DottyPrimitives
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
@@ -79,7 +82,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          val receiverClass = qual.tpe.widenDealias.typeSymbol
+          val receiverClass = qual.tpe.typeSymbol
           fieldStore(lhs.symbol, receiverClass)
 
         case Assign(lhs, rhs) =>
@@ -275,7 +278,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       tree match {
         case ValDef(nme.THIS, _, _) =>
-          ctx.debuglog("skipping trivial assign to _$this: " + tree)
+          report.debuglog("skipping trivial assign to _$this: " + tree)
 
         case tree@ValDef(_, _, _) =>
           val sym = tree.symbol
@@ -324,9 +327,9 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             else {
               val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
               val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
-              if (returnsUnit) ctx.requiredClass(("dotty.runtime.function.JProcedure" + arity))
-              else if (arity <= 2) ctx.requiredClass(("dotty.runtime.function.JFunction" + arity))
-              else ctx.requiredClass(("scala.Function" + arity))
+              if (returnsUnit) requiredClass(("scala.runtime.function.JProcedure" + arity))
+              else if (arity <= 2) requiredClass(("scala.runtime.function.JFunction" + arity))
+              else requiredClass(("scala.Function" + arity))
             }
           }
           val (fun, args) = call match {
@@ -361,9 +364,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           }
           else {
             mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-            generatedType =
-              if (tree.symbol == defn.ArrayClass) ObjectReference
-              else classBTypeFromSymbol(claszSymbol)
+            // When compiling Array.scala, the constructor invokes `Array.this.super.<init>`. The expectedType
+            // is `[Object` (computed by typeToBType, the type of This(Array) is `Array[T]`). If we would set
+            // the generatedType to `Array` below, the call to adapt at the end would fail. The situation is
+            // similar for primitives (`I` vs `Int`).
+            if (tree.symbol != defn.ArrayClass && !tree.symbol.isPrimitiveValueClass) {
+              generatedType = classBTypeFromSymbol(claszSymbol)
+            }
           }
 
         case DesugaredSelect(Ident(nme.EMPTY_PACKAGE), module) =>
@@ -378,7 +385,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          def receiverClass = qualifier.tpe.widenDealias.typeSymbol
+          def receiverClass = qualifier.tpe.typeSymbol
           if (sym.is(Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
@@ -481,7 +488,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     // ---------------- emitting constant values ----------------
 
     /*
-     * For const.tag in {ClazzTag, EnumTag}
+     * For ClazzTag:
      *   must-single-thread
      * Otherwise it's safe to call from multiple threads.
      */
@@ -509,25 +516,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
         case ClazzTag   =>
           val tp = toTypeKind(const.typeValue)
-          // classOf[Int] is transformed to Integer.TYPE by ClassOf
-          assert(!tp.isPrimitive, s"expected class type in classOf[T], found primitive type $tp")
-          mnode.visitLdcInsn(tp.toASMType)
-
-        case EnumTag   =>
-          val sym       = const.symbolValue
-          val ownerName = internalName(sym.owner)
-          val fieldName = sym.javaSimpleName
-          val underlying = sym.info match { // TODO: Is this actually necessary? Could it be replaced by a call to widen?
-            case t: TypeProxy => t.underlying
-            case t => t
-          }
-          val fieldDesc = toTypeKind(underlying).descriptor
-          mnode.visitFieldInsn(
-            asm.Opcodes.GETSTATIC,
-            ownerName,
-            fieldName,
-            fieldDesc
-          )
+          if tp.isPrimitive then
+            val boxedClass = boxedClassOfPrimitive(tp.asPrimitiveBType)
+            mnode.visitFieldInsn(
+              asm.Opcodes.GETSTATIC,
+              boxedClass.internalName,
+              "TYPE", // field name
+              jlClassRef.descriptor
+            )
+          else
+            mnode.visitLdcInsn(tp.toASMType)
 
         case _ => abort(s"Unknown constant value: $const")
       }
@@ -667,7 +665,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       var elemKind = arr.elementType
       val argsSize = args.length
       if (argsSize > dims) {
-        ctx.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
+        report.error(s"too many arguments for array constructor: found ${args.length} but array has only $dims dimension(s)", ctx.source.atSpan(app.span))
       }
       if (argsSize < dims) {
         /* In one step:
@@ -700,33 +698,18 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
             else genSynchronized(app, expectedType)
 
-        case Apply(fun @ DesugaredSelect(Super(_, _), _), args) =>
-          def initModule(): Unit = {
-            // we initialize the MODULE$ field immediately after the super ctor
-            if (!isModuleInitialized &&
-              jMethodName == INSTANCE_CONSTRUCTOR_NAME &&
-              fun.symbol.javaSimpleName == INSTANCE_CONSTRUCTOR_NAME &&
-              claszSymbol.isStaticModuleClass) {
-              isModuleInitialized = true
-              mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
-              mnode.visitFieldInsn(
-                asm.Opcodes.PUTSTATIC,
-                thisName,
-                str.MODULE_INSTANCE_FIELD,
-                "L" + thisName + ";"
-              )
-            }
-          }
+        case Apply(fun @ DesugaredSelect(Super(superQual, _), _), args) =>
           // 'super' call: Note: since constructors are supposed to
           // return an instance of what they construct, we have to take
           // special care. On JVM they are 'void', and Scala forbids (syntactically)
           // to call super constructors explicitly and/or use their 'returned' value.
           // therefore, we can ignore this fact, and generate code that leaves nothing
           // on the stack (contrary to what the type in the AST says).
-          mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+
+          // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
+          genLoad(superQual)
           genLoadArguments(args, paramTKs(app))
           generatedType = genCallMethod(fun.symbol, InvokeStyle.Super, app.span)
-          initModule()
 
         // 'new' constructor call: Note: since constructors are
         // thought to return an instance of what they construct,
@@ -777,6 +760,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             val invokeStyle =
               if (sym.isStaticMember) InvokeStyle.Static
               else if (sym.is(Private) || sym.isClassConstructor) InvokeStyle.Special
+              else if (app.hasAttachment(BCodeHelpers.UseInvokeSpecial)) InvokeStyle.Special
               else InvokeStyle.Virtual
 
             if (invokeStyle.hasInstance) genLoadQualifier(fun)
@@ -806,7 +790,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = qual.tpe.widenDealias.typeSymbol
+                val qualSym = qual.tpe.typeSymbol
                 if (qualSym == defn.ArrayClass) {
                   // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
@@ -1021,9 +1005,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit = {
-      (args zip btpes) foreach { case (arg, btpe) => genLoad(arg, btpe) }
-    }
+    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit =
+      args match
+        case arg :: args1 =>
+          btpes match
+            case btpe :: btpes1 =>
+              genLoad(arg, btpe)
+              genLoadArguments(args1, btpes1)
+            case _ =>
+        case _ =>
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
@@ -1162,9 +1152,16 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       val isInterface = isEmittedInterface(receiverClass)
       import InvokeStyle._
       if (style == Super) {
-        // DOTTY: this differ from how super-calls in traits are handled in the scalac backend,
-        // this is intentional but could change in the future, see https://github.com/lampepfl/dotty/issues/5928
-        bc.invokespecial(receiverName, jname, mdescr, isInterface)
+        if (isInterface && !method.is(JavaDefined)) {
+          val args = new Array[BType](bmType.argumentTypes.length + 1)
+          val ownerBType = toTypeKind(method.owner.info)
+          bmType.argumentTypes.copyToArray(args, 1)
+          val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
+          val staticName = traitSuperAccessorName(method)
+          bc.invokestatic(receiverName, staticName, staticDesc, isInterface)
+        } else {
+          bc.invokespecial(receiverName, jname, mdescr, isInterface)
+        }
       } else {
         val opc = style match {
           case Static => Opcodes.INVOKESTATIC
@@ -1296,7 +1293,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       tree match {
 
-        case tree @ Apply(fun, args) if isPrimitive(fun) =>
+        case tree @ Apply(fun, args) if primitives.isPrimitive(fun.symbol) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
@@ -1314,7 +1311,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genCond(rhs, success, failure, targetIfNoJump)
           }
 
-          primitives.getPrimitive(tree, lhs.tpe) match {
+          primitives.getPrimitive(fun.symbol) match {
             case ZNOT   => genCond(lhs, failure, success, targetIfNoJump)
             case ZAND   => genZandOrZor(and = true)
             case ZOR    => genZandOrZor(and = false)
@@ -1360,7 +1357,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             (sym derivesFrom defn.BoxedCharClass) ||
             (sym derivesFrom defn.BoxedBooleanClass)
         }
-        !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
+        !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
       def isNull(t: Tree): Boolean = t match {
         case Literal(Constant(null)) => true
@@ -1429,7 +1426,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
       import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
 
-      ctx.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
+      report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
@@ -1454,13 +1451,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = lambdaTarget.info.resultType.widenDealias.typeSymbol == defn.UnitClass
+      val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
       val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
-      val abstractMethod = ctx.atPhase(ctx.erasurePhase) {
+      val abstractMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol

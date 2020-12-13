@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import core._
@@ -11,8 +12,7 @@ import ValueClasses._
 import SymUtils._
 import core.Flags._
 import util.Spans._
-import reporting.messages.TypeTestAlwaysSucceeds
-import reporting.trace
+import reporting._
 import config.Printers.{ transforms => debug }
 
 /** This transform normalizes type tests and type casts,
@@ -28,7 +28,7 @@ import config.Printers.{ transforms => debug }
 object TypeTestsCasts {
   import ast.tpd._
   import typer.Inferencing.maximizeType
-  import typer.ProtoTypes.constrained
+  import typer.ProtoTypes.{ constrained, newTypeVar }
 
   /** Whether `(x:X).isInstanceOf[P]` can be checked at runtime?
    *
@@ -53,10 +53,11 @@ object TypeTestsCasts {
    *  7. if `P` is a refinement type, FALSE
    *  8. otherwise, TRUE
    */
-  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = {
+  def checkable(X: Type, P: Type, span: Span)(using Context): Boolean = atPhase(Phases.refchecksPhase.next) {
+    // Run just before ElimOpaque transform (which follows RefChecks)
     def isAbstract(P: Type) = !P.dealias.typeSymbol.isClass
 
-    def replaceP(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceP(tp: Type)(using Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           WildcardType
@@ -66,25 +67,24 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    def replaceX(tp: Type)(implicit ctx: Context) = new TypeMap {
+    def replaceX(tp: Type)(using Context) = new TypeMap {
       def apply(tp: Type) = tp match {
         case tref: TypeRef if tref.typeSymbol.isPatternBound =>
           if (variance == 1) tref.info.hiBound
           else if (variance == -1) tref.info.loBound
-          else OrType(defn.AnyType, defn.NothingType)
+          else OrType(defn.AnyType, defn.NothingType, soft = true) // TODO: what does this line do?
         case _ => mapOver(tp)
       }
     }.apply(tp)
 
     /** Approximate type parameters depending on variance */
-    def stripTypeParam(tp: Type)(implicit ctx: Context) = new ApproximatingTypeMap {
+    def stripTypeParam(tp: Type)(using Context) = new ApproximatingTypeMap {
+      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
       def apply(tp: Type): Type = tp match {
         case _: MatchType =>
           tp // break cycles
-        case tp: TypeRef if isBounds(tp.underlying) =>
-          val lo = apply(tp.info.loBound)
-          val hi = apply(tp.info.hiBound)
-          range(lo, hi)
+        case tp: TypeRef if !tp.symbol.isClass =>
+          boundTypeParams.getOrElseUpdate(tp, newTypeVar(tp.underlying.toBounds))
         case _ =>
           mapOver(tp)
       }
@@ -121,12 +121,13 @@ object TypeTestsCasts {
 
       val res = P1 <:< P
 
-      debug.println(TypeComparer.explained(P1 <:< P))
+      debug.println(TypeComparer.explained(_.isSubType(P1, P)))
 
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
       res
+
     }
 
     def recur(X: Type, P: Type): Boolean = (X <:< P) || (P.dealias match {
@@ -186,7 +187,7 @@ object TypeTestsCasts {
           else if tp.isRef(defn.AnyValClass) then defn.AnyClass
           else tp.classSymbol
 
-        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp match
+        def foundClasses(tp: Type, acc: List[Symbol]): List[Symbol] = tp.dealias match
           case OrType(tp1, tp2) => foundClasses(tp2, foundClasses(tp1, acc))
           case _ => effectiveClass(tp) :: acc
 
@@ -194,13 +195,16 @@ object TypeTestsCasts {
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
           expr.symbol.is(Case)                // old scheme
 
-        def transformIsInstanceOf(expr: Tree, testType: Type, flagUnrelated: Boolean): Tree = {
+        def transformIsInstanceOf(
+            expr: Tree, testType: Type,
+            unboxedTestType: Type, flagUnrelated: Boolean): Tree = {
           def testCls = effectiveClass(testType.widen)
+          def unboxedTestCls = effectiveClass(unboxedTestType.widen)
 
-          def unreachable(why: => String)(using ctx: Context): Boolean = {
+          def unreachable(why: => String)(using Context): Boolean = {
             if (flagUnrelated)
-              if (inMatch) ctx.error(em"this case is unreachable since $why", expr.sourcePos)
-              else ctx.warning(em"this will always yield false since $why", expr.sourcePos)
+              if (inMatch) report.error(em"this case is unreachable since $why", expr.srcPos)
+              else report.warning(em"this will always yield false since $why", expr.srcPos)
             false
           }
 
@@ -227,9 +231,10 @@ object TypeTestsCasts {
             def check(foundCls: Symbol): Boolean =
               if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
-                val unrelated = !testCls.derivesFrom(foundCls) && (
-                  testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait)
-                )
+                val unrelated =
+                  !testCls.derivesFrom(foundCls)
+                  && !unboxedTestCls.derivesFrom(foundCls)
+                  && (testCls.is(Final) || !testCls.is(Trait) && !foundCls.is(Trait))
                 if (foundCls.is(Final))
                   unreachable(i"$exprType is not a subclass of $testCls")
                 else if (unrelated)
@@ -242,14 +247,14 @@ object TypeTestsCasts {
             val foundEffectiveClass = effectiveClass(expr.tpe.widen)
 
             if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              ctx.error(i"cannot test if value of $exprType is a reference of $testCls", tree.sourcePos)
+              report.error(i"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
               false
             else foundClasses.exists(check)
           end checkSensical
 
           if (expr.tpe <:< testType)
             if (expr.tpe.isNotNull) {
-              if (!inMatch) ctx.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.sourcePos)
+              if (!inMatch) report.warning(TypeTestAlwaysSucceeds(expr.tpe, testType), tree.srcPos)
               constant(expr, Literal(Constant(true)))
             }
             else expr.testNotNull
@@ -266,7 +271,8 @@ object TypeTestsCasts {
                 case List(cls) if cls.isPrimitiveValueClass =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
-                  transformIsInstanceOf(expr, defn.boxedType(testCls.typeRef), flagUnrelated)
+                  transformIsInstanceOf(
+                    expr, defn.boxedType(testCls.typeRef), testCls.typeRef, flagUnrelated)
             else
               derivedTree(expr, defn.Any_isInstanceOf, testType)
           }
@@ -343,14 +349,15 @@ object TypeTestsCasts {
           case AppliedType(tref: TypeRef, _) if tref.symbol == defn.PairClass =>
             ref(defn.RuntimeTuple_isInstanceOfNonEmptyTuple).appliedTo(expr)
           case _ =>
-            transformIsInstanceOf(expr, erasure(testType), flagUnrelated)
+            val erasedTestType = erasure(testType)
+            transformIsInstanceOf(expr, erasedTestType, erasedTestType, flagUnrelated)
         }
 
         if (sym.isTypeTest) {
           val argType = tree.args.head.tpe
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           if (!isTrusted && !checkable(expr.tpe, argType, tree.span))
-            ctx.warning(i"the type test for $argType cannot be checked at runtime", tree.sourcePos)
+            report.warning(i"the type test for $argType cannot be checked at runtime", tree.srcPos)
           transformTypeTest(expr, tree.args.head.tpe, flagUnrelated = true)
         }
         else if (sym.isTypeCast)

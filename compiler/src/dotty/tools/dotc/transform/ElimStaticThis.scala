@@ -2,7 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts.Context
+import Contexts._
 import Flags._
 import dotty.tools.dotc.ast.tpd
 import MegaPhase.MiniPhase
@@ -15,14 +15,14 @@ class ElimStaticThis extends MiniPhase {
   import ast.tpd._
   def phaseName: String = "elimStaticThis"
 
-  override def transformThis(tree: This)(implicit ctx: Context): Tree =
+  override def transformThis(tree: This)(using Context): Tree =
     if (!tree.symbol.is(Package) && ctx.owner.enclosingMethod.is(JavaStatic)) {
       assert(tree.symbol.is(ModuleClass))
       ref(tree.symbol.sourceModule)
     }
     else tree
 
-  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): tpd.Tree =
+  override def transformIdent(tree: tpd.Ident)(using Context): tpd.Tree =
     if (ctx.owner.enclosingMethod.is(JavaStatic))
       tree.tpe match {
         case TermRef(thiz: ThisType, _) if thiz.cls.is(ModuleClass, JavaDefined) =>

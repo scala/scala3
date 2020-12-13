@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 
 import core._
-import Contexts.{Context, ctx}
+import Contexts._
 import SymDenotations.ClassDenotation
 import Symbols._
 import util.{FreshNameCreator, SourceFile, NoSource}
@@ -12,7 +12,7 @@ import tpd.{Tree, TreeTraverser}
 import typer.PrepareInlineable.InlineAccessors
 import typer.Nullables
 import transform.SymUtils._
-import core.Decorators.{given _}
+import core.Decorators._
 import config.SourceVersion
 
 class CompilationUnit protected (val source: SourceFile) {
@@ -30,7 +30,7 @@ class CompilationUnit protected (val source: SourceFile) {
   var sourceVersion: Option[SourceVersion] = None
 
   /** Pickled TASTY binaries, indexed by class. */
-  var pickled: Map[ClassSymbol, Array[Byte]] = Map()
+  var pickled: Map[ClassSymbol, () => Array[Byte]] = Map()
 
   /** The fresh name creator for the current unit.
    *  FIXME(#7661): This is not fine-grained enough to enable reproducible builds,
@@ -58,7 +58,7 @@ class CompilationUnit protected (val source: SourceFile) {
     assert(isSuspendable)
     if !suspended then
       if (ctx.settings.XprintSuspension.value)
-        ctx.echo(i"suspended: $this")
+        report.echo(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
     throw CompilationUnit.SuspendException()
@@ -79,11 +79,11 @@ object CompilationUnit {
   class SuspendException extends Exception
 
   /** Make a compilation unit for top class `clsd` with the contents of the `unpickled` tree */
-  def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit =
+  def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     apply(new SourceFile(clsd.symbol.associatedFile, Array.empty[Char]), unpickled, forceTrees)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
-  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(implicit ctx: Context): CompilationUnit = {
+  def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit = {
     assert(!unpickled.isEmpty, unpickled)
     val unit1 = new CompilationUnit(source)
     unit1.tpdTree = unpickled
@@ -98,26 +98,26 @@ object CompilationUnit {
   /** Create a compilation unit corresponding to `source`.
    *  If `mustExist` is true, this will fail if `source` does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(implicit ctx: Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
     val src =
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        ctx.error(s"expected file, received directory '${source.file.path}'")
+        report.error(s"expected file, received directory '${source.file.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        ctx.error(s"not found: ${source.file.path}")
+        report.error(s"not found: ${source.file.path}")
         NoSource
       }
       else source
-    new CompilationUnit(source)
+    new CompilationUnit(src)
   }
 
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
     var needsStaging = false
-    def traverse(tree: Tree)(implicit ctx: Context): Unit = {
+    def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
         needsStaging = true
       traverseChildren(tree)

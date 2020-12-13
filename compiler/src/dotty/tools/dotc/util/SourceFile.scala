@@ -2,19 +2,21 @@ package dotty.tools
 package dotc
 package util
 
-import scala.collection.mutable.ArrayBuffer
 import dotty.tools.io._
-import java.util.regex.Pattern
-import java.io.IOException
-import scala.internal.Chars._
 import Spans._
-import scala.io.Codec
-import core.Contexts.Context
-import scala.annotation.internal.sharable
-import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.mutable
+import core.Contexts._
 
+import scala.io.Codec
+import Chars._
+import scala.annotation.internal.sharable
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.util.Optional
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
@@ -49,7 +51,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   private var _maybeInComplete: Boolean = false
-  
+
   def maybeIncomplete: Boolean = _maybeInComplete
 
   def this(file: AbstractFile, codec: Codec) =
@@ -80,7 +82,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  def length: Int = content().length
+  def length: Int =
+    if lineIndicesCache ne null then lineIndicesCache.last
+    else content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -103,22 +107,38 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def isLineBreak(idx: Int) =
-    if (idx >= length) false else {
-      val ch = content()(idx)
-      // don't identify the CR in CR LF as a line break, since LF will do.
-      if (ch == CR) (idx + 1 == length) || (content()(idx + 1) != LF)
-      else isLineBreakChar(ch)
-    }
-
-  private def calculateLineIndices(cs: Array[Char]) = {
+  private def calculateLineIndicesFromContents() = {
+    val cs = content()
     val buf = new ArrayBuffer[Int]
     buf += 0
-    for (i <- 0 until cs.length) if (isLineBreak(i)) buf += i + 1
+    var i = 0
+    while i < cs.length do
+      val isLineBreak =
+        val ch = cs(i)
+        // don't identify the CR in CR LF as a line break, since LF will do.
+        if ch == CR then i + 1 == cs.length || cs(i + 1) != LF
+        else isLineBreakChar(ch)
+      if isLineBreak then buf += i + 1
+      i += 1
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content())
+
+  private var lineIndicesCache: Array[Int] = _
+  private def lineIndices: Array[Int] =
+    if lineIndicesCache eq null then
+      lineIndicesCache = calculateLineIndicesFromContents()
+    lineIndicesCache
+  def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
+    val lines = sizes.length
+    val indices = new Array[Int](lines + 1)
+    var i = 0
+    val penultimate = lines - 1
+    while i < penultimate do
+      indices(i + 1) = indices(i) + sizes(i) + 1 // `+1` for the '\n' at the end of the line
+      i += 1
+    indices(lines) = indices(penultimate) + sizes(penultimate) // last line does not end with '\n'
+    lineIndicesCache = indices
 
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)
@@ -179,49 +199,52 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   override def toString: String = file.toString
-
-  // Positioned ids
-
-  private val ctr = new AtomicInteger
-
-  def nextId: Int = {
-    val id = ctr.get
-    if (id % ChunkSize == 0) newChunk
-    else if (ctr.compareAndSet(id, id + 1)) id
-    else nextId
-  }
-
-  private def newChunk: Int = sourceOfChunk.synchronized {
-    val id = chunks << ChunkSizeLog
-    if (chunks == sourceOfChunk.length) {
-      val a = new Array[SourceFile](chunks * 2)
-      System.arraycopy(sourceOfChunk, 0, a, 0, chunks)
-      sourceOfChunk = a
-    }
-    sourceOfChunk(chunks) = this
-    chunks += 1
-    ctr.set(id + 1)
-    id
-  }
 }
 object SourceFile {
-  implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
+  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
 
-  implicit def fromContext(implicit ctx: Context): SourceFile = ctx.source
-
-  def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
+  implicit def fromContext(using Context): SourceFile = ctx.source
 
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    val src = new SourceFile(new VirtualFile(name, content.getBytes), scala.io.Codec.UTF8)
+    val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
 
-  private final val ChunkSizeLog = 10
-  private final val ChunkSize = 1 << ChunkSizeLog
+  /** Returns the relative path of `source` within the `reference` path
+   *
+   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   */
+  def relativePath(source: SourceFile, reference: String): String = {
+    val file = source.file
+    val jpath = file.jpath
+    if jpath eq null then
+      file.path // repl and other custom tests use abstract files with no path
+    else
+      val sourcePath = jpath.toAbsolutePath.normalize
+      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
 
-  // These two vars are sharable because they're only used in the synchronized block in newChunk
-  @sharable private var chunks: Int = 0
-  @sharable private var sourceOfChunk: Array[SourceFile] = new Array[SourceFile](2000)
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches
+        // (see implementation of sun.nio.fs.WindowsPath#relativize)
+        //
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        //
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+
+        // We also consistently use forward slashes as path element separators
+        // for relative paths. If we didn't do that, it'd be impossible to parse
+        // them back, as one would need to know whether they were created on Windows
+        // and use both slashes as separators, or on other OS and use forward slash
+        // as separator, backslash as file name character.
+
+        import scala.jdk.CollectionConverters._
+        val path = refPath.relativize(sourcePath)
+        path.iterator.asScala.mkString("/")
+      else
+        sourcePath.toString
+  }
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

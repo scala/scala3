@@ -47,7 +47,7 @@ object ScriptParsers {
 
   import ast.untpd._
 
-  class ScriptParser(source: SourceFile)(implicit ctx: Context) extends Parser(source) {
+  class ScriptParser(source: SourceFile)(using Context) extends Parser(source) {
 
     /** This is the parse entry point for code which is not self-contained, e.g.
      *  a script which is a series of template statements.  They will be

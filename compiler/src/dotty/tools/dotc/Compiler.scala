@@ -7,7 +7,7 @@ import typer.{FrontEnd, RefChecks}
 import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
-import dotty.tools.backend.sjs
+import dotty.tools.backend
 import dotty.tools.dotc.transform.localopt.StringInterpolatorOpt
 
 /** The central class of the dotc compiler. The job of a compiler is to create
@@ -38,10 +38,11 @@ class Compiler {
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
     List(new YCheckPositions) ::    // YCheck positions
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
+    List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
+    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
@@ -49,7 +50,7 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
+    List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -65,28 +66,29 @@ class Compiler {
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
-         new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
+         new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
+         new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
          new PatternMatcher,         // Compile pattern matches
+         new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
-         new CrossCastAnd) ::        // Normalize selections involving intersection types.
+         new ElimByName,             // Expand by-name parameter references
+         new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatentations
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
-         new ElimByName,             // Expand by-name parameter references
+         new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
-         new AugmentScala2Traits,    // Augments Scala2 traits with additional members needed for mixin composition.
          new ResolveSuper,           // Implement super accessors
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
@@ -98,6 +100,7 @@ class Compiler {
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
+         new sjs.AddLocalJSFakeNews, // Adds fake new invocations to local JS classes in calls to `createLocalJSClass`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new CompleteJavaEnums,      // Fill in constructors for Java enums
@@ -109,9 +112,8 @@ class Compiler {
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
          new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
-         new Instrumentation) ::     // Count closure allocations under -Yinstrument-closures
-    List(new LinkScala2Impls,        // Redirect calls to trait methods defined by Scala 2.x, so that they now go to
-         new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
+         new Instrumentation) ::     // Count calls and allocations under -Yinstrument
+    List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
@@ -129,8 +131,8 @@ class Compiler {
 
   /** Generate the output of the compilation */
   protected def backendPhases: List[List[Phase]] =
-    List(new sjs.GenSJSIR) ::        // Generate .sjsir files for Scala.js (not enabled by default)
-    List(new GenBCode) ::            // Generate JVM bytecode
+    List(new backend.sjs.GenSJSIR) :: // Generate .sjsir files for Scala.js (not enabled by default)
+    List(new GenBCode) ::             // Generate JVM bytecode
     Nil
 
   var runId: Int = 1
@@ -138,15 +140,15 @@ class Compiler {
     runId += 1; runId
   }
 
-  def reset()(implicit ctx: Context): Unit = {
+  def reset()(using Context): Unit = {
     ctx.base.reset()
     if (ctx.run != null) ctx.run.reset()
   }
 
-  def newRun(implicit ctx: Context): Run = {
+  def newRun(using Context): Run = {
     reset()
     val rctx =
-      if ctx.settings.Ysemanticdb.value
+      if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
       else
         ctx

@@ -28,6 +28,10 @@ import collection.mutable
       hits(name) += n
     }
 
+  def doRecordSize(fn: String, coll: scala.collection.Iterable[_]): coll.type =
+    doRecord(fn, coll.size)
+    coll
+
   inline def trackTime[T](fn: String)(inline op: T): T =
     if (enabled) doTrackTime(fn)(op) else op
 
@@ -50,7 +54,7 @@ import collection.mutable
       hits(s"Total $prefix") += hits(name)
   }
 
-  def maybeMonitored[T](op: => T)(implicit ctx: Context): T =
+  def maybeMonitored[T](op: => T)(using Context): T =
     if (ctx.settings.YdetailedStats.value) {
       monitored = true
       try op
@@ -58,7 +62,6 @@ import collection.mutable
         aggregate()
         println()
         println(hits.toList.sortBy(_._2).map{ case (x, y) => s"$x -> $y" } mkString "\n")
-        println(s"uniqueInfo (size, accesses, collisions): ${ctx.base.uniquesSizes}")
       }
     }
     else op

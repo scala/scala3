@@ -20,7 +20,7 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Union types](new-types/union-types.md),
  - [Type lambdas](new-types/type-lambdas.md),
  replacing encodings using structural types and type projection.
- - [Implicit Function Types](contextual/implicit-function-types.md) offering abstraction over given parameters.
+ - [Context Functions](contextual/context-functions.md) offering abstraction over given parameters.
 
 **Status: essential**
 
@@ -35,9 +35,9 @@ Since these are additions, there's generally no migration cost for old code. An 
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
  - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
- - [Given Instances](contextual/delegates.md)
+ - [Given Instances](contextual/givens.md)
    replace implicit objects and defs, focussing on intent over mechanism.
- - [Given Clauses](contextual/given-clauses.md) replace implicit parameters, avoiding their ambiguities.
+ - [Using Clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque Type Aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
@@ -73,8 +73,8 @@ These constructs are restricted to make the language safer.
  - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal Equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
- - [@infix and @alpha](https://github.com/lampepfl/dotty/pull/5975)
- make method application syntax uniform across code bases and require alphanumeric aliases for all symbolic names (proposed, not implemented).
+ - [infix](https://github.com/lampepfl/dotty/pull/5975)
+ makes method application syntax uniform across code bases.
 
 Unrestricted implicit conversions continue to be available in Scala 3.0, but will be deprecated and removed later. Unrestricted versions of the other constructs in the list above are available only under `-source 3.0-migration`.
 
@@ -197,6 +197,6 @@ The new type-checking and inference algorithms are the essential core of the new
 
 Some existing programs will break and, given the complex nature of type inference, it will not always be clear what change caused the breakage and how to fix it.
 
-In our experience, macros and changes in type and implicit argument inference together cause the large majority of problems encountered when porting existing code to Scala 3. The latter source of problems could be addressed systematically by a tool that added all inferred types and implicit arguments to a Scala 2 source code file. Most likely such a tool would be implemented as a Scala 2 compiler plugin. The resulting code would have a greatly increased likelihood to compile under Scala 3, but would often be bulky to the point of being unreadable. A second part of the rewriting tool should then selectively and iteratively remove type and implicit annotations that were synthesized by the first part as long as they compile under Scala 3. This second part could be implemented as a program that invokes the Scala 3 compiler `dotc` programmatically.
+In our experience, macros and changes in type and implicit argument inference together cause the large majority of problems encountered when porting existing code to Scala 3. The latter source of problems could be addressed systematically by a tool that added all inferred types and implicit arguments to a Scala 2 source code file. Most likely such a tool would be implemented as a Scala 2 compiler plugin. The resulting code would have a greatly increased likelihood to compile under Scala 3, but would often be bulky to the point of being unreadable. A second part of the rewriting tool should then selectively and iteratively remove type and implicit annotations that were synthesized by the first part as long as they compile under Scala 3. This second part could be implemented as a program that invokes the Scala 3 compiler `scalac` programmatically.
 
 Several people have proposed such a tool for some time now. I believe it is time we find the will and the resources to actually implement it.

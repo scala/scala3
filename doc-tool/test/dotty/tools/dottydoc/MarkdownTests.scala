@@ -18,7 +18,6 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
     val ctx = base.initialCtx.fresh
     ctx.setSetting(ctx.settings.language, List("Scala2"))
     ctx.setSetting(ctx.settings.YcookComments, true)
-    ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setSetting(ctx.settings.Ycheck, "all" :: Nil)
     // No wiki syntax!
     ctx.setSetting(ctx.settings.wikiSyntax, false)
@@ -27,7 +26,7 @@ class MarkdownTests extends DottyDocTest with CheckFromSource {
       ctx.settings.classpath,
       TestConfiguration.basicClasspath
     )
-    base.initialize()(ctx)
+    base.initialize()(using ctx)
     ctx
   }
 

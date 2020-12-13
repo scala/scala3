@@ -1,16 +1,16 @@
 package scala.tasty.interpreter
 package jvm
 
+import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
-import scala.tasty.Reflection
 
-class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpreter[R](reflect0) {
-  import reflect.{_, given _}
+class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[Q] {
+  import q.reflect._
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any
 
-  val jvmReflection = new JVMReflection(reflect)
+  val jvmReflection = new JVMReflection(using q)
 
   def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {
@@ -29,7 +29,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                 }
 
                 // println(method)
-                val symbol = sym.methods.find(_.name == method.getName).get
+                val symbol = sym.memberMethods.find(_.name == method.getName).get
 
                 if (symbol.isDefinedInCurrentRun) {
                   val argsList = if (args == null) Nil else args.toList
@@ -71,7 +71,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           // FIXME not necesarly static
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
-          if (fn.symbol.flags.is(Flags.Object))
+          if (fn.symbol.flags.is(Flags.Module))
             jvmReflection.loadModule(fn.symbol.moduleClass)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)

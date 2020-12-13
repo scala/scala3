@@ -2,13 +2,13 @@ import scala.quoted._
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
-def mcrImpl[T](body: Expr[Any])(using ctx: QuoteContext) : Expr[Any] = {
-  import ctx.tasty.{_, given _}
+def mcrImpl[T](body: Expr[Any])(using Quotes) : Expr[Any] = {
+  import quotes.reflect._
 
-  val bTree = body.unseal
+  val bTree = body.asTerm
   val under = bTree.underlyingArgument
 
-  val res = '{Box(${under.asInstanceOf[Term].seal})}
+  val res = '{Box(${under.asInstanceOf[Term].asExpr})}
   res
 }
 

@@ -37,7 +37,7 @@ The change to the grammar is:
 ## Compatibility considerations
 
 To enable smooth cross compilation between Scala 2 and Scala 3, Dotty will
-accept both the old and the new syntax. Under the `-strict` setting, an error
+accept both the old and the new syntax. Under the `-source 3.1` setting, an error
 will be emitted when the old syntax is encountered. They will be enabled by
 default in version 3.1 of the language.
 

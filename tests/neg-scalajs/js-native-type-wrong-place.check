@@ -1,0 +1,72 @@
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:7:2 -------------------------------------------------------
+7 |  @js.native // error
+  |  ^^^^^^^^^^
+  |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:10:2 ------------------------------------------------------
+10 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:13:2 ------------------------------------------------------
+13 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:18:2 ------------------------------------------------------
+18 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:21:2 ------------------------------------------------------
+21 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:24:2 ------------------------------------------------------
+24 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  Scala traits and classes may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:31:2 ------------------------------------------------------
+31 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:34:2 ------------------------------------------------------
+34 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:37:2 ------------------------------------------------------
+37 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:42:2 ------------------------------------------------------
+42 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:45:2 ------------------------------------------------------
+45 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:48:2 ------------------------------------------------------
+48 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:53:2 ------------------------------------------------------
+53 |  @js.native // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:56:2 ------------------------------------------------------
+56 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:59:2 ------------------------------------------------------
+59 |  @js.native @JSGlobal("X") // error
+   |  ^^^^^^^^^^
+   |  non-native JS classes, traits and objects may not have native JS members
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:67:4 ------------------------------------------------------
+67 |    @js.native @JSGlobal // error
+   |    ^^^^^^^^^^
+   |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:70:4 ------------------------------------------------------
+70 |    @js.native @JSGlobal // error
+   |    ^^^^^^^^^^
+   |    @js.native is not allowed on local definitions
+-- Error: tests/neg-scalajs/js-native-type-wrong-place.scala:73:4 ------------------------------------------------------
+73 |    @js.native // error
+   |    ^^^^^^^^^^
+   |    @js.native is not allowed on local definitions

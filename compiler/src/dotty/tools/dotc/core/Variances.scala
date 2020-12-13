@@ -37,22 +37,22 @@ object Variances {
     else cut(v)
 
   /** Compute variance of type parameter `tparam` in types of all symbols `sym`. */
-  def varianceInSyms(syms: List[Symbol])(tparam: Symbol)(implicit ctx: Context): Variance =
+  def varianceInSyms(syms: List[Symbol])(tparam: Symbol)(using Context): Variance =
     syms.foldLeft(Bivariant) ((v, sym) => v & varianceInSym(sym)(tparam))
 
   /** Compute variance of type parameter `tparam` in type of symbol `sym`. */
-  def varianceInSym(sym: Symbol)(tparam: Symbol)(implicit ctx: Context): Variance =
+  def varianceInSym(sym: Symbol)(tparam: Symbol)(using Context): Variance =
     if (sym.isAliasType) cut(varianceInType(sym.info)(tparam))
     else varianceInType(sym.info)(tparam)
 
   /** Compute variance of type parameter `tparam` in all types `tps`. */
-  def varianceInTypes(tps: List[Type])(tparam: Symbol)(implicit ctx: Context): Variance =
+  def varianceInTypes(tps: List[Type])(tparam: Symbol)(using Context): Variance =
     tps.foldLeft(Bivariant) ((v, tp) => v & varianceInType(tp)(tparam))
 
   /** Compute variance of type parameter `tparam` in all type arguments
    *  <code>tps</code> which correspond to formal type parameters `tparams1`.
    */
-  def varianceInArgs(tps: List[Type], tparams1: List[Symbol])(tparam: Symbol)(implicit ctx: Context): Variance = {
+  def varianceInArgs(tps: List[Type], tparams1: List[Symbol])(tparam: Symbol)(using Context): Variance = {
     var v: Variance = Bivariant;
     for ((tp, tparam1) <- tps zip tparams1) {
       val v1 = varianceInType(tp)(tparam)
@@ -64,15 +64,15 @@ object Variances {
   }
 
   /** Compute variance of type parameter `tparam` in all type annotations `annots`. */
-  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(implicit ctx: Context): Variance =
+  def varianceInAnnots(annots: List[Annotation])(tparam: Symbol)(using Context): Variance =
     annots.foldLeft(Bivariant) ((v, annot) => v & varianceInAnnot(annot)(tparam))
 
   /** Compute variance of type parameter `tparam` in type annotation `annot`. */
-  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(implicit ctx: Context): Variance =
+  def varianceInAnnot(annot: Annotation)(tparam: Symbol)(using Context): Variance =
     varianceInType(annot.tree.tpe)(tparam)
 
   /** Compute variance of type parameter <code>tparam</code> in type <code>tp</code>. */
-  def varianceInType(tp: Type)(tparam: Symbol)(implicit ctx: Context): Variance = tp match {
+  def varianceInType(tp: Type)(tparam: Symbol)(using Context): Variance = tp match {
     case TermRef(pre, _) =>
       varianceInType(pre)(tparam)
     case tp @ TypeRef(pre, _) =>
@@ -109,7 +109,7 @@ object Variances {
       Bivariant
   }
 
-  def setStructuralVariances(lam: HKTypeLambda)(implicit ctx: Context): Unit =
+  def setStructuralVariances(lam: HKTypeLambda)(using Context): Unit =
     assert(!lam.isDeclaredVarianceLambda)
     for param <- lam.typeParams do param.storedVariance = Bivariant
     object narrowVariances extends TypeTraverser {
@@ -132,14 +132,14 @@ object Variances {
 
   /** Does the variance of type parameter `tparam1` conform to the variance of type parameter `tparam2`?
    */
-   def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(implicit ctx: Context): Boolean =
+   def varianceConforms(tparam1: TypeParamInfo, tparam2: TypeParamInfo)(using Context): Boolean =
     tparam1.paramVariance.isAllOf(tparam2.paramVariance)
 
   /** Do the variances of type parameters `tparams1` conform to the variances
    *  of corresponding type parameters `tparams2`?
    *  This is only the case if `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(implicit ctx: Context): Boolean =
+  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(using Context): Boolean =
     val needsDetailedCheck = tparams2 match
       case (_: Symbol) :: _ => true
       case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isDeclaredVarianceLambda
@@ -147,7 +147,7 @@ object Variances {
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.hasSameLengthAs(tparams2)
 
-  def varianceSign(sym: Symbol)(implicit ctx: Context): String =
+  def varianceSign(sym: Symbol)(using Context): String =
     varianceSign(sym.variance)
 
   def varianceSign(v: Variance): String = varianceSign(varianceToInt(v))

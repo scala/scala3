@@ -3,7 +3,7 @@ package transform
 
 import core._
 import Constants.Constant
-import Contexts.Context
+import Contexts._
 import Flags._
 import Definitions._
 import DenotTransformers._
@@ -27,9 +27,9 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
 
   override def phaseName: String = "functionXXLForwarders"
 
-  override def transformTemplate(impl: Template)(implicit ctx: Context): Template = {
+  override def transformTemplate(impl: Template)(using Context): Template = {
 
-    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree = { 
+    def forwarderRhs(receiver: Tree, xsTree: Tree): Tree = {
       val argsApply = ref(xsTree.symbol).select(nme.apply)
       var idx = -1
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
@@ -39,18 +39,20 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       ref(receiver.symbol).appliedToArgss(argss).cast(defn.ObjectType)
     }
 
+    if impl.symbol.owner.is(Trait) then return impl
+
     val forwarders =
       for {
-        tree <- if (impl.symbol.owner.is(Trait)) Nil else impl.body
-        if tree.symbol.is(Method) && tree.symbol.name == nme.apply &&
-           tree.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
-           tree.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
+        (ddef: DefDef) <- impl.body
+        if ddef.name == nme.apply && ddef.symbol.is(Method) &&
+           ddef.symbol.signature.paramsSig.size > MaxImplementedFunctionArity &&
+           ddef.symbol.allOverriddenSymbols.exists(sym => defn.isXXLFunctionClass(sym.owner))
       }
       yield {
         val xsType = defn.ArrayType.appliedTo(List(defn.ObjectType))
         val methType = MethodType(List(nme.args))(_ => List(xsType), _ => defn.ObjectType)
-        val meth = ctx.newSymbol(tree.symbol.owner, nme.apply, Synthetic | Method, methType)
-        DefDef(meth, paramss => forwarderRhs(tree, paramss.head.head))
+        val meth = newSymbol(ddef.symbol.owner, nme.apply, Synthetic | Method, methType)
+        DefDef(meth, paramss => forwarderRhs(ddef, paramss.head.head))
       }
 
     cpy.Template(impl)(body = forwarders ::: impl.body)

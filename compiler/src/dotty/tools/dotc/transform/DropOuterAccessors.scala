@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase.MiniPhase
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import ast._
 import Trees._
 import Flags._

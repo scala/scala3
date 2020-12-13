@@ -10,7 +10,7 @@ package A {
   given ToString[AB] = ab => println(ab)
 
   opaque type AC = String
-  given ToString[AC] {
+  given ToString[AC] with {
     def print(ac: AC): Unit = println(ac)
   }
 }
@@ -28,7 +28,7 @@ package B {
 
   opaque type BC = String
   object BC {
-    given ToString[BC] {
+    given ToString[BC] with {
       def print(bc: BC): Unit = println(bc)
     }
   }

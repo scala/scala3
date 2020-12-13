@@ -1,42 +1,42 @@
 
-tree: Inlined(None, Nil, Literal(Constant(3)))
-tree deref. vals: Literal(Constant(3))
+tree: Inlined(None, Nil, Literal(IntConstant(3)))
+tree deref. vals: Literal(IntConstant(3))
 
 tree: Inlined(None, Nil, Ident("v"))
-tree deref. vals: Literal(Constant(1))
+tree deref. vals: Literal(IntConstant(1))
 
-tree: Inlined(None, Nil, Ident("x"))
-tree deref. vals: Literal(Constant(2))
+tree: Inlined(None, Nil, Ident("x$proxy1"))
+tree deref. vals: Literal(IntConstant(2))
 
 tree: Inlined(None, Nil, Ident("l"))
-tree deref. vals: Literal(Constant(3))
+tree deref. vals: Literal(IntConstant(3))
 
 tree: Inlined(None, Nil, Ident("a"))
 tree deref. vals: Ident("a")
 
-tree: Inlined(None, Nil, Ident("x"))
+tree: Inlined(None, Nil, Ident("x$proxy2"))
 tree deref. vals: Ident("b")
 
-tree: Inlined(None, Nil, Ident("x"))
+tree: Inlined(None, Nil, Ident("x$proxy3"))
 tree deref. vals: Apply(Ident("d2"), Nil)
 
-tree: Inlined(None, Nil, Ident("x"))
-tree deref. vals: Apply(Ident("d3"), List(Literal(Constant(3))))
+tree: Inlined(None, Nil, Ident("x$proxy4"))
+tree deref. vals: Apply(Ident("d3"), List(Literal(IntConstant(3))))
 
-tree: Inlined(None, Nil, Ident("x"))
+tree: Inlined(None, Nil, Ident("x$proxy5"))
 tree deref. vals: TypeApply(Ident("d4"), List(TypeIdent("Int")))
 
 tree: Inlined(None, Nil, Ident("vv"))
-tree deref. vals: Literal(Constant(1))
+tree deref. vals: Literal(IntConstant(1))
 
-tree: Inlined(None, Nil, Ident("x"))
-tree deref. vals: Literal(Constant(1))
+tree: Inlined(None, Nil, Ident("x$proxy6"))
+tree deref. vals: Literal(IntConstant(1))
 
 tree: Inlined(None, Nil, Ident("vd"))
-tree deref. vals: Literal(Constant(2))
+tree deref. vals: Literal(IntConstant(2))
 
-tree: Inlined(None, Nil, Ident("x"))
-tree deref. vals: Literal(Constant(2))
+tree: Inlined(None, Nil, Ident("x$proxy7"))
+tree deref. vals: Literal(IntConstant(2))
 
-tree: Inlined(None, Nil, Ident("x"))
-tree deref. vals: Apply(TypeApply(Select(Ident("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Literal(Constant(1)), Literal(Constant(2))))
+tree: Inlined(None, Nil, Ident("x$proxy8"))
+tree deref. vals: Apply(TypeApply(Select(Ident("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Literal(IntConstant(1)), Literal(IntConstant(2))))

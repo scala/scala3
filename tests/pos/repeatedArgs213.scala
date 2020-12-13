@@ -15,4 +15,15 @@ class repeatedArgs {
     val List(_, others: _*) = xs.toList // toList should not be needed, see #4790
     val x: immutable.Seq[String] = others
   }
+
+  def test2(xs: immutable.Seq[String] | Null): Unit = {
+    bar("a", "b", "c")
+    bar(xs: _*)
+
+    Paths.get("Hello", "World")
+    Paths.get("Hello", xs: _*)
+
+    val List(_, others: _*) = xs.toList // toList should not be needed, see #4790
+    val x: immutable.Seq[String] = others
+  }
 }

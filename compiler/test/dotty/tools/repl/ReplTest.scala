@@ -2,12 +2,14 @@ package dotty.tools
 package repl
 
 import vulpix.TestConfiguration
+import vulpix.FileDiff
 
 import java.lang.System.{lineSeparator => EOL}
 import java.io.{ByteArrayOutputStream, File => JFile, PrintStream}
+import java.nio.charset.StandardCharsets
+
 import scala.io.Source
 import scala.util.Using
-
 import scala.collection.mutable.ArrayBuffer
 
 import dotty.tools.dotc.reporting.MessageRendering
@@ -25,11 +27,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     "-color:never",
     "-Yerased-terms",
   ),
-  new PrintStream(out)
+  new PrintStream(out, true, StandardCharsets.UTF_8.name)
 ) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
-    val output = stripColor(out.toString)
+    val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
     out.reset()
     output
   }
@@ -45,15 +47,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def fromInitialState[A](op: State => A): A =
     op(initialState)
 
-  implicit class TestingState(state: State) {
-    def andThen[A](op: State => A): A = op(state)
-  }
-
-  def scripts(path: String): Array[JFile] = {
-    val dir = new JFile(getClass.getResource(path).getPath)
-    assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
-    dir.listFiles
-  }
+  extension [A](state: State)
+    def andThen(op: State => A): A = op(state)
 
   def testFile(f: JFile): Unit = {
     val prompt = "scala>"
@@ -76,12 +71,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
         case nonEmptyLine => nonEmptyLine :: Nil
       }
 
-    val expectedOutput =
-      Using(Source.fromFile(f, "UTF-8"))(_.getLines().flatMap(filterEmpties).mkString(EOL)).get
+    val expectedOutput = readLines(f).flatMap(filterEmpties)
     val actualOutput = {
       resetToInitial()
 
-      val lines = Using(Source.fromFile(f, "UTF-8"))(_.getLines.toList).get
+      val lines = readLines(f)
       assert(lines.head.startsWith(prompt),
         s"""Each file has to start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))
@@ -89,23 +83,23 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
       val buf = new ArrayBuffer[String]
       inputRes.foldLeft(initialState) { (state, input) =>
         val (out, nstate) = evaluate(state, input)
-        buf.append(out)
+        out.linesIterator.foreach(buf.append)
 
         assert(out.endsWith("\n"),
                s"Expected output of $input to end with newline")
 
         nstate
       }
-      buf.flatMap(filterEmpties).mkString(EOL)
+      buf.toList.flatMap(filterEmpties)
     }
 
-    if (expectedOutput != actualOutput) {
+    if !FileDiff.matches(actualOutput, expectedOutput) then
       println("expected =========>")
-      println(expectedOutput)
+      println(expectedOutput.mkString(EOL))
       println("actual ===========>")
-      println(actualOutput)
+      println(actualOutput.mkString(EOL))
 
       fail(s"Error in file $f, expected output did not match actual")
-    }
+    end if
   }
 }

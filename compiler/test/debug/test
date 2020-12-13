@@ -4,8 +4,8 @@ DIR="$( cd "$( dirname "$0" )" && pwd )"
 
 echo "start debug test..."
 for file in tests/debug/*.scala; do
-   ./bin/dotc $file || exit 1
-   ./bin/dotr -d Test > /dev/null &
+   ./bin/scalac $file || exit 1
+   ./bin/scala -d Test > /dev/null &
    $DIR/Gen $file > robot
    expect robot 2>&1 > /dev/null
 

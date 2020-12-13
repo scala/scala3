@@ -11,6 +11,7 @@ import Names.SimpleName
 import TreeUnpickler.UnpickleMode
 
 import dotty.tools.tasty.TastyReader
+import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
 object DottyUnpickler {
 
@@ -18,17 +19,17 @@ object DottyUnpickler {
   class BadSignature(msg: String) extends RuntimeException(msg)
 
   class TreeSectionUnpickler(posUnpickler: Option[PositionUnpickler], commentUnpickler: Option[CommentUnpickler])
-  extends SectionUnpickler[TreeUnpickler](TreePickler.sectionName) {
+  extends SectionUnpickler[TreeUnpickler](ASTsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): TreeUnpickler =
       new TreeUnpickler(reader, nameAtRef, posUnpickler, commentUnpickler)
   }
 
-  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler]("Positions") {
+  class PositionsSectionUnpickler extends SectionUnpickler[PositionUnpickler](PositionsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): PositionUnpickler =
       new PositionUnpickler(reader, nameAtRef)
   }
 
-  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler]("Comments") {
+  class CommentsSectionUnpickler extends SectionUnpickler[CommentUnpickler](CommentsSection) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): CommentUnpickler =
       new CommentUnpickler(reader)
   }
@@ -50,17 +51,17 @@ class DottyUnpickler(bytes: Array[Byte], mode: UnpickleMode = UnpickleMode.TopLe
   /** Enter all toplevel classes and objects into their scopes
    *  @param roots          a set of SymDenotations that should be overwritten by unpickling
    */
-  def enter(roots: Set[SymDenotation])(implicit ctx: Context): Unit =
+  def enter(roots: Set[SymDenotation])(using Context): Unit =
     treeUnpickler.enter(roots)
 
   protected def treeSectionUnpickler(posUnpicklerOpt: Option[PositionUnpickler], commentUnpicklerOpt: Option[CommentUnpickler]): TreeSectionUnpickler =
     new TreeSectionUnpickler(posUnpicklerOpt, commentUnpicklerOpt)
 
-  protected def computeRootTrees(implicit ctx: Context): List[Tree] = treeUnpickler.unpickle(mode)
+  protected def computeRootTrees(using Context): List[Tree] = treeUnpickler.unpickle(mode)
 
   private var ids: Array[String] = null
 
-  override def mightContain(id: String)(implicit ctx: Context): Boolean = {
+  override def mightContain(id: String)(using Context): Boolean = {
     if (ids == null)
       ids =
         unpickler.nameAtRef.contents.toArray.collect {

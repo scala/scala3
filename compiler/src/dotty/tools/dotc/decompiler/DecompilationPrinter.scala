@@ -2,14 +2,16 @@ package dotty.tools.dotc
 package decompiler
 
 import java.io.{OutputStream, PrintStream}
+import java.nio.charset.StandardCharsets
 
 import scala.io.Codec
 
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.tastyreflect.ReflectionImpl
 import dotty.tools.io.File
+
+import scala.quoted.runtime.impl.QuotesImpl
 
 /** Phase that prints the trees in all loaded compilation units.
  *
@@ -19,7 +21,7 @@ class DecompilationPrinter extends Phase {
 
   override def phaseName: String = "decompilationPrinter"
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     if (ctx.settings.outputDir.isDefault) printToOutput(System.out)
     else {
       val outputDir = ctx.settings.outputDir.value
@@ -27,7 +29,7 @@ class DecompilationPrinter extends Phase {
       var ps: PrintStream = null
       try {
         os = File(outputDir.fileNamed("decompiled.scala").path)(Codec.UTF8).outputStream(append = true)
-        ps = new PrintStream(os, /* autoFlush = */ false, "UTF-8")
+        ps = new PrintStream(os, /* autoFlush = */ false, StandardCharsets.UTF_8.name)
         printToOutput(ps)
       }
       finally {
@@ -36,14 +38,14 @@ class DecompilationPrinter extends Phase {
       }
     }
 
-  private def printToOutput(out: PrintStream)(implicit ctx: Context): Unit = {
+  private def printToOutput(out: PrintStream)(using Context): Unit = {
     val unit = ctx.compilationUnit
     if (ctx.settings.printTasty.value)
-      println(new TastyPrinter(unit.pickled.head._2).printContents())
+      println(TastyPrinter.show(unit.pickled.head._2()))
     else {
       val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
       out.println(s"/** Decompiled from $unitFile */")
-      out.println(ReflectionImpl.showTree(unit.tpdTree))
+      out.println(QuotesImpl.showDecompiledTree(unit.tpdTree))
     }
   }
 }

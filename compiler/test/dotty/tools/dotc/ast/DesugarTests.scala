@@ -11,7 +11,7 @@ import org.junit.Assert._
 class DesugarTests extends DottyTest {
   import tpd._
 
-  private def validSym(sym: Symbol)(implicit ctx: Context): Unit = {
+  private def validSym(sym: Symbol)(using Context): Unit = {
       assert(
         // remaining symbols must be either synthetic:
         sym.is(Synthetic) ||
@@ -23,7 +23,7 @@ class DesugarTests extends DottyTest {
 
   @Test def caseClassHasCorrectMembers: Unit =
     checkCompile("typer", "case class Foo(x: Int, y: String)") { (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val ccTree = tree.find(tree => tree.symbol.name == typeName("Foo")).get
       val List(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
 
@@ -38,7 +38,7 @@ class DesugarTests extends DottyTest {
 
   @Test def caseClassCompanionHasCorrectMembers: Unit =
     checkCompile("typer", "case class Foo(x: Int, y: String)") { (tree, context) =>
-      implicit val ctx = context
+      given Context = context
       val ccTree = tree.find(tree => tree.symbol.name == termName("Foo")).get
       val List(_, foo) = defPath(ccTree.symbol, tree).map(_.symbol.info)
 

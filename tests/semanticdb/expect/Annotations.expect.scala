@@ -2,7 +2,7 @@ package annot
 
 import com.javacp.annot._
 import scala.annotation.meta._
-import scala.language/*->scalaShadowing::language.*/.experimental/*->scalaShadowing::language.experimental.*/.macros/*->scalaShadowing::language.experimental.macros.*/
+import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
 
 @ClassAnnotation/*->com::javacp::annot::ClassAnnotation#*/
 class Annotations/*<-annot::Annotations#*/[@TypeParameterAnnotation/*->com::javacp::annot::TypeParameterAnnotation#*/ T/*<-annot::Annotations#[T]*/](@ParameterAnnotation/*->com::javacp::annot::ParameterAnnotation#*/ x/*<-annot::Annotations#x.*/: T/*->annot::Annotations#[T]*/) { self/*<-local0*/: AnyRef/*->scala::AnyRef#*/ =>

@@ -9,12 +9,44 @@ on:
 env:
   DOTTY_CI_RUN: true
 
-jobs:
-  test:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+# In this file, we set `--cpu-shares 4096` on every job. This might seem useless
+# since it means that every container has the same weight which should be
+# equivalent to doing nothing, but it turns out that OpenJDK computes
+# `Runtime.getRuntime.availableProcessors` by dividing the cpu-shares value if
+# it exists by 1024 (cf
+# http://mail.openjdk.java.net/pipermail/hotspot-dev/2019-January/036087.html),
+# so this means that we effectively run every job with 4 cores. This is much
+# nicer than setting `--cpus 4` because the latter enforces CPU quotas and ends
+# up slowing our jobs more than needed. It's equivalent to running the JVM with
+# `-XX:ActiveProcessorCount=4`, but since our tests can spawn new JVM in many
+# places, it would be very hard to ensure that this option is always passed to
+# `java` (we could use the `_JAVA_OPTIONS` environment variable, but this prints
+# text on stderr and so can break tests which check the output of a program).
 
+jobs:
+  test_non_bootstrapped:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
+         )"
     steps:
+      - name: Set JDK 15 as default
+        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -24,37 +56,38 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
           ./project/scripts/sbt ";compile ;test"
           ./project/scripts/cmdTests
 
-  test_bootstrapped:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+  test:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test]')
+         )"
 
     steps:
+      - name: Set JDK 15 as default
+        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -64,35 +97,84 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";dotty-bootstrapped/compile ;dotty-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test ;configureIDE"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
-  community_build:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+  test_windows_fast:
+    runs-on: [self-hosted, Windows]
+    if: "(
+           github.event_name == 'push'
+           && github.ref != 'refs/heads/master'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
+         )"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Test
+        run: sbt ";scala3-bootstrapped/compile"
+        shell: cmd
+
+      - name: Scala.js Test
+        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+        shell: cmd
+
+  test_windows_full:
+    runs-on: [self-hosted, Windows]
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'push'
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_windows_full]')
+         )"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Test
+        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
+        shell: cmd
+
+      - name: Scala.js Test
+        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+        shell: cmd
+
+  community_build_a:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -104,41 +186,31 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
           git submodule sync
           git submodule update --init --recursive --jobs 7
-          ./project/scripts/sbt community-build/test
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
 
-  test_sbt:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    if: (
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
+  community_build_b:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || github.event_name == 'push'
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip community_build]')
+         )"
 
     steps:
       - name: Checkout cleanup script
@@ -150,40 +222,77 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
+      - name: Test
+        run: |
+          git submodule sync
+          git submodule update --init --recursive --jobs 7
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
 
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+  test_sbt:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_sbt]')
+         )"
+
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v2
+
+      - name: Cleanup
+        run: .github/workflows/cleanup.sh
+
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: ./project/scripts/sbt sbt-dotty/scripted
 
-  test_java11:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    if: (
-          github.event_name == 'push' &&
-          startsWith(github.event.ref, 'refs/tags/')
-        ) ||
-        github.event_name == 'schedule'
+  test_java8:
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+         || (
+           github.event_name == 'push'
+           && startsWith(github.event.ref, 'refs/tags/')
+           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+         )
+         || (
+           github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && contains(github.event.pull_request.body, '[test_java8]')
+         )"
 
     steps:
+      - name: Set JDK 8 as default
+        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -193,43 +302,31 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test
         run: |
-          export PATH="/usr/lib/jvm/java-11-openjdk-amd64/bin:$PATH"
-          ./project/scripts/sbt ";compile ;test"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/bootstrapCmdTests
 
   publish_nightly:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
-    if: github.event_name == 'schedule'
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
+      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
       - name: Checkout cleanup script
@@ -241,36 +338,24 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Nightly
         run: |
-          ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
   nightly_documentation:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
-    if: github.event_name == 'schedule'
+    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
@@ -287,26 +372,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Generate Website
         run: |
@@ -321,19 +388,25 @@ jobs:
           publish_branch: gh-pages
 
   publish_release:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
+      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
       - name: Checkout cleanup script
@@ -345,33 +418,15 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Release
         run: |
           ./project/scripts/sbt dist/packArchive
-          sha256sum dist/target/dotty-* > dist/target/sha256sum.txt
-          ./project/scripts/sbtPublish ";project dotty-bootstrapped ;publishSigned ;sonatypeBundleRelease"
-          echo "::set-env name=RELEASE_TAG::${GITHUB_REF#*refs/tags/}"
+          sha256sum dist/target/scala3-* > dist/target/sha256sum.txt
+          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+          echo "RELEASE_TAG=${GITHUB_REF#*refs/tags/}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_gh_release
@@ -383,7 +438,7 @@ jobs:
           release_name: ${{ github.ref }}
           body:
           draft: false
-          prerelease: ${{ contains(env.RELEASE_TAG, 'RC') }}
+          prerelease: ${{ contains(env.RELEASE_TAG, 'M') }}
 
       - name: Upload zip archive to GitHub Release
         uses: actions/upload-release-asset@v1
@@ -391,8 +446,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.zip
-          asset_name: dotty-${{ env.RELEASE_TAG }}.zip
+          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.zip
+          asset_name: scala3-${{ env.RELEASE_TAG }}.zip
           asset_content_type: application/zip
 
       - name: Upload tar.gz archive to GitHub Release
@@ -401,8 +456,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_gh_release.outputs.upload_url }}
-          asset_path: ./dist/target/dotty-${{ env.RELEASE_TAG }}.tar.gz
-          asset_name: dotty-${{ env.RELEASE_TAG }}.tar.gz
+          asset_path: ./dist/target/scala3-${{ env.RELEASE_TAG }}.tar.gz
+          asset_name: scala3-${{ env.RELEASE_TAG }}.tar.gz
           asset_content_type: application/gzip
 
       - name: Upload SHA256 sum of the release artefacts to GitHub Release
@@ -416,12 +471,18 @@ jobs:
           asset_content_type: text/plain
 
   release_documentation:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_release]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/') &&
-        !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/')
+         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -439,26 +500,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Generate Website
         run: |
@@ -473,11 +516,17 @@ jobs:
           publish_branch: gh-pages
 
   publish_sbt_release:
-    runs-on: self-hosted
-    container: lampepfl/dotty:2020-04-24
-    needs: [test, test_bootstrapped, community_build, test_sbt, test_java11]
-    if: github.event_name == 'push' &&
-        startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+    runs-on: [self-hosted, Linux]
+    container:
+      image: lampepfl/dotty:2020-11-19
+      options: --cpu-shares 4096
+      volumes:
+        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+        - ${{ github.workspace }}/../../cache/general:/root/.cache
+    needs: [community_build_a, community_build_b, test_sbt]
+    if: "github.event_name == 'push'
+         && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
     env:
       RELEASEBUILD: yes
@@ -496,26 +545,8 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v2
 
-      - name: Cache Ivy
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.ivy2/cache
-          key: ${{ runner.os }}-ivy-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-ivy-
-
-      - name: Cache SBT
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.sbt
-          key: ${{ runner.os }}-sbt-${{ hashFiles('project/**') }}
-          restore-keys: ${{ runner.os }}-sbt-
-
-      - name: Cache Coursier and Mill
-        uses: actions/cache@v1.1.2
-        with:
-          path: /root/.cache
-          key: ${{ runner.os }}-general-${{ hashFiles('**/build.sbt') }}
-          restore-keys: ${{ runner.os }}-general-
+      - name: Add SBT proxy repositories
+        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Publish Dotty SBT Plugin Release
         run: |

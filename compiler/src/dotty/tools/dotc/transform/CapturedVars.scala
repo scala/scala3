@@ -26,74 +26,75 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def runsAfterGroupsOf: Set[String] = Set(LiftTry.name)
     // lifting tries changes what variables are considered to be captured
 
-  private[this] var Captured: Store.Location[collection.Set[Symbol]] = _
-  private def captured(implicit ctx: Context) = ctx.store(Captured)
+  private[this] var Captured: Store.Location[util.ReadOnlySet[Symbol]] = _
+  private def captured(using Context) = ctx.store(Captured)
 
   override def initContext(ctx: FreshContext): Unit =
-    Captured = ctx.addLocation(Set.empty)
+    Captured = ctx.addLocation(util.ReadOnlySet.empty)
 
-  private class RefInfo(implicit ctx: Context) {
+  private class RefInfo(using Context) {
     /** The classes for which a Ref type exists. */
     val refClassKeys: collection.Set[Symbol] =
       defn.ScalaNumericValueClasses() `union` Set(defn.BooleanClass, defn.ObjectClass)
 
     val refClass: Map[Symbol, Symbol] =
-      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
+      refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.${rc.name}Ref")).toMap
 
     val volatileRefClass: Map[Symbol, Symbol] =
-      refClassKeys.map(rc => rc -> ctx.requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
+      refClassKeys.map(rc => rc -> requiredClass(s"scala.runtime.Volatile${rc.name}Ref")).toMap
 
     val boxedRefClasses: collection.Set[Symbol] =
       refClassKeys.flatMap(k => Set(refClass(k), volatileRefClass(k)))
   }
 
   private var myRefInfo: RefInfo = null
-  private def refInfo(implicit ctx: Context) = {
+  private def refInfo(using Context) = {
     if (myRefInfo == null) myRefInfo = new RefInfo()
     myRefInfo
   }
 
   private class CollectCaptured extends TreeTraverser {
-    private val captured = mutable.HashSet[Symbol]()
-    def traverse(tree: Tree)(implicit ctx: Context) = tree match {
+    private val captured = util.HashSet[Symbol]()
+    def traverse(tree: Tree)(using Context) = tree match {
       case id: Ident =>
         val sym = id.symbol
         if (sym.is(Mutable, butNot = Method) && sym.owner.isTerm) {
           val enclMeth = ctx.owner.enclosingMethod
           if (sym.enclosingMethod != enclMeth) {
-            ctx.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
+            report.log(i"capturing $sym in ${sym.enclosingMethod}, referenced from $enclMeth")
             captured += sym
           }
         }
       case _ =>
         traverseChildren(tree)
     }
-    def runOver(tree: Tree)(implicit ctx: Context): collection.Set[Symbol] = {
+    def runOver(tree: Tree)(using Context): util.ReadOnlySet[Symbol] = {
       traverse(tree)
       captured
     }
   }
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
-    val captured = (new CollectCaptured)
-      .runOver(ctx.compilationUnit.tpdTree)(ctx.withPhase(thisPhase))
+  override def prepareForUnit(tree: Tree)(using Context): Context = {
+    val captured = atPhase(thisPhase) {
+      CollectCaptured().runOver(ctx.compilationUnit.tpdTree)
+    }
     ctx.fresh.updateStore(Captured, captured)
   }
 
   /** The {Volatile|}{Int|Double|...|Object}Ref class corresponding to the class `cls`,
     *  depending on whether the reference should be @volatile
     */
-  def refClass(cls: Symbol, isVolatile: Boolean)(implicit ctx: Context): Symbol = {
+  def refClass(cls: Symbol, isVolatile: Boolean)(using Context): Symbol = {
     val refMap = if (isVolatile) refInfo.volatileRefClass else refInfo.refClass
     if (cls.isClass)
       refMap.getOrElse(cls, refMap(defn.ObjectClass))
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(implicit ctx: Context): Context = {
-    val sym = vdef.symbol(ctx.withPhase(thisPhase))
+  override def prepareForValDef(vdef: ValDef)(using Context): Context = {
+    val sym = atPhase(thisPhase)(vdef.symbol)
     if (captured contains sym) {
-      val newd = sym.denot(ctx.withPhase(thisPhase)).copySymDenotation(
+      val newd = atPhase(thisPhase)(sym.denot).copySymDenotation(
         info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
         initFlags = sym.flags &~ Mutable)
       newd.removeAnnotation(defn.VolatileAnnot)
@@ -102,7 +103,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     ctx
   }
 
-  override def transformValDef(vdef: ValDef)(implicit ctx: Context): Tree = {
+  override def transformValDef(vdef: ValDef)(using Context): Tree = {
     val vble = vdef.symbol
     if (captured.contains(vble)) {
       def boxMethod(name: TermName): Tree =
@@ -114,10 +115,10 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     else vdef
   }
 
-  override def transformIdent(id: Ident)(implicit ctx: Context): Tree = {
+  override def transformIdent(id: Ident)(using Context): Tree = {
     val vble = id.symbol
     if (captured.contains(vble))
-      id.select(nme.elem).ensureConforms(vble.denot(ctx.withPhase(thisPhase)).info)
+      id.select(nme.elem).ensureConforms(atPhase(thisPhase)(vble.denot).info)
     else id
   }
 
@@ -137,7 +138,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
     *  Also: If the ref type lhs is followed by a cast (can be an artifact of nested translation),
     *  drop the cast.
     */
-  override def transformAssign(tree: Assign)(implicit ctx: Context): Tree = {
+  override def transformAssign(tree: Assign)(using Context): Tree = {
     def recur(lhs: Tree): Tree = lhs match {
       case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
         val Select(_, nme.elem) = qual

@@ -1,0 +1,4 @@
+-- [E159] Syntax Error: tests/neg/i9432.scala:2:14 ---------------------------------------------------------------------
+2 |  @native def foo(x: Int): Unit // error
+  |              ^
+  |              A trait cannot define a @native method.

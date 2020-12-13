@@ -1,0 +1,3 @@
+strings: ArraySeq(hello)
+ints: ArraySeq(1, 2)
+objs: ArraySeq(1, hi)

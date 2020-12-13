@@ -22,32 +22,32 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
   import ast.tpd._
 
   /** The info of the tree's symbol before it is potentially transformed in this phase */
-  private def originalDenotation(tree: Tree)(implicit ctx: Context) =
-    tree.symbol.denot(ctx.withPhase(thisPhase))
+  private def originalDenotation(tree: Tree)(using Context) =
+    atPhase(thisPhase)(tree.symbol.denot)
 
   /** If denotation had an ExprType before, it now gets a function type */
-  protected def exprBecomesFunction(symd: SymDenotation)(implicit ctx: Context): Boolean =
+  protected def exprBecomesFunction(symd: SymDenotation)(using Context): Boolean =
     symd.is(Param) || symd.is(ParamAccessor, butNot = Method)
 
-  protected def isByNameRef(tree: Tree)(implicit ctx: Context): Boolean = {
+  protected def isByNameRef(tree: Tree)(using Context): Boolean = {
     val origDenot = originalDenotation(tree)
     origDenot.info.isInstanceOf[ExprType] && exprBecomesFunction(origDenot)
   }
 
-  def mkByNameClosure(arg: Tree, argType: Type)(implicit ctx: Context): Tree = unsupported(i"mkClosure($arg)")
+  def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree = unsupported(i"mkClosure($arg)")
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
     trace(s"transforming ${tree.show} at phase ${ctx.phase}", show = true) {
 
       def transformArg(arg: Tree, formal: Type): Tree = formal.dealias match {
         case formalExpr: ExprType =>
           var argType = arg.tpe.widenIfUnstable
-          if (defn.isBottomType(argType)) argType = formal.widenExpr
+          if (argType.isBottomType) argType = formal.widenExpr
           def wrap(arg: Tree) =
             ref(defn.cbnArg).appliedToType(argType).appliedTo(arg).withSpan(arg.span)
           arg match {
             case Apply(Select(qual, nme.apply), Nil)
-            if qual.tpe.derivesFrom(defn.FunctionClass(0)) && isPureExpr(qual) =>
+            if qual.tpe.derivesFrom(defn.Function0) && (isPureExpr(qual) || qual.symbol.isAllOf(Inline | Param)) =>
               wrap(qual)
             case _ =>
               if (isByNameRef(arg) || arg.symbol == defn.cbnArg) arg

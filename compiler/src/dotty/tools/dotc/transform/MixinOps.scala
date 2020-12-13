@@ -8,14 +8,14 @@ import SymUtils._
 import StdNames._, NameOps._
 import Decorators._
 
-class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Context) {
+class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd._
 
   val superCls: Symbol = cls.superClass
   val mixins: List[ClassSymbol] = cls.mixins
 
   lazy val JUnit4Annotations: List[Symbol] = List("Test", "Ignore", "Before", "After", "BeforeClass", "AfterClass").
-    map(n => ctx.getClassIfDefined("org.junit." + n)).
+    map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
   def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
@@ -43,7 +43,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
    *  The test is performed at phase `thisPhase`.
    */
   def isCurrent(sym: Symbol): Boolean =
-    ctx.atPhase(thisPhase) {
+    atPhase(thisPhase) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 
@@ -57,15 +57,23 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(implicit ctx: Cont
 
     def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
+
+    // JUnit 4 won't recognize annotated default methods, so always generate a forwarder for them.
+    def generateJUnitForwarder: Boolean =
+      meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
+        ctx.settings.mixinForwarderChoices.isAtLeastJunit
+
+    // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
+    def generateSerializationForwarder: Boolean =
+       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
+
     !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition || needsJUnit4Fix(meth)) &&
+    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
+     generateJUnitForwarder || generateSerializationForwarder) &&
     isCurrent(meth)
   }
 
-  private def needsJUnit4Fix(meth: Symbol): Boolean =
-    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
-      ctx.settings.mixinForwarderChoices.isAtLeastJunit
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred

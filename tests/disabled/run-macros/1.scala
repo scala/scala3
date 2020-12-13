@@ -7,6 +7,6 @@ object Macro {
   inline def foo[X[_]](implicit inline m: Mirror { type MirroredType = X }): Int =
     ${ fooImpl }
 
-  def fooImpl[X[_]](implicit m: Mirror { type MirroredType = X }, qc: QuoteContext): Expr[Int] =
+  def fooImpl[X[_]](implicit m: Mirror { type MirroredType = X }, qc: Quotes): Expr[Int] =
     '{ 1 }
 }

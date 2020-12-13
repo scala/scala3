@@ -3,7 +3,7 @@ package transform
 
 import ast.tpd
 import core._
-import Contexts._, Symbols._
+import Contexts._, Symbols._, Types._, Flags._, Phases._
 import DenotTransformers._, MegaPhase._
 import TreeExtractors._, ValueClasses._
 
@@ -22,14 +22,20 @@ class VCElideAllocations extends MiniPhase with IdentityDenotTransformer {
 
   override def runsAfter: Set[String] = Set(ElimErasedValueType.name)
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
+  override def transformApply(tree: Apply)(using Context): Tree =
+    def hasUserDefinedEquals(tp: Type): Boolean =
+      val eql = atPhase(erasurePhase) {
+        defn.Any_equals.matchingMember(tp.typeSymbol.thisType)
+      }
+      eql.owner != defn.AnyClass && !eql.is(Synthetic)
+
     tree match {
-      // new V(u1) == new V(u2) => u1 == u2
+      // new V(u1) == new V(u2) => u1 == u2, unless V defines its own equals.
       // (We don't handle != because it has been eliminated by InterceptedMethods)
       case BinaryOp(NewWithArgs(tp1, List(u1)), op, NewWithArgs(tp2, List(u2)))
-      if (tp1 eq tp2) && (op eq defn.Any_==) &&
-         isDerivedValueClass(tp1.typeSymbol) &&
-         !defn.Any_equals.overridingSymbol(tp1.typeSymbol.asClass).exists =>
+      if (tp1 eq tp2) && (op eq defn.Any_==)
+         && isDerivedValueClass(tp1.typeSymbol)
+         && !hasUserDefinedEquals(tp1) =>
         // == is overloaded in primitive classes
         u1.equal(u2)
 

@@ -9,6 +9,8 @@ import Symbols._
 
 import dotty.tools.dotc.ast.tpd._
 import dotty.tools.backend.jvm.DottyPrimitives
+import dotty.tools.dotc.report
+import dotty.tools.dotc.util.ReadOnlyMap
 
 import scala.collection.mutable
 
@@ -31,40 +33,50 @@ object JSPrimitives {
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
   final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
 
-  final val IN = LINKING_INFO + 1   // js.special.in
-  final val INSTANCEOF = IN + 1     // js.special.instanceof
-  final val DELETE = INSTANCEOF + 1 // js.special.delete
-  final val FORIN = DELETE + 1      // js.special.forin
-  final val DEBUGGER = FORIN + 1    // js.special.debugger
+  final val STRICT_EQ = LINKING_INFO + 1 // js.special.strictEquals
+  final val IN = STRICT_EQ + 1           // js.special.in
+  final val INSTANCEOF = IN + 1          // js.special.instanceof
+  final val DELETE = INSTANCEOF + 1      // js.special.delete
+  final val FORIN = DELETE + 1           // js.special.forin
+  final val DEBUGGER = FORIN + 1         // js.special.debugger
 
   final val THROW = DEBUGGER + 1
 
-  final val LastJSPrimitiveCode = THROW
+  final val UNION_FROM = THROW + 1                       // js.|.from
+  final val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
+
+  final val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
+  final val REFLECT_SELECTABLE_APPLYDYN = REFLECT_SELECTABLE_SELECTDYN + 1 // scala.reflect.Selectable.applyDynamic
+
+  final val LastJSPrimitiveCode = REFLECT_SELECTABLE_APPLYDYN
 
   def isJSPrimitive(code: Int): Boolean =
     code >= FirstJSPrimitiveCode && code <= LastJSPrimitiveCode
 
 }
 
-class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
+class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
   import JSPrimitives._
   import dotty.tools.backend.ScalaPrimitivesOps._
 
-  private lazy val jsPrimitives: Map[Symbol, Int] = initJSPrimitives(ctx)
+  private lazy val jsPrimitives: ReadOnlyMap[Symbol, Int] = initJSPrimitives(using ictx)
 
   override def getPrimitive(sym: Symbol): Int =
     jsPrimitives.getOrElse(sym, super.getPrimitive(sym))
 
-  override def getPrimitive(app: Apply, tpe: Type)(implicit ctx: Context): Int =
+  override def getPrimitive(app: Apply, tpe: Type)(using Context): Int =
     jsPrimitives.getOrElse(app.fun.symbol, super.getPrimitive(app, tpe))
 
+  override def isPrimitive(sym: Symbol): Boolean =
+    jsPrimitives.contains(sym) || super.isPrimitive(sym)
+
   override def isPrimitive(fun: Tree): Boolean =
-    jsPrimitives.contains(fun.symbol(ctx)) || super.isPrimitive(fun)
+    jsPrimitives.contains(fun.symbol(using ictx)) || super.isPrimitive(fun)
 
   /** Initialize the primitive map */
-  private def initJSPrimitives(implicit ctx: Context): Map[Symbol, Int] = {
+  private def initJSPrimitives(using Context): ReadOnlyMap[Symbol, Int] = {
 
-    val primitives = newMutableSymbolMap[Int]
+    val primitives = MutableSymbolMap[Int]()
 
     // !!! Code duplicate with DottyPrimitives
     /** Add a primitive operation to the map */
@@ -73,10 +85,10 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
       primitives(s) = code
     }
 
-    def addPrimitives(cls: Symbol, method: TermName, code: Int)(implicit ctx: Context): Unit = {
+    def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty) {
-        ctx.error(s"Unknown primitive method $cls.$method")
+        report.error(s"Unknown primitive method $cls.$method")
       } else {
         for (s <- alts)
           addPrimitive(s, code)
@@ -95,11 +107,12 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 
     addPrimitive(jsdefn.Runtime_constructorOf, CONSTRUCTOROF)
-    /*addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
+    addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
-    addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)*/
+    addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
 
+    addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
     addPrimitive(jsdefn.Special_in, IN)
     addPrimitive(jsdefn.Special_instanceof, INSTANCEOF)
     addPrimitive(jsdefn.Special_delete, DELETE)
@@ -108,7 +121,13 @@ class JSPrimitives(ctx: Context) extends DottyPrimitives(ctx) {
 
     addPrimitive(defn.throwMethod, THROW)
 
-    primitives.toMap
+    addPrimitive(jsdefn.PseudoUnion_from, UNION_FROM)
+    addPrimitive(jsdefn.PseudoUnion_fromTypeConstructor, UNION_FROM_TYPE_CONSTRUCTOR)
+
+    addPrimitive(jsdefn.ReflectSelectable_selectDynamic, REFLECT_SELECTABLE_SELECTDYN)
+    addPrimitive(jsdefn.ReflectSelectable_applyDynamic, REFLECT_SELECTABLE_APPLYDYN)
+
+    primitives
   }
 
 }

@@ -11,7 +11,7 @@ import NameKinds.UniqueName
 import util.Spans._
 import util.{Stats, SimpleIdentityMap}
 import Decorators._
-import config.Printers.{gadts, typr}
+import config.Printers.{gadts, typr, debug}
 import annotation.tailrec
 import reporting._
 import collection.mutable
@@ -69,7 +69,7 @@ object Inferencing {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
-            accCtx.typeComparer.bounds(tp.origin)
+            TypeComparer.bounds(tp.origin)
               .namedPartsWith(ref => params.contains(ref.symbol))
               .nonEmpty =>
           tvars + tp
@@ -80,6 +80,28 @@ object Inferencing {
     val depVars = dependentVars(Set(), tp)
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
+
+  /** If `tp` is top-level type variable with a lower bound in the current constraint,
+   *  instantiate it from below. We also look for TypeVars whereever their instantiation
+   *  could uncover new type members.
+   */
+  def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
+    case tvar: TypeVar
+    if !tvar.isInstantiated
+       && ctx.typerState.constraint.contains(tvar)
+       && tvar.hasLowerBound =>
+      tvar.instantiate(fromBelow = true)
+      true
+    case AppliedType(tycon, _) =>
+      couldInstantiateTypeVar(tycon)
+    case RefinedType(parent, _, _) =>
+      couldInstantiateTypeVar(parent)
+    case tp: AndOrType =>
+      couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
+    case AnnotatedType(tp, _) =>
+      couldInstantiateTypeVar(tp)
+    case _ =>
+      false
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
@@ -164,44 +186,54 @@ object Inferencing {
       )
   }
 
-  def approximateGADT(tp: Type)(implicit ctx: Context): Type = {
+  def approximateGADT(tp: Type)(using Context): Type = {
     val map = new ApproximateGadtAccumulator
     val res = map(tp)
     assert(!map.failed)
     res
   }
 
-  /** This class is mostly based on IsFullyDefinedAccumulator.
-    * It tries to approximate the given type based on the available GADT constraints.
-    */
-  private class ApproximateGadtAccumulator(implicit ctx: Context) extends TypeMap {
+  /** Approximates a type to get rid of as many GADT-constrained abstract types as possible. */
+  private class ApproximateGadtAccumulator(using Context) extends TypeMap {
 
     var failed = false
 
-    private def instantiate(tvar: TypeVar, fromBelow: Boolean): Type = {
-      val inst = tvar.instantiate(fromBelow)
-      typr.println(i"forced instantiation of ${tvar.origin} = $inst")
-      inst
-    }
-
-    private def instDirection2(sym: Symbol)(implicit ctx: Context): Int = {
-      val constrained = ctx.gadt.fullBounds(sym)
-      val original = sym.info.bounds
-      val cmp = ctx.typeComparer
-      val approxBelow =
-        if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
-      val approxAbove =
-        if (!cmp.isSubTypeWhenFrozen(original.hi, constrained.hi)) 1 else 0
-      approxAbove - approxBelow
-    }
-
-    private[this] var toMaximize: Boolean = false
-
+    /** GADT approximation proceeds differently from type variable approximation.
+      *
+      * Essentially, what we're doing is we're inferring a type ascription that
+      * will remove as many GADT-constrained types as possible. This means that
+      * we want to approximate type T to type S in such a way that no matter how
+      * GADT-constrained types are instantiated, T <: S. In other words, the
+      * relationship _necessarily_ must hold.
+      *
+      * We accomplish that by:
+      *   - replacing covariant occurences with upper GADT bound
+      *   - replacing contravariant occurences with lower GADT bound
+      *   - leaving invariant occurences alone
+      *
+      * Examples:
+      *   - If we have GADT cstr A <: Int, then for all A <: Int, Option[A] <: Option[Int].
+      *     Therefore, we can approximate Option[A] ~~ Option[Int].
+      *   - If we have A >: S <: T, then for all such A, A => A <: S => T. This
+      *     illustrates that it's fine to differently approximate different
+      *     occurences of same type.
+      *   - If we have A <: Int and F <: [A] => Option[A] (note the invariance),
+      *     then we should approximate F[A] ~~ Option[A]. That is, we should
+      *     respect the invariance of the type constructor.
+      *   - If we have A <: Option[B] and B <: Int, we approximate A ~~
+      *     Option[B]. That is, we don't recurse into already approximated
+      *     types. Since GADT approximation is (for now) only used for member
+      *     selection, this behaviour is expected, as nested types cannot affect
+      *     member selection (note that given/extension lookup doesn't need GADT
+      *     approx, see gadt-approximation-interaction.scala).
+      */
     def apply(tp: Type): Type = tp.dealias match {
-      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix) && ctx.gadt.contains(tp.symbol) =>
+      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)
+                                   && variance != 0
+                                   && ctx.gadt.contains(tp.symbol)
+                                   =>
         val sym = tp.symbol
-        val res =
-          ctx.gadt.approximation(sym, fromBelow = variance < 0)
+        val res = ctx.gadt.approximation(sym, fromBelow = variance < 0)
         gadts.println(i"approximated $tp  ~~  $res")
         res
 
@@ -232,7 +264,7 @@ object Inferencing {
             constraint.entry(param) match {
               case TypeBounds(lo, hi)
               if (hi frozen_<:< lo) =>
-                val inst = accCtx.typeComparer.approximation(param, fromBelow = true)
+                val inst = TypeComparer.approximation(param, fromBelow = true)
                 typr.println(i"replace singleton $param := $inst")
                 accCtx.typerState.constraint = constraint.replace(param, inst)
               case _ =>
@@ -309,9 +341,9 @@ object Inferencing {
    *            0 if unconstrained, or constraint is from below and above.
    */
   private def instDirection(param: TypeParamRef)(using Context): Int = {
-    val constrained = ctx.typeComparer.fullBounds(param)
+    val constrained = TypeComparer.fullBounds(param)
     val original = param.binder.paramInfos(param.paramNum)
-    val cmp = ctx.typeComparer
+    val cmp = TypeComparer
     val approxBelow =
       if (!cmp.isSubTypeWhenFrozen(constrained.lo, original.lo)) 1 else 0
     val approxAbove =
@@ -345,13 +377,13 @@ object Inferencing {
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
       else {
-        val bounds = ctx.typeComparer.fullBounds(tvar.origin)
+        val bounds = TypeComparer.fullBounds(tvar.origin)
         if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
           tvar.instantiate(fromBelow = false)
         else {
           // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
           // Instead, we simultaneously add them later on.
-          val wildCard = ctx.newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
+          val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
           patternBound += wildCard
         }
@@ -367,7 +399,7 @@ object Inferencing {
 
   /** All occurrences of type vars in this type that satisfy predicate
    *  `include` mapped to their variances (-1/0/1) in this type, where
-   *  -1 means: only covariant occurrences
+   *  -1 means: only contravariant occurrences
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
@@ -428,7 +460,7 @@ object Inferencing {
       if (vmap1 eq vmap) vmap else propagate(vmap1)
     }
 
-    propagate(accu(SimpleIdentityMap.Empty, tp))
+    propagate(accu(SimpleIdentityMap.empty, tp))
   }
 }
 
@@ -498,7 +530,8 @@ trait Inferencing { this: Typer =>
         //     found   : Int(1)
         //     required: String
         //     val y: List[List[String]] = List(List(1))
-        val hasUnreportedErrors = state.reporter.hasUnreportedErrors
+        if state.reporter.hasUnreportedErrors then return tree
+
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
@@ -511,7 +544,7 @@ trait Inferencing { this: Typer =>
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
             }
-            else if (!hasUnreportedErrors)
+            else
               if (v.intValue != 0) {
                 typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
                 toInstantiate += ((tvar, v.intValue == 1))

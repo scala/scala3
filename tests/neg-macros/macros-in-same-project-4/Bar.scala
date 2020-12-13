@@ -5,5 +5,5 @@ object Bar {
 
   Foo.myMacro()
 
-  def hello()(using QuoteContext): Expr[Unit] = '{ println("Hello") }
+  def hello()(using Quotes): Expr[Unit] = '{ println("Hello") }
 }

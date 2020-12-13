@@ -90,6 +90,12 @@ trait Hashable {
   protected final def doHash(bs: Binders, x1: Any, tp2: Type): Int =
     finishHash(bs, hashing.mix(hashSeed, x1.hashCode), 1, tp2)
 
+  protected final def doHash(bs: Binders, x1: Int, tp2: Type): Int =
+    finishHash(bs, hashing.mix(hashSeed, x1), 1, tp2)
+
+  protected final def doHash(bs: Binders, x1: Int, tp2: Type, tp3: Type): Int =
+    finishHash(bs, hashing.mix(hashSeed, x1), 1, tp2, tp3)
+
   protected final def doHash(bs: Binders, tp1: Type, tp2: Type): Int =
     finishHash(bs, hashSeed, 0, tp1, tp2)
 

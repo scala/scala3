@@ -5,7 +5,7 @@ package core
 import annotation.tailrec
 import Symbols._
 import Contexts._, Names._, Phases._, printing.Texts._, printing.Printer
-import util.Spans.Span, util.SourcePosition
+import util.Spans.Span
 import collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase
 import ast.tpd._
@@ -20,28 +20,48 @@ object Decorators {
    *  with a normal wildcard. In the future, once #9255 is in trunk, replace with
    *  a simple collective extension.
    */
-  implicit object PreNamedString:
-    def (pn: PreName).toTypeName: TypeName = pn match
-      case s: String => typeName(s)
-      case n: Name => n.toTypeName
-    def (pn: PreName).toTermName: TermName = pn match
+  extension (pn: PreName)
+    def toTermName: TermName = pn match
       case s: String => termName(s)
       case n: Name => n.toTermName
+    def toTypeName: TypeName = pn match
+      case s: String => typeName(s)
+      case n: Name => n.toTypeName
 
-  implicit class StringDecorator(val s: String) extends AnyVal {
-    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] = {
+  extension (s: String)
+    def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] =
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None
         else Some((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
-
       splitAt(s.indexWhere(f), doDropIndex)
-    }
-  }
+
+    /** Create a term name from a string slice, using a common buffer.
+     *  This avoids some allocation relative to `termName(s)`
+     */
+    def sliceToTermName(start: Int, end: Int)(using Context): SimpleName =
+      val len = end - start
+      val chars = ctx.base.sharedCharArray(len)
+      s.getChars(start, end, chars, 0)
+      termName(chars, 0, len)
+
+    def sliceToTypeName(start: Int, end: Int)(using Context): TypeName =
+      sliceToTermName(start, end).toTypeName
+
+    def concat(name: Name)(using Context): SimpleName = name match
+      case name: SimpleName =>
+        val len = s.length + name.length
+        var chars = ctx.base.sharedCharArray(len)
+        s.getChars(0, s.length, chars, 0)
+        if name.length != 0 then name.getChars(0, name.length, chars, s.length)
+        termName(chars, 0, len)
+      case name: TypeName => s.concat(name.toTermName)
+      case _ => termName(s.concat(name.toString))
+  end extension
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
    */
-  implicit class SymbolIteratorDecorator(val it: Iterator[Symbol]) extends AnyVal {
+  extension (it: Iterator[Symbol])
     final def findSymbol(p: Symbol => Boolean): Symbol = {
       while (it.hasNext) {
         val sym = it.next()
@@ -49,9 +69,8 @@ object Decorators {
       }
       NoSymbol
     }
-  }
 
-  final val MaxFilterRecursions = 1000
+  final val MaxFilterRecursions = 10
 
   /** Implements filterConserve, zipWithConserve methods
    *  on lists that avoid duplication of list nodes where feasible.
@@ -86,24 +105,38 @@ object Decorators {
     }
 
     /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
-     *  if `p` is true for all elements and `xs` is not longer
-     *  than `MaxFilterRecursions`.
+     *  if `p` is true for all elements.
      */
-    def filterConserve(p: T => Boolean): List[T] = {
-      def loop(xs: List[T], nrec: Int): List[T] = xs match {
-        case Nil => xs
+    def filterConserve(p: T => Boolean): List[T] =
+
+      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
+        if from eq until then buf else addAll(buf += from.head, from.tail, until)
+
+      def loopWithBuffer(buf: ListBuffer[T], xs: List[T]): List[T] = xs match
         case x :: xs1 =>
-          if (nrec < MaxFilterRecursions) {
-            val ys1 = loop(xs1, nrec + 1)
-            if (p(x))
-              if (ys1 eq xs1) xs else x :: ys1
+          if p(x) then buf += x
+          loopWithBuffer(buf, xs1)
+        case nil => buf.toList
+
+      def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
+        explore match
+          case x :: rest =>
+            if p(x) then
+              loop(keep, rest, keepCount + 1, recCount)
+            else if keepCount <= 3 && recCount <= MaxFilterRecursions then
+              val rest1 = loop(rest, rest, 0, recCount + 1)
+              keepCount match
+                case 0 => rest1
+                case 1 => keep.head :: rest1
+                case 2 => keep.head :: keep.tail.head :: rest1
+                case 3 => val tl = keep.tail; keep.head :: tl.head :: tl.tail.head :: rest1
             else
-              ys1
-          }
-          else xs filter p
-      }
-      loop(xs, 0)
-    }
+              loopWithBuffer(addAll(new ListBuffer[T], keep, explore), rest)
+          case nil =>
+            keep
+
+      loop(xs, xs, 0, 0)
+    end filterConserve
 
     /** Like `xs.lazyZip(ys).map(f)`, but returns list `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
@@ -161,27 +194,31 @@ object Decorators {
     def & (ys: List[T]): List[T] = xs filter (ys contains _)
   }
 
-  extension ListOfListDecorator on [T, U](xss: List[List[T]]):
-    def nestedMap(f: T => U): List[List[U]] =
-      xss.map(_.map(f))
+  extension [T, U](xss: List[List[T]])
+    def nestedMap(f: T => U): List[List[U]] = xss match
+      case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
+      case nil => Nil
     def nestedMapConserve(f: T => U): List[List[U]] =
       xss.mapconserve(_.mapconserve(f))
     def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
+    def nestedExists(p: T => Boolean): Boolean = xss match
+      case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
+      case nil => false
+  end extension
 
-  implicit class TextToString(val text: Text) extends AnyVal {
-    def show(implicit ctx: Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
-  }
+  extension (text: Text)
+    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
 
   /** Test whether a list of strings representing phases contains
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-  implicit class PhaseListDecorator(val names: List[String]) extends AnyVal {
+   extension (names: List[String])
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
-          case phase: MegaPhase => phase.miniPhases.exists(containsPhase)
+          case phase: MegaPhase => phase.miniPhases.exists(x => names.containsPhase(x))
           case _ =>
             names exists { name =>
               name == "all" || {
@@ -193,48 +230,48 @@ object Decorators {
             }
         }
       }
-  }
 
-  implicit class reportDeco[T](x: T) extends AnyVal {
-    def reporting(
+  extension [T](x: T)
+    def showing(
         op: WrappedResult[T] ?=> String,
         printer: config.Printers.Printer = config.Printers.default): T = {
       printer.println(op(using WrappedResult(x)))
       x
     }
-  }
 
-  implicit class genericDeco[T](val x: T) extends AnyVal {
-    def assertingErrorsReported(implicit ctx: Context): T = {
+  extension [T](x: T)
+    def assertingErrorsReported(using Context): T = {
       assert(ctx.reporter.errorsReported)
       x
     }
-    def assertingErrorsReported(msg: => String)(implicit ctx: Context): T = {
+    def assertingErrorsReported(msg: => String)(using Context): T = {
       assert(ctx.reporter.errorsReported, msg)
       x
     }
-  }
 
-  implicit class StringInterpolators(val sc: StringContext) extends AnyVal {
+  extension [T <: AnyRef](xs: ::[T])
+    def derivedCons(x1: T, xs1: List[T]) =
+      if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
+
+  extension (sc: StringContext)
     /** General purpose string formatting */
-    def i(args: Any*)(implicit ctx: Context): String =
+    def i(args: Any*)(using Context): String =
       new StringFormatter(sc).assemble(args)
 
     /** Formatting for error messages: Like `i` but suppress follow-on
      *  error messages after the first one if some of their arguments are "non-sensical".
      */
-    def em(args: Any*)(implicit ctx: Context): String =
+    def em(args: Any*)(using Context): String =
       new ErrorMessageFormatter(sc).assemble(args)
 
     /** Formatting with added explanations: Like `em`, but add explanations to
      *  give more info about type variables and to disambiguate where needed.
      */
-    def ex(args: Any*)(implicit ctx: Context): String =
+    def ex(args: Any*)(using Context): String =
       explained(em(args: _*))
-  }
 
-  implicit class ArrayInterpolator[T <: AnyRef](val arr: Array[T]) extends AnyVal {
+  extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object]], x)
-  }
+
 }
 

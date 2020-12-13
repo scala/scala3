@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 import scala.quoted._
 
@@ -15,7 +16,7 @@ object Even {
     def fromDigits(digits: String) = evenFromDigits(digits)
   }
 
-  given EvenFromDigits {
+  given EvenFromDigits with {
     override inline def fromDigits(digits: String) = ${
       EvenFromDigitsImpl('digits)
     }

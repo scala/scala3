@@ -1,4 +1,5 @@
 package test
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 import scala.quoted._
 
@@ -34,7 +35,7 @@ object BigFloat extends App {
     def fromDigits(digits: String) = apply(digits)
   }
 
-  given BigFloatFromDigits {
+  given BigFloatFromDigits with {
     override inline def fromDigits(digits: String) = ${
       BigFloatFromDigitsImpl('digits)
     }
@@ -42,8 +43,8 @@ object BigFloat extends App {
 
   // Should be in StdLib:
 
-  given Liftable[BigInt] {
-    def toExpr(x: BigInt) =
+  given ToExpr[BigInt] with {
+    def apply(x: BigInt)(using Quotes) =
       '{BigInt(${Expr(x.toString)})}
   }
 }

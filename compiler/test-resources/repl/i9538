@@ -1,0 +1,5 @@
+scala>:type
+:type <expression>
+
+scala>:doc
+:doc <expression>

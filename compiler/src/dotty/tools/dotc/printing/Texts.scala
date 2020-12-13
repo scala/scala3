@@ -168,9 +168,9 @@ object Texts {
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)
 
-    implicit class textDeco(text: => Text) {
+    extension (text: => Text)
       def provided(cond: Boolean): Text = if (cond) text else Str("")
-    }
+
   }
 
   case class Str(s: String, lineRange: LineRange = EmptyLineRange) extends Text {

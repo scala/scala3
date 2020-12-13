@@ -143,6 +143,8 @@ object StdNames {
     val QUOTE: N                      = "'"
     val TYPE_QUOTE: N                 = "type_'"
     val TRAIT_SETTER_SEPARATOR: N     = str.TRAIT_SETTER_SEPARATOR
+    val AMBIGUOUS: N                  = "/* ambiguous */"
+    val MISSING: N                    = "/* missing */"
 
     // value types (and AnyRef) are all used as terms as well
     // as (at least) arguments to the @specialize annotation.
@@ -199,6 +201,7 @@ object StdNames {
     final val Null: N                = "Null"
     final val UncheckedNull: N            = "UncheckedNull"
     final val Object: N              = "Object"
+    final val FromJavaObject: N      = "<FromJavaObject>"
     final val Product: N             = "Product"
     final val PartialFunction: N     = "PartialFunction"
     final val PrefixType: N          = "PrefixType"
@@ -239,6 +242,7 @@ object StdNames {
     final val Tree: N                = "Tree"
     final val Type : N               = "Type"
     final val TypeTree: N            = "TypeTree"
+    final val Underlying: N          = "Underlying"
 
     // Annotation simple names, used in Namer
     final val BeanPropertyAnnot: N = "BeanProperty"
@@ -306,6 +310,7 @@ object StdNames {
     final val Nil: N                = "Nil"
     final val Predef: N             = "Predef"
     final val ScalaRunTime: N       = "ScalaRunTime"
+    final val BoxedUnit: N          = "BoxedUnit"
     final val Some: N               = "Some"
 
     val x_0 : N  = "x$0"
@@ -357,6 +362,7 @@ object StdNames {
     val CAP: N                  = "CAP"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
+    val Eql: N                  = "Eql"
     val EnumValue: N            = "EnumValue"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
@@ -381,7 +387,6 @@ object StdNames {
     val Ref: N                  = "Ref"
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
-    val Scala2Compat: N         = "Scala2Compat"
     val Select: N               = "Select"
     val Shape: N                = "Shape"
     val StringContext: N        = "StringContext"
@@ -428,12 +433,14 @@ object StdNames {
     val bundle: N               = "bundle"
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
+    val canEqualAny : N         = "canEqualAny"
     val cbnArg: N               = "<cbn-arg>"
     val checkInitialized: N     = "checkInitialized"
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val clone_ : N              = "clone"
     val common: N               = "common"
+    val compiletime : N         = "compiletime"
     val conforms_ : N           = "$conforms"
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
@@ -441,7 +448,6 @@ object StdNames {
     val definitions: N          = "definitions"
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
-    val dependent: N            = "dependent"
     val derived: N              = "derived"
     val derives: N              = "derives"
     val doubleHash: N           = "doubleHash"
@@ -472,6 +478,7 @@ object StdNames {
     val flagsFromBits : N       = "flagsFromBits"
     val flatMap: N              = "flatMap"
     val foreach: N              = "foreach"
+    val format: N               = "format"
     val fromDigits: N           = "fromDigits"
     val fromProduct: N          = "fromProduct"
     val genericArrayOps: N      = "genericArrayOps"
@@ -534,7 +541,6 @@ object StdNames {
     val notifyAll_ : N          = "notifyAll"
     val notify_ : N             = "notify"
     val null_ : N               = "null"
-    val nullExpr: N             = "nullExpr"
     val ofDim: N                = "ofDim"
     val on: N                   = "on"
     val opaque: N               = "opaque"
@@ -557,6 +563,7 @@ object StdNames {
     val reflect: N              = "reflect"
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
+    val releaseFence : N        = "releaseFence"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
@@ -566,7 +573,6 @@ object StdNames {
     val s: N                    = "s"
     val sameElements: N         = "sameElements"
     val scala : N               = "scala"
-    val scalaShadowing : N      = "scalaShadowing"
     val selectDynamic: N        = "selectDynamic"
     val selectOverloadedMethod: N = "selectOverloadedMethod"
     val selectTerm: N           = "selectTerm"
@@ -578,7 +584,6 @@ object StdNames {
     val setSymbol: N            = "setSymbol"
     val setType: N              = "setType"
     val setTypeSignature: N     = "setTypeSignature"
-    val splice: N               = "$splice"
     val standardInterpolator: N = "standardInterpolator"
     val staticClass : N         = "staticClass"
     val staticModule : N        = "staticModule"
@@ -592,7 +597,6 @@ object StdNames {
     val thisPrefix : N          = "thisPrefix"
     val throw_ : N              = "throw"
     val toArray: N              = "toArray"
-    val toExpr: N               = "toExpr"
     val toList: N               = "toList"
     val toObjectArray : N       = "toObjectArray"
     val toSeq: N                = "toSeq"
@@ -607,13 +611,13 @@ object StdNames {
     val unapply: N              = "unapply"
     val unapplySeq: N           = "unapplySeq"
     val unbox: N                = "unbox"
-    val unitExpr: N             = "unitExpr"
     val universe: N             = "universe"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
+    val fromOrdinal: N          = "fromOrdinal"
     val values: N               = "values"
     val view_ : N               = "view"
     val wait_ : N               = "wait"
@@ -622,6 +626,7 @@ object StdNames {
     val WorksheetWrapper: N     = "WorksheetWrapper"
     val wrap: N                 = "wrap"
     val writeReplace: N         = "writeReplace"
+    val readResolve: N          = "readResolve"
     val zero: N                 = "zero"
     val zip: N                  = "zip"
     val nothingRuntimeClass: N  = "scala.runtime.Nothing$"
@@ -799,7 +804,7 @@ object StdNames {
       case _  => termName("_" + j)
     }
 
-    def localDummyName(clazz: Symbol)(implicit ctx: Context): TermName =
+    def localDummyName(clazz: Symbol)(using Context): TermName =
       termName(str.LOCALDUMMY_PREFIX + clazz.name + ">")
 
     def newBitmapName(bitmapPrefix: TermName, n: Int): TermName = bitmapPrefix ++ n.toString

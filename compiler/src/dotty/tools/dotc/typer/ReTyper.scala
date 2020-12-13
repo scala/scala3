@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
+import Nullables._
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -38,7 +39,7 @@ class ReTyper extends Typer with ReChecking {
 
   override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
     assertTyped(tree)
-    val qual1 = typed(tree.qualifier, AnySelectionProto)(using ctx.retractMode(Mode.Pattern))
+    val qual1 = withoutMode(Mode.Pattern)(typed(tree.qualifier, AnySelectionProto))
     untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
   }
 
@@ -53,13 +54,15 @@ class ReTyper extends Typer with ReChecking {
 
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
     assertTyped(tree)
+
     val tpt1 = checkSimpleKinded(typedType(tree.tpt))
     val expr1 = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
         tree.expr.withType(tpt1.tpe)
       case _ => typed(tree.expr)
     }
-    untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    val result = untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    if ctx.mode.isExpr then result.withNotNullInfo(expr1.notNullInfo) else result
   }
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
@@ -78,11 +81,9 @@ class ReTyper extends Typer with ReChecking {
   }
 
   override def typedUnApply(tree: untpd.UnApply, selType: Type)(using Context): UnApply = {
-    val fun1 = {
+    val fun1 =
       // retract PatternOrTypeBits like in typedExpr
-      val ctx1 = ctx.retractMode(Mode.PatternOrTypeBits)
-      typedUnadapted(tree.fun, AnyFunctionProto)(using ctx1)
-    }
+      withoutMode(Mode.PatternOrTypeBits)(typedUnadapted(tree.fun, AnyFunctionProto))
     val implicits1 = tree.implicits.map(typedExpr(_))
     val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.tpe))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.tpe)
@@ -134,6 +135,9 @@ class ReTyper extends Typer with ReChecking {
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit = ()
+
+  override def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree = tree
+
   override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true

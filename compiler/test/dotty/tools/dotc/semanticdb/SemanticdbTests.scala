@@ -19,7 +19,7 @@ import org.junit.experimental.categories.Category
 
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.semanticdb.Scala3.{given _}
+import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
@@ -36,14 +36,14 @@ class SemanticdbTests:
   val metacExpectFile = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
-  @Test def expectTests: Unit = runExpectTest(updateExpectFiles = false)
+  @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
     val errors = mutable.ArrayBuffer.empty[Path]
     val metacSb: StringBuilder = StringBuilder(5000)
     def collectErrorOrUpdate(expectPath: Path, obtained: String) =
-      if updateExpectFiles
+      if updateExpectFiles then
         Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
         println("updated: " + expectPath)
       else
@@ -76,9 +76,9 @@ class SemanticdbTests:
       |inspect with:
       |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
       |Or else update all expect files with
-      |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
+      |  sbt 'scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
-    if errors.nonEmpty
+    if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
 
   def trimTrailingWhitespace(s: String): String =
@@ -107,7 +107,7 @@ class SemanticdbTests:
     val exitJava = javac.run(null, null, null, javaArgs:_*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
-      "-Ysemanticdb",
+      "-Xsemanticdb",
       "-d", target.toString,
       "-feature",
       "-deprecation",
@@ -148,7 +148,7 @@ object SemanticdbTests:
       )
       val isPrimaryConstructor =
         symtab.get(occ.symbol).exists(_.isPrimary)
-      if !occ.symbol.isPackage && !isPrimaryConstructor
+      if !occ.symbol.isPackage && !isPrimaryConstructor then
         assert(end <= doc.text.length,
           s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
         sb.append(doc.text.substring(offset, end))

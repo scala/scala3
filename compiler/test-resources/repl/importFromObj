@@ -11,11 +11,11 @@ scala> buf += xs
   |        Required: Int
 scala> buf ++= xs
 val res0: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
-scala> import util.foo
-1 | import util.foo
-  |             ^^^
-  |             value foo is not a member of util
-scala> import util.foo.bar
-1 | import util.foo.bar
-  |        ^^^^^^^^
-  |        value foo is not a member of util
+scala> import util.foobar
+1 | import util.foobar
+  |             ^^^^^^
+  |             value foobar is not a member of util
+scala> import util.foobar.bar
+1 | import util.foobar.bar
+  |        ^^^^^^^^^^^
+  |        value foobar is not a member of util

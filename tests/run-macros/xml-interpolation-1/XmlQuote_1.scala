@@ -12,18 +12,18 @@ object XmlQuote {
   }
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])
-          (using qctx: QuoteContext) : Expr[Xml] = {
-    import qctx.tasty._
+          (using Quotes) : Expr[Xml] = {
+    import quotes.reflect._
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {
-      println(tree.showExtractors)
+      println(tree.show(using Printer.TreeStructure))
       println(tree.show)
     }
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
-        val head = x.seal
+        val head = x.asExpr
         val tail = liftListOfAny(xs)
         '{ $head :: $tail }
       case Nil => '{Nil}
@@ -41,19 +41,19 @@ object XmlQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // XmlQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = receiver.unseal.underlyingArgument match {
+    val parts = receiver.asTerm.underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant(value: String)) => value }
+        values.collect { case Literal(StringConstant(value)) => value }
       case tree =>
-        Reporting.error(s"String literal expected, but ${tree.showExtractors} found")
+        report.error(s"String literal expected, but ${tree.show(using Printer.TreeStructure)} found")
         return '{ ??? }
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(args0, _), _) = args.unseal.underlyingArgument
+    val Typed(Repeated(args0, _), _) = args.asTerm.underlyingArgument
 
     val string = parts.mkString("??")
     '{new Xml(${Expr(string)}, ${liftListOfAny(args0)})}

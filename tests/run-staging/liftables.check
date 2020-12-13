@@ -1,0 +1,102 @@
+true
+false
+
+3
+4
+5
+6L
+7.1f
+8.1
+
+'a'
+"string"
+
+scala.Predef.classOf[java.lang.String]
+scala.reflect.ClassTag.apply[java.lang.String](scala.Predef.classOf[java.lang.String])
+
+scala.Array.apply[java.lang.String]("a")(scala.reflect.ClassTag.apply[java.lang.String](scala.Predef.classOf[java.lang.String]))
+scala.Array.apply(true, )
+scala.Array.apply(3, )
+scala.Array.apply(4, )
+scala.Array.apply(5, )
+scala.Array.apply(6L, )
+scala.Array.apply(7.1f, )
+scala.Array.apply(8.1, )
+
+scala.Array.apply[java.lang.String]("b")(scala.reflect.ClassTag.apply[java.lang.String](scala.Predef.classOf[java.lang.String])).asInstanceOf[scala.IArray$package.IArray[java.lang.String]]
+
+1, 2, 3
+scala.Nil
+scala.List.apply[scala.Int](1, 2, 3)
+scala.Predef.Set.apply[scala.Int](1, 2, 3)
+scala.Predef.Map.apply[scala.Int, scala.Int](scala.Tuple2.apply[scala.Int, scala.Int](1, 2), scala.Tuple2.apply[scala.Int, scala.Int](2, 3))
+
+scala.None
+scala.Some.apply[scala.Int](4)
+scala.Some.apply[scala.Int](4)
+
+scala.Left.apply[scala.Int, scala.Nothing](1)
+scala.Right.apply[scala.Nothing, scala.Int](2)
+scala.Right.apply[scala.Int, scala.Int](3)
+
+scala.BigInt.apply(scala.Array.apply(1, -90))
+scala.BigDecimal.apply("422.54")
+
+scala.StringContext.apply("a", "b")
+
+scala.Tuple$package.EmptyTuple
+scala.Tuple1.apply[scala.Int](1)
+scala.Tuple2.apply[scala.Int, scala.Int](1, 2)
+scala.Tuple3.apply[scala.Int, scala.Int, scala.Int](1, 2, 3)
+scala.Tuple4.apply[scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4)
+scala.Tuple5.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5)
+scala.Tuple6.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6)
+scala.Tuple7.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7)
+scala.Tuple8.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8)
+scala.Tuple9.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9)
+scala.Tuple10.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+scala.Tuple11.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+scala.Tuple12.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+scala.Tuple13.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+scala.Tuple14.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+scala.Tuple15.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+scala.Tuple16.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
+scala.Tuple17.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)
+scala.Tuple18.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18)
+scala.Tuple19.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+scala.Tuple20.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
+scala.Tuple21.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21)
+scala.Tuple22.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22)
+{
+  val x$1: scala.Int = 1
+  val Tuple_this: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]] = scala.Tuple22.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23)
+
+  (scala.runtime.Tuple.cons(x$1, Tuple_this).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]])
+}
+{
+  val x$1: scala.Int = 1
+  val Tuple_this: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]] = {
+    val `x$1₂`: scala.Int = 2
+    val `Tuple_this₂`: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]] = scala.Tuple22.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24)
+
+    (scala.runtime.Tuple.cons(`x$1₂`, `Tuple_this₂`).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]])
+  }
+
+  (scala.runtime.Tuple.cons(x$1, Tuple_this).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]])
+}
+{
+  val x$1: scala.Int = 1
+  val Tuple_this: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]] = {
+    val `x$1₂`: scala.Int = 2
+    val `Tuple_this₂`: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]] = {
+      val `x$1₃`: scala.Int = 3
+      val `Tuple_this₃`: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]] = scala.Tuple22.apply[scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int, scala.Int](4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+
+      (scala.runtime.Tuple.cons(`x$1₃`, `Tuple_this₃`).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]])
+    }
+
+    (scala.runtime.Tuple.cons(`x$1₂`, `Tuple_this₂`).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]])
+  }
+
+  (scala.runtime.Tuple.cons(x$1, Tuple_this).asInstanceOf[scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]]]: scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.*:[scala.Int, scala.Tuple$package.EmptyTuple]]]]]]]]]]]]]]]]]]]]]]]]])
+}

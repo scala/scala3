@@ -10,7 +10,9 @@ import dotc.reporting.Reporter
 import dotc.{ Compiler, Driver }
 import dotc.config._
 import dotc.core.Comments.ContextDoc
+import dotc.report
 import staticsite.Site
+import io.AbstractFile
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
  *  tool. It's methods are used by the external scala and java APIs.
@@ -19,20 +21,22 @@ class DocDriver extends Driver {
   import java.util.{ Map => JMap }
   import model.JavaConverters._
 
-  override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+  override def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
     val ctx     = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(ctx)
+    val summary = CompilerCommand.distill(args)(using ctx)
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YcookComments, true)
-    ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(ctx)
-    fromTastySetup(fileNames, ctx)
+    inContext(ctx) {
+      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+      val files = fileNames.map(ctx.getFile)
+      (files, fromTastySetup(files))
+    }
   }
 
-  override def newCompiler(implicit ctx: Context): Compiler = new DocCompiler
+  override def newCompiler(using Context): Compiler = new DocCompiler
 
   override def process(args: Array[String], rootCtx: Context): Reporter = {
     val (filesToDocument, ictx) = setup(args, initCtx.fresh)
@@ -54,9 +58,11 @@ class DocDriver extends Driver {
     val snapshotBaseUrl = s"$baseUrl/$snapshotFolderName"
 
     if (projectName.isEmpty)
-      ctx.error(s"Site project name not set. Use `-project <title>` to set the project name")
-    else if (!siteRoot.exists || !siteRoot.isDirectory)
-      ctx.error(s"Site root does not exist: $siteRoot")
+      report.error(s"Site project name not set. Use `-project <title>` to set the project name")
+    else if (!siteRoot.exists)
+      report.echo(s"Site root (`-siteroot`) does not exist: $siteRoot, no documentation will be generated.")
+    else if (!siteRoot.isDirectory)
+      report.error(s"Site root (`-siteroot`) is not a directory: $siteRoot")
     else {
       def generateSite(outDir: File, baseUrl: String) =
         Site(siteRoot, outDir, projectName, projectVersion, projectUrl, projectLogo, ctx.docbase.packages, baseUrl)

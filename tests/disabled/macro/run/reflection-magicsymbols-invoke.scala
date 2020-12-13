@@ -10,7 +10,7 @@ package scala {
 
 object Test extends App {
   def key(sym: Symbol) = sym + ": " + sym.info
-  def test(tpe: Type, receiver: Any, method: String, args: Any*): Unit = {
+  def test(tpeTypeRepr, receiver: Any, method: String, args: Any*): Unit = {
     def wrap[T](op: => T) =
       try {
         var result = op.asInstanceOf[AnyRef]

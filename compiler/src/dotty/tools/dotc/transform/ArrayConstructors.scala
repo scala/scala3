@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts._
 import Symbols._
 import Types._
 import StdNames._
@@ -24,7 +24,7 @@ class ArrayConstructors extends MiniPhase {
 
   override def phaseName: String = "arrayConstructors"
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = {
+  override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree = {
     def expand(elemType: Type, dims: List[Tree]) =
       tpd.newArray(elemType, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
@@ -34,7 +34,7 @@ class ArrayConstructors extends MiniPhase {
     }
     else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModule.moduleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
       val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree
-      val cs = tp.tpe.widen.classSymbol
+      val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)
           if !TypeErasure.isGeneric(targ.head.tpe) && !ValueClasses.isDerivedValueClass(cs) =>

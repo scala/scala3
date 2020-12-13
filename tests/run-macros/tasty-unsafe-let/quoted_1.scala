@@ -2,18 +2,18 @@ import scala.quoted._
 
 object Macros {
 
-  inline def let[T](rhs: => T)(body: => T => Unit): Unit =
+  inline def let[T](rhs: => T)(inline body: T => Unit): Unit =
     ${ impl('rhs, 'body) }
 
-  private def impl[T](rhs: Expr[T], body: Expr[T => Unit])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  private def impl[T: Type](rhs: Expr[T], body: Expr[T => Unit])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect._
 
-    val rhsTerm = rhs.unseal
+    val rhsTerm = rhs.asTerm
 
-    import qctx.tasty.{let => letTerm}
-    letTerm(rhsTerm) { rhsId =>
-      Expr.betaReduce(body)(rhsId.seal.asInstanceOf[Expr[T]]).unseal // Dangerous uncheked cast!
-    }.seal.cast[Unit]
+    import quotes.reflect._
+    ValDef.let(Symbol.spliceOwner, rhsTerm) { rhsId =>
+      Expr.betaReduce('{$body(${rhsId.asExpr.asInstanceOf[Expr[T]]})}).asTerm // Dangerous uncheked cast!
+    }.asExprOf[Unit]
   }
 
 

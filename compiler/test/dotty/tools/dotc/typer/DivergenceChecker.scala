@@ -33,7 +33,7 @@ class DivergenceCheckerTests extends DottyTest {
 
     checkTypes(source, List(types, elements)) {
       case (List(tpes, elements0), context) =>
-        implicit val ctx = context
+        given Context = context
 
         val List(a, b, n, o, s, t2, i, l) = elements0.map(_.typeConstructor)
         val expectedCoveringSets = List(

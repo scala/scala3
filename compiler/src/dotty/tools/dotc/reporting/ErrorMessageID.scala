@@ -150,7 +150,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     UnknownNamedEnclosingClassOrObjectID,
     IllegalCyclicTypeReferenceID,
     MissingTypeParameterInTypeAppID,
-    UNUSED_ImplicitTypesCanOnlyBeFunctionTypesID,
+    SkolemInInferredID,
     ErasedTypesCanOnlyBeFunctionTypesID,
     CaseClassMissingNonImplicitParamListID,
     EnumerationsShouldNotBeEmptyID,
@@ -164,7 +164,11 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     UnexpectedPatternForSummonFromID,
     AnonymousInstanceCannotBeEmptyID,
     TypeSpliceInValPatternID,
-    ModifierNotAllowedForDefinitionID
+    ModifierNotAllowedForDefinitionID,
+    CannotExtendJavaEnumID,
+    InvalidReferenceInImplicitNotFoundAnnotationID,
+    TraitMayNotDefineNativeMethodID,
+    JavaEnumParentArgsID
 
   def errorNumber = ordinal - 2
 }

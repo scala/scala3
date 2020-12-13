@@ -9,23 +9,14 @@ import java.io.{File => JFile}
 
 import scala.concurrent.duration._
 
-class FromTastyTests extends ParallelTesting {
+class FromTastyTests {
   import TestConfiguration._
   import FromTastyTests._
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Test def posTestFromTasty: Unit = {
     // Can be reproduced with
     // > sbt
-    // > dotc -Ythrough-tasty -Ycheck:all <source>
+    // > scalac -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
@@ -36,8 +27,8 @@ class FromTastyTests extends ParallelTesting {
   @Test def runTestFromTasty: Unit = {
     // Can be reproduced with
     // > sbt
-    // > dotc -Ythrough-tasty -Ycheck:all <source>
-    // > dotr Test
+    // > scalac -Ythrough-tasty -Ycheck:all <source>
+    // > scala Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
     compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
@@ -46,7 +37,19 @@ class FromTastyTests extends ParallelTesting {
   }
 }
 
-object FromTastyTests {
+object FromTastyTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 30.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

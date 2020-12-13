@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core._
-import Contexts._, Symbols._, Decorators._, Comments.{_, given _}
+import Contexts._, Symbols._, Decorators._, Comments.{_, given}
 import ast.tpd
 
 object Docstrings {
@@ -37,7 +37,7 @@ object Docstrings {
               case List(df: tpd.DefDef) =>
                 usecase.typed(df)
               case _ =>
-                ctx.error("`@usecase` was not a valid definition", ctx.source.atSpan(usecase.codePos))
+                report.error("`@usecase` was not a valid definition", ctx.source.atSpan(usecase.codePos))
                 usecase
             }
           }
@@ -56,7 +56,7 @@ object Docstrings {
     newComment
   }
 
-  private def expandComment(sym: Symbol)(implicit ctx: Context, docCtx: ContextDocstrings): Option[Comment] =
+  private def expandComment(sym: Symbol)(using Context)(using docCtx: ContextDocstrings): Option[Comment] =
     if (sym eq NoSymbol) None
     else
       for {

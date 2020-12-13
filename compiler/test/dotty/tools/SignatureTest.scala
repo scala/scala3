@@ -7,7 +7,9 @@ import org.junit.Test
 import dotc.ast.Trees._
 import dotc.core.Decorators._
 import dotc.core.Contexts._
+import dotc.core.Phases._
 import dotc.core.Types._
+import dotc.core.Symbols._
 
 import java.io.File
 import java.nio.file._
@@ -15,12 +17,12 @@ import java.nio.file._
 class SignatureTest:
   @Test def signatureCaching: Unit =
     inCompilerContext(TestConfiguration.basicClasspath, separateRun = true, "case class Foo(value: Unit)") {
-      val (ref, refSig) = ctx.atPhase(ctx.erasurePhase.next) {
-        val cls = ctx.requiredClass("Foo")
+      val (ref, refSig) = atPhase(erasurePhase.next) {
+        val cls = requiredClass("Foo")
         val ref = cls.requiredMethod("value").termRef
         (ref, ref.signature)
       }
-      ctx.atPhase(ctx.typerPhase) {
+      atPhase(typerPhase) {
         // NamedType#signature is always computed before erasure, which ensures
         // that it stays stable and therefore can be cached as long as
         // signatures are guaranteed to be stable before erasure, see the

@@ -1,53 +1,29 @@
 package dotty.tools.dotc.core
 
 import Contexts._
+import Phases.unfusedPhases
 
-/** Periods are the central "clock" of the compiler.
- *  A period consists of a run id and a phase id.
- *  run ids represent compiler runs
- *  phase ids represent compiler phases
- */
-abstract class Periods { thisCtx: Context =>
-  import Periods._
-
-  /** The current phase identifier */
-  def phaseId: Int = period.phaseId
-
-  /** The current run identifier */
-  def runId: Int = period.runId
-
-  /** Execute `op` at given period */
-  def atPeriod[T](pd: Period)(op: Context => T): T =
-    op(thisCtx.fresh.setPeriod(pd))
-
-  /** Execute `op` at given phase id */
-  inline def atPhase[T](pid: PhaseId)(inline op: Context ?=> T): T =
-    op(using thisCtx.withPhase(pid))
+object Periods {
 
   /** The period containing the current period where denotations do not change.
    *  We compute this by taking as first phase the first phase less or equal to
    *  the current phase that has the same "nextTransformerId". As last phase
    *  we take the next transformer id following the current phase.
    */
-  def stablePeriod: Period = {
-    var first = phaseId
-    val nxTrans = thisCtx.base.nextDenotTransformerId(first)
-    while (first - 1 > NoPhaseId && (thisCtx.base.nextDenotTransformerId(first - 1) == nxTrans))
+  def currentStablePeriod(using Context): Period =
+    var first = ctx.phaseId
+    val nxTrans = ctx.base.nextDenotTransformerId(first)
+    while (first - 1 > NoPhaseId && (ctx.base.nextDenotTransformerId(first - 1) == nxTrans))
       first -= 1
-    Period(runId, first, nxTrans)
-  }
+    Period(ctx.runId, first, nxTrans)
 
   /** Are all base types in the current period guaranteed to be the same as in period `p`? */
-  def hasSameBaseTypesAs(p: Period): Boolean = {
-    val period = thisCtx.period
+  def currentHasSameBaseTypesAs(p: Period)(using Context): Boolean =
+    val period = ctx.period
     period == p ||
     period.runId == p.runId &&
-      thisCtx.phases(period.phaseId).sameBaseTypesStartId ==
-      thisCtx.phases(p.phaseId).sameBaseTypesStartId
-  }
-}
-
-object Periods {
+      unfusedPhases(period.phaseId).sameBaseTypesStartId ==
+      unfusedPhases(p.phaseId).sameBaseTypesStartId
 
   /** A period is a contiguous sequence of phase ids in some run.
    *  It is coded as follows:

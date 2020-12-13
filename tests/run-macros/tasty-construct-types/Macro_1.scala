@@ -1,4 +1,3 @@
-import tasty._
 import quoted._
 
 object Macros {
@@ -11,47 +10,51 @@ object Macros {
 
   class TestAnnotation extends scala.annotation.Annotation
 
-  def theTestBlockImpl(using qctx : QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
+    import quotes.reflect._
 
-    val x1T = ConstantType(Constant(1))
-    val x2T = OrType(ConstantType(Constant(1)), ConstantType(Constant(2)))
-    val x3T = AndType(ConstantType(Constant(3)), typeOf[Any])
+    val x1T = ConstantType(IntConstant(1))
+    val x2T = OrType(ConstantType(IntConstant(1)), ConstantType(IntConstant(2)))
+    val x3T = AndType(ConstantType(IntConstant(3)), TypeRepr.of[Any])
     val x4T =
       TypeLambda(
         List("A","B"),
-        _ => List(TypeBounds(typeOf[Nothing], typeOf[Any]), TypeBounds(typeOf[Nothing], typeOf[Any])),
+        _ => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any]), TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
         (tl : TypeLambda) => tl.param(1))
     val x5T =
       Refinement(
-        typeOf[RefineMe],
+        TypeRepr.of[RefineMe],
         "T",
-        TypeBounds(typeOf[Int], typeOf[Int]))
-    val x6T = AppliedType(Type(classOf[List[_]]), List(typeOf[Int]))
-    val x7T = AnnotatedType(ConstantType(Constant(7)), '{ new TestAnnotation }.unseal)
+        TypeBounds(TypeRepr.of[Int], TypeRepr.of[Int]))
+    val x6T = TypeRepr.of[List].appliedTo(List(TypeRepr.of[Int]))
+    val x7T = AnnotatedType(ConstantType(IntConstant(7)), '{ new TestAnnotation }.asTerm)
     val x8T =
       MatchType(
-        typeOf[Int],
-        typeOf[List[8]],
+        TypeRepr.of[Int],
+        TypeRepr.of[List[8]],
         List(
           TypeLambda(
             List("t"),
-            _ => List(TypeBounds(typeOf[Nothing], typeOf[Any])),
-            tl => AppliedType(MatchCaseType, List(AppliedType(Type(classOf[List[_]]), List(tl.param(0))), tl.param(0)))))
+            _ => List(TypeBounds(TypeRepr.of[Nothing], TypeRepr.of[Any])),
+            tl => MatchCase(TypeRepr.of[List].appliedTo(tl.param(0)), tl.param(0))),
+          MatchCase(TypeRepr.of[Int], TypeRepr.of[Int])
+        )
       )
 
-    assert(x1T =:= '[1].unseal.tpe)
-    assert(x2T =:= '[1|2].unseal.tpe)
-    assert(x3T =:= '[3&Any].unseal.tpe)
-    assert(x4T =:= '[[A,B] =>> B].unseal.tpe)
-    assert(x5T =:= '[RefineMe { type T = Int }].unseal.tpe)
-    assert(x6T =:= '[List[Int]].unseal.tpe)
-    assert(x7T =:= '[7 @TestAnnotation].unseal.tpe)
-    assert(x8T =:= '[List[8] match { case List[t] => t }].unseal.tpe)
+    assert(x1T =:= TypeRepr.of[1])
+    assert(x2T =:= TypeRepr.of(using Type.of[1|2]))
+    assert(x3T =:= TypeRepr.of[3&Any])
+    assert(x4T =:= TypeRepr.of[[A,B] =>> B])
+    assert(x5T =:= TypeRepr.of[RefineMe { type T = Int }])
+    assert(x6T =:= TypeRepr.of[List[Int]])
+    assert(x7T =:= TypeRepr.of[7 @TestAnnotation])
+    assert(x8T =:= TypeRepr.of[List[8] match {
+      case List[t] => t
+      case Int => Int
+    }])
 
     '{
       println("Ok")
     }
   }
 }
-

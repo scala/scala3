@@ -5,20 +5,20 @@ object Macros {
 
   inline def simplified[T <: Tuple]: Seq[String] = ${ impl[T] }
 
-  def impl[T: Type](using qctx: QuoteContext) : Expr[Seq[String]] = {
-    import qctx.tasty._
+  def impl[T: Type](using Quotes) : Expr[Seq[String]] = {
+    import quotes.reflect._
 
-    def unpackTuple(tp: Type): List[Type] = {
+    def unpackTuple(tp: TypeRepr): List[TypeRepr] = {
       @tailrec
-      def loop(tp: Type, acc: List[Type]): List[Type] = tp.dealias.simplified match {
-        case AppliedType(_, List(hd: Type, tl: Type)) =>
+      def loop(tp: TypeRepr, acc: List[TypeRepr]): List[TypeRepr] = tp.dealias.simplified match {
+        case AppliedType(_, List(hd: TypeRepr, tl: TypeRepr)) =>
           loop(tl, hd.dealias.simplified :: acc)
         case other => acc
       }
       loop(tp, Nil).reverse
     }
 
-    val tps = unpackTuple(typeOf[T])
+    val tps = unpackTuple(TypeRepr.of[T])
     Varargs(tps.map(x => Expr(x.show)))
   }
 }

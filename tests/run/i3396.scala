@@ -1,4 +1,4 @@
-import implicits.Not
+import scala.util.NotGiven
 
 object Test {
 
@@ -9,7 +9,7 @@ object Test {
     implicit def fooDefault[A]: Foo[A] = Foo(true)
   }
   object Foo extends FooLowPrio {
-    implicit def fooNotTagged[A](implicit ev: Not[Tagged[A]]): Foo[A] = Foo(false)
+    implicit def fooNotTagged[A](implicit ev: NotGiven[Tagged[A]]): Foo[A] = Foo(false)
   }
 
 

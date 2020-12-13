@@ -4,13 +4,13 @@ package reporting
 
 import java.lang.System.{lineSeparator => EOL}
 
-import core.Contexts.Context
+import core.Contexts._
 import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic._
-import util.SourcePosition
-import scala.internal.Chars.{ LF, CR, FF, SU }
+import util.{ SourcePosition, NoSourcePosition }
+import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
 import scala.collection.mutable
@@ -30,7 +30,7 @@ trait MessageRendering {
     *
     * @return a list of strings with inline locations
     */
-  def outer(pos: SourcePosition, prefix: String)(implicit ctx: Context): List[String] =
+  def outer(pos: SourcePosition, prefix: String)(using Context): List[String] =
     if (pos.outer.exists)
        i"$prefix| This location contains code that was inlined from $pos" ::
        outer(pos.outer, prefix)
@@ -41,7 +41,7 @@ trait MessageRendering {
     *
     * @return (lines before error, lines after error, line numbers offset)
     */
-  def sourceLines(pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): (List[String], List[String], Int) = {
+  def sourceLines(pos: SourcePosition, diagnosticLevel: String)(using Context): (List[String], List[String], Int) = {
     assert(pos.exists && pos.source.file.exists)
     var maxLen = Int.MinValue
     def render(offsetAndLine: (Int, String)): String = {
@@ -78,7 +78,7 @@ trait MessageRendering {
   }
 
   /** The column markers aligned under the error */
-  def columnMarker(pos: SourcePosition, offset: Int, diagnosticLevel: String)(implicit ctx: Context): String = {
+  def columnMarker(pos: SourcePosition, offset: Int, diagnosticLevel: String)(using Context): String = {
     val prefix = " " * (offset - 1)
     val padding = pos.startColumnPadding
     val carets = hl(diagnosticLevel) {
@@ -93,7 +93,7 @@ trait MessageRendering {
     *
     * @return aligned error message
     */
-  def errorMsg(pos: SourcePosition, msg: String, offset: Int)(implicit ctx: Context): String = {
+  def errorMsg(pos: SourcePosition, msg: String, offset: Int)(using Context): String = {
     val padding = msg.linesIterator.foldLeft(pos.startColumnPadding) { (pad, line) =>
       val lineLength = stripColor(line).length
       val maxPad = math.max(0, ctx.settings.pageWidth.value - offset - lineLength) - offset
@@ -111,10 +111,10 @@ trait MessageRendering {
     *
     * @return separator containing error location and kind
     */
-  def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String =
-    if (pos.exists) hl(diagnosticLevel)({
+  def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
+    if (pos.source != NoSourcePosition.source) hl(diagnosticLevel)({
       val pos1 = pos.nonInlined
-      val file =
+      val file = if !pos.exists then pos1.source.file.toString else
         s"${pos1.source.file.toString}:${pos1.line + 1}:${pos1.column}"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
@@ -131,7 +131,7 @@ trait MessageRendering {
     }) else ""
 
   /** Explanation rendered under "Explanation" header */
-  def explanation(m: Message)(implicit ctx: Context): String = {
+  def explanation(m: Message)(using Context): String = {
     val sb = new StringBuilder(
       s"""|
           |${Blue("Explanation").show}
@@ -143,11 +143,11 @@ trait MessageRendering {
   }
 
   /** The whole message rendered from `msg` */
-  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(implicit ctx: Context): String = {
+  def messageAndPos(msg: Message, pos: SourcePosition, diagnosticLevel: String)(using Context): String = {
     val sb = mutable.StringBuilder()
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists && pos.source.file.exists) {
+    if (pos.exists) {
       val pos1 = pos.nonInlined
       val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
       val marker = columnMarker(pos1, offset, diagnosticLevel)
@@ -158,7 +158,7 @@ trait MessageRendering {
     sb.toString
   }
 
-  def hl(diagnosticLevel: String)(str: String)(implicit ctx: Context): String = diagnosticLevel match {
+  def hl(diagnosticLevel: String)(str: String)(using Context): String = diagnosticLevel match {
     case "Info" => Blue(str).show
     case "Error" => Red(str).show
     case _ =>

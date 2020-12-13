@@ -14,61 +14,39 @@ import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
 import typer.{FrontEnd, RefChecks}
+import typer.ImportInfo.withRootImports
 import ast.tpd
 
-trait Phases {
-  self: Context =>
-
-  import Phases._
-
-  def phase: Phase = base.phases(period.firstPhaseId)
-
-  def phasesStack: List[Phase] =
-    if ((this eq NoContext) || !phase.exists) Nil
-    else {
-      val rest = outersIterator.dropWhile(_.phase == phase)
-      phase :: (if (rest.hasNext) rest.next().phasesStack else Nil)
-    }
-
-  /** Execute `op` at given phase */
-  inline def atPhase[T](phase: Phase)(inline op: Context ?=> T): T =
-    atPhase(phase.id)(op)
-
-  def atNextPhase[T](op: Context ?=> T): T = atPhase(phase.next)(op)
-
-  def atPhaseNotLaterThan[T](limit: Phase)(op: Context ?=> T): T =
-    if (!limit.exists || phase <= limit) op(using this) else atPhase(limit)(op)
-
-  def isAfterTyper: Boolean = base.isAfterTyper(phase)
-}
-
 object Phases {
+
+  inline def phaseOf(id: PhaseId)(using Context): Phase =
+    ctx.base.phases(id)
 
   trait PhasesBase {
     this: ContextBase =>
 
     // drop NoPhase at beginning
-    def allPhases: Array[Phase] = (if (squashedPhases.nonEmpty) squashedPhases else phases).tail
+    def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
     object NoPhase extends Phase {
       override def exists: Boolean = false
       def phaseName: String = "<no phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation = unsupported("transform")
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
     }
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(implicit ctx: Context): Unit = unsupported("run")
+      def run(using Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(implicit ctx: Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(implicit ctx: Context): SingleDenotation =
+      def run(using Context): Unit = unsupported("run")
+      def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(implicit ctx: Context): Int = id
+      override def lastPhaseId(using Context): Int = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -78,12 +56,12 @@ object Phases {
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
-    final def squashPhases(phasess: List[List[Phase]],
+    final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
                            stopAfterPhases: List[String],
-                           YCheckAfter: List[String])(implicit ctx: Context): List[Phase] = {
-      val squashedPhases = ListBuffer[Phase]()
+                           YCheckAfter: List[String])(using Context): List[Phase] = {
+      val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
       val YCheckAll = YCheckAfter.contains("all")
 
@@ -115,35 +93,35 @@ object Phases {
                       s"${phase.phaseName} requires ${unmetRequirements.mkString(", ")} to be in different TreeTransformer")
 
                   case _ =>
-                    assert(false, s"Only tree transforms can be squashed, ${phase.phaseName} can not be squashed")
+                    assert(false, s"Only tree transforms can be fused, ${phase.phaseName} can not be fused")
                 }
               val superPhase = new MegaPhase(filteredPhaseBlock.asInstanceOf[List[MiniPhase]].toArray)
               prevPhases ++= filteredPhaseBlock.map(_.phaseName)
               superPhase
             }
-            else { // block of a single phase, no squashing
+            else { // block of a single phase, no fusion
               val phase = filteredPhaseBlock.head
               prevPhases += phase.phaseName
               phase
             }
-          squashedPhases += phaseToAdd
+          fusedPhases += phaseToAdd
           val shouldAddYCheck = YCheckAfter.containsPhase(phaseToAdd) || YCheckAll
           if (shouldAddYCheck) {
             val checker = new TreeChecker
-            squashedPhases += checker
+            fusedPhases += checker
           }
         }
 
         i += 1
       }
-      squashedPhases.toList
+      fusedPhases.toList
     }
 
     /** Use the following phases in the order they are given.
      *  The list should never contain NoPhase.
-     *  if squashing is enabled, phases in same subgroup will be squashed to single phase.
+     *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
-    final def usePhases(phasess: List[Phase], squash: Boolean = true): Unit = {
+    final def usePhases(phasess: List[Phase], fuse: Boolean = true): Unit = {
 
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
@@ -206,10 +184,10 @@ object Phases {
         nextDenotTransformerId(i) = lastTransformerId
       }
 
-      if (squash)
-        this.squashedPhases = (NoPhase :: phasess).toArray
+      if (fuse)
+        this.fusedPhases = (NoPhase :: phasess).toArray
       else
-        this.squashedPhases = this.phases
+        this.fusedPhases = this.phases
 
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
@@ -219,7 +197,7 @@ object Phases {
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
-    private var myReifyQuotesPhase: Phase = _
+    private var myPickleQuotesPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
     private var myPatmatPhase: Phase = _
@@ -238,7 +216,7 @@ object Phases {
     final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
-    final def reifyQuotesPhase: Phase = myReifyQuotesPhase
+    final def pickleQuotesPhase: Phase = myPickleQuotesPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
     final def patmatPhase: Phase = myPatmatPhase
@@ -260,7 +238,7 @@ object Phases {
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
-      myReifyQuotesPhase = phaseOfClass(classOf[ReifyQuotes])
+      myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
@@ -285,12 +263,12 @@ object Phases {
      *  instance, it is possible to print trees after a given phase using:
      *
      *  ```bash
-     *  $ ./bin/dotc -Xprint:<phaseNameHere> sourceFile.scala
+     *  $ ./bin/scalac -Xprint:<phaseNameHere> sourceFile.scala
      *  ```
      */
     def phaseName: String
 
-    def isRunnable(implicit ctx: Context): Boolean =
+    def isRunnable(using Context): Boolean =
       !ctx.reporter.hasErrors
         // TODO: This might test an unintended condition.
         // To find out whether any errors have been reported during this
@@ -309,13 +287,13 @@ object Phases {
     def runsAfter: Set[String] = Set.empty
 
     /** @pre `isRunnable` returns true */
-    def run(implicit ctx: Context): Unit
+    def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
-    def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
+    def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
       units.map { unit =>
-        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
-        run(unitCtx)
+        val unitCtx = ctx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        run(using unitCtx)
         unitCtx.compilationUnit
       }
 
@@ -326,12 +304,12 @@ object Phases {
 
     /** Check what the phase achieves, to be called at any point after it is finished.
      */
-    def checkPostCondition(tree: tpd.Tree)(implicit ctx: Context): Unit = ()
+    def checkPostCondition(tree: tpd.Tree)(using Context): Unit = ()
 
     /** Is this phase the standard typerphase? True for FrontEnd, but
      *  not for other first phases (such as FromTasty). The predicate
      *  is tested in some places that perform checks and corrections. It's
-     *  different from isAfterTyper (and cheaper to test).
+     *  different from ctx.isAfterTyper (and cheaper to test).
      */
     def isTyper: Boolean = false
 
@@ -344,7 +322,7 @@ object Phases {
     /** Can this transform change the base types of a type? */
     def changesBaseTypes: Boolean = changesParents
 
-    def isEnabled(implicit ctx: Context): Boolean = true
+    def isEnabled(using Context): Boolean = true
 
     def exists: Boolean = true
 
@@ -420,10 +398,28 @@ object Phases {
     override def toString: String = phaseName
   }
 
+  def typerPhase(using Context): Phase                  = ctx.base.typerPhase
+  def postTyperPhase(using Context): Phase              = ctx.base.postTyperPhase
+  def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
+  def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
+  def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
+  def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
+  def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase
+  def explicitOuterPhase(using Context): Phase          = ctx.base.explicitOuterPhase
+  def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
+  def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
+  def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
+  def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
+  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
+
+  def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
+
   /** Replace all instances of `oldPhaseClass` in `current` phases
    *  by the result of `newPhases` applied to the old phase.
    */
-  def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
+  private def replace(oldPhaseClass: Class[? <: Phase], newPhases: Phase => List[Phase], current: List[List[Phase]]): List[List[Phase]] =
     current.map(_.flatMap(phase =>
       if (oldPhaseClass.isInstance(phase)) newPhases(phase) else phase :: Nil))
 }

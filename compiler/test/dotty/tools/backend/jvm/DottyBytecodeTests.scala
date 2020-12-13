@@ -561,6 +561,93 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  /* Test that vals in traits cause appropriate `releaseFence()` calls to be emitted. */
+
+  private def checkReleaseFence(releaseFenceExpected: Boolean, outputClassName: String, source: String): Unit = {
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName(outputClassName, directory = false)
+      val clsNode = loadClassNode(clsIn.input)
+      val method = getMethod(clsNode, "<init>")
+
+      val hasReleaseFence = instructionsFromMethod(method).exists {
+        case Invoke(_, _, "releaseFence", _, _) => true
+        case _ => false
+      }
+
+      assertEquals(source, releaseFenceExpected, hasReleaseFence)
+    }
+  }
+
+  @Test def testInsertReleaseFence(): Unit = {
+    // An empty trait does not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // A val in a class does not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |}
+        |class Bar extends Foo {
+        |  val x: Int = 5
+        |}
+      """.stripMargin)
+
+    // A val in a trait causes a releaseFence.
+    checkReleaseFence(true, "Bar.class",
+      """trait Foo {
+        |  val x: Int = 5
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // The presence of a var in the trait does not invalidate the need for a releaseFence.
+    // Also, indirect mixin.
+    checkReleaseFence(true, "Bar.class",
+      """trait Parent {
+        |  val x: Int = 5
+        |  var y: Int = 6
+        |}
+        |trait Foo extends Parent
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // The presence of a var in the class does not invalidate the need for a releaseFence.
+    checkReleaseFence(true, "Bar.class",
+      """trait Foo {
+        |  val x: Int = 5
+        |}
+        |class Bar extends Foo {
+        |  var y: Int = 6
+        |}
+      """.stripMargin)
+
+    // When inheriting trait vals through a superclass, no releaseFence is inserted.
+    checkReleaseFence(false, "Bar.class",
+      """trait Parent {
+        |  val x: Int = 5
+        |  var y: Int = 6
+        |}
+        |class Foo extends Parent // releaseFence in Foo, but not in Bar
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // Various other stuff that do not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |  var w: Int = 1
+        |  final val x = 2
+        |  def y: Int = 3
+        |  lazy val z: Int = 4
+        |
+        |  def add(a: Int, b: Int): Int = a + b
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+  }
+
   /* Test that objects compile to *final* classes. */
 
   private def checkFinalClass(outputClassName: String, source: String) = {
@@ -856,8 +943,7 @@ class TestBCode extends DottyBytecodeTest {
     checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
       val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)
       val c2 = loadClassNode(dir.lookupName("C2.class", directory = false).input)
-      // Scala 2 uses "invokestatic T.clone$" here, see https://github.com/lampepfl/dotty/issues/5928
-      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESPECIAL, "T", "clone", "()Ljava/lang/Object;", true), Op(ARETURN)))
+      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
       assertInvoke(getMethod(c1, "f2"), "T", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
@@ -938,13 +1024,84 @@ class TestBCode extends DottyBytecodeTest {
         |
         |}
       """.stripMargin
-    checkBCode(List(code)) { dir =>
+    checkBCode(code) { dir =>
       val c = loadClassNode(dir.lookupName("C.class", directory = false).input)
 
       assertInvoke(getMethod(c, "f1"), "[Ljava/lang/String;", "clone") // array descriptor as receiver
       assertInvoke(getMethod(c, "f2"), "java/lang/Object", "hashCode") // object receiver
       assertInvoke(getMethod(c, "f3"), "java/lang/Object", "hashCode")
       assertInvoke(getMethod(c, "f4"), "java/lang/Object", "toString")
+    }
+  }
+
+  @Test
+  def deprecation(): Unit = {
+    val code =
+      """@deprecated
+        |class Test {
+        |  @deprecated
+        |  val v = 0
+        |
+        |  @deprecated
+        |  var x = 0
+        |
+        |  @deprecated("do not use this function!")
+        |  def f(): Unit = ()
+        |}
+      """.stripMargin
+
+    checkBCode(code) { dir =>
+      val c = loadClassNode(dir.lookupName("Test.class", directory = false).input)
+      assert((c.access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "f").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "v").access & Opcodes.ACC_DEPRECATED) != 0)
+
+      assert((getField(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x").access & Opcodes.ACC_DEPRECATED) != 0)
+      assert((getMethod(c, "x_$eq").access & Opcodes.ACC_DEPRECATED) != 0)
+    }
+  }
+
+  @Test def vcElideAllocations = {
+    val source =
+      s"""class ApproxState(val bits: Int) extends AnyVal
+         |class Foo {
+         |  val FreshApprox: ApproxState = new ApproxState(4)
+         |  var approx: ApproxState = FreshApprox
+         |  def meth1: Boolean = approx == FreshApprox
+         |  def meth2: Boolean = (new ApproxState(4): ApproxState) == FreshApprox
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+      val meth1      = getMethod(clsNode, "meth1")
+      val meth2      = getMethod(clsNode, "meth2")
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
+
+      // No allocations of ApproxState
+
+      assertSameCode(instructions1.filterNot(isFrameLine), List(
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "approx", "()I", false),
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
+        Jump(IF_ICMPNE, Label(7)), Op(ICONST_1),
+        Jump(GOTO, Label(10)),
+        Label(7), Op(ICONST_0),
+        Label(10), Op(IRETURN)))
+
+      assertSameCode(instructions2.filterNot(isFrameLine), List(
+        Op(ICONST_4),
+        VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
+        Jump(IF_ICMPNE, Label(6)), Op(ICONST_1),
+        Jump(GOTO, Label(9)),
+        Label(6), Op(ICONST_0),
+        Label(9), Op(IRETURN)))
     }
   }
 }

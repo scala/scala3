@@ -19,6 +19,8 @@ import NameOps._
 import Names._
 import StdNames._
 
+import dotty.tools.dotc.transform.sjs.JSSymUtils._
+
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
@@ -28,7 +30,6 @@ import org.scalajs.ir.UTF8String
 
 import ScopedVar.withScopedVars
 import JSDefinitions._
-import JSInterop._
 
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
@@ -43,8 +44,24 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  */
 object JSEncoding {
 
-  private val ScalaNothingClassName = ClassName("scala.Nothing")
-  private val ScalaNullClassName = ClassName("scala.Null")
+  /** Name of the capture param storing the JS super class.
+   *
+   *  This is used by the dispatchers of exposed JS methods and properties of
+   *  nested JS classes when they need to perform a super call. Other super
+   *  calls (in the actual bodies of the methods, not in the dispatchers) do
+   *  not use this value, since they are implemented as static methods that do
+   *  not have access to it. Instead, they get the JS super class value through
+   *  the magic method inserted by `ExplicitLocalJS`, leveraging `lambdalift`
+   *  to ensure that it is properly captured.
+   *
+   *  Using this identifier is only allowed if it was reserved in the current
+   *  local name scope using [[reserveLocalName]]. Otherwise, this name can
+   *  clash with another local identifier.
+   */
+  final val JSSuperClassParamName = LocalName("superClass$")
+
+  private val ScalaRuntimeNothingClassName = ClassName("scala.runtime.Nothing$")
+  private val ScalaRuntimeNullClassName = ClassName("scala.runtime.Null$")
 
   // Fresh local name generator ----------------------------------------------
 
@@ -56,6 +73,12 @@ object JSEncoding {
     private val usedLabelNames = mutable.Set.empty[LabelName]
     private val labelSymbolNames = mutable.Map.empty[Symbol, LabelName]
     private var returnLabelName: Option[LabelName] = None
+
+    def reserveLocalName(name: LocalName): Unit = {
+      require(usedLocalNames.isEmpty,
+          s"Trying to reserve the name '$name' but names have already been allocated")
+      usedLocalNames += name
+    }
 
     private def freshNameGeneric[N <: ir.Names.Name](base: N, usedNamesSet: mutable.Set[N])(
         withSuffix: (N, String) => N): N = {
@@ -88,7 +111,7 @@ object JSEncoding {
     def freshLocalIdent(base: TermName)(implicit pos: ir.Position): js.LocalIdent =
       freshLocalIdent(base.mangledString)
 
-    def localSymbolName(sym: Symbol)(implicit ctx: Context): LocalName = {
+    def localSymbolName(sym: Symbol)(using Context): LocalName = {
       localSymbolNames.getOrElseUpdate(sym, {
         /* The emitter does not like local variables that start with a '$',
          * because it needs to encode them not to clash with emitter-generated
@@ -120,7 +143,7 @@ object JSEncoding {
     def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
       js.LabelIdent(freshLabelName(base))
 
-    def labelSymbolName(sym: Symbol)(implicit ctx: Context): LabelName =
+    def labelSymbolName(sym: Symbol)(using Context): LabelName =
       labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.javaSimpleName))
 
     def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
@@ -154,16 +177,19 @@ object JSEncoding {
     js.LabelIdent(localNames.labelSymbolName(sym))
   }
 
-  def encodeFieldSym(sym: Symbol)(
-      implicit ctx: Context, pos: ir.Position): js.FieldIdent = {
-    require(sym.owner.isClass && sym.isTerm && !sym.is(Flags.Method) && !sym.is(Flags.Module),
+  def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
+    js.FieldIdent(FieldName(encodeFieldSymAsString(sym)))
+
+  def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
+    js.StringLiteral(encodeFieldSymAsString(sym))
+
+  private def encodeFieldSymAsString(sym: Symbol)(using Context): String = {
+    require(sym.owner.isClass && sym.isTerm && !sym.isOneOf(Method | Module),
         "encodeFieldSym called with non-field symbol: " + sym)
 
     val name0 = sym.javaSimpleName
-    val name =
-      if (name0.charAt(name0.length()-1) != ' ') name0
-      else name0.substring(0, name0.length()-1)
-    js.FieldIdent(FieldName(name))
+    if (name0.charAt(name0.length() - 1) != ' ') name0
+    else name0.substring(0, name0.length() - 1)
   }
 
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(
@@ -174,7 +200,7 @@ object JSEncoding {
 
     val paramTypeRefs0 = tpe.firstParamTypes.map(paramOrResultTypeRef(_))
 
-    val hasExplicitThisParameter = isScalaJSDefinedJSClass(sym.owner)
+    val hasExplicitThisParameter = !sym.is(JavaStatic) && sym.owner.isNonNativeJSClass
     val paramTypeRefs =
       if (!hasExplicitThisParameter) paramTypeRefs0
       else encodeClassRef(sym.owner) :: paramTypeRefs0
@@ -206,13 +232,8 @@ object JSEncoding {
   }
 
   /** Computes the type ref for a type, to be used in a method signature. */
-  private def paramOrResultTypeRef(tpe: Type)(implicit ctx: Context): jstpe.TypeRef = {
-    toTypeRef(tpe) match {
-      case jstpe.ClassRef(ScalaNullClassName)    => jstpe.NullRef
-      case jstpe.ClassRef(ScalaNothingClassName) => jstpe.NothingRef
-      case otherTypeRef                          => otherTypeRef
-    }
-  }
+  private def paramOrResultTypeRef(tpe: Type)(using Context): jstpe.TypeRef =
+    toParamOrResultTypeRef(toTypeRef(tpe))
 
   def encodeLocalSym(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position, localNames: LocalNameGenerator): js.LocalIdent = {
@@ -221,9 +242,9 @@ object JSEncoding {
     js.LocalIdent(localNames.localSymbolName(sym))
   }
 
-  def encodeClassType(sym: Symbol)(implicit ctx: Context): jstpe.Type = {
+  def encodeClassType(sym: Symbol)(using Context): jstpe.Type = {
     if (sym == defn.ObjectClass) jstpe.AnyType
-    else if (isJSType(sym)) jstpe.AnyType
+    else if (sym.isJSType) jstpe.AnyType
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
@@ -231,37 +252,59 @@ object JSEncoding {
     }
   }
 
-  def encodeClassRef(sym: Symbol)(implicit ctx: Context): jstpe.ClassRef =
+  def encodeClassRef(sym: Symbol)(using Context): jstpe.ClassRef =
     jstpe.ClassRef(encodeClassName(sym))
 
   def encodeClassNameIdent(sym: Symbol)(
       implicit ctx: Context, pos: ir.Position): js.ClassIdent =
     js.ClassIdent(encodeClassName(sym))
 
-  def encodeClassName(sym: Symbol)(implicit ctx: Context): ClassName = {
+  def encodeClassName(sym: Symbol)(using Context): ClassName = {
     val sym1 =
       if (sym.isAllOf(ModuleClass | JavaDefined)) sym.linkedClass
       else sym
 
-    if (sym1 == defn.BoxedUnitClass) {
-      /* Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
-       * BoxedUnit$ is a JVM artifact.
-       */
+    /* Some rewirings:
+     * - scala.runtime.BoxedUnit to java.lang.Void, as the IR expects.
+     *   BoxedUnit$ is a JVM artifact.
+     * - scala.Nothing to scala.runtime.Nothing$.
+     * - scala.Null to scala.runtime.Null$.
+     */
+    if (sym1 == defn.BoxedUnitClass)
       ir.Names.BoxedUnitClass
-    } else {
+    else if (sym1 == defn.NothingClass)
+      ScalaRuntimeNothingClassName
+    else if (sym1 == defn.NullClass)
+      ScalaRuntimeNullClassName
+    else
       ClassName(sym1.javaClassName)
+  }
+
+  /** Converts a general TypeRef to a TypeRef to be used in a method signature. */
+  def toParamOrResultTypeRef(typeRef: jstpe.TypeRef): jstpe.TypeRef = {
+    typeRef match {
+      case jstpe.ClassRef(ScalaRuntimeNullClassName)    => jstpe.NullRef
+      case jstpe.ClassRef(ScalaRuntimeNothingClassName) => jstpe.NothingRef
+      case _                                            => typeRef
     }
   }
 
-  def toIRType(tp: Type)(implicit ctx: Context): jstpe.Type = {
+  def toIRTypeAndTypeRef(tp: Type)(using Context): (jstpe.Type, jstpe.TypeRef) = {
     val typeRefInternal = toTypeRefInternal(tp)
+    (toIRTypeInternal(typeRefInternal), typeRefInternal._1)
+  }
+
+  def toIRType(tp: Type)(using Context): jstpe.Type =
+    toIRTypeInternal(toTypeRefInternal(tp))
+
+  private def toIRTypeInternal(typeRefInternal: (jstpe.TypeRef, Symbol))(using Context): jstpe.Type = {
     typeRefInternal._1 match {
       case jstpe.PrimRef(irTpe) =>
         irTpe
 
       case typeRef: jstpe.ClassRef =>
         val sym = typeRefInternal._2
-        if (sym == defn.ObjectClass || isJSType(sym))
+        if (sym == defn.ObjectClass || sym.isJSType)
           jstpe.AnyType
         else if (sym == defn.NothingClass)
           jstpe.NothingType
@@ -275,10 +318,10 @@ object JSEncoding {
     }
   }
 
-  def toTypeRef(tp: Type)(implicit ctx: Context): jstpe.TypeRef =
+  def toTypeRef(tp: Type)(using Context): jstpe.TypeRef =
     toTypeRefInternal(tp)._1
 
-  private def toTypeRefInternal(tp: Type)(implicit ctx: Context): (jstpe.TypeRef, Symbol) = {
+  private def toTypeRefInternal(tp: Type)(using Context): (jstpe.TypeRef, Symbol) = {
     def primitiveOrClassToTypeRef(sym: Symbol): (jstpe.TypeRef, Symbol) = {
       assert(sym.isClass, sym)
       //assert(sym != defn.ArrayClass || isCompilingArray, sym)
@@ -343,7 +386,7 @@ object JSEncoding {
    *  This method returns `UnitType` for constructor methods, and otherwise
    *  `sym.info.resultType`.
    */
-  def patchedResultType(sym: Symbol)(implicit ctx: Context): Type =
+  def patchedResultType(sym: Symbol)(using Context): Type =
     if (sym.isConstructor) defn.UnitType
     else sym.info.resultType
 
@@ -355,13 +398,13 @@ object JSEncoding {
     else OriginalName(originalName)
   }
 
-  def originalNameOfField(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfField(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.name)
 
-  def originalNameOfMethod(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfMethod(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.name)
 
-  def originalNameOfClass(sym: Symbol)(implicit ctx: Context): OriginalName =
+  def originalNameOfClass(sym: Symbol)(using Context): OriginalName =
     originalNameOf(sym.fullName)
 
   private def originalNameOf(name: Name): OriginalName = {

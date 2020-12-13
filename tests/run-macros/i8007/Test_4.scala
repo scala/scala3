@@ -10,9 +10,14 @@ enum Opt[+T] {
   case Nn
 }
 
+enum OptInv[+T] {
+  case Sm[T](t: T) extends OptInv[T]
+  case Nn
+}
+
 @main def Test() = {
   import Opt._
-  import Eq.{given _, _}
+  import Eq.{given, _}
 
   val t1 = test1(Person("Test", 23))
   println(t1)
@@ -32,6 +37,10 @@ enum Opt[+T] {
 
   val t5 = Sm(23) === Sm(23)
   println(t5) // true
+  println
+
+  val t5_2 = OptInv.Sm(23) === OptInv.Sm(23)
+  println(t5_2) // true
   println
 
   val t6 = Sm(Person("Test", 23)) === Sm(Person("Test", 23))

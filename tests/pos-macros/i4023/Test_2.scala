@@ -1,3 +1,3 @@
-def test(using quoted.QuoteContext) = {
+def test(using quoted.Quotes) = {
   Macro.ff(3)
 }

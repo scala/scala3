@@ -3,7 +3,7 @@ package transform
 
 import core._
 import DenotTransformers.SymTransformer
-import Contexts.{Context, FreshContext}
+import Contexts._
 import Flags._
 import SymDenotations.SymDenotation
 import collection.mutable
@@ -23,29 +23,29 @@ class Flatten extends MiniPhase with SymTransformer {
   override def changesMembers: Boolean = true // the phase removes inner classes
 
   private var LiftedDefs: Store.Location[mutable.ListBuffer[Tree]] = _
-  private def liftedDefs(implicit ctx: Context) = ctx.store(LiftedDefs)
+  private def liftedDefs(using Context) = ctx.store(LiftedDefs)
 
   override def initContext(ctx: FreshContext): Unit =
     LiftedDefs = ctx.addLocation[mutable.ListBuffer[Tree]](null)
 
-  def transformSym(ref: SymDenotation)(implicit ctx: Context): SymDenotation =
+  def transformSym(ref: SymDenotation)(using Context): SymDenotation =
     if (ref.isClass && !ref.is(Package) && !ref.owner.is(Package))
       ref.copySymDenotation(
         name = ref.flatName,
         owner = ref.enclosingPackageClass)
     else ref
 
-  override def prepareForPackageDef(tree: PackageDef)(implicit ctx: Context): FreshContext =
+  override def prepareForPackageDef(tree: PackageDef)(using Context): FreshContext =
     ctx.fresh.updateStore(LiftedDefs, new mutable.ListBuffer[Tree])
 
-  private def liftIfNested(tree: Tree)(implicit ctx: Context) =
+  private def liftIfNested(tree: Tree)(using Context) =
     if (ctx.owner.is(Package)) tree
     else {
       transformFollowing(tree).foreachInThicket(liftedDefs += _)
       EmptyTree
     }
 
-  override def transformStats(stats: List[Tree])(implicit ctx: Context): List[Tree] =
+  override def transformStats(stats: List[Tree])(using Context): List[Tree] =
     if (ctx.owner.is(Package)) {
       val liftedStats = stats ++ liftedDefs
       liftedDefs.clear()
@@ -53,6 +53,6 @@ class Flatten extends MiniPhase with SymTransformer {
     }
     else stats
 
-  override def transformTypeDef(tree: TypeDef)(implicit ctx: Context): Tree =
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree =
     liftIfNested(tree)
 }

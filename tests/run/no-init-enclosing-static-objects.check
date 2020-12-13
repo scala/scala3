@@ -1,0 +1,11 @@
+InnerObject constructor
+42
+InnerClass constructor
+5
+42
+InnerClass constructor
+5
+getEnclosing2()
+Enclosing2 constructor
+Enclosing2.InnerObject constructor
+65

@@ -1,7 +1,8 @@
 package dotty.tools.backend.jvm
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Flags.Trait
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -21,7 +22,7 @@ class CollectSuperCalls extends MiniPhase {
 
   def phaseName: String = "collectSuperCalls"
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree = {
+  override def transformSelect(tree: Select)(using Context): Tree = {
     tree.qualifier match {
       case sup: Super =>
         if (tree.symbol.owner.is(Trait))
@@ -31,8 +32,8 @@ class CollectSuperCalls extends MiniPhase {
     tree
   }
 
-  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(implicit ctx: Context) = {
-    ctx.genBCodePhase match {
+  private def registerSuperCall(sym: ClassSymbol, calls: ClassSymbol)(using Context) = {
+    genBCodePhase match {
       case genBCodePhase: GenBCode =>
         genBCodePhase.registerSuperCall(sym, calls)
       case _ =>

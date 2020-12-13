@@ -4,7 +4,7 @@ Any
 AnyVal
 Object
 AnyRef
-Any
+Null
 Nothing
 Unit
 Byte
@@ -163,10 +163,10 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Long")
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Float")
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Double")
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Boolean")
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any")
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "AnyVal")
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "AnyRef")
-TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing")
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Null")
-TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "String")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Any")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "AnyVal")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "java")), "lang"), "Object")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "java")), "lang"), "Object")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Nothing")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Null")
+TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "java")), "lang"), "String")

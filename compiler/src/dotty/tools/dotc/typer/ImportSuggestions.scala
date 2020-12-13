@@ -13,6 +13,7 @@ import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
+import scala.util.control.NonFatal
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
@@ -58,10 +59,12 @@ trait ImportSuggestions:
     val seen = mutable.Set[TermRef]()
 
     def lookInside(root: Symbol)(using Context): Boolean =
-      if root.is(Package) then root.isTerm && root.isCompleted
-      else !root.name.is(FlatName)
-        && !root.name.lastPart.contains('$')
-        && root.is(ModuleVal, butNot = JavaDefined)
+      explore {
+        if root.is(Package) then root.isTerm && root.isCompleted
+        else !root.name.is(FlatName)
+          && !root.name.lastPart.contains('$')
+          && root.is(ModuleVal, butNot = JavaDefined)
+      }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
       val seenNames = mutable.Set[Name]()
@@ -189,7 +192,7 @@ trait ImportSuggestions:
           def run() =
             println(i"Cancelling test of $ref when making suggestions for error in ${ctx.source}")
             ctx.run.isCancelled = true
-        val span = ctx.owner.sourcePos.span
+        val span = ctx.owner.srcPos.span
         val (expectedType, argument, kind) = pt match
           case ViewProto(argType, resType) =>
             (resType,
@@ -216,17 +219,15 @@ trait ImportSuggestions:
      *  applicable to `argType`.
      */
     def extensionMethod(site: TermRef, name: TermName, argType: Type): Option[TermRef] =
-      site.member(name.toExtensionName)
+      site.member(name)
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
-        .filter(ref =>
-          ref.symbol.isAllOf(ExtensionMethod)
-          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+        .filter(ref => ctx.typer.isApplicableExtensionMethod(ref, argType))
         .headOption
 
     try
       val roots = suggestionRoots
-        .filterNot(root => defn.RootImportTypes.exists(_.symbol == root.symbol))
+        .filterNot(root => defn.rootImportTypes.exists(_.symbol == root.symbol))
           // don't suggest things that are imported by default
 
       def extensionImports = pt match
@@ -245,12 +246,11 @@ trait ImportSuggestions:
         match
           case (Nil, partials) => (extensionImports, partials)
           case givenImports => givenImports
-    catch
-      case ex: Throwable =>
-        if ctx.settings.Ydebug.value then
-          println("caught exception when searching for suggestions")
-          ex.printStackTrace()
-        (Nil, Nil)
+    catch case NonFatal(ex) =>
+      if ctx.settings.Ydebug.value then
+        println("caught exception when searching for suggestions")
+        ex.printStackTrace()
+      (Nil, Nil)
     finally
       timer.cancel()
       reduceTimeBudget(((System.currentTimeMillis() - start) min Int.MaxValue).toInt)
@@ -266,7 +266,7 @@ trait ImportSuggestions:
   /** The `ref` parts of this list of pairs, discarding subsequent elements that
    *  have the same String part. Elements are sorted by their String parts.
    */
-  def (refs: List[(TermRef, String)]).distinctRefs(using Context): List[TermRef] = refs match
+  extension (refs: List[(TermRef, String)]) def distinctRefs(using Context): List[TermRef] = refs match
     case (ref, str) :: refs1 =>
       ref :: refs1.dropWhile(_._2 == str).distinctRefs
     case Nil =>
@@ -276,7 +276,7 @@ trait ImportSuggestions:
    *  `compare` is a partial order. If there's a tie, we take elements
    *  in the order thy appear in the list.
    */
-  def (refs: List[TermRef]).best(n: Int)(using Context): List[TermRef] =
+  extension (refs: List[TermRef]) def best(n: Int)(using Context): List[TermRef] =
     val top = new Array[TermRef](n)
     var filled = 0
     val rest = new mutable.ListBuffer[TermRef]
@@ -317,8 +317,8 @@ trait ImportSuggestions:
       else (headMatches, "make progress towards fixing")
     def importString(ref: TermRef): String =
       val imported =
-        if ref.symbol.isAllOf(ExtensionMethod) then
-          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name.dropExtension}"
+        if ref.symbol.is(ExtensionMethod) then
+          s"${ctx.printer.toTextPrefix(ref.prefix).show}${ref.symbol.name}"
         else
           ctx.printer.toTextRef(ref).show
       s"  import $imported"

@@ -13,19 +13,10 @@ import scala.concurrent.duration._
 import vulpix._
 
 
-class IdempotencyTests extends ParallelTesting {
+class IdempotencyTests {
   import TestConfiguration._
   import IdempotencyTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
@@ -71,7 +62,19 @@ class IdempotencyTests extends ParallelTesting {
 
 }
 
-object IdempotencyTests {
+object IdempotencyTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 30.seconds
+  def numberOfSlaves = 5
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

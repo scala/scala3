@@ -1,0 +1,104 @@
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:10:1 --------------------------------------------------------------
+10 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:13:1 --------------------------------------------------------------
+13 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:16:1 --------------------------------------------------------------
+16 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:19:1 --------------------------------------------------------------
+19 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:22:1 --------------------------------------------------------------
+22 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:25:1 --------------------------------------------------------------
+25 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:30:1 --------------------------------------------------------------
+30 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:33:1 --------------------------------------------------------------
+33 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:36:1 --------------------------------------------------------------
+36 |@JSName("foo") // error
+   |^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:39:1 --------------------------------------------------------------
+39 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:42:1 --------------------------------------------------------------
+42 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:45:1 --------------------------------------------------------------
+45 |@JSName(Sym.sym) // error
+   |^^^^^^^^^^^^^^^^
+   |@JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:51:3 --------------------------------------------------------------
+51 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:54:3 --------------------------------------------------------------
+54 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:57:3 --------------------------------------------------------------
+57 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:60:3 --------------------------------------------------------------
+60 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:63:3 --------------------------------------------------------------
+63 |  @JSName("foo") // error
+   |  ^^^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:71:3 --------------------------------------------------------------
+71 |  @JSName("X") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:75:3 --------------------------------------------------------------
+75 |  @JSName("Y") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:79:3 --------------------------------------------------------------
+79 |  @JSName("a") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:83:3 --------------------------------------------------------------
+83 |  @JSName("b") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:82:2 --------------------------------------------------------------
+82 |  @js.native @JSGlobal("b") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:87:3 --------------------------------------------------------------
+87 |  @JSName("c") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:91:3 --------------------------------------------------------------
+91 |  @JSName("d") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:90:2 --------------------------------------------------------------
+90 |  @js.native @JSGlobal("d") // error
+   |  ^^^^^^^^^^
+   |  @js.native is not allowed on vars, lazy vals and setter defs
+-- Error: tests/neg-scalajs/jsname-wrong-place.scala:95:3 --------------------------------------------------------------
+95 |  @JSName("e") // error
+   |  ^^^^^^^^^^^^
+   |  @JSName can only be used on members of JS types.

@@ -46,14 +46,14 @@ Note that if we need to run the main (in the example below defined in an object 
 compilation we need to make the compiler available to the runtime:
 
 ```shell
-dotc -d out Test.scala
-dotr -with-compiler -classpath out Test
+scalac -d out Test.scala
+scala -with-compiler -classpath out Test
 ```
 
 
 ## Template project
 Using sbt version `1.1.5+`, do:
 ```
-sbt new lampepfl/dotty-tasty-inspector.g8
+sbt new scala/scala3-tasty-inspector.g8
 ```
 in the folder where you want to clone the template.

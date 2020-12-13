@@ -1,11 +1,11 @@
 import scala.quoted._
 
 trait Foo:
-  def mcrImpl1(e: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
+  def mcrImpl1(e: Expr[Any])(using ctx: Quotes): Expr[Any] =
     '{println(s"Hello ${$e}")}
 
 object Foo extends Foo:
-  def mcrImpl2(e: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
+  def mcrImpl2(e: Expr[Any])(using ctx: Quotes): Expr[Any] =
     '{println(s"Hello ${$e}")}
 
 object Bar:

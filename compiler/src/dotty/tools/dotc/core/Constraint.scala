@@ -68,7 +68,7 @@ abstract class Constraint extends Showable {
    *  are not contained in the return bounds.
    *  @pre `param` is not part of the constraint domain.
    */
-  def nonParamBounds(param: TypeParamRef)(implicit ctx: Context): TypeBounds
+  def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds
 
   /** A new constraint which is derived from this constraint by adding
    *  entries for all type parameters of `poly`.
@@ -77,7 +77,7 @@ abstract class Constraint extends Showable {
    *                 satisfiability but will solved to give instances of
    *                 type variables.
    */
-  def add(poly: TypeLambda, tvars: List[TypeVar])(implicit ctx: Context): This
+  def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This
 
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
@@ -88,18 +88,18 @@ abstract class Constraint extends Showable {
    *
    * @pre  `this contains param`.
    */
-  def updateEntry(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def updateEntry(param: TypeParamRef, tp: Type)(using Context): This
 
   /** A constraint that includes the relationship `p1 <: p2`.
    *  `<:` relationships between parameters ("edges") are propagated, but
    *  non-parameter bounds are left alone.
    */
-  def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def addLess(p1: TypeParamRef, p2: TypeParamRef)(using Context): This
 
   /** A constraint resulting from adding p2 = p1 to this constraint, and at the same
    *  time transferring all bounds of p2 to p1
    */
-  def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit ctx: Context): This
+  def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): This
 
   /** A new constraint which is derived from this constraint by removing
    *  the type parameter `param` from the domain and replacing all top-level occurrences
@@ -107,7 +107,7 @@ abstract class Constraint extends Showable {
    *  approximation of it if that is needed to avoid cycles.
    *  Occurrences nested inside a refinement or prefix are not affected.
    */
-  def replace(param: TypeParamRef, tp: Type)(implicit ctx: Context): This
+  def replace(param: TypeParamRef, tp: Type)(using Context): This
 
   /** Is entry associated with `tl` removable? This is the case if
    *  all type parameters of the entry are associated with type variables
@@ -116,15 +116,22 @@ abstract class Constraint extends Showable {
   def isRemovable(tl: TypeLambda): Boolean
 
   /** A new constraint with all entries coming from `tl` removed. */
-  def remove(tl: TypeLambda)(implicit ctx: Context): This
+  def remove(tl: TypeLambda)(using Context): This
 
   /** A new constraint with entry `tl` renamed to a fresh type lambda */
-  def rename(tl: TypeLambda)(implicit ctx: Context): This
+  def rename(tl: TypeLambda)(using Context): This
+
+  /** Gives for each instantiated type var that does not yet have its `inst` field
+   *  set, the instance value stored in the constraint. Storing instances in constraints
+   *  is done only in a temporary way for contexts that may be retracted
+   *  without also retracting the type var as a whole.
+   */
+  def instType(tvar: TypeVar): Type
 
   /** The given `tl` in case it is not contained in this constraint,
    *  a fresh copy of `tl` otherwise.
    */
-  def ensureFresh(tl: TypeLambda)(implicit ctx: Context): TypeLambda
+  def ensureFresh(tl: TypeLambda)(using Context): TypeLambda
 
   /** The type lambdas constrained by this constraint */
   def domainLambdas: List[TypeLambda]
@@ -148,10 +155,10 @@ abstract class Constraint extends Showable {
    *                           returning an approximate constraint, instead of
    *                           failing with an exception
    */
-  def & (other: Constraint, otherHasErrors: Boolean)(implicit ctx: Context): Constraint
+  def & (other: Constraint, otherHasErrors: Boolean)(using Context): Constraint
 
   /** Check that no constrained parameter contains itself as a bound */
-  def checkNonCyclic()(implicit ctx: Context): this.type
+  def checkNonCyclic()(using Context): this.type
 
   /** Does `param` occur at the toplevel in `tp` ?
    *  Toplevel means: the type itself or a factor in some
@@ -160,11 +167,5 @@ abstract class Constraint extends Showable {
   def occursAtToplevel(param: TypeParamRef, tp: Type)(using Context): Boolean
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
-  def checkClosed()(implicit ctx: Context): Unit
-
-  /** Constraint has not yet been retracted from a typer state */
-  def isRetracted: Boolean
-
-  /** Indicate that constraint has been retracted from a typer state */
-  def markRetracted(): Unit
+  def checkClosed()(using Context): Unit
 }

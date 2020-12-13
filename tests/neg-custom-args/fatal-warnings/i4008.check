@@ -1,0 +1,40 @@
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:5:56 ---------------------------------------
+5 |@annotation.implicitNotFound("An implicit ShouldWarn1[${B}] is not in scope") // error
+  |                                                        ^
+  |                                    Invalid reference to a type variable `B` found in the annotation argument.
+  |                                    The variable does not occur as a parameter in the scope of type `ShouldWarn1`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:9:56 ---------------------------------------
+9 |@annotation.implicitNotFound("An implicit ShouldWarn2[${A}] is not in scope") // error
+  |                                                        ^
+  |                                    Invalid reference to a type variable `A` found in the annotation argument.
+  |                                    The variable does not occur as a parameter in the scope of type `ShouldWarn2`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:13:56 --------------------------------------
+13 |@annotation.implicitNotFound("An implicit ShouldWarn3[${A},${B}] is not in scope") // error
+   |                                                        ^
+   |                                  Invalid reference to a type variable `A` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn3`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:17:56 --------------------------------------
+17 |@annotation.implicitNotFound("An implicit ShouldWarn4[${A},${B}] is not in scope") // error // error
+   |                                                        ^
+   |                                  Invalid reference to a type variable `A` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn4`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:17:61 --------------------------------------
+17 |@annotation.implicitNotFound("An implicit ShouldWarn4[${A},${B}] is not in scope") // error // error
+   |                                                             ^
+   |                                  Invalid reference to a type variable `B` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn4`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:21:61 --------------------------------------
+21 |@annotation.implicitNotFound("An implicit ShouldWarn5[${C},${Abc}] is not in scope") // error
+   |                                                             ^
+   |                                  Invalid reference to a type variable `Abc` found in the annotation argument.
+   |                                  The variable does not occur as a parameter in the scope of type `ShouldWarn5`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:44:54 --------------------------------------
+44 |class C[A](using @annotation.implicitNotFound("No C[${B}] found") c: Class[A]) // error
+   |                                                      ^
+   |                              Invalid reference to a type variable `B` found in the annotation argument.
+   |                              The variable does not occur as a parameter in the scope of the constructor of `C`.
+-- [E158] Reference Error: tests/neg-custom-args/fatal-warnings/i4008.scala:46:62 --------------------------------------
+46 |def someMethod1[A](using @annotation.implicitNotFound("No C[${B}] found") sc: C[A]) = 0 // error
+   |                                                              ^
+   |                                Invalid reference to a type variable `B` found in the annotation argument.
+   |                                The variable does not occur as a parameter in the scope of method `someMethod1`.

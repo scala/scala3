@@ -6,13 +6,13 @@ import java.lang.{ ClassLoader, ExceptionInInitializerError }
 import java.lang.reflect.InvocationTargetException
 
 import dotc.ast.tpd
-import dotc.core.Contexts.Context
+import dotc.core.Contexts._
 import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
 import dotc.core.Symbols.{Symbol, defn}
-import dotc.core.StdNames.str
-import dotc.core.NameOps.NameDecorator
+import dotc.core.StdNames.{nme, str}
+import dotc.core.NameOps._
 import dotc.printing.ReplPrinter
 import dotc.reporting.{MessageRendering, Message, Diagnostic}
 import dotc.util.SourcePosition
@@ -33,7 +33,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** A `MessageRenderer` for the REPL without file positions */
   private val messageRenderer = new MessageRendering {
-    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(implicit ctx: Context): String = ""
+    override def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String = ""
   }
 
   private var myClassLoader: ClassLoader = _
@@ -42,11 +42,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 
   /** Class loader used to load compiled code */
-  private[repl] def classLoader()(implicit ctx: Context) =
+  private[repl] def classLoader()(using Context) =
     if (myClassLoader != null) myClassLoader
     else {
       val parent = parentClassLoader.getOrElse {
-        val compilerClasspath = ctx.platform.classPath(ctx).asURLs
+        val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
         new java.net.URLClassLoader(compilerClasspath.toArray, null)
       }
 
@@ -65,7 +65,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     }
 
   /** Return a String representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object)(implicit ctx: Context): String = {
+  private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     myReplStringOf(value)
@@ -75,7 +75,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(implicit ctx: Context): Option[String] = {
+  private def valueOf(sym: Symbol)(using Context): Option[String] = {
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
     val value =
@@ -97,56 +97,64 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   /** Formats errors using the `messageRenderer` */
   def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
     new Diagnostic(
-      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(state.context),
+      messageRenderer.messageAndPos(dia.msg, dia.pos, messageRenderer.diagnosticLevel(dia))(using state.context),
       dia.pos,
       dia.level
     )
 
-  def renderTypeDef(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderTypeDef(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined " ++ d.symbol.showUser, d)
 
-  def renderTypeAlias(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderTypeAlias(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
 
   /** Render method definition result */
-  def renderMethod(d: Denotation)(implicit ctx: Context): Diagnostic =
+  def renderMethod(d: Denotation)(using Context): Diagnostic =
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(implicit ctx: Context): Option[Diagnostic] = {
+  def renderVal(d: Denotation)(using Context): Option[Diagnostic] =
     val dcl = d.symbol.showUser
+    def msg(s: String) = infoDiagnostic(s, d)
+    try
+      if (d.symbol.is(Flags.Lazy)) Some(msg(dcl))
+      else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+    catch case e: InvocationTargetException => Some(msg(renderError(e, d)))
+  end renderVal
 
-    try {
-      if (d.symbol.is(Flags.Lazy)) Some(infoDiagnostic(dcl, d))
-      else valueOf(d.symbol).map(value => infoDiagnostic(s"$dcl = $value", d))
-    }
-    catch { case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d)) }
-  }
+  /** Force module initialization in the absence of members. */
+  def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+    def load() =
+      val objectName = sym.fullName.encode.toString
+      Class.forName(objectName, true, classLoader())
+      Nil
+    try load() catch case e: ExceptionInInitializerError => List(infoDiagnostic(renderError(e, sym.denot), sym.denot))
 
-  /** Render the stack trace of the underlying exception */
-  private def renderError(ex: InvocationTargetException): String = {
-    val cause = ex.getCause match {
-      case ex: ExceptionInInitializerError => ex.getCause
-      case ex => ex
-    }
-    val sw = new StringWriter()
-    val pw = new PrintWriter(sw)
-    cause.printStackTrace(pw)
-    sw.toString
-  }
+  /** Render the stack trace of the underlying exception. */
+  private def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): String =
+    import dotty.tools.dotc.util.StackTraceOps._
+    val cause = ite.getCause match
+      case e: ExceptionInInitializerError => e.getCause
+      case e => e
+    def isWrapperCode(ste: StackTraceElement) =
+      ste.getClassName == d.symbol.owner.name.show
+      && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
 
-  private def infoDiagnostic(msg: String, d: Denotation)(implicit ctx: Context): Diagnostic =
+    cause.formatStackTracePrefix(!isWrapperCode(_))
+  end renderError
+
+  private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
 
 }
 
 object Rendering {
 
-  implicit class ShowUser(val s: Symbol) extends AnyVal {
-    def showUser(implicit ctx: Context): String = {
+  extension (s: Symbol)
+    def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)
       text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
     }
-  }
+
 }

@@ -21,17 +21,19 @@ class TreeBuffer extends TastyBuffer(50000) {
   private var numOffsets = 0
 
   /** A map from trees to the address at which a tree is pickled. */
-  private val treeAddrs = new java.util.IdentityHashMap[Tree, Any] // really: Addr | Null
+  private val treeAddrs = util.IntMap[Tree](initialCapacity = 8192)
 
-  def registerTreeAddr(tree: Tree): Addr = treeAddrs.get(tree) match {
-    case null => treeAddrs.put(tree, currentAddr); currentAddr
-    case addr: Addr => addr
-  }
+  def registerTreeAddr(tree: Tree): Addr =
+    val idx = treeAddrs(tree)
+    if idx < 0 then
+      treeAddrs(tree) = currentAddr.index
+      currentAddr
+    else
+      Addr(idx)
 
-  def addrOfTree(tree: Tree): Addr = treeAddrs.get(tree) match {
-    case null => NoAddr
-    case addr: Addr => addr
-  }
+  def addrOfTree(tree: Tree): Addr =
+    val idx = treeAddrs(tree)
+    if idx < 0 then NoAddr else Addr(idx)
 
   private def offset(i: Int): Addr = Addr(offsets(i))
 
@@ -156,15 +158,11 @@ class TreeBuffer extends TastyBuffer(50000) {
     wasted
   }
 
-  def adjustTreeAddrs(): Unit = {
-    val it = treeAddrs.keySet.iterator
-    while (it.hasNext) {
-      val tree = it.next
-      treeAddrs.get(tree) match {
-        case addr: Addr => treeAddrs.put(tree, adjusted(addr))
-      }
-    }
-  }
+  def adjustTreeAddrs(): Unit =
+    var i = 0
+    while i < treeAddrs.size do
+      treeAddrs.setValue(i, adjusted(Addr(treeAddrs.value(i))).index)
+      i += 1
 
   /** Final assembly, involving the following steps:
    *   - compute deltas
@@ -178,12 +176,11 @@ class TreeBuffer extends TastyBuffer(50000) {
     //println(s"offsets: ${offsets.take(numOffsets).deep}")
     //println(s"deltas: ${delta.take(numOffsets).deep}")
     var saved = 0
-    while ({
+    while
       saved = adjustDeltas()
       pickling.println(s"adjusting deltas, saved = $saved")
       saved > 0 && length / saved < 100
-    })
-    ()
+    do ()
     adjustOffsets()
     adjustTreeAddrs()
     val wasted = compress()

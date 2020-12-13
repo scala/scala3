@@ -12,7 +12,6 @@ import scala.collection.mutable
 import util.SourcePosition
 import core.Contexts._
 import Reporter._
-import messages._
 import Diagnostic._
 import interfaces.Diagnostic.{ ERROR, WARNING, INFO }
 
@@ -33,7 +32,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   private var _didCrash = false
   final def compilerCrashed: Boolean = _didCrash
 
-  protected final def inlineInfo(pos: SourcePosition)(implicit ctx: Context): String =
+  protected final def inlineInfo(pos: SourcePosition)(using Context): String =
     if (pos.exists) {
       if (pos.outer.exists)
         i"\ninlined at ${pos.outer}:\n" + inlineInfo(pos.outer)
@@ -53,7 +52,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
   }
 
   /** Prints the message with the given position indication. */
-  def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
+  def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
     val msg = messageAndPos(dia.msg, dia.pos, diagnosticLevel(dia))
     val extraInfo = inlineInfo(dia.pos)
 
@@ -66,7 +65,7 @@ extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with M
     if (extraInfo.nonEmpty) _messageBuf.append(extraInfo)
   }
 
-  override def doReport(dia: Diagnostic)(implicit ctx: Context): Unit = {
+  override def doReport(dia: Diagnostic)(using Context): Unit = {
 
     // Here we add extra information that we should know about the error message
     val extra = dia.msg match {
@@ -125,7 +124,7 @@ object TestReporter {
   def simplifiedReporter(writer: PrintWriter): TestReporter = {
     val rep = new TestReporter(writer, logPrintln, WARNING) {
       /** Prints the message with the given position indication in a simplified manner */
-      override def printMessageAndPos(dia: Diagnostic, extra: String)(implicit ctx: Context): Unit = {
+      override def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
         def report() = {
           val msg = s"${dia.pos.line + 1}: " + dia.msg.kind + extra
           val extraInfo = inlineInfo(dia.pos)

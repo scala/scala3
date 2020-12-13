@@ -8,7 +8,8 @@ object TestConfiguration {
 
   val noCheckOptions = Array(
     "-pagewidth", "120",
-    "-color:never"
+    "-color:never",
+    "-target", defaultTarget
   )
 
   val checkOptions = Array(
@@ -16,7 +17,7 @@ object TestConfiguration {
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
-    "-Ysemanticdb",
+    "-Xsemanticdb",
     "-Xverify-signatures"
   )
 
@@ -43,6 +44,11 @@ object TestConfiguration {
   lazy val withTastyInspectorClasspath =
     withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
 
+  lazy val scalaJSClasspath = mkClasspath(List(
+    Properties.scalaJSLibrary,
+    Properties.dottyLibraryJS
+  ))
+
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
@@ -60,6 +66,8 @@ object TestConfiguration {
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
     defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
+  lazy val scalaJSOptions =
+    defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath)
   val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
   val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
   val picklingOptions = defaultOptions and (
@@ -76,4 +84,11 @@ object TestConfiguration {
 
   /** Enables explicit nulls */
   val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
+
+  /** Default target of the generated class files */
+  private def defaultTarget: String = {
+    import scala.util.Properties.isJavaAtLeast
+
+    if isJavaAtLeast("9") then "jvm-9" else "jvm-1.8"
+  }
 }

@@ -1,18 +1,16 @@
 import scala.quoted._
 
-import scala.quoted.unsafe._
-
 object Macros {
 
 
   inline def lift[R[_]](sym: Symantics { type Repr[X] = R[X] })(inline a: Int): R[Int] = ${impl('sym, 'a)}
 
 
-  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using QuoteContext): Expr[R[Int]] = {
+  private def impl[R[_]: Type](sym: Expr[Symantics { type Repr[X] = R[X] }], expr: Expr[Int])(using Quotes): Expr[R[Int]] = {
 
     type Env = Map[Int, Any]
 
-    given ev0 as Env = Map.empty
+    given ev0: Env = Map.empty
 
     def envWith[T](id: Int, ref: Expr[R[T]])(using env: Env): Env =
       env.updated(id, ref)
@@ -20,7 +18,7 @@ object Macros {
     object FromEnv {
       def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
-          case '{envVar[$t](${Const(id)})} =>
+          case '{envVar[t](${Const(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
           case _ =>
             None
@@ -39,11 +37,11 @@ object Macros {
       case '{ ($x: Int) <= ($y: Int) } =>
         '{ $sym.leq(${lift(x)}, ${lift(y)}).asInstanceOf[R[T]] }
 
-      case '{ ${f}($arg: $t): $u } =>
-        '{ $sym.app[$t, $u](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
+      case '{ ${f}($arg: a): b } =>
+        '{ $sym.app[a, b](${lift(f)}, ${lift(arg)}).asInstanceOf[R[T]] }
 
-      case '{ (if ($cond) $thenp else $elsep): $t } =>
-        '{ $sym.ifThenElse[$t](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
+      case '{ (if ($cond) $thenp else $elsep): a } =>
+        '{ $sym.ifThenElse[a](${lift(cond)}, ${lift(thenp)}, ${lift(elsep)}) }.asInstanceOf[Expr[R[T]]]
 
       case '{ (x0: Int) => $bodyFn(x0): Any } =>
         val (i, nEnvVar) = freshEnvVar[Int]()
@@ -60,13 +58,14 @@ object Macros {
         val body2 = UnsafeExpr.open(bodyFn) { (body1, close) => close(body1)(nEnvVar) }
         '{ $sym.lam((x: R[Int => Int]) => ${given Env = envWith(i, 'x)(using env); lift(body2)}).asInstanceOf[R[T]] }
 
-      case '{ Symantics.fix[$t, $u]($f) } =>
-        '{ $sym.fix[$t, $u]((x: R[$t => $u]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
+      case '{ Symantics.fix[a, b]($f) } =>
+        '{ $sym.fix[a, b]((x: R[a => b]) => $sym.app(${lift(f)}, x)).asInstanceOf[R[T]] }
 
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
-        Reporting.error("Expected explicit value but got: " + e.show, e)
+        import quotes.reflect.report
+        report.error("Expected explicit value but got: " + e.show, e)
         '{ ??? }
 
     })
@@ -76,7 +75,31 @@ object Macros {
 
 }
 
-def freshEnvVar[T: Type]()(using QuoteContext): (Int, Expr[T]) = {
+object UnsafeExpr {
+  def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(using Quotes): X = {
+    import quotes.reflect._
+    val (params, bodyExpr) = paramsAndBody[R](f)
+    content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.asTerm, params, List(v.asTerm)).asExpr.asInstanceOf[Expr[t]])
+  }
+  private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[quotes.reflect.ValDef], Expr[R]) = {
+    import quotes.reflect._
+    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
+    (params, body.asExpr.asInstanceOf[Expr[R]])
+  }
+
+  private def bodyFn[t](using Quotes)(e: quotes.reflect.Term, params: List[quotes.reflect.ValDef], args: List[quotes.reflect.Term]): quotes.reflect.Term = {
+    import quotes.reflect._
+    val map = params.map(_.symbol).zip(args).toMap
+    new TreeMap {
+      override def transformTerm(tree: Term)(owner: Symbol): Term =
+        super.transformTerm(tree)(owner) match
+          case tree: Ident => map.getOrElse(tree.symbol, tree)
+          case tree => tree
+    }.transformTerm(e)(Symbol.spliceOwner)
+  }
+}
+
+def freshEnvVar[T: Type]()(using Quotes): (Int, Expr[T]) = {
   v += 1
   (v, '{envVar[T](${Expr(v)})})
 }

@@ -1,1 +1,1 @@
-dotty.runtime.Arrays.newGenericArray[scala.Int](3)(scala.reflect.ClassTag.Int)
+scala.runtime.Arrays.newGenericArray[scala.Int](3)(scala.reflect.ClassTag.Int)

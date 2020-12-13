@@ -1,10 +1,10 @@
 package scala.tasty.interpreter
 
+import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
-import scala.tasty.Reflection
 
-abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given _}
+abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
+  import quotes.reflect._
 
   final val LOG = false
 
@@ -155,7 +155,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       case Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
       case Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
-      case _ => throw new MatchError(tree.showExtractors)
+      case _ => throw new MatchError(tree.show(using Printer.TreeStructure))
     }
   }
 
@@ -164,7 +164,7 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
       println(
         s"""#> $tag:
            |${tree.show}
-           |${tree.showExtractors}
+           |${tree.show(using Printer.TreeStructure)}
            |
            |""".stripMargin)
     thunk
@@ -192,19 +192,19 @@ abstract class TreeInterpreter[R <: Reflection & Singleton](val reflect: R) {
     }
   }
 
-  private def isNumericPrimitive(tpe: Type): Boolean =
+  private def isNumericPrimitive(tpe: TypeRepr): Boolean =
     isIntegralPrimitive(tpe) || isFractionalPrimitive(tpe)
 
-  private def isIntegralPrimitive(tpe: Type): Boolean = {
-    tpe <:< defn.ByteType ||
-    tpe <:< defn.CharType ||
-    tpe <:< defn.ShortType ||
-    tpe <:< defn.IntType ||
-    tpe <:< defn.LongType
+  private def isIntegralPrimitive(tpe: TypeRepr): Boolean = {
+    tpe <:< TypeRepr.of[Byte] ||
+    tpe <:< TypeRepr.of[Char] ||
+    tpe <:< TypeRepr.of[Short] ||
+    tpe <:< TypeRepr.of[Int] ||
+    tpe <:< TypeRepr.of[Long]
   }
 
-  private def isFractionalPrimitive(tpe: Type): Boolean =
-    tpe <:< defn.FloatType || tpe <:< defn.DoubleType
+  private def isFractionalPrimitive(tpe: TypeRepr): Boolean =
+    tpe <:< TypeRepr.of[Float] || tpe <:< TypeRepr.of[Double]
 
 
   private object Call {

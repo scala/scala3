@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase._
-import Contexts.Context
+import Contexts._
 import Symbols._
 import Types._
 import StdNames._
@@ -22,7 +22,7 @@ class ArrayApply extends MiniPhase {
 
   override def phaseName: String = "arrayApply"
 
-  override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree =
+  override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
     if (tree.symbol.name == nme.apply && tree.symbol.owner == defn.ArrayModule.moduleClass) // Is `Array.apply`
       tree.args match {
         case StripAscription(Apply(wrapRefArrayMeth, (seqLit: tpd.JavaSeqLiteral) :: Nil)) :: ct :: Nil
@@ -44,7 +44,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.apply(java.lang.XYZ.Type)` for boxed primitives `XYZ``
    *  - `ClassTag.XYZ` for primitive types
    */
-  private def elideClassTag(ct: Tree)(implicit ctx: Context): Boolean = ct match {
+  private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
     case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
@@ -60,7 +60,7 @@ class ArrayApply extends MiniPhase {
   }
 
   object StripAscription {
-    def unapply(tree: Tree)(implicit ctx: Context): Some[Tree] = tree match {
+    def unapply(tree: Tree)(using Context): Some[Tree] = tree match {
       case Typed(expr, _) => unapply(expr)
       case _ => Some(tree)
     }

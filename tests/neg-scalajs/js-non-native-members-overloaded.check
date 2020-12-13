@@ -1,0 +1,24 @@
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:5:14 ------------------------------------------------
+5 |  private def foo(i: Int): Int = i // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Private methods in non-native JS classes cannot be overloaded. Use different names instead.
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:6:14 ------------------------------------------------
+6 |  private def foo(s: String): String = s // error
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  Private methods in non-native JS classes cannot be overloaded. Use different names instead.
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:11:28 -----------------------------------------------
+11 |    private[BEnclosing] def foo(i: Int): Int = i // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Private methods in non-native JS classes cannot be overloaded. Use different names instead.
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:12:16 -----------------------------------------------
+12 |    private def foo(s: String): String = s // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Private methods in non-native JS classes cannot be overloaded. Use different names instead.
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:17:14 -----------------------------------------------
+17 |  private def foo(i: Int): Int = i // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Private methods in non-native JS classes cannot be overloaded. Use different names instead.
+-- Error: tests/neg-scalajs/js-non-native-members-overloaded.scala:23:28 -----------------------------------------------
+23 |    private[DEnclosing] def foo(i: Int): Int = i // error
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    Private methods in non-native JS classes cannot be overloaded. Use different names instead.

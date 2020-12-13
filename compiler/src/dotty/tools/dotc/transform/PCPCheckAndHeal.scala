@@ -8,13 +8,13 @@ import dotty.tools.dotc.core.Constants._
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
-import dotty.tools.dotc.core.quoted._
 import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.StagingContext._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.quoted._
+import dotty.tools.dotc.util.SrcPos
 import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.transform.SymUtils._
 import dotty.tools.dotc.transform.TreeMapWithStages._
@@ -24,7 +24,6 @@ import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.core.Annotations._
 
 import scala.collection.mutable
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Property
 
 import scala.annotation.constructorOnly
@@ -60,16 +59,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
   private val InAnnotation = Property.Key[Unit]()
 
-  override def transform(tree: Tree)(implicit ctx: Context): Tree =
+  override def transform(tree: Tree)(using Context): Tree =
     if (tree.source != ctx.source && tree.source.exists)
-      transform(tree)(ctx.withSource(tree.source))
+      transform(tree)(using ctx.withSource(tree.source))
     else if !isInQuoteOrSplice then
       checkAnnotations(tree)
       super.transform(tree)
     else tree match {
 
       case _: TypeTree | _: RefTree if tree.isType  =>
-        val healedType = healType(tree.sourcePos)(tree.tpe)
+        val healedType = healType(tree.srcPos)(tree.tpe)
         if healedType == tree.tpe then tree
         else TypeTree(healedType).withSpan(tree.span)
       case _: AppliedTypeTree =>
@@ -80,7 +79,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           case tree1 => tree1
 
       case _: Ident | _: This =>
-        tree.withType(healTypeOfTerm(tree.sourcePos)(tree.tpe))
+        tree.withType(healTypeOfTerm(tree.srcPos)(tree.tpe))
 
       // Remove inline defs in quoted code. Already fully inlined.
       case tree: DefDef if tree.symbol.is(Inline) && level > 0 =>
@@ -88,11 +87,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
       case tree: ValOrDefDef =>
         checkAnnotations(tree)
-        healInfo(tree, tree.tpt.sourcePos)
+        healInfo(tree, tree.tpt.srcPos)
         super.transform(tree)
       case tree: Bind =>
         checkAnnotations(tree)
-        healInfo(tree, tree.sourcePos)
+        healInfo(tree, tree.srcPos)
         super.transform(tree)
 
       case _ =>
@@ -100,16 +99,16 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     }
 
   /** Transform quoted trees while maintaining phase correctness */
-  override protected def transformQuotation(body: Tree, quote: Tree)(implicit ctx: Context): Tree = {
-    val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)(using ctx)
+  override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
+    val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)
 
     if (ctx.property(InAnnotation).isDefined)
-      ctx.error("Cannot have a quote in an annotation", quote.sourcePos)
+      report.error("Cannot have a quote in an annotation", quote.srcPos)
 
     val contextWithQuote =
-      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(quoteContext)
+      if level == 0 then contextWithQuoteTypeTags(taggedTypes)(using quoteContext)
       else quoteContext
-    val body1 = transform(body)(contextWithQuote)
+    val body1 = transform(body)(using contextWithQuote)
     val body2 =
       taggedTypes.getTypeTags match
         case Nil  => body1
@@ -123,23 +122,26 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  - If inside inlined code, expand the macro code.
    *  - If inside of a macro definition, check the validity of the macro.
    */
-  protected def transformSplice(body: Tree, splice: Tree)(implicit ctx: Context): Tree = {
-    val body1 = transform(body)(spliceContext)
-    splice match {
-      case Apply(fun @ TypeApply(_, _ :: Nil), _) if splice.isTerm =>
+  protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree = {
+    val body1 = transform(body)(using spliceContext)
+    splice.fun match {
+      case fun @ TypeApply(_, _ :: Nil) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-        val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
+        val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
-      case Apply(f @ Apply(fun @ TypeApply(_, _), qctx :: Nil), _) if splice.isTerm =>
+      case f @ Apply(fun @ TypeApply(_, _), qctx :: Nil) =>
         // Type of the splice itsel must also be healed
         // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
-        val tp = healType(splice.sourcePos)(splice.tpe.widenTermRefExpr)
+        val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
-      case splice: Select =>
-        val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
-        ref(tagRef).withSpan(splice.span)
     }
+  }
+
+  protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
+    val body1 = transform(body)(using spliceContext)
+    val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
+    ref(tagRef).withSpan(splice.span)
   }
 
   /** Check that annotations do not contain quotes and and that splices are valid */
@@ -153,7 +155,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       case _ =>
 
   /** Heal types in the info of the given tree */
-  private def healInfo(tree: Tree, pos: SourcePosition)(using Context): Unit =
+  private def healInfo(tree: Tree, pos: SrcPos)(using Context): Unit =
     tree.symbol.info = healType(pos)(tree.symbol.info)
 
   /** If the type refers to a locally defined symbol (either directly, or in a pickled type),
@@ -167,19 +169,21 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  The tag is generated by an instance of `QuoteTypeTags` directly if the splice is explicit
    *  or indirectly by `tryHeal`.
    */
-  private def healType(pos: SourcePosition)(using Context) = new TypeMap {
+  private def healType(pos: SrcPos)(using Context) = new TypeMap {
     def apply(tp: Type): Type =
       tp match
         case tp: TypeRef =>
           tp.prefix match
-            case NoPrefix if level > levelOf(tp.symbol) =>
-              tryHeal(tp.symbol, tp, pos)
+            case NoPrefix if level > levelOf(tp.symbol) && !tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) =>
+              val tp1 = tp.dealias
+              if tp1 != tp then apply(tp1)
+              else tryHeal(tp.symbol, tp, pos)
             case prefix: ThisType if !tp.symbol.isStatic && level > levelOf(prefix.cls) =>
               tryHeal(tp.symbol, tp, pos)
-            case prefix: TermRef if tp.symbol.isSplice =>
+            case prefix: TermRef if tp.symbol.isTypeSplice =>
               prefix.symbol.info.argInfos match
                 case (tb: TypeBounds) :: _ =>
-                  ctx.error(em"Cannot splice $tp because it is a wildcard type", pos)
+                  report.error(em"Cannot splice $tp because it is a wildcard type", pos)
                 case _ =>
               // Heal explicit type splice in the code
               if level > 0 then getQuoteTypeTags.getTagRef(prefix) else tp
@@ -197,7 +201,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
   }
 
   /** Check phase consistency of terms and heal incosistent type references. */
-  private def healTypeOfTerm(pos: SourcePosition)(using Context) = new TypeMap {
+  private def healTypeOfTerm(pos: SrcPos)(using Context) = new TypeMap {
     def apply(tp: Type): Type =
       tp match
         case tp @ TypeRef(NoPrefix, _) if level > levelOf(tp.symbol) =>
@@ -216,7 +220,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
    *  refercence to a type alias containing the equivalent of `${summon[quoted.Type[T]]}`.
    *  Emits and error if `T` cannot be healed and returns `T`.
    */
-  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SourcePosition)(implicit ctx: Context): TypeRef = {
+  protected def tryHeal(sym: Symbol, tp: TypeRef, pos: SrcPos)(using Context): TypeRef = {
     val reqType = defn.QuotedTypeClass.typeRef.appliedTo(tp)
     val tag = ctx.typer.inferImplicitArg(reqType, pos.span)
     tag.tpe match
@@ -225,24 +229,24 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkStable(tp, pos, "type witness")
         getQuoteTypeTags.getTagRef(tp)
       case _: SearchFailureType =>
-        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
                      |${ctx.typer.missingArgMsg(tag, reqType, "")}
                      |
                      |""", pos)
         tp
       case _ =>
-        ctx.error(i"""Reference to $tp withing quotes requires a $reqType in scope.
+        report.error(i"""Reference to $tp within quotes requires a given $reqType in scope.
                      |
                      |""", pos)
         tp
   }
 
-  private def levelError(sym: Symbol, tp: Type, pos: SourcePosition)(using Context): tp.type = {
+  private def levelError(sym: Symbol, tp: Type, pos: SrcPos)(using Context): tp.type = {
     def symStr =
       if (!tp.isInstanceOf[ThisType]) sym.show
       else if (sym.is(ModuleClass)) sym.sourceModule.show
       else i"${sym.name}.this"
-    ctx.error(
+    report.error(
       em"""access to $symStr from wrong staging level:
           | - the definition is at level ${levelOf(sym)},
           | - but the access is at level $level.""", pos)
@@ -267,15 +271,15 @@ object PCPCheckAndHeal {
 
     private def mkTagSymbolAndAssignType(spliced: TermRef): TypeDef = {
       val splicedTree = tpd.ref(spliced).withSpan(span)
-      val rhs = splicedTree.select(tpnme.splice).withSpan(span)
+      val rhs = splicedTree.select(tpnme.Underlying).withSpan(span)
       val alias = ctx.typeAssigner.assignType(untpd.TypeBoundsTree(rhs, rhs), rhs, rhs, EmptyTree)
-      val local = ctx.newSymbol(
+      val local = newSymbol(
         owner = ctx.owner,
         name = UniqueName.fresh((splicedTree.symbol.name.toString + "$_").toTermName).toTypeName,
         flags = Synthetic,
-        info = TypeAlias(splicedTree.tpe.select(tpnme.splice)),
+        info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
         coord = span).asType
-      local.addAnnotation(Annotation(defn.InternalQuoted_QuoteTypeTagAnnot))
+      local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot))
       ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
     }
 

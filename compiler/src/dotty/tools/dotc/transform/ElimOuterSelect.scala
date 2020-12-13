@@ -3,7 +3,7 @@ package transform
 
 import core._
 import MegaPhase.MiniPhase
-import Contexts.Context
+import Contexts._
 import Types._
 import NameKinds.OuterSelectName
 
@@ -22,7 +22,7 @@ class ElimOuterSelect extends MiniPhase {
   /** Convert a selection of the form `qual.n_<outer>` to an outer path from `qual` of
    *  length `n`.
    */
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     tree.name match {
       case OuterSelectName(_, nhops) =>
         val SkolemType(tp) = tree.tpe

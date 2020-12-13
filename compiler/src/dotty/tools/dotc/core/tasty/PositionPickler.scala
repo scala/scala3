@@ -3,23 +3,28 @@ package dotc
 package core
 package tasty
 
-import dotty.tools.tasty.TastyFormat.SOURCE
+import dotty.tools.tasty.TastyFormat.{SOURCE, PositionsSection}
 import dotty.tools.tasty.TastyBuffer
 import TastyBuffer._
 
 import ast._
-import ast.Trees._
-import ast.Trees.WithLazyField
+import Trees.WithLazyField
 import util.{SourceFile, NoSource}
 import core._
-import Contexts._, Symbols._, Annotations._, Decorators._
+import Annotations._, Decorators._
 import collection.mutable
 import util.Spans._
 
-class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
-  val buf: TastyBuffer = new TastyBuffer(5000)
-  pickler.newSection("Positions", buf)
+class PositionPickler(
+    pickler: TastyPickler,
+    addrOfTree: PositionPickler.TreeToAddr,
+    treeAnnots: untpd.MemberDef => List[tpd.Tree],
+    relativePathReference: String){
+
   import ast.tpd._
+
+  val buf: TastyBuffer = new TastyBuffer(5000)
+  pickler.newSection(PositionsSection, buf)
 
   private val pickledIndices = new mutable.BitSet
 
@@ -28,7 +33,21 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
     (addrDelta << 3) | (toInt(hasStartDelta) << 2) | (toInt(hasEndDelta) << 1) | toInt(hasPoint)
   }
 
-  def picklePositions(roots: List[Tree])(implicit ctx: Context): Unit = {
+  def picklePositions(source: SourceFile, roots: List[Tree], warnings: mutable.ListBuffer[String]): Unit = {
+    /** Pickle the number of lines followed by the length of each line */
+    def pickleLineOffsets(): Unit = {
+      val content = source.content()
+      buf.writeNat(content.count(_ == '\n') + 1) // number of lines
+      var lastIndex = content.indexOf('\n', 0)
+      buf.writeNat(lastIndex) // size of first line
+      while lastIndex != -1 do
+        val nextIndex = content.indexOf('\n', lastIndex + 1)
+        val end = if nextIndex != -1 then nextIndex else content.length
+        buf.writeNat(end - lastIndex - 1) // size of the next line
+        lastIndex = nextIndex
+    }
+    pickleLineOffsets()
+
     var lastIndex = 0
     var lastSpan = Span(0, 0)
     def pickleDeltas(index: Int, span: Span) = {
@@ -42,24 +61,17 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
       lastIndex = index
       lastSpan = span
 
-      pickledIndices += index
+      pickledIndices.addOne(index)
+        // Note `+=` boxes since it is a generic @inline function in `SetOps`
+        // that forwards to the specialized `addOne` in `BitSet`. Since the
+        // current backend does not implement `@inline` we are missing the
+        // specialization.
     }
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      val pathName = source.path
-      val pickledPath =
-        val originalPath = java.nio.file.Paths.get(pathName.toString).normalize()
-        if originalPath.isAbsolute then
-          val path = originalPath.toAbsolutePath().normalize()
-          val cwd = java.nio.file.Paths.get("").toAbsolutePath().normalize()
-          try cwd.relativize(path)
-          catch case _: IllegalArgumentException =>
-            ctx.warning("Could not relativize path for pickling: " + originalPath)
-            originalPath
-        else
-          originalPath
-      buf.writeInt(pickler.nameBuffer.nameIndex(pickledPath.toString.toTermName).index)
+      val relativePath = SourceFile.relativePath(source, relativePathReference)
+      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
@@ -100,10 +112,9 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
               pickleDeltas(addr.index, x.span)
           }
         }
-        x match {
-          case x: untpd.MemberDef @unchecked => traverse(x.symbol.annotations, x.source)
+        x match
+          case x: untpd.MemberDef => traverse(treeAnnots(x), x.source)
           case _ =>
-        }
         val limit = x.productArity
         var n = 0
         while (n < limit) {
@@ -113,11 +124,14 @@ class PositionPickler(pickler: TastyPickler, addrOfTree: untpd.Tree => Addr) {
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)
-      case x: Annotation =>
-        traverse(x.tree, current)
       case _ =>
     }
     for (root <- roots)
       traverse(root, NoSource)
   }
 }
+object PositionPickler:
+  // Note: This could be just TreeToAddr => Addr if functions are specialized to value classes.
+  // We use a SAM type to avoid boxing of Addr
+  @FunctionalInterface trait TreeToAddr:
+    def apply(x: untpd.Tree): Addr

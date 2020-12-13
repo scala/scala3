@@ -3,7 +3,7 @@ package repl
 
 import dotc.CompilationUnit
 import dotc.ast.untpd
-import dotc.core.Contexts.Context
+import dotc.core.Contexts._
 import dotc.core.StdNames.str
 import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
@@ -102,7 +102,7 @@ case object Help extends Command {
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
-      |:doc <expression>        print the documentation for the given expresssion
+      |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
@@ -112,7 +112,7 @@ object ParseResult {
 
   @sharable private val CommandExtract = """(:[\S]+)\s*(.*)""".r
 
-  private def parseStats(implicit ctx: Context): List[untpd.Tree] = {
+  private def parseStats(using Context): List[untpd.Tree] = {
     val parser = new Parser(ctx.source)
     val stats = parser.blockStatSeq()
     parser.accept(Tokens.EOF)
@@ -142,18 +142,18 @@ object ParseResult {
         }
       }
       case _ =>
-        implicit val ctx: Context = state.context
+        inContext(state.context) {
+          val reporter = newStoreReporter
+          val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
 
-        val reporter = newStoreReporter
-        val stats = parseStats(state.context.fresh.setReporter(reporter).withSource(source))
-
-        if (reporter.hasErrors)
-          SyntaxErrors(
-            sourceCode,
-            reporter.removeBufferedMessages,
-            stats)
-        else
-          Parsed(source, stats)
+          if (reporter.hasErrors)
+            SyntaxErrors(
+              sourceCode,
+              reporter.removeBufferedMessages,
+              stats)
+          else
+            Parsed(source, stats)
+        }
     }
   }
 
@@ -165,7 +165,7 @@ object ParseResult {
    *  This can be used in order to check if a newline can be inserted without
    *  having to evaluate the expression.
    */
-  def isIncomplete(sourceCode: String)(implicit ctx: Context): Boolean =
+  def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
       case CommandExtract(_) | "" => false
       case _ => {
@@ -177,7 +177,7 @@ object ParseResult {
                           .setReporter(reporter)
         var needsMore = false
         reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(localCtx)
+          parseStats(using localCtx)
         }
         !reporter.hasErrors && needsMore
       }

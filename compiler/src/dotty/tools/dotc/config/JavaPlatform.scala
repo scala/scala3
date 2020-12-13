@@ -13,7 +13,7 @@ class JavaPlatform extends Platform {
 
   private var currentClassPath: Option[ClassPath] = None
 
-  def classPath(implicit ctx: Context): ClassPath = {
+  def classPath(using Context): ClassPath = {
     if (currentClassPath.isEmpty)
       currentClassPath = Some(new PathResolver().result)
     val cp = currentClassPath.get
@@ -21,7 +21,7 @@ class JavaPlatform extends Platform {
   }
 
   // The given symbol is a method with the right name and signature to be a runnable java program.
-  def isMainMethod(sym: SymDenotation)(implicit ctx: Context): Boolean =
+  def isMainMethod(sym: SymDenotation)(using Context): Boolean =
     (sym.name == nme.main) && (sym.info match {
       case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && (restpe isRef defn.UnitClass)
       case _ => false
@@ -35,10 +35,10 @@ class JavaPlatform extends Platform {
       currentClassPath = Some(subst.getOrElse(cp, cp))
   }
 
-  def rootLoader(root: TermSymbol)(implicit ctx: Context): SymbolLoader = new SymbolLoaders.PackageLoader(root, classPath)
+  def rootLoader(root: TermSymbol)(using Context): SymbolLoader = new SymbolLoaders.PackageLoader(root, classPath)
 
   /** Is the SAMType `cls` also a SAM under the rules of the JVM? */
-  def isSam(cls: ClassSymbol)(implicit ctx: Context): Boolean =
+  def isSam(cls: ClassSymbol)(using Context): Boolean =
     cls.isAllOf(NoInitsTrait) &&
     cls.superClass == defn.ObjectClass &&
     cls.directlyInheritedTraits.forall(_.is(NoInits)) &&
@@ -50,7 +50,7 @@ class JavaPlatform extends Platform {
    *  to anything but other booleans, but it should be present in
    *  case this is put to other uses.
    */
-  def isMaybeBoxed(sym: ClassSymbol)(implicit ctx: Context): Boolean = {
+  def isMaybeBoxed(sym: ClassSymbol)(using Context): Boolean = {
     val d = defn
     import d._
     (sym == ObjectClass) ||
@@ -61,6 +61,9 @@ class JavaPlatform extends Platform {
     (sym derivesFrom BoxedBooleanClass)
   }
 
-  def newClassLoader(bin: AbstractFile)(implicit ctx: Context): SymbolLoader =
+  def shouldReceiveJavaSerializationMethods(sym: ClassSymbol)(using Context): Boolean =
+    true
+
+  def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader =
     new ClassfileLoader(bin)
 }

@@ -41,7 +41,7 @@ object SimpleIdentityMap {
     def forallBinding(f: (AnyRef, Null) => Boolean) = true
   }
 
-  def Empty[K <: AnyRef]: SimpleIdentityMap[K, Null] = myEmpty.asInstanceOf[SimpleIdentityMap[K, Null]]
+  def empty[K <: AnyRef]: SimpleIdentityMap[K, Null] = myEmpty.asInstanceOf[SimpleIdentityMap[K, Null]]
 
   class Map1[K <: AnyRef, +V >: Null <: AnyRef] (k1: K, v1: V) extends SimpleIdentityMap[K, V] {
     def size: Int = 1
@@ -49,7 +49,7 @@ object SimpleIdentityMap {
       if (k eq k1) v1
       else null
     def remove(k: K): SimpleIdentityMap[K, V] =
-      if (k eq k1) Empty.asInstanceOf[SimpleIdentityMap[K, V]]
+      if (k eq k1) empty.asInstanceOf[SimpleIdentityMap[K, V]]
       else this
     def updated[V1 >: V <: AnyRef](k: K, v: V1): SimpleIdentityMap[K, V1] =
       if (k eq k1) new Map1(k, v)
@@ -162,7 +162,7 @@ object SimpleIdentityMap {
         if (bindings(i) eq k)
           return {
             if (size == CompactifyThreshold) {
-              var m: SimpleIdentityMap[K, V] = Empty[K]
+              var m: SimpleIdentityMap[K, V] = empty[K]
               for (j <- 0 until bindings.length by 2)
                 if (j != i) m = m.updated(key(j), value(j))
               m

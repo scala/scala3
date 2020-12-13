@@ -4,7 +4,7 @@ package transform
 import dotty.tools.dotc.util.Positions._
 import MegaPhase.MiniPhase
 import core._
-import Contexts.Context, Types._, Constants._, Decorators._, Symbols._
+import Contexts._, Types._, Constants._, Decorators._, Symbols._
 import TypeUtils._, TypeErasure._, Flags._
 
 /** Implements partial evaluation of `sc.isInstanceOf[Sel]` according to:
@@ -38,7 +38,7 @@ class IsInstanceOfEvaluator extends MiniPhase {
   /** Transforms a [TypeApply](dotty.tools.dotc.ast.Trees.TypeApply) in order to
    *  evaluate an `isInstanceOf` check according to the rules defined above.
    */
-  override def transformTypeApply(tree: TypeApply)(implicit ctx: Context): Tree = {
+  override def transformTypeApply(tree: TypeApply)(using Context): Tree = {
     val defn = ctx.definitions
 
     /** Handles the four cases of statically known `isInstanceOf`s and gives
@@ -48,19 +48,19 @@ class IsInstanceOfEvaluator extends MiniPhase {
     def handleStaticallyKnown(qualifier: Tree, scrutinee: Type, selector: Type, inMatch: Boolean, pos: Position): Tree = {
       val scrutineeSubSelector = scrutinee <:< selector
       if (!scrutineeSubSelector && inMatch) {
-        ctx.error(
+        report.error(
           s"this case is unreachable due to `${selector.show}` not being a subclass of `${scrutinee.show}`",
           Span(pos.start - 5, pos.end - 5)
         )
         rewrite(qualifier, to = false)
       } else if (!scrutineeSubSelector && !inMatch) {
-        ctx.warning(
+        report.warning(
           s"this will always yield false since `${scrutinee.show}` is not a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
         rewrite(qualifier, to = false)
       } else if (scrutineeSubSelector && !inMatch) {
-        ctx.warning(
+        report.warning(
           s"this will always yield true if the scrutinee is non-null, since `${scrutinee.show}` is a subclass of `${selector.show}` (will be optimized away)",
           pos
         )
@@ -71,13 +71,13 @@ class IsInstanceOfEvaluator extends MiniPhase {
     /** Rewrites cases with unrelated types */
     def handleFalseUnrelated(qualifier: Tree, scrutinee: Type, selector: Type, inMatch: Boolean) =
       if (inMatch) {
-        ctx.error(
+        report.error(
           s"will never match since `${selector.show}` is not a subclass of `${scrutinee.show}`",
           Span(qualifier.pos.start - 5, qualifier.pos.end - 5) // WHY 5?
         )
         rewrite(qualifier, to = false)
       } else {
-        ctx.warning(
+        report.warning(
           s"will always yield false since `${scrutinee.show}` is not a subclass of `${selector.show}`",
           tree.pos
         )

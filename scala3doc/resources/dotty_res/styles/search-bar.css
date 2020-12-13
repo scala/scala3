@@ -1,0 +1,91 @@
+/* Global search */
+.search-content {
+  padding: 0;
+  margin: var(--content-padding);
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 5;
+  background: none;
+}
+
+/* button */
+.search button {
+  background: #ED3522;
+  fill: #fff;
+  cursor: pointer;
+  border: none;
+  padding: 9px;
+  border-radius: 24px;
+  box-shadow: 0 0 16px #F27264;
+}
+.search button:hover {
+  fill: #F27264;
+}
+
+/* popup */
+.popup-wrapper {
+  box-shadow: 0 0 10px var(--border-light) !important;
+  border: 2px solid var(--border-light) !important;
+  font-family: var(--mono-font) !important;
+  width: calc(100% - var(--side-width) - 84px);
+  left: calc(var(--side-width) + 42px) !important;
+}
+.popup-wrapper .indented {
+  text-indent: 1.5em !important;
+}
+.popup-wrapper .disabled {
+  color: var(--inactive-fg) !important;
+  font-weight: 500 !important;
+}
+.action_def:hover, .action_def.hover_a79 {
+  color: var(--selected-fg);
+  background: var(--selected-bg) !important;
+  font-weight: 500;
+}
+.action_def .template-description {
+  margin-left: 2rem;
+  font-style: italic;
+}
+
+/* Landscape phones, portait tablets */
+@media(max-width: 768px) {
+  .popup-wrapper {
+    width: calc(100% - 48px);
+    left: 24px !important;
+  }
+}
+
+/* Portrait phones */
+@media(max-width: 576px) {
+  .search button {
+    background: none;
+    fill: var(--icon-color);
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    margin-top: 2px;
+  }
+  .search button:hover {
+    fill: var(--link-hover-fg);
+  }
+  .search-content {
+    margin: 0 !important;
+    top: 9px !important;
+    right: 12px !important;
+  }
+  .popup-wrapper {
+    width: 100%;
+    left: 0 !important;
+    top: 36px !important;
+  }
+  /* Allow to scroll horizontally in the search results, which is useful on small screens */
+  .popup-wrapper div.ReactVirtualized__Grid__innerScrollContainer {
+    overflow: auto !important;
+  }
+  .popup-wrapper div.ReactVirtualized__Grid__innerScrollContainer > div {
+    min-width: 100%;
+    width: auto !important;
+  }
+}

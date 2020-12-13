@@ -2,7 +2,7 @@ package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.core
 import core.Symbols.{ Symbol , defn }
-import core.Contexts.Context
+import core.Contexts._
 import core.Names
 import core.Names.Name
 import core.Types.Type
@@ -17,7 +17,7 @@ import scala.annotation.switch
 
 object Scala3:
   import Symbols._
-  import core.NameOps.{given _}
+  import core.NameOps._
 
   @sharable private val unicodeEscape = raw"\$$u(\p{XDigit}{4})".r
   @sharable private val locals        = raw"local(\d+)".r
@@ -25,7 +25,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  enum SymbolKind derives Eql:
+  enum SymbolKind derives CanEqual:
     kind =>
 
     case Val, Var, Setter, Abstract
@@ -58,79 +58,80 @@ object Scala3:
         displaySymbol(symbol.owner)
       else if symbol.is(ModuleClass) then
         displaySymbol(symbol.sourceModule)
-      else if symbol == defn.RootPackage
+      else if symbol == defn.RootPackage then
         RootPackageName
-      else if symbol.isEmptyPackage
+      else if symbol.isEmptyPackage then
         EmptyPackageName
       else
         symbol.name.show
 
   end Symbols
 
-  extension NameOps on (name: Name):
 
-    def isWildcard = name match
-      case nme.WILDCARD | WILDCARDTypeName => true
-      case _                               => name.is(NameKinds.WildcardParamName)
+  given NameOps: AnyRef with
+    extension (name: Name)
+      def isWildcard = name match
+        case nme.WILDCARD | WILDCARDTypeName => true
+        case _                               => name.is(NameKinds.WildcardParamName)
 
-    def isScala2PackageObjectName: Boolean = name match
-      case name: Names.TermName => name == nme.PACKAGE
-      case name: Names.TypeName =>
-        name.toTermName match
-        case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
-        case _                                   => false
+      def isScala2PackageObjectName: Boolean = name match
+        case name: Names.TermName => name == nme.PACKAGE
+        case name: Names.TypeName =>
+          name.toTermName match
+          case NameKinds.ModuleClassName(original) => original.isScala2PackageObjectName
+          case _                                   => false
 
-    def isEmptyNumbered: Boolean =
-      !name.is(NameKinds.WildcardParamName)
-      && { name match
-        case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
-        case _                                       => false
-      }
+      def isEmptyNumbered: Boolean =
+        !name.is(NameKinds.WildcardParamName)
+        && { name match
+          case NameKinds.AnyNumberedName(nme.EMPTY, _) => true
+          case _                                       => false
+        }
+  end NameOps
 
-  // end NameOps
+  given SymbolOps: AnyRef with
+    extension (sym: Symbol)
 
-  extension SymbolOps on (sym: Symbol):
+      def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
-    def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
+      def isScala2PackageObject(using Context): Boolean =
+        sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
 
-    def isScala2PackageObject(using Context): Boolean =
-      sym.name.isScala2PackageObjectName && sym.owner.is(Package) && sym.is(Module)
+      def isAnonymous(using Context): Boolean =
+        sym.isAnonymousClass
+        || sym.isAnonymousModuleVal
+        || sym.isAnonymousFunction
 
-    def isAnonymous(using Context): Boolean =
-      sym.isAnonymousClass
-      || sym.isAnonymousModuleVal
-      || sym.isAnonymousFunction
+      def matchingSetter(using Context): Symbol =
 
-    def matchingSetter(using Context): Symbol =
+        val setterName = sym.name.toTermName.setterName
 
-      val setterName = sym.name.toTermName.setterName
+        extension (t: Type) inline def matchingType = t.paramInfoss match
+          case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
+          case _               => false
 
-      inline def (t: Type) matchingType = t.paramInfoss match
-        case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
-        case _               => false
+        sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 
-      sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
+      /** Is symbol global? Non-global symbols get localN names */
+      def isGlobal(using Context): Boolean =
+        sym.is(Package)
+        || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
 
-    /** Is symbol global? Non-global symbols get localN names */
-    def isGlobal(using Context): Boolean =
-      sym.is(Package)
-      || !sym.isSelfSym && (sym.is(Param) || sym.owner.isClass) && sym.owner.isGlobal
+      def isLocalWithinSameName(using Context): Boolean =
+        sym.exists && !sym.isGlobal && sym.name == sym.owner.name
 
-    def isLocalWithinSameName(using Context): Boolean =
-      sym.exists && !sym.isGlobal && sym.name == sym.owner.name
+      /** Synthetic symbols that are not anonymous or numbered empty ident */
+      def isSyntheticWithIdent(using Context): Boolean =
+        sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
 
-    /** Synthetic symbols that are not anonymous or numbered empty ident */
-    def isSyntheticWithIdent(using Context): Boolean =
-      sym.is(Synthetic) && !sym.isAnonymous && !sym.name.isEmptyNumbered
-
-  // end SymbolOps
+  end SymbolOps
 
   object LocalSymbol:
 
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
       case locals(ints) =>
         val bi = BigInt(ints)
-        if bi.isValidInt
+        if bi.isValidInt then
           Some(bi.toInt)
         else
           None
@@ -139,77 +140,77 @@ object Scala3:
 
   end LocalSymbol
 
-  private inline def (char: Char) isGlobalTerminal = (char: @switch) match
-    case '/' | '.' | '#' | ']' | ')' => true
-    case _                           => false
+  extension (char: Char)
+    private inline def isGlobalTerminal = (char: @switch) match
+      case '/' | '.' | '#' | ']' | ')' => true
+      case _                           => false
 
-  extension StringOps on (symbol: String):
+  given StringOps: AnyRef with
+    extension (symbol: String)
+      def isSymbol: Boolean = !symbol.isEmpty
+      def isRootPackage: Boolean = RootPackage == symbol
+      def isEmptyPackage: Boolean = EmptyPackage == symbol
 
-    def isSymbol: Boolean = !symbol.isEmpty
-    def isRootPackage: Boolean = RootPackage == symbol
-    def isEmptyPackage: Boolean = EmptyPackage == symbol
+      def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.isGlobalTerminal
+      def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.isGlobalTerminal
+      def isMulti: Boolean = symbol startsWith ";"
 
-    def isGlobal: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last.isGlobalTerminal
-    def isLocal: Boolean = !symbol.isEmpty && !symbol.isMulti && !symbol.last.isGlobalTerminal
-    def isMulti: Boolean = symbol startsWith ";"
+      def isConstructor: Boolean = ctor matches symbol
+      def isPackage: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '/'
+      def isTerm: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '.'
+      def isType: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '#'
+      def isTypeParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ']'
+      def isParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ')'
 
-    def isConstructor: Boolean = ctor matches symbol
-    def isPackage: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '/'
-    def isTerm: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '.'
-    def isType: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == '#'
-    def isTypeParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ']'
-    def isParameter: Boolean = !symbol.isEmpty && !symbol.isMulti && symbol.last == ')'
+      def unescapeUnicode =
+        unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
 
-    def unescapeUnicode =
-      unicodeEscape.replaceAllIn(symbol, m => String.valueOf(Integer.parseInt(m.group(1), 16).toChar))
+      def isJavaIdent =
+        isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
+  end StringOps
 
-    def isJavaIdent =
-      isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
+  given InfoOps: AnyRef with
+    extension (info: SymbolInformation)
+      def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
+      def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
+      def isSealed: Boolean = (info.properties & SymbolInformation.Property.SEALED.value) != 0
+      def isImplicit: Boolean = (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
+      def isLazy: Boolean = (info.properties & SymbolInformation.Property.LAZY.value) != 0
+      def isCase: Boolean = (info.properties & SymbolInformation.Property.CASE.value) != 0
+      def isCovariant: Boolean = (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
+      def isContravariant: Boolean = (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
+      def isPrimary: Boolean = (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
+      def isVal: Boolean = (info.properties & SymbolInformation.Property.VAL.value) != 0
+      def isVar: Boolean = (info.properties & SymbolInformation.Property.VAR.value) != 0
+      def isStatic: Boolean = (info.properties & SymbolInformation.Property.STATIC.value) != 0
+      def isEnum: Boolean = (info.properties & SymbolInformation.Property.ENUM.value) != 0
+      def isDefault: Boolean = (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
 
-  // end StringOps
+      def isUnknownKind: Boolean = info.kind.isUnknownKind
+      def isLocal: Boolean = info.kind.isLocal
+      def isField: Boolean = info.kind.isField
+      def isMethod: Boolean = info.kind.isMethod
+      def isConstructor: Boolean = info.kind.isConstructor
+      def isMacro: Boolean = info.kind.isMacro
+      def isType: Boolean = info.kind.isType
+      def isParameter: Boolean = info.kind.isParameter
+      def isSelfParameter: Boolean = info.kind.isSelfParameter
+      def isTypeParameter: Boolean = info.kind.isTypeParameter
+      def isObject: Boolean = info.kind.isObject
+      def isPackage: Boolean = info.kind.isPackage
+      def isPackageObject: Boolean = info.kind.isPackageObject
+      def isClass: Boolean = info.kind.isClass
+      def isTrait: Boolean = info.kind.isTrait
+      def isInterface: Boolean = info.kind.isInterface
+  end InfoOps
 
-  extension InfoOps on (info: SymbolInformation):
-
-    def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
-    def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
-    def isSealed: Boolean = (info.properties & SymbolInformation.Property.SEALED.value) != 0
-    def isImplicit: Boolean = (info.properties & SymbolInformation.Property.IMPLICIT.value) != 0
-    def isLazy: Boolean = (info.properties & SymbolInformation.Property.LAZY.value) != 0
-    def isCase: Boolean = (info.properties & SymbolInformation.Property.CASE.value) != 0
-    def isCovariant: Boolean = (info.properties & SymbolInformation.Property.COVARIANT.value) != 0
-    def isContravariant: Boolean = (info.properties & SymbolInformation.Property.CONTRAVARIANT.value) != 0
-    def isPrimary: Boolean = (info.properties & SymbolInformation.Property.PRIMARY.value) != 0
-    def isVal: Boolean = (info.properties & SymbolInformation.Property.VAL.value) != 0
-    def isVar: Boolean = (info.properties & SymbolInformation.Property.VAR.value) != 0
-    def isStatic: Boolean = (info.properties & SymbolInformation.Property.STATIC.value) != 0
-    def isEnum: Boolean = (info.properties & SymbolInformation.Property.ENUM.value) != 0
-    def isDefault: Boolean = (info.properties & SymbolInformation.Property.DEFAULT.value) != 0
-
-    def isUnknownKind: Boolean = info.kind.isUnknownKind
-    def isLocal: Boolean = info.kind.isLocal
-    def isField: Boolean = info.kind.isField
-    def isMethod: Boolean = info.kind.isMethod
-    def isConstructor: Boolean = info.kind.isConstructor
-    def isMacro: Boolean = info.kind.isMacro
-    def isType: Boolean = info.kind.isType
-    def isParameter: Boolean = info.kind.isParameter
-    def isSelfParameter: Boolean = info.kind.isSelfParameter
-    def isTypeParameter: Boolean = info.kind.isTypeParameter
-    def isObject: Boolean = info.kind.isObject
-    def isPackage: Boolean = info.kind.isPackage
-    def isPackageObject: Boolean = info.kind.isPackageObject
-    def isClass: Boolean = info.kind.isClass
-    def isTrait: Boolean = info.kind.isTrait
-    def isInterface: Boolean = info.kind.isInterface
-
-  // end InfoOps
-
-  extension RangeOps on (range: Range):
-    def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
-  // end RangeOps
+  given RangeOps: AnyRef with
+    extension (range: Range)
+      def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
+  end RangeOps
 
   /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering as Ordering[SymbolOccurrence] = (x, y) =>
+  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
     x.range -> y.range match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>
@@ -241,14 +242,14 @@ object Scala3:
       while i < len do
         val a = o1.charAt(i)
         val b = o2.charAt(i)
-        if a.isDigit && b.isDigit
+        if a.isDigit && b.isDigit then
           val byDigit = Integer.compare(toDigit(o1, i), toDigit(o2, i))
           if (byDigit != 0) return byDigit
           else
             i = seekNonDigit(o1, i)
         else
           val result = Character.compare(a, b)
-          if result != 0
+          if result != 0 then
             return result
           i += 1
       end while

@@ -15,14 +15,22 @@ import Names.TermName
 class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
   import reader._
 
-  private var mySpans: mutable.HashMap[Addr, Span] = _
-  private var mySourcePaths: mutable.HashMap[Addr, String] = _
+  private var myLineSizes: Array[Int] = _
+  private var mySpans: util.HashMap[Addr, Span] = _
+  private var mySourcePaths: util.HashMap[Addr, String] = _
   private var isDefined = false
 
   def ensureDefined(): Unit = {
     if (!isDefined) {
-      mySpans = new mutable.HashMap[Addr, Span]
-      mySourcePaths = new mutable.HashMap[Addr, String]
+      val lines = readNat()
+      myLineSizes = new Array[Int](lines)
+      var i = 0
+      while i < lines do
+        myLineSizes(i) += readNat()
+        i += 1
+
+      mySpans = util.HashMap[Addr, Span]()
+      mySourcePaths = util.HashMap[Addr, String]()
       var curIndex = 0
       var curStart = 0
       var curEnd = 0
@@ -50,14 +58,19 @@ class PositionUnpickler(reader: TastyReader, nameAtRef: NameRef => TermName) {
     }
   }
 
-  private[tasty] def spans: Map[Addr, Span] = {
+  private[tasty] def spans: util.ReadOnlyMap[Addr, Span] = {
     ensureDefined()
     mySpans
   }
 
-  private[tasty] def sourcePaths: Map[Addr, String] = {
+  private[tasty] def sourcePaths: util.ReadOnlyMap[Addr, String] = {
     ensureDefined()
     mySourcePaths
+  }
+
+  private[tasty] def lineSizes: Array[Int] = {
+    ensureDefined()
+    myLineSizes
   }
 
   def spanAt(addr: Addr): Span = spans.getOrElse(addr, NoSpan)

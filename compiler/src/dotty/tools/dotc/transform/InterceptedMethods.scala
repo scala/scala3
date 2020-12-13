@@ -28,27 +28,27 @@ class InterceptedMethods extends MiniPhase {
   override def phaseName: String = InterceptedMethods.name
 
   // this should be removed if we have guarantee that ## will get Apply node
-  override def transformSelect(tree: tpd.Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: tpd.Select)(using Context): Tree =
     transformRefTree(tree)
 
-  override def transformIdent(tree: tpd.Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: tpd.Ident)(using Context): Tree =
     transformRefTree(tree)
 
-  private def transformRefTree(tree: RefTree)(implicit ctx: Context): Tree =
+  private def transformRefTree(tree: RefTree)(using Context): Tree =
     if (tree.symbol.isTerm && (defn.Any_## eq tree.symbol)) {
       val qual = tree match {
         case id: Ident => tpd.desugarIdentPrefix(id)
         case sel: Select => sel.qualifier
       }
       val rewritten = poundPoundValue(qual)
-      ctx.log(s"$phaseName rewrote $tree to $rewritten")
+      report.log(s"$phaseName rewrote $tree to $rewritten")
       rewritten
     }
     else tree
 
   // TODO: add missing cases from scalac
-  private def poundPoundValue(tree: Tree)(implicit ctx: Context) = {
-    val s = tree.tpe.widen.typeSymbol
+  private def poundPoundValue(tree: Tree)(using Context) = {
+    val s = tree.tpe.typeSymbol
 
     def staticsCall(methodName: TermName): Tree =
       ref(defn.staticsMethodRef(methodName)).appliedTo(tree)
@@ -60,7 +60,7 @@ class InterceptedMethods extends MiniPhase {
     else staticsCall(nme.anyHash)
   }
 
-  override def transformApply(tree: Apply)(implicit ctx: Context): Tree = {
+  override def transformApply(tree: Apply)(using Context): Tree = {
     lazy val qual = tree.fun match {
       case Select(qual, _) => qual
       case ident @ Ident(_) =>

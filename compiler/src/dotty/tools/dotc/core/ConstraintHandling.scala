@@ -9,7 +9,7 @@ import Decorators._
 import Flags._
 import config.Config
 import config.Printers.typr
-import dotty.tools.dotc.reporting.trace
+import reporting.trace
 
 /** Methods for adding constraints and solving them.
  *
@@ -22,14 +22,12 @@ import dotty.tools.dotc.reporting.trace
  * By comparison: Constraint handlers are parts of type comparers and can use their functionality.
  * Constraint handlers update the current constraint as a side effect.
  */
-trait ConstraintHandling[AbstractContext] {
+trait ConstraintHandling {
 
   def constr: config.Printers.Printer = config.Printers.constr
 
-  implicit def ctx(implicit ac: AbstractContext): Context
-
-  protected def isSubType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
-  protected def isSameType(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean
+  protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean
+  protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean
 
   protected def constraint: Constraint
   protected def constraint_=(c: Constraint): Unit
@@ -56,25 +54,19 @@ trait ConstraintHandling[AbstractContext] {
    */
   protected var comparedTypeLambdas: Set[TypeLambda] = Set.empty
 
-  /** Gives for each instantiated type var that does not yet have its `inst` field
-    *  set, the instance value stored in the constraint. Storing instances in constraints
-    *  is done only in a temporary way for contexts that may be retracted
-    *  without also retracting the type var as a whole.
-    */
-  def instType(tvar: TypeVar): Type = constraint.entry(tvar.origin) match {
-    case _: TypeBounds => NoType
-    case tp: TypeParamRef =>
-      var tvar1 = constraint.typeVarOfParam(tp)
-      if (tvar1.exists) tvar1 else tp
-    case tp => tp
-  }
+  def checkReset() =
+    assert(addConstraintInvocations == 0)
+    assert(frozenConstraint == false)
+    assert(caseLambda == NoType)
+    assert(homogenizeArgs == false)
+    assert(comparedTypeLambdas == Set.empty)
 
-  def nonParamBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = constraint.nonParamBounds(param)
+  def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds = constraint.nonParamBounds(param)
 
-  def fullLowerBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+  def fullLowerBound(param: TypeParamRef)(using Context): Type =
     constraint.minLower(param).foldLeft(nonParamBounds(param).lo)(_ | _)
 
-  def fullUpperBound(param: TypeParamRef)(implicit actx: AbstractContext): Type =
+  def fullUpperBound(param: TypeParamRef)(using Context): Type =
     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
@@ -82,12 +74,12 @@ trait ConstraintHandling[AbstractContext] {
     * Note that underlying operations perform subtype checks - for this reason, recursing on `fullBounds`
     * of some param when comparing types might lead to infinite recursion. Consider `bounds` instead.
     */
-  def fullBounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds =
+  def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using AbstractContext): Boolean =
+  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(bound)
+    else if !isUpper && param.occursIn(bound) then
       // We don't allow recursive lower bounds when defining a type,
       // so we shouldn't allow them as constraints either.
       false
@@ -119,11 +111,11 @@ trait ConstraintHandling[AbstractContext] {
         || {
           constraint = c1
           val TypeBounds(lo, hi) = constraint.entry(param)
-          isSubType(lo, hi)
+          isSub(lo, hi)
         }
   end addOneBound
 
-  protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(implicit actx: AbstractContext): Boolean =
+  protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
 
     /** Adjust the bound `tp` in the following ways:
      *
@@ -162,15 +154,15 @@ trait ConstraintHandling[AbstractContext] {
       def msg = i"!!! instantiated to Nothing: $param, constraint = $constraint"
       if Config.failOnInstantiationToNothing
       then assert(false, msg)
-      else ctx.log(msg)
+      else report.log(msg)
     def others = if isUpper then constraint.lower(param) else constraint.upper(param)
     val bound = adjust(rawBound)
     bound.exists
     && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
-        .reporting(i"added $description = $result$location", constr)
+        .showing(i"added $description = $result$location", constr)
   end addBoundTransitively
 
-  protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
+  protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {
     def description = i"ordering $p1 <: $p2 to\n$constraint"
     val res =
       if (constraint.isLess(p2, p1)) unify(p2, p1)
@@ -188,12 +180,12 @@ trait ConstraintHandling[AbstractContext] {
     res
   }
 
-  def location(implicit ctx: Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
+  def location(using Context) = "" // i"in ${ctx.typerState.stateChainStr}" // use for debugging
 
   /** Make p2 = p1, transfer all bounds of p2 to p1
    *  @pre  less(p1)(p2)
    */
-  private def unify(p1: TypeParamRef, p2: TypeParamRef)(implicit actx: AbstractContext): Boolean = {
+  private def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {
     constr.println(s"unifying $p1 $p2")
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
@@ -202,16 +194,16 @@ trait ConstraintHandling[AbstractContext] {
     val bounds = constraint.nonParamBounds(p1)
     val lo = bounds.lo
     val hi = bounds.hi
-    isSubType(lo, hi) &&
+    isSub(lo, hi) &&
     down.forall(addOneBound(_, hi, isUpper = true)) &&
     up.forall(addOneBound(_, lo, isUpper = false))
   }
 
-  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(implicit actx: AbstractContext): Boolean =
+  protected def isSubType(tp1: Type, tp2: Type, whenFrozen: Boolean)(using Context): Boolean =
     if (whenFrozen)
       isSubTypeWhenFrozen(tp1, tp2)
     else
-      isSubType(tp1, tp2)
+      isSub(tp1, tp2)
 
   inline final def inFrozenConstraint[T](op: => T): T = {
     val savedFrozen = frozenConstraint
@@ -225,17 +217,17 @@ trait ConstraintHandling[AbstractContext] {
     }
   }
 
-  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean = inFrozenConstraint(isSubType(tp1, tp2))
-  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(implicit actx: AbstractContext): Boolean = inFrozenConstraint(isSameType(tp1, tp2))
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSub(tp1, tp2))
+  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSame(tp1, tp2))
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
    */
-  protected final def isSatisfiable(implicit actx: AbstractContext): Boolean =
+  protected final def isSatisfiable(using Context): Boolean =
     constraint.forallParams { param =>
       val TypeBounds(lo, hi) = constraint.entry(param)
-      isSubType(lo, hi) || {
-        ctx.log(i"sub fail $lo <:< $hi")
+      isSub(lo, hi) || {
+        report.log(i"sub fail $lo <:< $hi")
         false
       }
     }
@@ -251,7 +243,7 @@ trait ConstraintHandling[AbstractContext] {
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
-  final def approximation(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
+  final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type = {
     val replaceWildcards = new TypeMap {
       override def stopAtStatic = true
       def apply(tp: Type) = mapOver {
@@ -294,18 +286,53 @@ trait ConstraintHandling[AbstractContext] {
     }
   }
 
+  /** If `tp` is an intersection such that some operands are transparent trait instances
+   *  and others are not, replace as many transparent trait instances as possible with Any
+   *  as long as the result is still a subtype of `bound`. But fall back to the
+   *  original type if the resulting widened type is a supertype of all dropped
+   *  types (since in this case the type was not a true intersection of transparent traits
+   *  and other types to start with).
+   */
+  def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
+    var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
+    var dropped: List[Type] = List() // the types dropped so far, last one on top
+
+    def dropOneTransparentTrait(tp: Type): Type =
+      val tpd = tp.dealias
+      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
+        dropped = tpd :: dropped
+        defn.AnyType
+      else tpd match
+        case AndType(tp1, tp2) =>
+          val tp1w = dropOneTransparentTrait(tp1)
+          if tp1w ne tp1 then tp1w & tp2
+          else
+            val tp2w = dropOneTransparentTrait(tp2)
+            if tp2w ne tp2 then tp1 & tp2w
+            else tpd
+        case _ =>
+          tp
+
+    def recur(tp: Type): Type =
+      val tpw = dropOneTransparentTrait(tp)
+      if tpw eq tp then tp
+      else if tpw <:< bound then recur(tpw)
+      else
+        kept += dropped.head
+        dropped = dropped.tail
+        recur(tp)
+
+    val tpw = recur(tp)
+    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
+  end dropTransparentTraits
+
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
    *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. If `inst` is an intersection such that some operands are super trait instances
-   *      and others are not, replace as many super trait instances as possible with Any
-   *      as long as the result is still a subtype of `bound`. But fall back to the
-   *      original type if the resulting widened type is a supertype of all dropped
-   *      types (since in this case the type was not a true intersection of super traits
-   *      and other types to start with).
+   *   3. drop transparent traits from intersections (see @dropTransparentTraits)
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -315,41 +342,7 @@ trait ConstraintHandling[AbstractContext] {
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
-  def widenInferred(inst: Type, bound: Type)(implicit actx: AbstractContext): Type =
-
-    def dropSuperTraits(tp: Type): Type =
-      var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
-      var dropped: List[Type] = List() // the types dropped so far, last one on top
-
-      def dropOneSuperTrait(tp: Type): Type =
-        val tpd = tp.dealias
-        if tpd.typeSymbol.isSuperTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
-          dropped = tpd :: dropped
-          defn.AnyType
-        else tpd match
-          case AndType(tp1, tp2) =>
-            val tp1w = dropOneSuperTrait(tp1)
-            if tp1w ne tp1 then tp1w & tp2
-            else
-              val tp2w = dropOneSuperTrait(tp2)
-              if tp2w ne tp2 then tp1 & tp2w
-              else tpd
-          case _ =>
-            tp
-
-      def recur(tp: Type): Type =
-        val tpw = dropOneSuperTrait(tp)
-        if tpw eq tp then tp
-        else if tpw <:< bound then recur(tpw)
-        else
-          kept += dropped.head
-          dropped = dropped.tail
-          recur(tp)
-
-      val tpw = recur(tp)
-      if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
-    end dropSuperTraits
-
+  def widenInferred(inst: Type, bound: Type)(using Context): Type =
     def widenOr(tp: Type) =
       val tpw = tp.widenUnion
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
@@ -364,7 +357,7 @@ trait ConstraintHandling[AbstractContext] {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropSuperTraits(widenOr(widenSingle(inst)))
+      else dropTransparentTraits(widenOr(widenSingle(inst)), bound)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
@@ -378,9 +371,9 @@ trait ConstraintHandling[AbstractContext] {
    *  a lower bound instantiation can be a singleton type only if the upper bound
    *  is also a singleton type.
    */
-  def instanceType(param: TypeParamRef, fromBelow: Boolean)(implicit actx: AbstractContext): Type = {
+  def instanceType(param: TypeParamRef, fromBelow: Boolean)(using Context): Type = {
     val approx = approximation(param, fromBelow).simplified
-    if (fromBelow)
+    if fromBelow then
       val widened = widenInferred(approx, param)
       // Widening can add extra constraints, in particular the widened type might
       // be a type variable which is now instantiated to `param`, and therefore
@@ -406,7 +399,7 @@ trait ConstraintHandling[AbstractContext] {
    *  Both `c1` and `c2` are required to derive from constraint `pre`, without adding
    *  any new type variables but possibly narrowing already registered ones with further bounds.
    */
-  protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(implicit actx: AbstractContext): Boolean =
+  protected final def subsumes(c1: Constraint, c2: Constraint, pre: Constraint)(using Context): Boolean =
     if (c2 eq pre) true
     else if (c1 eq pre) false
     else {
@@ -425,7 +418,7 @@ trait ConstraintHandling[AbstractContext] {
     }
 
   /** The current bounds of type parameter `param` */
-  def bounds(param: TypeParamRef)(implicit actx: AbstractContext): TypeBounds = {
+  def bounds(param: TypeParamRef)(using Context): TypeBounds = {
     val e = constraint.entry(param)
     if (e.exists) e.bounds
     else {
@@ -439,7 +432,7 @@ trait ConstraintHandling[AbstractContext] {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(implicit actx: AbstractContext): Boolean =
+  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>
@@ -468,7 +461,7 @@ trait ConstraintHandling[AbstractContext] {
    *  This holds if `TypeVarsMissContext` is set unless `param` is a part
    *  of a MatchType that is currently normalized.
    */
-  final def assumedTrue(param: TypeParamRef)(implicit actx: AbstractContext): Boolean =
+  final def assumedTrue(param: TypeParamRef)(using Context): Boolean =
     ctx.mode.is(Mode.TypevarsMissContext) && (caseLambda `ne` param.binder)
 
   /** Add constraint `param <: bound` if `fromBelow` is false, `param >: bound` otherwise.
@@ -478,7 +471,8 @@ trait ConstraintHandling[AbstractContext] {
    *  not be AndTypes and lower bounds may not be OrTypes. This is assured by the
    *  way isSubType is organized.
    */
-  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(implicit actx: AbstractContext): Boolean =
+  protected def addConstraint(param: TypeParamRef, bound: Type, fromBelow: Boolean)(using Context): Boolean =
+    if !bound.isValueTypeOrLambda then return false
 
     /** When comparing lambdas we might get constraints such as
      *  `A <: X0` or `A = List[X0]` where `A` is a constrained parameter
@@ -512,7 +506,7 @@ trait ConstraintHandling[AbstractContext] {
         case _: TypeBounds =>
           if (fromBelow) addLess(bound, param) else addLess(param, bound)
         case tp =>
-          if (fromBelow) isSubType(bound, tp) else isSubType(tp, bound)
+          if (fromBelow) isSub(bound, tp) else isSub(tp, bound)
       }
 
     def kindCompatible(tp1: Type, tp2: Type): Boolean =
@@ -539,7 +533,7 @@ trait ConstraintHandling[AbstractContext] {
   end addConstraint
 
   /** Check that constraint is fully propagated. See comment in Config.checkConstraintsPropagated */
-  def checkPropagated(msg: => String)(result: Boolean)(implicit actx: AbstractContext): Boolean = {
+  def checkPropagated(msg: => String)(result: Boolean)(using Context): Boolean = {
     if (Config.checkConstraintsPropagated && result && addConstraintInvocations == 0)
       inFrozenConstraint {
         for (p <- constraint.domainParams) {

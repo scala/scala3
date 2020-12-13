@@ -11,15 +11,14 @@ import core.Flags._
 import core.StdNames._
 import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
-import core.Phases.Phase
+import core.Phases._
 import core.Mode
 import typer._
 import typer.ErrorReporting._
-import reporting.ThrowingReporter
-import reporting.messages.TypeMismatch
+import reporting._
 import ast.Trees._
 import ast.{tpd, untpd}
-import scala.internal.Chars._
+import util.Chars._
 import collection.mutable
 import ProtoTypes._
 
@@ -59,7 +58,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def checkCompanion(symd: SymDenotation)(using Context): Unit = {
     val cur = symd.linkedClass
-    val prev = ctx.atPhase(ctx.phase.prev) {
+    val prev = atPhase(ctx.phase.prev) {
       symd.symbol.linkedClass
     }
 
@@ -90,7 +89,7 @@ class TreeChecker extends Phase with SymTransformer {
 
     // Signatures are used to disambiguate overloads and need to stay stable
     // until erasure, see the comment above `Compiler#phases`.
-    if (ctx.phaseId <= ctx.erasurePhase.id) {
+    if (ctx.phaseId <= erasurePhase.id) {
       val cur = symd.info
       val initial = symd.initial.info
       val curSig = cur match {
@@ -101,7 +100,7 @@ class TreeChecker extends Phase with SymTransformer {
           cur.signature
       }
       assert(curSig == initial.signature,
-        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.squashed(ctx.phase.prev)}
+        i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial}
            |Initial sig : ${initial.signature}
            |Current info: ${cur}
@@ -116,7 +115,7 @@ class TreeChecker extends Phase with SymTransformer {
 
   def run(using Context): Unit =
     if (ctx.settings.YtestPickler.value && ctx.phase.prev.isInstanceOf[Pickler])
-      ctx.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
+      report.echo("Skipping Ycheck after pickling with -Ytest-pickler, the returned tree contains stale symbols")
     else if (ctx.phase.prev.isCheckable)
       check(ctx.base.allPhases.toIndexedSeq, ctx)
 
@@ -134,31 +133,36 @@ class TreeChecker extends Phase with SymTransformer {
 
   def check(phasesToRun: Seq[Phase], ctx: Context): Tree = {
     val prevPhase = ctx.phase.prev // can be a mini-phase
-    val squahsedPhase = ctx.base.squashed(prevPhase)
-    ctx.echo(s"checking ${ctx.compilationUnit} after phase ${squahsedPhase}")
+    val fusedPhase = ctx.base.fusedContaining(prevPhase)
+    report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
-    assertSelectWrapsNew(ctx.compilationUnit.tpdTree)(using ctx)
+    inContext(ctx) {
+      assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
+    }
 
     val checkingCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
         .setReporter(new ThrowingReporter(ctx.reporter))
 
-    val checker = new Checker(previousPhases(phasesToRun.toList)(using ctx))
+    val checker = inContext(ctx) {
+      new Checker(previousPhases(phasesToRun.toList))
+    }
     try checker.typedExpr(ctx.compilationUnit.tpdTree)(using checkingCtx)
     catch {
       case NonFatal(ex) =>     //TODO CHECK. Check that we are bootstrapped
-        implicit val ctx = checkingCtx
-        println(i"*** error while checking ${ctx.compilationUnit} after phase ${checkingCtx.phase.prev} ***")
+        inContext(checkingCtx) {
+          println(i"*** error while checking ${ctx.compilationUnit} after phase ${ctx.phase.prev} ***")
+        }
         throw ex
     }
   }
 
   class Checker(phasesToCheck: Seq[Phase]) extends ReTyper with Checking {
 
-    private val nowDefinedSyms = new mutable.HashSet[Symbol]
-    private val patBoundSyms = new mutable.HashSet[Symbol]
-    private val everDefinedSyms = newMutableSymbolMap[untpd.Tree]
+    private val nowDefinedSyms = util.HashSet[Symbol]()
+    private val patBoundSyms = util.HashSet[Symbol]()
+    private val everDefinedSyms = MutableSymbolMap[untpd.Tree]()
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
@@ -173,7 +177,7 @@ class TreeChecker extends Phase with SymTransformer {
             everDefinedSyms.get(sym) match {
               case Some(t)  =>
                 if (t ne tree)
-                  ctx.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
+                  report.warning(i"symbol ${sym.fullName} is defined at least twice in different parts of AST")
               // should become an error
               case None =>
                 everDefinedSyms(sym) = tree
@@ -183,7 +187,7 @@ class TreeChecker extends Phase with SymTransformer {
             if (ctx.settings.YcheckMods.value)
               tree match {
                 case t: untpd.MemberDef =>
-                  if (t.name ne sym.name) ctx.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
+                  if (t.name ne sym.name) report.warning(s"symbol ${sym.fullName} name doesn't correspond to AST: ${t}")
                 // todo: compare trees inside annotations
                 case _ =>
               }
@@ -206,7 +210,7 @@ class TreeChecker extends Phase with SymTransformer {
         assert(
           sym.isPatternBound,
           "patBoundSyms.contains(sym) => sym.isPatternBound is broken." +
-          i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.sourcePos.line
+          i" Pattern bound symbol $sym has incorrect flags: " + sym.flagsString + ", line " + sym.srcPos.line
         )
       }
       patBoundSyms ++= syms
@@ -230,13 +234,13 @@ class TreeChecker extends Phase with SymTransformer {
         val sym = tree.symbol
         assert(
           nowDefinedSyms.contains(sym) || patBoundSyms.contains(sym),
-          i"undefined symbol ${sym} at line " + tree.sourcePos.line
+          i"undefined symbol ${sym} at line " + tree.srcPos.line
         )
 
         if (!ctx.phase.patternTranslated)
           assert(
             !sym.isPatternBound || patBoundSyms.contains(sym),
-            i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.sourcePos.line
+            i"sym.isPatternBound => patBoundSyms.contains(sym) is broken, sym = $sym, line " + tree.srcPos.line
           )
       }
 
@@ -337,7 +341,7 @@ class TreeChecker extends Phase with SymTransformer {
                |Original tree : ${tree.show}
                |After checking: ${tree1.show}
                |Why different :
-             """.stripMargin + core.TypeComparer.explained(tp1 <:< tp2)
+             """.stripMargin + core.TypeComparer.explained(_.isSubType(tp1, tp2))
           if (tree.hasType) // it might not be typed because Typer sometimes constructs new untyped trees and resubmits them to typedUnadapted
             assert(isSubType(tree1.tpe, tree.typeOpt), divergenceMsg(tree1.tpe, tree.typeOpt))
           tree1
@@ -409,6 +413,10 @@ class TreeChecker extends Phase with SymTransformer {
       res
     }
 
+    override def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree =
+      assert(tree.qual.tpe.isInstanceOf[ThisType], i"expect prefix of Super to be This, actual = ${tree.qual}")
+      super.typedSuper(tree, pt)
+
     private def checkOwner(tree: untpd.Tree)(using Context): Unit = {
       def ownerMatches(symOwner: Symbol, ctxOwner: Symbol): Boolean =
         symOwner == ctxOwner ||
@@ -429,7 +437,8 @@ class TreeChecker extends Phase with SymTransformer {
 
       def isNonMagicalMember(x: Symbol) =
         !x.isValueClassConvertMethod &&
-        !x.name.is(DocArtifactName)
+        !x.name.is(DocArtifactName) &&
+        !(ctx.phase.id >= genBCodePhase.id && x.name == str.MODULE_INSTANCE_FIELD.toTermName)
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
@@ -437,9 +446,9 @@ class TreeChecker extends Phase with SymTransformer {
       val symbolsNotDefined = decls -- defined - constr.symbol
 
       assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${decls.toList}%, %\n" +
-          i"defined: ${defined}%, %")
+        i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
+        i"expected: ${decls.toList}%, %\n" +
+        i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)
     }
@@ -530,6 +539,12 @@ class TreeChecker extends Phase with SymTransformer {
       assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
+
+    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
+      if tree.symbol == defn.StdLibPatchesPackage then
+        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
+      else
+        super.typedPackageDef(tree)
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree

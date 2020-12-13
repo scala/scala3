@@ -3,7 +3,7 @@ package transform
 package init
 
 import core._
-import Contexts.Context
+import Contexts._
 import Decorators._
 import StdNames._
 import Symbols._
@@ -37,10 +37,7 @@ object Summarization {
         analyze(expr.tpe, expr)
 
       case supert: Super =>
-        val SuperType(thisTp, superTp) = supert.tpe.asInstanceOf[SuperType]
-        val thisRef = ThisRef(thisTp.widen.classSymbol.asClass)(supert)
-        val pots = superTp.classSymbols.map { cls => SuperRef(thisRef, cls.asClass)(supert) }
-        (pots.toSet, Effects.empty)
+        analyze(supert.tpe, supert)
 
       case Select(qualifier, name) =>
         val (pots, effs) = analyze(qualifier)
@@ -54,17 +51,7 @@ object Summarization {
         }
 
       case _: This =>
-        // With self type, the type can be `A & B`.
-        def classes(tp: Type): Set[ClassSymbol] = tp.widen match {
-          case AndType(tp1, tp2)  =>
-            classes(tp1) ++ classes(tp2)
-
-          case tp =>
-            Set(tp.classSymbol.asClass)
-        }
-
-        val pots: Potentials = classes(expr.tpe).map{ ThisRef(_)(expr) }
-        (pots, Effects.empty)
+        analyze(expr.tpe, expr)
 
       case Apply(fun, args) =>
         val summary = analyze(fun)
@@ -99,9 +86,15 @@ object Summarization {
         val cls = tref.classSymbol.asClass
         // local class may capture, thus we need to track it
         if (tref.prefix == NoPrefix) {
-          val enclosingCls = cls.enclosingClass.asClass
-          val thisRef = ThisRef(enclosingCls)(expr)
-          Summary.empty + Warm(cls, thisRef)(expr)
+          val cur = theCtx.owner.lexicallyEnclosingClass.asClass
+          val thisRef = ThisRef()(expr)
+          val enclosing = cls.owner.lexicallyEnclosingClass.asClass
+          val (pots, effs) = resolveThis(enclosing, thisRef, cur, expr)
+          if pots.isEmpty then (Potentials.empty, effs)
+          else {
+            assert(pots.size == 1)
+            (Warm(cls, pots.head)(expr).toPots, effs)
+          }
         }
         else {
           val (pots, effs) = analyze(tref.prefix, expr)
@@ -233,17 +226,18 @@ object Summarization {
           (pots2, effs ++ effs2)
         }
 
-      case ThisType(tref: TypeRef) if tref.classSymbol.is(Flags.Package) =>
-        Summary.empty
-
-      case thisTp: ThisType =>
-        val cls = thisTp.tref.classSymbol.asClass
-        Summary.empty + ThisRef(cls)(source)
+      case ThisType(tref) =>
+        val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+        val cls = tref.symbol.asClass
+        resolveThis(cls, ThisRef()(source), enclosing, source)
 
       case SuperType(thisTp, superTp) =>
-        val thisRef = ThisRef(thisTp.classSymbol.asClass)(source)
-        val pot = SuperRef(thisRef, superTp.classSymbol.asClass)(source)
-        Summary.empty + pot
+        val (pots, effs) = analyze(thisTp, source)
+        val pots2 = pots.map {
+          // TODO: properly handle super of the form A & B
+          SuperRef(_, superTp.classSymbols.head.asClass)(source): Potential
+        }
+        (pots2, effs)
 
       case _ =>
         throw new Exception("unexpected type: " + tp.show)
@@ -264,6 +258,22 @@ object Summarization {
     analyze(vdef.rhs)(env.withOwner(sym))
   }
 
+  def resolveThis(cls: ClassSymbol, pot: Potential, cur: ClassSymbol, source: Tree)(implicit env: Env): Summary =
+  trace("resolve " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
+    if (cls.is(Flags.Package)) Summary.empty
+    else if (cls == cur) (pot.toPots, Effects.empty)
+    else if (pot.size > 2) (Potentials.empty, Promote(pot)(source).toEffs)
+    else {
+      val enclosing = cur.owner.lexicallyEnclosingClass.asClass
+      // Dotty uses O$.this outside of the object O
+      if (enclosing.is(Flags.Package) && cls.is(Flags.Module)) return Summary.empty
+
+      assert(!enclosing.is(Flags.Package), "enclosing = " + enclosing.show + ", cls = " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show)
+      val pot2 = Outer(pot, cur)(pot.source)
+      resolveThis(cls, pot2, enclosing, source)
+    }
+  }
+
   /** Summarize secondary constructors or class body */
   def analyzeConstructor(ctor: Symbol)(implicit env: Env): Summary =
   trace("summarizing constructor " + ctor.owner.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
@@ -273,7 +283,7 @@ object Summarization {
       val effs = analyze(Block(tpl.body, unitLiteral))._2
 
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
-        val initCall = MethodCall(ThisRef(cls)(source), ctor)(source)
+        val initCall = MethodCall(ThisRef()(source), ctor)(source)
         stats.foldLeft(Set(initCall)) { (acc, stat) =>
           val (_, effs) = Summarization.analyze(stat)
           acc ++ effs
@@ -299,8 +309,8 @@ object Summarization {
             if (cls == defn.AnyClass || cls == defn.AnyValClass) Effects.empty
             else {
               val ctor = cls.primaryConstructor
-              Summarization.analyze(tref.prefix, ref)._2 +
-                MethodCall(ThisRef(cls)(ref), ctor)(ref)
+              Summarization.analyze(New(ref.tpe))(env.withOwner(ctor.owner))._2 +
+                MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
       }
@@ -313,21 +323,22 @@ object Summarization {
     }
   }
 
-  def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary =
+  def classSummary(cls: ClassSymbol)(implicit env: Env): ClassSummary = trace("summarizing " + cls.show, init) {
     def extractParentOuters(parent: Type, source: Tree): (ClassSymbol, Potentials) = {
       val tref = parent.typeConstructor.stripAnnots.asInstanceOf[TypeRef]
       val parentCls = tref.classSymbol.asClass
+      val env2: Env = env.withOwner(cls.owner.lexicallyEnclosingClass)
       if (tref.prefix != NoPrefix)
-        parentCls ->analyze(tref.prefix, source)._1
+        parentCls -> analyze(tref.prefix, source)(env2)._1
       else
-        parentCls -> analyze(cls.enclosingClass.thisType, source)._1
+        parentCls -> analyze(cls.owner.lexicallyEnclosingClass.thisType, source)(env2)._1
     }
 
     if (cls.defTree.isEmpty)
       cls.info match {
         case cinfo: ClassInfo =>
           val source = {
-            implicit val ctx2: Context = theCtx.withSource(cls.source(theCtx))
+            implicit val ctx2: Context = theCtx.withSource(cls.source(using theCtx))
             TypeTree(cls.typeRef).withSpan(cls.span)
           }
 
@@ -341,5 +352,6 @@ object Summarization {
       val parentOuter = parents.map { parent => extractParentOuters(parent.tpe, parent) }
       ClassSummary(cls, parentOuter.toMap)
     }
+  }
 
 }

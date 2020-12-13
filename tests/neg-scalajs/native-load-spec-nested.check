@@ -1,0 +1,120 @@
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:6:3 ----------------------------------------------------------
+6 |  @JSGlobal("bar1") // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:8:3 ----------------------------------------------------------
+8 |  @JSGlobal("bar2") // error
+  |  ^^^^^^^^^^^^^^^^^
+  |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:10:3 ---------------------------------------------------------
+10 |  @JSGlobal("bar3") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:14:3 ---------------------------------------------------------
+14 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:18:3 ---------------------------------------------------------
+18 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:22:2 ---------------------------------------------------------
+22 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:26:2 ---------------------------------------------------------
+26 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:29:3 ---------------------------------------------------------
+29 |  @JSImport("foo.js", "babar") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  @JSImport can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:33:3 ---------------------------------------------------------
+33 |  @JSImport("foo.js", "Babar") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSImport annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:37:2 ---------------------------------------------------------
+37 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobalScope annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:43:3 ---------------------------------------------------------
+43 |  @JSGlobal("bar1") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:45:3 ---------------------------------------------------------
+45 |  @JSGlobal("bar2") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:47:3 ---------------------------------------------------------
+47 |  @JSGlobal("bar3") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:51:3 ---------------------------------------------------------
+51 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:55:3 ---------------------------------------------------------
+55 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:59:2 ---------------------------------------------------------
+59 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:63:2 ---------------------------------------------------------
+63 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:66:3 ---------------------------------------------------------
+66 |  @JSImport("foo.js", "babar") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  @JSImport can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:70:3 ---------------------------------------------------------
+70 |  @JSImport("foo.js", "Babar") // error
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSImport annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:74:2 ---------------------------------------------------------
+74 |  @JSGlobalScope // error
+   |  ^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobalScope annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:80:3 ---------------------------------------------------------
+80 |  @JSGlobal("bar1") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:82:3 ---------------------------------------------------------
+82 |  @JSGlobal("bar2") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:84:3 ---------------------------------------------------------
+84 |  @JSGlobal("bar3") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  @JSGlobal can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:88:3 ---------------------------------------------------------
+88 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:92:3 ---------------------------------------------------------
+92 |  @JSGlobal("Inner") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:96:2 ---------------------------------------------------------
+96 |  @JSGlobal // error
+   |  ^^^^^^^^^
+   |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:100:2 --------------------------------------------------------
+100 |  @JSGlobal // error
+    |  ^^^^^^^^^
+    |  Nested JS classes and objects cannot have an @JSGlobal annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:103:3 --------------------------------------------------------
+103 |  @JSImport("foo.js", "babar") // error
+    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |  @JSImport can only be used on native JS definitions (with @js.native).
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:107:3 --------------------------------------------------------
+107 |  @JSImport("foo.js", "Babar") // error
+    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |  Nested JS classes and objects cannot have an @JSImport annotation.
+-- Error: tests/neg-scalajs/native-load-spec-nested.scala:111:2 --------------------------------------------------------
+111 |  @JSGlobalScope // error
+    |  ^^^^^^^^^^^^^^
+    |  Nested JS classes and objects cannot have an @JSGlobalScope annotation.

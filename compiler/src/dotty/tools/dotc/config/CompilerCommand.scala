@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 object CompilerCommand {
 
   /** The name of the command */
-  def cmdName: String = "dotc"
+  def cmdName: String = "scalac"
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
@@ -31,10 +31,16 @@ object CompilerCommand {
 
   def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
-  def versionMsg: String = s"Dotty compiler $versionString -- $copyrightString"
+  def versionMsg: String = s"Scala compiler $versionString -- $copyrightString"
+
+  def shouldStopWithInfo(using Context): Boolean = {
+    val settings = ctx.settings
+    import settings._
+    Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
+  }
 
   /** Distill arguments into summary detailing settings, errors and files to compiler */
-  def distill(args: Array[String])(implicit ctx: Context): ArgsSummary = {
+  def distill(args: Array[String])(using Context): ArgsSummary = {
     /**
      * Expands all arguments starting with @ to the contents of the
      * file named like each argument.
@@ -64,7 +70,7 @@ object CompilerCommand {
    *  are already applied in context.
    *  @return  The list of files to compile.
    */
-  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(implicit ctx: Context): List[String] = {
+  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using Context): List[String] = {
     val settings = ctx.settings
 
     /** Creates a help message for a subset of options based on cond */
@@ -110,11 +116,6 @@ object CompilerCommand {
     def xusageMessage   = createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
     def yusageMessage   = createUsageMsg("Possible private", shouldExplain = true, isPrivate)
 
-    def shouldStopWithInfo = {
-      import settings._
-      Set(help, Xhelp, Yhelp, showPlugins, XshowPhases) exists (_.value)
-    }
-
     def phasesMessage: String = {
       (new Compiler()).phases.map {
         case List(single) => single.phaseName
@@ -127,29 +128,29 @@ object CompilerCommand {
       if (help.value) usageMessage
       else if (Xhelp.value) xusageMessage
       else if (Yhelp.value) yusageMessage
-      else if (showPlugins.value) ctx.pluginDescriptions
+      else if (showPlugins.value) ctx.base.pluginDescriptions
       else if (XshowPhases.value) phasesMessage
       else ""
     }
 
     // Print all warnings encountered during arguments parsing
-    summary.warnings.foreach(ctx.warning(_))
+    summary.warnings.foreach(report.warning(_))
 
     if (summary.errors.nonEmpty) {
-      summary.errors foreach (ctx.error(_))
-      ctx.echo("  dotc -help  gives more information")
+      summary.errors foreach (report.error(_))
+      report.echo("  scalac -help  gives more information")
       Nil
     }
     else if (settings.version.value) {
-      ctx.echo(versionMsg)
+      report.echo(versionMsg)
       Nil
     }
     else if (shouldStopWithInfo) {
-      ctx.echo(infoMessage)
+      report.echo(infoMessage)
       Nil
     }
     else {
-      if (sourcesRequired && summary.arguments.isEmpty) ctx.echo(usageMessage)
+      if (sourcesRequired && summary.arguments.isEmpty) report.echo(usageMessage)
       summary.arguments
     }
   }

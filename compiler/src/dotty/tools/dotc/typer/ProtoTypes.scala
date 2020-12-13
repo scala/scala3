@@ -14,6 +14,7 @@ import Uniques._
 import config.Printers.typr
 import util.SourceFile
 import util.Property
+import TypeComparer.necessarySubType
 
 import scala.annotation.internal.sharable
 
@@ -37,6 +38,14 @@ object ProtoTypes {
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
+    /** Like isCompatibe, but using a subtype comparison with necessary eithers
+     *  that don't unnecessarily truncate the constraint space, returning false instead.
+     */
+    def necessarilyCompatible(tp: Type, pt: Type)(using Context): Boolean =
+      val tpw = tp.widenExpr
+      val ptw = pt.widenExpr
+      necessarySubType(tpw, ptw) || tpw.isValueSubType(ptw) || viewExists(tp, pt)
+
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
      */
@@ -57,7 +66,7 @@ object ProtoTypes {
             normalizedCompatible(tp, pt, keepConstraint = false)
           case _ => testCompat
         }
-      else ctx.test(testCompat)
+      else explore(testCompat)
     }
 
     private def disregardProto(pt: Type)(using Context): Boolean =
@@ -67,24 +76,22 @@ object ProtoTypes {
      *  fits the given expected result type.
      */
     def constrainResult(mt: Type, pt: Type)(using Context): Boolean =
-      inContext(ctx.addMode(Mode.ConstrainResult)) {
-        val savedConstraint = ctx.typerState.constraint
-        val res = pt.widenExpr match {
-          case pt: FunProto =>
-            mt match {
-              case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
-              case _ => true
-            }
-          case _: ValueTypeOrProto if !disregardProto(pt) =>
-            isCompatible(normalize(mt, pt), pt)
-          case pt: WildcardType if pt.optBounds.exists =>
-            isCompatible(normalize(mt, pt), pt)
-          case _ =>
-            true
-        }
-        if (!res) ctx.typerState.resetConstraintTo(savedConstraint)
-        res
+      val savedConstraint = ctx.typerState.constraint
+      val res = pt.widenExpr match {
+        case pt: FunProto =>
+          mt match {
+            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+            case _ => true
+          }
+        case _: ValueTypeOrProto if !disregardProto(pt) =>
+          necessarilyCompatible(normalize(mt, pt), pt)
+        case pt: WildcardType if pt.optBounds.exists =>
+          necessarilyCompatible(normalize(mt, pt), pt)
+        case _ =>
+          true
       }
+      if !res then ctx.typerState.constraint = savedConstraint
+      res
 
     /** Constrain result with special case if `meth` is an inlineable method in an inlineable context.
      *  In that case, we should always succeed and not constrain type parameters in the expected type,
@@ -113,14 +120,25 @@ object ProtoTypes {
   }
 
   /** A class marking ignored prototypes that can be revealed by `deepenProto` */
-  case class IgnoredProto(ignored: Type) extends UncachedGroundType with MatchAlways:
+  abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type = ignored
 
+    override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
+
+    override def eql(that: Type): Boolean = that match
+      case that: IgnoredProto => ignored eq that.ignored
+      case _ => false
+
+    // equals comes from case class; no need to redefine
+  end IgnoredProto
+
+  final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
+
   object IgnoredProto:
-    def apply(ignored: Type): IgnoredProto = ignored match
+    def apply(ignored: Type)(using Context): IgnoredProto = ignored match
       case ignored: IgnoredProto => ignored
-      case _ => new IgnoredProto(ignored)
+      case _ => unique(CachedIgnoredProto(ignored))
 
   /** A prototype for expressions [] that are part of a selection operation:
    *
@@ -128,6 +146,11 @@ object ProtoTypes {
    */
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
+
+    private var myExtensionName: TermName = null
+    def extensionName(using Context): TermName =
+      if myExtensionName == null then myExtensionName = name.toExtensionName
+      myExtensionName
 
     /** Is the set of members of this type unknown? This is the case if:
      *  1. The type has Nothing or Wildcard as a prefix or underlying type
@@ -157,10 +180,12 @@ object ProtoTypes {
       {
         val mbr = if (privateOK) tp1.member(name) else tp1.nonPrivateMember(name)
         def qualifies(m: SingleDenotation) =
-          memberProto.isRef(defn.UnitClass) ||
-          tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint)
-            // Note: can't use `m.info` here because if `m` is a method, `m.info`
-            //       loses knowledge about `m`'s default arguments.
+          val isAccessible = !m.symbol.exists || m.symbol.isAccessibleFrom(tp1, superAccess = true)
+          isAccessible
+          && (memberProto.isRef(defn.UnitClass)
+             || tp1.isValueType && compat.normalizedCompatible(NamedType(tp1, name, m), memberProto, keepConstraint))
+              // Note: can't use `m.info` here because if `m` is a method, `m.info`
+              //       loses knowledge about `m`'s default arguments.
         mbr match { // hasAltWith inlined for performance
           case mbr: SingleDenotation => mbr.exists && qualifies(mbr)
           case _ => mbr hasAltWith qualifies
@@ -173,21 +198,26 @@ object ProtoTypes {
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
-    override def equals(that: Any): Boolean = that match {
-      case that: SelectionProto =>
-        (name eq that.name) && (memberProto == that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
-      case _ =>
-        false
-    }
-
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
     override def deepenProto(using Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
-
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
+    }
+
+    override def equals(that: Any): Boolean = that match
+      case that: SelectionProto =>
+        (name eq that.name) && memberProto.equals(that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
+      case _ =>
+        false
+
+    override def eql(that: Type): Boolean = that match {
+      case that: SelectionProto =>
+        (name eq that.name) && (memberProto eq that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
+      case _ =>
+        false
     }
   }
 
@@ -234,7 +264,7 @@ object ProtoTypes {
     var typedArgs: List[Tree] = Nil
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
-    var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.Empty
+    var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
 
     /** The tupled or untupled version of this prototype, if it has been computed */
     var tupledDual: Type = NoType
@@ -416,8 +446,9 @@ object ProtoTypes {
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
-          case SelectionProto(name: TermName, mbrType, _, _) =>
-            ctx.typer.hasExtensionMethod(tp, name, argType, mbrType)
+          case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
+            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
@@ -438,6 +469,10 @@ object ProtoTypes {
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, argType, resultType)
+    override def eql(that: Type): Boolean = that match
+      case that: ViewProto => (argType eq that.argType) && (resType eq that.resType)
+      case _ => false
+    // equals comes from case class; no need to redefine
   }
 
   object ViewProto {
@@ -446,7 +481,7 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source))(ctx) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
+    untpd.TypedSplice(dummyTreeOfType(argType)(ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
@@ -485,6 +520,12 @@ object ProtoTypes {
   /** A prototype for type constructors that are followed by a type application */
   @sharable object AnyTypeConstructorProto extends UncachedGroundType with MatchAlways
 
+  extension (pt: Type)
+    def isExtensionApplyProto: Boolean = pt match
+      case PolyProto(targs, res) => res.isExtensionApplyProto
+      case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
+      case _ => false
+
   /** Add all parameters of given type lambda `tl` to the constraint's domain.
    *  If the constraint contains already some of these parameters in its domain,
    *  make a copy of the type lambda and add the copy's type parameters instead.
@@ -512,7 +553,7 @@ object ProtoTypes {
 
     val added = state.constraint.ensureFresh(tl)
     val tvars = if (addTypeVars) newTypeVars(added) else Nil
-    ctx.typeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
+    TypeComparer.addToConstraint(added, tvars.tpes.asInstanceOf[List[TypeVar]])
     (added, tvars)
   }
 
@@ -591,7 +632,8 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if (iftp.exists) normalize(iftp.dropDependentRefinement.argInfos.last, pt) else tp
+        if iftp.exists then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        else tp
     }
   }
 
@@ -617,6 +659,10 @@ object ProtoTypes {
           wildApprox(tp.refinedInfo, theMap, seen, internal))
     case tp: AliasingBounds => // default case, inlined for speed
       tp.derivedAlias(wildApprox(tp.alias, theMap, seen, internal))
+    case tp: TypeBounds =>
+      tp.derivedTypeBounds(
+        wildApprox(tp.lo, theMap, seen, internal),
+        wildApprox(tp.hi, theMap, seen, internal))
     case tp @ TypeParamRef(tl, _) if internal.contains(tl) => tp
     case tp @ TypeParamRef(poly, pnum) =>
       def wildApproxBounds(bounds: TypeBounds) =
@@ -664,6 +710,8 @@ object ProtoTypes {
       tp.derivedViewProto(
           wildApprox(tp.argType, theMap, seen, internal),
           wildApprox(tp.resultType, theMap, seen, internal))
+    case tp: IgnoredProto =>
+      WildcardType
     case  _: ThisType | _: BoundType => // default case, inlined for speed
       tp
     case tl: TypeLambda =>
@@ -687,14 +735,8 @@ object ProtoTypes {
 
   /** Dummy tree to be used as an argument of a FunProto or ViewProto type */
   object dummyTreeOfType {
-    /*
-     * A property indicating that the given tree was created with dummyTreeOfType.
-     * It is sometimes necessary to detect the dummy trees to avoid unwanted readaptations on them.
-     */
-    val IsDummyTree = new Property.Key[Unit]
-
     def apply(tp: Type)(implicit src: SourceFile): Tree =
-      (untpd.Literal(Constant(null)) withTypeUnchecked tp).withAttachment(IsDummyTree, ())
+      untpd.Literal(Constant(null)) withTypeUnchecked tp
     def unapply(tree: untpd.Tree): Option[Type] = tree match {
       case Literal(Constant(null)) => Some(tree.typeOpt)
       case _ => None

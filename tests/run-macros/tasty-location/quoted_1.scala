@@ -6,14 +6,14 @@ object Location {
 
   implicit inline def location: Location = ${impl}
 
-  def impl(using qctx: QuoteContext) : Expr[Location] = {
-    import qctx.tasty._
+  def impl(using Quotes) : Expr[Location] = {
+    import quotes.reflect._
 
     def listOwnerNames(sym: Symbol, acc: List[String]): List[String] =
       if (sym == defn.RootClass || sym == defn.EmptyPackageClass) acc
       else listOwnerNames(sym.owner, sym.name :: acc)
 
-    val list = listOwnerNames(rootContext.owner, Nil)
+    val list = listOwnerNames(Symbol.spliceOwner, Nil)
     '{new Location(${Expr(list)})}
   }
 

@@ -8,7 +8,7 @@ object Enums:
   enum Directions:
     case North, East, South, West
 
-  enum Suits derives Eql:
+  enum Suits derives CanEqual:
     case Hearts, Spades, Clubs, Diamonds
 
   object Suits:
@@ -47,14 +47,14 @@ object Enums:
     case Refl[C]() extends (C <:< C)
 
   object <:< :
-    given [T] as (T <:< T) = Refl()
+    given [T]: (T <:< T) = Refl()
 
   extension [A, B](opt: Option[A]) def unwrap(using ev: A <:< Option[B]): Option[B] = ev match
     case Refl() => opt.flatMap(identity[Option[B]])
 
   val some1 = Some(Some(1)).unwrap
 
-  enum Planet(mass: Double, radius: Double) extends java.lang.Enum[Planet]:
+  enum Planet(mass: Double, radius: Double) extends Enum[Planet]:
     private final val G = 6.67300E-11
     def surfaceGravity = G * mass / (radius * radius)
     def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity

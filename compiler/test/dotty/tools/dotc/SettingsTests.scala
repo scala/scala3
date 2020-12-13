@@ -1,23 +1,23 @@
 package dotty.tools
 package dotc
 
+import reporting.StoreReporter
 import vulpix.TestConfiguration
+
+import dotty.tools.vulpix.TestConfiguration.mkClasspath
+
+import java.nio.file._
 
 import org.junit.Test
 import org.junit.Assert._
 
-import java.nio.file._
-
-import dotty.tools.vulpix.TestConfiguration.mkClasspath
-
 class SettingsTests {
 
-  @Test def missingOutputDir: Unit = {
+  @Test def missingOutputDir: Unit =
     val options = Array("-d", "not_here")
-    val reporter = Main.process(options)
+    val reporter = Main.process(options, reporter = StoreReporter())
     assertEquals(1, reporter.errorCount)
     assertEquals("'not_here' does not exist or is not a directory or .jar file", reporter.allErrors.head.message)
-  }
 
   @Test def jarOutput: Unit = {
     val source = "tests/pos/Foo.scala"
@@ -29,13 +29,12 @@ class SettingsTests {
     assertTrue(Files.exists(out))
   }
 
-  @Test def t8124: Unit = {
-    val source = Paths.get("tests/pos/Foo.scala").normalize
+  @Test def `t8124 Don't crash on missing argument`: Unit =
+    val source    = Paths.get("tests/pos/Foo.scala").normalize
     val outputDir = Paths.get("out/testSettings").normalize
-    if (Files.notExists(outputDir)) Files.createDirectory(outputDir)
-    val options = Array("-encoding", "-d", outputDir.toString, source.toString)
-    val reporter = Main.process(options)
+    if Files.notExists(outputDir) then Files.createDirectory(outputDir)
+    // -encoding takes an arg!
+    val options  = Array("-encoding", "-d", outputDir.toString, source.toString)
+    val reporter = Main.process(options, reporter = StoreReporter())
     assertEquals(1, reporter.errorCount)
-   }
-
 }

@@ -4,10 +4,12 @@ package backend.jvm
 import dotc.ast.Trees.Select
 import dotc.ast.tpd._
 import dotc.core._
-import Contexts.{Context, ctx}
+import Contexts._
 import Names.TermName, StdNames._
 import Types.{JavaArrayType, UnspecifiedErrorType, Type}
 import Symbols.{Symbol, NoSymbol}
+import dotc.report
+import dotc.util.ReadOnlyMap
 
 import scala.annotation.threadUnsafe
 import scala.collection.immutable
@@ -33,7 +35,7 @@ import scala.collection.immutable
 class DottyPrimitives(ictx: Context) {
   import dotty.tools.backend.ScalaPrimitivesOps._
 
-  @threadUnsafe private lazy val primitives: immutable.Map[Symbol, Int] = init
+  @threadUnsafe private lazy val primitives: ReadOnlyMap[Symbol, Int] = init
 
   /** Return the code for the given symbol. */
   def getPrimitive(sym: Symbol): Int = {
@@ -66,7 +68,7 @@ class DottyPrimitives(ictx: Context) {
       case defn.ArrayOf(el) => el
       case JavaArrayType(el) => el
       case _ =>
-        ctx.error(s"expected Array $tpe")
+        report.error(s"expected Array $tpe")
         UnspecifiedErrorType
     }
 
@@ -117,12 +119,12 @@ class DottyPrimitives(ictx: Context) {
   }
 
   /** Initialize the primitive map */
-  private def init: immutable.Map[Symbol, Int]  = {
+  private def init: ReadOnlyMap[Symbol, Int]  = {
 
     given Context = ictx
 
     import Symbols.defn
-    val primitives = Symbols.newMutableSymbolMap[Int]
+    val primitives = Symbols.MutableSymbolMap[Int](512)
 
     /** Add a primitive operation to the map */
     def addPrimitive(s: Symbol, code: Int): Unit = {
@@ -133,7 +135,7 @@ class DottyPrimitives(ictx: Context) {
     def addPrimitives(cls: Symbol, method: TermName, code: Int)(using Context): Unit = {
       val alts = cls.info.member(method).alternatives.map(_.symbol)
       if (alts.isEmpty)
-        ctx.error(s"Unknown primitive method $cls.$method")
+        report.error(s"Unknown primitive method $cls.$method")
       else alts foreach (s =>
         addPrimitive(s,
           s.info.paramInfoss match {
@@ -393,8 +395,11 @@ class DottyPrimitives(ictx: Context) {
     addPrimitives(DoubleClass, nme.UNARY_-, NEG)
 
 
-    primitives.toMap
+    primitives
   }
+
+  def isPrimitive(sym: Symbol): Boolean =
+    primitives.contains(sym)
 
   def isPrimitive(fun: Tree): Boolean =
     given Context = ictx
@@ -406,4 +411,3 @@ class DottyPrimitives(ictx: Context) {
             case _ => true
         })
 }
-

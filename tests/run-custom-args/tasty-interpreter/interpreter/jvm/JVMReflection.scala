@@ -1,9 +1,10 @@
 package scala.tasty.interpreter.jvm
 
-import scala.tasty.Reflection
+import scala.quoted._
 
-class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given _}
+class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
+  import q.reflect._
+
   import java.lang.reflect.{InvocationTargetException, Method}
   private val classLoader: ClassLoader = getClass.getClassLoader
 

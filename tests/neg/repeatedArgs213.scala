@@ -15,4 +15,16 @@ class repeatedArgs {
     Paths.get("Hello", ys: _*) // error: immutable.Seq expected, found Seq
     Paths.get("Hello", zs: _*)
   }
+
+  def test2(xs: immutable.Seq[String] | Null, ys: collection.Seq[String] | Null, zs: Array[String] | Null): Unit = {
+    bar("a", "b", "c")
+    bar(xs: _*)
+    bar(ys: _*) // error: immutable.Seq expected, found Seq
+    bar(zs: _*) // old-error: Remove (compiler generated) Array to Seq conversion in 2.13?
+
+    Paths.get("Hello", "World")
+    Paths.get("Hello", xs: _*)
+    Paths.get("Hello", ys: _*) // error: immutable.Seq expected, found Seq
+    Paths.get("Hello", zs: _*)
+  }
 }

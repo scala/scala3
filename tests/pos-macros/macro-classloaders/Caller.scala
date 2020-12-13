@@ -1,0 +1,3 @@
+object Caller {
+  Macro.f
+}

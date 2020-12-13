@@ -1,0 +1,31 @@
+.node {
+  stroke: #333;
+  stroke-width: 2.5px;
+  fill: white;
+}
+
+.edgeLabel {
+  fill: white;
+}
+
+.edgePath {
+  stroke: #333;
+  stroke-width: 1.5px;
+  fill: #333;
+}
+
+#graph {
+  width: 100%;
+  height: 80%;
+}
+
+.diagram-class a {
+  text-decoration: underline;
+  color: #FFF;
+}
+.diagram-class a:hover {
+  color: #BFE7F3;
+}
+.diagram-class span[data-unresolved-link] {
+  color: #FFF;
+}

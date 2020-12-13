@@ -5,24 +5,23 @@ package semanticdb
 import core._
 import Phases._
 import ast.tpd._
+import ast.untpd.given
 import ast.Trees.mods
 import Contexts._
 import Symbols._
 import Flags._
 import Names.Name
 import StdNames.nme
+import NameOps._
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
+import transform.SymUtils._
+
 import scala.jdk.CollectionConverters._
-import collection.mutable
-import java.nio.file.Paths
-
-import PartialFunction.condOpt
-
-import ast.untpd.{given _}
-import NameOps.{given _}
-
+import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
+import scala.PartialFunction.condOpt
+
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -30,18 +29,18 @@ import scala.annotation.{ threadUnsafe => tu, tailrec }
  *  TODO: Also extract type information
  */
 class ExtractSemanticDB extends Phase:
-  import Scala3.{_, given _}
-  import Symbols.{given _}
+  import Scala3.{_, given}
+  import Symbols.given
 
   override val phaseName: String = ExtractSemanticDB.name
 
-  override def isRunnable(implicit ctx: Context) =
-    super.isRunnable && ctx.settings.Ysemanticdb.value
+  override def isRunnable(using Context) =
+    super.isRunnable && ctx.settings.Xsemanticdb.value
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
-  override def run(implicit ctx: Context): Unit =
+  override def run(using Context): Unit =
     val unit = ctx.compilationUnit
     val extract = Extractor()
     extract.traverse(unit.tpdTree)
@@ -115,7 +114,7 @@ class ExtractSemanticDB extends Phase:
     private def traverseAnnotsOfDefinition(sym: Symbol)(using Context): Unit =
       for annot <- sym.annotations do
         if annot.tree.span.exists
-        && annot.tree.span.hasLength
+        && annot.tree.span.hasLength then
           annot.tree match
             case tree: Typed => () // hack for inline code
             case tree        => traverse(tree)
@@ -131,7 +130,7 @@ class ExtractSemanticDB extends Phase:
       tree match
         case tree: PackageDef =>
           if !excludeDef(tree.pid.symbol)
-          && tree.pid.span.hasLength
+          && tree.pid.span.hasLength then
             tree.pid match
             case tree: Select =>
               registerDefinition(tree.symbol, selectSpan(tree), Set.empty, tree.source)
@@ -139,15 +138,15 @@ class ExtractSemanticDB extends Phase:
             case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
           tree.stats.foreach(traverse)
         case tree: NamedDefTree =>
-          if tree.symbol.isAllOf(ModuleValCreationFlags)
+          if tree.symbol.isAllOf(ModuleValCreationFlags) then
             return
           if !excludeDef(tree.symbol)
-          && tree.span.hasLength
-            registerDefinition(tree.symbol, tree.adjustedNameSpan, symbolKinds(tree), tree.source)
+          && tree.span.hasLength then
+            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
             val privateWithin = tree.symbol.privateWithin
-            if privateWithin.exists
+            if privateWithin.exists then
               registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
-          else if !excludeSymbol(tree.symbol)
+          else if !excludeSymbol(tree.symbol) then
             registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
           tree match
           case tree: ValDef
@@ -158,7 +157,7 @@ class ExtractSemanticDB extends Phase:
             case _ => // calls $new
           case tree: ValDef
           if tree.symbol.isSelfSym =>
-            if tree.tpt.span.hasLength
+            if tree.tpt.span.hasLength then
               traverse(tree.tpt)
           case tree: DefDef
           if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
@@ -171,27 +170,27 @@ class ExtractSemanticDB extends Phase:
                 tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
                 tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
               case _ =>
-            if !tree.symbol.isGlobal
+            if !tree.symbol.isGlobal then
               localBodies(tree.symbol) = tree.rhs
             // ignore rhs
           case PatternValDef(pat, rhs) =>
             traverse(rhs)
             PatternValDef.collectPats(pat).foreach(traverse)
           case tree =>
-            if !excludeChildren(tree.symbol)
+            if !excludeChildren(tree.symbol) then
               traverseChildren(tree)
         case tree: Template =>
           val ctorSym = tree.constr.symbol
-          if !excludeDef(ctorSym)
+          if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
-            registerDefinition(ctorSym, tree.constr.span, Set.empty, tree.source)
+            registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
             ctorParams(tree.constr.vparamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
           if selfSpan.exists && selfSpan.hasLength then
             traverse(tree.self)
-          if tree.symbol.owner.is(Enum, butNot=Case)
+          if tree.symbol.owner.isEnumClass then
             tree.body.foreachUntilImport(traverse).foreach(traverse) // the first import statement
           else
             tree.body.foreach(traverse)
@@ -206,7 +205,7 @@ class ExtractSemanticDB extends Phase:
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
-          if !excludeUse(qualSym, tree.lhs.symbol)
+          if !excludeUse(qualSym, tree.lhs.symbol) then
             val lhs = tree.lhs.symbol
             val setter = lhs.matchingSetter.orElse(lhs)
             tree.lhs match
@@ -260,9 +259,10 @@ class ExtractSemanticDB extends Phase:
 
         case _ => None
 
-      private inline def (tpe: Types.Type) isAnnotatedByUnchecked(using Context) = tpe match
-        case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
-        case _                             => false
+      extension (tpe: Types.Type)
+        private inline def isAnnotatedByUnchecked(using Context) = tpe match
+          case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
+          case _                             => false
 
       def collectPats(pat: Tree): List[Tree] =
 
@@ -282,12 +282,6 @@ class ExtractSemanticDB extends Phase:
 
     end PatternValDef
 
-    private def (tree: NamedDefTree) adjustedNameSpan(using Context): Span =
-      if tree.span.exists && tree.name.isAnonymousFunctionName || tree.name.isAnonymousClassName
-        Span(tree.span.point)
-      else
-        tree.nameSpan
-
     /** Add semanticdb name of the given symbol to string builder */
     private def addSymName(b: StringBuilder, sym: Symbol)(using Context): Unit =
 
@@ -302,7 +296,7 @@ class ExtractSemanticDB extends Phase:
       def addOverloadIdx(sym: Symbol): Unit =
         val decls =
           val decls0 = sym.owner.info.decls.lookupAll(sym.name)
-          if sym.owner.isAllOf(JavaModule)
+          if sym.owner.isAllOf(JavaModule) then
             decls0 ++ sym.owner.companionClass.info.decls.lookupAll(sym.name)
           else
             decls0
@@ -382,70 +376,70 @@ class ExtractSemanticDB extends Phase:
       Some(Range(startLine, startCol, endLine, endCol))
 
     private def symbolKind(sym: Symbol, symkinds: Set[SymbolKind])(using Context): SymbolInformation.Kind =
-      if sym.isTypeParam
+      if sym.isTypeParam then
         SymbolInformation.Kind.TYPE_PARAMETER
-      else if sym.is(TermParam)
+      else if sym.is(TermParam) then
         SymbolInformation.Kind.PARAMETER
-      else if sym.isTerm && sym.owner.isTerm
+      else if sym.isTerm && sym.owner.isTerm then
         SymbolInformation.Kind.LOCAL
-      else if sym.isInlineMethod || sym.is(Macro)
+      else if sym.isInlineMethod || sym.is(Macro) then
         SymbolInformation.Kind.MACRO
-      else if sym.isConstructor
+      else if sym.isConstructor then
         SymbolInformation.Kind.CONSTRUCTOR
-      else if sym.isSelfSym
+      else if sym.isSelfSym then
         SymbolInformation.Kind.SELF_PARAMETER
-      else if sym.isOneOf(Method) || symkinds.exists(_.isVarOrVal)
+      else if sym.isOneOf(Method) || symkinds.exists(_.isVarOrVal) then
         SymbolInformation.Kind.METHOD
-      else if sym.isPackageObject
+      else if sym.isPackageObject then
         SymbolInformation.Kind.PACKAGE_OBJECT
-      else if sym.is(Module)
+      else if sym.is(Module) then
         SymbolInformation.Kind.OBJECT
-      else if sym.is(Package)
+      else if sym.is(Package) then
         SymbolInformation.Kind.PACKAGE
-      else if sym.isAllOf(JavaInterface)
+      else if sym.isAllOf(JavaInterface) then
         SymbolInformation.Kind.INTERFACE
-      else if sym.is(Trait)
+      else if sym.is(Trait) then
         SymbolInformation.Kind.TRAIT
-      else if sym.isClass
+      else if sym.isClass then
         SymbolInformation.Kind.CLASS
-      else if sym.isType
+      else if sym.isType then
         SymbolInformation.Kind.TYPE
-      else if sym.is(ParamAccessor)
+      else if sym.is(ParamAccessor) then
         SymbolInformation.Kind.FIELD
       else
         SymbolInformation.Kind.UNKNOWN_KIND
 
     private def symbolProps(sym: Symbol, symkinds: Set[SymbolKind])(using Context): Int =
-      if sym.is(ModuleClass)
+      if sym.is(ModuleClass) then
         return symbolProps(sym.sourceModule, symkinds)
       var props = 0
-      if sym.isPrimaryConstructor
+      if sym.isPrimaryConstructor then
         props |= SymbolInformation.Property.PRIMARY.value
-      if sym.is(Abstract) || symkinds.contains(SymbolKind.Abstract)
+      if sym.is(Abstract) || symkinds.contains(SymbolKind.Abstract) then
         props |= SymbolInformation.Property.ABSTRACT.value
-      if sym.is(Final)
+      if sym.is(Final) then
         props |= SymbolInformation.Property.FINAL.value
-      if sym.is(Sealed)
+      if sym.is(Sealed) then
         props |= SymbolInformation.Property.SEALED.value
-      if sym.isOneOf(GivenOrImplicit)
+      if sym.isOneOf(GivenOrImplicit) then
         props |= SymbolInformation.Property.IMPLICIT.value
-      if sym.is(Lazy, butNot=Module)
+      if sym.is(Lazy, butNot=Module) then
         props |= SymbolInformation.Property.LAZY.value
-      if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase)
+      if sym.isAllOf(Case | Module) || sym.is(CaseClass) || sym.isAllOf(EnumCase) then
         props |= SymbolInformation.Property.CASE.value
-      if sym.is(Covariant)
+      if sym.is(Covariant) then
         props |= SymbolInformation.Property.COVARIANT.value
-      if sym.is(Contravariant)
+      if sym.is(Contravariant) then
         props |= SymbolInformation.Property.CONTRAVARIANT.value
-      if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName)
+      if sym.isAllOf(DefaultMethod | JavaDefined) || sym.is(Accessor) && sym.name.is(NameKinds.DefaultGetterName) then
         props |= SymbolInformation.Property.DEFAULT.value
-      if symkinds.exists(_.isVal)
+      if symkinds.exists(_.isVal) then
         props |= SymbolInformation.Property.VAL.value
-      if symkinds.exists(_.isVar)
+      if symkinds.exists(_.isVar) then
         props |= SymbolInformation.Property.VAR.value
-      if sym.is(JavaStatic)
+      if sym.is(JavaStatic) then
         props |= SymbolInformation.Property.STATIC.value
-      if sym.is(Enum)
+      if sym.is(Enum) then
         props |= SymbolInformation.Property.ENUM.value
       props
 
@@ -460,8 +454,8 @@ class ExtractSemanticDB extends Phase:
 
     private def registerSymbol(sym: Symbol, symbolName: String, symkinds: Set[SymbolKind])(using Context): Unit =
       val isLocal = symbolName.isLocal
-      if !isLocal || !localNames.contains(symbolName)
-        if isLocal
+      if !isLocal || !localNames.contains(symbolName) then
+        if isLocal then
           localNames += symbolName
         symbolInfos += symbolInfo(sym, symbolName, symkinds)
 
@@ -487,7 +481,7 @@ class ExtractSemanticDB extends Phase:
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind], treeSource: SourceFile)(using Context) =
       val symbol = symbolName(sym)
       registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION, treeSource)
-      if !sym.is(Package)
+      if !sym.is(Package) then
         registerSymbol(sym, symbol, symkinds)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
@@ -496,12 +490,14 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    private inline def (list: List[List[ValDef]]) isSingleArg = list match
-      case (_::Nil)::Nil => true
-      case _             => false
+    extension (list: List[List[ValDef]])
+      private  inline def isSingleArg = list match
+        case (_::Nil)::Nil => true
+        case _             => false
 
-    private def (tree: DefDef) isSetterDef(using Context): Boolean =
-      tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
+    extension (tree: DefDef)
+      private def isSetterDef(using Context): Boolean =
+        tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
 
     private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
@@ -525,26 +521,26 @@ class ExtractSemanticDB extends Phase:
         else limit
       Span(start max limit, end)
 
-    private extension on (span: Span):
-      def hasLength: Boolean = span.start != span.end
-      def zeroLength: Boolean = span.start == span.end
+    extension (span: Span)
+      private def hasLength: Boolean = span.exists && !span.isZeroExtent
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
      */
-    @tailrec
-    private def (body: List[Tree]) foreachUntilImport(op: Tree => Unit): List[Tree] = body match
-      case ((_: Import) :: rest) => rest
-      case stat :: rest =>
-        op(stat)
-        rest.foreachUntilImport(op)
-      case Nil => Nil
+    extension (body: List[Tree])
+      @tailrec private def foreachUntilImport(op: Tree => Unit): List[Tree] = body match
+        case ((_: Import) :: rest) => rest
+        case stat :: rest =>
+          op(stat)
+          rest.foreachUntilImport(op)
+        case Nil => Nil
 
-    private def (sym: Symbol) adjustIfCtorTyparam(using Context) =
-      if sym.isType && sym.owner.exists && sym.owner.isConstructor
-        matchingMemberType(sym, sym.owner.owner)
-      else
-        sym
+    extension (sym: Symbol)
+      private def adjustIfCtorTyparam(using Context) =
+        if sym.isType && sym.owner.exists && sym.owner.isConstructor then
+          matchingMemberType(sym, sym.owner.owner)
+        else
+          sym
 
     private inline def matchingMemberType(ctorTypeParam: Symbol, classSym: Symbol)(using Context) =
       classSym.info.member(ctorTypeParam.name).symbol
@@ -552,20 +548,20 @@ class ExtractSemanticDB extends Phase:
     /**Necessary because not all of the eventual flags are propagated from the Tree to the symbol yet.
      */
     private def symbolKinds(tree: NamedDefTree)(using Context): Set[SymbolKind] =
-      if tree.symbol.isSelfSym
+      if tree.symbol.isSelfSym then
         Set.empty
       else
         val symkinds = mutable.HashSet.empty[SymbolKind]
         tree match
         case tree: ValDef =>
-          if !tree.symbol.is(Param)
+          if !tree.symbol.is(Param) then
             symkinds += (if tree.mods is Mutable then SymbolKind.Var else SymbolKind.Val)
-          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor)
+          if tree.rhs.isEmpty && !tree.symbol.isOneOf(TermParam | CaseAccessor | ParamAccessor) then
             symkinds += SymbolKind.Abstract
         case tree: DefDef =>
-          if tree.isSetterDef
+          if tree.isSetterDef then
             symkinds += SymbolKind.Setter
-          else if tree.rhs.isEmpty
+          else if tree.rhs.isEmpty then
             symkinds += SymbolKind.Abstract
         case tree: Bind =>
           symkinds += SymbolKind.Val
@@ -579,7 +575,7 @@ class ExtractSemanticDB extends Phase:
         vparams <- vparamss
         vparam  <- vparams
       do
-        if !excludeSymbol(vparam.symbol)
+        if !excludeSymbol(vparam.symbol) then
           traverseAnnotsOfDefinition(vparam.symbol)
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
@@ -591,37 +587,29 @@ object ExtractSemanticDB:
   import java.nio.file.Path
   import scala.collection.JavaConverters._
   import java.nio.file.Files
+  import java.nio.file.Paths
 
   val name: String = "extractSemanticDB"
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
-    def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
-      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
-    val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot =
-      // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
-      // containing ../.. etc, which is problematic when appending to `/META-INF/semanticdb/` and will not be accepted
-      // by Files.createDirectories on JDK 11.
-      val sourceRoot0 = absolutePath(Paths.get(ctx.settings.sourceroot.value))
-      commonPrefix(sourcePath.getRoot)(sourcePath.asScala, sourceRoot0.asScala)(_ resolve _)
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
         if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
         else Paths.get(semanticdbTargetSetting)
       )
-    val relPath = sourceRoot.relativize(sourcePath)
+    val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
     val outpath = semanticdbTarget
       .resolve("META-INF")
       .resolve("semanticdb")
       .resolve(relPath)
-      .resolveSibling(sourcePath.getFileName().toString() + ".semanticdb")
+      .resolveSibling(source.name + ".semanticdb")
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = relPath.toString,
+      uri = Tools.mkURIstring(Paths.get(relPath)),
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,

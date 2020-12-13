@@ -35,26 +35,39 @@ class BetaReduce extends MiniPhase:
 
   def phaseName: String = "betaReduce"
 
-  override def transformApply(app: Apply)(using ctx: Context): Tree = app.fun match
+  override def transformApply(app: Apply)(using Context): Tree = app.fun match
     case Select(fn, nme.apply) if defn.isFunctionType(fn.tpe) =>
-      val app1 = betaReduce(app, fn, app.args)
-      if app1 ne app then ctx.log(i"beta reduce $app -> $app1")
+      val app1 = BetaReduce(app, fn, app.args)
+      if app1 ne app then report.log(i"beta reduce $app -> $app1")
       app1
     case _ =>
       app
 
-  private def betaReduce(tree: Apply, fn: Tree, args: List[Tree])(using ctx: Context): Tree =
-    fn match
-      case Typed(expr, _) => betaReduce(tree, expr, args)
-      case Block(Nil, expr) => betaReduce(tree, expr, args)
-      case Block((anonFun: DefDef) :: Nil, closure: Closure) => BetaReduce(anonFun, args)
-      case _ => tree
 
 object BetaReduce:
   import ast.tpd._
 
+  /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */
+  def apply(original: Tree, fn: Tree, args: List[Tree])(using Context): Tree =
+    fn match
+      case Typed(expr, _) =>
+        BetaReduce(original, expr, args)
+      case Block((anonFun: DefDef) :: Nil, closure: Closure) =>
+        BetaReduce(anonFun, args)
+      case Block(stats, expr) =>
+        val tree = BetaReduce(original, expr, args)
+        if tree eq original then original
+        else cpy.Block(fn)(stats, tree)
+      case Inlined(call, bindings, expr) =>
+        val tree = BetaReduce(original, expr, args)
+        if tree eq original then original
+        else cpy.Inlined(fn)(call, bindings, tree)
+      case _ =>
+        original
+  end apply
+
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
-  def apply(ddef: DefDef, args: List[Tree])(using ctx: Context) =
+  def apply(ddef: DefDef, args: List[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
     val vparams = ddef.vparamss.iterator.flatten.toList
     assert(args.hasSameLengthAs(vparams))
@@ -65,7 +78,8 @@ object BetaReduce:
             ref.symbol
           case _ =>
             val flags = Synthetic | (param.symbol.flags & Erased)
-            val binding = ValDef(ctx.newSymbol(ctx.owner, param.name, flags, arg.tpe.widen, coord = arg.span), arg)
+            val tpe = if arg.tpe.dealias.isInstanceOf[ConstantType] then arg.tpe.dealias else arg.tpe.widen
+            val binding = ValDef(newSymbol(ctx.owner, param.name, flags, tpe, coord = arg.span), arg).withSpan(arg.span)
             bindings += binding
             binding.symbol
 
@@ -76,5 +90,13 @@ object BetaReduce:
       substTo = argSyms
     ).transform(ddef.rhs)
 
-    seq(bindings.result(), expansion)
+    val expansion1 = new TreeMap {
+      override def transform(tree: Tree)(using Context) = tree.tpe.widenTermRefExpr match
+        case ConstantType(const) if isPureExpr(tree) => cpy.Literal(tree)(const)
+        case _ => super.transform(tree)
+    }.transform(expansion)
+    val bindings1 =
+      bindings.result().filterNot(vdef => vdef.tpt.tpe.isInstanceOf[ConstantType] && isPureExpr(vdef.rhs))
+
+    seq(bindings1, expansion1)
   end apply

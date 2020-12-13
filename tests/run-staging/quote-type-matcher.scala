@@ -4,25 +4,25 @@ import scala.reflect.ClassTag
 
 object Test {
   given Toolbox = Toolbox.make(this.getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
-    val '[List[Int]] = '[List[Int]]
+  def main(args: Array[String]): Unit = withQuotes {
+    val '[List[Int]] = Type.of[List[Int]]
 
-    '[List[Int]] match
-      case '[List[$int]] =>
-        println(int.show)
+    Type.of[List[Int]] match
+      case '[List[int]] =>
+        println(Type.show[int])
         println()
 
-    '[Int => Double] match
-      case  '[Function1[$t1, $r]] =>
-        println(t1.show)
-        println(r.show)
+    Type.of[Int => Double] match
+      case  '[Function1[t1, r]] =>
+        println(Type.show[t1])
+        println(Type.show[r])
         println()
 
-    '[(Int => Short) => Double] match
-      case '[Function1[Function1[$t1, $r0], $r]] =>
-        println(t1.show)
-        println(r0.show)
-        println(r.show)
+    Type.of[(Int => Short) => Double] match
+      case '[Function1[Function1[t1, r0], r]] =>
+        println(Type.show[t1])
+        println(Type.show[r0])
+        println(Type.show[r])
 
   }
 }

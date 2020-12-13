@@ -9,9 +9,9 @@ Running all tests in Dotty is as simple as:
 $ sbt test
 ```
 
-Specifically, `sbt test` runs all tests that do _not_ require a bootstrapped 
-compiler. In practice, this means that it runs all compilation tests meeting 
-this criterion, as well as all non-compiler tests. 
+Specifically, `sbt test` runs all tests that do _not_ require a bootstrapped
+compiler. In practice, this means that it runs all compilation tests meeting
+this criterion, as well as all non-compiler tests.
 
 The entire suite of tests can be run using the bootstrapped compiler as follows:
 
@@ -87,7 +87,7 @@ Test output dumped in: tests/playground/neg/Sample.check.out
 To create a checkfile for a test, you can do one of the following:
 
 - Create a dummy checkfile with a random content, run the test, and, when it fails, use the `mv` command reported by the test to replace the dummy checkfile with the actual output.
-- Manually compile the file you are testing with `dotc` and copy-paste whatever console output the compiler produces to the checkfile.
+- Manually compile the file you are testing with `scalac` and copy-paste whatever console output the compiler produces to the checkfile.
 
 ## Integration tests
 These tests are Scala source files expected to compile with Dotty (pos tests),
@@ -148,7 +148,7 @@ with `with-compiler` in their name.
 
 ### SemanticDB tests
 
-The output of the `extractSemanticDB` phase, enabled with `-Ysemanticdb` is tested with the bootstrapped JUnit test
+The output of the `extractSemanticDB` phase, enabled with `-Xsemanticdb` is tested with the bootstrapped JUnit test
 `dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
 two kinds of output file that are compared with "expect files": placement of semanticdb symbol occurrences inline in
 sourcecode (`*.expect.scala`), for human verification by inspection; and secondly metap formatted output which outputs

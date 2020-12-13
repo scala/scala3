@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import util.SourcePosition
-import core.Contexts.{Context, ctx}
+import core.Contexts._
 import config.Settings.Setting
 import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 
@@ -45,36 +45,34 @@ object Diagnostic:
     msg: Message,
     pos: SourcePosition
   ) extends Warning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean]
+    def enablingOption(using Context): Setting[Boolean]
   }
 
   class FeatureWarning(
     msg: Message,
     pos: SourcePosition
   ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.feature
+    def enablingOption(using Context): Setting[Boolean] = ctx.settings.feature
   }
 
   class UncheckedWarning(
     msg: Message,
     pos: SourcePosition
   ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.unchecked
+    def enablingOption(using Context): Setting[Boolean] = ctx.settings.unchecked
   }
 
   class DeprecationWarning(
     msg: Message,
     pos: SourcePosition
   ) extends ConditionalWarning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.deprecation
+    def enablingOption(using Context): Setting[Boolean] = ctx.settings.deprecation
   }
 
   class MigrationWarning(
     msg: Message,
     pos: SourcePosition
-  ) extends Warning(msg, pos) {
-    def enablingOption(implicit ctx: Context): Setting[Boolean] = ctx.settings.migration
-  }
+  ) extends Warning(msg, pos)
 
 class Diagnostic(
   val msg: Message,

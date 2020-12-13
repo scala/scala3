@@ -6,12 +6,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.HashMap;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 
 public class Yaml {
 
   public static HashMap<String, Object> apply(String input)
       throws java.io.UnsupportedEncodingException, java.io.IOException {
-    ByteArrayInputStream is = new ByteArrayInputStream(input.getBytes("UTF-8"));
+    ByteArrayInputStream is = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
     TypeReference<HashMap<String, Object>> typeRef =

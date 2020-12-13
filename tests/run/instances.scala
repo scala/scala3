@@ -4,7 +4,7 @@ object Test extends App {
     extension (x: Int) def em: Boolean = x > 0
   }
 
-  assert(1.em == O.extension_em(1))
+  assert(1.em == O.em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -13,7 +13,7 @@ object Test extends App {
 
   val circle = new Circle(1, 1, 2.0)
 
-  assert(circle.circumference == Test.extension_circumference(circle))
+  assert(circle.circumference == Test.circumference(circle))
 
   extension (xs: Seq[String])
     def longestStrings: Seq[String] =
@@ -46,7 +46,7 @@ object Test extends App {
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
-  given StringMonoid as Monoid[String]:
+  given StringMonoid: Monoid[String] with
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -63,12 +63,12 @@ object Test extends App {
     val minimum: T
   end Ord
 
-  given Ord[Int]:
+  given Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
 
-  given listOrd[T: Ord] as Ord[List[T]]:
+  given listOrd[T: Ord]: Ord[List[T]] with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -99,13 +99,13 @@ object Test extends App {
     def pure[A](x: A): F[A]
   end Monad
 
-  given listMonad as Monad[List]:
+  given listMonad: Monad[List] with
     extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
     extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
@@ -113,7 +113,7 @@ object Test extends App {
 
   def mapAll[F[_]: Monad, T](x: T, fs: List[T => T]): F[T] =
     fs.foldLeft(summon[Monad[F]].pure(x))((x: F[T], f: T => T) =>
-      if true then summon[Monad[F]].extension_map(x)(f)
+      if true then summon[Monad[F]].map(x)(f)
       else if true then x.map(f)
       else x.map[T, T](f)
     )

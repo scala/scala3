@@ -3,6 +3,8 @@ package dotty.tools.dotc.semanticdb.internal
 import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+
 import SemanticdbOutputStream._
 
 object SemanticdbOutputStream {
@@ -144,7 +146,7 @@ object SemanticdbOutputStream {
   def computeBoolSizeNoTag(value: Boolean): Int = 1
 
   def computeStringSizeNoTag(value: String): Int = {
-    val bytes = value.getBytes(Internal.UTF_8)
+    val bytes = value.getBytes(StandardCharsets.UTF_8)
     computeRawVarint32Size(bytes.length) + bytes.length
   }
 
@@ -391,7 +393,7 @@ class SemanticdbOutputStream(output: OutputStream, buffer: Array[Byte]) {
   }
 
   def writeStringNoTag(value: String): Unit = {
-    val bytes = value.getBytes(Internal.UTF_8)
+    val bytes = value.getBytes(StandardCharsets.UTF_8)
     writeRawVarint32(bytes.length)
     writeRawBytes(bytes)
   }
@@ -602,6 +604,5 @@ class SemanticdbOutputStream(output: OutputStream, buffer: Array[Byte]) {
 }
 
 object Internal {
-  val UTF_8 = java.nio.charset.Charset.forName("UTF-8")
   val EMPTY_BYTE_ARRAY: Array[Byte] = Array()
 }

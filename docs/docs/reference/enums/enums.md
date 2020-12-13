@@ -42,16 +42,19 @@ scala> red.ordinal
 val res0: Int = 0
 ```
 
-The companion object of an enum also defines two utility methods.
+The companion object of an enum also defines three utility methods.
 The `valueOf` method obtains an enum value
 by its name. The `values` method returns all enum values
-defined in an enumeration in an `Array`.
+defined in an enumeration in an `Array`. The `fromOrdinal`
+method obtains an enum value from its ordinal (Int) value.
 
 ```scala
 scala> Color.valueOf("Blue")
 val res0: Color = Blue
 scala> Color.values
 val res1: Array[Color] = Array(Red, Green, Blue)
+scala> Color.fromOrdinal(0)
+val res2: Color = Red
 ```
 
 ### User-defined members of enums
@@ -89,10 +92,11 @@ object Planet {
 ```
 
 ### Compatibility with Java Enums
-If you want to use the Scala-defined enums as Java enums, you can do so by extending `java.lang.Enum` class as follows:
+If you want to use the Scala-defined enums as Java enums, you can do so by extending
+the class `java.lang.Enum`, which is imported by default, as follows:
 
 ```scala
-enum Color extends java.lang.Enum[Color] { case Red, Green, Blue }
+enum Color extends Enum[Color] { case Red, Green, Blue }
 ```
 
 The type parameter comes from the Java enum [definition](https://docs.oracle.com/javase/8/docs/api/index.html?java/lang/Enum.html) and should be the same as the type of the enum.
@@ -109,14 +113,14 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 
 ### Implementation
 
-Enums are represented as `sealed` classes that extend the `scala.Enum` trait.
+Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
 This trait defines a single public method, `ordinal`:
 
 ```scala
-package scala
+package scala.reflect
 
-/** A base trait of all enum classes */
-trait Enum extends Product with Serializable {
+/** A base trait of all Scala enum definitions */
+transparent trait Enum extends Any with Product with Serializable {
 
   /** A number uniquely identifying a case of an enum */
   def ordinal: Int
@@ -130,8 +134,8 @@ For instance, the `Venus` value above would be defined like this:
 val Venus: Planet =
   new Planet(4.869E24, 6051800.0) {
     def ordinal: Int = 1
+    override def productPrefix: String = "Venus"
     override def toString: String = "Venus"
-    // internal code to register value
   }
 ```
 

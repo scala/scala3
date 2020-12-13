@@ -4,7 +4,7 @@ object Bar {
 
   Foo.myMacro() // error
 
-  def aMacroImplementation(using QuoteContext): Expr[Unit] = Bar.hello()
+  def aMacroImplementation(using Quotes): Expr[Unit] = Bar.hello()
 
-  def hello()(using QuoteContext): Expr[Unit] = '{ println("Hello") }
+  def hello()(using Quotes): Expr[Unit] = '{ println("Hello") }
 }

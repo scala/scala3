@@ -4,7 +4,7 @@ package model
 package comment
 
 import dotty.tools.dottydoc.util.syntax._
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.{Context, ctx}
 import dotty.tools.dotc.util.Spans._
 import com.vladsch.flexmark.util.ast.{ Node => MarkdownNode }
 import HtmlParsers._
@@ -62,14 +62,14 @@ trait MarkupConversion[T] extends MemberLookup {
   def span: Span
   def parsed: ParsedComment
 
-  protected def linkedExceptions(m: Map[String, String])(implicit ctx: Context): Map[String, String]
-  protected def stringToMarkup(str: String)(implicit ctx: Context): T
-  protected def markupToHtml(t: T)(implicit ctx: Context): String
-  protected def stringToShortHtml(str: String)(implicit ctx: Context): String
-  protected def filterEmpty(xs: List[String])(implicit ctx: Context): List[T]
-  protected def filterEmpty(xs: Map[String, String])(implicit ctx: Context): Map[String, T]
+  protected def linkedExceptions(m: Map[String, String])(using Context): Map[String, String]
+  protected def stringToMarkup(str: String)(using Context): T
+  protected def markupToHtml(t: T)(using Context): String
+  protected def stringToShortHtml(str: String)(using Context): String
+  protected def filterEmpty(xs: List[String])(using Context): List[T]
+  protected def filterEmpty(xs: Map[String, String])(using Context): Map[String, T]
 
-  private def single(annot: String, xs: List[String], filter: Boolean = true)(implicit ctx: Context): Option[T] =
+  private def single(annot: String, xs: List[String], filter: Boolean = true)(using Context): Option[T] =
     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
       case x :: xs =>
         if (xs.nonEmpty) ctx.docbase.warn(
@@ -80,7 +80,7 @@ trait MarkupConversion[T] extends MemberLookup {
       case _ => None
     }
 
-  final def comment(implicit ctx: Context): Comment = Comment(
+  final def comment(using Context): Comment = Comment(
     body                    = markupToHtml(stringToMarkup(parsed.body)),
     short                   = stringToShortHtml(parsed.body),
     authors                 = filterEmpty(parsed.authors).map(markupToHtml),
@@ -107,16 +107,16 @@ trait MarkupConversion[T] extends MemberLookup {
 case class MarkdownComment(ent: Entity, parsed: ParsedComment, span: Span)
 extends MarkupConversion[MarkdownNode] {
 
-  def stringToMarkup(str: String)(implicit ctx: Context) =
+  def stringToMarkup(str: String)(using Context) =
     str.toMarkdown(ent)
 
-  def stringToShortHtml(str: String)(implicit ctx: Context) =
+  def stringToShortHtml(str: String)(using Context) =
     str.toMarkdown(ent).shortenAndShow
 
-  def markupToHtml(md: MarkdownNode)(implicit ctx: Context) =
+  def markupToHtml(md: MarkdownNode)(using Context) =
     md.show
 
-  def linkedExceptions(m: Map[String, String])(implicit ctx: Context) = {
+  def linkedExceptions(m: Map[String, String])(using Context) = {
     val inlineToHtml = InlineToHtml(ent)
     m.map { case (targetStr, body) =>
       val link = makeEntityLink(ent, ctx.docbase.packages, Monospace(Text(targetStr)), targetStr)
@@ -124,12 +124,12 @@ extends MarkupConversion[MarkdownNode] {
     }
   }
 
-  def filterEmpty(xs: List[String])(implicit ctx: Context) =
+  def filterEmpty(xs: List[String])(using Context) =
     xs.map(_.trim)
       .filterNot(_.isEmpty)
       .map(stringToMarkup)
 
-  def filterEmpty(xs: Map[String, String])(implicit ctx: Context) =
+  def filterEmpty(xs: Map[String, String])(using Context) =
     xs.transform((_, v) => v.trim)
       .filterNot { case (_, v) => v.isEmpty }
       .transform((_, v) => stringToMarkup(v))
@@ -138,25 +138,25 @@ extends MarkupConversion[MarkdownNode] {
 case class WikiComment(ent: Entity, parsed: ParsedComment, span: Span)
 extends MarkupConversion[Body] {
 
-  def filterEmpty(xs: Map[String,String])(implicit ctx: Context) =
+  def filterEmpty(xs: Map[String,String])(using Context) =
     xs.transform((_, v) => v.toWiki(ent, ctx.docbase.packages, span))
       .filterNot { case (_, v) => v.blocks.isEmpty }
 
-  def filterEmpty(xs: List[String])(implicit ctx: Context) =
+  def filterEmpty(xs: List[String])(using Context) =
     xs.map(_.toWiki(ent, ctx.docbase.packages, span))
 
-  def markupToHtml(t: Body)(implicit ctx: Context) =
+  def markupToHtml(t: Body)(using Context) =
     t.show(ent)
 
-  def stringToMarkup(str: String)(implicit ctx: Context) =
+  def stringToMarkup(str: String)(using Context) =
     str.toWiki(ent, ctx.docbase.packages, span)
 
-  def stringToShortHtml(str: String)(implicit ctx: Context) = {
+  def stringToShortHtml(str: String)(using Context) = {
     val parsed = stringToMarkup(str)
     parsed.summary.getOrElse(parsed).show(ent)
   }
 
-  def linkedExceptions(m: Map[String, String])(implicit ctx: Context) = {
+  def linkedExceptions(m: Map[String, String])(using Context) = {
     m.transform((_, v) => v.toWiki(ent, ctx.docbase.packages, span)).map { case (targetStr, body) =>
       val link = lookup(Some(ent), ctx.docbase.packages, targetStr)
       val newBody = body match {

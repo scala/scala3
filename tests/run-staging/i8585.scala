@@ -1,5 +1,5 @@
 import scala.quoted._
-import scala.quoted.staging.{run, withQuoteContext, Toolbox}
+import scala.quoted.staging.{run, withQuotes, Toolbox}
 
 object Test {
   given Toolbox = Toolbox.make(getClass.getClassLoader)
@@ -13,13 +13,13 @@ object Test {
   }
 
   def stagedPower(n: Int): Double => Double = {
-    def code(using QuoteContext) = '{ (x: Double) => ${ powerCode(n, 'x) } }
+    def code(using Quotes) = '{ (x: Double) => ${ powerCode(n, 'x) } }
     println("The following would not compile:")
-    println(withQuoteContext(code.show))
+    println(withQuotes(code.show))
     run(code)
   }
 
-  def powerCode(n: Int, x: Expr[Double])(using ctx: QuoteContext): Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double])(using ctx: Quotes): Expr[Double] =
     if (n == 1) x
     else if (n == 2) '{ $x * $x }
     else if (n % 2 == 1)  '{ $x * ${ powerCode(n - 1, x) } }

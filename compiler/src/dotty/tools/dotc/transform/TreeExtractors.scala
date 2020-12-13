@@ -11,7 +11,7 @@ object TreeExtractors {
 
   /** Match arg1.op(arg2) and extract (arg1, op.symbol, arg2) */
   object BinaryOp {
-    def unapply(t: Tree)(implicit ctx: Context): Option[(Tree, Symbol, Tree)] = t match {
+    def unapply(t: Tree)(using Context): Option[(Tree, Symbol, Tree)] = t match {
       case Apply(sel @ Select(arg1, _), List(arg2)) =>
         Some((arg1, sel.symbol, arg2))
       case _ =>
@@ -19,11 +19,15 @@ object TreeExtractors {
     }
   }
 
- /** Match new C(args) and extract (C, args) */
+ /** Match new C(args) and extract (C, args).
+  *  Also admit new C(args): T and {new C(args)}.
+  */
   object NewWithArgs {
-    def unapply(t: Tree)(implicit ctx: Context): Option[(Type, List[Tree])] = t match {
+    def unapply(t: Tree)(using Context): Option[(Type, List[Tree])] = t match {
       case Apply(Select(New(_), nme.CONSTRUCTOR), args) =>
         Some((t.tpe, args))
+      case Typed(expr, _) => unapply(expr)
+      case Block(Nil, expr) => unapply(expr)
       case _ =>
         None
     }
@@ -34,7 +38,7 @@ object TreeExtractors {
    *  Match v.underlying() and extract v
    */
   object ValueClassUnbox {
-    def unapply(t: Tree)(implicit ctx: Context): Option[Tree] = t match {
+    def unapply(t: Tree)(using Context): Option[Tree] = t match {
       case Apply(sel @ Select(ref, _), Nil) =>
         val sym = ref.tpe.widenDealias.typeSymbol
         if (isDerivedValueClass(sym) && (sel.symbol eq valueClassUnbox(sym.asClass)))

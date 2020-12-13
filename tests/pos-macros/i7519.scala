@@ -7,7 +7,7 @@ object Test {
   class Quoted[T]
 
   inline def quote[T]: Quoted[T] = ${ quoteImpl[T] }
-  def quoteImpl[T: Type](using qctx: QuoteContext): Expr[Quoted[T]] = '{
+  def quoteImpl[T: Type](using Quotes): Expr[Quoted[T]] = '{
     new Quoted[T @Annot]
   }
 }

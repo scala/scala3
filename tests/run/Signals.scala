@@ -28,7 +28,7 @@ package frp:
 
   object Signal:
     type Caller = Signal[?]
-    given noCaller as Caller(???):
+    given noCaller: Caller(???) with
       override def computeValue() = ()
   end Signal
 
@@ -53,7 +53,7 @@ class BankAccount:
       val b = myBalance()
       myBalance() = b - amount
       myBalance()
-    else assertFail("insufficient funds")
+    else throw new AssertionError("insufficient funds")
 end BankAccount
 
 @main def Test() =

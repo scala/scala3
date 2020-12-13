@@ -1,0 +1,12 @@
+-- Error: tests/neg-scalajs/jsname-on-trait.scala:7:3 ------------------------------------------------------------------
+7 |  @JSName("A1") // error
+  |  ^^^^^^^^^^^^^
+  |  @JSName cannot be used on traits.
+-- Error: tests/neg-scalajs/jsname-on-trait.scala:10:3 -----------------------------------------------------------------
+10 |  @JSName("B1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on traits.
+-- Error: tests/neg-scalajs/jsname-on-trait.scala:13:3 -----------------------------------------------------------------
+13 |  @JSName("C1") // error
+   |  ^^^^^^^^^^^^^
+   |  @JSName cannot be used on traits.

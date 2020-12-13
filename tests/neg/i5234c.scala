@@ -1,9 +1,9 @@
 object Test {
-  import implicits.Not
+  import scala.util.NotGiven
 
   class Foo
   implicit def foo: Foo = ???
 
-  def foo[T](implicit ev: Not[T]) = ???
+  def foo[T](implicit ev: NotGiven[T]) = ???
   foo[Foo] // error
 }

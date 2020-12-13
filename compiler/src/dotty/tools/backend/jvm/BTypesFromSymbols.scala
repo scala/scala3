@@ -8,6 +8,8 @@ import scala.collection.mutable
 import scala.collection.generic.Clearable
 
 import dotty.tools.dotc.core.Flags._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Phases._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.transform.SymUtils._
@@ -26,7 +28,7 @@ import dotty.tools.dotc.util.WeakHashSet
  * not have access to the compiler instance.
  */
 class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
-  import int._
+  import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
 
   lazy val TransientAttr = requiredClass[scala.transient]
@@ -121,7 +123,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
      * All interfaces implemented by a class, except for those inherited through the superclass.
      * Redundant interfaces are removed unless there is a super call to them.
      */
-    def (sym: Symbol).superInterfaces: List[Symbol] = {
+    extension (sym: Symbol) def superInterfaces: List[Symbol] = {
       val directlyInheritedTraits = sym.directlyInheritedTraits
       val directlyInheritedTraitsSet = directlyInheritedTraits.toSet
       val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
@@ -202,16 +204,16 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
   /** For currently compiled classes: All locally defined classes including local classes.
    *  The empty list for classes that are not currently compiled.
    */
-  private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.flattenPhase)
+  private def getNestedClasses(sym: Symbol): List[Symbol] = definedClasses(sym, flattenPhase)
 
   /** For currently compiled classes: All classes that are declared as members of this class
    *  (but not inherited ones). The empty list for classes that are not currently compiled.
    */
-  private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, ctx.lambdaLiftPhase)
+  private def getMemberClasses(sym: Symbol): List[Symbol] = definedClasses(sym, lambdaLiftPhase)
 
   private def definedClasses(sym: Symbol, phase: Phase) =
     if (sym.isDefinedInCurrentRun)
-      ctx.atPhase(phase) {
+      atPhase(phase) {
         toDenot(sym).info.decls.filter(_.isClass)
       }
     else Nil
@@ -228,10 +230,11 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
       // After lambdalift (which is where we are), the rawowoner field contains the enclosing class.
       val enclosingClassSym = {
         if (innerClassSym.isClass) {
-          val ct = ctx.withPhase(ctx.flattenPhase.prev)
-          toDenot(innerClassSym)(ct).owner.enclosingClass(ct)
+          atPhase(flattenPhase.prev) {
+            toDenot(innerClassSym).owner.enclosingClass
+          }
         }
-        else innerClassSym.enclosingClass(ctx.withPhase(ctx.flattenPhase.prev))
+        else atPhase(flattenPhase.prev)(innerClassSym.enclosingClass)
       } //todo is handled specially for JavaDefined symbols in scalac
 
       val enclosingClass: ClassBType = classBTypeFromSymbol(enclosingClassSym)
@@ -255,7 +258,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
         if (innerClassSym.isAnonymousClass || innerClassSym.isAnonymousFunction) None
         else {
           val original = innerClassSym.initial
-          Some(innerClassSym.name(ctx.withPhase(original.validFor.phaseId)).mangledString) // moduleSuffix for module classes
+          Some(atPhase(original.validFor.phaseId)(innerClassSym.name).mangledString) // moduleSuffix for module classes
         }
       }
 
@@ -272,8 +275,9 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    *   object T { def f { object U } }
    * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
    */
-  private def (sym: Symbol).isOriginallyStaticOwner: Boolean =
-    sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
+  extension (sym: Symbol)
+    private def isOriginallyStaticOwner: Boolean =
+      sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 
   /**
    * Return the Java modifiers for the given symbol.
@@ -295,43 +299,41 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    */
   final def javaFlags(sym: Symbol): Int = {
 
-
     val privateFlag = sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass)
 
-    val finalFlag = sym.is(Final) &&  !toDenot(sym).isClassConstructor && !(sym.is(Mutable)) &&  !(sym.enclosingClass.is(Trait))
+    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.is(Mutable) && !sym.enclosingClass.is(Trait)
 
     import asm.Opcodes._
-    GenBCodeOps.mkFlags(
-      if (privateFlag) ACC_PRIVATE else ACC_PUBLIC,
-      if (sym.is(Deferred) || sym.isOneOf(AbstractOrTrait)) ACC_ABSTRACT else 0,
-      if (sym.isInterface) ACC_INTERFACE else 0,
-
-      if (finalFlag &&
+    import GenBCodeOps.addFlagIf
+    0 .addFlagIf(privateFlag, ACC_PRIVATE)
+      .addFlagIf(!privateFlag, ACC_PUBLIC)
+      .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
+      .addFlagIf(sym.isInterface, ACC_INTERFACE)
+      .addFlagIf(finalFlag
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        !sym.isOneOf(AbstractOrTrait) &&
+        && !sym.isOneOf(AbstractOrTrait)
         //  Mixin forwarders are bridges and can be final, but final bridges confuse some frameworks
-        !sym.is(Bridge))
-        ACC_FINAL else 0,
-      if (sym.isStaticMember) ACC_STATIC else 0,
-      if (sym.is(Bridge)) ACC_BRIDGE | ACC_SYNTHETIC else 0,
-      if (sym.is(Artifact)) ACC_SYNTHETIC else 0,
-      if (sym.isClass && !sym.isInterface) ACC_SUPER else 0,
-      if (sym.isAllOf(JavaEnumTrait)) ACC_ENUM else 0,
-      if (sym.is(JavaVarargs)) ACC_VARARGS else 0,
-      if (sym.is(Synchronized)) ACC_SYNCHRONIZED else 0,
-      if (false /*sym.isDeprecated*/) asm.Opcodes.ACC_DEPRECATED else 0, // TODO: add an isDeprecated method in SymUtils
-      if (sym.is(Enum)) asm.Opcodes.ACC_ENUM else 0
-    )
+        && !sym.is(Bridge), ACC_FINAL)
+      .addFlagIf(sym.isStaticMember, ACC_STATIC)
+      .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
+      .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
+      .addFlagIf(sym.isClass && !sym.isInterface, ACC_SUPER)
+      .addFlagIf(sym.isAllOf(JavaEnumTrait), ACC_ENUM)
+      .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
+      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
+      .addFlagIf(sym.is(Enum), ACC_ENUM)
   }
 
   def javaFieldFlags(sym: Symbol) = {
-    javaFlags(sym) | GenBCodeOps.mkFlags(
-      if (sym hasAnnotation TransientAttr) asm.Opcodes.ACC_TRANSIENT else 0,
-      if (sym hasAnnotation VolatileAttr)  asm.Opcodes.ACC_VOLATILE  else 0,
-      if (sym.is(Mutable)) 0 else asm.Opcodes.ACC_FINAL
-    )
+    import asm.Opcodes._
+    import GenBCodeOps.addFlagIf
+    javaFlags(sym)
+      .addFlagIf(sym.hasAnnotation(TransientAttr), ACC_TRANSIENT)
+      .addFlagIf(sym.hasAnnotation(VolatileAttr), ACC_VOLATILE)
+      .addFlagIf(!sym.is(Mutable), ACC_FINAL)
   }
 }

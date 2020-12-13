@@ -4,6 +4,6 @@ object FunObject {
   def fun(t: String => String) = t
 }
 
-def test(using QuoteContext)(x: Expr[String => String]) =
+def test(using Quotes)(x: Expr[String => String]) =
   x match
     case '{ FunObject.fun(($arg: String) => $out) } => // error

@@ -1,7 +1,7 @@
 package dotty.tools.dotc.transform
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -51,14 +51,9 @@ class CollectNullableFields extends MiniPhase {
   private case class Nullable(by: Symbol) extends FieldInfo
 
   /** Whether or not a field is nullable */
-  private var nullability: IdentityHashMap[Symbol, FieldInfo] = _
+  private val nullability = new mutable.LinkedHashMap[Symbol, FieldInfo]
 
-  override def prepareForUnit(tree: Tree)(implicit ctx: Context): Context = {
-    if (nullability == null) nullability = new IdentityHashMap
-    ctx
-  }
-
-  private def recordUse(tree: Tree)(implicit ctx: Context): Tree = {
+  private def recordUse(tree: Tree)(using Context): Tree = {
     val sym = tree.symbol
     val isNullablePrivateField =
       sym.isField &&
@@ -71,9 +66,9 @@ class CollectNullableFields extends MiniPhase {
 
     if (isNullablePrivateField)
       nullability.get(sym) match {
-        case Nullable(from) if from != ctx.owner => // used in multiple lazy val initializers
+        case Some(Nullable(from)) if from != ctx.owner => // used in multiple lazy val initializers
           nullability.put(sym, NotNullable)
-        case null => // not in the map
+        case None => // not in the map
           val from = ctx.owner
           val isNullable =
             from.is(Lazy, butNot = Module) && // is lazy val
@@ -90,17 +85,17 @@ class CollectNullableFields extends MiniPhase {
     tree
   }
 
-  override def transformIdent(tree: Ident)(implicit ctx: Context): Tree =
+  override def transformIdent(tree: Ident)(using Context): Tree =
     recordUse(tree)
 
-  override def transformSelect(tree: Select)(implicit ctx: Context): Tree =
+  override def transformSelect(tree: Select)(using Context): Tree =
     recordUse(tree)
 
   /** Map lazy values to the fields they should null after initialization. */
-  def lazyValNullables(implicit ctx: Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
+  def lazyValNullables(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
     val result = new IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]]
 
-    nullability.forEach {
+    nullability.foreach {
       case (sym, Nullable(from)) =>
         val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer)
         bldr += sym

@@ -54,7 +54,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
    *  parent super calls and constructor definitions.
    *  Hoisted superarg methods are collected in `superArgDefs`
    */
-  class Hoister(cls: Symbol)(implicit ctx: Context) {
+  class Hoister(cls: Symbol)(using Context) {
     val superArgDefs: mutable.ListBuffer[DefDef] = new mutable.ListBuffer
 
     /** If argument is complex, hoist it out into its own method and refer to the
@@ -91,7 +91,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         val argTypeWrtConstr = argType.subst(origParams, allParamRefs(constr.info))
         // argType with references to paramRefs of the primary constructor instead of
         // local parameter accessors
-        ctx.newSymbol(
+        newSymbol(
           owner = methOwner,
           name = SuperArgName.fresh(cls.name.toTermName),
           flags = Synthetic | Private | Method | staticFlag,
@@ -166,7 +166,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           val res = ref(superMeth)
             .appliedToTypes(typeParams.map(_.typeRef))
             .appliedToArgss(termParamRefs(constr.info, termParams))
-          ctx.log(i"hoist $arg, cls = $cls = $res")
+          report.log(i"hoist $arg, cls = $cls = $res")
           res
         case _ => arg
       }
@@ -197,7 +197,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     }
   }
 
-  override def transformTypeDef(tdef: TypeDef)(implicit ctx: Context): Tree =
+  override def transformTypeDef(tdef: TypeDef)(using Context): Tree =
     tdef.rhs match {
       case impl @ Template(cdef, superCall :: others, _, _) =>
         val hoist = new Hoister(tdef.symbol)

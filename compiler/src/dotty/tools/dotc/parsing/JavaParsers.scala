@@ -19,7 +19,7 @@ import Symbols._
 import ast.Trees._
 import Decorators._
 import StdNames._
-import dotty.tools.dotc.reporting.messages.IdentifierExpected
+import reporting._
 import dotty.tools.dotc.util.SourceFile
 import util.Spans._
 import scala.collection.mutable.ListBuffer
@@ -28,7 +28,7 @@ object JavaParsers {
 
   import ast.untpd._
 
-  class JavaParser(source: SourceFile)(implicit ctx: Context) extends ParserCommon(source) {
+  class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val definitions: Definitions = ctx.definitions
     import definitions._
@@ -101,7 +101,7 @@ object JavaParsers {
     def javaLangObject(): Tree = javaLangDot(tpnme.Object)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
-      AppliedTypeTree(Ident(nme.Array.toTypeName), List(tpt))
+      AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
       def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
@@ -304,7 +304,7 @@ object JavaParsers {
         if (in.token == QMARK) {
           val offset = in.offset
           in.nextToken()
-          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else EmptyTree
+          val hi = if (in.token == EXTENDS) { in.nextToken() ; typ() } else javaLangObject()
           val lo = if (in.token == SUPER)   { in.nextToken() ; typ() } else EmptyTree
           atSpan(offset) {
             /*
@@ -367,10 +367,10 @@ object JavaParsers {
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
       var annots = new ListBuffer[Tree]
-      def addAnnot(sym: ClassSymbol) =
+      def addAnnot(tpt: Tree) =
         annots += atSpan(in.offset) {
           in.nextToken()
-          New(TypeTree(sym.typeRef))
+          New(tpt)
         }
 
       while (true)
@@ -404,11 +404,11 @@ object JavaParsers {
             flags |= Flags.DefaultMethod
             in.nextToken()
           case NATIVE =>
-            addAnnot(NativeAnnot)
+            addAnnot(scalaDot(jtpnme.NATIVEkw))
           case TRANSIENT =>
-            addAnnot(TransientAnnot)
+            addAnnot(scalaDot(jtpnme.TRANSIENTkw))
           case VOLATILE =>
-            addAnnot(VolatileAnnot)
+            addAnnot(scalaDot(jtpnme.VOLATILEkw))
           case SYNCHRONIZED | STRICTFP =>
             in.nextToken()
           case _ =>
@@ -434,7 +434,7 @@ object JavaParsers {
     def typeParam(flags: FlagSet): TypeDef =
       atSpan(in.offset) {
         val name = identForType()
-        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else EmptyTree
+        val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else javaLangObject()
         TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))
       }
 
@@ -988,7 +988,7 @@ object JavaParsers {
    *  This is necessary even for Java, because the filename defining a non-public classes cannot be determined from the
    *  classname alone.
    */
-  class OutlineJavaParser(source: SourceFile)(implicit ctx: Context) extends JavaParser(source) with OutlineParserCommon {
+  class OutlineJavaParser(source: SourceFile)(using Context) extends JavaParser(source) with OutlineParserCommon {
     override def skipBracesHook(): Option[Tree] = None
     override def typeBody(leadingToken: Int, parentName: Name, parentTParams: List[TypeDef]): (List[Tree], List[Tree]) = {
       skipBraces()

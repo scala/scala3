@@ -41,7 +41,7 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   private def isDottyVersion(version: String) =
-    version.startsWith("0.")
+    version.startsWith("0.") || version.startsWith("3.")
 
 
   /** Return a new state derived from `state` such that scalaVersion returns `newScalaVersion` in all
@@ -234,10 +234,22 @@ object DottyIDEPlugin extends AutoPlugin {
     // IDE plugins to parse JSON.
     val dlsVersion = dottyVersion
       .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
-    val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
+    val dlsBinaryVersion = dlsVersion.split("[\\.-]").toList match {
+      case "0" :: minor :: _ => s"0.$minor"
+      case "3" :: minor :: patch :: suffix =>
+        s"3.$minor.$patch" + (suffix match {
+          case milestone :: _ => s"-$milestone"
+          case Nil => ""
+        })
+      case _ => throw new RuntimeException(
+        s"Version $dlsVersion is not a Scala 3 version.")
+    }
     val pwArtifact = new PrintWriter(artifactFile)
     try {
-      pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+      if (dottyVersion.startsWith("0."))
+        pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+      else
+        pwArtifact.println(s"org.scala-lang:scala3-language-server_${dlsBinaryVersion}:${dlsVersion}")
     } finally {
       pwArtifact.close()
     }
@@ -285,7 +297,15 @@ object DottyIDEPlugin extends AutoPlugin {
     // doesn't work for empty projects.
     val isScalaProject = (
           // Our `dotty-library` project is a Scala project
-          (projectName.startsWith("dotty-library") || depClasspath.exists(_.getAbsolutePath.contains("dotty-library")))
+          (
+            projectName.startsWith("dotty-library") ||
+            projectName.startsWith("scala3-library") ||
+            depClasspath.exists { d =>
+              val absolutePath = d.getAbsolutePath
+              absolutePath.contains("dotty-library") ||
+              absolutePath.contains("scala3-library")
+            }
+         )
        && depClasspath.exists(_.getAbsolutePath.contains("scala-library"))
     )
 
@@ -373,6 +393,10 @@ object DottyIDEPlugin extends AutoPlugin {
     }
 
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
+
+  override def globalSettings: Seq[Setting[_]] = Seq(
+    excludeLintKeys += excludeFromIDE
+  )
 
   // Ported from Bloop
   /**

@@ -7,6 +7,7 @@ import scala.annotation.switch
 import scala.collection.mutable
 import Primitives.{NE, EQ, TestOp, ArithmeticOp}
 import scala.tools.asm.tree.MethodInsnNode
+import dotty.tools.dotc.report
 
 /*
  *  A high-level facade to the ASM API for bytecode generation.
@@ -19,7 +20,7 @@ trait BCodeIdiomatic {
   val int: DottyBackendInterface
   final lazy val bTypes = new BTypesFromSymbols[int.type](int)
 
-  import int._
+  import int.{_, given}
   import bTypes._
   import coreBTypes._
 
@@ -28,15 +29,16 @@ trait BCodeIdiomatic {
     case "jvm-1.6"     => asm.Opcodes.V1_6
     case "jvm-1.7"     => asm.Opcodes.V1_7
     case "jvm-1.8"     => asm.Opcodes.V1_8
+    case "jvm-9"       => asm.Opcodes.V9
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)
   lazy val emitStackMapFrame = (majorVersion >= 50)
 
-  val extraProc: Int = GenBCodeOps.mkFlags(
-    asm.ClassWriter.COMPUTE_MAXS,
-    if (emitStackMapFrame) asm.ClassWriter.COMPUTE_FRAMES else 0
-  )
+  val extraProc: Int =
+    import GenBCodeOps.addFlagIf
+    asm.ClassWriter.COMPUTE_MAXS
+      .addFlagIf(emitStackMapFrame, asm.ClassWriter.COMPUTE_FRAMES)
 
   lazy val JavaStringBuilderClassName = jlStringBuilderRef.internalName
 
@@ -585,7 +587,7 @@ trait BCodeIdiomatic {
     }
 
     def abort(msg: String): Nothing = {
-      ctx.error(msg)
+      report.error(msg)
       throw new RuntimeException(msg)
     }
 

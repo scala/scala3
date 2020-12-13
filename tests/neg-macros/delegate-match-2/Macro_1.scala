@@ -3,19 +3,19 @@ import scala.quoted._
 
 inline def f: Any = ${ fImpl }
 
-private def fImpl (using qctx: QuoteContext) : Expr[Unit] = {
-  import qctx.tasty._
-  searchImplicit(('[A]).unseal.tpe) match {
+private def fImpl (using Quotes) : Expr[Unit] = {
+  import quotes.reflect._
+  Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}
-      error("DivergingImplicit\n" + x.explanation, rootPosition)
+      report.error("DivergingImplicit\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: NoMatchingImplicits =>
-      error("NoMatchingImplicits\n" + x.explanation, rootPosition)
+      report.error("NoMatchingImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: AmbiguousImplicits =>
-      error("AmbiguousImplicits\n" + x.explanation, rootPosition)
+      report.error("AmbiguousImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
   }
 }

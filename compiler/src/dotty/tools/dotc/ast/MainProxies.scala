@@ -39,6 +39,13 @@ object MainProxies {
     mainMethods(stats).flatMap(mainProxy)
   }
 
+  private def checkNoShadowing(mainFun: Symbol)(using Context) =
+    val cls = ctx.typer.findRef(mainFun.name.toTypeName, WildcardType, EmptyFlags, mainFun).typeSymbol
+    if cls.exists && cls.owner != ctx.owner then
+      report.warning(
+        i"""The class `${ctx.printer.fullNameString(mainFun)}` generated from `@main` will shadow the existing ${cls.showLocated}.
+           |The existing definition might no longer be found on recompile.""", mainFun)
+
   import untpd._
   def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
@@ -47,7 +54,7 @@ object MainProxies {
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
-        ctx.error(s"@main method cannot have implicit parameters", pos)
+        report.error(s"@main method cannot have implicit parameters", pos)
         call
       }
       else {
@@ -65,7 +72,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              ctx.error(s"varargs parameter of @main method must come last", pos)
+              report.error(s"varargs parameter of @main method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
@@ -74,7 +81,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      ctx.error(s"@main method is not statically accessible", pos)
+      report.error(s"@main method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
@@ -82,10 +89,11 @@ object MainProxies {
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
         case _: PolyType =>
-          ctx.error(s"@main method cannot have type parameters", pos)
+          report.error(s"@main method cannot have type parameters", pos)
         case _ =>
-          ctx.error(s"@main can only annotate a method", pos)
+          report.error(s"@main can only annotate a method", pos)
       }
+      checkNoShadowing(mainFun)
       val errVar = Ident(nme.error)
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
@@ -99,7 +107,7 @@ object MainProxies {
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final)
-      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan) :: Nil
+      if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     }
     result
   }

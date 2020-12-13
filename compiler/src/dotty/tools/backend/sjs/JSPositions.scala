@@ -1,7 +1,11 @@
 package dotty.tools.backend.sjs
 
+import java.net.{URI, URISyntaxException}
+
 import dotty.tools.dotc.core._
 import Contexts._
+
+import dotty.tools.dotc.report
 
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.util.Spans.Span
@@ -9,7 +13,28 @@ import dotty.tools.dotc.util.Spans.Span
 import org.scalajs.ir
 
 /** Conversion utilities from dotty Positions to IR Positions. */
-class JSPositions()(implicit ctx: Context) {
+class JSPositions()(using Context) {
+  import JSPositions._
+
+  private val sourceURIMaps: List[URIMap] = {
+    ctx.settings.scalajsMapSourceURI.value.flatMap { option =>
+      val uris = option.split("->")
+      if (uris.length != 1 && uris.length != 2) {
+        report.error("-scalajs-mapSourceURI needs one or two URIs as argument (separated by '->').")
+        Nil
+      } else {
+        try {
+          val from = new URI(uris.head)
+          val to = uris.lift(1).map(str => new URI(str))
+          URIMap(from, to) :: Nil
+        } catch {
+          case e: URISyntaxException =>
+            report.error(s"${e.getInput} is not a valid URI")
+            Nil
+        }
+      }
+    }
+  }
 
   private def sourceAndSpan2irPos(source: SourceFile, span: Span): ir.Position = {
     if (!span.exists) ir.Position.NoPosition
@@ -59,16 +84,16 @@ class JSPositions()(implicit ctx: Context) {
           )
         case file =>
           val srcURI = file.toURI
-          def matches(pat: java.net.URI) = pat.relativize(srcURI) != srcURI
-
-          // TODO
-          /*scalaJSOpts.sourceURIMaps.collectFirst {
-            case ScalaJSOptions.URIMap(from, to) if matches(from) =>
+          sourceURIMaps.collectFirst {
+            case URIMap(from, to) if from.relativize(srcURI) != srcURI =>
               val relURI = from.relativize(srcURI)
               to.fold(relURI)(_.resolve(relURI))
-          } getOrElse*/
-          srcURI
+          }.getOrElse(srcURI)
       }
     }
   }
+}
+
+object JSPositions {
+  final case class URIMap(from: URI, to: Option[URI])
 }

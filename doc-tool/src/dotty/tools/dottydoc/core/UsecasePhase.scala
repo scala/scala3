@@ -2,7 +2,7 @@ package dotty.tools
 package dottydoc
 package core
 
-import dotc.core.Contexts.Context
+import dotc.core.Contexts.{Context, ctx}
 import dotc.ast.tpd
 
 import transform.DocMiniPhase
@@ -12,7 +12,7 @@ import dotty.tools.dotc.core.Symbols.Symbol
 import util.syntax._
 
 class UsecasePhase extends DocMiniPhase {
-  private def defdefToDef(d: tpd.DefDef, sym: Symbol)(implicit ctx: Context) = {
+  private def defdefToDef(d: tpd.DefDef, sym: Symbol)(using Context) = {
     val name = d.name.show.split("\\$").head
     DefImpl(
       sym,
@@ -26,7 +26,7 @@ class UsecasePhase extends DocMiniPhase {
     )
   }
 
-  override def transformDef(implicit ctx: Context) = { case df: DefImpl =>
+  override def transformDef(using Context) = { case df: DefImpl =>
     val defdefs =
       ctx.docbase.docstring(df.symbol)
         .map(_.usecases.flatMap(_.tpdCode))

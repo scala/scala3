@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dottydoc
+title: Dottydoc [Legacy]
 ---
 
 Dottydoc is a tool to generate a combined documentation and API reference for
@@ -92,7 +92,7 @@ It is also possible to use one of the [default layouts](#default-layouts) that s
 Blog
 ====
 Dottydoc also allows for a simple blogging platform in the same vein as Jekyll.
-Blog posts are placed within the `./blog/_posts` directory and have to be on
+Blog posts are placed within the `./blog/_posts` directory and have to be in
 the form `year-month-day-title.{md,html}`.
 
 An example of this would be:
@@ -143,7 +143,7 @@ An example structure with an include file "sidebar.html":
 Sidebar
 =======
 Dottydoc gives you the ability to create your own custom table of contents,
-this can either be achieved by overriding the `toc.html` include - or by
+this can either be achieved by overriding the `toc.html` or by
 providing a `sidebar.yml` file in the site root:
 
 ```yaml
@@ -162,7 +162,7 @@ sidebar:
 
 The `sidebar` key is mandatory, as well as `title` for each element. The
 default table of contents allows you to have subsections - albeit the current
-depth limit is 2 - we'd love to see this change, contributions welcome!
+depth limit is 2 -- we would love to see this changed, contributions welcome!
 
 The items which have the `subsection` key, may not have a `url` key in the
 current scheme. A site root example with this could be:
@@ -192,11 +192,11 @@ Linking to members is done in the same fashion:
 [Seq](scala.collection.immutable.Seq.isEmpty)
 ```
 
-Dottydoc denotes objects by ending their names in "$". To select `Object.range`
+Dottydoc denotes objects by ending their names in "$". To select `List.range`
 you'd therefore write:
 
 ```markdown
-[Object.range](scala.collection.immutable.List$.range)
+[List.range](scala.collection.immutable.List$.range)
 ```
 
 Rendering Docstrings
@@ -211,7 +211,7 @@ therefore Dottydoc makes it easy to render this inline:
 Other extensions
 ----------------
 We would love to have your feedback on what you think would be good in order to
-render the documentation you want! Perhaps you'd like to render method
+render the documentation you want! Perhaps you would like to render method
 definitions or members? Let us know by filing
 [issues](https://github.com/lampepfl/dotty/issues/new)!
 

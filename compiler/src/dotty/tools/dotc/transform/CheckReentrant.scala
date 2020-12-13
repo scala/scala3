@@ -4,10 +4,9 @@ package transform
 import core._
 import dotty.tools.dotc.transform.MegaPhase._
 import Flags._
-import Contexts.Context
+import Contexts._
 import Symbols._
 import Decorators._
-
 
 /** A no-op transform that checks whether the compiled sources are re-entrant.
  *  If -Ycheck:reentrant is set, the phase makes sure that there are no variables
@@ -37,38 +36,35 @@ class CheckReentrant extends MiniPhase {
   private var indent: Int = 0
 
   private val sharableAnnot = new CtxLazy(
-    summon[Context].requiredClass("scala.annotation.internal.sharable"))
+    requiredClass("scala.annotation.internal.sharable"))
   private val unsharedAnnot = new CtxLazy(
-    summon[Context].requiredClass("scala.annotation.internal.unshared"))
+    requiredClass("scala.annotation.internal.unshared"))
 
   private val scalaJSIRPackageClass = new CtxLazy(
-    summon[Context].getPackageClassIfDefined("org.scalajs.ir"))
+    getPackageClassIfDefined("org.scalajs.ir"))
 
-  def isIgnored(sym: Symbol)(implicit ctx: Context): Boolean =
+  def isIgnored(sym: Symbol)(using Context): Boolean =
     sym.hasAnnotation(sharableAnnot()) ||
     sym.hasAnnotation(unsharedAnnot()) ||
-    sym.topLevelClass.owner == scalaJSIRPackageClass() ||
+    sym.topLevelClass.owner == scalaJSIRPackageClass()
       // We would add @sharable annotations on ScalaJSVersions and
       // VersionChecks but we do not have control over that code
-    sym.owner == defn.EnumValuesClass
-      // enum values are initialized eagerly before use
-      // in the long run, we should make them vals
 
-  def scanning(sym: Symbol)(op: => Unit)(implicit ctx: Context): Unit = {
-    ctx.log(i"${"  " * indent}scanning $sym")
+  def scanning(sym: Symbol)(op: => Unit)(using Context): Unit = {
+    report.log(i"${"  " * indent}scanning $sym")
     indent += 1
     try op
     finally indent -= 1
   }
 
-  def addVars(cls: ClassSymbol)(implicit ctx: Context): Unit =
+  def addVars(cls: ClassSymbol)(using Context): Unit =
     if (!seen.contains(cls) && !isIgnored(cls)) {
       seen += cls
       scanning(cls) {
         for (sym <- cls.classInfo.decls)
           if (sym.isTerm && !sym.isSetter && !isIgnored(sym))
             if (sym.is(Mutable)) {
-              ctx.error(
+              report.error(
                 i"""possible data race involving globally reachable ${sym.showLocated}: ${sym.info}
                    |  use -Ylog:checkReentrant+ to find out more about why the variable is reachable.""")
               shared += sym
@@ -82,7 +78,7 @@ class CheckReentrant extends MiniPhase {
       }
     }
 
-  override def transformTemplate(tree: Template)(implicit ctx: Context): Tree = {
+  override def transformTemplate(tree: Template)(using Context): Tree = {
     if (ctx.settings.YcheckReentrant.value && tree.symbol.owner.isStaticOwner)
       addVars(tree.symbol.owner.asClass)
     tree

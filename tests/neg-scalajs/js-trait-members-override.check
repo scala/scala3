@@ -1,0 +1,30 @@
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:13:15 ------------------------------------------------------
+13 |  override val a1: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding value a1 in class A1 of type scala.scalajs.js.UndefOr[Int] with JS name 'a1';
+   |  value a1 of type scala.scalajs.js.UndefOr[Int] with JS name 'a1' cannot override a concrete member in a non-native JS trait
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:16:15 ------------------------------------------------------
+16 |  override def b1: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding method b1 in class A1 of type => scala.scalajs.js.UndefOr[Int] with JS name 'b1';
+   |  method b1 of type => scala.scalajs.js.UndefOr[Int] with JS name 'b1' cannot override a concrete member in a non-native JS trait
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:27:15 ------------------------------------------------------
+27 |  override val a: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding value a in class B1 of type scala.scalajs.js.UndefOr[Int] with JS name 'a';
+   |  value a of type scala.scalajs.js.UndefOr[Int] with JS name 'a' cannot override a concrete member in a non-native JS trait
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:28:15 ------------------------------------------------------
+28 |  override def b: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding method b in class B1 of type => scala.scalajs.js.UndefOr[Int] with JS name 'b';
+   |  method b of type => scala.scalajs.js.UndefOr[Int] with JS name 'b' cannot override a concrete member in a non-native JS trait
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:41:15 ------------------------------------------------------
+41 |  override val a: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding value a in trait C1 of type scala.scalajs.js.UndefOr[Int] with JS name 'a';
+   |  value a of type scala.scalajs.js.UndefOr[Int] with JS name 'a' cannot override a concrete member in a non-native JS trait
+-- Error: tests/neg-scalajs/js-trait-members-override.scala:42:15 ------------------------------------------------------
+42 |  override def b: js.UndefOr[Int] = js.undefined // error
+   |               ^
+   |error overriding method b in trait C1 of type => scala.scalajs.js.UndefOr[Int] with JS name 'b';
+   |  method b of type => scala.scalajs.js.UndefOr[Int] with JS name 'b' cannot override a concrete member in a non-native JS trait
