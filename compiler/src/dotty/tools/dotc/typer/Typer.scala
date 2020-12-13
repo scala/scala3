@@ -802,7 +802,7 @@ class Typer extends Namer
         .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
         .getOrElse(tree)
       if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
-        report.warning("Use of ClassTag for type testing may be unsound. Consider using `reflect.Typable` instead.", tree.srcPos)
+        report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
     case _ => tree
   }
