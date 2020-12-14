@@ -63,6 +63,25 @@ extended by both `AnyVal` and `AnyRef`. Since `Matchable` is a supertype of ever
  - Type parameters and abstract types that are only bounded by some
    universal trait: Again, `Matchable` should be added as a bound.
 
+Here is the hierarchy of toplevel classes and traits with their defined methods:
+```scala
+abstract class Any:
+  def getClass
+  def isInstanceOf
+  def asInstanceOf
+  def ==
+  def !=
+  def ##
+  def equals
+  def hashCode
+  def toString
+
+trait Matchable extends Any
+
+class AnyVal extends Any, Matchable
+class Object extends Any, Matchable
+```
+
 `Matchable` is currently a marker trait without any methods. Over time
 we might migrate methods `getClass` and `isInstanceOf` to it, since these are closely related to pattern-matching.
 
