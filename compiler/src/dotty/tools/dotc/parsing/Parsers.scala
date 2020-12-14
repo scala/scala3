@@ -1904,10 +1904,7 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart =
-        val lookahead = in.LookaheadScanner()
-        lookahead.nextToken()
-        lookahead.isIdent(nme.using) || lookahead.token == ERASED
+      def isSpecialClosureStart = in.lookahead.token == ERASED
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
       else if in.token == LPAREN && isSpecialClosureStart then
@@ -2137,9 +2134,7 @@ object Parsers {
         else
           openParens.change(LPAREN, 1)
           var mods1 = mods
-          if mods.flags.isEmpty then
-            if isIdent(nme.using) then mods1 = addMod(mods1, atSpan(in.skipToken()) { Mod.Given() })
-            if in.token == ERASED then mods1 = addModifier(mods1)
+          if in.token == ERASED then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
