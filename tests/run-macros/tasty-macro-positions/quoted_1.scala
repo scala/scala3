@@ -10,7 +10,7 @@ object Macros {
 
   def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
-    val pos = posStr(x.asTerm.underlyingArgument.pos)
+    val pos = posStr(x.asTerm.underlyingArgument.pos.get)
     val code = x.asTerm.underlyingArgument.show
     '{
       println($pos)
@@ -20,7 +20,7 @@ object Macros {
 
   def impl2[T](using x: Type[T])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
-    val pos = posStr(TypeTree.of[T].pos)
+    val pos = posStr(TypeTree.of[T].pos.get)
     val code = TypeTree.of[T].show
     '{
       println($pos)

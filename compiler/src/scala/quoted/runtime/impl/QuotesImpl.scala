@@ -89,7 +89,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TreeMethods: TreeMethods with
       extension (self: Tree)
-        def pos: Position = self.sourcePos
+        def pos: Option[Position] =
+          val p = self.sourcePos
+          if p.exists then Some(p.sourcePos) else None
         def symbol: Symbol = self.symbol
         def show(using printer: Printer[Tree]): String = printer.show(self)
         def isExpr: Boolean =
@@ -2680,7 +2682,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.error(msg, Position.ofMacroExpansion)
 
       def error(msg: String, expr: Expr[Any]): Unit =
-        dotc.report.error(msg, asTerm(expr).pos)
+        dotc.report.error(msg, expr.asTerm.sourcePos)
+
+      def error(msg: String, posOpt: Option[Position]): Unit =
+        posOpt match
+          case Some(pos) => dotc.report.error(msg, pos)
+          case _ => dotc.report.error(msg)
 
       def error(msg: String, pos: Position): Unit =
         dotc.report.error(msg, pos)
@@ -2693,6 +2700,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         error(msg, expr)
         throw new scala.quoted.runtime.StopMacroExpansion
 
+      def throwError(msg: String, posOpt: Option[Position]): Nothing =
+        error(msg, posOpt)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
       def throwError(msg: String, pos: Position): Nothing =
         error(msg, pos)
         throw new scala.quoted.runtime.StopMacroExpansion
@@ -2701,10 +2712,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.warning(msg, Position.ofMacroExpansion)
 
       def warning(msg: String, expr: Expr[Any]): Unit =
-        dotc.report.warning(msg, asTerm(expr).pos)
+        dotc.report.warning(msg, expr.asTerm.sourcePos)
+
+      def warning(msg: String, posOpt: Option[Position]): Unit =
+        posOpt match
+          case Some(pos) => dotc.report.warning(msg, pos)
+          case _ => dotc.report.warning(msg)
 
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
+
 
     end report
 

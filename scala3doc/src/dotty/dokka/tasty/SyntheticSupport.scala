@@ -44,9 +44,9 @@ trait SyntheticsSupport:
     pos.start != pos.end
 
   def constructorWithoutParamLists(c: ClassDef): Boolean =
-    !isValidPos(c.constructor.pos)  || {
-      val end = c.constructor.pos.end
-      val typesEnd =  c.constructor.typeParams.lastOption.fold(end - 1)(_.pos.end)
+    !isValidPos(c.constructor.pos.get)  || {
+      val end = c.constructor.pos.get.end
+      val typesEnd =  c.constructor.typeParams.lastOption.fold(end - 1)(_.pos.get.end)
       val classDefTree = c.constructor.show
       c.constructor.typeParams.nonEmpty && end <= typesEnd + 1
     }

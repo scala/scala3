@@ -241,7 +241,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       extension (self: Tree)
         /** Position in the source code */
-        def pos: Position
+        def pos: Option[Position]
 
         /** Symbol of defined or referred by this tree */
         def symbol: Symbol
@@ -3820,6 +3820,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def error(msg: String, expr: Expr[Any]): Unit
 
       /** Report an error message at the given position */
+      def error(msg: String, pos: Option[Position]): Unit
+
+      /** Report an error message at the given position */
       def error(msg: String, pos: Position): Unit
 
       /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
@@ -3829,6 +3832,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
       /** Report an error message at the given position and throws a StopMacroExpansion */
+      def throwError(msg: String, pos: Option[Position]): Nothing
+
+      /** Report an error message at the given position and throws a StopMacroExpansion */
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */
@@ -3836,6 +3842,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Report a warning at the on the position of `expr` */
       def warning(msg: String, expr: Expr[Any]): Unit
+
+      /** Report an warning message at the given position */
+      def warning(msg: String, pos: Option[Position]): Unit
 
       /** Report an warning message at the given position */
       def warning(msg: String, pos: Position): Unit

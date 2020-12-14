@@ -256,7 +256,7 @@ trait ClassLikeSupport:
 
     def getParents: List[Tree] =
       for
-        parentTree <- c.parents if isValidPos(parentTree.pos)  // We assume here that order is correct
+        parentTree <- c.parents if isValidPos(parentTree.pos.get)  // We assume here that order is correct
         parentSymbol = if parentTree.symbol.isClassConstructor then parentTree.symbol.owner else parentTree.symbol
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
       yield parentTree
