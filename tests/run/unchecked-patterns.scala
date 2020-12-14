@@ -1,6 +1,6 @@
 object Test extends App {
   val x: Int = 2: @unchecked
-  val (y1: Some[Int]) = Some(1): Option[Int]: @unchecked
+  val (y1: Some[Int]) = Some(1): Option[Int] @unchecked
 
   val a :: as = List(1, 2, 3): @unchecked
   val lst @ b :: bs = List(1, 2, 3): @unchecked

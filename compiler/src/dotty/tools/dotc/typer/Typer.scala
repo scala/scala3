@@ -1396,7 +1396,7 @@ class Typer extends Namer
 
                 // skip exhaustivity check in later phase
                 // TODO: move the check above to patternMatcher phase
-                val uncheckedTpe = AnnotatedType(sel.tpe, Annotation(defn.UncheckedAnnot))
+                val uncheckedTpe = AnnotatedType(sel.tpe.widen, Annotation(defn.UncheckedAnnot))
                 tpd.cpy.Match(result)(
                   selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe)),
                   cases = result.cases
