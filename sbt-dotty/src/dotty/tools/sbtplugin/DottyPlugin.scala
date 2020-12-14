@@ -174,7 +174,7 @@ object DottyPlugin extends AutoPlugin {
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
     onLoad in Global := onLoad.in(Global).value.andThen { state =>
 
-      val requiredVersion = ">=1.3.6"
+      val requiredVersion = ">=1.4.4"
 
       val sbtV = sbtVersion.value
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
