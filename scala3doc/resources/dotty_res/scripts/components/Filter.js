@@ -147,7 +147,7 @@ class Filter {
     const newFilters = this._elementsRefs.reduce((filtersObject, elementRef) => {
       this._getDatasetWithKeywordData(elementRef.dataset).forEach(([key, value]) =>
         this._splitByComma(value).forEach((val) => {
-          filtersObject[key] = filtersObject[key] 
+          filtersObject[key] = filtersObject[key]
             ? { ...filtersObject[key], [val]: filtersObject[key][val] ?? new FilterItem() }
             : { [val]: new FilterItem()  }
         })
@@ -161,21 +161,21 @@ class Filter {
   /**
    * @private
    * @param {Filters} newFilters
-   * @returns {Filters} 
+   * @returns {Filters}
    */
   _attachDefaultFilters(newFilters) {
     return Object.entries(Filter.defaultFilters).reduce((acc, [key, defaultFilter]) => {
       const filterKey = getFilterKey(key)
       const shouldAddDefaultKeywordFilter = this._elementsRefs.some(ref => !!ref.dataset[filterKey])
-      
-      return shouldAddDefaultKeywordFilter 
-        ? { 
-          ...acc, 
-          [filterKey]: { 
-            ...acc[filterKey], 
-            [defaultFilter]: new FilterItem() 
-          } 
-        } 
+
+      return shouldAddDefaultKeywordFilter
+        ? {
+          ...acc,
+          [filterKey]: {
+            ...acc[filterKey],
+            [defaultFilter]: new FilterItem()
+          }
+        }
         : acc
     }, newFilters)
   }

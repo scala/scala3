@@ -90,42 +90,14 @@ class ScalaPageCreator(
     contentBuilder.contentForDocumentable(m, buildBlock = buildBlock)
   }
 
-  override def contentForPackage(p: DPackage) = {
-    def buildBlock = (builder: DocBuilder) => builder
-      .group(kind = ContentKind.Cover) { gbuilder => gbuilder
-        .cover(p.getName)()
-        .descriptionIfNotEmpty(p)
-      }
-      .documentableFilter()
-      .group(styles = Set(ContentStyle.TabbedContent)) { b => b
-        .contentForScope(p)
-      }
-
-    contentBuilder.contentForDocumentable(p, buildBlock = buildBlock)
-  }
+  override def contentForPackage(p: DPackage) =
+    contentBuilder.contentForDocumentable(p, buildBlock = _.contentForDescription(p))
 
   override def contentForClasslike(c: DClasslike) = throw UnsupportedOperationException(
       s"Unable to generate DClasslike using default dokka method for $c!")
 
-  def contentForClass(c: DClass) = {
-    def buildBlock = (builder: DocBuilder) => builder
-      .group(kind = ContentKind.Cover, sourceSets = c.getSourceSets.asScala.toSet) { gbdr => gbdr
-        .cover(c.getName)()
-        .sourceSetDependentHint(Set(c.getDri), c.getSourceSets.asScala.toSet) { sbdr => sbdr
-          .signature(c)
-          .contentForDescription(c)
-        }
-      }
-      .documentableFilter()
-      .group(styles = Set(ContentStyle.TabbedContent)) { b => b
-        .contentForScope(c)
-        .contentForEnum(c)
-        .contentForConstructors(c)
-        .contentForTypesInfo(c)
-      }
-    contentBuilder.contentForDocumentable(c, buildBlock = buildBlock)
-  }
-
+  def contentForClass(c: DClass) =
+    contentBuilder.contentForDocumentable(c, buildBlock = _.contentForDescription(c))
 
   extension (b: DocBuilder)
     def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
@@ -210,7 +182,6 @@ class ScalaPageCreator(
     def contentForTypesInfo(c: DClass) =
       val supertypes = c.parents
       val subtypes = c.knownChildren
-      val graph = MemberExtension.getFrom(c).map(_.graph)
 
       def contentForTypeLink(builder: DocBuilder, link: LinkToType): DocBuilder =
         builder.group(styles = Set(TextStyle.Paragraph)) { builder =>
@@ -242,15 +213,3 @@ class ScalaPageCreator(
               _.list(subtypes.toList, separator="")(contentForTypeLink)
             }
           }
-
-      graph.fold(withSubtypes) { graph =>
-        if graph.edges.isEmpty then withSubtypes else
-          withSubtypes.header(2, "Type hierarchy")().group(
-            kind = ContentKind.Comment,
-            styles = Set(ContentStyle.WithExtraAttributes),
-            extra = PropertyContainer.Companion.empty plus SimpleAttr.Companion.header("Type hierarchy")
-          ) { _.group(kind = ContentKind.Symbol, styles = Set(TextStyle.Monospace)) {
-              _.dotDiagram(graph)
-            }
-          }
-      }

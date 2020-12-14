@@ -169,7 +169,8 @@ object Preparser {
           group                   = allTags(SimpleTagKey("group")),
           groupDesc               = allSymsOneTag(SimpleTagKey("groupdesc")),
           groupNames              = allSymsOneTag(SimpleTagKey("groupname")),
-          groupPrio               = allSymsOneTag(SimpleTagKey("groupprio")),
+          groupPrio               =
+            allSymsOneTag(SimpleTagKey("groupprio")).transform((_, v) => v.toInt),
           hideImplicitConversions = allTags(SimpleTagKey("hideImplicitConversion")),
           shortDescription        = allTags(SimpleTagKey("shortDescription")),
           syntax                  = allTags(SimpleTagKey("syntax")),

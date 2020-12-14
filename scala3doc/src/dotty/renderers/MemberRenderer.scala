@@ -7,10 +7,12 @@ import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConve
 import org.jetbrains.dokka.pages.{DCI, ContentKind, ContentNode}
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import collection.JavaConverters._
+import dotty.dokka.translators.FilterAttributes
 
 class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNode => String)(using DocContext):
 
   private val converter = new DocTagToContentConverter()
+  import signatureRenderer._
 
   def renderDocPart(d: DocPart): AppliedTag =
     val sb  = StringBuilder()
@@ -22,8 +24,6 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
       PropertyContainer.Companion.empty()
     ).forEach(c => sb.append(buildNode(c)))
     raw(sb)
-
-  def fullSignature(m: Member): AppliedTag = raw("signature: TODO!")
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
@@ -41,16 +41,17 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
 
   def docAttributes(m: Member): Seq[AppliedTag] =
 
-    def nested(name: String, on: SortedMap[String, DocPart]): Seq[AppliedTag] = if on.isEmpty then Nil else
-      tableRow(name, dl(cls := "attributes")(
-        on.map { case (name, value) => tableRow(name, renderDocPart(value))}.toList:_*
-      ))
+    def nested(name: String, on: SortedMap[String, DocPart]): Seq[AppliedTag] =
+      if on.isEmpty then Nil else
+        tableRow(name, dl(cls := "attributes")(
+          on.map { case (name, value) => tableRow(name, renderDocPart(value))}.toList:_*
+        ))
 
-    def list(name: String, on: List[DocPart]): Seq[AppliedTag] = if on.isEmpty then Nil else
-      tableRow(name, div(on.map(e => div(renderDocPart(e)))))
+    def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
+      if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
 
-    def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] = if on.isEmpty then Nil else
-      tableRow(name, renderDocPart(on.get))
+    def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] =
+      if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get))
 
     m.docs.fold(Nil)(d =>
       nested("Type Params", d.typeParams) ++
@@ -116,3 +117,240 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
         )
       )
     )
+
+  private def originInfo(m: Member): Seq[TagArg] = m.origin match {
+    case Origin.ImplicitlyAddedBy(name, dri) =>
+      Seq("Implicitly added by ", renderLink(name, dri))
+    case Origin.ExtensionFrom(name, dri) =>
+      Seq("Extension method from ", renderLink(name, dri))
+    case Origin.ExportedFrom(name, dri) =>
+      val signatureName: TagArg = dri match
+        case Some(dri: DRI) => renderLink(name, dri)
+        case None => name
+      Seq("Exported from ", signatureName)
+    case _ => Nil
+  }
+
+  def memberSingnature(member: Member) =
+    val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
+    val nameClasses = cls := s"documentableName $depStyle"
+
+    val rawBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder())
+    val inlineBuilder = rawBuilder.asInstanceOf[InlineSignatureBuilder]
+    if inlineBuilder.preName.isEmpty then println(member)
+    val kind :: modifiersRevered = inlineBuilder.preName
+    val signature = inlineBuilder.names.reverse
+    Seq(
+      span(cls := "modifiers")(
+        span(cls := "other-modifiers")(modifiersRevered.reverse.map(renderElement)),
+        span(cls := "kind")(renderElement(kind)),
+      ),
+      renderLink(member.name, member.dri, nameClasses),
+      span(cls := "signature")(signature.map(renderElement)),
+    )
+
+  def annotations(member: Member) =
+   val rawBuilder = InlineSignatureBuilder().annotationsBlock(member)
+   val signatures = rawBuilder.asInstanceOf[InlineSignatureBuilder].names.reverse
+   span(cls := "annotations monospace")(signatures.map(renderElement))
+
+  def member(member: Member) =
+    val filterAttributes = FilterAttributes.attributesFor(member)
+    def topLevelAttr = Seq(cls := "documentableElement")
+      ++ member.dri.anchor.map(id := _)
+      ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
+
+    div(topLevelAttr:_*)(
+      a(href:=link(member.dri).getOrElse("#"), cls := "documentableAnchor"),
+      div(annotations(member)),
+      div(cls := "header monospace")(memberSingnature(member)),
+      div(cls := "docs")(
+        span(cls := "modifiers"), // just to have padding on left
+        div(
+          div(cls := "originInfo")(originInfo(member):_*),
+          div(cls := "documentableBrief")(memberInfo(member)),
+        )
+      )
+    )
+
+  private case class MGroup(header: AppliedTag, members: Seq[Member])
+
+  private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
+    if members.isEmpty then Nil else
+    div(cls := "documentableList")(
+      h3(cls:="groupHeader")(name),
+      members.map {
+        case element: Member =>
+          member(element)
+        case MGroup(header, members) =>
+          div(
+            header,
+            members.map(member)
+          )
+      }
+    ) :: Nil
+
+  private def isDeprecated(m: Member | MGroup): Boolean = m match
+    case m: Member => m.deprecated.nonEmpty
+    case g: MGroup => g.members.exists(isDeprecated)
+
+  private def isInherited(m: Member | MGroup): Boolean = m match
+    case m: Member => m.inheritedFrom.nonEmpty
+    case g: MGroup => g.members.exists(isInherited)
+
+  private type SubGroup = (String, Seq[Member | MGroup])
+  private def buildGroup(name: String, subgroups: Seq[SubGroup]): Tab =
+    val all = subgroups.map { case (name, members) =>
+      val (allInherited, allDefined) = members.partition(isInherited)
+      val (depDefined, defined) = allDefined.partition(isDeprecated)
+      val (depInherited, inherited) = allInherited.partition(isDeprecated)
+      (
+        actualGroup(name, defined),
+        actualGroup(s"Deprectated ${name.toLowerCase}", depDefined),
+        actualGroup(s"Inherited ${name.toLowerCase}", inherited),
+        actualGroup(s"Deprectated and Inherited ${name.toLowerCase}", depInherited)
+      )
+    }
+
+    val children =
+      all.flatMap(_._1) ++ all.flatMap(_._2) ++ all.flatMap(_._3) ++ all.flatMap(_._4)
+    if children.isEmpty then emptyTab
+    else Tab(name, name, h2(tabAttr(name))(name) +: children, "selected")
+
+  case class ExpandedGroup(name: AppliedTag, description: AppliedTag, prio: Int)
+
+  val emptyTab = Tab("", "", Nil)
+
+  def grouppedMember(m: Member, membersInGroups: Seq[Member]): Tab =
+    if membersInGroups.isEmpty then emptyTab else
+      val descriptions = m.docs.map(_.groupDesc).getOrElse(Map.empty)
+      val names = m.docs.map(_.groupNames).getOrElse(Map.empty)
+      val prios = m.docs.map(_.groupPrio).getOrElse(Map.empty)
+
+      val rawGroups = membersInGroups.groupBy(_.docs.flatMap(_.group)).collect {
+          case (Some(groupName), members) =>
+            ExpandedGroup(
+              names.get(groupName).fold(raw(groupName))(renderDocPart),
+              descriptions.get(groupName).fold(raw(""))(renderDocPart),
+              prios.getOrElse(groupName, 1000)
+            ) -> members
+        }
+      val content = rawGroups.toSeq.sortBy(_._1.prio).flatMap {
+        case (group, members) =>
+          Seq(div(cls := "documentableList")(
+            h3(group.name),
+            group.description,
+            members.map(member)
+          ))
+      }
+      Tab("Grouped members", "custom_groups", content, "selected")
+
+  def buildMembers(s: Member): AppliedTag =
+    val (membersInGroups, rest) = s.allMembers.partition(_.docs.exists(_.group.nonEmpty))
+
+    val extensions =
+      rest.groupBy{ _.kind match
+        case Kind.Extension(on, _) => Some(on)
+        case _ => None
+      }.collect {
+        case (Some(on), members) =>
+          val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
+          MGroup(span(sig.map(renderElement)), members.toSeq)
+      }.toSeq
+
+    div(cls := "membersList")(renderTabs(
+      singleSelection = false,
+      buildGroup("Packages", Seq(
+        ("", rest.filter(m => m.kind == Kind.Package)),
+      )),
+      grouppedMember(s, membersInGroups),
+      buildGroup("Type members", Seq(
+        ("Classlikes", rest.filter(m => m.kind.isInstanceOf[Classlike])),
+        ("Types", rest.filter(_.kind.isInstanceOf[Kind.Type])),
+      )),
+      buildGroup("Value members", Seq(
+        ("Constructors", rest.filter(_.kind.isInstanceOf[Kind.Constructor])),
+        ("Methods", rest.filter(_.kind.isInstanceOf[Kind.Def])),
+        ("Fields", rest.filter(m => m.kind == Kind.Val || m.kind == Kind.Var)),
+      )),
+      buildGroup("Givens", Seq(
+        ("Givens", rest.filter(_.kind.isInstanceOf[Kind.Given])),
+      )),
+      buildGroup("Extensions", Seq(
+        ("Extensions", extensions),
+      )),
+      buildGroup("Implicits", Seq(
+        ("Implicits", rest.filter(_.kind.isInstanceOf[Kind.Implicit])),
+      )),
+      buildGroup("Exports", Seq(
+        ("Defined exports", rest.filter(_.kind.isInstanceOf[Kind.Exported])),
+      ))
+    ))
+
+  case class Tab(name: String, id: String, content: Seq[AppliedTag], cls: String = "")
+
+  def tabAttr(id: String) = Attr("data-togglable") := id
+
+  private def renderTabs(singleSelection: Boolean, allTabs: Tab*): Seq[AppliedTag] =
+    val tabs = allTabs.filter(_.content.nonEmpty)
+      if tabs.isEmpty then Nil else
+        Seq(div(cls := (if singleSelection then "tabs single" else "tabs"))(
+            div(cls := "names")(tabs.map(t =>
+              button(tabAttr(t.id), cls := s"tab ${t.cls}")(t.name)
+            )),
+            div(cls := "contents")(tabs.map(t =>
+              div(tabAttr(t.id), cls := s"tab ${t.cls}")(t.content)
+            ))
+        ))
+
+  def classLikeParts(m: Member): Seq[AppliedTag] =
+    if !m.kind.isInstanceOf[Classlike] then Nil else
+      val graphHtml = MemberExtension.getFrom(m).map(_.graph) match
+        case Some(graph) if graph.edges.nonEmpty =>
+          Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
+            svg(id := "graph"),
+            script(`type` := "text/dot", id := "dot")(
+              raw(DotDiagramBuilder.build(graph, signatureRenderer))
+            ),
+          ))
+        case _ => Nil
+
+      def signatureList(list: Seq[LinkToType]): Seq[AppliedTag] =
+        if list.isEmpty then Nil
+        else Seq(div(cls := "symbol monospace")(list.map(link =>
+          div(link.kind.name," ", link.signature.map(renderElement))
+        )))
+
+      val supertypes = signatureList(m.parents)
+      val subtypes = signatureList(m.knownChildren)
+
+      renderTabs(
+        singleSelection = true,
+        Tab("Graph", "graph", graphHtml, "showGraph"),
+        Tab("Super types", "supertypes", supertypes),
+        Tab("Known subtyes", "subtypes",subtypes),
+      )
+
+  private def buildDocumentableFilter = div(cls := "documentableFilter")(
+    div(cls := "filterUpperContainer")(
+      button(cls := "filterToggleButton", testId := "filterToggleButton")(
+        raw("""
+          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
+            <path d="M0 0h24v24H0z" fill="none"/>
+            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+          </svg>
+        """)
+      ),
+      input(cls := "filterableInput", placeholder := "Filter all members", testId := "filterBarInput")
+    ),
+    div(cls := "filterLowerContainer")()
+  )
+
+  def fullMember(m: Member): AppliedTag =
+    div(
+      h1(m.name),
+      div(cls:= "header monospace")(annotations(m), memberSingnature(m)),
+      memberInfo(m),
+      classLikeParts(m),
+      buildDocumentableFilter, // TODO Need to make it work in JS :(
+      buildMembers(m))

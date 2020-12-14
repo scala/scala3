@@ -103,13 +103,8 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
     node match {
       case n: HtmlContentNode =>
         withHtml(f, raw(n.body).toString)
-      case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
-      case n: DocumentableList =>
-        val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
-        withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
-      case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
       case mi: MemberInfo =>
-        val memberHtml = div(renderers(pageContext)._2.memberInfo(mi.member))
+        val memberHtml = div(renderers(pageContext)._2.fullMember(mi.member))
         withHtml(f, memberHtml.toString)
       case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
     }
@@ -270,14 +265,6 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
       U
     })
   }
-
-  def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) =
-    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-    withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class")(
-        svg(id := "graph"),
-        script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
-      ).toString()
-    )
 
   private val HashRegex = "([^#]+)(#.+)".r
 

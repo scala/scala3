@@ -81,6 +81,8 @@ object ScalaSignatureProvider:
         fieldSignature(documentable, documentable.kind.name, builder)
       case tpe: Kind.Type =>
         typeSignature(tpe, documentable, builder)
+      case Kind.Package =>
+        builder.text("package").text(" ").name(documentable.name, documentable.dri)
       case Kind.Unknown =>
         ???
 

@@ -25,7 +25,6 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
           "https://d3js.org/d3.v6.min.js",
           "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
           "https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.6.1/dagre-d3.min.js",
-          "scripts/diagram.js",
           "styles/filter-bar.css",
           "hljs/highlight.pack.js",
           "scripts/hljs-scala3.js",

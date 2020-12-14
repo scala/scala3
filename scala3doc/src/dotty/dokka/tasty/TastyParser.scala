@@ -75,17 +75,21 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     byPackage
       .map {
         case (f, entries) => {
-            new DPackage(
+          val pck = new DPackage(
               f.getDri,
               f.getFunctions,
               f.getProperties,
-              JList(), // TODO add support for other things like type or package object entries
+              JList(),
               JList(),
               f.getDocumentation,
               null,
               JSet(ctx.sourceSet),
               f.getExtra
-            ).withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList).asInstanceOf[DPackage]
+            )
+            .withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList)
+            .withKind(Kind.Package)
+
+          pck.asInstanceOf[DPackage]
         }
     }.toList
 

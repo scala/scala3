@@ -4,8 +4,10 @@ import scala.io.Source
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import dotty.dokka.test.BuildInfo
-
+import java.nio.file.Path;
+import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages.{RootPageNode, PageNode, ContentPage, ContentText, ContentNode, ContentComposite}
+import org.jsoup.Jsoup
 
 import dotty.dokka.model.api._
 
@@ -19,9 +21,9 @@ abstract class SignatureTest(
   signatureKinds: Seq[String],
   sourceFiles: List[String] = Nil,
   ignoreMissingSignatures: Boolean = false,
-  filterFunc: (Member) => Boolean = _ => true
+  filterFunc: (Path) => Boolean = _ => true
 ) extends ScaladocTest(testName):
-  override def assertions = Assertion.AfterPagesTransformation { root =>
+  override def assertions = Assertion.AfterRendering { (root, ctx) =>
     val sources = sourceFiles match
       case Nil => testName :: Nil
       case s => s
@@ -35,11 +37,12 @@ abstract class SignatureTest(
       .groupMap(_.name)(_.signature)
     val unexpectedFromSources: Set[String] = allSignaturesFromSources.collect { case Unexpected(name) => name }.toSet
 
+    given DokkaContext = ctx
     val actualSignatures: Map[String, Seq[String]] = signaturesFromDocumentation(root).flatMap { signature =>
       findName(signature, signatureKinds).map(_ -> signature)
     }.groupMap(_._1)(_._2)
 
-    val unexpected = unexpectedFromSources.flatMap(actualSignatures.get)
+    val unexpected = unexpectedFromSources.flatMap(actualSignatures.get).flatten
     val expectedButNotFound = expectedFromSources.flatMap {
       case (k, v) => findMissingSingatures(v, actualSignatures.getOrElse(k, Nil))
     }
@@ -98,28 +101,29 @@ abstract class SignatureTest(
             findName(signature, kinds).map(Expected(_, commentRegex.replaceAllIn(signature, "").compactWhitespaces))
         }
 
-  private def signaturesFromDocumentation(root: PageNode): Seq[String] =
-    def flattenToText(node: ContentNode) : Seq[String] = node match
-      case t: ContentText => Seq(t.getText)
-      case c: ContentComposite =>
-          c.getChildren.asScala.flatMap(flattenToText).toSeq
-      case l: DocumentableElement =>
-          (l.annotations ++ Seq(" ") ++ l.modifiers ++ Seq(l.nameWithStyles.name) ++ l.signature).map {
-              case s: String => s
-              case Link(s: String, _) => s
-          }
-      case _ => Seq()
+  private def signaturesFromDocumentation(root: PageNode)(using DocContext): Seq[String] =
+    val output = summon[DocContext].args.output.toPath.resolve("api")
+    println(output)
+    val signatures = List.newBuilder[String]
 
-    def all(p: ContentNode => Boolean)(n: ContentNode): Seq[ContentNode] =
-        if p(n) then Seq(n) else n.getChildren.asScala.toSeq.flatMap(all(p))
+    def processFile(path: Path): Unit = if filterFunc(path) then
+      val document = Jsoup.parse(IO.read(path))
+      val content = document.select(".documentableElement").forEach { elem =>
+        val annotations = elem.select(".annotations").eachText.asScala.mkString("")
+        val other = elem.select(".header .other-modifiers").eachText.asScala.mkString("")
+        val kind = elem.select(".header .kind").eachText.asScala.mkString("")
+        val name = elem.select(".header .documentableName").eachText.asScala.mkString("")
+        val signature = elem.select(".header .signature").eachText.asScala.mkString("")
+        val sigPrefix = elem.select(".header .signature").textNodes match
+          case list if list.size > 0 && list.get(0).getWholeText().startsWith(" ") => " "
+          case _ => ""
+        val all = s"$annotations$other $kind $name$sigPrefix$signature".trim()
+        signatures += all
+      }
 
-    extension (page: PageNode) def allPages: List[PageNode] = page :: page.getChildren.asScala.toList.flatMap(_.allPages)
 
-    val nodes = root.allPages
-      .collect { case p: ContentPage => p }
-      .filter( p => Option(p.getDocumentable).map(filterFunc).getOrElse(true))
-      .flatMap(p => all(_.isInstanceOf[DocumentableElement])(p.getContent))
-    nodes.map(flattenToText(_).mkString.compactWhitespaces.trim)
+    IO.foreachFileIn(output, processFile)
+    signatures.result
 
 object SignatureTest {
   val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages

@@ -49,8 +49,7 @@ class SiteGeneratationTest:
 
   def withHtmlFile(path: Path)(op: DocumentContext => Unit) = {
     assertTrue(s"File at $path does not exisits!", Files.exists(path))
-    val content = new String(Files.readAllBytes(path), Charset.defaultCharset())
-    val document = Jsoup.parse(content)
+    val document = Jsoup.parse(IO.read(path))
     op(DocumentContext(document, path))
   }
 
