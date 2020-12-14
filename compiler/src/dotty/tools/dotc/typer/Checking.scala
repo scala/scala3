@@ -610,8 +610,8 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
-      if (isCyclic(clazz.asClass))
-        report.error(ValueClassesMayNotWrapItself(clazz), clazz.srcPos)
+      if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
+        report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
           param.isTerm && !param.is(Flags.Accessor)
