@@ -23,7 +23,7 @@ they can be passed as parameters to other functions, or returned as
 results. Dependent methods could not be turned into functions simply
 because there was no type that could describe them.
 
-In Dotty this is now possible. The type of the `extractor` value above is
+In Scala 3 this is now possible. The type of the `extractor` value above is
 
 ```scala
 (e: Entry) => e.Key

@@ -35,7 +35,7 @@ This means that `logging` is treated as a _constant value_, equivalent to its
 right-hand side `false`. The right-hand side of such an `inline val` must itself
 be a [constant expression](https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#constant-expressions).
 Used in this way, `inline` is equivalent to Java and Scala 2's `final`. Note that `final`, meaning
-_inlined constant_, is still supported in Dotty, but will be phased out.
+_inlined constant_, is still supported in Scala 3, but will be phased out.
 
 The `Logger` object contains a definition of the **inline method** `log`. This
 method will always be inlined at the point of call.
@@ -193,10 +193,10 @@ option: Expansion is guaranteed instead of best effort,
 it happens in the frontend instead of in the backend, and it also applies
 to recursive methods.
 
-To cross compile between both Dotty and Scalac, we introduce a new `@forceInline`
+To cross compile between both Scala 3 and Scala 2, we introduce a new `@forceInline`
 annotation which is equivalent to the new `inline` modifier. Note that
 Scala 2 ignores the `@forceInline` annotation, so one must use both
-annotations to guarantee inlining for Dotty and at the same time hint inlining
+annotations to guarantee inlining for Scala 3 and at the same time hint inlining
 for Scala 2 (i.e. `@forceInline @inline`).
 
 <!--- (Commented out since the docs and implementation differ)

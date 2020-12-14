@@ -7,7 +7,7 @@ title: "Macros Spec"
 
 ### Syntax
 
-Compared to the [Dotty reference grammar](../syntax.md)
+Compared to the [Scala 3 reference grammar](../syntax.md)
 there are the following syntax changes:
 ```
 SimpleExpr      ::=  ...

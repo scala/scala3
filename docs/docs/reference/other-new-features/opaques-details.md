@@ -106,7 +106,7 @@ The opaque type alias `A` is transparent in its scope, which includes the defini
 
 ### Relationship to SIP 35
 
-Opaque types in Dotty are an evolution from what is described in
+Opaque types in Scala 3 are an evolution from what is described in
 [Scala SIP 35](https://docs.scala-lang.org/sips/opaque-types.html).
 
 The differences compared to the state described in this SIP are:
@@ -118,4 +118,3 @@ The differences compared to the state described in this SIP are:
  4. Opaque type aliases can have bounds.
  5. The notion of type equality involving opaque type aliases has been clarified. It was
     strengthened with respect to the previous implementation of SIP 35.
-

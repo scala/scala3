@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Changes in Implicit Resolution"
 ---
-This page describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Dotty.
+This page describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.
 Implicit resolution uses a new algorithm which caches implicit results
 more aggressively for performance. There are also some changes that
 affect implicits on the language level.
@@ -114,7 +114,7 @@ the implicit search for `Q` fails.
 **5.** The treatment of divergence errors has also changed. A divergent implicit is treated as a normal failure, after which alternatives are still tried. This also makes sense: Encountering a divergent implicit means that we assume that no finite solution can be found on the corresponding path, but another path can still be tried. By contrast,
 most (but not all) divergence errors in Scala 2 would terminate the implicit search as a whole.
 
-**6.** Scala-2 gives a lower level of priority to implicit conversions with call-by-name parameters relative to implicit conversions with call-by-value parameters. Dotty drops this distinction. So the following code snippet would be ambiguous in Dotty:
+**6.** Scala-2 gives a lower level of priority to implicit conversions with call-by-name parameters relative to implicit conversions with call-by-value parameters. Scala 3 drops this distinction. So the following code snippet would be ambiguous in Scala 3:
 
 ```scala
   implicit def conv1(x: Int): A = new A(x)

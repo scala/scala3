@@ -9,13 +9,13 @@ calling a nullary method without arguments. E.g.
 def next(): T = ...
 next     // is expanded to next()
 ```
-In Dotty, this idiom is an error.
+In Scala 3, this idiom is an error.
 ```scala
 next
 ^
 missing arguments for method next
 ```
-In Dotty, the application syntax has to follow exactly the parameter
+In Scala 3, the application syntax has to follow exactly the parameter
 syntax. Excluded from this rule are methods that are defined in Java
 or that override methods defined in Java. The reason for being more
 lenient with such methods is that otherwise everyone would have to
@@ -36,11 +36,11 @@ methods without a `()` parameter list whereas side-effecting methods
 should be defined with it. Methods defined in Java cannot make this
 distinction; for them a `()` is always mandatory. So Scala fixes the
 problem on the client side, by allowing the parameterless references.
-But where Scala allows that freedom for all method references, Dotty
+But where Scala allows that freedom for all method references, Scala 3
 restricts it to references of external methods that are not defined
-themselves in Dotty.
+themselves in Scala 3.
 
-For reasons of backwards compatibility, Dotty for the moment also
+For reasons of backwards compatibility, Scala 3 for the moment also
 auto-inserts `()` for nullary methods that are defined in Scala 2, or
 that override a method defined in Scala 2. It turns out that, because
 the correspondence between definition and call was not enforced in
@@ -53,7 +53,7 @@ def toInt(): Int
 whereas `toInt` is written without parameters everywhere
 else. Enforcing strict parameter correspondence for references to
 such methods would project the inconsistencies to client code, which
-is undesirable. So Dotty opts for more leniency when type-checking
+is undesirable. So Scala 3 opts for more leniency when type-checking
 references to such methods until most core libraries in Scala 2 have
 been cleaned up.
 
@@ -75,8 +75,8 @@ requirement.
 ### Migrating code
 
 Existing Scala code with inconsistent parameters can still be compiled
-in Dotty under `-source 3.0-migration`. When paired with the `-rewrite`
-option, the code will be automatically rewritten to conform to Dotty's
+in Scala 3 under `-source 3.0-migration`. When paired with the `-rewrite`
+option, the code will be automatically rewritten to conform to Scala 3's
 stricter checking.
 
 ### Reference

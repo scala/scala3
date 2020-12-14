@@ -35,8 +35,7 @@ rather than `next _`.
 The reason for excluding nullary methods from automatic eta expansion
 is that Scala implicitly inserts the `()` argument, which would
 conflict with eta expansion. Automatic `()` insertion is
-[limited](../dropped-features/auto-apply.md) in Dotty, but the fundamental ambiguity
+[limited](../dropped-features/auto-apply.md) in Scala 3, but the fundamental ambiguity
 remains.
 
 [More details](eta-expansion-spec.md)
-

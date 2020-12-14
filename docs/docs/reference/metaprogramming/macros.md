@@ -296,7 +296,7 @@ object Expr {
 This method says that values of types implementing the `ToExpr` type class can be
 converted to `Expr` values using `Expr.apply`.
 
-Dotty comes with given instances of `ToExpr` for
+Scala 3 comes with given instances of `ToExpr` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -393,7 +393,7 @@ is handled by the compiler, using the algorithm sketched above.
 
 Seen by itself, principled metaprogramming looks more like a framework for
 runtime metaprogramming than one for compile-time metaprogramming with macros.
-But combined with Dotty’s `inline` feature it can be turned into a compile-time
+But combined with Scala 3’s `inline` feature it can be turned into a compile-time
 system. The idea is that macro elaboration can be understood as a combination of
 a macro library and a quoted program. For instance, here’s the `assert` macro
 again together with a program that calls `assert`.
@@ -659,7 +659,7 @@ It is possible to define macros and use them in the same project as long as the 
 of the macros does not have run-time dependencies on code in the file where it is used.
 It might still have compile-time dependencies on types and quoted code that refers to the use-site file.
 
-To provide this functionality Dotty provides a transparent compilation mode where files that
+To provide this functionality Scala 3 provides a transparent compilation mode where files that
 try to expand a macro but fail because the macro has not been compiled yet are suspended.
 If there are any suspended files when the compilation ends, the compiler will automatically restart
 compilation of the suspended files using the output of the previous (partial) compilation as macro classpath.

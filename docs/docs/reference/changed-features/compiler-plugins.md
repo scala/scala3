@@ -3,7 +3,7 @@ layout: doc-page
 title: "Changes in Compiler Plugins"
 ---
 
-Compiler plugins are supported by Dotty since 0.9. There are two notable changes
+Compiler plugins are supported by Dotty (and Scala 3) since 0.9. There are two notable changes
 compared to `scalac`:
 
 - No support for analyzer plugins
@@ -13,14 +13,14 @@ compared to `scalac`:
 normal type checking. This is a very powerful feature but for production usages,
 a predictable and consistent type checker is more important.
 
-For experimentation and research, Dotty introduces _research plugin_. Research plugins
+For experimentation and research, Scala 3 introduces _research plugin_. Research plugins
 are more powerful than `scalac` analyzer plugins as they let plugin authors customize
 the whole compiler pipeline. One can easily replace the standard typer by a custom one or
 create a parser for a domain-specific language. However, research plugins are only
-enabled for nightly or snaphot releases of Dotty.
+enabled for nightly or snaphot releases of Scala 3.
 
 Common plugins that add new phases to the compiler pipeline are called
-_standard plugins_ in Dotty. In terms of features, they are similar to
+_standard plugins_ in Scala 3. In terms of features, they are similar to
 `scalac` plugins, despite minor changes in the API.
 
 ## Using Compiler Plugins
@@ -41,7 +41,7 @@ pluginClass=dividezero.DivideZero
 
 This is different from `scalac` plugins that required a `scalac-plugin.xml` file.
 
-Starting from 1.1.5, `sbt` also supports Dotty compiler plugins. Please refer to the
+Starting from 1.1.5, `sbt` also supports Scala 3 compiler plugins. Please refer to the
 `sbt` [documentation][2] for more information.
 
 ## Writing a Standard Compiler Plugin

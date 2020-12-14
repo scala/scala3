@@ -71,7 +71,7 @@ def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
 def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 ```
 
-## Create a new Dotty project with staging enabled
+## Create a new Scala 3 project with staging enabled
 
 ```shell
 sbt new scala/scala3-staging.g8

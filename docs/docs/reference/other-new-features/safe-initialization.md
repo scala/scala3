@@ -3,7 +3,7 @@ layout: doc-page
 title: "Safe Initialization"
 ---
 
-Dotty implements experimental safe initialization check, which can be enabled by the compiler option `-Ycheck-init`.
+Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ycheck-init`.
 
 ## A Quick Glance
 
