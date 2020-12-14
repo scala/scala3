@@ -37,11 +37,11 @@ trait SyntheticsSupport:
 
     def getAllMembers: List[Symbol] = hackGetAllMembers(using qctx)(s)
 
+  def isValidPos(pos: Position) =
+    if hackExists(using qctx)(pos) then pos.start != pos.end else false
+
   def isSyntheticField(c: Symbol) =
     c.flags.is(Flags.CaseAccessor) || (c.flags.is(Flags.Module) && !c.flags.is(Flags.Given))
-
-  def isValidPos(pos: Position) =
-    pos.start != pos.end
 
   def constructorWithoutParamLists(c: ClassDef): Boolean =
     !isValidPos(c.constructor.pos)  || {
@@ -86,6 +86,15 @@ trait SyntheticsSupport:
     val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
       ref.baseClasses.map(b => b -> ref.baseType(b))
     baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
+  }
+
+  def hackExists(using Quotes)(rpos: qctx.reflect.Position) = {
+    import qctx.reflect._
+    import dotty.tools.dotc
+    import dotty.tools.dotc.util.Spans._
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val pos = rpos.asInstanceOf[dotc.util.SourcePosition]
+    pos.exists
   }
 
   def getSupertypes(using Quotes)(c: ClassDef) = hackGetSupertypes(c).tail

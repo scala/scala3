@@ -11,8 +11,8 @@ import dotty.dokka.translators.FilterAttributes
 
 class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNode => String)(using DocContext):
 
-  private val converter = new DocTagToContentConverter()
   import signatureRenderer._
+  private val converter = ScalaCommentToContentConverter
 
   def renderDocPart(d: DocPart): AppliedTag =
     val sb  = StringBuilder()

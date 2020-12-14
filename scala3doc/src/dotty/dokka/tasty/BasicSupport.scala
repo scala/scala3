@@ -6,6 +6,7 @@ import collection.JavaConverters._
 import dotty.dokka._
 import dotty.dokka.model.api.Annotation
 import dotty.dokka.model.api.TastyDocumentableSource
+import scala.quoted._
 
 trait BasicSupport:
   self: TastyParser =>
@@ -36,8 +37,8 @@ trait BasicSupport:
 
     def documentation2 = sym.docstring.map(preparseComment(_, sym.tree))
 
-    def source =
-      val path = Some(sym.pos.get.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
+    def source(using Quotes) =
+      val path = sym.pos.filter(isValidPos(_)).map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
       path.map(TastyDocumentableSource(_, sym.pos.get.startLine))
 
     def getAnnotations(): List[Annotation] =

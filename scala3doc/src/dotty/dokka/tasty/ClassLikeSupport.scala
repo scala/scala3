@@ -103,7 +103,7 @@ trait ClassLikeSupport:
           kindForClasslike(classDef),
           classDef.symbol.getAnnotations(),
           selfSiangture,
-          classDef.symbol.source,
+          classDef.symbol.source(using qctx),
           graph = graph
         ),
         compositeExt
@@ -366,7 +366,7 @@ trait ClassLikeSupport:
         methodKind,
         methodSymbol.getAnnotations(),
         method.returnTpt.dokkaType.asSignature,
-        methodSymbol.source,
+        methodSymbol.source(using qctx),
         origin
       )
     )
@@ -420,7 +420,7 @@ trait ClassLikeSupport:
         Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics),
         typeDef.symbol.getAnnotations(),
         tpeTree.dokkaType.asSignature,
-        typeDef.symbol.source
+        typeDef.symbol.source(using qctx)
         )
     )
 
@@ -438,7 +438,7 @@ trait ClassLikeSupport:
           kind,
           valDef.symbol.getAnnotations(),
           valDef.tpt.tpe.dokkaType.asSignature,
-          valDef.symbol.source
+          valDef.symbol.source(using qctx)
       )
     )
 
