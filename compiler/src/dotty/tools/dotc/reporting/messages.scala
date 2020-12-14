@@ -1617,9 +1617,9 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class ValueClassesMayNotWrapItself(valueClass: Symbol)(using Context)
-    extends SyntaxMsg(ValueClassesMayNotWrapItselfID) {
-    def msg = """A value class may not wrap itself"""
+  class ValueClassesMayNotWrapAnotherValueClass(valueClass: Symbol)(using Context)
+    extends SyntaxMsg(ValueClassesMayNotWrapAnotherValueClassID) {
+    def msg = """A value class may not wrap another user-defined value class"""
     def explain = ""
   }
 

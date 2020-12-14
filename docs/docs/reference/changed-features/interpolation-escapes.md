@@ -5,7 +5,7 @@ title: Escapes in interpolations
 
 In Scala 2 there was no straightforward way to represent a single quote character `"` in a single quoted interpolation. A `\` character can't be used for that because interpolators themselves decide how to handle escaping, so the parser doesn't know whether the `"` should be escaped or used as a terminator.
 
-In Dotty, you can use the `$` meta character of interpolations to escape a `"` character.
+In Scala 3, you can use the `$` meta character of interpolations to escape a `"` character.
 
 ```scala
   val inventor = "Thomas Edison"

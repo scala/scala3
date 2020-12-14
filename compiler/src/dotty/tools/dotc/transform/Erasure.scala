@@ -302,7 +302,6 @@ object Erasure {
      *  in ExtensionMethods#transform.
      */
     def cast(tree: Tree, pt: Type)(using Context): Tree = trace(i"cast ${tree.tpe.widen} --> $pt", show = true) {
-
       def wrap(tycon: TypeRef) =
         ref(u2evt(tycon.typeSymbol.asClass)).appliedTo(tree)
       def unwrap(tycon: TypeRef) =
@@ -357,7 +356,10 @@ object Erasure {
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
             tree
           else if (tpw.isErasedValueType)
-            adaptToType(box(tree), pt)
+            if (pt.isErasedValueType) then
+              tree.asInstance(pt)
+            else
+              adaptToType(box(tree), pt)
           else if (pt.isErasedValueType)
             adaptToType(unbox(tree, pt), pt)
           else if (tpw.isPrimitiveValueType && !pt.isPrimitiveValueType)

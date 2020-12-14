@@ -18,6 +18,7 @@ import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
 import NullOpsDecorator._
+import TypeUtils.isErasedValueType
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -67,7 +68,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
           qual.tpe
         }
         assert(
-          qualTpe.derivesFrom(tree.symbol.owner) ||
+          qualTpe.isErasedValueType || qualTpe.derivesFrom(tree.symbol.owner) ||
             tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>

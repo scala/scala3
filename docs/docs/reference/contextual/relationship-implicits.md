@@ -103,7 +103,7 @@ asked for.
 
 Context bounds are the same in both language versions. They expand to the respective forms of implicit parameters.
 
-**Note:** To ease migration, context bounds in Dotty map for a limited time to old-style implicit parameters for which arguments can be passed either in a using clause or
+**Note:** To ease migration, context bounds in Scala 3 map for a limited time to old-style implicit parameters for which arguments can be passed either in a using clause or
 in a normal argument list. Once old-style implicits are deprecated, context bounds
 will map to using clauses instead.
 
@@ -141,7 +141,7 @@ Implicit by-name parameters are not supported in Scala 2, but can be emulated to
 
 ### Implicit Conversions
 
-Implicit conversion methods in Scala 2 can be expressed as given instances of the `scala.Conversion` class in Dotty. E.g. instead of
+Implicit conversion methods in Scala 2 can be expressed as given instances of the `scala.Conversion` class in Scala 3. E.g. instead of
 
 ```scala
 implicit def stringToToken(str: String): Token = new Keyword(str)
@@ -162,18 +162,18 @@ given stringToToken: Conversion[String, Token] = KeyWord(_)
 
 ### Implicit Classes
 
-Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Dotty. Other uses of implicit classes can be simulated by a pair of a regular class and a given `Conversion` instance.
+Implicit classes in Scala 2 are often used to define extension methods, which are directly supported in Scala 3. Other uses of implicit classes can be simulated by a pair of a regular class and a given `Conversion` instance.
 
 ### Implicit Values
 
-Implicit `val` definitions in Scala 2 can be expressed in Dotty using a regular `val` definition and an alias given.
+Implicit `val` definitions in Scala 2 can be expressed in Scala 3 using a regular `val` definition and an alias given.
 E.g., Scala 2's
 
 ```scala
 lazy implicit val pos: Position = tree.sourcePos
 ```
 
-can be expressed in Dotty as
+can be expressed in Scala 3 as
 
 ```scala
 lazy val pos: Position = tree.sourcePos
@@ -182,13 +182,13 @@ given Position = pos
 
 ### Abstract Implicits
 
-An abstract implicit `val` or `def` in Scala 2 can be expressed in Dotty using a regular abstract definition and an alias given. E.g., Scala 2's
+An abstract implicit `val` or `def` in Scala 2 can be expressed in Scala 3 using a regular abstract definition and an alias given. E.g., Scala 2's
 
 ```scala
 implicit def symDecorator: SymDecorator
 ```
 
-can be expressed in Dotty as
+can be expressed in Scala 3 as
 
 ```scala
 def symDecorator: SymDecorator
@@ -197,7 +197,7 @@ given SymDecorator = symDecorator
 
 ## Implementation Status and Timeline
 
-The Dotty implementation implements both Scala-2's implicits and the new abstractions. In fact, support for Scala-2's implicits is an essential part of the common language subset between 2.13/2.14 and Dotty.
+The Scala 3 implementation implements both Scala-2's implicits and the new abstractions. In fact, support for Scala-2's implicits is an essential part of the common language subset between 2.13/2.14 and Scala 3.
 Migration to the new abstractions will be supported by making automatic rewritings available.
 
 Depending on adoption patterns, old style implicits might start to be deprecated in a version following Scala 3.0.

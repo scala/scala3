@@ -891,7 +891,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               val trailing = collectImpure(idx + 1, args.length)
               val argInPlace =
                 if (trailing.isEmpty) arg
-                else letBindUnless(TreeInfo.Pure, arg)(seq(trailing, _))
+                else
+                  def argsSpan = trailing.map(_.span).foldLeft(arg.span)(_.union(_))
+                  letBindUnless(TreeInfo.Pure, arg)(Block(trailing, _).withSpan(argsSpan))
               finish(seq(prefix, seq(leading, argInPlace)))
             }
           }

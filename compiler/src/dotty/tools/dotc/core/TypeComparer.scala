@@ -341,7 +341,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case TypeErasure.ErasedValueType(tycon1, underlying2) =>
         def compareErasedValueType = tp1 match {
           case TypeErasure.ErasedValueType(tycon2, underlying1) =>
-            (tycon1.symbol eq tycon2.symbol) && isSameType(underlying1, underlying2)
+            (tycon1.symbol eq tycon2.symbol) && isSubType(underlying1, underlying2)
           case _ =>
             secondTry
         }

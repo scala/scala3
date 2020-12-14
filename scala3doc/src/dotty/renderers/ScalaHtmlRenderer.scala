@@ -99,7 +99,8 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
 
   override def buildContentNode(f: FlowContent, node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
     node match {
-      case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
+      case n: HtmlContentNode =>
+        withHtml(f, raw(n.body).toString)
       case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
       case n: DocumentableList =>
         val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton

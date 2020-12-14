@@ -44,7 +44,7 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
   import quotes.reflect._
   val xTree: Term = x.asTerm
   xTree match {
-    case Inlined(_, _, Literal(Constant(n: Int))) =>
+    case Inlined(_, _, Literal(IntConstant(n))) =>
       if (n <= 0) {
         report.error("Parameter must be natural number")
         '{0}
@@ -131,4 +131,3 @@ def lets(terms: List[Term])(body: List[Term] => Term): Term = ...
 ## More Examples
 
 * Start experimenting with TASTy Reflect ([link](https://github.com/nicolasstucki/tasty-reflection-exercise))
-

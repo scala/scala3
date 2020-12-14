@@ -161,8 +161,17 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
 
     case _: mda.SoftLineBreak => emit(dkkd.Br.INSTANCE)
 
+    case inline: mda.HtmlInline =>
+      emit(dkkd.Html(List(dkk.text(inline.getSegments.mkString)).asJava, kt.emptyMap))
+
+    case entity: mda.HtmlEntity =>
+      emit(dkkd.Html(List(dkk.text(entity.getSegments.mkString)).asJava, kt.emptyMap))
+
+    case block: mda.HtmlBlock =>
+      emit(dkkd.Html(List(dkk.text(block.getContentChars.toString)).asJava, kt.emptyMap))
+
     // TODO (https://github.com/lampepfl/scala3doc/issues/205): for now just silent the warnigs
-    case _:mda.HtmlInline | _: mda.LinkRef | _: mda.HtmlEntity | _: mda.HtmlBlock | _: com.vladsch.flexmark.ext.emoji.Emoji =>
+    case _: mda.LinkRef | _: com.vladsch.flexmark.ext.emoji.Emoji =>
       emit(dkk.text(MarkdownParser.renderToText(n)))
 
     case _ =>

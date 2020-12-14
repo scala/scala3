@@ -94,8 +94,8 @@ language:
 ```scala
 implicit val m: Map[Int, String] = Map(1 -> "abc")
 
-val x: String = 1  // scalac: assigns "abc" to x
-                   // Dotty: type error
+val x: String = 1  // Scala 2: assigns "abc" to x
+                   // Scala 3: type error
 ```
 
 This snippet contains a type error. The right hand side of `val x`
@@ -119,4 +119,3 @@ For more information about implicit resolution, see [Changes in
 Implicit Resolution](implicit-resolution.md).
 Other details are available in
 [PR #2065](https://github.com/lampepfl/dotty/pull/2065)
-
