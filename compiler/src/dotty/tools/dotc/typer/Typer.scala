@@ -1882,7 +1882,7 @@ class Typer extends Namer
       case _ =>
         var name = tree.name
         if (name == nme.WILDCARD && tree.mods.is(Given)) {
-          val Typed(_, tpt): @unchecked = tree.body
+          val Typed(_, tpt) = tree.body: @unchecked
           name = desugar.inventGivenOrExtensionName(tpt)
         }
         if (name == nme.WILDCARD) body1
