@@ -1,6 +1,7 @@
 package dotty.dokka.tasty.comments
 
 import java.util.{ Arrays }
+import Regexes._
 
 import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.formatter.Formatter
@@ -36,11 +37,13 @@ object MarkdownParser {
         "https://github.global.ssl.fastly.net/images/icons/emoji/")
       .set(WikiLinkExtension.LINK_ESCAPE_CHARS, "")
 
+  val parser = Parser.builder(markdownOptions).build()
+
   val RENDERER = Formatter.builder(markdownOptions).build()
 
   def parseToMarkdown(text: String): mdu.Document =
-    Parser.builder(markdownOptions)
-      .build.parse(text).asInstanceOf[mdu.Document]
+    // We need to remove safe tag markers as they break flexmark parsing
+    parser.parse(text.replace(safeTagMarker.toString, "")).asInstanceOf[mdu.Document]
 
 
   def renderToText(node: mdu.Node): String =
