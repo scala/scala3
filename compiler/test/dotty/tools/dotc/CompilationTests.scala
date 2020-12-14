@@ -111,15 +111,6 @@ class CompilationTests {
     ).times(2).checkCompile()
   }
 
-    // Negative strict tests ------------------------------------------------------------
-
-    @Test def negStrictAll: Unit = {
-      implicit val testGroup: TestGroup = TestGroup("compileNeg")
-      aggregateTests(
-        compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "3.1"))
-      ).checkExpectedErrors()
-    }
-
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {

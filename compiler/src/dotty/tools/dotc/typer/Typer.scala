@@ -1365,14 +1365,12 @@ class Typer extends Namer
               case _ => false
             }
 
-        val result = pt match {
+        pt match {
           case MatchTypeInDisguise(mt) if isMatchTypeShaped(mt) =>
             typedDependentMatchFinish(tree, sel1, selType, tree.cases, mt)
           case _ =>
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
-
-        result
     }
 
   /** Special typing of Match tree when the expected type is a MatchType,
