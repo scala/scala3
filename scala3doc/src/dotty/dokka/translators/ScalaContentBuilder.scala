@@ -26,6 +26,13 @@ class ScalaPageContentBuilder(
   val signatureProvider: SignatureProvider
 )(using DocContext) {
 
+  def mkMemberInfo(m: Member) = MemberInfo(m, ContentNodeParams(
+      new DCI(JSet(m.dri), ContentKind.Main),
+      m.getSourceSets.asScala.toSet.toDisplay,
+      Set(),
+      PropertyContainer.Companion.empty()
+    ))
+
   def contentForDRI(
     dri: DRI,
     sourceSets: Set[DokkaConfiguration$DokkaSourceSet],
