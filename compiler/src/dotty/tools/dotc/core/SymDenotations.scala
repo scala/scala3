@@ -1410,6 +1410,33 @@ object SymDenotations {
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
 
+    /** The typeRef where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+     def reachableTypeRef(using Context) =
+       TypeRef(owner.reachableThisType, symbol)
+
+    /** The termRef where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+    def reachableTermRef(using Context) =
+      TermRef(owner.reachableThisType, symbol)
+
+    /** The thisType where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object */
+    def reachableThisType(using Context): Type =
+      if this.is(Package) then
+        symbol.thisType
+      else if this.isTerm then
+        NoPrefix
+      else if this.is(Module) then
+        TermRef(owner.reachableThisType, this.sourceModule)
+      else
+        ThisType.raw(TypeRef(owner.reachableThisType, symbol.asType))
+
     /** The variance of this type parameter or type member as a subset of
      *  {Covariant, Contravariant}
      */

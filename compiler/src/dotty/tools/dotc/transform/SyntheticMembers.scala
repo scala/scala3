@@ -521,7 +521,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.termRef else child.rawTypeRef
+          val patType = if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
@@ -563,7 +563,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
