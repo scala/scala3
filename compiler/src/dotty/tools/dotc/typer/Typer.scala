@@ -771,13 +771,17 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
-          checkMatchable(pt, tree.srcPos, pattern = true)
+        if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
           withMode(Mode.GadtConstraintInference) {
             TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
+        val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
-        tryWithTypeTest(ascription(tpt1, isWildcard = true), pt)
+        val result = tryWithTypeTest(ascribed, pt)
+        if (result eq matched) && pt != defn.ImplicitScrutineeTypeRef then
+          // no check for matchability if TestTest was applied
+          checkMatchable(pt, tree.srcPos, pattern = true)
+        result
       }
       cases(
         ifPat = handlePattern,
