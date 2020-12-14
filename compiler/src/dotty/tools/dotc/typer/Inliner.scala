@@ -545,10 +545,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case TypeApply(fn, _) =>
         if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of) true else apply(fn)
       case Apply(fn, args) =>
-        def isKnownPureOp(sym: Symbol) =
-          sym.owner.isPrimitiveValueClass
-          || sym.owner == defn.StringClass
-          || defn.pureMethods.contains(sym)
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
           val meth = fn.symbol
@@ -557,8 +553,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           meth.owner.linkedClass.is(Case) &&
           cls.isNoInitsRealClass
         }
-        if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
-            || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))) // constructors of no-inits classes are stable
+        if isPureApply(tree, fn) then
           apply(fn) && args.forall(apply)
         else if (isCaseClassApply)
           args.forall(apply)

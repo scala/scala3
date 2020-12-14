@@ -209,6 +209,10 @@ object Types {
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
+    def isTopType(using Context): Boolean = dealias match
+      case tp: TypeRef => defn.topClasses.contains(tp.symbol)
+      case _ => false
+
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
     def isExactlyNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
@@ -511,6 +515,20 @@ object Types {
         l.hasClassSymbol(cls) && r.hasClassSymbol(cls)
       case _ =>
         false
+
+    /** Same as hasClassSmbol(MatchableClass), except that we also follow the constraint
+     *  bounds of type variables in the constraint.
+     */
+    def isMatchableBound(using Context): Boolean = dealias match
+      case tp: TypeRef => tp.symbol == defn.MatchableClass
+      case tp: TypeParamRef =>
+        ctx.typerState.constraint.entry(tp) match
+          case bounds: TypeBounds => bounds.hi.isMatchableBound
+          case _ => false
+      case tp: TypeProxy => tp.underlying.isMatchableBound
+      case tp: AndType => tp.tp1.isMatchableBound || tp.tp2.isMatchableBound
+      case tp: OrType => tp.tp1.isMatchableBound && tp.tp2.isMatchableBound
+      case _ => false
 
     /** The term symbol associated with the type */
     @tailrec final def termSymbol(using Context): Symbol = this match {
@@ -3812,10 +3830,6 @@ object Types {
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
-
-    def any(n: Int)(using Context): PolyType =
-      apply(syntheticParamNames(n))(
-        pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
   private object DepStatus {

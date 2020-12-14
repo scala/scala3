@@ -266,10 +266,7 @@ import transform.SymUtils._
       val postScript = addenda.find(!_.isEmpty) match
         case Some(p) => p
         case None =>
-          if expected.isAny
-             || expected.isAnyRef
-             || expected.isRef(defn.AnyValClass)
-             || found.isBottomType
+          if expected.isTopType || found.isBottomType
           then ""
           else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)

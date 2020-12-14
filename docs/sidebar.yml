@@ -105,6 +105,8 @@ sidebar:
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Matchable Trait
+              url: docs/reference/other-new-features/matchable.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
             - title: targetName Annotation

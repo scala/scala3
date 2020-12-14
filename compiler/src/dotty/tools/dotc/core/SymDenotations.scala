@@ -2246,9 +2246,7 @@ object SymDenotations {
           if (pcls.isCompleting) recur(pobjs1, acc)
           else
             val pobjMembers = pcls.nonPrivateMembersNamed(name).filterWithPredicate { d =>
-              // Drop members of `Any` and `Object`
-              val owner = d.symbol.maybeOwner
-              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+              !defn.topClasses.contains(d.symbol.maybeOwner) // Drop members of top classes
             }
             recur(pobjs1, acc.union(pobjMembers))
         case nil =>

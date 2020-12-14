@@ -1158,6 +1158,8 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.Apply, selType: Type)(using Context): Tree = {
     record("typedUnApply")
     val Apply(qual, args) = tree
+    if !ctx.mode.is(Mode.InTypeTest) then
+      checkMatchable(selType, tree.srcPos, pattern = true)
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors

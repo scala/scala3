@@ -291,9 +291,7 @@ class ReplDriver(settings: Array[String],
         info.bounds.hi.finalResultType
           .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
-            denot.symbol.owner == defn.AnyClass ||
-            denot.symbol.owner == defn.ObjectClass ||
-            denot.symbol.isConstructor
+            defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
           }
 
       val vals =

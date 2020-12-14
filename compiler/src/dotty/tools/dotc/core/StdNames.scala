@@ -371,6 +371,7 @@ object StdNames {
     val Import: N               = "Import"
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
+    val Matchable: N            = "Matchable"
     val MatchCase: N            = "MatchCase"
     val MirroredElemTypes: N    = "MirroredElemTypes"
     val MirroredElemLabels: N   = "MirroredElemLabels"

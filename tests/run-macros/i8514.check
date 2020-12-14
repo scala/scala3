@@ -1,4 +1,4 @@
-List(class Object, class Any)
-List(class A, class Object, class Any)
-List(class B, class A, class Object, class Any)
-List(class C, class B, class A, class Object, class Any)
+List(class Object, trait Matchable, class Any)
+List(class A, class Object, trait Matchable, class Any)
+List(class B, class A, class Object, trait Matchable, class Any)
+List(class C, class B, class A, class Object, trait Matchable, class Any)

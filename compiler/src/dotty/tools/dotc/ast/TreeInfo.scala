@@ -397,17 +397,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case TypeApply(fn, _) =>
       if (fn.symbol.is(Erased) || fn.symbol == defn.QuotedTypeModule_of || fn.symbol == defn.Predef_classOf) Pure else exprPurity(fn)
     case Apply(fn, args) =>
-      def isKnownPureOp(sym: Symbol) =
-        sym.owner.isPrimitiveValueClass
-        || sym.owner == defn.StringClass
-        || defn.pureMethods.contains(sym)
-      if (tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
-          || (fn.symbol.isStableMember && !fn.symbol.is(Lazy))) // constructors of no-inits classes are stable
+      if isPureApply(tree, fn) then
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Pure
-      else if (fn.symbol.is(Erased)) Pure
-      else if (fn.symbol.isStableMember) /* && fn.symbol.is(Lazy) */
+      else if fn.symbol.is(Erased) then
+        Pure
+      else if fn.symbol.isStableMember /* && fn.symbol.is(Lazy) */ then
         minOf(exprPurity(fn), args.map(exprPurity)) `min` Idempotent
-      else Impure
+      else
+        Impure
     case Typed(expr, _) =>
       exprPurity(expr)
     case Block(stats, expr) =>
@@ -439,6 +436,17 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     exprPurity(tree) >= Idempotent
 
   def isPureBinding(tree: Tree)(using Context): Boolean = statPurity(tree) >= Pure
+
+  /** Is the application `tree` with function part `fn` known to be pure?
+   *  Function value and arguments can still be impure.
+   */
+  def isPureApply(tree: Tree, fn: Tree)(using Context): Boolean =
+    def isKnownPureOp(sym: Symbol) =
+      sym.owner.isPrimitiveValueClass
+      || sym.owner == defn.StringClass
+      || defn.pureMethods.contains(sym)
+    tree.tpe.isInstanceOf[ConstantType] && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
+    || fn.symbol.isStableMember && !fn.symbol.is(Lazy)  // constructors of no-inits classes are stable
 
   /** The purity level of this reference.
    *  @return

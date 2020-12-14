@@ -682,7 +682,10 @@ class Typer extends Namer
       case templ: untpd.Template =>
         import untpd._
         var templ1 = templ
-        def isEligible(tp: Type) = tp.exists && !tp.typeSymbol.is(Final) && !tp.isRef(defn.AnyClass)
+        def isEligible(tp: Type) =
+        	tp.exists
+        	&& !tp.typeSymbol.is(Final)
+        	&& (!tp.isTopType || tp.isAnyRef) // Object is the only toplevel class that can be instantiated
         if (templ1.parents.isEmpty &&
             isFullyDefined(pt, ForceDegree.flipBottom) &&
             isSkolemFree(pt) &&
@@ -768,12 +771,20 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if (!ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef)
+        if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
           withMode(Mode.GadtConstraintInference) {
             TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
+        val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
-        tryWithTypeTest(ascription(tpt1, isWildcard = true), pt)
+        val result = tryWithTypeTest(matched, pt)
+        if (result eq matched)
+           && pt != defn.ImplicitScrutineeTypeRef
+           && !(pt <:< tpt1.tpe)
+        then
+          // no check for matchability if TestTest was applied
+          checkMatchable(pt, tree.srcPos, pattern = true)
+        result
       }
       cases(
         ifPat = handlePattern,
@@ -794,13 +805,15 @@ class Typer extends Namer
           inferImplicit(tpe, EmptyTree, tree.tpt.span)
         ) match
           case SearchSuccess(clsTag, _, _) =>
-            Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+            withMode(Mode.InTypeTest) {
+              Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+            }
           case _ =>
             None
       }
       val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
-        .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
-        .getOrElse(tree)
+          .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
+          .getOrElse(tree)
       if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
@@ -1320,7 +1333,7 @@ class Typer extends Namer
           typed(desugar.makeCaseLambda(tree.cases, checkMode, protoFormals.length).withSpan(tree.span), pt)
         }
       case _ =>
-        if (tree.isInline) checkInInlineContext("inline match", tree.srcPos)
+        if tree.isInline then checkInInlineContext("inline match", tree.srcPos)
         val sel1 = typedExpr(tree.selector)
         val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
 
@@ -3528,6 +3541,13 @@ class Typer extends Namer
             rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
         case _ =>
       }
+
+      // try an Any -> Matchable conversion
+      if pt.isMatchableBound && !wtp.derivesFrom(defn.MatchableClass) then
+        checkMatchable(wtp, tree.srcPos, pattern = false)
+        val target = AndType(tree.tpe.widenExpr, defn.MatchableType)
+        if target <:< pt then
+          return readapt(tree.cast(target))
 
       // try an implicit conversion
       val prevConstraint = ctx.typerState.constraint
