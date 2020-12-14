@@ -587,10 +587,10 @@ class ClassfileParser(
       }
 
     protected var mySym: Symbol | (Context ?=> Symbol) =
-      (using ctx: Context) => annotType.classSymbol
+      (ctx: Context) ?=> annotType.classSymbol
 
     protected var myTree: Tree | (Context ?=> Tree) =
-      (using ctx: Context) => untpd.resolveConstructor(annotType, args)
+      (ctx: Context) ?=> untpd.resolveConstructor(annotType, args)
 
     def untpdTree(using Context): untpd.Tree =
       untpd.New(untpd.TypeTree(annotType), List(args))

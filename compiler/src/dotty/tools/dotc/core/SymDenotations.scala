@@ -2506,7 +2506,7 @@ object SymDenotations {
   }
 
   object LazyType:
-    private val NoSymbolFn = (using _: Context) => NoSymbol
+    private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.

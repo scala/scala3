@@ -603,7 +603,7 @@ class TreeUnpickler(reader: TastyReader,
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
       else if (sym.isInlineMethod)
-        sym.addAnnotation(LazyBodyAnnotation { (using ctx0: Context) =>
+        sym.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
           val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
             // avoids space leaks by not capturing the current context
