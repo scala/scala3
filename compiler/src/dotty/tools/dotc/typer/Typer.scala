@@ -1386,18 +1386,27 @@ class Typer extends Namer
         }
 
         result match {
-          case Match(sel, CaseDef(pat, _, _) :: _) =>
+          case result @ Match(sel, CaseDef(pat, _, _) :: _) =>
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(pat, sel.tpe, isPatDef) && sourceVersion == `3.1-migration`)
-                  if (isPatDef) patch(Span(pat.span.end), ": @unchecked")
+                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `3.1-migration`)
+                  if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
                   else patch(Span(pat.span.start), "case ")
+
+                // skip exhaustivity check in later phase
+                // TODO: move the check above to patternMatcher phase
+                val uncheckedTpe = AnnotatedType(sel.tpe, Annotation(defn.UncheckedAnnot))
+                tpd.cpy.Match(result)(
+                  selector = tpd.Typed(sel, tpd.TypeTree(uncheckedTpe)),
+                  cases = result.cases
+                )
               case _ =>
+                result
             }
           case _ =>
+            result
         }
-        result
     }
 
   /** Special typing of Match tree when the expected type is a MatchType,

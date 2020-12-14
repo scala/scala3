@@ -3184,7 +3184,7 @@ object Parsers {
     }
 
     /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
-     *            |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr
+     *            |  Pattern2 [‘:’ Type] ‘=’ Expr
      *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
      *  ValDcl  ::=  id {`,' id} `:' Type
      *  VarDcl  ::=  id {`,' id} `:' Type
@@ -3202,11 +3202,7 @@ object Parsers {
       val tpt =
         if (in.token == COLON) {
           in.nextToken()
-          if (in.token == AT && lhs.tail.isEmpty) {
-            lhs = ascription(first, Location.ElseWhere) :: Nil
-            emptyType
-          }
-          else toplevelTyp()
+          toplevelTyp()
         }
         else emptyType
       val rhs =

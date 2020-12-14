@@ -25,9 +25,9 @@ want to decompose it like this:
 ```scala
 val first :: rest = elems   // error
 ```
-This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the pattern with an `@unchecked` annotation:
+This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the rhs with an `@unchecked` annotation:
 ```scala
-val first :: rest : @unchecked = elems   // OK
+val first :: rest = elems: @unchecked   // OK
 ```
 This will make the compiler accept the pattern binding. It might give an error at runtime instead, if the underlying assumption that `elems` can never be empty is wrong.
 
@@ -49,13 +49,11 @@ The filtering functionality can be obtained in Scala 3 by prefixing the pattern 
 
 ## Syntax Changes
 
-There are two syntax changes relative to Scala 2: First, pattern definitions can carry ascriptions such as `: @unchecked`. Second, generators in for expressions may be prefixed with `case`.
+Generators in for expressions may be prefixed with `case`.
 ```
-PatDef         ::=  ids [‘:’ Type] ‘=’ Expr
-                 |  Pattern2 [‘:’ Type | Ascription] ‘=’ Expr
 Generator      ::=  [‘case’] Pattern1 ‘<-’ Expr
 ```
 
 ## Migration
 
-The new syntax is supported in Dotty and Scala 3.0. However, to enable smooth cross compilation between Scala 2 and Scala 3, the changed behavior and additional type checks are only enabled under the `-source 3.1` setting. They will be enabled by default in version 3.1 of the language.
+The new syntax is supported in Scala 3.0. However, to enable smooth cross compilation between Scala 2 and Scala 3, the changed behavior and additional type checks are only enabled under the `-source 3.1` setting. They will be enabled by default in version 3.1 of the language.
