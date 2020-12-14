@@ -208,14 +208,14 @@ reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` 
 For instance, the user-level definition of `to`:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
   '{ (x: T) => ${ f('x) } }
 ```
 
 would be rewritten to
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
   '{ (x: t.Underlying) => ${ f('x) } }
 ```
 
@@ -239,6 +239,7 @@ enum Exp {
   case Var(x: String)
   case Let(x: String, e: Exp, in: Exp)
 }
+import Exp._
 ```
 
 The interpreted language consists of numbers `Num`, addition `Plus`, and variables
@@ -479,7 +480,7 @@ inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 private def powerCode(x: Expr[Double], n: Expr[Int])(using Quotes): Expr[Double] =
   n.value match
     case Some(m) => powerCode(x, m)
-    case None => '{ Math.pow($x, $y) }
+    case None => '{ Math.pow($x, $n.toDouble) }
 
 private def powerCode(x: Expr[Double], n: Int)(using Quotes): Expr[Double] =
   if (n == 0) '{ 1.0 }
@@ -621,6 +622,7 @@ Similarly to the `summonFrom` construct, it is possible to make implicit search 
 in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
 
 ```scala
+import scala.collection.immutable.{ TreeSet, HashSet }
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
 def setForExpr[T: Type](using Quotes): Expr[Set[T]] = {
@@ -770,11 +772,17 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
 trait Show[-T] {
   def show(x: T): String
 }
+// in a different file
+given Show[Boolean] {
+  def show(b: Boolean) = "boolean!"
+}
+
+println(showMe"${true}")
 ```
 
 ### Open code patterns
 
-Quote pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
+Quoted pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
 then the rest of the quote can refer to this definition.
 
 ```scala
