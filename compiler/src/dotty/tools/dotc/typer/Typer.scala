@@ -777,7 +777,7 @@ class Typer extends Namer
           }
         val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
-        val result = tryWithTypeTest(ascribed, pt)
+        val result = tryWithTypeTest(matched, pt)
         if (result eq matched) && pt != defn.ImplicitScrutineeTypeRef then
           // no check for matchability if TestTest was applied
           checkMatchable(pt, tree.srcPos, pattern = true)
