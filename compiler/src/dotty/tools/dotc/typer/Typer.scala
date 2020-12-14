@@ -1995,6 +1995,8 @@ class Typer extends Namer
       else typedExpr(ddef.rhs, tpt1.tpe.widenExpr)(using rhsCtx))
 
     if sym.isInlineMethod then
+      if StagingContext.level > 0 then
+        report.error("inline def cannot be within quotes", sym.sourcePos)
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
@@ -3293,7 +3295,7 @@ class Typer extends Namer
       }
       else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !Inliner.inInlineMethod) then
         errorTree(tree, i"Deferred inline ${methPart(tree).symbol.showLocated} cannot be invoked")
-      else if (Inliner.isInlineable(tree) && !suppressInline) {
+      else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
         tree.tpe <:< wildApprox(pt)
         val errorCount = ctx.reporter.errorCount
         val meth = methPart(tree).symbol
