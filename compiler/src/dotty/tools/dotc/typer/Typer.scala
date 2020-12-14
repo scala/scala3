@@ -1372,18 +1372,6 @@ class Typer extends Namer
             typedMatchFinish(tree, sel1, selType, tree.cases, pt)
         }
 
-        result match {
-          case Match(sel, CaseDef(pat, _, _) :: _) =>
-            tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
-              case Some(checkMode) =>
-                val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(pat, sel.tpe, isPatDef) && sourceVersion == `3.1-migration`)
-                  if (isPatDef) patch(Span(pat.span.end), ": @unchecked")
-                  else patch(Span(pat.span.start), "case ")
-              case _ =>
-            }
-          case _ =>
-        }
         result
     }
 
