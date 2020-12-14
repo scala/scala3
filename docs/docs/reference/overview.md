@@ -2,8 +2,8 @@
 layout: doc-page
 title: "Overview"
 ---
-
-Dotty implements many language changes compared to Scala 2. These changes are currently discussed for inclusion in Scala 3, the new Scala language standard which will be based on the Dotty codebase.
+The forthcoming Scala 3 implements many language changes and improvements over Scala 2.
+In this reference, we discuss design decisions and present important differences compared to Scala 2.
 
 ## Goals
 
@@ -131,4 +131,3 @@ by itself a straightforward implementation of some simple macros and is at the s
 [A classification of proposed language features](./features-classification.md) is
 an expanded version of this page that adds the status (i.e. relative importance to be a part of Scala 3, and relative urgency when to decide this) and expected migration cost
 of each language construct.
-

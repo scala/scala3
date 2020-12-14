@@ -352,7 +352,7 @@ end IndentWidth
 
 Significant indentation is enabled by default. It can be turned off by giving any of the options `-noindent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
-The Dotty compiler can rewrite source code to indented code and back.
+The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
 indented regions where possible. When invoked with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
 The `-indent` option only works on [new-style syntax](./control-syntax.html). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options

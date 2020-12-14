@@ -122,12 +122,12 @@ Mirror.Product {
 Note the following properties of `Mirror` types,
 
 + Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
-  also that they are a compile time feature for use with Dotty's metaprogramming facilities.
+  also that they are a compile time feature for use with Scala 3's metaprogramming facilities.
 + The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
   This allows `Mirrors` to support ADTs of all kinds.
 + There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
   Scala 2 versions of shapeless). Instead the collection of child types of a data type is represented by an ordinary,
-  possibly parameterized, tuple type. Dotty's metaprogramming facilities can be used to work with these tuple types
+  possibly parameterized, tuple type. Scala 3's metaprogramming facilities can be used to work with these tuple types
   as-is, and higher level libraries can be built on top of them.
 + For both product and sum types, the elements of `MirroredElemTypes` are arranged in definition order (i.e. `Branch[T]`
   precedes `Leaf[T]` in `MirroredElemTypes` for `Tree` because `Branch` is defined before `Leaf` in the source file).
@@ -152,12 +152,12 @@ provider of an ADT with a `derives` clause has to know about the derivation of a
 
 Note that `derived` methods may have context `Mirror` parameters indirectly (e.g. by having a context argument which in turn
 has a context `Mirror` parameter, or not at all (e.g. they might use some completely different user-provided mechanism, for
-instance using Dotty macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
+instance using Scala 3 macros or runtime reflection). We expect that (direct or indirect) `Mirror` based implementations
 will be the most common and that is what this document emphasises.
 
 Type class authors will most likely use higher level derivation or generic programming libraries to implement
 `derived` methods. An example of how a `derived` method might be implemented using _only_ the low level facilities
-described above and Dotty's general metaprogramming features is provided below. It is not anticipated that type class
+described above and Scala 3's general metaprogramming features is provided below. It is not anticipated that type class
 authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
 authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
 worked out example of such a library, see [shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
@@ -165,7 +165,7 @@ worked out example of such a library, see [shapeless 3](https://github.com/miles
 #### How to write a type class `derived` method using low level mechanisms
 
 The low-level method we will use to implement a type class `derived` method in this example exploits three new
-type-level constructs in Dotty: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
+type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
 `Eq` type class,
 
 
@@ -194,7 +194,7 @@ call sites (for instance the compiler generated instance definitions in the comp
 
 The body of this method (1) first materializes the `Eq` instances for all the child types of type the instance is
 being derived for. This is either all the branches of a sum type or all the fields of a product type. The
-implementation of `summonAll` is `inline` and uses Dotty's `summonInline` construct to collect the instances as a
+implementation of `summonAll` is `inline` and uses Scala 3's `summonInline` construct to collect the instances as a
 `List`,
 
 ```scala
@@ -319,7 +319,7 @@ given derived$Eq[T](using eqT: Eq[T]): Eq[Opt[T]] =
 ```
 
 Alternative approaches can be taken to the way that `derived` methods can be defined. For example, more aggressively
-inlined variants using Dotty macros, whilst being more involved for type class authors to write than the example
+inlined variants using Scala 3 macros, whilst being more involved for type class authors to write than the example
 above, can produce code for type classes like `Eq` which eliminate all the abstraction artefacts (eg. the `Lists` of
 child instances in the above) and generate code which is indistinguishable from what a programmer might write by hand.
 As a third example, using a higher level library such as shapeless the type class author could define an equivalent
@@ -402,8 +402,8 @@ lockstep and it has to assert this conformance in some places using casts. If ge
 written these casts will never fail.
 
 As mentioned, however, the compiler-provided mechanism is intentionally very low level and it is anticipated that
-higher level type class derivation and generic programming libraries will build on this and Dotty's other
+higher level type class derivation and generic programming libraries will build on this and Scala 3's other
 metaprogramming facilities to hide these low-level details from type class authors and general users. Type class
 derivation in the style of both shapeless and Magnolia are possible (a prototype of shapeless 3, which combines
 aspects of both shapeless 2 and Magnolia has been developed alongside this language feature) as is a more aggressively
-inlined style, supported by Dotty's new quote/splice macro and inlining facilities.
+inlined style, supported by Scala 3's new quote/splice macro and inlining facilities.

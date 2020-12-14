@@ -3,7 +3,7 @@ layout: doc-page
 title: "Trait Parameters"
 ---
 
-Dotty allows traits to have parameters, just like classes have parameters.
+Scala 3 allows traits to have parameters, just like classes have parameters.
 
 ```scala
 trait Greeting(val name: String) {

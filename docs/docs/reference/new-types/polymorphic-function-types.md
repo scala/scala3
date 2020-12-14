@@ -21,7 +21,7 @@ So far, it
 was not possible to turn such methods into polymorphic function values like `bar` above,
 which can be passed as parameters to other functions, or returned as results.
 
-In Dotty this is now possible. The type of the `bar` value above is
+In Scala 3 this is now possible. The type of the `bar` value above is
 
 ```scala
 [A] => List[A] => List[A]

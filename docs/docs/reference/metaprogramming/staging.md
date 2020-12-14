@@ -71,7 +71,7 @@ def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
 def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 ```
 
-## Create a new Dotty project with staging enabled
+## Create a new Scala 3 project with staging enabled
 
 ```shell
 sbt new scala/scala3-staging.g8
@@ -84,7 +84,7 @@ It will create a project with the necessary dependencies and some examples.
 In case you prefer to create the project on your own, make sure to define the following dependency in your build.sbt
 
 ```scala
-libraryDependencies += "ch.epfl.lamp" %% "scala3-staging" % scalaVersion.value
+libraryDependencies += "org.scala-lang" %% "scala3-staging" % scalaVersion.value
 ```
 
 and in case you use `scalac`/`scala` directly, then use the `-with-compiler` flag for both:

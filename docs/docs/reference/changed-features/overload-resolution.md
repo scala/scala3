@@ -3,7 +3,7 @@ layout: doc-page
 title: "Changes in Overload Resolution"
 ---
 
-Overload resolution in Dotty improves on Scala 2 in two ways.
+Overload resolution in Scala 3 improves on Scala 2 in two ways.
 First, it takes all argument lists into account instead of
 just the first argument list.
 Second, it can infer parameter types of function values even if they
@@ -49,7 +49,7 @@ overload resolution based on additional argument blocks.
 The handling of function values with missing parameter types has been improved. We can now
 pass such values in the first argument list of an overloaded application, provided
 that the remaining parameters suffice for picking a variant of the overloaded function.
-For example, the following code compiles in Dotty, while it results in an
+For example, the following code compiles in Scala 3, while it results in an
 missing parameter type error in Scala2:
 ```scala
 def f(x: Int, f2: Int => Int) = f2(x)
