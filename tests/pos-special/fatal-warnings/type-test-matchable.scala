@@ -11,3 +11,4 @@ object Test:
   def test(foo: Foo): Unit =
     foo.x match
       case x: foo.Y =>
+      case x: foo.X =>
