@@ -778,7 +778,10 @@ class Typer extends Namer
         val matched = ascription(tpt1, isWildcard = true)
         // special case for an abstract type that comes with a class tag
         val result = tryWithTypeTest(matched, pt)
-        if (result eq matched) && pt != defn.ImplicitScrutineeTypeRef then
+        if (result eq matched)
+           && pt != defn.ImplicitScrutineeTypeRef
+           && !(pt <:< tpt1.tpe)
+        then
           // no check for matchability if TestTest was applied
           checkMatchable(pt, tree.srcPos, pattern = true)
         result
@@ -802,13 +805,15 @@ class Typer extends Namer
           inferImplicit(tpe, EmptyTree, tree.tpt.span)
         ) match
           case SearchSuccess(clsTag, _, _) =>
-            Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+            withMode(Mode.InTypeTest) {
+              Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
+            }
           case _ =>
             None
       }
       val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
-        .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
-        .getOrElse(tree)
+          .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
+          .getOrElse(tree)
       if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
