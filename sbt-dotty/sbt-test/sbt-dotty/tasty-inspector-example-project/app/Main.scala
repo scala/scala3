@@ -1,7 +1,7 @@
 package hello
 
 import scala.quoted._
-import scala.tasty.inspector.TastyInspector
+import scala.tasty.inspector._
 
 import scala.jdk.StreamConverters._
 
@@ -9,10 +9,12 @@ import java.nio.file.{Path, Files, Paths, FileSystems}
 
 object Main extends App {
 
-  val inspector = new TastyInspector {
-    protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit = {
-      val tastyStr = root.show
-      println(tastyStr)
+  val inspector = new Inspector {
+    def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
+      for tasty <- tastys do
+        val tastyStr = tasty.ast.show
+        println(tastyStr)
+
     }
   }
 
@@ -25,7 +27,7 @@ object Main extends App {
 
     val tastyFiles = for p <- walk(pwd) if `lib/Foo.tasty`.matches(p) yield p.toString
 
-    inspector.inspectTastyFiles(List(tastyFiles.head))
+    TastyInspector.inspectTastyFiles(List(tastyFiles.head))(inspector)
 
   }
 

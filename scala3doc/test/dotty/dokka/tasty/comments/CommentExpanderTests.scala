@@ -37,8 +37,8 @@ class CommentExpanderTests {
 
   @Test
   def test(): Unit = {
-    import scala.tasty.inspector.TastyInspector
-    class Inspector extends TastyInspector:
+    import scala.tasty.inspector.OldTastyInspector
+    class Inspector extends OldTastyInspector:
 
       def processCompilationUnit(using quoted.Quotes)(root: quotes.reflect.Tree): Unit = ()
 

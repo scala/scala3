@@ -2723,7 +2723,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     type SourceFile = dotc.util.SourceFile
 
     object SourceFile extends SourceFileModule {
-      def current: SourceFile = ctx.compilationUnit.source
+      def current: SourceFile =
+        if ctx.compilationUnit == null then
+          throw new java.lang.UnsupportedOperationException(
+            "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
+        ctx.compilationUnit.source
     }
 
     given SourceFileMethods: SourceFileMethods with
