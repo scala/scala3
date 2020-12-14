@@ -14,7 +14,7 @@ The current document reflects the state of things as of April, 2019. It will be 
 
 ## Essential Foundations
 
-These new constructs directly model core features of DOT, higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
+These new constructs directly model core features of [DOT](https://www.scala-lang.org/blog/2016/02/03/essence-of-scala.html), higher-kinded types, and the [SI calculus for implicit resolution](https://infoscience.epfl.ch/record/229878/files/simplicitly_1.pdf).
 
  - [Intersection types](new-types/intersection-types.md), replacing compound types,
  - [Union types](new-types/union-types.md),

@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: General Type Projection
+title: "Dropped: General Type Projection"
 ---
 
 Scala so far allowed general type projection `T#A` where `T` is an arbitrary type

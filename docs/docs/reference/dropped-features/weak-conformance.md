@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Weak Conformance
+title: "Dropped: Weak Conformance"
 ---
 
 In some situations, Scala used a _weak conformance_ relation when

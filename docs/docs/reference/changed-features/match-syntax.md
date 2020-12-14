@@ -16,6 +16,7 @@ The syntactical precedence of match expressions has been changed.
       case "empty" => 0
       case "nonempty" => 1
     }
+    ```
 
  2. `match` may follow a period:
 
@@ -26,6 +27,7 @@ The syntactical precedence of match expressions has been changed.
      }
      then "nonempty"
      else "empty"
+     ```
 
  3. The scrutinee of a match expression must be an `InfixExpr`. Previously the scrutinee could be followed by a type ascription `: T`, but this is no longer supported. So `x : T match { ... }` now has to be
  written `(x: T) match { ... }`.

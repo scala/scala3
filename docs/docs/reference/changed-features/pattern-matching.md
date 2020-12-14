@@ -3,9 +3,9 @@ layout: doc-page
 title: "Option-less pattern matching"
 ---
 
-Dotty implementation of pattern matching was greatly simplified compared to scalac. From a user perspective, this means that Dotty generated patterns are a *lot* easier to debug, as variables all show up in debug modes and positions are correctly preserved.
+Dotty implementation of pattern matching was greatly simplified compared to Scala 2. From a user perspective, this means that Scala 3 generated patterns are a *lot* easier to debug, as variables all show up in debug modes and positions are correctly preserved.
 
-Dotty supports a superset of scalac's [extractors](https://www.scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#extractor-patterns).
+Dotty supports a superset of Scala 2 [extractors](https://www.scala-lang.org/files/archive/spec/2.13/08-pattern-matching.html#extractor-patterns).
 
 ## Extractors
 
@@ -54,7 +54,7 @@ A usage of a fixed-arity extractor is irrefutable if one of the following condit
 
 - `U = true`
 - the extractor is used as a product match
-- `U = Some[T]` (for Scala2 compatibility)
+- `U = Some[T]` (for Scala 2 compatibility)
 - `U <: R` and `U <: { def isEmpty: false }`
 
 ### Variadic Extractors
@@ -84,7 +84,7 @@ and `S` conforms to one of the two matches above.
 The former form of `unapplySeq` has higher priority, and _sequence match_ has higher
 precedence over _product-sequence match_.
 
-A usage of a variadic extractor is irrefutable if one of the following condition holds:
+A usage of a variadic extractor is irrefutable if one of the following conditions holds:
 
 - the extractor is used directly as a sequence match or product-sequence match
 - `U = Some[T]` (for Scala2 compatibility)
@@ -230,7 +230,8 @@ object CharList {
 ```Scala
 class Foo(val name: String, val children: Int *)
 object Foo {
-  def unapplySeq(f: Foo): Option[(String, Seq[Int])] = Some((f.name, f.children))
+  def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
+    Some((f.name, f.children))
 }
 
 def foo(f: Foo) = f match {

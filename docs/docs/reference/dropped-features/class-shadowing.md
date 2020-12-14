@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Class Shadowing
+title: "Dropped: Class Shadowing"
 ---
 
 Scala so far allowed patterns like this:

@@ -174,6 +174,7 @@ If `E` contains at least one simple case, its companion object will define in ad
    - A private method `$new` which defines a new simple case value with given
      ordinal number and name. This method can be thought as being defined as
      follows.
+
      ```scala
      private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
        def ordinal = _$ordinal
@@ -209,5 +210,5 @@ Cases such as `case C` expand to a `@static val` as opposed to a `val`. This all
 `scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
 explicitly declared in it.
 
- - If an enum case has an extends clause, the enum class must be one of the
+ - If an enum case has an `extends` clause, the enum class must be one of the
    classes that's extended.

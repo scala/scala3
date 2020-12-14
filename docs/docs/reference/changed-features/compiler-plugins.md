@@ -66,7 +66,8 @@ class DivideZero extends StandardPlugin {
   val name: String = "divideZero"
   override val description: String = "divide zero check"
 
-  def init(options: List[String]): List[PluginPhase] = (new DivideZeroPhase) :: Nil
+  def init(options: List[String]): List[PluginPhase] =
+    (new DivideZeroPhase) :: Nil
 }
 
 class DivideZeroPhase extends PluginPhase {

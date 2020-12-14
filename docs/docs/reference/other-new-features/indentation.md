@@ -63,9 +63,10 @@ There are two rules:
      - after a ": at end of line" token (see below)
      - after one of the following tokens:
 
-    ```
-    =  =>  <-  if  then  else  while  do  try  catch  finally  for  yield  match  return
-    ```
+       ```
+       =  =>  <-  catch  do  else  finally  for
+       if  match  return  then  try  while  yield
+       ```
 
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -80,7 +81,7 @@ There are two rules:
       then  else  do  catch  finally  yield  match
       ```
     - the first token on the next line is not a
-        [leading infix operator](../changed-features/operators.html).
+        [leading infix operator](../changed-features/operators.md).
 
      If an `<outdent>` is inserted, the top element is popped from `IW`.
      If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens

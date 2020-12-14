@@ -97,7 +97,7 @@ assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
 ```
 
 That's a first step, but in practice we probably would like the `map` function to be a method directly accessible on the type `F`. So that we can call `map` directly on instances of `F`, and get rid of the `summon[Functor[F]]` part.
-As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` type class with extension methods.
+As in the previous example of Monoids, [`extension` methods](extension-methods.md) help achieving that. Let's re-define the `Functor` type class with extension methods.
 
 ```scala
 trait Functor[F[_]]:
@@ -234,7 +234,7 @@ given configDependentMonad: Monad[ConfigDependent] with
 end configDependentMonad
 ```
 
-The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.html):
+The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.md):
 
 ```scala
 type ConfigDependent = [Result] =>> Config => Result

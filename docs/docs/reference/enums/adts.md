@@ -3,7 +3,7 @@ layout: doc-page
 title: "Algebraic Data Types"
 ---
 
-The [`enum` concept](./enums.html) is general enough to also support algebraic data
+The [`enum` concept](./enums.md) is general enough to also support algebraic data
 types (ADTs) and their generalized version (GADTs). Here is an example
 how an `Option` type can be represented as an ADT:
 
@@ -32,7 +32,7 @@ enum Option[+T] {
 
 Note that the parent type of the `None` value is inferred as
 `Option[Nothing]`. Generally, all covariant type parameters of the enum
-class are minimized in a compiler-generated extends clause whereas all
+class are minimized in a compiler-generated `extends` clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
 you would need to give the extends clause of `None` explicitly.
 
@@ -145,9 +145,10 @@ enum View[-T, +U] extends (T => U):
 ### Syntax of Enums
 
 Changes to the syntax fall in two categories: enum definitions and cases inside enums.
-The changes are specified below as deltas with respect to the Scala syntax given [here](../../internals/syntax.md)
+The changes are specified below as deltas with respect to the Scala syntax given [here](../syntax.md)
 
  1. Enum definitions are defined as follows:
+
     ```
     TmplDef   ::=  `enum' EnumDef
     EnumDef   ::=  id ClassConstr [`extends' [ConstrApps]] EnumBody
@@ -155,10 +156,13 @@ The changes are specified below as deltas with respect to the Scala syntax given
     EnumStat  ::=  TemplateStat
                 |  {Annotation [nl]} {Modifier} EnumCase
     ```
+
  2. Cases of enums are defined as follows:
+
     ```
     EnumCase  ::=  `case' (id ClassConstr [`extends' ConstrApps]] | ids)
     ```
+
 ### Reference
 
 For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).

@@ -9,13 +9,13 @@ functions. Context parameters can help here since they enable the compiler to sy
 repetitive arguments instead of the programmer having to write them explicitly.
 
 For example, with the [given instances](./givens.md) defined previously,
-a maximum function that works for any arguments for which an ordering exists can be defined as follows:
+a `max` function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T)(using ord: Ord[T]): T =
   if ord.compare(x, y) < 0 then y else x
 ```
 Here, `ord` is a _context parameter_ introduced with a `using` clause.
-The `max` method can be applied as follows:
+The `max` function can be applied as follows:
 ```scala
 max(2, 3)(using intOrd)
 ```
@@ -38,7 +38,7 @@ def maximum[T](xs: List[T])(using Ord[T]): T =
 `maximum` takes a context parameter of type `Ord` only to pass it on as an
 inferred argument to `max`. The name of the parameter is left out.
 
-Generally, context parameters may be defined either as a full parameter list `(p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `T_1, ..., T_n`. Vararg parameters are not supported in using clauses.
+Generally, context parameters may be defined either as a full parameter list `(p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `T_1, ..., T_n`. Vararg parameters are not supported in `using` clauses.
 
 ## Inferring Complex Arguments
 
@@ -60,18 +60,18 @@ maximum(xs)(using descending(using listOrd))
 maximum(xs)(using descending(using listOrd(using intOrd)))
 ```
 
-## Multiple Using Clauses
+## Multiple `using` Clauses
 
-There can be several using clauses in a definition and using clauses can be freely mixed with normal parameter clauses. Example:
+There can be several `using` clauses in a definition and `using` clauses can be freely mixed with normal parameter clauses. Example:
 ```scala
 def f(u: Universe)(using ctx: u.Context)(using s: ctx.Symbol, k: ctx.Kind) = ...
 ```
-Multiple using clauses are matched left-to-right in applications. Example:
+Multiple `using` clauses are matched left-to-right in applications. Example:
 ```scala
 object global extends Universe { type Context = ... }
-given ctx  : global.Context with { type Symbol = ...; type Kind = ... }
-given sym  : ctx.Symbol
-given kind : ctx.Kind
+given ctx : global.Context with { type Symbol = ...; type Kind = ... }
+given sym : ctx.Symbol
+given kind: ctx.Kind
 ```
 Then the following calls are all valid (and normalize to the last one)
 ```scala
@@ -96,7 +96,7 @@ def summon[T](using x: T): x.type = x
 
 ## Syntax
 
-Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../../internals/syntax.md). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
+Here is the new syntax of parameters and arguments seen as a delta from the [standard context free syntax of Scala 3](../syntax.md). `using` is a soft keyword, recognized only at the start of a parameter or argument list. It can be used as a normal identifier everywhere else.
 ```
 ClsParamClause      ::=  ... | UsingClsParamClause
 DefParamClauses     ::=  ... | UsingParamClause
