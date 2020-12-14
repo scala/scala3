@@ -7,7 +7,7 @@ object PowerMacro {
     else '{ $x * ${powerCode(x, n - 1)} }
 
   def power2(x: Expr[Double])(using Quotes) = '{
-    inline def power(x: Double): Double = ${powerCode('x, 2)}
+    inline def power(x: Double): Double = ${powerCode('x, 2)} // error
     power($x)
   }
 }
