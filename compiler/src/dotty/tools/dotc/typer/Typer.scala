@@ -135,12 +135,16 @@ class Typer extends Namer
    *   @param name       the name of the identifier
    *   @param pt         the expected type
    *   @param required   flags the result's symbol must have
+   *   @param excluded   flags the result's symbol must not have
    *   @param pos        indicates position to use for error reporting
    */
-  def findRef(name: Name, pt: Type, required: FlagSet, pos: SrcPos)(using Context): Type = {
+  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-    def fail(msg: Message) = report.error(msg, pos)
+    def suppressErrors = excluded.is(ConstructorProxy)
+      // when searching for references shadowed by a constructor proxy, do not report errors
+    def fail(msg: Message) =
+      if !suppressErrors then report.error(msg, pos)
 
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
@@ -204,7 +208,7 @@ class Typer extends Namer
         imp.sym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
-            var denot = pre.memberBasedOnFlags(name, required, EmptyFlags)
+            var denot = pre.memberBasedOnFlags(name, required, excluded)
               .accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
@@ -332,7 +336,7 @@ class Typer extends Namer
               val scope = if owner.isClass then owner.info.decls else outer.scope
               if scope.lookup(name).exists then
                 val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
-                if !symsMatch then
+                if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     pos)
@@ -344,7 +348,7 @@ class Typer extends Namer
                 checkNoOuterDefs(denot, outer, prevCtx)
 
           if isNewDefScope then
-            val defDenot = ctx.denotNamed(name, required)
+            val defDenot = ctx.denotNamed(name, required, excluded)
             if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
@@ -462,7 +466,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try
-        val found = findRef(name, pt, EmptyFlags, tree.srcPos)
+        val found = findRef(name, pt, EmptyFlags, EmptyFlags, tree.srcPos)
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             ex"""Name resolution will change.
@@ -474,7 +478,17 @@ class Typer extends Namer
       	unimported = saved1
       	foundUnderScala2 = saved2
 
+    def checkNotShadowed(ownType: Type) = ownType match
+      case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
+        val shadowed = findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos)
+        if shadowed.exists then
+          report.error(
+            em"""Reference to creator proxy for ${ownType.symbol.companionClass.showLocated}
+                |shadows outer reference to ${shadowed.termSymbol.showLocated}""", tree.srcPos)
+      case _ =>
+
     def setType(ownType: Type): Tree =
+      checkNotShadowed(ownType)
       val tree1 = ownType match
         case ownType: NamedType if !prefixIsElidable(ownType) =>
           ref(ownType).withSpan(tree.span)
@@ -3484,10 +3498,10 @@ class Typer extends Namer
         case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
           def tryExtension(using Context): Tree =
             try
-              findRef(selName, WildcardType, ExtensionMethod, tree.srcPos) match
+              findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match
+                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
                   case ref: TermRef =>
                     extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
                   case _ => EmptyTree
