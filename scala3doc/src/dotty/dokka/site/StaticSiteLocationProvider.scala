@@ -112,15 +112,10 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
     override def pathTo(node: PageNode, context: PageNode): String =
       if node == context then ""
       else
-        val nodePaths = getPathsIndex.get(node).asScala
-        val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala.dropRight(1))
-        val commonPaths = nodePaths.zip(contextPaths).takeWhile{ case (a, b) => a == b }.size
+        val nodePaths = getPathsIndex.get(node).asScala.toList
+        val contextPaths = Option(context).fold(Nil)(getPathsIndex.get(_).asScala).toList
+        relativePath(contextPaths, nodePaths)
 
-        val contextPath = contextPaths.drop(commonPaths).map(_ => "..")
-        val nodePath = nodePaths.drop(commonPaths) match
-            case l if l.isEmpty => Seq("index")
-            case l => l
-        (contextPath ++ nodePath).mkString("/")
 
     val externalLocationProviders: List[(List[Regex], ExternalLocationProvider)] =
       val sourceSet = ctx.getConfiguration.getSourceSets.asScala(0)
@@ -156,3 +151,14 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
         }.fold(null)(_(1).resolve(dri.withNoOrigin))
         case None => null
       }
+
+def relativePath(fullFrom: Seq[String], to: Seq[String]): String =
+  val from = fullFrom.dropRight(1)
+  val commonPaths = to.zip(from).takeWhile{ case (a, b) => a == b }.size
+
+  val contextPath = from.drop(commonPaths).map(_ => "..")
+  val nodePath = to.drop(commonPaths) match
+      case Nil if contextPath.isEmpty && to.nonEmpty=> Seq("..", to.last)
+      case Nil => Seq("index")
+      case l => l
+  (contextPath ++ nodePath).mkString("/")
