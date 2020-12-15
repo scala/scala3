@@ -2511,15 +2511,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
         provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(matchTypeSuperType(tp1), tp2) || provablyDisjoint(tp1, matchTypeSuperType(tp2))
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(tp1.superType, tp2)
+        provablyDisjoint(matchTypeSuperType(tp1), tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, tp2.superType)
+        provablyDisjoint(tp1, matchTypeSuperType(tp2))
       case _ =>
         false
     }
   }
+
+  /** Restores the buggy match type reduction under -Yunsound-match-types. */
+  private def matchTypeSuperType(tp: TypeProxy): Type =
+    if ctx.settings.YunsoundMatchTypes.value then tp.underlying else tp.superType
 
   protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
