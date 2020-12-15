@@ -59,7 +59,7 @@ object Settings {
     description: String,
     default: T,
     helpArg: String = "",
-    choices: Seq[T] = Nil,
+    choices: Option[Seq[T]] = None,
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
@@ -92,25 +92,10 @@ object Settings {
 
     def legalChoices: String =
       choices match {
-        case xs if xs.isEmpty => ""
-        case r: Range         => s"${r.head}..${r.last}"
-        case xs: List[?]      => xs.toString
-      }
-
-    def isLegal(arg: Any): Boolean =
-      choices match {
-        case xs if xs.isEmpty =>
-          arg match {
-            case _: T => true
-            case _ => false
-          }
-        case r: Range =>
-          arg match {
-            case x: Int => r.head <= x && x <= r.last
-            case _ => false
-          }
-        case xs: List[?] =>
-          xs.contains(arg)
+        case Some(xs) if xs.isEmpty => ""
+        case Some(r: Range)         => s"${r.head}..${r.last}"
+        case Some(xs)               => xs.mkString(", ")
+        case None                   => ""
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
@@ -132,6 +117,12 @@ object Settings {
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
         fail(s"missing argument for option $name", args)
+      def setString(argValue: String, args: List[String]) =
+        choices match
+          case Some(xs) if !xs.contains(argValue) =>
+            fail(s"$argValue is not a valid choice for $name", args)
+          case _ =>
+            update(argValue, args)
       def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
         case (BooleanTag, _) =>
           update(true, args)
@@ -140,13 +131,11 @@ object Settings {
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
-        case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
-          if (!choices.contains(argRest))
-            fail(s"$arg is not a valid choice for $name", args)
-          else update(argRest, args)
+        case (StringTag, _) if argRest.nonEmpty =>
+          setString(argRest, args)
         case (StringTag, arg2 :: args2) =>
           if (arg2 startsWith "-") missingArg
-          else update(arg2, args2)
+          else setString(arg2, args2)
         case (OutputTag, arg :: args) =>
           val path = Directory(arg)
           val isJar = path.extension == "jar"
@@ -160,8 +149,10 @@ object Settings {
           try {
             val x = arg2.toInt
             choices match {
-              case r: Range if x < r.head || r.last < x =>
-                fail(s"$arg2 is out of legal range $legalChoices for $name", args2)
+              case Some(r: Range) if x < r.head || r.last < x =>
+                fail(s"$arg2 is out of legal range ${r.head}..${r.last} for $name", args2)
+              case Some(xs) if !xs.contains(x) =>
+                fail(s"$arg2 is not a valid choice for $name", args)
               case _ =>
                 update(x, args2)
             }
@@ -273,10 +264,13 @@ object Settings {
       publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
     def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, choices))
+      publish(Setting(name, descr, default, helpArg, Some(choices)))
 
-    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = Nil): Setting[Int] =
-      publish(Setting(name, descr, default, choices = range))
+    def IntSetting(name: String, descr: String, default: Int): Setting[Int] =
+      publish(Setting(name, descr, default))
+
+    def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
+      publish(Setting(name, descr, default, choices = Some(choices)))
 
     def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, helpArg))
