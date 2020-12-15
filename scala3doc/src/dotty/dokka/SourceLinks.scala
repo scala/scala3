@@ -6,7 +6,10 @@ import liqp.Template
 import dotty.dokka.model.api._
 import dotty.tools.dotc.core.Contexts.Context
 
-def pathToString(p: Path) = p.toString.replace('\\', '/')
+def pathToString(p: Path) =
+  import scala.jdk.CollectionConverters._
+  // !!! gives wrong result for absolute paths!
+  p.iterator.asScala.mkString("/")
 
 trait SourceLink:
   val path: Option[Path] = None
@@ -34,7 +37,7 @@ case class WebBasedSourceLink(prefix: String, revision: String, subPath: String)
   override def render(path: Path, operation: String, line: Option[Int]): String =
     val action = if operation == "view" then "blob" else operation
     val linePart = line.fold("")(l => s"#L$l")
-    s"$prefix/$action/$revision$subPath/$path$linePart"
+    s"$prefix/$action/$revision$subPath/${pathToString(path)}$linePart"
 
 object SourceLink:
   val SubPath = "([^=]+)=(.+)".r
