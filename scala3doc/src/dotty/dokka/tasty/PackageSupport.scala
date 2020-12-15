@@ -6,7 +6,7 @@ import org.jetbrains.dokka.links.PointingToDeclaration
 import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.model.doc.DocumentationNode
 import dotty.dokka._
-import dotty.dokka.model.api.CompositeMemberExtension
+import dotty.dokka.model.api._
 
 import collection.JavaConverters._
 
@@ -14,39 +14,13 @@ trait PackageSupport:
     self: TastyParser =>
     import qctx.reflect._
 
-    def parsePackage(pck: PackageClause): DPackage = {
-        val name = extractPackageName(pck.pid.show)
-        val documentation = pck.symbol.documentation
-        DPackage(
-          new DRI(name, null, null, PointingToDeclaration.INSTANCE, null),
-          JList(),
-          JList(),
-          JList(),
-          JList(),
-          documentation.asJava,
-          null,
-          ctx.sourceSet.toSet,
-          PropertyContainer.Companion.empty()
-        )
-    }
+    def parsePackage(pck: PackageClause): (String, Member) =
+      val name = extractPackageName(pck.pid.show)
+      val mExt = MemberExtension.empty.copy(kind = Kind.Package)
+      name -> mkMember(pck.symbol, mExt, nameOverride = _ => name)
 
-    def parsePackageObject(pckObj: ClassDef): DPackage =
-        parseClasslike(pckObj) match {
-          case clazz: DClass =>
-            DPackage(
-              new DRI(pckObj.symbol.packageName, null, null, PointingToDeclaration.INSTANCE, null),
-              clazz.getFunctions,
-              clazz.getProperties,
-              JList(),
-              JList(),
-              pckObj.symbol.documentation.asJava,
-              null,
-              ctx.sourceSet.toSet,
-              PropertyContainer.Companion.empty()
-                .plus(clazz.get(CompositeMemberExtension))
-            )
-        }
-
+    def parsePackageObject(pckObj: ClassDef): (String, Member) =
+      pckObj.symbol.packageName -> parseClasslike(pckObj).withKind(Kind.Package)
 
     private def extractPackageName(pidShowNoColor: String): String = {
         val pidSplit = pidShowNoColor.split("\\.")

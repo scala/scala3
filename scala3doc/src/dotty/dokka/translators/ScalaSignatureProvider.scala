@@ -49,7 +49,7 @@ class ScalaSignatureProvider(contentConverter: CommentsToContentConverter)(using
 
 
 object ScalaSignatureProvider:
-  def rawSignature(documentable: Documentable, builder: SignatureBuilder): SignatureBuilder =
+  def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =
     documentable.kind match
       case Kind.Extension(_, m) =>
         extensionSignature(documentable, m, builder)
@@ -83,6 +83,8 @@ object ScalaSignatureProvider:
         typeSignature(tpe, documentable, builder)
       case Kind.Package =>
         builder.text("package").text(" ").name(documentable.name, documentable.dri)
+      case Kind.RootPackage =>
+        builder
       case Kind.Unknown =>
         ???
 

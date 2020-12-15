@@ -28,7 +28,7 @@ import dotty.dokka.model.api._
   */
 case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
 
-  private val topLevels = Seq.newBuilder[Documentable]
+  private val topLevels = Seq.newBuilder[(String, Member)]
 
   def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
     // NOTE we avoid documenting definitions in the magical stdLibPatches directory;
@@ -48,7 +48,7 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
       topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
   end processCompilationUnit
 
-  def result(): List[DPackage] =
+  def result(): List[Member] =
     topLevels.clear()
     val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
     val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
@@ -56,63 +56,12 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     inspectFilesInContext(classpath, filePaths)
 
     val all = topLevels.result()
-    val packages = all
-      .filter(_.isInstanceOf[DPackage])
-      .map(_.asInstanceOf[DPackage])
-      .groupBy(_.getDri)
-      .map((dri, pckgs) =>
-        pckgs.reduce(_.mergeWith(_))
-      )
-      .toList
-      .sortBy( pckg => pckg.dri.location.size )
-      .reverse
-
-
-    val byPackage = all.filter(_.dri != null).groupBy( p =>
-      packages.find(d => p.dri.location.contains(d.dri.location)).getOrElse(throw IllegalStateException("No package for entries found"))
-    )
-
-    byPackage
-      .map {
-        case (f, entries) => {
-          val pck = new DPackage(
-              f.getDri,
-              f.getFunctions,
-              f.getProperties,
-              JList(),
-              JList(),
-              f.getDocumentation,
-              null,
-              JSet(ctx.sourceSet),
-              f.getExtra
-            )
-            .withNewMembers(entries.filterNot(_.isInstanceOf[DPackage]).toList)
-            .withKind(Kind.Package)
-
-          pck.asInstanceOf[DPackage]
-        }
+    all.groupBy(_._1).map { case (pckName, members) =>
+      val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
+      pcks.reduce( (p1, p2) =>
+        p1.withNewMembers(p2.allMembers) // TODO add doc
+      ).withNewMembers(rest)
     }.toList
-
-  extension (self: DPackage) def mergeWith(other: DPackage): DPackage =
-    def nodes(p: DPackage): JList[TagWrapper] = p.getDocumentation.get(ctx.sourceSet) match
-      case null => JList[TagWrapper]()
-      case node => node.getChildren
-
-    mergeExtras(
-      DPackage(
-        self.getDri,
-        (self.getFunctions.asScala ++ other.getFunctions.asScala).asJava,
-        (self.getProperties.asScala ++ other.getProperties.asScala).asJava,
-        JList(), // WARNING Merging is done before collecting classlikes, if it changes it needs to be refactored
-        JList(),
-        ctx.sourceSet.toMap(DocumentationNode(nodes(self) ++ nodes(other))),
-        null,
-        ctx.sourceSet.toSet,
-        PropertyContainer.Companion.empty()
-      ),
-      self,
-      other
-    )
 
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val ctx: DocContext)
@@ -135,8 +84,8 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
           report.warning(s"Failed to process ${sym.fullName}:\n${throwableToString(t)}")
       None
 
-  def parseRootTree(root: Tree): Seq[Documentable] =
-    val docs = Seq.newBuilder[Documentable]
+  def parseRootTree(root: Tree): Seq[(String, Member)] =
+    val docs = Seq.newBuilder[(String, Member)]
     object Traverser extends TreeTraverser:
       var seen: List[Tree] = Nil
 
@@ -149,7 +98,7 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
           case packageObject: ClassDef if(packageObject.symbol.name.contains("package$")) =>
             docs += parsePackageObject(packageObject)
           case clazz: ClassDef if clazz.symbol.shouldDocumentClasslike =>
-            docs += parseClasslike(clazz)
+            docs += clazz.symbol.packageName -> parseClasslike(clazz)
           case _ =>
         }
         seen = seen.tail

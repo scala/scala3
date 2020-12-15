@@ -32,23 +32,21 @@ class ScalaPageCreator(
   private val contentBuilder =
     ScalaPageContentBuilder(commentsToContentConverter, signatureProvider)
 
-  override def pageForModule(m: DModule): ModulePageNode = super.pageForModule(m)
+  override def pageForModule(m: DModule): ModulePageNode =
+    val rootPackage = m.getPackages.get(0)
+    new ModulePageNode(
+      m.getName,
+      contentBuilder.mkMemberInfo(rootPackage),
+      m,
+      pagesForMembers(rootPackage),
+      JNil
+    )
 
   private def pagesForMembers(member: Member): JList[PageNode] =
     val all = member
-      .membersBy(_.kind.isInstanceOf[Classlike])
+      .membersBy(m => m.kind == Kind.Package || m.kind.isInstanceOf[Classlike])
       .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
     all.map(pageForMember(_)).asJava
-
-  override def pageForPackage(p: DPackage): PackagePageNode =
-    PackagePageNode(
-      p.name,
-      contentBuilder.mkMemberInfo(p),
-      JSet(p.dri),
-      p,
-      pagesForMembers(p),
-      JNil
-    )
 
   def pageForMember(c: Member): ClasslikePageNode = {
     val name =
@@ -66,38 +64,3 @@ class ScalaPageCreator(
       JNil,
     ).modified(name, pagesForMembers(c)) // We need override default page
   }
-
-  override def contentForModule(m: DModule) = {
-    def buildBlock = (builder: DocBuilder) => builder
-      .group(kind = ContentKind.Cover) { gbuilder => gbuilder
-        .cover(m.getName)()
-        .descriptionIfNotEmpty(m)
-      }
-      .addChildren(contentForComments(m).asScala.toSeq)
-      .groupingBlock(
-        "Packages",
-        List("" -> m.getPackages.asScala.toList.filter(_.allMembers.nonEmpty)),
-        kind = ContentKind.Packages,
-        sourceSets = m.getSourceSets.asScala.toSet
-      )(
-        (bdr, elem) => bdr
-      ) { (bdr, elem) => bdr
-        .driLink(elem.getName, elem.getDri)
-      }
-
-    contentBuilder.contentForDocumentable(m, buildBlock = buildBlock)
-  }
-  extension (b: DocBuilder)
-    def descriptionIfNotEmpty(d: Documentable): DocBuilder = {
-      val desc = this.contentForDescription(d).asScala.toSeq
-      val res = if desc.isEmpty then b else b
-        .sourceSetDependentHint(
-          Set(d.getDri),
-          d.getSourceSets.asScala.toSet,
-          kind = ContentKind.SourceSetDependentHint,
-          styles = Set(TextStyle.UnderCoverText)
-        ) { sourceSetBuilder => sourceSetBuilder
-            .addChildren(desc)
-        }
-      res
-    }

@@ -7,7 +7,7 @@ import org.jetbrains.dokka.model.DModule
 import org.jetbrains.dokka.transformers.sources.SourceToDocumentableTranslator
 
 import dotty.dokka.tasty.DokkaTastyInspector
-import org.jetbrains.dokka.pages._
+import org.jetbrains.dokka.pages.{Kind => _, _}
 import dotty.dokka.model.api._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.base.parsers.MarkdownParser
@@ -17,12 +17,25 @@ import kotlin.coroutines.Continuation
 class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
     val result = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
+    val (rootPck, rest) = result.partition(_.name == "<empty>")
 
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 
+    val topLevelPackage = new DPackage(
+      DRI(location = "<empty>"),
+      JNil,
+      JNil,
+      JNil,
+      JNil,
+      JMap(),
+      null,
+      JSet(ctx.sourceSet),
+      PropertyContainer.Companion.empty()
+    ).withNewMembers(rest ++ rootPck.flatMap(_.allMembers)).withKind(Kind.RootPackage).asInstanceOf[DPackage]
+
     new DModule(
       sourceSet.getDisplayName,
-      result.asJava,
+      JList(topLevelPackage),
       JMap(),
       null,
       sourceSet.toSet,

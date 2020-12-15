@@ -348,9 +348,16 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
   )
 
   def fullMember(m: Member): AppliedTag =
+    val intro = m.kind match
+      case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
+      case _ =>
+        Seq(
+          h1(m.name),
+          div(cls:= "header monospace")(annotations(m), memberSingnature(m))
+        )
+
     div(
-      h1(m.name),
-      div(cls:= "header monospace")(annotations(m), memberSingnature(m)),
+      intro,
       memberInfo(m),
       classLikeParts(m),
       buildDocumentableFilter, // TODO Need to make it work in JS :(

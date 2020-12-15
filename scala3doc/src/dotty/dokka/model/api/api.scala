@@ -54,6 +54,7 @@ trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
 enum Kind(val name: String){
+  case RootPackage extends Kind("")
   case Package extends Kind("package")
   case Class(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
     extends Kind("class") with Classlike
