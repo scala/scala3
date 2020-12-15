@@ -7,7 +7,9 @@ object Predef:
     if !assertion then scala.runtime.Scala3RunTime.assertFailed(message)
 
   inline def assert(inline assertion: Boolean): Unit =
-    if !assertion then scala.runtime.Scala3RunTime.assertFailed()
+    // FIXME: should call `Scala3RunTime.assertFailed()`
+    // BUG: If we do not add the argument, the position of the inlined call is wrong
+    if !assertion then scala.runtime.Scala3RunTime.assertFailed("")
 
   /**
    * Retrieve the single value of a type with a unique inhabitant.
