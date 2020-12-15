@@ -9,8 +9,10 @@ class DocumentableList extends Component {
     super(props);
 
     this.refs = {
-      tabs: findRefs(".section-tab[data-togglable]", findRef(".tabbedcontent")),
-      sections: findRefs("div[data-togglable]", findRef(".tabbedcontent")),
+      tabs: findRefs(".names .tab[data-togglable]", findRef(".membersList")).concat(
+        findRefs(".contents h2[data-togglable]", findRef(".membersList"))
+      ),
+      sections: findRefs(".contents .tab[data-togglable]", findRef(".membersList")),
     };
 
     this.state = {
@@ -24,14 +26,12 @@ class DocumentableList extends Component {
     ref.dataset.visibility = isVisible
   }
 
-  toggleDisplayStyles(condition, ref, onVisibleStyle) {
-    ref.style.display = condition ? onVisibleStyle : 'none'
+  toggleDisplayStyles(condition, ref) {
+    ref.style.display = condition ? null : 'none'
   }
 
   render({ filter }) {
     this.state.list.sectionsRefs.map(sectionRef => {
-      const tabRef = this.state.list.getTabRefFromSectionRef(sectionRef);
-
       const isTabVisible = this.state.list
         .getSectionListRefs(sectionRef)
         .filter((listRef) => {
@@ -41,23 +41,26 @@ class DocumentableList extends Component {
             .filter(elementData => {
               const isElementVisible = this.state.list.isElementVisible(elementData, filter);
 
-              this.toggleDisplayStyles(isElementVisible, elementData.ref, "table");
+              this.toggleDisplayStyles(isElementVisible, elementData.ref);
               this.toggleElementDatasetVisibility(isElementVisible, elementData.ref);
 
               return isElementVisible;
             }).length;
 
-          this.toggleDisplayStyles(isListVisible, listRef, "block");
+          this.toggleDisplayStyles(isListVisible, listRef);
 
           return isListVisible;
         }).length;
 
-      this.toggleDisplayStyles(isTabVisible, tabRef, "inline-block");
+        const outerThis = this
+        this.state.list.getTabRefFromSectionRef(sectionRef).forEach(function(tabRef){
+          outerThis.toggleDisplayStyles(isTabVisible, tabRef);
+        })
     });
   }
 }
 
-class List { 
+class List {
   /**
    * @param tabsRef { Element[] }
    * @param sectionRefs { Element[] }
@@ -78,7 +81,7 @@ class List {
   /**
   * @param name { string }
   */
-  filterTab(name) { 
+  filterTab(name) {
     return name !== "Linear supertypes" && name !== "Known subtypes" && name !== "Type hierarchy"
   }
 
@@ -86,7 +89,7 @@ class List {
    * @param sectionRef { Element }
    */
   getTabRefFromSectionRef(sectionRef) {
-    return this.tabsRefs.find(
+    return this.tabsRefs.filter(
       (tabRef) => this._getTogglable(tabRef) === this._getTogglable(sectionRef)
     );
   }
@@ -124,8 +127,8 @@ class List {
   * @param filter { Filter }
   */
   isElementVisible(elementData, filter) {
-    return !areFiltersFromElementSelected() 
-      ? false 
+    return !areFiltersFromElementSelected()
+      ? false
       : includesInputValue()
 
     function includesInputValue() {
@@ -141,7 +144,7 @@ class List {
         .filter(([key]) => !!filter.filters[getFilterKey(key)])
 
        /** @type { Dataset } */
-      const defaultFiltersForMembersWithoutDataAttribute = 
+      const defaultFiltersForMembersWithoutDataAttribute =
         defaultFilters.reduce((acc, [key, value]) => {
           const filterKey = getFilterKey(key)
           const shouldAddDefaultFilter = !dataset.some(([k]) => k === filterKey)
@@ -156,7 +159,7 @@ class List {
           return defaultFilter ? [k, `${v},${defaultFilter[1]}`] : [k, v]
         })
 
-      const datasetWithDefaultFilters = [ 
+      const datasetWithDefaultFilters = [
         ...defaultFiltersForMembersWithoutDataAttribute,
         ...datasetWithAppendedDefaultFilters
       ]

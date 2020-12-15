@@ -1,6 +1,6 @@
 package dotty.dokka.translators
 
-import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder, PageContentBuilder$DocumentableContentBuilder}
+import org.jetbrains.dokka.base.translators.documentables.DefaultPageCreator
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
@@ -23,7 +23,7 @@ object FilterAttributes:
     val base = visibity(m) ++ visibity(m) ++ origin(m) ++ keywords(m) ++ inheritedFrom(m)
     base.filter(_._2.nonEmpty)
 
-  private def keywords(m: Member): Map[String, String] = 
+  private def keywords(m: Member): Map[String, String] =
     Map("keywords" -> m.modifiers.map(_.name).mkString(","))
 
 

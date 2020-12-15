@@ -1,7 +1,6 @@
 package dotty.dokka
 
 import org.jetbrains.dokka.base.signatures._
-import org.jetbrains.dokka.base.translators.documentables.PageContentBuilder
 import org.jetbrains.dokka.model.{ TypeParameter => _, _ }
 import org.jetbrains.dokka.model.properties.WithExtraProperties
 import org.jetbrains.dokka.pages._

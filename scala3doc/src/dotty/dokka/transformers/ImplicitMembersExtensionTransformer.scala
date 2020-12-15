@@ -62,4 +62,4 @@ class ImplicitMembersExtensionTransformer(using DocContext) extends Documentable
       val expandedMembers = c.allMembers.map(expandMember(newImplicitMembers ++ Seq(c)))
       c.withMembers(newImplicitMembers ++ expandedMembers)
 
-    original.updatePackages(_.map(expandMember(Nil)(_).asInstanceOf[DPackage]))
+    original.updatePackages(_.map(expandMember(Nil)(_)))

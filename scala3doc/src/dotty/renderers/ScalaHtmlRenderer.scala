@@ -103,13 +103,8 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
     node match {
       case n: HtmlContentNode =>
         withHtml(f, raw(n.body).toString)
-      case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
-      case n: DocumentableList =>
-        val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
-        withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
-      case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
       case mi: MemberInfo =>
-        val memberHtml = div(renderers(pageContext)._2.memberInfo(mi.member))
+        val memberHtml = div(renderers(pageContext)._2.fullMember(mi.member))
         withHtml(f, memberHtml.toString)
       case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
     }
@@ -141,69 +136,6 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
           )
 
     renderNested(rootNav)._2
-
-  private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) =
-    def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null))
-
-    val (renderer, memberRenderer) = renderers(pageContext)
-    import renderer._
-
-    def buildDocumentable(element: DocumentableElement) =
-      def topLevelAttr = Seq(cls := "documentableElement")
-        ++ element.params.dri.anchor.map(id := _)
-        ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
-      val kind = element.modifiers.takeRight(1)
-      val otherModifiers = element.modifiers.dropRight(1)
-
-      val nameStyles = element.nameWithStyles.styles.map(_.toString.toLowerCase).mkString(" ")
-      val nameClasses = cls := s"documentableName monospace ${nameStyles.mkString(" ")}"
-
-      div(topLevelAttr:_*)(
-        a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor"),
-        div(span(cls := "annotations monospace")(element.annotations.map(renderElement))),
-        div(cls := "header")(
-          span(cls := "modifiers monospace")(
-            span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
-            span(cls := "kind")(kind.map(renderElement)),
-          ),
-          renderLink(element.nameWithStyles.name, element.params.dri, nameClasses),
-          span(cls := "signature monospace")(element.signature.map(renderElement)),
-        ),
-        div(cls := "docs")(
-          span(cls := "modifiers monospace"),
-          div(
-            div(cls := "originInfo")(element.originInfo.map(renderElement)),
-            div(cls := "documentableBrief")(memberRenderer.memberInfo(element.member)),
-          )
-        )
-      )
-
-    div(cls := "documentableList", testId := "definitionList")(
-      if(n.groupName.isEmpty) raw("") else h3(cls := "documentableHeader")(n.groupName.map(renderElement)),
-      n.elements.flatMap {
-        case element: DocumentableElement =>
-          Seq(buildDocumentable(element))
-        case group: DocumentableElementGroup =>
-          h4(cls := "documentable-extension-target")(
-            group.header.map(renderElement)
-          ) +: group.elements.map(buildDocumentable)
-    }
-    )
-
-  private def buildDocumentableFilter = div(cls := "documentableFilter")(
-    div(cls := "filterUpperContainer")(
-      button(cls := "filterToggleButton", testId := "filterToggleButton")(
-        raw("""
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-          </svg>
-        """)
-      ),
-      input(cls := "filterableInput", placeholder := "Filter all members", testId := "filterBarInput")
-    ),
-    div(cls := "filterLowerContainer")()
-  )
 
   def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
     val children = node.getChildren.asScala.toList.zipWithIndex
@@ -270,14 +202,6 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
       U
     })
   }
-
-  def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) =
-    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-    withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class")(
-        svg(id := "graph"),
-        script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
-      ).toString()
-    )
 
   private val HashRegex = "([^#]+)(#.+)".r
 

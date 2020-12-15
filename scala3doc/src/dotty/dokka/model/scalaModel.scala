@@ -52,21 +52,6 @@ object ScalaTagWrapper {
 
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
 
-case class HierarchyGraphContentNode(
-  val diagram: HierarchyGraph,
-  val dci: DCI,
-  val sourceSets: Set[DisplaySourceSet],
-  val style: Set[Style],
-  val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
-) extends ContentNode:
-  override def getDci = dci
-  override def getSourceSets = sourceSets.asJava
-  override def getStyle = style.asJava
-  override def hasAnyContent = !diagram.edges.isEmpty
-  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
-  override def getChildren: JList[ContentNode] = JList()
-  override def getExtra = extra
-  override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
 case class ContentNodeParams(
   val dci: DCI,

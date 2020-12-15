@@ -99,7 +99,9 @@ extension (member: Member)
     val newExt = oldExt.copy(graph = oldExt.graph ++ edges)
     putInMember(newExt)
 
-  def updateRecusivly(op: Member => Member) = op(member).withMembers(member.allMembers.map(op))
+  def updateRecusivly(op: Member => Member): Member =
+    val newMembers = member.allMembers.map(_.updateRecusivly(op))
+    op(member).withMembers(newMembers)
 
 extension (bound: Bound)
   def asSignature: Signature = bound match
@@ -111,14 +113,18 @@ extension (bound: Bound)
       }
 
 extension (m: DModule)
-  def updatePackages(op: Seq[DPackage] => Seq[DPackage]): DModule =
-    m.copy(
-            m.getName,
-            op(m.getPackages.asScala.toSeq).asJava,
-            m.getDocumentation,
-            m.getExpectPresentInSet,
-            m.getSourceSets,
-            m.getExtra
-        )
+  def updatePackages(op: Seq[Member] => Seq[Member]): DModule =
+    val topLevelPck = m.getPackages.get(0)
+    val newRoot = topLevelPck.withMembers(op(topLevelPck.allMembers))
 
-  def updateMembers(op: Member => Member): DModule = updatePackages(_.map(p => p.updateRecusivly(op).asInstanceOf[DPackage]))
+    m.copy(
+        m.getName,
+        JList(newRoot.asInstanceOf[DPackage]),
+        m.getDocumentation,
+        m.getExpectPresentInSet,
+        m.getSourceSets,
+        m.getExtra
+    )
+
+  def updateMembers(op: Member => Member): DModule =
+     updatePackages(_.map(p => p.updateRecusivly(op)))

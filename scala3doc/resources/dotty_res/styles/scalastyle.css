@@ -461,7 +461,7 @@ footer .pull-right {
 }
 
 
-.modifiers {
+.documentableElement .modifiers {
   display: table-cell;
   padding-right: 0.5em;
   min-width: 10em;
@@ -472,23 +472,27 @@ footer .pull-right {
   text-indent: 0em;
 }
 
-.modifiers .other-modifiers {
+.documentableElement .modifiers .other-modifiers {
   color: gray;
+}
+
+.kind {
+  margin-left: 0.5em;
 }
 
 .other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
   color: var(--link-sig-fd);
 }
 
-.expand .modifiers {
+.documentableElement.expand .modifiers {
   display: inline-table;
   min-width: 7em;
 }
 
-.signature {
+.documentableElement .signature {
   color: gray;
   display: table-cell;
-  padding-left: 0.5em;
+  white-space: pre-wrap;
 }
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
@@ -551,12 +555,12 @@ footer .pull-right {
 .expand.documentableElement {
   border-left: 0.25em solid var(--leftbar-bg);
 }
-.annotations {
+.documentableElement .annotations {
   color: gray;
   display: none;
 }
 
-.expand .annotations {
+.documentableElement.expand .annotations {
   display: inline-block;
 }
 
@@ -573,6 +577,39 @@ footer .pull-right {
 
 .documentableBrief>p{
   margin: .5em 0 0 0;
+}
+
+.tabs .names .tab {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 6px 4px 6px;
+  margin: 1rem 1rem 0 0;
+  border-bottom: 1px solid grey;
+  cursor: pointer;
+}
+
+.tabs .names .tab.selected {
+  color: unset;
+  font-weight: bold;
+  border-bottom: 2px solid var(--active-tab-color);
+}
+
+.tabs .names {
+  margin-bottom: 20px;
+}
+
+.tabs .contents .tab{
+  display: none;
+}
+
+.tabs .contents .tab.selected {
+  display: block;
+}
+
+.diagram-class {
+  width: 100%;
+  max-height: 400px;
 }
 
 /* Large Screens */

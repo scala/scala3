@@ -48,7 +48,7 @@ class SourceLinkTest:
       val res = SourceLink.parse(template, None)
       assertTrue(s"Expected failure containing missing revision: $res", res.left.exists(_.contains("revision")))
 
-      Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop").foreach { template =>
+      Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop/on/master").foreach { template =>
         val res = SourceLink.parse(template, Some("develop"))
         assertTrue(s"Expected failure syntax info: $res", res.left.exists(_.contains("syntax")))
       }
@@ -89,6 +89,34 @@ class SourceLinksTest:
       ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L54",
     )
 
+    testLink(Seq("github://lampepfl/dotty/dev"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty/dev#src/lib"), None)(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty/dev#src/lib"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty#src/lib"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/develop/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/src/lib/project/Build.scala#L54",
+    )
+
     testLink(Seq("gitlab://lampepfl/dotty"), Some("develop"))(
       "project/Build.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala",
       ("project/Build.scala", 54) -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala#L54",
@@ -113,9 +141,9 @@ class SourceLinksTest:
   @Test
   def testBasicPrefixedPaths =
     testLink(Seq("src=gitlab://lampepfl/dotty"), Some("develop"))(
-      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/src/lib/core.scala",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
+      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/lib/core.scala",
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
       "build.sbt" -> None
     )
 
@@ -128,7 +156,7 @@ class SourceLinksTest:
       "github://lampepfl/dotty"
       ), Some("develop"))(
       ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L54",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
-      ("src/generated.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/generated.scala#L33",
-      ("src/generated/template.scala", 1, edit) -> "/edit/src/generated/template.scala#1"
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
+      ("src/generated.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/generated.scala#L33",
+      ("src/generated/template.scala", 1, edit) -> "/edit/template.scala#1"
     )

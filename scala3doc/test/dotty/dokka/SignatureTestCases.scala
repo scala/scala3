@@ -67,19 +67,19 @@ class ImplicitConversionsTest1 extends SignatureTest(
   "implicitConversions2",
   SignatureTest.all,
   sourceFiles = List("implicitConversions2"),
-  filterFunc = (member) => member.name == "ClassWithConversionWithOneParam"
+  filterFunc = _.toString.endsWith("ClassWithConversionWithOneParam.html")
 )
 
 class ImplicitConversionsTest2 extends SignatureTest(
   "implicitConversions2",
   SignatureTest.all,
   sourceFiles = List("implicitConversions2"),
-  filterFunc = (member) => member.name == "ClassWithConversionFromVal"
+  filterFunc = _.toString.endsWith("ClassWithConversionFromVal.html")
 )
 
 class ImplicitConversionsTest3 extends SignatureTest(
   "implicitConversions2",
   SignatureTest.all,
   sourceFiles = List("implicitConversions2"),
-  filterFunc = (member) => member.name == "ClassWithConversionWithProperType"
+  filterFunc = _.toString.endsWith("ClassWithConversionWithProperType.html")
 )

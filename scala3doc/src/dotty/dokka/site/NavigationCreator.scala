@@ -1,10 +1,11 @@
 package dotty.dokka
 package site
 
-import org.jetbrains.dokka.model.DPackage
+import org.jetbrains.dokka.base.renderers.html.NavigationPage
 import org.jetbrains.dokka.model.DModule
-import org.jetbrains.dokka.pages._
+import org.jetbrains.dokka.pages.{Kind => _, _}
 import org.jetbrains.dokka.transformers.pages.PageTransformer
+import dotty.dokka.model.api._
 
 import scala.collection.JavaConverters._
 
@@ -17,11 +18,9 @@ class NavigationCreator(using ctx: DocContext) extends PageTransformer:
         case cp: ContentPage => cp.getDocumentable match
           case null =>
             processChildren
-          // Left over package from dokka
-          case p: DPackage if p.getName == "<empty>" && p.getChildren.isEmpty =>
-            Nil
-          case p: DPackage =>
-            List(new NavigationNode(p.getName, p.getDri, Nil)) ++ processChildren
+          case m: Member if m.kind == Kind.Package =>
+            val ss = m.getSourceSets.asScala.toSet.toDisplay
+            List(new NavigationNode(m.name, m.dri, Nil)) ++ processChildren
           case _: DModule =>
             processChildren
           case _ =>

@@ -445,10 +445,12 @@ trait ClassLikeSupport:
   def mkMember[T <: Kind](
     symbol: Symbol,
     member: MemberExtension,
-    compositeExt: CompositeMemberExtension = CompositeMemberExtension.empty): Member =
+    compositeExt: CompositeMemberExtension = CompositeMemberExtension.empty,
+    nameOverride: Symbol => String = _.normalizedName
+    ): Member =
       new DClass(
         symbol.dri,
-        symbol.normalizedName,
+        nameOverride(symbol),
         JNil,
         JNil,
         JNil,

@@ -54,6 +54,8 @@ trait ImplicitConversionProvider { def conversion: Option[ImplicitConversion] }
 trait Classlike
 
 enum Kind(val name: String){
+  case RootPackage extends Kind("")
+  case Package extends Kind("package")
   case Class(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
     extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
@@ -69,9 +71,9 @@ enum Kind(val name: String){
   case Val extends Kind("val")
   case Exported(m: Kind.Def) extends Kind("export")
   case Type(concreate: Boolean, opaque: Boolean, typeParams: Seq[TypeParameter])
-    extends Kind("Type") // should we handle opaque as modifier?
+    extends Kind("type") // should we handle opaque as modifier?
   case Given(kind: Def | Class, as: Option[Signature], conversion: Option[ImplicitConversion])
-    extends Kind("Given") with ImplicitConversionProvider
+    extends Kind("given") with ImplicitConversionProvider
   case Implicit(kind: Kind.Def | Kind.Val.type, conversion: Option[ImplicitConversion])
     extends Kind(kind.name)  with ImplicitConversionProvider
   case Unknown extends Kind("Unknown")
