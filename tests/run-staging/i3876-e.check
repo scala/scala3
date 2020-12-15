@@ -1,9 +1,6 @@
 
 6
-{
-  val x: 3 = {
-    scala.Predef.println()
-    3
-  }
-  6
-}
+Test.inlineLambda.apply({
+  scala.Predef.println()
+  3
+})
