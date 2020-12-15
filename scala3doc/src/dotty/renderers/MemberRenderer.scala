@@ -32,11 +32,16 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
       def renderDef(d: Overriden): Seq[TagArg] =
-        Seq(signatureRenderer.renderLink(d.name, d.dri), " -> ")
-
-      val nodes: Seq[TagArg] = defs.flatMap(renderDef).dropRight(1) // drop trailing arrow
+        Seq(" -> ", signatureRenderer.renderLink(d.name, d.dri))
+      val headNode = m.inheritedFrom.map(signatureRenderer.renderLink(_, _))
+      val tailNodes = defs.flatMap(renderDef)
+      val nodes = headNode.fold(tailNodes.drop(1))(_ +: tailNodes)
       tableRow("Definition Classes", div(nodes:_*))
 
+    case _ => Nil
+
+  def inheritedFrom(m: Member) = m.inheritedFrom match
+    case Some(InheritedFrom(name, dri)) => tableRow("Inhertied from", signatureRenderer.renderLink(name, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -113,6 +118,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
           companion(m),
           deprecation(m),
           defintionClasses(m),
+          inheritedFrom(m),
           source(m),
         )
       )

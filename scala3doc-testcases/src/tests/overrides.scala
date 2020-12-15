@@ -1,11 +1,13 @@
 package tests
 package overrides
 
-class A:
+trait  A:
   def defInt: Int = 1
 
-class B extends A:
+trait B extends A:
   override def defInt: Int = 2
 
-class C extends B:
-  override def defInt: Int = 3
+trait C extends B
+
+class D extends C:
+  override def defInt: Int = 4
