@@ -62,13 +62,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .overrideExtension(dokkaBase.getModulesAndPackagesDocumentation)
   )
 
-  val ourSignatureProvider = extend(
-    _.extensionPoint(dokkaBase.getSignatureProvider)
-      .fromRecipe{ case ctx @ given DokkaContext =>
-        new ScalaSignatureProvider(ctx.single(dokkaBase.getCommentsToContentConverter))
-      }.overrideExtension(dokkaBase.getKotlinSignatureProvider)
-  )
-
   val scalaResourceInstaller = extend(
     _.extensionPoint(dokkaBase.getHtmlPreprocessors)
       .fromRecipe{ case ctx @ given DokkaContext => new ScalaResourceInstaller }

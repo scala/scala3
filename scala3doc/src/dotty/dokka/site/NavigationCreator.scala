@@ -1,7 +1,7 @@
 package dotty.dokka
 package site
 
-import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
+import org.jetbrains.dokka.base.renderers.html.NavigationPage
 import org.jetbrains.dokka.model.DModule
 import org.jetbrains.dokka.pages.{Kind => _, _}
 import org.jetbrains.dokka.transformers.pages.PageTransformer

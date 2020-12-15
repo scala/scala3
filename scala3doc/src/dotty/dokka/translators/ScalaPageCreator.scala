@@ -3,8 +3,7 @@ package dotty.dokka
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.util.chaining._
-import org.jetbrains.dokka.base.translators.documentables.{DefaultPageCreator, PageContentBuilder}
-import org.jetbrains.dokka.base.translators.documentables.PageContentBuilder$DocumentableContentBuilder
+import org.jetbrains.dokka.base.translators.documentables.DefaultPageCreator
 import org.jetbrains.dokka.base.signatures.SignatureProvider
 import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
 import org.jetbrains.dokka.transformers.documentation.DocumentableToPageTranslator
@@ -21,22 +20,24 @@ import dotty.dokka.model.api._
 import dotty.dokka.model.api.Kind
 import dotty.dokka.model.api.Link
 
-type DocBuilder = ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-
 class ScalaPageCreator(
   commentsToContentConverter: CommentsToContentConverter,
   signatureProvider: SignatureProvider,
 )(using ctx: DocContext)
   extends DefaultPageCreator(commentsToContentConverter, signatureProvider, ctx.logger):
 
-  private val contentBuilder =
-    ScalaPageContentBuilder(commentsToContentConverter, signatureProvider)
+  def mkMemberInfo(m: Member) = MemberInfo(m, ContentNodeParams(
+      new DCI(JSet(m.dri), ContentKind.Main),
+      m.getSourceSets.asScala.toSet.toDisplay,
+      Set(),
+      PropertyContainer.Companion.empty()
+  ))
 
   override def pageForModule(m: DModule): ModulePageNode =
     val rootPackage = m.getPackages.get(0)
     new ModulePageNode(
       m.getName,
-      contentBuilder.mkMemberInfo(rootPackage),
+      mkMemberInfo(rootPackage),
       m,
       pagesForMembers(rootPackage),
       JNil
@@ -57,7 +58,7 @@ class ScalaPageCreator(
     // Hack, need our own page!
     ClasslikePageNode(
       name,
-      contentBuilder.mkMemberInfo(c),
+      mkMemberInfo(c),
       JSet(c.getDri),
       c.asInstanceOf[DClass],
       JNil,

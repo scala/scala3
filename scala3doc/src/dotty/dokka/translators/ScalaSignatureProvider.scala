@@ -14,40 +14,6 @@ import java.util.function.Consumer
 import kotlin.jvm.functions.Function2
 import dotty.dokka.model.api.{Kind, _}
 
-
-class ScalaSignatureProvider(contentConverter: CommentsToContentConverter)(using ctx: DocContext)
-  extends SignatureProvider with ScalaSignatureUtils:
-  private val styles = Set(TextStyle.Monospace).asInstanceOf[Set[Style]]
-  private val contentBuilder = new ScalaPageContentBuilder(contentConverter, this)
-
-  private def signatureContent(d: Documentable)(
-    func: ScalaPageContentBuilder#ScalaDocumentableContentBuilder => ScalaPageContentBuilder#ScalaDocumentableContentBuilder
-  ) =
-    val styles = stylesIfDeprecated(d)
-    contentBuilder.contentForDocumentable(d, kind = ContentKind.Symbol, styles = styles, buildBlock = func)
-
-
-  case class ContentNodeBuilder(builder: ScalaPageContentBuilder#ScalaDocumentableContentBuilder) extends SignatureBuilder{
-    def text(str: String): SignatureBuilder = ContentNodeBuilder(builder.text(str))
-    def driLink(text: String, dri: DRI): SignatureBuilder = ContentNodeBuilder(builder.driLink(text, dri))
-  }
-
-  def signature(d: Member, s: Signature) = signatureContent(d){ builder =>
-    val res = ContentNodeBuilder(builder).signature(s)
-    res.asInstanceOf[ContentNodeBuilder].builder
-  }
-
-  override def signature(documentable: Member) =
-    JList(signatureContent(documentable){ builder =>
-      val withAnnotations = ContentNodeBuilder(builder).annotationsBlock(documentable)
-      val res = ScalaSignatureProvider.rawSignature(documentable, withAnnotations)
-      res.asInstanceOf[ContentNodeBuilder].builder
-    })
-
-  private def stylesIfDeprecated(m: Member): Set[Style] =
-    if m.deprecated.isDefined then styles ++ Set(TextStyle.Strikethrough) else styles
-
-
 object ScalaSignatureProvider:
   def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =
     documentable.kind match
