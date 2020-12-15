@@ -250,9 +250,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
+    def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(ConstructorProxy) then
+        report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          checkNoConstructorProxy(tree)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
@@ -263,6 +268,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             withMode(Mode.Type)(super.transform(tree))
           }
           else
+            checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
           val methType = tree.fun.tpe.widen
