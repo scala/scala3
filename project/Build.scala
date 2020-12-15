@@ -1527,7 +1527,13 @@ object Build {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val sourcesAndRevision = s"-source-links github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
+          val managedSources =
+            (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+          val projectRoot = (ThisBuild/baseDirectory).value.toPath
+          val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
+          val scalaSourceLink =
+            s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
+          val sourcesAndRevision = s"-source-links $scalaSourceLink,github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
           run.in(Compile).toTask(cmd)
       }
