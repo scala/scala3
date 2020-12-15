@@ -844,24 +844,6 @@ trait Applications extends Compatibility {
     if (ctx.owner.isClassConstructor && untpd.isSelfConstrCall(app)) ctx.thisCallArgContext
     else ctx
 
-  /** Typecheck the function part of an application.
-   *  Fallback if this fails: try to convert `E` to `new E`.
-   */
-  def typedFunPart(fn: untpd.Tree, pt: Type)(using Context): Tree =
-    if Config.addConstructorProxies then typedExpr(fn, pt)
-    else
-      tryEither {
-        typedExpr(fn, pt)
-      } { (result, tstate) =>
-        def fallBack(nuState: TyperState) =
-          if (nuState ne ctx.typerState) && !saysNotFound(nuState, EmptyTypeName)
-          then nuState.commit() // nuState messages are more interesting that tstate's "not found"
-          else tstate.commit()  // it's "not found" both ways; keep original message
-          result
-        if untpd.isPath(fn) then tryNew(untpd)(fn, pt, fallBack)
-        else fallBack(ctx.typerState)
-      }
-
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
    *  Block node.
@@ -872,7 +854,7 @@ trait Applications extends Compatibility {
       val originalProto =
         new FunProto(tree.args, IgnoredProto(pt))(this, tree.applyKind)(using argCtx(tree))
       record("typedApply")
-      val fun1 = typedFunPart(tree.fun, originalProto)
+      val fun1 = typedExpr(tree.fun, originalProto)
 
       // Warning: The following lines are dirty and fragile.
       // We record that auto-tupling or untupling was demanded as a side effect in adapt.
@@ -1077,7 +1059,7 @@ trait Applications extends Compatibility {
     val isNamed = hasNamedArg(tree.args)
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
-    typedFunPart(tree.fun, PolyProto(typedArgs, pt)) match {
+    typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
       case IntegratedTypeArgs(app) =>
         app
       case _: TypeApply if !ctx.isAfterTyper =>

@@ -71,8 +71,7 @@ object NamerOps:
 
   /** Does symbol `cls` need constructor proxies to be generated? */
   def needsConstructorProxies(cls: Symbol)(using Context): Boolean =
-    Config.addConstructorProxies
-    && cls.isClass
+    cls.isClass
     && !cls.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
     && !cls.isAnonymousClass
 
@@ -89,9 +88,8 @@ object NamerOps:
       newSymbol(
         modcls, nme.apply, ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
         ApplyProxyCompleter(constr), coord = constr.coord)
-    if Config.addConstructorProxies then
-      for dcl <- cls.info.decls do
-        if dcl.isConstructor then scope.enter(proxy(dcl))
+    for dcl <- cls.info.decls do
+      if dcl.isConstructor then scope.enter(proxy(dcl))
     scope
   end addConstructorApplies
 

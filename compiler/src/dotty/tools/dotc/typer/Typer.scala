@@ -2800,55 +2800,6 @@ class Typer extends Namer
     case _                  => false
   }
 
-  /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
-   *  The operation is called from either `adapt` or `typedApply`. `adapt` gets to call `tryNew`
-   *  for calls `p.C(..)` if there is a value `p.C`. `typedApply` calls `tryNew` as a fallback
-   *  in case typing `p.C` fails since there is no value with path `p.C`. The call from `adapt`
-   *  is more efficient since it re-uses the prefix `p` in typed form.
-   */
-  def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(using Context): Tree = {
-
-    def tryWithType(tpt: untpd.Tree): Tree =
-      tryEither {
-        val tycon = typed(tpt)
-        if (summon[Context].reporter.hasErrors)
-          EmptyTree // signal that we should return the error in fallBack
-        else {
-          def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
-            case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
-              // Applications with named arguments cannot be converted, since new expressions
-              // don't accept named arguments
-              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
-            case _ =>
-              typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
-          }
-          recur(tycon, pt)
-            .showing(i"try new $tree -> $result", typr)
-        }
-      } { (nu, nuState) =>
-        if (nu.isEmpty) fallBack(nuState)
-        else {
-          // we found a type constructor, signal the error in its application instead of the original one
-          nuState.commit()
-          nu
-        }
-      }
-
-    tree match {
-      case Ident(name) =>
-        tryWithType(cpy.Ident(tree)(name.toTypeName))
-      case Select(qual, name) =>
-        val qual1 = treesInst match {
-          case `tpd` => untpd.TypedSplice(qual)
-          case `untpd` => qual
-        }
-        tryWithType(cpy.Select(tree)(qual1, name.toTypeName))
-      case _ =>
-        fallBack(ctx.typerState)
-    }
-  }
-
   /** Potentially add apply node or implicit conversions. Before trying either,
    *  if the function is applied to an empty parameter list (), we try
    *
@@ -2885,10 +2836,7 @@ class Typer extends Namer
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
-        .getOrElse(
-          if Config.addConstructorProxies then fallBack
-          else tryNew(tpd)(tree, pt, _ => fallBack))
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver
@@ -3660,10 +3608,8 @@ class Typer extends Namer
               adaptOverloaded(ref)
           }
         case poly: PolyType if !(ctx.mode is Mode.Type) =>
-          if tree.symbol.isAllOf(ApplyProxyFlags) && Config.addConstructorProxies then
-            newExpr
-          else if pt.isInstanceOf[PolyProto] then
-            tree
+          if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
+          else if pt.isInstanceOf[PolyProto] then tree
           else
             var typeArgs = tree match
               case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
@@ -3676,7 +3622,7 @@ class Typer extends Namer
             readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
-              if tree.symbol.isAllOf(ApplyProxyFlags) && Config.addConstructorProxies then newExpr
+              if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
               else adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {

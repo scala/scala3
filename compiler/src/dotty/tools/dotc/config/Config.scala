@@ -8,11 +8,6 @@ object Config {
   inline val cacheImplicitScopes = true
   inline val cacheMatchReduced = true
 
-  /** If true, we implement creator expressions by adding constructor proxies.
-   *  If false, we rely on fallbacks in Typer to try a constructor if everything else failed.
-   */
-  inline val addConstructorProxies = true
-
   /** If true, the `runWithOwner` operation uses a re-usable context,
    *  similar to explore. This requires that the context does not escape
    *  the call. If false, `runWithOwner` runs its operation argument
