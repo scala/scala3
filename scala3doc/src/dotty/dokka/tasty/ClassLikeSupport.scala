@@ -465,7 +465,7 @@ trait ClassLikeSupport:
         placeholderModifier,
         ctx.sourceSet.toSet,
         /*isExpectActual =*/ false,
-        PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation2)).plus(compositeExt)
+        PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation)).plus(compositeExt)
     )
 
   private def isUsingModifier(parameters: Seq[ValDef]): Boolean =

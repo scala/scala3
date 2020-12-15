@@ -29,13 +29,7 @@ trait BasicSupport:
     Annotation(dri, params)
 
   extension (sym: Symbol)
-    def documentation = sym.docstring match
-      case Some(docstring) =>
-          Map(ctx.sourceSet -> parseComment(docstring, sym.tree))
-      case None =>
-          Map.empty
-
-    def documentation2 = sym.docstring.map(preparseComment(_, sym.tree))
+    def documentation = sym.docstring.map(parseComment(_, sym.tree))
 
     def source(using Quotes) =
       val path = sym.pos.filter(isValidPos(_)).map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
