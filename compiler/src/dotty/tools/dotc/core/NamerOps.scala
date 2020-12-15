@@ -1,9 +1,12 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
-import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, NameOps._
+import Contexts._, Symbols._, Types._, Flags._, Scopes._, Decorators._, Names._, NameOps._
 import Denotations._
-import SymDenotations.LazyType, Names.Name, StdNames.nme
+import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
+import config.Config
+import ast.untpd
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -56,5 +59,100 @@ object NamerOps:
     if (it.hasNext) it.next()
     else NoSymbol.assertingErrorsReported(s"no companion $name in $scope")
   }
+
+  /** If a class has one of these flags, it does not get a constructor companion */
+  private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module
+
+  /** The flags of a constructor companion */
+  private val ConstructorCompanionFlags = Synthetic | ConstructorProxy
+
+  /** The flags of an `apply` method that serves as a constructor proxy */
+  val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
+
+  /** Does symbol `cls` need constructor proxies to be generated? */
+  def needsConstructorProxies(cls: Symbol)(using Context): Boolean =
+    Config.addConstructorProxies
+    && cls.isClass
+    && !cls.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
+    && !cls.isAnonymousClass
+
+  /** The completer of a constructor proxy apply method */
+  class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
+    def complete(denot: SymDenotation)(using Context): Unit =
+      denot.info = constr.info
+
+  /** Add constructor proxy apply methods to `scope`. Proxies are for constructors
+   *  in `cls` and they reside in `modcls`.
+   */
+  def addConstructorApplies(scope: MutableScope, cls: ClassSymbol, modcls: ClassSymbol)(using Context): scope.type =
+    def proxy(constr: Symbol): Symbol =
+      newSymbol(
+        modcls, nme.apply, ApplyProxyFlags | (constr.flagsUNSAFE & AccessFlags),
+        ApplyProxyCompleter(constr), coord = constr.coord)
+    if Config.addConstructorProxies then
+      for dcl <- cls.info.decls do
+        if dcl.isConstructor then scope.enter(proxy(dcl))
+    scope
+  end addConstructorApplies
+
+  /** The completer of a constructor companion for class `cls`, where
+   *  `modul` is the companion symbol and `modcls` is its class.
+   */
+  def constructorCompanionCompleter(cls: ClassSymbol)(
+      modul: TermSymbol, modcls: ClassSymbol)(using Context): LazyType =
+    new LazyType with SymbolLoaders.SecondCompleter {
+      def complete(denot: SymDenotation)(using Context): Unit =
+        val prefix = modcls.owner.thisType
+        denot.info = ClassInfo(
+          prefix, modcls, defn.AnyType :: Nil,
+          addConstructorApplies(newScope, cls, modcls), TermRef(prefix, modul))
+    }.withSourceModule(modul)
+
+  /** A new symbol that is the constructor companion for class `cls` */
+  def constructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+    val companion = newModuleSymbol(
+        cls.owner, cls.name.toTermName,
+        ConstructorCompanionFlags, ConstructorCompanionFlags,
+        constructorCompanionCompleter(cls),
+        coord = cls.coord,
+        assocFile = cls.assocFile)
+    companion.moduleClass.registerCompanion(cls)
+    cls.registerCompanion(companion.moduleClass)
+    companion
+
+  /** Add all necesssary constructor proxy symbols for members of class `cls`. This means:
+   *
+   *   - if a member is a class that needs a constructor companion, add one,
+   *     provided no member with the same name exists.
+   *   - if `cls` is a companion object of a class that needs a constructor companion,
+   *     and `cls` does not already define or inherit an `apply` method,
+   *     add `apply` methods for all constructors of the companion class.
+   */
+  def addConstructorProxies(cls: ClassSymbol)(using Context): Unit =
+
+    def memberExists(cls: ClassSymbol, name: TermName): Boolean =
+      cls.baseClasses.exists(_.info.decls.lookupEntry(name) != null)
+    for mbr <- cls.info.decls do
+      if needsConstructorProxies(mbr)
+         && !mbr.asClass.unforcedRegisteredCompanion.exists
+         && !memberExists(cls, mbr.name.toTermName)
+      then
+        constructorCompanion(mbr.asClass).entered
+
+    if cls.is(Module)
+       && needsConstructorProxies(cls.linkedClass)
+       && !memberExists(cls, nme.apply)
+    then
+      addConstructorApplies(cls.info.decls.openForMutations, cls.linkedClass.asClass, cls)
+  end addConstructorProxies
+
+  /** Turn `modul` into a constructor companion for class `cls` */
+  def makeConstructorCompanion(modul: TermSymbol, cls: ClassSymbol)(using Context): Unit =
+    val modcls = modul.moduleClass.asClass
+    modul.setFlag(ConstructorCompanionFlags)
+    modcls.setFlag(ConstructorCompanionFlags)
+    modcls.info = constructorCompanionCompleter(cls)(modul, modcls)
+    cls.registeredCompanion = modcls
+    modcls.registeredCompanion = cls
 
 end NamerOps

@@ -300,14 +300,19 @@ class Definitions {
     cls.info = ClassInfo(cls.owner.thisType, cls, List(AnyType, MatchableType), newScope)
     cls.setFlag(NoInits | JavaDefined)
 
-    // The companion object doesn't really exist, so it needs to be marked as
-    // absent. Here we need to set it before completing attempt to load Object's
-    // classfile, which causes issue #1648.
-    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
-    companion.moduleClass.markAbsent()
-    companion.markAbsent()
-
-    completeClass(cls)
+    if config.Config.addConstructorProxies then
+      ensureConstructor(cls, cls.denot.asClass, EmptyScope)
+      val companion = JavaLangPackageVal.info.decl(nme.Object).symbol.asTerm
+      NamerOps.makeConstructorCompanion(companion, cls)
+      cls
+    else
+      // The companion object doesn't really exist, so it needs to be marked as
+      // absent. Here we need to set it before completing attempt to load Object's
+      // classfile, which causes issue #1648.
+      val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
+      companion.moduleClass.markAbsent()
+      companion.markAbsent()
+      completeClass(cls)
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 

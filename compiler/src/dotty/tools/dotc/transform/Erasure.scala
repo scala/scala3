@@ -976,6 +976,23 @@ object Erasure {
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree =
       EmptyTree
 
+    /** Drop all constructor proxies of members of class `cls`.
+     *  If `cls` is itself a constructor proxy, mark it as absent after erasure.
+     */
+    private def dropConstructorProxies(cls: ClassSymbol)(using Context) =
+      import Flags._
+      if cls.linkedClass.is(ConstructorProxy) then
+        if cls.owner.is(PackageClass) && cls.isDefinedInCurrentRun then
+          cls.linkedClass.copySymDenotation(initFlags = EmptyFlags, info = NoType)
+            .installAfter(erasurePhase)
+        cls.registeredCompanion = NoSymbol
+      for mbr <- cls.info.decls do
+        if mbr.is(ConstructorProxy) then mbr.dropAfter(erasurePhase)
+
+    override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
+      try super.typedClassDef(cdef, cls)
+      finally dropConstructorProxies(cls)
+
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
 

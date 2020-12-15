@@ -359,13 +359,19 @@ abstract class SymbolLoader extends LazyType { self =>
         throw ex
     }
     finally {
-      def postProcess(denot: SymDenotation) =
-        if (!denot.isCompleted &&
-            !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
-          denot.markAbsent()
-      postProcess(root)
+      def postProcess(denot: SymDenotation, other: Symbol) =
+        if !denot.isCompleted &&
+           !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter] then
+          if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
+            NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
+            denot.resetFlag(Touched)
+          else
+            denot.markAbsent()
+
+      val other = if root.isRoot then NoSymbol else root.scalacLinkedClass
+      postProcess(root, other)
       if (!root.isRoot)
-        postProcess(root.scalacLinkedClass.denot)
+        postProcess(other, root.symbol)
     }
   }
 

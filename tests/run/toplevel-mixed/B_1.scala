@@ -1,5 +1,5 @@
 
-class x(val s: String)
+abstract class x(val s: String)
 
 object yy {
   def foo = 3

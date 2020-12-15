@@ -28,7 +28,7 @@ import reporting._
 import transform.TypeUtils._
 import transform.SymUtils._
 import Nullables._
-import config.Feature
+import config.{Feature, Config}
 
 import collection.mutable
 import config.Printers.{overload, typr, unapp}
@@ -848,17 +848,19 @@ trait Applications extends Compatibility {
    *  Fallback if this fails: try to convert `E` to `new E`.
    */
   def typedFunPart(fn: untpd.Tree, pt: Type)(using Context): Tree =
-    tryEither {
-      typedExpr(fn, pt)
-    } { (result, tstate) =>
-      def fallBack(nuState: TyperState) =
-        if (nuState ne ctx.typerState) && !saysNotFound(nuState, EmptyTypeName)
-        then nuState.commit() // nuState messages are more interesting that tstate's "not found"
-        else tstate.commit()  // it's "not found" both ways; keep original message
-        result
-      if untpd.isPath(fn) then tryNew(untpd)(fn, pt, fallBack)
-      else fallBack(ctx.typerState)
-    }
+    if Config.addConstructorProxies then typedExpr(fn, pt)
+    else
+      tryEither {
+        typedExpr(fn, pt)
+      } { (result, tstate) =>
+        def fallBack(nuState: TyperState) =
+          if (nuState ne ctx.typerState) && !saysNotFound(nuState, EmptyTypeName)
+          then nuState.commit() // nuState messages are more interesting that tstate's "not found"
+          else tstate.commit()  // it's "not found" both ways; keep original message
+          result
+        if untpd.isPath(fn) then tryNew(untpd)(fn, pt, fallBack)
+        else fallBack(ctx.typerState)
+      }
 
   /** Typecheck application. Result could be an `Apply` node,
    *  or, if application is an operator assignment, also an `Assign` or
@@ -1473,7 +1475,8 @@ trait Applications extends Compatibility {
    *          -1   if 2nd alternative is preferred over 1st
    *           0   if neither alternative is preferred over the other
    *
-   *  An alternative A1 is preferred over an alternative A2 if it wins in a tournament
+   *  Normal symbols are always preferred over constructor proxies. Otherwise,
+   *  an alternative A1 is preferred over an alternative A2 if it wins in a tournament
    *  that awards one point for each of the following:
    *
    *   - A1's owner derives from A2's owner.
@@ -1634,19 +1637,23 @@ trait Applications extends Compatibility {
         if (winsType2) -1 else 0
     }
 
-    val fullType1 = widenGiven(alt1.widen, alt1)
-    val fullType2 = widenGiven(alt2.widen, alt2)
-    val strippedType1 = stripImplicit(fullType1)
-    val strippedType2 = stripImplicit(fullType2)
+    if alt1.symbol.is(ConstructorProxy) && !alt2.symbol.is(ConstructorProxy) then -1
+    else if alt2.symbol.is(ConstructorProxy) && !alt1.symbol.is(ConstructorProxy) then 1
+    else
+      val fullType1 = widenGiven(alt1.widen, alt1)
+      val fullType2 = widenGiven(alt2.widen, alt2)
+      val strippedType1 = stripImplicit(fullType1)
+      val strippedType2 = stripImplicit(fullType2)
 
-    val result = compareWithTypes(strippedType1, strippedType2)
-    if (result != 0) result
-    else if (strippedType1 eq fullType1)
-      if (strippedType2 eq fullType2) 0         // no implicits either side: its' a draw
-      else 1                                    // prefer 1st alternative with no implicits
-    else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
-    else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
+      val result = compareWithTypes(strippedType1, strippedType2)
+      if (result != 0) result
+      else if (strippedType1 eq fullType1)
+        if (strippedType2 eq fullType2) 0         // no implicits either side: its' a draw
+        else 1                                    // prefer 1st alternative with no implicits
+      else if (strippedType2 eq fullType2) -1     // prefer 2nd alternative with no implicits
+      else compareWithTypes(fullType1, fullType2) // continue by comparing implicits parameters
   }
+  end compare
 
   def narrowMostSpecific(alts: List[TermRef])(using Context): List[TermRef] = {
     record("narrowMostSpecific")

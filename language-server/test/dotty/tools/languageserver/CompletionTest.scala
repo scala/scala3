@@ -56,16 +56,19 @@ class CompletionTest {
     ) .completion(m1, Set(("baz", Method, "=> Int")))
   }
 
+  // TODO: Also add tests with concrete classes, where the completion will
+  // include the constructor proxy companion
+  
   @Test def importCompleteClassWithPrefix: Unit = {
     withSources(
-      code"""object Foo { class MyClass }""",
+      code"""object Foo { abstract class MyClass }""",
       code"""import Foo.My${m1}"""
     ).completion(m1, Set(("MyClass", Class, "Foo.MyClass")))
   }
 
   @Test def importCompleteClassNoPrefix: Unit = {
     withSources(
-      code"""object Foo { class MyClass }""",
+      code"""object Foo { abstract class MyClass }""",
       code"""import Foo.${m1}"""
     ).completion(m1, completionItems => {
       val results = CodeCompletion.simplifyResults(completionItems)
@@ -83,7 +86,7 @@ class CompletionTest {
   @Test def importCompleteFromPackage: Unit = {
     withSources(
       code"""package a
-             class MyClass""",
+             abstract class MyClass""",
       code"""package b
              import a.My${m1}"""
     ).completion(m1, Set(("MyClass", Class, "a.MyClass")))
@@ -91,7 +94,7 @@ class CompletionTest {
 
   @Test def importCompleteFromClass: Unit = {
     withSources(
-      code"""class Foo { val x: Int = 0 }""",
+      code"""abstract class Foo { val x: Int = 0 }""",
       code"""import Foo.${m1}"""
     ).completion(m1, Set())
   }
@@ -129,7 +132,7 @@ class CompletionTest {
   @Test def importCompleteIncludePackage: Unit = {
     withSources(
       code"""package foo.bar
-             class Fizz""",
+             abstract classFizz""",
       code"""import foo.b${m1}"""
     ).completion(m1, Set(("bar", Module, "foo.bar")))
   }
@@ -141,7 +144,7 @@ class CompletionTest {
                def myDef = 0
                var myVar = 0
                object myObject
-               class myClass
+               abstract class myClass
                trait myTrait
              }""",
       code"""import MyObject.my${m1}"""
@@ -212,7 +215,7 @@ class CompletionTest {
 
   @Test def completeErrorKnowsKind: Unit = {
     code"""object Bar {
-          |  class Zig
+          |  abstract class Zig
           |  val Zag: Int = 0
           |  val b = 3 + Bar.${m1}
           |}""".withSource

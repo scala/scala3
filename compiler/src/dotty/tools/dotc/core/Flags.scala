@@ -378,7 +378,7 @@ object Flags {
   val (Touched @ _, _, _) = newFlags(50, "<touched>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
-  val (Lifted @ _, _, _) = newFlags(51, "<lifted>")
+  val (Lifted @ _, _, _) = newFlags(51, "<lifted>") // only used from lambda-lift (could be merged with ConstructorProxy)
 
   /** Term member has been mixed in */
   val (MixedIn @ _, _, _) = newFlags(52, "<mixedin>")
@@ -420,6 +420,9 @@ object Flags {
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
 
+  /** Symbol is a constructor proxy (either companion, or apply method) */
+  val (ConstructorProxy @ _, _, _) = newFlags(62, "<constructor proxy>") // (could be merged with Lifted)
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** All possible flags */
@@ -455,7 +458,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
-    SuperParamAliasOrScala2x, Inline, Macro)
+    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -463,7 +466,8 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined, Transparent)
+    FromStartFlags, AccessFlags, Final, AccessorOrSealed,
+    Abstract, LazyOrTrait, SelfName, JavaDefined, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
@@ -508,7 +512,7 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized
+    Lifted | MixedIn | Specialized | ConstructorProxy
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
@@ -539,7 +543,10 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
+  val EffectivelyErased                      = ConstructorProxy | Erased
+  val ConstructorProxyModule: FlagSet        = ConstructorProxy | Module
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
+  val DeferredInline: FlagSet                = Deferred | Inline
   val DeferredOrLazy: FlagSet                = Deferred | Lazy
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
@@ -548,7 +555,7 @@ object Flags {
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class
   val EffectivelyFinalFlags: FlagSet         = Final | Private
-  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro
+  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro | ConstructorProxy
   val FinalOrSealed: FlagSet                 = Final | Sealed
   val GivenOrImplicit: FlagSet               = Given | Implicit
   val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags

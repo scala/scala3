@@ -143,10 +143,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
+      val sym = tree.symbol
       tree match
-        case tree: ValOrDefDef if !tree.symbol.is(Synthetic) =>
+        case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
-          val sym = tree.symbol
           if sym.is(Method) then
             if sym.isSetter then
               removeUnwantedAnnotations(sym, defn.SetterMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = false)

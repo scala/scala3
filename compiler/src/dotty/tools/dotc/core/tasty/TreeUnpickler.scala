@@ -940,6 +940,7 @@ class TreeUnpickler(reader: TastyReader,
         tparams ++ vparams ++ stats
       })
       defn.patchStdLibClass(cls)
+      NamerOps.addConstructorProxies(cls)
       setSpan(start,
         untpd.Template(constr, mappedParents, Nil, self, lazyStats)
           .withType(localDummy.termRef))
