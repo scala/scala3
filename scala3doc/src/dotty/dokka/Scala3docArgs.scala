@@ -37,7 +37,13 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val externalDocumentationMappings: Setting[String] =
     StringSetting("-external-mappings", "external-mappings", "Mapping between regex matching class file and external documentation", "")
 
-  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision, externalDocumentationMappings)
+  val skipById: Setting[List[String]] =
+    MultiStringSetting("-skip-by-id", "package or class identifier", "Identifiers of packages or top-level classes to skip when generating documentation")
+
+  val skipByRegex: Setting[List[String]] =
+    MultiStringSetting("-skip-by-regex", "regex", "Regexes that match fully qualified names of packages or top-level classes to skip when generating documentation")
+
+  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex)
 
 object Scala3docArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
@@ -76,7 +82,7 @@ object Scala3docArgs:
     val (existing, nonExisting) = inFiles.partition(_.exists)
 
     if nonExisting.nonEmpty then report.warning(
-      s"Scala3doc will ignore following nonexisiten paths: ${nonExisting.mkString(", ")}"
+      s"Scala3doc will ignore following non-existent paths: ${nonExisting.mkString(", ")}"
     )
 
     val (dirs, files) = existing.partition(_.isDirectory)
@@ -120,6 +126,8 @@ object Scala3docArgs:
       parseSyntax,
       sourceLinks.nonDefault.fold(Nil)(_.split(",").toList),
       revision.nonDefault,
-      externalMappings
+      externalMappings,
+      skipById.get,
+      skipByRegex.get,
     )
     (docArgs, newContext)

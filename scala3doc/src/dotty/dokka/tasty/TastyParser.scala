@@ -14,12 +14,16 @@ import org.jetbrains.dokka.model.properties.PropertyContainer
 import org.jetbrains.dokka.model.properties.PropertyContainerKt._
 import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 
-import quoted.Quotes
+import java.util.regex.Pattern
+
+import scala.util.{Try, Success, Failure}
 import scala.tasty.inspector.DocTastyInspector
-import dotty.dokka.model.api.withNewMembers
+import scala.quoted.Quotes
+
+import dotty.tools.dotc
+
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
-import scala.util.Try
 import dotty.dokka.model.api._
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
@@ -30,23 +34,71 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
 
   private val topLevels = Seq.newBuilder[(String, Member)]
 
-  def processCompilationUnit(using q: Quotes)(root: q.reflect.Tree): Unit =
-    // NOTE we avoid documenting definitions in the magical stdLibPatches directory;
-    // the symbols there are "patched" through dark Dotty magic onto other stdlib
-    // definitions, so if we documented their origin, we'd get defs with duplicate DRIs
-    if !root.symbol.fullName.startsWith("scala.runtime.stdLibPatches") then
-      val parser = new TastyParser(q, this)
+  def processCompilationUnit(using quotes: Quotes)(root: quotes.reflect.Tree): Unit = ()
 
-      def driFor(link: String): Option[DRI] =
-        val symOps = new SymOps[q.type](q)
-        import symOps._
-        Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
-          MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
-        )
+  override def postProcess(using q: Quotes): Unit =
+    // hack into the compiler to get a list of all top-level trees
+    // in principle, to do this, one would collect trees in processCompilationUnit
+    // however, path-dependent types disallow doing so w/o using casts
+    inline def hackForeachTree(thunk: q.reflect.Tree => Unit): Unit =
+      given dctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+      dctx.run.units.foreach { compilationUnit =>
+        // mirrors code from TastyInspector
+        thunk(compilationUnit.tpdTree.asInstanceOf[q.reflect.Tree])
+      }
 
-      ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
-      topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
-  end processCompilationUnit
+    val symbolsToSkip: Set[q.reflect.Symbol] =
+      ctx.args.identifiersToSkip.flatMap { ref =>
+        val qrSymbol = q.reflect.Symbol
+        Try(qrSymbol.requiredPackage(ref)).orElse(Try(qrSymbol.requiredClass(ref))) match {
+          case Success(sym) => Some(sym)
+          case Failure(err) =>
+            report.warning(
+              s"Failed to resolve identifier to skip - $ref - because: ${throwableToString(err)}",
+              dotc.util.NoSourcePosition,
+            )
+            None
+          }
+      }.toSet
+
+    val patternsToSkip: List[Pattern] =
+      ctx.args.regexesToSkip.flatMap { regexString =>
+        Try(Pattern.compile(regexString)) match
+          case Success(pat) => Some(pat)
+          case Failure(err) =>
+            report.warning(
+              s"Failed to compile regex to skip - $regexString - because: ${throwableToString(err)}",
+              dotc.util.NoSourcePosition,
+            )
+            None
+      }
+
+    def isSkipped(sym: q.reflect.Symbol): Boolean =
+      def isSkippedById(sym: q.reflect.Symbol): Boolean =
+        if !sym.exists then false else
+          symbolsToSkip.contains(sym) || isSkipped(sym.owner)
+
+      def isSkippedByRx(sym: q.reflect.Symbol): Boolean =
+        val symStr = sym.fullName
+        patternsToSkip.exists(p => p.matcher(symStr).matches())
+
+      isSkippedById(sym) || isSkippedByRx(sym)
+
+    hackForeachTree { root =>
+      if !isSkipped(root.symbol) then
+        val parser = new TastyParser(q, this)(isSkipped)
+
+        def driFor(link: String): Option[DRI] =
+          val symOps = new SymOps[q.type](q)
+          import symOps._
+          Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
+            MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
+          )
+
+        ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
+        topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
+    }
+
 
   def result(): List[Member] =
     topLevels.clear()
@@ -65,8 +117,14 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     }.toList
 
 /** Parses a single Tasty compilation unit. */
-case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val ctx: DocContext)
-    extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
+case class TastyParser(
+  qctx: Quotes,
+  inspector: DokkaTastyInspector,
+)(
+  isSkipped: qctx.reflect.Symbol => Boolean
+)(
+  using val ctx: DocContext
+) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
@@ -92,7 +150,7 @@ case class TastyParser(qctx: Quotes, inspector: DokkaTastyInspector)(using val c
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit =
         seen = tree :: seen
-        tree match {
+        if !isSkipped(tree.symbol) then tree match {
           case pck: PackageClause =>
             docs += parsePackage(pck)
             super.traverseTree(tree)(owner)
