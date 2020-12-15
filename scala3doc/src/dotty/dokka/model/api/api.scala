@@ -56,14 +56,14 @@ trait Classlike
 enum Kind(val name: String){
   case RootPackage extends Kind("")
   case Package extends Kind("package")
-  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+  case Class(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("class") with Classlike
   case Object extends Kind("object") with Classlike
-  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+  case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("trait") with Classlike
   case Enum extends Kind("enum") with Classlike
   case EnumCase(kind: Object.type | Type | Val.type) extends Kind("case")
-  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[Seq[Parameter]])
+  case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
   case Constructor(base: Kind.Def) extends Kind("def")
@@ -100,10 +100,15 @@ object Annotation:
   case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
   case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
+case class ParametersList(
+  parameters: Seq[Parameter],
+  modifiers: String
+)
+
 case class Parameter(
   annotations: Seq[Annotation],
   modifiers: String,
-  name: String,
+  name: Option[String],
   dri: DRI,
   signature: Signature,
   isExtendedSymbol: Boolean = false,

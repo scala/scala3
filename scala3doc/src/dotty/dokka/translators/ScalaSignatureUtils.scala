@@ -80,16 +80,15 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       bdr.text(e.variance).memberName(e.name, e.dri).signature(e.signature)
     }
 
-    def functionParameters(params: Seq[Seq[Parameter]]) =
+    def functionParameters(params: Seq[ParametersList]) =
       if params.isEmpty then this.text("")
-      else if params == List(Nil) then this.text("()")
+      else if params.size == 1 && params(0).parameters == Nil then this.text("()")
       else this.list(params, separator = ""){ (bld, pList) =>
-        bld.list(pList, "(", ")"){ (bld, p) =>
-            bld.annotationsInline(p)
+        bld.list(pList.parameters, s"(${pList.modifiers}", ")"){ (bld, p) =>
+            val annotationsAndModifiers = bld.annotationsInline(p)
               .text(p.modifiers)
-              .memberName(p.name, p.dri)
-              .text(": ")
-              .signature(p.signature)
+            val name = p.name.fold(annotationsAndModifiers)(annotationsAndModifiers.memberName(_, p.dri).text(": "))
+            name.signature(p.signature)
         }
       }
 }
