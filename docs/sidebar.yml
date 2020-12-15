@@ -93,7 +93,7 @@ sidebar:
               url: docs/reference/other-new-features/trait-parameters.html
             - title: Transparent Traits
               url: docs/reference/other-new-features/transparent-traits.html
-            - title: Creator Applications
+            - title: Universal Applies
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
               url: docs/reference/other-new-features/export.html
