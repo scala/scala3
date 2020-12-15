@@ -39,14 +39,18 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
       "Mapping between regexes matching classpath entries and external documentation. " +
         "'regex::[scaladoc|scala3doc|javadoc]::path' syntax is used")
 
+  val deprecatedSkipPackages: Setting[List[String]] =
+    MultiStringSetting("-skip-packages", "packages", "Deprecated, please use `-skip-by-id` or `-skip-by-regex`")
+
   val skipById: Setting[List[String]] =
     MultiStringSetting("-skip-by-id", "package or class identifier", "Identifiers of packages or top-level classes to skip when generating documentation")
 
   val skipByRegex: Setting[List[String]] =
     MultiStringSetting("-skip-by-regex", "regex", "Regexes that match fully qualified names of packages or top-level classes to skip when generating documentation")
 
+
   def scala3docSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex, deprecatedSkipPackages)
 
 object Scala3docArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
@@ -118,6 +122,8 @@ object Scala3docArgs:
     report.inform(
       s"Generating documenation $printableProjectName in $destFile")
 
+    if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
+
     val docArgs = Args(
       projectName.withDefault("root"),
       dirs,
@@ -131,7 +137,7 @@ object Scala3docArgs:
       sourceLinks.get,
       revision.nonDefault,
       externalMappings,
-      skipById.get,
+      skipById.get ++ deprecatedSkipPackages.get,
       skipByRegex.get,
     )
     (docArgs, newContext)
