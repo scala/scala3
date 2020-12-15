@@ -69,6 +69,7 @@ extension (r: report.type)
   def warn(m: String, f: File)(using CompilerContext): Unit =
     r.warning(createMessage(m, f, null), sourcePostionFor(f))
 
+case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
   extends DokkaConfiguration:
@@ -85,6 +86,9 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
     lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
 
     lazy val displaySourceSets = getSourceSets.toDisplaySourceSet
+
+    // Nasty hack but will get rid of it once we migrate away from dokka renderer
+    var navigationNode: Option[NavigationNode] = None
 
     val logger = new Scala3DocDokkaLogger(using compilerContext)
 

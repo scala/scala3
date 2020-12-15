@@ -29,6 +29,8 @@ import org.jsoup.Jsoup
 import java.nio.file.Paths
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
+  val currentDri = pageContext.getDri.asScala.head
+
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
@@ -116,6 +118,29 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
   private def renderers(pageContext: ContentPage): (SignatureRenderer, MemberRenderer) =
     val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
     (renderer, new MemberRenderer(renderer, buildWithKotlinx(_, pageContext, null)))
+
+  private def buildNavigation(r: SignatureRenderer)(rootNav: NavigationNode): AppliedTag =
+    val currentPageDri = r.currentDri
+
+    def renderNested(nav: NavigationNode): (Boolean, AppliedTag) =
+      val isSelected = nav.dri == currentPageDri
+      def linkHtml(exapnded: Boolean = false) =
+        val attrs = if (isSelected) Seq(cls := "selected expanded") else Nil
+        a(href := r.link(nav.dri).getOrElse("#"), attrs)(nav.name)
+
+      nav.nested match
+        case Nil => isSelected -> div(linkHtml())
+        case children =>
+          val nested = children.map(renderNested)
+          val expanded = nested.exists(_._1) | nav == rootNav
+          val attr = if expanded || isSelected then Seq(cls := "expanded") else Nil
+          (isSelected || expanded) -> div(attr)(
+            linkHtml(expanded),
+            span(),
+            nested.map(_._2)
+          )
+
+    renderNested(rootNav)._2
 
   private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) =
     def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null))
@@ -297,6 +322,8 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
         span(img(src := resolveRoot(page, s"project-logo/$fileName")))
       }.toSeq
 
+    val renderer = SignatureRenderer(page.asInstanceOf[ContentPage], sourceSets, getLocationProvider)
+
     html(
       head(
         meta(charset := "utf-8"),
@@ -320,7 +347,9 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
                 )
               ),
               div(id := "paneSearch"),
-              nav(id := "sideMenu"),
+              nav(id := "sideMenu2")(
+                summon[DocContext ].navigationNode.fold("No Navigation")(buildNavigation(renderer))
+              ),
             ),
             div(id := "main")(
               div (id := "leftToggler")(
