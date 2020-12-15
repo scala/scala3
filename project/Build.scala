@@ -1532,7 +1532,7 @@ object Build {
           val projectRoot = (ThisBuild/baseDirectory).value.toPath
           val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
           val scalaSourceLink =
-            s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
+            s"$stdLibRoot=https://github.com/scala/scala/blob/v${stdlibVersion(Bootstrapped)}/src/library€{FILE_PATH}#L€{FILE_LINE}"
           val sourcesAndRevision = s"-source-links $scalaSourceLink,github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
           run.in(Compile).toTask(cmd)
