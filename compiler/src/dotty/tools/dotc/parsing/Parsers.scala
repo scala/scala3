@@ -3225,9 +3225,13 @@ object Parsers {
             case IdPattern(id, t) => t.isEmpty
             case _ => false
           }
-          if rhs.isEmpty && !isAllIds then
-            syntaxError(ExpectedTokenButFound(EQUALS, in.token), Span(in.lastOffset))
-          PatDef(mods, lhs, tpt, rhs)
+          val rhs2 =
+            if rhs.isEmpty && !isAllIds then
+              syntaxError(ExpectedTokenButFound(EQUALS, in.token), Span(in.lastOffset))
+              errorTermTree
+            else
+              rhs
+          PatDef(mods, lhs, tpt, rhs2)
       }
     }
 
