@@ -17,6 +17,15 @@ object ScalaCommentToContentConverter extends DocTagToContentConverter {
     styles: JSet[? <: Style],
     extra: PropertyContainer[ContentNode]
   ): JList[ContentNode] = docTag match {
+    case p: P =>
+      val group = super.buildContent(p, dci, sourceSets, styles, extra).get(0).asInstanceOf[ContentGroup]
+      List(group.copy(
+        group.getChildren,
+        group.getDci,
+        group.getSourceSets,
+        Set(TextStyle.Block).asJava,
+        group.getExtra
+      )).asJava
     case docTag: A =>
       val superRes = super.buildContent(docTag, dci, sourceSets, styles, extra).get(0)
       val res = superRes.withNewExtras(superRes.getExtra plus ExtraLinkAttributes(
