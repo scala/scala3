@@ -492,6 +492,7 @@ footer .pull-right {
 .documentableElement .signature {
   color: gray;
   display: table-cell;
+  white-space: pre-wrap;
 }
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
