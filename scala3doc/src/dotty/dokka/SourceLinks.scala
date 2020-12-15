@@ -2,48 +2,61 @@ package dotty.dokka
 
 import java.nio.file.Path
 import java.nio.file.Paths
-import liqp.Template
 import dotty.dokka.model.api._
 import dotty.tools.dotc.core.Contexts.Context
+import scala.util.matching.Regex
 
 def pathToString(p: Path) = p.toString.replace('\\', '/')
 
 trait SourceLink:
   val path: Option[Path] = None
-  def render(path: Path, operation: String, line: Option[Int]): String
+  def render(memberName: String, path: Path, operation: String, line: Option[Int]): String
 
 case class PrefixedSourceLink(val myPath: Path, nested: SourceLink) extends SourceLink:
   val myPrefix = pathToString(myPath)
   override val path = Some(myPath)
-  override def render(path: Path, operation: String, line: Option[Int]): String =
-    nested.render(myPath.relativize(path), operation, line)
+  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
+    nested.render(memberName, myPath.relativize(path), operation, line)
 
 
-case class TemplateSourceLink(val urlTemplate: Template) extends SourceLink:
+case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
   override val path: Option[Path] = None
-  override def render(path: Path, operation: String, line: Option[Int]): String =
-    val config = java.util.HashMap[String, Object]()
-    config.put("path", pathToString(path))
-    line.foreach(l => config.put("line", l.toString))
-    config.put("operation", operation)
+  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
+    val pathString = "/" + pathToString(path)
+    val mapping = Map(
+      "\\{\\{ path \\}\\}".r -> pathString,
+      "\\{\\{ line \\}\\}".r -> line.fold("")(_.toString),
+      "\\{\\{ ext \\}\\}".r -> Some(
+        pathString).filter(_.lastIndexOf(".") == -1).fold("")(p => p.substring(p.lastIndexOf("."))
+      ),
+      "\\{\\{ path_no_ext \\}\\}".r -> Some(
+        pathString).filter(_.lastIndexOf(".") == -1).fold(pathString)(p => p.substring(0, p.lastIndexOf("."))
+      ),
+      "\\{\\{ name \\}\\}".r -> memberName
+    )
+    mapping.foldLeft(urlTemplate) {
+      case (sourceLink, (regex, value)) => regex.replaceAllIn(sourceLink, Regex.quoteReplacement(value))
+    }
 
-    urlTemplate.render(config)
 
 case class WebBasedSourceLink(prefix: String, revision: String, subPath: String) extends SourceLink:
   override val path: Option[Path] = None
-  override def render(path: Path, operation: String, line: Option[Int]): String =
+  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
     val action = if operation == "view" then "blob" else operation
     val linePart = line.fold("")(l => s"#L$l")
-    s"$prefix/$action/$revision$subPath/$path$linePart"
+    s"$prefix/$action/$revision$subPath/${pathToString(path)}$linePart"
 
 object SourceLink:
   val SubPath = "([^=]+)=(.+)".r
   val KnownProvider = raw"(\w+):\/\/([^\/#]+)\/([^\/#]+)(\/[^\/#]+)?(#.+)?".r
   val BrokenKnownProvider = raw"(\w+):\/\/.+".r
-  val ScalaDocPatten = raw"€\{(TPL_NAME|TPL_NAME|FILE_PATH|FILE_EXT|FILE_LINE|FILE_PATH_EXT)\}".r
+  val ScalaDocPatten = raw"€\{(TPL_NAME|TPL_OWNER|FILE_PATH|FILE_EXT|FILE_LINE|FILE_PATH_EXT)\}".r
   val SupportedScalaDocPatternReplacements = Map(
     "€{FILE_PATH_EXT}" -> "{{ path }}",
-    "€{FILE_LINE}" -> "{{ line }}"
+    "€{FILE_LINE}" -> "{{ line }}",
+    "€{TPL_NAME}" -> "{{ name }}",
+    "€{FILE_EXT}" -> "{{ ext }}",
+    "€{FILE_PATH}" -> "{{ path_no_ext }}"
   )
 
   def githubPrefix(org: String, repo: String) = s"https://github.com/$org/$repo"
@@ -54,10 +67,6 @@ object SourceLink:
   private def parseLinkDefinition(s: String): Option[SourceLink] = ???
 
   def parse(string: String, revision: Option[String]): Either[String, SourceLink] =
-    def asTemplate(template: String) =
-       try Right(TemplateSourceLink(Template.parse(template))) catch
-            case e: RuntimeException =>
-              Left(s"Failed to parse template: ${e.getMessage}")
 
     string match
       case KnownProvider(name, organization, repo, rawRevision, rawSubPath) =>
@@ -90,20 +99,20 @@ object SourceLink:
         val all = ScalaDocPatten.findAllIn(scaladocSetting)
         val (supported, unsupported) = all.partition(SupportedScalaDocPatternReplacements.contains)
         if unsupported.nonEmpty then Left(s"Unsupported patterns from scaladoc format are used: ${unsupported.mkString(" ")}")
-        else asTemplate(supported.foldLeft(string)((template, pattern) =>
-          template.replace(pattern, SupportedScalaDocPatternReplacements(pattern))))
-
-      case template => asTemplate(template)
+        else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
+          template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
+      case other =>
+        Right(TemplateSourceLink(""))
 
 
 type Operation = "view" | "edit"
 
 case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
-  def pathTo(rawPath: Path, line: Option[Int] = None, operation: Operation = "view"): Option[String] =
+  def pathTo(rawPath: Path, memberName: String = "", line: Option[Int] = None, operation: Operation = "view"): Option[String] =
     def resolveRelativePath(path: Path) =
       links
         .find(_.path.forall(p => path.startsWith(p)))
-        .map(_.render(path, operation, line))
+        .map(_.render(memberName, path, operation, line))
 
     if rawPath.isAbsolute then
       if rawPath.startsWith(projectRoot) then resolveRelativePath(projectRoot.relativize(rawPath))
@@ -111,7 +120,7 @@ case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
     else resolveRelativePath(rawPath)
 
   def pathTo(member: Member): Option[String] =
-    member.sources.flatMap(s => pathTo(Paths.get(s.path), Option(s.lineNumber).map(_ + 1)))
+    member.sources.flatMap(s => pathTo(Paths.get(s.path), member.name, Option(s.lineNumber).map(_ + 1)))
 
 object SourceLinks:
 
@@ -130,15 +139,10 @@ object SourceLinks:
       |     will match https://gitlab.com/$organization/$repository/-/[blob|edit]/$revision[/$subpath]/$filePath[$lineNumber]
       |     when revision is not provided then requires revision to be specified as argument for scala3doc
       | - <scaladoc-template>
-      | - <template>
       |
       |<scaladoc-template> is a format for `doc-source-url` parameter scaladoc.
       |NOTE: We only supports `€{FILE_PATH_EXT}` and €{FILE_LINE} patterns
       |
-      |<template> is a liqid template string that can accepts follwoing arguments:
-      | - `operation`: either "view" or "edit"
-      | - `path`: relative path of file to provide link to
-      | - `line`: optional parameter that specify line number within a file
       |
       |
       |Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`.
