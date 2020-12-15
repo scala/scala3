@@ -32,7 +32,7 @@ trait BasicSupport:
     def documentation = sym.docstring.map(parseComment(_, sym.tree))
 
     def source(using Quotes) =
-      val path = sym.pos.filter(isValidPos(_)).map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
+      val path = sym.pos.map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath).map(_.toString)
       path.map(TastyDocumentableSource(_, sym.pos.get.startLine))
 
     def getAnnotations(): List[Annotation] =
