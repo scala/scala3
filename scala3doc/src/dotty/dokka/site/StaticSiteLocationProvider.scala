@@ -104,6 +104,11 @@ class StaticSiteLocationProvider(pageNode: RootPageNode)(using ctx: DokkaContext
           dri.anchor.fold(path)(hash => s"$path#$hash")
         }
 
+    override def resolve(node: PageNode, from: PageNode, skipExtension: Boolean): String =
+      pathTo(node, from) match
+        case "" => ""
+        case path => if skipExtension then path else s"$path.html"
+
     override def pathTo(node: PageNode, context: PageNode): String =
       if node == context then ""
       else
