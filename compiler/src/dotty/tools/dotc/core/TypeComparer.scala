@@ -2388,7 +2388,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case _ => false
     }
 
-
   /** Are `tp1` and `tp2` provablyDisjoint types?
    *
    *  `true` implies that we found a proof; uncertainty defaults to `false`.
@@ -2507,16 +2506,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (_, tp2: AndType) =>
         !(tp2 <:< tp1)
         && (provablyDisjoint(tp1, tp2.tp2) || provablyDisjoint(tp1, tp2.tp1))
+      case (tp1: NamedType, _) if gadtBounds(tp1.symbol) != null =>
+        provablyDisjoint(gadtBounds(tp1.symbol).hi, tp2) || provablyDisjoint(tp1.superType, tp2)
+      case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
+        provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(tp1.underlying, tp2) || provablyDisjoint(tp1, tp2.underlying)
+        provablyDisjoint(matchTypeSuperType(tp1), tp2) || provablyDisjoint(tp1, matchTypeSuperType(tp2))
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(tp1.underlying, tp2)
+        provablyDisjoint(matchTypeSuperType(tp1), tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, tp2.underlying)
+        provablyDisjoint(tp1, matchTypeSuperType(tp2))
       case _ =>
         false
     }
   }
+
+  /** Restores the buggy match type reduction under -Yunsound-match-types. */
+  private def matchTypeSuperType(tp: TypeProxy): Type =
+    if ctx.settings.YunsoundMatchTypes.value then tp.underlying else tp.superType
 
   protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
@@ -2757,34 +2764,6 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         case _ =>
           cas
       }
-      def widenAbstractTypes(tp: Type): Type = new TypeMap {
-        var seen = Set[TypeParamRef]()
-        def apply(tp: Type) = tp match {
-          case tp: TypeRef =>
-            tp.info match {
-              case info: MatchAlias =>
-                mapOver(tp)
-                  // TODO: We should follow the alias in this case, but doing so
-                  // risks infinite recursion
-              case TypeBounds(lo, hi) =>
-                if (hi frozen_<:< lo) {
-                  val alias = apply(lo)
-                  if (alias ne lo) alias else mapOver(tp)
-                }
-                else WildcardType
-              case _ =>
-                mapOver(tp)
-            }
-          case tp: TypeLambda =>
-            val saved = seen
-            seen ++= tp.paramRefs
-            try mapOver(tp)
-            finally seen = saved
-          case tp: TypeVar if !tp.isInstantiated => WildcardType
-          case tp: TypeParamRef if !seen.contains(tp) => WildcardType
-          case _ => mapOver(tp)
-        }
-      }.apply(tp)
 
       val defn.MatchCase(pat, body) = cas1
 
@@ -2799,8 +2778,6 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
               body
           }
         }
-      else if (isSubType(widenAbstractTypes(scrut), widenAbstractTypes(pat)))
-        Some(NoType)
       else if (provablyDisjoint(scrut, pat))
         // We found a proof that `scrut` and `pat` are incompatible.
         // The search continues.
