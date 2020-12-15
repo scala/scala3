@@ -118,7 +118,7 @@ class CompilationTests {
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions),
       compileFilesInDir("tests/neg-tailcall", defaultOptions),
-      compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "3.1")),
+      compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "3.1", "-Xfatal-warnings")),
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),

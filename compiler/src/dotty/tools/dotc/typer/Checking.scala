@@ -684,7 +684,7 @@ trait Checking {
       val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
       val fix = if (isPatDef) "adding `: @unchecked` after the expression" else "writing `case ` before the full pattern"
       val pos = if (isPatDef) sel.srcPos else pat.srcPos
-      report.errorOrMigrationWarning(
+      report.warning(
         ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
             |
             |If the narrowing is intentional, this can be communicated by $fix.${err.rewriteNotice}""",
