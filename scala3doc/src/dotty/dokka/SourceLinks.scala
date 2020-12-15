@@ -6,7 +6,7 @@ import dotty.dokka.model.api._
 import dotty.tools.dotc.core.Contexts.Context
 import scala.util.matching.Regex
 
-def pathToString(p: Path) = "/" + p.toString.replace('\\', '/')
+def pathToString(p: Path) = p.toString.replace('\\', '/')
 
 trait SourceLink:
   val path: Option[Path] = None
@@ -22,14 +22,15 @@ case class PrefixedSourceLink(val myPath: Path, nested: SourceLink) extends Sour
 case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
   override val path: Option[Path] = None
   override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
+    val pathString = "/" + pathToString(path)
     val mapping = Map(
-      "\\{\\{ path \\}\\}".r -> pathToString(path),
+      "\\{\\{ path \\}\\}".r -> pathString,
       "\\{\\{ line \\}\\}".r -> line.fold("")(_.toString),
       "\\{\\{ ext \\}\\}".r -> Some(
-        pathToString(path)).filter(_.lastIndexOf(".") == -1).fold("")(p => p.substring(p.lastIndexOf("."))
+        pathString).filter(_.lastIndexOf(".") == -1).fold("")(p => p.substring(p.lastIndexOf("."))
       ),
       "\\{\\{ path_no_ext \\}\\}".r -> Some(
-        pathToString(path)).filter(_.lastIndexOf(".") == -1).fold(pathToString(path))(p => p.substring(0, p.lastIndexOf("."))
+        pathString).filter(_.lastIndexOf(".") == -1).fold(pathString)(p => p.substring(0, p.lastIndexOf("."))
       ),
       "\\{\\{ name \\}\\}".r -> memberName
     )
@@ -43,7 +44,7 @@ case class WebBasedSourceLink(prefix: String, revision: String, subPath: String)
   override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
     val action = if operation == "view" then "blob" else operation
     val linePart = line.fold("")(l => s"#L$l")
-    s"$prefix/$action/$revision$subPath/$path$linePart"
+    s"$prefix/$action/$revision$subPath/${pathToString(path)}$linePart"
 
 object SourceLink:
   val SubPath = "([^=]+)=(.+)".r
