@@ -124,7 +124,7 @@ object Annotations {
   object LazyBodyAnnotation {
     def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => bodyFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> bodyFn(using ctx)
   }
 
   object Annotation {
@@ -155,15 +155,15 @@ object Annotations {
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
         protected var mySym: Symbol | (Context ?=> Symbol) = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var mySym: Symbol | (Context ?=> Symbol) = (using ctx) => symFn(using ctx)
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) = ctx ?=> symFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
       }
 
     /** Extractor for child annotations */

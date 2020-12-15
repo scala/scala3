@@ -74,7 +74,7 @@ object PickledQuotes {
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match {
         case Hole(isTerm, idx, args) =>
           val reifiedArgs = args.map { arg =>
-            if (arg.isTerm) (using q: Quotes) => new ExprImpl(arg, QuotesImpl.scopeId)
+            if (arg.isTerm) (q: Quotes) ?=> new ExprImpl(arg, QuotesImpl.scopeId)
             else new TypeImpl(arg, QuotesImpl.scopeId)
           }
           if isTerm then

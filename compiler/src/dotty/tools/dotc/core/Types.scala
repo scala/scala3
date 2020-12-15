@@ -5162,7 +5162,7 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { (using refCtx) =>
+          LazyRef { refCtx ?=>
             val ref1 = tp.ref
             if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context

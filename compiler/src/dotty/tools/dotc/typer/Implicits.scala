@@ -249,7 +249,7 @@ object Implicits:
       else
         val candidates = new mutable.ListBuffer[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
-          var ckind = exploreInFreshCtx { (using ctx: FreshContext) =>
+          var ckind = exploreInFreshCtx { (ctx: FreshContext) ?=>
             ctx.setMode(ctx.mode | Mode.TypevarsMissContext)
             candidateKind(ref.underlyingRef)
           }
