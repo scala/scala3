@@ -55,7 +55,8 @@ class Namer { typer: Typer =>
   val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
   val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
   val SymOfTree       : Property.Key[Symbol]              = new Property.Key
-  val Deriver         : Property.Key[typer.Deriver]       = new Property.Key
+  val AttachedDeriver : Property.Key[Deriver]             = new Property.Key
+    // was `val Deriver`, but that gave shadowing problems with constructor proxies
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -1186,7 +1187,7 @@ class Namer { typer: Typer =>
         }
         val deriver = new Deriver(derivingClass, derivePos)(using localCtx)
         deriver.enterDerived(impl.derived)
-        original.putAttachment(Deriver, deriver)
+        original.putAttachment(AttachedDeriver, deriver)
       }
 
       denot.info = tempInfo.finalized(parentTypes)

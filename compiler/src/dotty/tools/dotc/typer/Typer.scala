@@ -2199,8 +2199,8 @@ class Typer extends Namer
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
         cls.rootTreeOrProvider = cdef1
 
-      for (deriver <- cdef.removeAttachment(Deriver))
-        cdef1.putAttachment(Deriver, deriver)
+      for (deriver <- cdef.removeAttachment(AttachedDeriver))
+        cdef1.putAttachment(AttachedDeriver, deriver)
 
       cdef1
     }
@@ -2710,7 +2710,7 @@ class Typer extends Namer
         val enumContext = enumContexts(stat.symbol.linkedClass)
         if enumContext != null then
           checkEnumCaseRefsLegal(stat, enumContext)
-        stat.removeAttachment(Deriver) match {
+        stat.removeAttachment(AttachedDeriver) match {
           case Some(deriver) => deriver.finalize(stat)
           case None => stat
         }

@@ -496,6 +496,8 @@ object Symbols {
   def currentClass(using Context): ClassSymbol = ctx.owner.enclosingClass.asClass
 
   type MutableSymbolMap[T] = EqHashMap[Symbol, T]
+  def MutableSymbolMap[T](): EqHashMap[Symbol, T] = EqHashMap[Symbol, T]()
+  def MutableSymbolMap[T](initialCapacity: Int): EqHashMap[Symbol, T] = EqHashMap[Symbol, T](initialCapacity)
 
 // ---- Factory methods for symbol creation ----------------------
 //
