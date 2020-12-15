@@ -69,6 +69,9 @@ extension (r: report.type)
   def warn(m: String, f: File)(using CompilerContext): Unit =
     r.warning(createMessage(m, f, null), sourcePostionFor(f))
 
+  def warn(m: String, e: Throwable)(using CompilerContext): Unit =
+    r.warning(s"$m: ${throwableToString(e)}")
+
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
@@ -99,51 +102,7 @@ case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
         sourceLinks
       )(using compilerContext))
 
-    def parseDocTool(docTool: String) = docTool match {
-      case "scaladoc" => Some(DocumentationKind.Scaladoc)
-      case "scala3doc" => Some(DocumentationKind.Scala3doc)
-      case "javadoc" => Some(DocumentationKind.Javadoc)
-      case other => None
-    }
-    val externalDocumentationLinks: List[Scala3docExternalDocumentationLink] = args.externalMappings.filter(_.size >= 3).flatMap { mapping =>
-      val regexStr = mapping(0)
-      val docTool = mapping(1)
-      val urlStr = mapping(2)
-      val packageListUrlStr = if mapping.size > 3 then Some(mapping(3)) else None
-      val regex = Try(regexStr.r).toOption
-      val url = Try(URL(urlStr)).toOption
-      val packageListUrl = Try(packageListUrlStr.map(URL(_)))
-        .fold(
-          e => {
-          logger.warn(s"Wrong packageListUrl parameter in external mapping. Found '$packageListUrlStr'. " +
-            s"Package list url will be omitted")
-          None},
-          res => res
-        )
-
-      val parsedDocTool = parseDocTool(docTool)
-      val res = if regexStr.isEmpty then
-        logger.warn(s"Wrong regex parameter in external mapping. Found '$regexStr'. Mapping will be omitted")
-        None
-      else if url.isEmpty then
-        logger.warn(s"Wrong url parameter in external mapping. Found '$urlStr'. Mapping will be omitted")
-        None
-      else if parsedDocTool.isEmpty then
-        logger.warn(s"Wrong doc-tool parameter in external mapping. " +
-          s"Expected one of: 'scaladoc', 'scala3doc', 'javadoc'. Found:'$docTool'.  Mapping will be omitted "
-        )
-        None
-      else
-        Some(
-          Scala3docExternalDocumentationLink(
-            List(regexStr.r),
-            URL(urlStr),
-            parsedDocTool.get,
-            packageListUrlStr.map(URL(_))
-          )
-        )
-      res
-    }
+    val externalDocumentationLinks = args.externalMappings
 
     override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
       JNil

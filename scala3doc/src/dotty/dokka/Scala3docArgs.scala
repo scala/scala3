@@ -25,8 +25,8 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
     sourcepath, sourceroot
   )
 
-  val sourceLinks: Setting[String] =
-    StringSetting("-source-links", "sources", SourceLinks.usage, "")
+  val sourceLinks: Setting[List[String]] =
+    MultiStringSetting("-source-links", "sources", SourceLinks.usage)
 
   val syntax: Setting[String] =
     StringSetting("-comment-syntax", "syntax", "Syntax of the comment used", "")
@@ -34,8 +34,10 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val revision: Setting[String] =
     StringSetting("-revision", "revision", "Revision (branch or ref) used to build project project", "")
 
-  val externalDocumentationMappings: Setting[String] =
-    StringSetting("-external-mappings", "external-mappings", "Mapping between regex matching class file and external documentation", "")
+  val externalDocumentationMappings: Setting[List[String]] =
+    MultiStringSetting("-external-mappings", "external-mappings",
+      "Mapping between regexes matching classpath entries and external documentation. " +
+        "'regex::[scaladoc|scala3doc|javadoc]::path' syntax is used")
 
   val skipById: Setting[List[String]] =
     MultiStringSetting("-skip-by-id", "package or class identifier", "Identifiers of packages or top-level classes to skip when generating documentation")
@@ -43,7 +45,8 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val skipByRegex: Setting[List[String]] =
     MultiStringSetting("-skip-by-regex", "regex", "Regexes that match fully qualified names of packages or top-level classes to skip when generating documentation")
 
-  def scala3docSpecificSettings: Set[Setting[_]] = Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex)
+  def scala3docSpecificSettings: Set[Setting[_]] =
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex)
 
 object Scala3docArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
@@ -104,7 +107,8 @@ object Scala3docArgs:
         CommentSyntax.default
       }
     }
-    val externalMappings = externalDocumentationMappings.get.split(":::").map(_.split("::").toList).toList
+    val externalMappings =
+      externalDocumentationMappings.get.flatMap(ExternalDocLink.parse)
 
     unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
       report.warning(s"Setting ${s.name} is currently not supported.")
@@ -124,7 +128,7 @@ object Scala3docArgs:
       projectVersion.nonDefault,
       projectLogo.nonDefault,
       parseSyntax,
-      sourceLinks.nonDefault.fold(Nil)(_.split(",").toList),
+      sourceLinks.get,
       revision.nonDefault,
       externalMappings,
       skipById.get,

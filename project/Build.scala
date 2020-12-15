@@ -1533,9 +1533,10 @@ object Build {
           val projectRoot = (ThisBuild/baseDirectory).value.toPath
           val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
           val scalaSourceLink =
-             s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
-          val sourcesAndRevision = s"-source-links $scalaSourceLink,github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
-          val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
+            s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
+          val sourceLinks = s"-source-links:$scalaSourceLink,github://lampepfl/dotty "
+          val revision = s"-revision $ref -project-version $projectVersion"
+          val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
           run.in(Compile).toTask(cmd)
       }
 
@@ -1575,12 +1576,9 @@ object Build {
               classDirectory.in(Compile).value.getAbsolutePath,
               "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
               "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg " +
-              "-external-mappings " + raw".*scala.*" + "::" +
-                "scala3doc" + "::" +
-                "http://dotty.epfl.ch/api/" + ":::" +
-                raw".*java.*" + "::" +
-                "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/"
+              "-external-mappings:" +
+                ".*scala.*::scala3doc::http://dotty.epfl.ch/api/," +
+                ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
             )
           }.value,
 
@@ -1615,9 +1613,7 @@ object Build {
               "-skip-by-regex:.+\\.internal($|\\..+) " +
               "-skip-by-regex:.+\\.impl($|\\..+) " +
               "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
-              "-external-mappings " + raw".*java.*" + "::" +
-                "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/"
+              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
               ))
           }.evaluated,
 
