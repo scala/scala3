@@ -1364,6 +1364,7 @@ object Parsers {
       val start = in.offset
       var imods = Modifiers()
       def functionRest(params: List[Tree]): Tree =
+        val paramSpan = Span(start, in.lastOffset)
         atSpan(start, in.offset) {
           if in.token == TLARROW then
             if !imods.flags.isEmpty || params.isEmpty then
@@ -1382,14 +1383,16 @@ object Parsers {
             accept(ARROW)
           val t = typ()
 
-          if (imods.isOneOf(Given | Erased)) new FunctionWithMods(params, t, imods)
-          else if (ctx.settings.YkindProjector.value) {
+          if imods.isOneOf(Given | Erased) then
+            if imods.is(Given) && params.isEmpty then
+              syntaxError("context function types require at least one parameter", paramSpan)
+            new FunctionWithMods(params, t, imods)
+          else if ctx.settings.YkindProjector.value then
             val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
 
             lambdaAbstract(tparams, Function(newParams, newT))
-          } else {
+          else
             Function(params, t)
-          }
         }
       def funArgTypesRest(first: Tree, following: () => Tree) = {
         val buf = new ListBuffer[Tree] += first
@@ -2183,7 +2186,12 @@ object Parsers {
 
     def closureRest(start: Int, location: Location, params: List[Tree]): Tree =
       atSpan(start, in.offset) {
-        if in.token == CTXARROW then in.nextToken() else accept(ARROW)
+        if in.token == CTXARROW then
+          if params.isEmpty then
+            syntaxError("context function literals require at least one formal parameter", Span(start, in.lastOffset))
+          in.nextToken()
+        else
+          accept(ARROW)
         Function(params, if (location == Location.InBlock) block() else expr())
       }
 
