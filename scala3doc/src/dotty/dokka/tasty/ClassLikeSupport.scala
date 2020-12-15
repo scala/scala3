@@ -45,7 +45,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.paramss.map(_.map(mkParameter(_, parameterModifier)))
+        _.paramss.map(pList => ParametersList(pList.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList) then "using " else ""))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -335,7 +335,7 @@ trait ClassLikeSupport:
 
     val basicKind: Kind.Def = Kind.Def(
       genericTypes.map(mkTypeArgument),
-      paramLists.map(_.map(mkParameter(_, paramPrefix)))
+      paramLists.map(pList => ParametersList(pList.map(mkParameter(_, paramPrefix)), if isUsingModifier(pList) then "using " else ""))
     )
 
     val methodKind =
@@ -376,12 +376,12 @@ trait ClassLikeSupport:
     isExtendedSymbol: Boolean = false,
     isGrouped: Boolean = false) =
       val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
-      // TODO (https://github.com/lampepfl/dotty/issues/10525): Add using flag
+      val name = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
 
       Parameter(
         argument.symbol.getAnnotations(),
         inlinePrefix + prefix(argument.symbol),
-        argument.symbol.normalizedName,
+        name,
         argument.symbol.dri,
         argument.tpt.dokkaType.asSignature,
         isExtendedSymbol,
@@ -467,3 +467,6 @@ trait ClassLikeSupport:
         /*isExpectActual =*/ false,
         PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation2)).plus(compositeExt)
     )
+
+  private def isUsingModifier(parameters: Seq[ValDef]): Boolean =
+    parameters.size > 0 && parameters(0).symbol.flags.is(Flags.Given)
