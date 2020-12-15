@@ -58,9 +58,10 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     val all = topLevels.result()
     all.groupBy(_._1).map { case (pckName, members) =>
       val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
-      pcks.reduce( (p1, p2) =>
+      val basePck = pcks.reduce( (p1, p2) =>
         p1.withNewMembers(p2.allMembers) // TODO add doc
-      ).withNewMembers(rest)
+      )
+      basePck.withMembers((basePck.allMembers ++ rest).sortBy(_.name))
     }.toList
 
 /** Parses a single Tasty compilation unit. */

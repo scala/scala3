@@ -18,6 +18,7 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
     val result = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
     val (rootPck, rest) = result.partition(_.name == "<empty>")
+    val packageMembers = (rest ++ rootPck.flatMap(_.allMembers)).sortBy(_.name)
 
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.allMembers.flatMap(flattenMember)
 
@@ -31,7 +32,7 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
       null,
       JSet(ctx.sourceSet),
       PropertyContainer.Companion.empty()
-    ).withNewMembers(rest ++ rootPck.flatMap(_.allMembers)).withKind(Kind.RootPackage).asInstanceOf[DPackage]
+    ).withNewMembers(packageMembers).withKind(Kind.RootPackage).asInstanceOf[DPackage]
 
     new DModule(
       sourceSet.getDisplayName,
