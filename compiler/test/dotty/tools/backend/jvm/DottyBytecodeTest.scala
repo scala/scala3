@@ -69,6 +69,28 @@ trait DottyBytecodeTest {
     checkOutput(ctx.settings.outputDir.value)
   }
 
+  def compileCode(scalaSources: List[String], javaSources: List[String] = Nil): AbstractFile = {
+    given Context = initCtx
+
+    val compiler = new Compiler
+    val run = compiler.newRun
+    compiler.newRun.compileFromStrings(scalaSources, javaSources)
+    ctx.settings.outputDir.value
+  }
+
+  def getGeneratedClassfiles(outDir: AbstractFile): List[(String, Array[Byte])] = {
+    import scala.collection.mutable.ListBuffer
+    def files(dir: AbstractFile): List[(String, Array[Byte])] = {
+      val res = ListBuffer.empty[(String, Array[Byte])]
+      for (f <- dir.iterator) {
+        if (!f.isDirectory) res += ((f.name, f.toByteArray))
+        else if (f.name != "." && f.name != "..") res ++= files(f)
+      }
+      res.toList
+    }
+    files(outDir)
+  }
+
   protected def loadClassNode(input: InputStream, skipDebugInfo: Boolean = true): ClassNode = {
     val cr = new ClassReader(input)
     val cn = new ClassNode()

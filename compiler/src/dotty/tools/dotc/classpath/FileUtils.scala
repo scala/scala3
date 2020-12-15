@@ -37,6 +37,11 @@ object FileUtils {
       // FIXME: drop last condition when we stop being compatible with Scala 2.11
   }
 
+  private val SUFFIX_CLASS = ".class"
+  private val SUFFIX_SCALA = ".scala"
+  private val SUFFIX_JAVA = ".java"
+  private val SUFFIX_SIG = ".sig"
+
   def stripSourceExtension(fileName: String): String =
     if (endsScala(fileName)) stripClassExtension(fileName)
     else if (endsJava(fileName)) stripJavaExtension(fileName)
@@ -46,23 +51,25 @@ object FileUtils {
 
   def dirPathInJar(forPackage: String): String = forPackage.replace('.', '/')
 
+  inline private def ends (filename:String, suffix:String) = filename.endsWith(suffix) && filename.length > suffix.length
+
   def endsClass(fileName: String): Boolean =
-    fileName.length > 6 && fileName.substring(fileName.length - 6) == ".class"
+    ends (fileName, SUFFIX_CLASS) || fileName.endsWith(SUFFIX_SIG)
 
   def endsScalaOrJava(fileName: String): Boolean =
     endsScala(fileName) || endsJava(fileName)
 
   def endsJava(fileName: String): Boolean =
-    fileName.length > 5 && fileName.substring(fileName.length - 5) == ".java"
+    ends (fileName, SUFFIX_JAVA)
 
   def endsScala(fileName: String): Boolean =
-    fileName.length > 6 && fileName.substring(fileName.length - 6) == ".scala"
+    ends (fileName, SUFFIX_SCALA)
 
   def stripClassExtension(fileName: String): String =
-    fileName.substring(0, fileName.length - 6) // equivalent of fileName.length - ".class".length
+    fileName.substring(0, fileName.lastIndexOf('.'))
 
   def stripJavaExtension(fileName: String): String =
-    fileName.substring(0, fileName.length - 5)
+    fileName.substring(0, fileName.length - 5) // equivalent of fileName.length - SUFFIX_JAVA.length
 
   // probably it should match a pattern like [a-z_]{1}[a-z0-9_]* but it cannot be changed
   // because then some tests in partest don't pass
