@@ -238,9 +238,10 @@ object Inliner {
     class Reposition extends TreeMap(cpyWithNewSource) {
 
       override def transform(tree: Tree)(using Context): Tree = {
+        def fixSpan[T <: untpd.Tree](copied: T): T =
+          copied.withSpan(if tree.source == curSource then tree.span else callSpan)
         def finalize(copied: untpd.Tree) =
-          val span = if tree.source == curSource then tree.span else callSpan
-          copied.withSpan(span).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
+          fixSpan(copied).withAttachmentsFrom(tree).withTypeUnchecked(tree.tpe)
 
         inContext(ctx.withSource(curSource)) {
           tree match
@@ -252,7 +253,8 @@ object Inliner {
             case tree: Bind => finalize(untpd.Bind(tree.name, transform(tree.body))(curSource))
             case tree: TypeTree => finalize(tpd.TypeTree(tree.tpe))
             case tree: DefTree => super.transform(tree).setDefTree
-            case _ => super.transform(tree)
+            case EmptyTree => tree
+            case _ => fixSpan(super.transform(tree))
         }
       }
     }
