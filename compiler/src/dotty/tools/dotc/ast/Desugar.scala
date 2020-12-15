@@ -1009,15 +1009,18 @@ object desugar {
    *             IrrefutableGenFrom:  sel with attachment `CheckIrrefutable -> checkMode`
    */
   def makeSelector(sel: Tree, checkMode: MatchCheck)(using Context): Tree =
-    if (checkMode == MatchCheck.Exhaustive) sel
-    else {
-      if (checkMode == MatchCheck.None)
-        Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
-      else
-        // TODO: use `pushAttachment` and investigate duplicate attachment
-        sel.withAttachment(CheckIrrefutable, checkMode)
-        sel
-    }
+    checkMode match
+    case MatchCheck.None =>
+      Annotated(sel, New(ref(defn.UncheckedAnnot.typeRef)))
+
+    case MatchCheck.Exhaustive =>
+      sel
+
+    case MatchCheck.IrrefutablePatDef | MatchCheck.IrrefutableGenFrom =>
+      // TODO: use `pushAttachment` and investigate duplicate attachment
+      sel.withAttachment(CheckIrrefutable, checkMode)
+      sel
+    end match
 
   /** If `pat` is a variable pattern,
    *

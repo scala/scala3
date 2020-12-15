@@ -671,7 +671,7 @@ trait Checking {
       report.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
-  /** Check that pattern `pat` is irrefutable for scrutinee tye `sel.tpe`.
+  /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
    *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
    *  pattern's type. If pattern is an UnApply, do the check recursively.
    */

@@ -25,7 +25,7 @@ want to decompose it like this:
 ```scala
 val first :: rest = elems   // error
 ```
-This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the rhs with an `@unchecked` annotation:
+This works in Scala 2. In fact it is a typical use case for Scala 2's rules. But in Scala 3.1 it will give a type error. One can avoid the error by marking the right-hand side with an `@unchecked` annotation:
 ```scala
 val first :: rest = elems: @unchecked   // OK
 ```
