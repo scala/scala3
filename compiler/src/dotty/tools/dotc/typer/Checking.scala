@@ -671,22 +671,24 @@ trait Checking {
       report.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
-  /** Check that pattern `pat` is irrefutable for scrutinee tye `pt`.
-   *  This means `pat` is either marked @unchecked or `pt` conforms to the
+  /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
+   *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
    *  pattern's type. If pattern is an UnApply, do the check recursively.
    */
-  def checkIrrefutable(pat: Tree, pt: Type, isPatDef: Boolean)(using Context): Boolean = {
+  def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
+    val pt = sel.tpe
 
     def fail(pat: Tree, pt: Type): Boolean = {
       var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
       if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
       val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
-      val fix = if (isPatDef) "`: @unchecked` after" else "`case ` before"
-      report.errorOrMigrationWarning(
+      val fix = if (isPatDef) "adding `: @unchecked` after the expression" else "writing `case ` before the full pattern"
+      val pos = if (isPatDef) sel.srcPos else pat.srcPos
+      report.warning(
         ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
             |
-            |If the narrowing is intentional, this can be communicated by writing $fix the full pattern.${err.rewriteNotice}""",
-        pat.srcPos)
+            |If the narrowing is intentional, this can be communicated by $fix.${err.rewriteNotice}""",
+          pos)
       false
     }
 
@@ -694,7 +696,7 @@ trait Checking {
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
-      pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
+      pt.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {
           case Bind(_, pat1) =>

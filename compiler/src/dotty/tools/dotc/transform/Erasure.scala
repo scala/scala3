@@ -490,7 +490,7 @@ object Erasure {
       def abstracted(args: List[Tree], tp: Type, pt: Type)(using Context): Tree =
         if args.length < targetLength then
           try
-            val defn.ContextFunctionType(argTpes, resTpe, isErased): @unchecked = tp
+            val defn.ContextFunctionType(argTpes, resTpe, isErased) = tp: @unchecked
             if isErased then abstracted(args, resTpe, pt)
             else
               val anonFun = newSymbol(
@@ -498,7 +498,7 @@ object Erasure {
                 MethodType(argTpes, resTpe), coord = tree.span.endPos)
               anonFun.info = transformInfo(anonFun, anonFun.info)
               def lambdaBody(refss: List[List[Tree]]) =
-                val refs :: Nil : @unchecked = refss
+                val refs :: Nil = refss: @unchecked
                 val expandedRefs = refs.map(_.withSpan(tree.span.endPos)) match
                   case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
                     argTpes.indices.toList.map(n =>
