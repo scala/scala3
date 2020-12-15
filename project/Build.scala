@@ -1360,6 +1360,7 @@ object Build {
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit,
         "--include-categories=dotty.communitybuild.TestCategory",
+        "--run-listener=dotty.communitybuild.FailureSummarizer",
       ),
       Compile/run := (Compile/run).dependsOn(prepareCommunityBuild).evaluated,
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
