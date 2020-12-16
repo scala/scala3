@@ -43,4 +43,8 @@ public class IO {
   public static String read(Path path) throws IOException {
     return new String(Files.readAllBytes(path), Charset.defaultCharset());
   }
+
+  public static String read(String path) throws IOException {
+    return read(Paths.get(path));
+  }
 }

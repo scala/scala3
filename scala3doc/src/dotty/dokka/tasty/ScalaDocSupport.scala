@@ -12,6 +12,30 @@ import dotty.dokka.tasty.comments.Comment
 trait ScaladocSupport { self: TastyParser =>
   import qctx.reflect._
 
+  def parseCommentString(comment: String, sym: Symbol, pos: Option[Position]): Comment =
+    val preparsed = comments.Preparser.preparse(comments.Cleaner.clean(comment))
+
+    val commentSyntax =
+      preparsed.syntax.headOption match {
+        case Some(commentSetting) =>
+          CommentSyntax.parse(commentSetting).getOrElse {
+            val msg = s"not a valid comment syntax: $commentSetting, defaulting to Markdown syntax."
+            // we should update pos with span from documentation
+            pos.fold(report.warning(msg))(report.warning(msg, _))
+
+            CommentSyntax.default
+          }
+        case None => ctx.args.defaultSyntax
+      }
+
+    val parser = commentSyntax match {
+      case CommentSyntax.Wiki =>
+        comments.WikiCommentParser(comments.Repr(qctx)(sym))
+      case CommentSyntax.Markdown =>
+        comments.MarkdownCommentParser(comments.Repr(qctx)(sym))
+    }
+    parser.parse(preparsed)
+
   def parseComment(docstring: String,  tree: Tree): Comment =
     val commentString: String =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
@@ -25,26 +49,6 @@ trait ScaladocSupport { self: TastyParser =>
       else
         docstring
 
-    val preparsed =
-      comments.Preparser.preparse(comments.Cleaner.clean(commentString))
+    parseCommentString(commentString, tree.symbol, Some(tree.pos))
 
-    val commentSyntax =
-      preparsed.syntax.headOption match {
-        case Some(commentSetting) =>
-          CommentSyntax.parse(commentSetting).getOrElse {
-            val msg = s"not a valid comment syntax: $commentSetting, defaulting to Markdown syntax."
-            // we should update pos with span from documentation
-            report.warning(msg, tree.pos)
-            CommentSyntax.default
-          }
-        case None => ctx.args.defaultSyntax
-      }
-
-    val parser = commentSyntax match {
-      case CommentSyntax.Wiki =>
-        comments.WikiCommentParser(comments.Repr(qctx)(tree.symbol))
-      case CommentSyntax.Markdown =>
-        comments.MarkdownCommentParser(comments.Repr(qctx)(tree.symbol))
-    }
-    parser.parse(preparsed)
 }

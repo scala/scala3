@@ -25,7 +25,7 @@ object ExternalDocLink:
 
     def tryParse[T](descr: String)(op: => T): Option[T] = try Some(op) catch
       case e: RuntimeException =>
-        report.warn("Unable to parse $descr", e)
+        report.warn(s"Unable to parse $descr", e)
         None
 
     def parsePackageList(elements: List[String]) = elements match

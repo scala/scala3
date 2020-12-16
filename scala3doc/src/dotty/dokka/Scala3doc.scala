@@ -68,6 +68,7 @@ object Scala3doc:
     externalMappings: List[ExternalDocLink] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
+    rootDocPath: Option[String] = None
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =

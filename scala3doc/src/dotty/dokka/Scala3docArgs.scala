@@ -48,9 +48,11 @@ class Scala3docArgs extends SettingGroup with CommonScalaSettings:
   val skipByRegex: Setting[List[String]] =
     MultiStringSetting("-skip-by-regex", "regex", "Regexes that match fully qualified names of packages or top-level classes to skip when generating documentation")
 
+  val docRootContent: Setting[String] =
+    StringSetting("-doc-root-content", "path", "The file from which the root package documentation should be imported.", "")
 
   def scala3docSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex, deprecatedSkipPackages)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex, deprecatedSkipPackages, docRootContent)
 
 object Scala3docArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scala3doc.Args, CompilerContext) =
@@ -139,5 +141,6 @@ object Scala3docArgs:
       externalMappings,
       skipById.get ++ deprecatedSkipPackages.get,
       skipByRegex.get,
+      docRootContent.nonDefault
     )
     (docArgs, newContext)

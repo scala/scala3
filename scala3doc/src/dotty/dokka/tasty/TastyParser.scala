@@ -24,7 +24,11 @@ import dotty.tools.dotc
 
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
+import dotty.dokka.tasty.comments.Comment
 import dotty.dokka.model.api._
+
+import java.nio.file.Paths
+import java.nio.file.Files
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -33,6 +37,7 @@ import dotty.dokka.model.api._
 case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[(String, Member)]
+  private var rootDoc: Option[Comment] = None
 
   def processCompilationUnit(using quotes: Quotes)(root: quotes.reflect.Tree): Unit = ()
 
@@ -84,24 +89,49 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
 
       isSkippedById(sym) || isSkippedByRx(sym)
 
+    val parser = new TastyParser(q, this)(isSkipped)
+    def driFor(link: String): Option[DRI] =
+      val symOps = new SymOps[q.type](q)
+      import symOps._
+      Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
+        MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
+    )
+    ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
+
+    var alreadyProcessed = false
+    def processRootDocIfNeeded(tree: parser.qctx.reflect.Tree) =
+      def readFile(pathStr: String)(using CompilerContext): Option[String] =
+        try
+          val path = Paths.get(pathStr)
+          if Files.exists(path) then Some(IO.read(path))
+          else
+            report.inform("Rootdoc at $pathStr does not exisits")
+            None
+        catch
+          case e: RuntimeException =>
+            report.warning(s"Unable to read root package doc from $pathStr: ${throwableToString(e)}")
+            None
+
+      if !alreadyProcessed then
+        alreadyProcessed = true
+        ctx.args.rootDocPath.flatMap(readFile).map { content =>
+          import parser.qctx.reflect._
+          def root(s: Symbol): Symbol = if s.owner.isNoSymbol then s else root(s.owner)
+          val topLevelPck = root(tree.symbol)
+          rootDoc = Some(parser.parseCommentString(content, topLevelPck, None))
+        }
+
     hackForeachTree { root =>
       if !isSkipped(root.symbol) then
-        val parser = new TastyParser(q, this)(isSkipped)
-
-        def driFor(link: String): Option[DRI] =
-          val symOps = new SymOps[q.type](q)
-          import symOps._
-          Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
-            MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
-          )
-
-        ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
-        topLevels ++= parser.parseRootTree(root.asInstanceOf[parser.qctx.reflect.Tree])
+        val treeRoot = root.asInstanceOf[parser.qctx.reflect.Tree]
+        processRootDocIfNeeded(treeRoot)
+        topLevels ++= parser.parseRootTree(treeRoot)
     }
 
 
-  def result(): List[Member] =
+  def result(): (List[Member], Option[Comment]) =
     topLevels.clear()
+    rootDoc = None
     val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
     val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
 
@@ -114,7 +144,7 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
         p1.withNewMembers(p2.allMembers) // TODO add doc
       )
       basePck.withMembers((basePck.allMembers ++ rest).sortBy(_.name))
-    }.toList
+    }.toList -> rootDoc
 
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(

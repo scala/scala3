@@ -1528,13 +1528,7 @@ object Build {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val managedSources =
-            (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
-          val projectRoot = (ThisBuild/baseDirectory).value.toPath
-          val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
-          val scalaSourceLink =
-            s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
-          val sourceLinks = s"-source-links:$scalaSourceLink,github://lampepfl/dotty "
+          val sourceLinks = "-source-links:github://lampepfl/dotty "
           val revision = s"-revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
           run.in(Compile).toTask(cmd)
@@ -1595,6 +1589,12 @@ object Build {
 
             val roots = joinProducts(dottyJars)
 
+            val managedSources =
+              (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+            val projectRoot = (ThisBuild/baseDirectory).value.toPath
+            val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
+            val docRootFile = stdLibRoot.resolve("rootdoc.txt")
+
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else Def.task{
               IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
@@ -1613,7 +1613,9 @@ object Build {
               "-skip-by-regex:.+\\.internal($|\\..+) " +
               "-skip-by-regex:.+\\.impl($|\\..+) " +
               "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
-              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
+              s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
+              s"-doc-root-content $docRootFile"
               ))
           }.evaluated,
 
