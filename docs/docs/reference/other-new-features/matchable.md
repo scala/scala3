@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: The Matchable Trait
+title: "The Matchable Trait"
 ---
 
 A new trait `Matchable` controls the ability to pattern match.
