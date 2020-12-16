@@ -16,7 +16,7 @@ import kotlin.coroutines.Continuation
 
 class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
-    val result = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
+    val (result, rootDoc) = DokkaTastyInspector(new MarkdownParser(_ => null)).result()
     val (rootPck, rest) = result.partition(_.name == "<empty>")
     val packageMembers = (rest ++ rootPck.flatMap(_.allMembers)).sortBy(_.name)
 
@@ -32,7 +32,7 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
       null,
       JSet(ctx.sourceSet),
       PropertyContainer.Companion.empty()
-    ).withNewMembers(packageMembers).withKind(Kind.RootPackage).asInstanceOf[DPackage]
+    ).withNewMembers(packageMembers).withKind(Kind.RootPackage).withDocs(rootDoc).asInstanceOf[DPackage]
 
     new DModule(
       sourceSet.getDisplayName,

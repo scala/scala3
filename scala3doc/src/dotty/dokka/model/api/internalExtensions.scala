@@ -79,6 +79,10 @@ extension (member: Member)
     val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(kind = kind)
     putInMember(ext)
 
+  def withDocs(docs: Option[Comment]): Member =
+    val ext = MemberExtension.getFrom(member).getOrElse(MemberExtension.empty).copy(rawDoc = docs)
+    putInMember(ext)
+
   def withMembers(newMembers: Seq[Member]): Member =
     val original = member.compositeMemberExt.getOrElse(CompositeMemberExtension())
     val newExt = original.copy(members = newMembers)

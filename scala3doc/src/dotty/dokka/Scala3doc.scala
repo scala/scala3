@@ -65,9 +65,10 @@ object Scala3doc:
     defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
-    externalMappings: List[List[String]] = List.empty,
+    externalMappings: List[ExternalDocLink] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
+    rootDocPath: Option[String] = None
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
