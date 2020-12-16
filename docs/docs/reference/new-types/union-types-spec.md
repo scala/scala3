@@ -117,7 +117,7 @@ The members of a union type are the members of its join.
 
 ### Example
 
-The following code does not typecheck, because `hello` is not a member of
+The following code does not typecheck, because method `hello` is not a member of
 `AnyRef` which is the join of `A | B`.
 
 ```scala
@@ -149,8 +149,9 @@ the erased lub is computed as follows:
 
 - if both argument are arrays of objects, an array of the erased lub of the element types
 - if both arguments are arrays of same primitives, an array of this primitive
-- if one argument is array of primitives and the other is array of objects, Object
-- if one argument is an array, Object
+- if one argument is array of primitives and the other is array of objects,
+  [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
 - otherwise a common superclass or trait S of the argument classes, with the
   following two properties:
   * S is minimal: no other common superclass or trait derives from S

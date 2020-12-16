@@ -28,7 +28,7 @@ The compiler enforces two rules for well-indented programs, flagging violations 
     println("done")  // error: indented too far to the left
     ```
 
- 2. If significant indentation is turned off (i.e. under Scala-2 mode or under `-noindent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
+ 2. If significant indentation is turned off (i.e. under Scala 2 mode or under `-noindent`) and we are at the  start of an indented sub-part of an expression, and the indented part ends in a newline, the next statement must start at an indentation width less than the sub-part. This prevents errors where an opening brace was forgotten, as in
 
     ```scala
     if (x < 0)

@@ -41,7 +41,7 @@ are, after splices nested in the quotes are expanded.
 
 If the outermost scope is a quote, we need to generate code that
 constructs the quoted tree at run-time. We implement this by
-serializing the tree as a Tasty structure, which is stored
+serializing the tree as a TASTy structure, which is stored
 in a string literal. At runtime, an unpickler method is called to
 deserialize the string into a tree.
 
@@ -183,7 +183,7 @@ private def dynamicPower(n: Int, x: Double): Double =
   else if (n % 2 == 0) dynamicPower(n / 2, x * x)
   else x * dynamicPower(n - 1, x)
 ```
----
+
 This assumes a `Constant` extractor that maps tree nodes representing
 constants to their values.
 

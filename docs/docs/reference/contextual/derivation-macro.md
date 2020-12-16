@@ -91,12 +91,13 @@ The implementation of `summonAll` as a macro can be show below assuming that we
 have the given instances for our primitive types:
 
 ```scala
-  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
-    case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
-    case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
-    case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
-    case '[EmptyTuple] => Nil
-  }
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] =
+    Type.of[T] match {
+      case '[String *: tpes] => '{ summon[Eq[String]] } :: summonAll[tpes]
+      case '[Int *: tpes]    => '{ summon[Eq[Int]] }    :: summonAll[tpes]
+      case '[tpe *: tpes]    => derived[tpe] :: summonAll[tpes]
+      case '[EmptyTuple]     => Nil
+    }
 ```
 
 One additional difference with the body of `derived` here as opposed to the one
@@ -169,12 +170,13 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = Type.of[T] match {
-    case '[String *: tpes] => '{ summon[Eq[String]] }  :: summonAll[tpes]
-    case '[Int *: tpes]    => '{ summon[Eq[Int]] }     :: summonAll[tpes]
-    case '[tpe *: tpes]   => derived[tpe] :: summonAll[tpes]
-    case '[EmptyTuple] => Nil
-  }
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] =
+    Type.of[T] match {
+      case '[String *: tpes] => '{ summon[Eq[String]] } :: summonAll[tpes]
+      case '[Int *: tpes]    => '{ summon[Eq[Int]] }    :: summonAll[tpes]
+      case '[tpe *: tpes]    => derived[tpe] :: summonAll[tpes]
+      case '[EmptyTuple]     => Nil
+    }
 
   given derived[T: Type](using q: Quotes): Expr[Eq[T]] = {
     import quotes.reflect._

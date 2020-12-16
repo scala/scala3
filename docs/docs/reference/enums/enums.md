@@ -92,7 +92,7 @@ object Planet {
 ```
 
 ### Compatibility with Java Enums
-If you want to use the Scala-defined enums as Java enums, you can do so by extending
+If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html), you can do so by extending
 the class `java.lang.Enum`, which is imported by default, as follows:
 
 ```scala

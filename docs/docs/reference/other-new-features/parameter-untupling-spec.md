@@ -81,5 +81,4 @@ be doing the same translation (semantically) but in a less efficient way.
 
 ### Reference
 
-For more info see:
-* [Issue #897](https://github.com/lampepfl/dotty/issues/897).
+For more info see [Issue #897](https://github.com/lampepfl/dotty/issues/897).

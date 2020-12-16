@@ -103,10 +103,11 @@ example, collects the pattern variables of a tree.
 ```scala
 def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] = {
   val acc = new TreeAccumulator[List[Symbol]] {
-    def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match {
-      case Bind(_, body) => apply(tree.symbol :: syms, body)
-      case _ => foldOver(syms, tree)
-    }
+    def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) =
+      tree match {
+        case Bind(_, body) => apply(tree.symbol :: syms, body)
+        case _ => foldOver(syms, tree)
+      }
   }
   acc(Nil, tree)
 }

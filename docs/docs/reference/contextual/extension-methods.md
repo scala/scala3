@@ -215,7 +215,8 @@ object List:
       def < (ys: List[T]): Boolean = ...
 end List
 
-// extension method available since it is in the implicit scope of List[List[Int]]
+// extension method available since it is in the implicit scope
+// of List[List[Int]]
 List(List(1, 2), List(3, 4)).flatten
 
 // extension method available since it is in the given Ordering[List[T]],

@@ -288,7 +288,8 @@ package quoted
 
 object Expr {
   ...
-  def apply[T: ToExpr](x: T)(using Quotes): Expr[T] = summon[ToExpr[T]].toExpr(x)
+  def apply[T: ToExpr](x: T)(using Quotes): Expr[T] =
+    summon[ToExpr[T]].toExpr(x)
   ...
 }
 ```
@@ -389,7 +390,7 @@ In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
 `quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
 is handled by the compiler, using the algorithm sketched above.
 
-## Relationship with Inline
+## Relationship with `inline`
 
 Seen by itself, principled metaprogramming looks more like a framework for
 runtime metaprogramming than one for compile-time metaprogramming with macros.
@@ -747,7 +748,8 @@ def f(expr: Expr[Any])(using Quotes) =
 This might be used to then perform an implicit search as in:
 
 ```scala
-extension (inline sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
+extension (inline sc: StringContext)
+  inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
   argsExpr match {

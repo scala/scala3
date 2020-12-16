@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Weak Conformance - More Details
+title: "Dropped: Weak Conformance - More Details"
 ---
 
 To simplify the underlying type theory, Scala 3 drops the notion of weak
@@ -12,7 +12,6 @@ assigning a type to a constant expression. The new rule is:
      - the elements of a vararg parameter, or
      - the alternatives of an if-then-else or match expression, or
      - the body and catch results of a try expression,
-
 
    and all expressions have primitive numeric types, but they do not
    all have the same type, then the following is attempted:
@@ -32,7 +31,7 @@ assigning a type to a constant expression. The new rule is:
     if `c.toByte.toInt != c`. For an `Int -> Short` conversion, it occurs
     if `c.toShort.toInt != c`.
 
-### Examples
+## Examples
 
 ```scala
 inline val b = 33

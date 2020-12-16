@@ -31,7 +31,7 @@ Classes that are not open can still be extended, but only if at least one of two
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
- - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import statement in the source file of the extension:
+ - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
    ```scala
    import scala.language.adhocExtensions
    ```

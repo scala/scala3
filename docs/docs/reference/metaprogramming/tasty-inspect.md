@@ -4,7 +4,7 @@ title: "TASTy Inspection"
 ---
 
 ```scala
-libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-inspector" % scalaVersion.value
+libraryDependencies += "ch.epfl.lamp" %% "scala3-tasty-inspector" % scalaVersion.value
 ```
 
 TASTy files contain the full typed tree of a class including source positions

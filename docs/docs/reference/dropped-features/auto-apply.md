@@ -4,7 +4,7 @@ title: "Dropped: Auto-Application"
 ---
 
 Previously an empty argument list `()` was implicitly inserted when
-calling a nullary method without arguments. E.g.
+calling a nullary method without arguments. Example:
 ```scala
 def next(): T = ...
 next     // is expanded to next()
@@ -69,7 +69,7 @@ class B extends A {
   def next: Int // overriding error: incompatible type
 }
 ```
-Methods overriding Java or Scala-2 methods are again exempted from this
+Methods overriding Java or Scala 2 methods are again exempted from this
 requirement.
 
 ### Migrating code

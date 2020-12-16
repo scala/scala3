@@ -63,12 +63,16 @@ object Mirror {
   /** The Mirror for a product type */
   trait Product extends Mirror {
 
-    /** Create a new instance of type `T` with elements taken from product `p`. */
+    /** Create a new instance of type `T` with elements
+     *  taken from product `p`.
+     */
     def fromProduct(p: scala.Product): MirroredMonoType
   }
 
   trait Sum extends Mirror { self =>
-    /** The ordinal number of the case class of `x`. For enums, `ordinal(x) == x.ordinal` */
+    /** The ordinal number of the case class of `x`.
+     *  For enums, `ordinal(x) == x.ordinal`
+     */
     def ordinal(x: MirroredMonoType): Int
   }
 }
@@ -199,10 +203,11 @@ implementation of `summonAll` is `inline` and uses Scala 3's `summonInline` cons
 
 ```scala
 
-inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
-  case _: EmptyTuple => Nil
-  case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
-}
+inline def summonAll[T <: Tuple]: List[Eq[_]] =
+  inline erasedValue[T] match {
+    case _: EmptyTuple => Nil
+    case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+  }
 ```
 
 with the instances for children in hand the `derived` method uses an `inline match` to dispatch to methods which can
@@ -243,10 +248,11 @@ Pulling this all together we have the following complete implementation,
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonInline}
 
-inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
-  case _: EmptyTuple => Nil
-  case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
-}
+inline def summonAll[T <: Tuple]: List[Eq[_]] =
+  inline erasedValue[T] match {
+    case _: EmptyTuple => Nil
+    case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+  }
 
 trait Eq[T] {
   def eqv(x: T, y: T): Boolean
