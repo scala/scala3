@@ -582,6 +582,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
+            NamerOps.addConstructorProxies(denot.classSymbol)
           case denot =>
             val tp1 = translateTempPoly(tp)
             denot.info =

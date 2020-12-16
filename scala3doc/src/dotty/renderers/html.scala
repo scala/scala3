@@ -46,7 +46,7 @@ object HTML:
       .replace("'", "&apos;")
 
   case class Attr(name: String):
-    def :=(value: String): AppliedAttr = AppliedAttr(s"""$name="$value"""")
+    def :=(value: String): AppliedAttr = new AppliedAttr(s"""$name="$value"""")
 
   opaque type AppliedTag = StringBuilder
 
@@ -97,5 +97,5 @@ object HTML:
   val testId = Attr("data-test-id")
   val alt = Attr("alt")
 
-  def raw(content: String): AppliedTag = AppliedTag(content)
+  def raw(content: String): AppliedTag = new AppliedTag(content)
   def raw(content: StringBuilder): AppliedTag = content

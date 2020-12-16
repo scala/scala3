@@ -89,6 +89,7 @@ class ExtractSemanticDB extends Phase:
 
     private def excludeSymbol(sym: Symbol)(using Context): Boolean =
       !sym.exists
+      || sym.is(ConstructorProxy)
       || sym.name.isWildcard
       || excludeQual(sym)
 

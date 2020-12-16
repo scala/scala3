@@ -46,6 +46,7 @@ import transform.TypeUtils._
 import reporting._
 import Nullables._
 import NullOpsDecorator._
+import config.Config
 
 object Typer {
 
@@ -134,12 +135,16 @@ class Typer extends Namer
    *   @param name       the name of the identifier
    *   @param pt         the expected type
    *   @param required   flags the result's symbol must have
+   *   @param excluded   flags the result's symbol must not have
    *   @param pos        indicates position to use for error reporting
    */
-  def findRef(name: Name, pt: Type, required: FlagSet, pos: SrcPos)(using Context): Type = {
+  def findRef(name: Name, pt: Type, required: FlagSet, excluded: FlagSet, pos: SrcPos)(using Context): Type = {
     val refctx = ctx
     val noImports = ctx.mode.is(Mode.InPackageClauseName)
-    def fail(msg: Message) = report.error(msg, pos)
+    def suppressErrors = excluded.is(ConstructorProxy)
+      // when searching for references shadowed by a constructor proxy, do not report errors
+    def fail(msg: Message) =
+      if !suppressErrors then report.error(msg, pos)
 
     /** A symbol qualifies if it really exists and is not a package class.
      *  In addition, if we are in a constructor of a pattern, we ignore all definitions
@@ -203,7 +208,7 @@ class Typer extends Namer
         imp.sym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
-            var denot = pre.memberBasedOnFlags(name, required, EmptyFlags)
+            var denot = pre.memberBasedOnFlags(name, required, excluded)
               .accessibleFrom(pre)(using refctx)
             // Pass refctx so that any errors are reported in the context of the
             // reference instead of the context of the import scope
@@ -331,7 +336,7 @@ class Typer extends Namer
               val scope = if owner.isClass then owner.info.decls else outer.scope
               if scope.lookup(name).exists then
                 val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
-                if !symsMatch then
+                if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
                     pos)
@@ -343,7 +348,7 @@ class Typer extends Namer
                 checkNoOuterDefs(denot, outer, prevCtx)
 
           if isNewDefScope then
-            val defDenot = ctx.denotNamed(name, required)
+            val defDenot = ctx.denotNamed(name, required, excluded)
             if (qualifies(defDenot)) {
               val found =
                 if (isSelfDenot(defDenot)) curOwner.enclosingClass.thisType
@@ -461,7 +466,7 @@ class Typer extends Namer
       unimported = Set.empty
       foundUnderScala2 = NoType
       try
-        val found = findRef(name, pt, EmptyFlags, tree.srcPos)
+        val found = findRef(name, pt, EmptyFlags, EmptyFlags, tree.srcPos)
         if foundUnderScala2.exists && !(foundUnderScala2 =:= found) then
           report.migrationWarning(
             ex"""Name resolution will change.
@@ -473,7 +478,17 @@ class Typer extends Namer
       	unimported = saved1
       	foundUnderScala2 = saved2
 
+    def checkNotShadowed(ownType: Type) = ownType match
+      case ownType: TermRef if ownType.symbol.is(ConstructorProxy) =>
+        val shadowed = findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos)
+        if shadowed.exists then
+          report.error(
+            em"""Reference to creator proxy for ${ownType.symbol.companionClass.showLocated}
+                |shadows outer reference to ${shadowed.termSymbol.showLocated}""", tree.srcPos)
+      case _ =>
+
     def setType(ownType: Type): Tree =
+      checkNotShadowed(ownType)
       val tree1 = ownType match
         case ownType: NamedType if !prefixIsElidable(ownType) =>
           ref(ownType).withSpan(tree.span)
@@ -2199,8 +2214,8 @@ class Typer extends Namer
       if (ctx.mode.is(Mode.Interactive) && ctx.settings.YretainTrees.value)
         cls.rootTreeOrProvider = cdef1
 
-      for (deriver <- cdef.removeAttachment(Deriver))
-        cdef1.putAttachment(Deriver, deriver)
+      for (deriver <- cdef.removeAttachment(AttachedDeriver))
+        cdef1.putAttachment(AttachedDeriver, deriver)
 
       cdef1
     }
@@ -2710,7 +2725,7 @@ class Typer extends Namer
         val enumContext = enumContexts(stat.symbol.linkedClass)
         if enumContext != null then
           checkEnumCaseRefsLegal(stat, enumContext)
-        stat.removeAttachment(Deriver) match {
+        stat.removeAttachment(AttachedDeriver) match {
           case Some(deriver) => deriver.finalize(stat)
           case None => stat
         }
@@ -2799,55 +2814,6 @@ class Typer extends Namer
     case _                  => false
   }
 
-  /** Try to rename `tpt` to a type `T` and typecheck `new T` with given expected type `pt`.
-   *  The operation is called from either `adapt` or `typedApply`. `adapt` gets to call `tryNew`
-   *  for calls `p.C(..)` if there is a value `p.C`. `typedApply` calls `tryNew` as a fallback
-   *  in case typing `p.C` fails since there is no value with path `p.C`. The call from `adapt`
-   *  is more efficient since it re-uses the prefix `p` in typed form.
-   */
-  def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(using Context): Tree = {
-
-    def tryWithType(tpt: untpd.Tree): Tree =
-      tryEither {
-        val tycon = typed(tpt)
-        if (summon[Context].reporter.hasErrors)
-          EmptyTree // signal that we should return the error in fallBack
-        else {
-          def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match {
-            case PolyProto(targs, pt1) if !targs.exists(_.isInstanceOf[NamedArg]) =>
-              // Applications with named arguments cannot be converted, since new expressions
-              // don't accept named arguments
-              IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
-            case _ =>
-              typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
-          }
-          recur(tycon, pt)
-            .showing(i"try new $tree -> $result", typr)
-        }
-      } { (nu, nuState) =>
-        if (nu.isEmpty) fallBack(nuState)
-        else {
-          // we found a type constructor, signal the error in its application instead of the original one
-          nuState.commit()
-          nu
-        }
-      }
-
-    tree match {
-      case Ident(name) =>
-        tryWithType(cpy.Ident(tree)(name.toTypeName))
-      case Select(qual, name) =>
-        val qual1 = treesInst match {
-          case `tpd` => untpd.TypedSplice(qual)
-          case `untpd` => qual
-        }
-        tryWithType(cpy.Select(tree)(qual1, name.toTypeName))
-      case _ =>
-        fallBack(ctx.typerState)
-    }
-  }
-
   /** Potentially add apply node or implicit conversions. Before trying either,
    *  if the function is applied to an empty parameter list (), we try
    *
@@ -2884,8 +2850,7 @@ class Typer extends Namer
     }
 
     def tryImplicit(fallBack: => Tree) =
-      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked)
-        .getOrElse(tryNew(tpd)(tree, pt, _ => fallBack))
+      tryInsertImplicitOnQualifier(tree, pt.withContext(ctx), locked).getOrElse(fallBack)
 
     if (ctx.mode.is(Mode.SynthesizeExtMethodReceiver))
       // Suppress insertion of apply or implicit conversion on extension method receiver
@@ -3315,49 +3280,50 @@ class Typer extends Namer
         checkEqualityEvidence(tree, pt)
         tree
       }
-      else if (methPart(tree).symbol.isAllOf(Inline | Deferred) && !Inliner.inInlineMethod) then
-        errorTree(tree, i"Deferred inline ${methPart(tree).symbol.showLocated} cannot be invoked")
-      else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
-        tree.tpe <:< wildApprox(pt)
-        val errorCount = ctx.reporter.errorCount
+      else
         val meth = methPart(tree).symbol
-        val inlined = Inliner.inlineCall(tree)
-        if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
-        else inlined
-      }
-      else if (tree.symbol.isScala2Macro &&
-               // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
-              tree.symbol != defn.StringContext_raw &&
-              tree.symbol != defn.StringContext_f &&
-              tree.symbol != defn.StringContext_s)
-        if (ctx.settings.XignoreScala2Macros.value) {
-          report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.srcPos.startPos)
-          Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
-            .withType(tree.tpe)
-            .withSpan(tree.span)
+        if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
+          errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
+        else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
+          tree.tpe <:< wildApprox(pt)
+          val errorCount = ctx.reporter.errorCount
+          val inlined = Inliner.inlineCall(tree)
+          if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
+          else inlined
         }
-        else {
-          report.error(
-            """Scala 2 macro cannot be used in Dotty. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html
-              |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
-          tree
-        }
-      else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-        case CompareResult.Fail =>
-          wtp match
-            case wtp: MethodType => missingArgs(wtp)
-            case _ =>
-              typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
-              //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-              adaptToSubType(wtp)
-        case CompareResult.OKwithGADTUsed if pt.isValueType =>
-          // Insert an explicit cast, so that -Ycheck in later phases succeeds.
-          // I suspect, but am not 100% sure that this might affect inferred types,
-          // if the expected type is a supertype of the GADT bound. It would be good to come
-          // up with a test case for this.
-          tree.cast(pt)
-        case _ =>
-          tree
+        else if (tree.symbol.isScala2Macro &&
+                // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
+                tree.symbol != defn.StringContext_raw &&
+                tree.symbol != defn.StringContext_f &&
+                tree.symbol != defn.StringContext_s)
+          if (ctx.settings.XignoreScala2Macros.value) {
+            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html", tree.srcPos.startPos)
+            Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
+              .withType(tree.tpe)
+              .withSpan(tree.span)
+          }
+          else {
+            report.error(
+              """Scala 2 macro cannot be used in Dotty. See https://dotty.epfl.ch/docs/reference/dropped-features/macros.html
+                |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""".stripMargin, tree.srcPos.startPos)
+            tree
+          }
+        else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
+          case CompareResult.Fail =>
+            wtp match
+              case wtp: MethodType => missingArgs(wtp)
+              case _ =>
+                typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
+                //typr.println(TypeComparer.explained(tree.tpe <:< pt))
+                adaptToSubType(wtp)
+          case CompareResult.OKwithGADTUsed if pt.isValueType =>
+            // Insert an explicit cast, so that -Ycheck in later phases succeeds.
+            // I suspect, but am not 100% sure that this might affect inferred types,
+            // if the expected type is a supertype of the GADT bound. It would be good to come
+            // up with a test case for this.
+            tree.cast(pt)
+          case _ =>
+            tree
     }
 
     // Follow proxies and approximate type paramrefs by their upper bound
@@ -3532,10 +3498,10 @@ class Typer extends Namer
         case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
           def tryExtension(using Context): Tree =
             try
-              findRef(selName, WildcardType, ExtensionMethod, tree.srcPos) match
+              findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, tree.srcPos) match
+                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
                   case ref: TermRef =>
                     extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
                   case _ => EmptyTree
@@ -3618,6 +3584,29 @@ class Typer extends Namer
       case _ =>
     }
 
+    /** Convert constructor proxy reference to a new expression */
+    def newExpr =
+      def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match
+        case PolyProto(targs, pt1) =>
+          if targs.exists(_.isInstanceOf[NamedArg]) then
+            errorTree(tpt, "Named type argument not allowed in constructor application")
+          else
+            IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
+        case _ =>
+          typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
+
+      tree match
+        case Select(qual, nme.apply) =>
+          val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
+          val tpt = qual match
+            case Ident(name) => cpy.Ident(qual)(name.toTypeName)
+            case Select(pre, name) => cpy.Select(qual)(pre, name.toTypeName)
+          recur(tpt.withType(tycon), pt)
+            .showing(i"convert creator $tree -> $result", typr)
+        case _ =>
+          throw AssertionError(i"bad case for newExpr: $tree, $pt")
+    end newExpr
+
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
       case _ => tree.tpe.widen match {
@@ -3633,22 +3622,22 @@ class Typer extends Namer
               adaptOverloaded(ref)
           }
         case poly: PolyType if !(ctx.mode is Mode.Type) =>
-          if (pt.isInstanceOf[PolyProto]) tree
-          else {
-            var typeArgs = tree match {
+          if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
+          else if pt.isInstanceOf[PolyProto] then tree
+          else
+            var typeArgs = tree match
               case Select(qual, nme.CONSTRUCTOR) => qual.tpe.widenDealias.argTypesLo.map(TypeTree)
               case _ => Nil
-            }
-            if (typeArgs.isEmpty) typeArgs = constrained(poly, tree)._2
+            if typeArgs.isEmpty then typeArgs = constrained(poly, tree)._2
             convertNewGenericArray(readapt(tree.appliedToTypeTrees(typeArgs)))
-          }
         case wtp =>
           val isStructuralCall = wtp.isValueType && isStructuralTermSelectOrApply(tree)
           if (isStructuralCall)
             readaptSimplified(handleStructural(tree))
           else pt match {
             case pt: FunProto =>
-              adaptToArgs(wtp, pt)
+              if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
+              else adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tree match {
                 case _: IntegratedTypeArgs => tree

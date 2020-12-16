@@ -951,7 +951,8 @@ object SymDenotations {
 
     /** An erased value or an erased inline method or field */
     def isEffectivelyErased(using Context): Boolean =
-      is(Erased) || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
+      isOneOf(EffectivelyErased)
+      || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -1609,7 +1610,7 @@ object SymDenotations {
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = BaseTypeMap()
+        myBaseTypeCache = new BaseTypeMap()
         myBaseTypeCachePeriod = ctx.period
       myBaseTypeCache
     }
@@ -2165,6 +2166,8 @@ object SymDenotations {
       if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
 
+    private[core] def unforcedRegisteredCompanion: Symbol = myCompanion
+
     override def registeredCompanion(using Context) =
       if !myCompanion.exists then
         ensureCompleted()
@@ -2256,6 +2259,15 @@ object SymDenotations {
             case d: DenotUnion => dropStale(d)
             case d => d
 
+      /** Filter symbols making up a DenotUnion to remove alternatives from stale classfiles.
+       *  This proceeds as follow:
+       *
+       *   - prefer alternatives that are currently compiled over ones that have been compiled before.
+       *   - if no alternative is compiled now, and they all come from the same file, keep all of them
+       *   - if no alternative is compiled now, and they come from different files, keep the
+       *     ones from the youngest file, but issue a warning that one of the class files
+       *     should be removed from the classpath.
+       */
       def dropStale(multi: DenotUnion): PreDenotation =
         val compiledNow = multi.filterWithPredicate(d =>
           d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null

@@ -70,7 +70,7 @@ case class TemplateFile(
       case other => other
 
     // Library requires mutable maps..
-    val mutableProperties = JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
+    val mutableProperties = new JHashMap(ctx.properties.transform((_, v) => asJavaElement(v)).asJava)
     val rendered = Template.parse(this.rawCode).render(mutableProperties)
     // We want to render markdown only if next template is html
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else

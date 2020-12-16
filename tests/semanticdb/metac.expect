@@ -1479,7 +1479,7 @@ Occurrences:
 [2:7..2:12): scala -> scala/
 [2:13..2:23): annotation -> scala/annotation/
 [2:24..2:28): meta -> scala/annotation/meta/
-[2:29..2:34): param -> scala/annotation/meta/param.
+[2:29..2:34): param -> scala/annotation/meta/param#
 [3:7..3:12): scala -> scala/
 [3:13..3:21): language -> scala/language.
 [3:22..3:34): existentials -> scala/language.existentials.

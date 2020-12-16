@@ -131,7 +131,7 @@ class SymOps[Q <: Quotes](val q: Q):
         // We want package object to point to package
         val className = sym.className.filter(_ != "package$")
 
-        DRI(
+        new DRI(
           className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
           sym.anchor.getOrElse(""), // TODO do we need any of this fields?
           null,

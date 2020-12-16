@@ -40,7 +40,7 @@ object MainProxies {
   }
 
   private def checkNoShadowing(mainFun: Symbol)(using Context) =
-    val cls = ctx.typer.findRef(mainFun.name.toTypeName, WildcardType, EmptyFlags, mainFun).typeSymbol
+    val cls = ctx.typer.findRef(mainFun.name.toTypeName, WildcardType, EmptyFlags, EmptyFlags, mainFun).typeSymbol
     if cls.exists && cls.owner != ctx.owner then
       report.warning(
         i"""The class `${ctx.printer.fullNameString(mainFun)}` generated from `@main` will shadow the existing ${cls.showLocated}.

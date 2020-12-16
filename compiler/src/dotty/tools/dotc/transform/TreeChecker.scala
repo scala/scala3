@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists, i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -442,8 +442,11 @@ class TreeChecker extends Phase with SymTransformer {
 
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
+      
+      def isAllowed(sym: Symbol): Boolean =
+        sym.is(ConstructorProxy) && !ctx.phase.erasedTypes
 
-      val symbolsNotDefined = decls -- defined - constr.symbol
+      val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
 
       assert(symbolsNotDefined.isEmpty,
         i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +

@@ -55,7 +55,8 @@ class Namer { typer: Typer =>
   val ExpandedTree    : Property.Key[untpd.Tree]          = new Property.Key
   val ExportForwarders: Property.Key[List[tpd.MemberDef]] = new Property.Key
   val SymOfTree       : Property.Key[Symbol]              = new Property.Key
-  val Deriver         : Property.Key[typer.Deriver]       = new Property.Key
+  val AttachedDeriver : Property.Key[Deriver]             = new Property.Key
+    // was `val Deriver`, but that gave shadowing problems with constructor proxies
 
   /** A partial map from unexpanded member and pattern defs and to their expansions.
    *  Populated during enterSyms, emptied during typer.
@@ -563,22 +564,25 @@ class Namer { typer: Typer =>
         }
     }
 
-    /** Create links between companion object and companion class */
-    def createLinks(classTree: TypeDef, moduleTree: TypeDef)(using Context) = {
-      val claz = ctx.effectiveScope.lookup(classTree.name)
-      val modl = ctx.effectiveScope.lookup(moduleTree.name)
-      modl.registerCompanion(claz)
-      claz.registerCompanion(modl)
-    }
+    val classDef  = mutable.Map[TypeName, TypeDef]()
+    val moduleDef = mutable.Map[TypeName, TypeDef]()
 
-    def createCompanionLinks(using Context): Unit = {
-      val classDef  = mutable.Map[TypeName, TypeDef]()
-      val moduleDef = mutable.Map[TypeName, TypeDef]()
+    /** Create links between companion object and companion class.
+     *  Populate `moduleDef` and `classDef` as a side effect.
+     */
+    def createCompanionLinks()(using Context): Unit = {
 
       def updateCache(cdef: TypeDef): Unit =
         if (cdef.isClassDef && !cdef.mods.is(Package))
           if (cdef.mods.is(ModuleClass)) moduleDef(cdef.name) = cdef
           else classDef(cdef.name) = cdef
+
+      def createLinks(classTree: TypeDef, moduleTree: TypeDef)(using Context) = {
+        val claz = ctx.effectiveScope.lookup(classTree.name)
+        val modl = ctx.effectiveScope.lookup(moduleTree.name)
+        modl.registerCompanion(claz)
+        claz.registerCompanion(modl)
+      }
 
       for (stat <- stats)
         expanded(stat) match {
@@ -597,42 +601,58 @@ class Namer { typer: Typer =>
             createLinks(cdef, t)
           case EmptyTree =>
         }
+    }
 
-      // If a top-level object or class has no companion in the current run, we
-      // enter a dummy companion (`denot.isAbsent` returns true) in scope. This
-      // ensures that we never use a companion from a previous run or from the
-      // class path. See tests/pos/false-companion for an example where this
-      // matters.
-      if (ctx.owner.is(PackageClass)) {
-        for (cdef @ TypeDef(moduleName, _) <- moduleDef.values) {
+    /** If a top-level object or class has no companion in the current run, we
+     *  enter a dummy companion (`denot.isAbsent` returns true) or constructor
+     *  proxy in scope. This ensures that we never use a companion from a previous
+     *  run or from thenclass path. See tests/pos/false-companion for an example
+     *  where this matters.
+     *  Also: We add constructor proxies for classes in some local scope, i.e.
+     *  that are not members of other classes. Constructor proxies for member
+     *  classes are added in addConstructorProxies.
+     */
+    def addAbsentCompanions()(using Context): Unit =
+      if ctx.owner.isTerm then
+        for case cdef @ TypeDef(className, _) <- classDef.values do
+          val classSym = ctx.effectiveScope.lookup(className)
+          val moduleName = className.toTermName
+          if needsConstructorProxies(classSym) && ctx.effectiveScope.lookupEntry(moduleName) == null then
+            enterSymbol(constructorCompanion(classSym.asClass))
+      else if ctx.owner.is(PackageClass) then
+        for case cdef @ TypeDef(moduleName, _) <- moduleDef.values do
           val moduleSym = ctx.effectiveScope.lookup(moduleName)
-          if (moduleSym.isDefinedInCurrentRun) {
+          if moduleSym.isDefinedInCurrentRun then
             val className = moduleName.stripModuleClassSuffix.toTypeName
             val classSym = ctx.effectiveScope.lookup(className)
-            if (!classSym.isDefinedInCurrentRun) {
+            if !classSym.isDefinedInCurrentRun then
               val absentClassSymbol = newClassSymbol(ctx.owner, className, EmptyFlags, _ => NoType)
               enterSymbol(absentClassSymbol)
-            }
-          }
-        }
-        for (cdef @ TypeDef(className, _) <- classDef.values) {
+
+        for case cdef @ TypeDef(className, _) <- classDef.values do
           val classSym = ctx.effectiveScope.lookup(className.encode)
-          if (classSym.isDefinedInCurrentRun) {
+          if classSym.isDefinedInCurrentRun then
             val moduleName = className.toTermName
-            for (moduleSym <- ctx.effectiveScope.lookupAll(moduleName.encode))
-              if (moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun) {
-                val absentModuleSymbol = newModuleSymbol(ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
-                enterSymbol(absentModuleSymbol)
-              }
-          }
-        }
-      }
-    }
+            val companionVals = ctx.effectiveScope.lookupAll(moduleName.encode)
+            if companionVals.isEmpty && needsConstructorProxies(classSym) then
+              enterSymbol(constructorCompanion(classSym.asClass))
+            else
+              for moduleSym <- companionVals do
+                if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
+                  val companion =
+                    if needsConstructorProxies(classSym) then constructorCompanion(classSym.asClass)
+                    else newModuleSymbol(
+                      ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
+                  enterSymbol(companion)
+    end addAbsentCompanions
 
     stats.foreach(expand)
     mergeCompanionDefs()
     val ctxWithStats = stats.foldLeft(ctx)((ctx, stat) => indexExpanded(stat)(using ctx))
-    createCompanionLinks(using ctxWithStats)
+    inContext(ctxWithStats) {
+      createCompanionLinks()
+      addAbsentCompanions()
+    }
     ctxWithStats
   }
 
@@ -1186,7 +1206,7 @@ class Namer { typer: Typer =>
         }
         val deriver = new Deriver(derivingClass, derivePos)(using localCtx)
         deriver.enterDerived(impl.derived)
-        original.putAttachment(Deriver, deriver)
+        original.putAttachment(AttachedDeriver, deriver)
       }
 
       denot.info = tempInfo.finalized(parentTypes)
@@ -1202,7 +1222,8 @@ class Namer { typer: Typer =>
         else cls.isNoInitsRealClass
       if ctorStable then cls.primaryConstructor.setFlag(StableRealizable)
       processExports(using localCtx)
-      defn.patchStdLibClass(denot.asClass)
+      defn.patchStdLibClass(cls)
+      addConstructorProxies(cls)
     }
   }
 

@@ -194,6 +194,7 @@ class ClassfileParser(
         addAnnotationConstructor(classInfo.asInstanceOf[TempClassInfoType])
 
       setClassInfo(classRoot, classInfo, fromScala2 = false)
+      NamerOps.addConstructorProxies(moduleRoot.classSymbol)
     }
     else if (result == Some(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {

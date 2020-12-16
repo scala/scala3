@@ -253,7 +253,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
       for
         getter <- mixin.info.decls.toList
-        if getter.isGetter && !wasOneOf(getter, Deferred) && !getter.isConstExprFinalVal
+        if getter.isGetter
+           && !getter.isEffectivelyErased
+           && !wasOneOf(getter, Deferred)
+           && !getter.isConstExprFinalVal
       yield
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =

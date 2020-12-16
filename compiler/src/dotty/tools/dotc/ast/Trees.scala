@@ -1013,13 +1013,15 @@ object Trees {
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ContextualEmptyTree: Thicket = EmptyTree() // an empty tree marking a contextual closure
+    @sharable val ContextualEmptyTree: Thicket = new EmptyTree() // an empty tree marking a contextual closure
 
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: Nil)
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 :: x2 :: Nil)
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(xs: List[Tree])(implicit src: SourceFile) = new Thicket(xs)
+
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
       case x :: Nil => x
       case ys => Thicket(ys)

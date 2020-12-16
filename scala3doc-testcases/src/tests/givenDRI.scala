@@ -23,7 +23,7 @@ given [S <: C]: A[S] with {}
 class R:
   def a = 1
 
-given R: A[Int] with
+given RR: A[Int] with
   def a = 2
 
 class S:
