@@ -90,4 +90,4 @@ whereas polymorphic functions are applied in terms_**:
 One would call the function `bar` above
 by passing it a type argument `bar[Int]` _within a method body_.
 On the other hand, given a type lambda such as `type F = [A] =>> List[A]`,
-one would call `F` _withing a type expression_, as in `type Bar = F[Int]`.
+one would call `F` _within a type expression_, as in `type Bar = F[Int]`.
