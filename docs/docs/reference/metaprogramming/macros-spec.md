@@ -172,8 +172,7 @@ For instance, here is a version of `power` that generates the multiplications
 directly if the exponent is statically known and falls back to the dynamic
 implementation of `power` otherwise.
 ```scala
-import scala.quoted.Expr
-import scala.quoted.Quotes
+import scala.quoted._
 
 inline def power(x: Double, n: Int): Double =
   ${ powerExpr('x, 'n) }
