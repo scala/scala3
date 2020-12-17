@@ -116,6 +116,7 @@ case class Parameter(
 )
 
 case class TypeParameter(
+  annotations: Seq[Annotation],
   variance: "" | "+" | "-",
   name: String,
   dri: DRI,

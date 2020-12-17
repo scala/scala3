@@ -48,6 +48,9 @@ trait SignatureBuilder extends ScalaSignatureUtils {
     def annotationsInline(d: Parameter): SignatureBuilder =
         d.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
 
+    def annotationsInline(t: TypeParameter): SignatureBuilder =
+        t.annotations.foldLeft(this){ (bdr, annotation) => bdr.buildAnnotation(annotation) }
+
     private def buildAnnotation(a: Annotation): SignatureBuilder =
        text("@").driLink(a.dri.location.split('.').last, a.dri).buildAnnotationParams(a).text(" ")
 
@@ -77,7 +80,7 @@ trait SignatureBuilder extends ScalaSignatureUtils {
       text(all.toSignatureString()).text(kind + " ")
 
     def generics(on: Seq[TypeParameter]) = list(on.toList, "[", "]"){ (bdr, e) =>
-      bdr.text(e.variance).memberName(e.name, e.dri).signature(e.signature)
+      bdr.annotationsInline(e).text(e.variance).memberName(e.name, e.dri).signature(e.signature)
     }
 
     def functionParameters(params: Seq[ParametersList]) =
