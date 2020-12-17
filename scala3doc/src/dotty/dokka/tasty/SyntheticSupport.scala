@@ -105,3 +105,4 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
+    

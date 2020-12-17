@@ -122,7 +122,7 @@ trait ClassLikeSupport:
   private def isDocumentableExtension(s: Symbol) =
     !s.isHiddenByVisibility && !s.isSyntheticFunc && s.isExtensionMethod
 
-  private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
+  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
           val target = ExtensionTarget(
@@ -131,14 +131,14 @@ trait ClassLikeSupport:
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
-          parseMethod(dd.symbol,specificKind = Kind.Extension(target, _))
+          parseMethod(c, dd.symbol,specificKind = Kind.Extension(target, _))
         }
       // TODO check given methods?
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
         Some(dd.symbol.owner.memberType(dd.name))
           .filterNot(_.exists)
           .map { _ =>
-            parseMethod(dd.symbol, specificKind =
+            parseMethod(c, dd.symbol, specificKind =
               Kind.Given(_, getGivenInstance(dd).map(_.asSignature), None)
             )
           }
@@ -157,11 +157,11 @@ trait ClassLikeSupport:
           case s: Select if s.symbol.isDefDef => s.symbol.dri
         }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
 
-        Some(parseMethod(dd.symbol, specificKind = Kind.Exported(_))
+        Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
           .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
-        Some(parseMethod(dd.symbol))
+        Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
@@ -207,9 +207,9 @@ trait ClassLikeSupport:
     )
   }
 
-  private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
+  private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
     case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-    case other => parseMember(other)
+    case other => parseMember(c)(other)
   ).map(_.withInheritedFrom(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
 
   extension (c: ClassDef)
@@ -225,8 +225,8 @@ trait ClassLikeSupport:
         case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
         case other => other
       }
-      c.membersToDocument.flatMap(parseMember) ++
-        inherited.flatMap(s => parseInheritedMember(s))
+      c.membersToDocument.flatMap(parseMember(c)) ++
+        inherited.flatMap(s => parseInheritedMember(c)(s))
     }
 
     /** Extracts members while taking Dotty logic for patching the stdlib into account. */
@@ -237,7 +237,7 @@ trait ClassLikeSupport:
         val ownMemberDRIs = ownMembers.iterator.map(_.name).toSet + "experimental$"
         sym.tree.asInstanceOf[ClassDef]
           .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
-          .flatMap(parseMember)
+          .flatMap(parseMember(c))
       }
       c.symbol.fullName match {
         case "scala.Predef$" =>
@@ -318,6 +318,7 @@ trait ClassLikeSupport:
     classlikie.withNewMembers(cases).asInstanceOf[DClass]
 
   def parseMethod(
+      c: ClassDef,
       methodSymbol: Symbol,
       emptyParamsList: Boolean = false,
       paramPrefix: Symbol => String = _ => "",
@@ -357,6 +358,12 @@ trait ClassLikeSupport:
     val origin = if !methodSymbol.isOverriden then Origin.RegularlyDefined else
       val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
+    if(methodSymbol.normalizedName == "fun" && c.symbol.normalizedName == "CClass")
+      println(method.returnTpt)
+      println(typeForClass(c).asInstanceOf[dotty.tools.dotc.core.Types.Type]
+        .memberInfo(methodSymbol.asInstanceOf[dotty.tools.dotc.core.Symbols.Symbol])(using qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx)
+      )
+
 
     mkMember(
       method.symbol,
