@@ -166,26 +166,36 @@ in that it does not allow for the inspection of quoted expressions and
 types. It’s possible to work around this by providing all necessary
 information as normal, unquoted inline parameters. But we would gain
 more flexibility by allowing for the inspection of quoted code with
-pattern matching. This opens new possibilities. For instance, here is a
-version of `power` that generates the multiplications directly if the
-exponent is statically known and falls back to the dynamic
-implementation of power otherwise.
+pattern matching. This opens new possibilities.
+
+For instance, here is a version of `power` that generates the multiplications
+directly if the exponent is statically known and falls back to the dynamic
+implementation of `power` otherwise.
 ```scala
-inline def power(n: Int, x: Double): Double = ${
-  'n match {
-    case Constant(n1) => powerCode(n1, 'x)
-    case _ => '{ dynamicPower(n, x) }
-  }
-}
+import scala.quoted.Expr
+import scala.quoted.Quotes
 
-private def dynamicPower(n: Int, x: Double): Double =
-  if (n == 0) 1.0
-  else if (n % 2 == 0) dynamicPower(n / 2, x * x)
-  else x * dynamicPower(n - 1, x)
+inline def power(x: Double, n: Int): Double =
+  ${ powerExpr('x, 'n) }
+
+private def powerExpr(x: Expr[Double], n: Expr[Int])
+                     (using Quotes): Expr[Double] =
+  n.value match
+    case Some(m) => powerExpr(x, m)
+    case _ => '{ dynamicPower($x, $n) }
+
+private def powerExpr(x: Expr[Double], n: Int)
+                     (using Quotes): Expr[Double] =
+  if n == 0 then '{ 1.0 }
+  else if n == 1 then x
+  else if n % 2 == 0 then '{ val y = $x * $x; ${ powerExpr('y, n / 2) } }
+  else '{ $x * ${ powerExpr(x, n - 1) } }
+
+private def dynamicPower(x: Double, n: Int): Double =
+  if n == 0 then 1.0
+  else if n % 2 == 0 then dynamicPower(x * x, n / 2)
+  else x * dynamicPower(x, n - 1)
 ```
-
-This assumes a `Constant` extractor that maps tree nodes representing
-constants to their values.
 
 With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
@@ -216,7 +226,7 @@ This would allow constructing applications from lists of arguments
 without having to match the arguments one-by-one with the
 corresponding formal parameter types of the function. We then need "at
 the end" a method to convert an `Expr[Any]` to an `Expr[T]` where `T` is
-given from the outside. E.g. if `code` yields a `Expr[Any]`, then
+given from the outside. For instance, if `code` yields a `Expr[Any]`, then
 `code.atType[T]` yields an `Expr[T]`. The `atType` method has to be
 implemented as a primitive; it would check that the computed type
 structure of `Expr` is a subtype of the type structure representing
