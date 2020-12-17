@@ -10,7 +10,7 @@ object E {
 
   implicit def ev1[T: Type]: FromExpr[E[T]] = new FromExpr {
     def unapply(x: Expr[E[T]])(using Quotes) = x match {
-      case '{ I(${Const(n)}) } => Some(I(n).asInstanceOf[E[T]])
+      case '{ I(${Expr(n)}) } => Some(I(n).asInstanceOf[E[T]])
       case '{ Plus[T](${Value(x)}, ${Value(y)})(using $op) } if op.matches('{Plus2.IPlus}) => Some(Plus(x, y)(using Plus2.IPlus.asInstanceOf[Plus2[T]]).asInstanceOf[E[T]])
       case _ => None
     }
