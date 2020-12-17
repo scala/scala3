@@ -15,5 +15,9 @@ object Base
 
 object A2 extends A[String] with C
 
+object <
+
+object >
+
 // We are not going to add final below
 // final object B
