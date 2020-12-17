@@ -444,14 +444,16 @@ object DottyPlugin extends AutoPlugin {
 
   private val docSettings = inTask(doc)(Seq(
     tastyFiles := {
-      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+      val sources = compile.value // Ensure that everything is compiled, so TASTy is available.
       // sbt is too smart and do not start doc task if there are no *.scala files defined
       file("___fake___.scala") +:
         (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
     },
     sources := Def.taskDyn[Seq[File]] {
-      if (isDotty.value && useScala3doc.value) Def.task { tastyFiles.value }
-      else Def.task { sources.value }
+      val originalSources = sources.value
+      if (isDotty.value && useScala3doc.value && originalSources.nonEmpty)
+        Def.task { tastyFiles.value }
+      else Def.task { originalSources }
     }.value,
     scalacOptions ++= {
       if (isDotty.value) {
