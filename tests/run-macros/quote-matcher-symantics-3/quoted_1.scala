@@ -18,7 +18,7 @@ object Macros {
     object FromEnv {
       def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
-          case '{envVar[t](${Const(id)})} =>
+          case '{envVar[t](${Expr(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
           case _ =>
             None
@@ -121,4 +121,21 @@ trait Symantics {
 
 object Symantics {
   def fix[A, B](f: (A => B) => (A => B)): A => B = throw new Exception("Must be used inside of `lift`")
+}
+
+object Const {
+  def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
+    import quotes.reflect._
+    def rec(tree: Term): Option[T] = tree match {
+      case Literal(c) =>
+        c match
+          case NullConstant() | UnitConstant() | ClassOfConstant(_) => None
+          case _ => Some(c.value.asInstanceOf[T])
+      case Block(Nil, e) => rec(e)
+      case Typed(e, _) => rec(e)
+      case Inlined(_, Nil, e) => rec(e)
+      case _  => None
+    }
+    rec(expr.asTerm)
+  }
 }

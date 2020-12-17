@@ -28,12 +28,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     */
     def matches(that: Expr[Any]): Boolean
 
-    @deprecated("Use `.value` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
-    def unlift(using FromExpr[T]): Option[T] = self.value
-
-    @deprecated("Use `.valueOrError` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
-    def unliftOrError(using FromExpr[T]): T = self.valueOrError
-
     /** Return the value of this expression.
      *
      *  Returns `None` if the expression does not represent a value or possibly contains side effects.
@@ -228,9 +222,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Tree` */
     trait TreeModule { this: Tree.type =>
-      /** Returns the Term representation this expression */
-      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
-      def of(expr: Expr[Any]): Tree = expr.asTerm
     }
 
     /** Makes extension methods on `Tree` available without any imports */
@@ -522,10 +513,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Term` */
     trait TermModule { this: Term.type =>
-
-      /** Returns the Term representation this expression */
-      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
-      def of(expr: Expr[Any]): Term = expr.asTerm
 
       /** Returns a term that is functionally equivalent to `t`,
       *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`

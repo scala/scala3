@@ -26,9 +26,9 @@ private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
             case (_, Some(_)) => '{ $y * $x }
             case _ => '{ $x * $y }
           }
-        case '{ power(${Const(x)}, ${Const(y)}) } =>
+        case '{ power(${Expr(x)}, ${Expr(y)}) } =>
           Expr(power(x, y))
-        case '{ power($x, ${Const(y)}) } =>
+        case '{ power($x, ${Expr(y)}) } =>
           if y == 0 then '{1}
           else '{ times($x, power($x, ${Expr(y-1)})) }
       }),
