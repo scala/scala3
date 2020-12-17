@@ -33,7 +33,7 @@ introduce the following fundamental facilities:
 
 4. [TASTy Reflection](./tasty-reflect.md) Quotations are a "black-box"
    representation of code. They can be parameterized and composed using
-   splices, but their structure cannot be analyzed from the outside. Tasty
+   splices, but their structure cannot be analyzed from the outside. TASTy
    reflection gives a way to analyze code structure by partly revealing the representation type of a piece of code in a standard API. The representation
    type is a form of typed abstract syntax tree, which gives rise to the `TASTy`
    moniker.

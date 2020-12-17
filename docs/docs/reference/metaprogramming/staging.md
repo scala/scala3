@@ -60,7 +60,7 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
-Run provides a `Quotes` that can be used to show the expression in the scope of `run`.
+`run` provides a `Quotes` that can be used to show the expression in its scope.
 On the other hand `withQuotes` provides a `Quotes` without evaluating the expression.
 
 ```scala

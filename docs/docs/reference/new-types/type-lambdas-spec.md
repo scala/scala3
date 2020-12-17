@@ -79,7 +79,7 @@ instead of
 type T >: ([X] =>> Nothing) <: ([X] =>> X => X)
 ```
 
-The same expansions apply to type parameters. E.g.
+The same expansions apply to type parameters. For instance,
 ```scala
 [F[X] <: Coll[X]]
 ```

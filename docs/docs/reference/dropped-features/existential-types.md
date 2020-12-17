@@ -3,7 +3,9 @@ layout: doc-page
 title: "Dropped: Existential Types"
 ---
 
-Existential types using `forSome` have been dropped. The reasons for dropping them are:
+Existential types using `forSome` (as in
+[SLS §3.2.12](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#existential-types))
+have been dropped. The reasons for dropping them are:
 
  - Existential types violate a type soundness principle on which DOT
    and Scala 3 are constructed. That principle says that every
@@ -27,6 +29,6 @@ is treated as the type `Map`, where the first type parameter
 is upper-bounded by `AnyRef` and the second type parameter is an alias
 of `Int`.
 
-When reading classfiles compiled with _scalac_, Scala 3 will do a best
+When reading class files compiled with Scala 2, Scala 3 will do a best
 effort to approximate existential types with its own types. It will
 issue a warning that a precise emulation is not possible.

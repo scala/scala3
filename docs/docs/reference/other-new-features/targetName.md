@@ -54,7 +54,7 @@ def f(x: => Int): Int = x + 1  // error: double definition
 ```
 
 The two definitions above clash since their erased parameter types are both `Function0`, which is the type of the translation of a by-name-parameter. Hence
-they have the same names and signatures. But we can avoid the clash by adding  a `@targetName` annotation to either method or to both of them. E.g.
+they have the same names and signatures. But we can avoid the clash by adding a `@targetName` annotation to either method or to both of them. Example:
 
 ```scala
 @targetName("f_string")

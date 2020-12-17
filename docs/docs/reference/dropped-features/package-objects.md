@@ -12,7 +12,7 @@ package object p {
 ```
 will be dropped. They are still available in Scala 3.0, but will be deprecated and removed afterwards.
 
-Package objects are no longer needed since all kinds of definitions can now be written at the top-level. E.g.
+Package objects are no longer needed since all kinds of definitions can now be written at the top-level. Example:
 ```scala
 package p
 type Labelled[T] = (String, T)

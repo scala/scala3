@@ -33,7 +33,8 @@ Given instances can be mapped to combinations of implicit objects, classes and i
 
     ```scala
     class listOrd[T](implicit ord: Ord[T]) extends Ord[List[T]] { ... }
-    final implicit def listOrd[T](implicit ord: Ord[T]): listOrd[T] = new listOrd[T]
+    final implicit def listOrd[T](implicit ord: Ord[T]): listOrd[T] =
+      new listOrd[T]
     ```
 
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor context parameters,
@@ -76,7 +77,7 @@ Tuples are treated as transparent, i.e. a type `F[(X, Y)]` would get the synthes
 
 ### Using Clauses
 
-Using clauses correspond largely to Scala-2's implicit parameter clauses. E.g.
+Using clauses correspond largely to Scala 2's implicit parameter clauses. E.g.
 
 ```scala
 def max[T](x: T, y: T)(using ord: Ord[T]): T
@@ -112,7 +113,8 @@ will map to using clauses instead.
 Extension methods have no direct counterpart in Scala 2, but they can be simulated with implicit classes. For instance, the extension method
 
 ```scala
-extension (c: Circle) def circumference: Double = c.radius * math.Pi * 2
+extension (c: Circle)
+  def circumference: Double = c.radius * math.Pi * 2
 ```
 
 could be simulated to some degree by
@@ -123,7 +125,7 @@ implicit class CircleDecorator(c: Circle) extends AnyVal {
 }
 ```
 
-Abstract extension methods in traits that are implemented in given instances have no direct counterpart in Scala-2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
+Abstract extension methods in traits that are implemented in given instances have no direct counterpart in Scala 2. The only way to simulate these is to make implicit classes available through imports. The Simulacrum macro library can automate this process in some cases.
 
 ### Type Class Derivation
 
@@ -197,7 +199,7 @@ given SymDecorator = symDecorator
 
 ## Implementation Status and Timeline
 
-The Scala 3 implementation implements both Scala-2's implicits and the new abstractions. In fact, support for Scala-2's implicits is an essential part of the common language subset between 2.13/2.14 and Scala 3.
+The Scala 3 implementation implements both Scala 2's implicits and the new abstractions. In fact, support for Scala 2's implicits is an essential part of the common language subset between 2.13/2.14 and Scala 3.
 Migration to the new abstractions will be supported by making automatic rewritings available.
 
 Depending on adoption patterns, old style implicits might start to be deprecated in a version following Scala 3.0.

@@ -67,10 +67,14 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  extension (x: Permissions) def & (y: Permissions): Permissions = x | y
-  extension (x: PermissionChoice) def | (y: PermissionChoice): PermissionChoice = x | y
-  extension (granted: Permissions) def is(required: Permissions) = (granted & required) == required
-  extension (granted: Permissions) def isOneOf(required: PermissionChoice) = (granted & required) != 0
+  extension (x: Permissions)
+    def & (y: Permissions): Permissions = x | y
+  extension (x: PermissionChoice)
+    def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (granted: Permissions)
+    def is(required: Permissions) = (granted & required) == required
+  extension (granted: Permissions)
+    def isOneOf(required: PermissionChoice) = (granted & required) != 0
 
   val NoPermission: Permission = 0
   val Read: Permission = 1

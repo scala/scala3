@@ -16,7 +16,8 @@ The standard library defines an abstract class `Conversion`:
 ```scala
 package scala
 @java.lang.FunctionalInterface
-abstract class Conversion[-T, +U] extends Function1[T, U]
+abstract class Conversion[-T, +U] extends Function1[T, U]:
+  def apply(x: T): U
 ```
 
 Function literals are automatically converted to `Conversion` values.
@@ -80,8 +81,8 @@ implicit val myConverter: Int => String = _.toString
 implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
-Note that implicit conversions are also  affected by the [changes to
-implicit resolution](implicit-resolution.md) between Scala 2 and
+Note that implicit conversions are also affected by the
+[changes to implicit resolution](implicit-resolution.md) between Scala 2 and
 Scala 3.
 
 ## Motivation for the changes

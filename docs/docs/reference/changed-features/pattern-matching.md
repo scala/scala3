@@ -16,8 +16,8 @@ def unapply[A](x: T)(implicit x: B): U
 def unapplySeq[A](x: T)(implicit x: B): U
 ```
 
-Extractors expose the method `unapply` are called fixed-arity extractors, which
-work with patterns of fixed arity. Extractors expose the method `unapplySeq` are
+Extractors that expose the method `unapply` are called fixed-arity extractors, which
+work with patterns of fixed arity. Extractors that expose the method `unapplySeq` are
 called variadic extractors, which enables variadic patterns.
 
 ### Fixed-Arity Extractors
@@ -93,7 +93,7 @@ A usage of a variadic extractor is irrefutable if one of the following condition
 ## Boolean Match
 
 - `U =:= Boolean`
-- Pattern-matching on exactly `0` patterns
+- Pattern-matching on exactly `0` pattern
 
 For example:
 
@@ -250,4 +250,4 @@ Abstract type testing with `ClassTag` is replaced with `TypeTest` or the alias `
 - pattern `_: X` for an abstract type requires a `TypeTest` in scope
 - pattern `x @ X()` for an unapply that takes an abstract type requires a `TypeTest` in scope
 
-[More details on TypeTest](../other-new-features/type-test.md)
+[More details on `TypeTest`](../other-new-features/type-test.md)

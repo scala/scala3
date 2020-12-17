@@ -10,12 +10,14 @@ In this reference, we discuss design decisions and present important differences
 The language redesign was guided by three main goals:
 
  - Strengthen Scala's foundations.
-   Make the full programming language compatible with the foundational work on the DOT calculus and apply the lessons learned from that work.
+   Make the full programming language compatible with the foundational work on the
+   [DOT calculus](https://infoscience.epfl.ch/record/227176/files/soundness_oopsla16.pdf)
+   and apply the lessons learned from that work.
  - Make Scala easier and safer to use. Tame powerful constructs such as implicits to provide a gentler learning curve. Remove warts and puzzlers.
  - Further improve the consistency and expressiveness of Scala's language constructs.
 
 Corresponding to these goals, the language changes fall into seven categories:
-(1) Core constructs to strengthen foundations, (2) simplifications and (3) restrictions, to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) changed constructs to remove warts, and increase consistency and usability, (6) new constructs to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces today's experimental macros.
+(1) Core constructs to strengthen foundations, (2) simplifications and (3) [restrictions](#restrictions), to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) [changed constructs](#changes) to remove warts, and increase consistency and usability, (6) [new constructs](#new_constructs) to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces today's experimental macros.
 
 ## Essential Foundations
 
@@ -24,18 +26,18 @@ These new constructs directly model core features of DOT, higher-kinded types, a
  - [Intersection types](new-types/intersection-types.md), replacing compound types,
  - [Union types](new-types/union-types.md),
  - [Type lambdas](new-types/type-lambdas.md), replacing encodings using structural types and type projection.
- - [Context Functions](contextual/context-functions.md), offering abstraction over given parameters.
+ - [Context functions](contextual/context-functions.md), offering abstraction over given parameters.
 
 ## Simplifications
 
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
- - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
- - [Given Instances](contextual/givens.md)
+ - [Trait parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
+ - [Given instances](contextual/givens.md)
    replace implicit objects and defs, focussing on intent over mechanism.
- - [Using Clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
+ - [Using clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
  - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
- - [Opaque Type Aliases](other-new-features/opaques.md) replace most uses
+ - [Opaque type aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
  - [Toplevel definitions](dropped-features/package-objects.md) replace package objects, dropping syntactic boilerplate.
  - [Export clauses](other-new-features/export.md)
