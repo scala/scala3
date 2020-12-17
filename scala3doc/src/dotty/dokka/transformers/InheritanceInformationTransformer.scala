@@ -15,8 +15,14 @@ class InheritanceInformationTransformer(val ctx: DokkaContext) extends Documenta
     val subtypes = getSupertypes(original.getPackages.get(0)).groupBy(_._1).transform((k, v) => v.map(_._2))
     original.updateMembers { m =>
       val st: Seq[LinkToType] = subtypes.getOrElse(m.dri, Nil)
-      m.withKnownChildren(st).withNewGraphEdges(st.map(_ -> m.asLink))
+      val rootMemberWithBareClasslikeKind = m.asLink.copy(kind = bareClasslikeKind(m.kind))
+      m.withKnownChildren(st).withNewGraphEdges(st.map(_ -> rootMemberWithBareClasslikeKind))
     }
+
+  private def bareClasslikeKind(kind: Kind): Kind = kind match
+    case _: Kind.Trait => Kind.Trait(Nil, Nil)
+    case _: Kind.Class => Kind.Class(Nil, Nil)
+    case o => o
 
   private def getSupertypes(c: Member): Seq[(DRI, LinkToType)] =
     val selfMapping =
