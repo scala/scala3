@@ -196,7 +196,8 @@ private def dynamicPower(x: Double, n: Int): Double =
   else x * dynamicPower(x, n - 1)
 ```
 
-This assumes a `.value` that maps tree nodes representing constants to their values.
+In the above, the method `.value` maps a constant expression of the type
+`Expr[T]` to its value of the type `T`.
 
 With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
