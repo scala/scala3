@@ -15,15 +15,22 @@ trait BasicSupport:
   export SymOps._
 
   def parseAnnotation(annotTerm: Term): Annotation =
+    import dotty.tools.dotc.ast.Trees.{SeqLiteral}
     val dri = annotTerm.tpe.typeSymbol.dri
+    def inner(t: Term): List[Annotation.AnnotationParameter] = t match {
+        case i: Ident => List(Annotation.LinkParameter(None, i.tpe.typeSymbol.dri, i.name))
+        case Typed(term, tpeTree) => inner(term)
+        case SeqLiteral(args, tpeTree) => args.map(_.asInstanceOf[Term]).flatMap(inner)
+        case Literal(constant) => List(Annotation.PrimitiveParameter(None, constant.show))
+        case NamedArg(name, Literal(constant)) => List(Annotation.PrimitiveParameter(Some(name), constant.show))
+        case x @ Select(qual, name) => List.empty
+        case other => List(Annotation.UnresolvedParameter(None, other.show))
+      }
+
+
     val params = annotTerm match
       case Apply(target, appliedWith) => {
-        appliedWith.flatMap {
-          case Literal(constant) => Some(Annotation.PrimitiveParameter(None, constant.show))
-          case NamedArg(name, Literal(constant)) => Some(Annotation.PrimitiveParameter(Some(name), constant.show))
-          case x @ Select(qual, name) => None
-          case other => Some(Annotation.UnresolvedParameter(None, other.show))
-        }
+        appliedWith.flatMap(inner)
       }
 
     Annotation(dri, params)

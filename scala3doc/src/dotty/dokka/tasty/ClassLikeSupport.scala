@@ -395,6 +395,7 @@ trait ClassLikeSupport:
       else ""
 
     TypeParameter(
+      argument.symbol.getAnnotations(),
       variancePrefix,
       argument.symbol.normalizedName,
       argument.symbol.dri,

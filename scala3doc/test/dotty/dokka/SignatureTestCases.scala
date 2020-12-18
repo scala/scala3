@@ -83,3 +83,5 @@ class ImplicitConversionsTest3 extends SignatureTest(
   sourceFiles = List("implicitConversions2"),
   filterFunc = _.toString.endsWith("ClassWithConversionWithProperType.html")
 )
+
+class SpecializedSignature extends SignatureTest("specializedSignature", SignatureTest.all)

@@ -114,7 +114,13 @@ object Scala3docArgs:
       }
     }
     val externalMappings =
-      externalDocumentationMappings.get.flatMap(ExternalDocLink.parse)
+      externalDocumentationMappings.get.flatMap( s =>
+          ExternalDocLink.parse(s).fold(left => {
+            report.warning(left)
+            None
+          }, right => Some(right)
+        )
+      )
 
     unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
       report.warning(s"Setting ${s.name} is currently not supported.")

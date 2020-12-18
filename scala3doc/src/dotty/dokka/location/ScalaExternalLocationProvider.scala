@@ -18,37 +18,40 @@ class ScalaExternalLocationProvider(
   externalDocumentation: ExternalDocumentation,
   extension: String,
   kind: DocumentationKind
-)(using ctx: DokkaContext) extends DefaultExternalLocationProvider(externalDocumentation, extension, ctx):
+) extends ExternalLocationProvider:
+  def docURL = externalDocumentation.getDocumentationURL.toString.stripSuffix("/") + "/"
   override def resolve(dri: DRI): String =
     Option(externalDocumentation.getPackageList).map(_.getLocations.asScala.toMap).flatMap(_.get(dri.toString))
       .fold(constructPath(dri))( l => {
-        this.getDocURL + l
+        this.docURL + l
       }
     )
 
   private val originRegex = raw"\[origin:(.*)\]".r
 
-  override def constructPath(dri: DRI): String = kind match {
+  def constructPath(dri: DRI): String = kind match {
     case DocumentationKind.Javadoc => constructPathForJavadoc(dri)
     case DocumentationKind.Scaladoc => constructPathForScaladoc(dri)
     case DocumentationKind.Scala3doc => constructPathForScala3doc(dri)
   }
 
+  //TODO #263: Add anchor support
+
   private def constructPathForJavadoc(dri: DRI): String = {
     val location = "\\$+".r.replaceAllIn(dri.location.replace(".","/"), _ => ".")
     val origin = originRegex.findFirstIn(dri.extra)
     val anchor = dri.anchor
-    getDocURL + location + extension + anchor.fold("")(a => s"#$a")
+    docURL + location + extension
   }
 
   private def constructPathForScaladoc(dri: DRI): String = {
     val location = dri.location.replace(".","/")
     val anchor = dri.anchor
-    getDocURL + location + extension + anchor.fold("")(a => s"#$a")
+    docURL + location + extension
   }
 
   private def constructPathForScala3doc(dri: DRI): String = {
     val location = dri.location.replace(".","/")
     val anchor = dri.anchor
-    getDocURL + location + anchor.fold(extension)(a => s"/$a$extension")
+    docURL + location + extension
   }

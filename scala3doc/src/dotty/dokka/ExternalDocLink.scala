@@ -2,7 +2,7 @@ package dotty.dokka
 
 import java.net.URL
 import scala.util.matching._
-import scala.util.Try
+import scala.util.{ Try, Success, Failure }
 
 case class ExternalDocLink(
   originRegexes: List[Regex],
@@ -18,25 +18,23 @@ enum DocumentationKind:
   case Scala3doc extends DocumentationKind
 
 object ExternalDocLink:
-  def parse(mapping: String)(using CompilerContext): Option[ExternalDocLink] =
-    def fail(msg: String) =
-      report.warning(s"Unable to parocess external mapping $mapping. $msg")
-      None
+  def parse(mapping: String): Either[String, ExternalDocLink] =
+    def fail(msg: String) = Left(s"Unable to process external mapping $mapping. $msg")
 
-    def tryParse[T](descr: String)(op: => T): Option[T] = try Some(op) catch
-      case e: RuntimeException =>
-        report.warn(s"Unable to parse $descr", e)
-        None
+    def tryParse[T](descr: String)(op: => T): Either[String, T] = Try(op) match {
+      case Success(v) => Right(v)
+      case Failure(e) => fail(s"Unable to parse $descr. Exception $e occured")
+    }
 
     def parsePackageList(elements: List[String]) = elements match
-     case List(urlStr) => tryParse("packageList")(Option(URL(urlStr)))
-     case Nil => Some(None)
+     case List(urlStr) => tryParse("packageList")(Some(URL(urlStr)))
+     case Nil => Right(None)
      case other => fail(s"Provided multiple package lists: $other")
 
     def doctoolByName(name: String) = name match
-      case "javadoc" => Some(DocumentationKind.Javadoc)
-      case "scaladoc" => Some(DocumentationKind.Scaladoc)
-      case "scala3doc" => Some(DocumentationKind.Scala3doc)
+      case "javadoc" => Right(DocumentationKind.Javadoc)
+      case "scaladoc" => Right(DocumentationKind.Scaladoc)
+      case "scala3doc" => Right(DocumentationKind.Scala3doc)
       case other => fail(s"Unknown doctool: $other")
 
 
@@ -48,10 +46,10 @@ object ExternalDocLink:
           doctool <- doctoolByName(docToolStr)
           packageList <- parsePackageList(rest)
         } yield ExternalDocLink(
-          List(regex),
-          url,
-          doctool,
-          packageList
-        )
+            List(regex),
+            url,
+            doctool,
+            packageList
+          )
       case _ =>
         fail("Accepted format: `regexStr::docToolStr::urlStr[::rest]`")
