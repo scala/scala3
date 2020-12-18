@@ -58,8 +58,14 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
 }
 ```
 
-To easily know which extractors are needed, the `showExtractors` method on a
-`quotes.reflect.Term` returns the string representation of the extractors.
+To easily know which extractors are needed using the `Printer.TreeStructure.show` which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
+
+```scala
+xTree.show(using Printer.TreeStructure)
+// or
+Printer.TreeStructure.show(xTree)
+```
+
 
 The methods `quotes.reflect.Term.{asExpr, asExprOf}` provide a way to go back to a `quoted.Expr`.
 Note that `asExpr` returns a `Expr[Any]`.
