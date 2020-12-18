@@ -229,7 +229,7 @@ object Tuple {
     scala.runtime.Tuple.fromProduct(product)
 
   def fromProductTyped[P <: Product](p: P)(using m: scala.deriving.Mirror.ProductOf[P]): m.MirroredElemTypes =
-    Tuple.fromArray(p.productIterator.toArray).asInstanceOf[m.MirroredElemTypes] // TODO use toIArray of Object to avoid double/triple array copy
+    scala.runtime.Tuple.fromProduct(p).asInstanceOf[m.MirroredElemTypes]
 }
 
 /** A tuple of 0 elements */
