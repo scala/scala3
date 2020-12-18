@@ -20,7 +20,7 @@ abstract class ScaladocTest(val name: String):
     folder.create()
     folder
 
-  private def args = Scala3doc.Args(
+  def args = Scala3doc.Args(
       name = "test",
       tastyFiles = tastyFiles(name),
       output = getTempDir().getRoot,

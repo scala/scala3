@@ -35,21 +35,23 @@ class ScalaExternalLocationProvider(
     case DocumentationKind.Scala3doc => constructPathForScala3doc(dri)
   }
 
+  //TODO #263: Add anchor support
+
   private def constructPathForJavadoc(dri: DRI): String = {
     val location = "\\$+".r.replaceAllIn(dri.location.replace(".","/"), _ => ".")
     val origin = originRegex.findFirstIn(dri.extra)
     val anchor = dri.anchor
-    docURL + location + extension + anchor.fold("")(a => s"#$a")
+    docURL + location + extension
   }
 
   private def constructPathForScaladoc(dri: DRI): String = {
     val location = dri.location.replace(".","/")
     val anchor = dri.anchor
-    docURL + location + extension + anchor.fold("")(a => s"#$a")
+    docURL + location + extension
   }
 
   private def constructPathForScala3doc(dri: DRI): String = {
     val location = dri.location.replace(".","/")
     val anchor = dri.anchor
-    docURL + location + anchor.fold(extension)(a => s"/$a$extension")
+    docURL + location + extension
   }

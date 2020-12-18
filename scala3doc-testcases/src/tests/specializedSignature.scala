@@ -8,4 +8,7 @@ trait AdditiveMonoid[@specialized(Int, Long, Float, Double) A]
 {
   def a: A
    = ???
+
+  def b[@specialized(Int, Float) B]: B
+   = ???
 }
