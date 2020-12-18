@@ -58,7 +58,7 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
 }
 ```
 
-To easily know which extractors are needed using the `Printer.TreeStructure.show` which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
+We can easily know which extractors are needed using `Printer.TreeStructure.show`, which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
 
 ```scala
 xTree.show(using Printer.TreeStructure)
