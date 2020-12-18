@@ -434,7 +434,7 @@ object Checking {
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
-        fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
+        fail(ModifierNotAllowedForDefinition(Erased))
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
@@ -500,7 +500,7 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy))
+      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy, butNot = Given))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer

@@ -8,7 +8,7 @@ title: "Erased Terms"
 Let's describe the motivation behind erased terms with an example. In the
 following we show a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is
-currently `Off`. This last constraint is captured with the `IsOff[S]` implicit
+currently `Off`. This last constraint is captured with the `IsOff[S]` contextual
 evidence which only exists for `IsOff[Off]`. For example, not allowing calling
 `turnedOn` on in an `On` state as we would require an evidence of type
 `IsOff[On]` that will not be found.
@@ -21,11 +21,11 @@ final class Off extends State
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
 object IsOff {
-  implicit def isOff: IsOff[Off] = new IsOff[Off]
+  given isOff: IsOff[Off] = new IsOff[Off]
 }
 
 class Machine[S <: State] {
-  def turnedOn(implicit ev: IsOff[S]): Machine[On] = new Machine[On]
+  def turnedOn(using IsOff[S]): Machine[On] = new Machine[On]
 }
 
 val m = new Machine[Off]
