@@ -72,7 +72,7 @@ extended by both `AnyVal` and `AnyRef`. Since `Matchable` is a supertype of ever
 - Type parameters and abstract types that are only bounded by some
   universal trait: Again, `Matchable` should be added as a bound.
 
-Here is the hierarchy of toplevel classes and traits with their defined methods:
+Here is the hierarchy of top-level classes and traits with their defined methods:
 
 ```scala
 abstract class Any:

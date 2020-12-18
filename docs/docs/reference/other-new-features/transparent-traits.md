@@ -40,7 +40,7 @@ are treated automatically as transparent. Other traits are turned into transpare
 by adding a `@transparentTrait` annotation. This annotation is defined in `scala.annotation`. It will be deprecated and phased out once Scala 2/3 interopability is no longer needed.
 
 Typically, transparent traits are traits
-that influence the implementation of inheriting classes and traits and that are not usually used as types by themselves. Two examples from the standard collection library:
+that influence the implementation of inheriting classes and traits that are not usually used as types by themselves. Two examples from the standard collection library:
 
  - `IterableOps`, which provides method implementations for an `Iterable`
  - `StrictOptimizedSeqOps`, which optimises some of these implementations for

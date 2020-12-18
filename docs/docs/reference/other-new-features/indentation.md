@@ -101,7 +101,7 @@ if x < 0 then
 ```
 
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
-at the toplevel, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
+at the top-level, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
 
 ### Optional Braces Around Template Bodies
 

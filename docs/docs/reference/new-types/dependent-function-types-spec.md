@@ -33,7 +33,7 @@ FunctionN[K1, ..., Kn, R'] {
 where the result type parameter `R'` is the least upper approximation of the
 precise result type `R` without any reference to value parameters `x1, ..., xN`.
 
-The syntax and sementics of anonymous dependent functions is identical to the
+The syntax and semantics of anonymous dependent functions is identical to the
 one of regular functions. Eta expansion is naturally generalized to produce
 dependent function types for methods with dependent result types.
 

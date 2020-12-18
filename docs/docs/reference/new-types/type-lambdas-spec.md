@@ -9,7 +9,7 @@ title: "Type Lambdas - More Details"
 Type            ::=  ... |  TypeParamClause ‘=>>’ Type
 TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
 TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
-TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
+TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
 ### Type Checking
@@ -31,7 +31,7 @@ Then `TL1 <: TL2`, if
 `L1 <: L2` and `U2 <: U1`),
  - `R1 <: R2`
 
-Here we have relied on alpha renaming to match the two bound types `X`.
+Here we have relied on [alpha renaming](https://en.wikipedia.org/wiki/Lambda_calculus#%CE%B1-conversion) to match the two bound types `X`.
 
 A partially applied type constructor such as `List` is assumed to be equivalent to
 its eta expansion. I.e, `List = [X] =>> List[X]`. This allows type constructors to be compared with type lambdas.
