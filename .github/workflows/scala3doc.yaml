@@ -8,7 +8,12 @@ jobs:
     env:
       AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
-    if: "github.event_name == 'pull_request' || contains(github.event.ref, 'scala3doc') || contains(github.event.ref, 'master')"
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'master')"
 
     steps:
       - name: Git Checkout
@@ -67,7 +72,12 @@ jobs:
     env:
       AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
-    if: "github.event_name == 'pull_request' || contains(github.event.ref, 'scala3doc') || contains(github.event.ref, 'master')"
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'master')"
 
     steps:
       - name: Git Checkout
