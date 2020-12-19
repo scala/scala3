@@ -42,7 +42,6 @@ The precise steps for synthesizing an argument for a by-name context parameter o
 
  1. If this search succeeds with expression `E`, and `E` contains references to `lv`, replace `E` by
 
-
     ```scala
     { given lv: T = E; lv }
     ```

@@ -37,40 +37,40 @@ If such an instance `C` is found, the expression `e` is replaced by `C.apply(e)`
 1. The `Predef` package contains "auto-boxing" conversions that map
 primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
-```scala
-given int2Integer: Conversion[Int, java.lang.Integer] =
- java.lang.Integer.valueOf(_)
-```
+   ```scala
+   given int2Integer: Conversion[Int, java.lang.Integer] =
+     java.lang.Integer.valueOf(_)
+   ```
 
 2. The "magnet" pattern is sometimes used to express many variants of a method. Instead of defining overloaded versions of the method, one can also let the method take one or more arguments of specially defined "magnet" types, into which various argument types can be converted. Example:
-```scala
-object Completions {
+   ```scala
+   object Completions {
 
-  // The argument "magnet" type
-  enum CompletionArg {
-    case Error(s: String)
-    case Response(f: Future[HttpResponse])
-    case Status(code: Future[StatusCode])
-  }
-  object CompletionArg {
+     // The argument "magnet" type
+     enum CompletionArg {
+       case Error(s: String)
+       case Response(f: Future[HttpResponse])
+       case Status(code: Future[StatusCode])
+     }
+     object CompletionArg {
 
-    // conversions defining the possible arguments to pass to `complete`
-    // these always come with CompletionArg
-    // They can be invoked explicitly, e.g.
-    //
-    //   CompletionArg.fromStatusCode(statusCode)
+       // conversions defining the possible arguments to pass to `complete`
+       // these always come with CompletionArg
+       // They can be invoked explicitly, e.g.
+       //
+       //   CompletionArg.fromStatusCode(statusCode)
 
-    given fromString     : Conversion[String, CompletionArg]               = Error(_)
-    given fromFuture     : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-    given fromStatusCode : Conversion[Future[StatusCode], CompletionArg]   = Status(_)
-  }
-  import CompletionArg._
+       given fromString    : Conversion[String, CompletionArg]               = Error(_)
+       given fromFuture    : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+       given fromStatusCode: Conversion[Future[StatusCode], CompletionArg]   = Status(_)
+     }
+     import CompletionArg._
 
-  def complete[T](arg: CompletionArg) = arg match {
-    case Error(s) => ...
-    case Response(f) => ...
-    case Status(code) => ...
-  }
-}
-```
+     def complete[T](arg: CompletionArg) = arg match {
+       case Error(s) => ...
+       case Response(f) => ...
+       case Status(code) => ...
+     }
+   }
+   ```
 This setup is more complicated than simple overloading of `complete`, but it can still be useful if normal overloading is not available (as in the case above, since we cannot have two overloaded methods that take `Future[...]` arguments), or if normal overloading would lead to a combinatorial explosion of variants.

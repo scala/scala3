@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Relationship with Scala 2 Implicits
+title: "Relationship with Scala 2 Implicits"
 ---
 
 Many, but not all, of the new contextual abstraction features in Scala 3 can be mapped to Scala 2's implicits. This page gives a rundown on the relationships between new and old features.
@@ -11,7 +11,7 @@ Many, but not all, of the new contextual abstraction features in Scala 3 can be 
 
 Given instances can be mapped to combinations of implicit objects, classes and implicit methods.
 
- 1. Given instances without parameters are mapped to implicit objects. E.g.,
+ 1. Given instances without parameters are mapped to implicit objects. For instance,
 
     ```scala
     given intOrd: Ord[Int] with { ... }
@@ -23,7 +23,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     implicit object intOrd extends Ord[Int] { ... }
     ```
 
- 2. Parameterized givens are mapped to combinations of classes and implicit methods. E.g.,
+ 2. Parameterized givens are mapped to combinations of classes and implicit methods. For instance,
 
     ```scala
       given listOrd[T](using ord: Ord[T]): Ord[List[T]] with { ... }
@@ -70,7 +70,7 @@ The synthesized type names are formed from
 
 1. the prefix `given_`,
 2. the simple name(s) of the implemented type(s), leaving out any prefixes,
-3. the simple name(s) of the toplevel argument type constructors to these types.
+3. the simple name(s) of the top-level argument type constructors to these types.
 
 Tuples are treated as transparent, i.e. a type `F[(X, Y)]` would get the synthesized name
 `F_X_Y`. Directly implemented function types `A => B` are represented as `A_to_B`. Function types used as arguments to other type constructors are represented as `Function`.

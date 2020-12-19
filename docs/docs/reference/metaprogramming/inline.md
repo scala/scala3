@@ -188,7 +188,7 @@ Inline methods can override other non-inline methods. The rules are as follows:
 ### Relationship to `@inline`
 
 Scala 2 also defines a `@inline` annotation which is used as a hint
-for the backend to inline. The `inline` modifier is a more powerful
+for the backend to inline code. The `inline` modifier is a more powerful
 option: Expansion is guaranteed instead of best effort,
 it happens in the frontend instead of in the backend, and it also applies
 to recursive methods.
@@ -293,7 +293,7 @@ val one: 1 = zero() + 1
 
 ## Inline Conditionals
 
-If the condition of an if-then-else expressions is a constant expression then it simplifies to
+An if-then-else expression whose condition is a constant expression can be simplified to
 the selected branch. Prefixing an if-then-else expression with `inline` enforces that
 the condition has to be a constant expression, and thus guarantees that the conditional will always
 simplify.

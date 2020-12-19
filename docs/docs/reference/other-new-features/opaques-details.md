@@ -75,9 +75,9 @@ defined on the underlying type. For instance,
   x == y    // uses Int equality for the comparison.
 ```
 
-### Toplevel Opaque Types
+### Top-level Opaque Types
 
-An opaque type alias on the toplevel is transparent in all other toplevel definitions in the sourcefile where it appears, but is opaque in nested
+An opaque type alias on the top-level is transparent in all other top-level definitions in the sourcefile where it appears, but is opaque in nested
 objects and classes and in all other source files. Example:
 ```scala
 // in test1.scala
@@ -91,7 +91,7 @@ object obj {
 // in test2.scala
 def z: String = x   // error: found: A, required: String
 ```
-This behavior becomes clear if one recalls that toplevel definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
+This behavior becomes clear if one recalls that top-level definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
 ```scala
 object test1$package {
   opaque type A = String
