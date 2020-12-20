@@ -26,7 +26,7 @@ trait Monoid[T] extends SemiGroup[T]:
 An implementation of this `Monoid` type class for the type `String` can be the following:
 
 ```scala
-given Monoid[String]:
+given Monoid[String] with
   extension (x: String) def combine (y: String): String = x.concat(y)
   def unit: String = ""
 ```
@@ -34,7 +34,7 @@ given Monoid[String]:
 Whereas for the type `Int` one could write the following:
 
 ```scala
-given Monoid[Int]:
+given Monoid[Int] with
   extension (x: Int) def combine (y: Int): Int = x + y
   def unit: Int = 0
 ```
@@ -76,9 +76,9 @@ Which could read as follows: "A `Functor` for the type constructor `F[_]` repres
 This way, we could define an instance of `Functor` for the `List` type:
 
 ```scala
-given Functor[List]:
+given Functor[List] with
   def map[A, B](x: List[A], f: A => B): List[B] =
-    x.map(f) // List already has a `map` method
+    x.map(f) // List already has a `map` method 
 ```
 
 With this `given` instance in scope, everywhere a `Functor` is expected, the compiler will accept a `List` to be used.
@@ -108,11 +108,10 @@ trait Functor[F[_]]:
 The instance of `Functor` for `List` now becomes:
 
 ```scala
-given Functor[List]:
+given Functor[List] with
   extension [A, B](xs: List[A])
     def map(f: A => B): List[B] =
       xs.map(f) // List already has a `map` method
-
 ```
 
 It simplifies the `assertTransformation` method:
