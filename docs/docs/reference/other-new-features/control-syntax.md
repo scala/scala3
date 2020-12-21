@@ -9,7 +9,7 @@ around the generators of a `for`-expression. Examples:
 ```scala
 if x < 0 then
   "negative"
-else if x == 0
+else if x == 0 then
   "zero"
 else
   "positive"
