@@ -28,6 +28,8 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+
 object MyScalaJSPlugin extends AutoPlugin {
   import Build._
 
@@ -1228,6 +1230,8 @@ object Build {
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
   lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
 
+  lazy val `scala3doc-js` = project.in(file("scala3doc-js")).asScala3docJs
+
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
@@ -1652,6 +1656,17 @@ object Build {
 
     def asScala3docTestcases: Project =
       project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
+
+    def asScala3docJs: Project =
+      project.
+        enablePlugins(MyScalaJSPlugin).
+        dependsOn(`scala3-library-bootstrappedJS`).
+        settings(
+          fork in Test := false,
+          scalaJSUseMainModuleInitializer := true,
+          libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").withDottyCompat(scalaVersion.value)
+        )
+
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

@@ -1,0 +1,84 @@
+:root {
+    --inkuire-logo-size: 20px;
+}
+
+#scala3doc-search {
+    margin-top: 2px;
+    cursor: pointer;
+    position: fixed;
+    top: 0;
+    right: 20px;
+    z-index: 5;
+}
+
+#scala3doc-search::before {
+    content: "";
+    display:block;
+    height: var(--inkuire-logo-size);
+    width: var(--inkuire-logo-size);
+}
+
+#scala3doc-searchbar.hidden {
+    display: none;
+}
+
+#scala3doc-searchbar {
+    position: absolute;
+    top: 50px;
+    right: 40px;
+    width: calc(100% - 360px);
+    box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
+    font-size: 13px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+}
+
+#scala3doc-searchbar-input {
+    width: 100%;
+    min-height: 32px;
+    border: none;
+    border-bottom: 1px solid #bbb;
+    padding: 10px;
+}
+
+#scala3doc-searchbar-input:focus {
+    outline: none;
+}
+
+#scala3doc-searchbar-results {
+    background: white;
+    display: flex;
+    flex-direction: column;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.scala3doc-searchbar-result {
+    line-height: 32px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.scala3doc-searchbar-result:first-of-type {
+    margin-top: 10px;
+}
+
+.scala3doc-searchbar-result:hover {
+    background-color: #d4edff;
+}
+
+.scala3doc-searchbar-result a {
+    color: #1f2326;
+}
+
+.scala3doc-searchbar-result .scala3doc-searchbar-location {
+    color: gray;
+}
+
+#searchBar {
+    display: inline-flex;
+}
+
+.pull-right {
+    float: right;
+    margin-left: auto
+}
