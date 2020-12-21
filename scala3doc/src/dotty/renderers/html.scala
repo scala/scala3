@@ -96,6 +96,8 @@ object HTML:
   val content = Attr("content")
   val testId = Attr("data-test-id")
   val alt = Attr("alt")
+  val value = Attr("value")
+  val onclick=Attr("onclick")
 
   def raw(content: String): AppliedTag = new AppliedTag(content)
   def raw(content: StringBuilder): AppliedTag = content
