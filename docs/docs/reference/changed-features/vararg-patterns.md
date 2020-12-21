@@ -7,10 +7,9 @@ The syntax of vararg patterns has changed. In the new syntax one writes varargs 
 like one writes them in expressions, using a `: _*` type annotation:
 
 ```scala
-xs match {
-  case List(1, 2, xs: _*) => println(xs)    // binds xs
-  case List(1, _ : _*) =>                   // wildcard pattern
-}
+xs match
+case List(1, 2, xs: _*) => println(xs)    // binds xs
+case List(1, _ : _*) =>                   // wildcard pattern
 ```
 
 The old syntax, which is shorter but less regular, is no longer supported.

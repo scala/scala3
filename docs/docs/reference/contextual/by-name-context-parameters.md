@@ -6,16 +6,15 @@ title: "By-Name Context Parameters"
 Context parameters can be declared by-name to avoid a divergent inferred expansion. Example:
 
 ```scala
-trait Codec[T] {
-  def write(x: T): Unit
-}
+trait Codec[T]:
+   def write(x: T): Unit
 
 given intCodec: Codec[Int] = ???
 
 given optionCodec[T](using ev: => Codec[T]): Codec[Option[T]] with
-  def write(xo: Option[T]) = xo match
-    case Some(x) => ev.write(x)
-    case None =>
+   def write(xo: Option[T]) = xo match
+      case Some(x) => ev.write(x)
+      case None =>
 
 val s = summon[Codec[Option[Int]]]
 

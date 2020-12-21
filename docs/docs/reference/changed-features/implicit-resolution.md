@@ -11,18 +11,18 @@ affect implicits on the language level.
 must be explicitly declared. Excepted are only values in local blocks
 where the type may still be inferred:
 ```scala
-   class C {
+  class C {
 
-   val ctx: Context = ...        // ok
+    val ctx: Context = ...        // ok
 
-   /*!*/ implicit val x = ...    // error: type must be given explicitly
+    /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-   /*!*/ implicit def y = ...    // error: type must be given explicitly
-
-   val y = {
-     implicit val ctx = this.ctx // ok
-     ...
-   }
+    /*!*/ implicit def y = ...    // error: type must be given explicitly
+  }
+  val y = {
+    implicit val ctx = this.ctx // ok
+    ...
+  }
 ```
 **2.** Nesting is now taken into account for selecting an implicit. Consider for instance the following scenario:
 ```scala
@@ -41,12 +41,12 @@ no longer applies.
 **3.** Package prefixes no longer contribute to the implicit search scope of a type. Example:
 ```scala
   package p
-  given a: A = A()
 
-  object o {
+  given a: A = A()
+  
+  object o:
     given b: B = B()
     type C
-  }
 ```
 Both `a` and `b` are visible as implicits at the point of the definition
 of `type C`. However, a reference to `p.o.C` outside of package `p` will

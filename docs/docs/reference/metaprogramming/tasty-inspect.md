@@ -23,23 +23,19 @@ the following way.
 import scala.tasty.Reflection
 import scala.tasty.file._
 
-class Consumer extends TastyInspector {
-  final def apply(reflect: Reflection)(root: reflect.Tree): Unit = {
-    import reflect._
-    // Do something with the tree
-  }
-}
+class Consumer extends TastyInspector:
+   final def apply(reflect: Reflection)(root: reflect.Tree): Unit =
+      import reflect._
+      // Do something with the tree
 ```
 
 Then the consumer can be instantiated with the following code to get the tree of
 the class `foo.Bar` for a foo in the classpath.
 
 ```scala
-object Test {
-  def main(args: Array[String]): Unit = {
-    InspectTasty("", List("foo.Bar"), new Consumer)
-  }
-}
+object Test:
+   def main(args: Array[String]): Unit =
+      InspectTasty("", List("foo.Bar"), new Consumer)
 ```
 
 Note that if we need to run the main (in the example below defined in an object called `Test`) after

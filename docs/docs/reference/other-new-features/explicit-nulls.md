@@ -7,13 +7,13 @@ Explicit nulls is an opt-in feature that modifies the Scala type system, which m
 (anything that extends `AnyRef`) _non-nullable_.
 
 This means the following code will no longer typecheck:
-```
+```scala
 val x: String = null // error: found `Null`,  but required `String`
 ```
 
 Instead, to mark a type as nullable we use a [union type](https://dotty.epfl.ch/docs/reference/new-types/union-types.html)
 
-```
+```scala
 val x: String|Null = null // ok
 ```
 
@@ -38,10 +38,10 @@ The new type system is unsound with respect to `null`. This means there are stil
 
 The unsoundness happens because uninitialized fields in a class start out as `null`:
 ```scala
-class C {
-  val f: String = foo(f)
-  def foo(f2: String): String = f2
-}
+class C:
+   val f: String = foo(f)
+   def foo(f2: String): String = f2
+
 val c = new C()
 // c.f == "field is null"
 ```
@@ -81,8 +81,8 @@ So far, we have found the following useful:
 
     ```scala
     def[T] (x: T|Null) nn: x.type & T =
-      if (x == null) throw new NullPointerException("tried to cast away nullability, but value is null")
-      else x.asInstanceOf[x.type & T]
+       if x == null then new NullPointerException("tried to cast away nullability, but value is null")
+       else x.asInstanceOf[x.type & T]
     ```
 
     This means that given `x: String|Null`, `x.nn` has type `String`, so we can call all the
@@ -105,17 +105,15 @@ Specifically, we patch
   * The first two rules are easy: we nullify reference types but not value types.
 
     ```java
-    class C {
-      String s;
-      int x;
-    }
+    class C:
+       String s;
+       int x;
     ```
     ==>
     ```scala
-    class C {
-      val s: String|UncheckedNull
-      val x: Int
-    }
+    class C:
+       val s: String|UncheckedNull
+       val x: Int
     ```
 
   * We nullify type parameters because in Java a type parameter is always nullable, so the following code compiles.
@@ -131,10 +129,9 @@ Specifically, we patch
     Notice this is rule is sometimes too conservative, as witnessed by
 
     ```scala
-    class InScala {
-      val c: C[Bool] = ???  // C as above
-      val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool|Null
-    }
+    class InScala:
+       val c: C[Bool] = ???  // C as above
+       val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool|Null
     ```
 
   * This reduces the number of redundant nullable types we need to add. Consider
@@ -169,10 +166,9 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class BoxFactory[T] {
-      def makeBox(): Box[T | UncheckedNull] | UncheckedNull
-      def makeCrazyBoxes(): List[Box[List[T] | UncheckedNull]] | UncheckedNull
-    }
+    class BoxFactory[T]:
+       def makeBox(): Box[T | UncheckedNull] | UncheckedNull
+       def makeCrazyBoxes(): List[Box[List[T] | UncheckedNull]] | UncheckedNull
     ```
 
     In this case, since `Box` is Scala-defined, we will get `Box[T|UncheckedNull]|UncheckedNull`.
@@ -186,42 +182,38 @@ Specifically, we patch
   * We don't nullify _simple_ literal constant (`final`) fields, since they are known to be non-null
 
     ```java
-    class Constants {
-      final String NAME = "name";
-      final int AGE = 0;
-      final char CHAR = 'a';
+    class Constants:
+       final String NAME = "name";
+       final int AGE = 0;
+       final char CHAR = 'a';
 
-      final String NAME_GENERATED = getNewName();
-    }
+       final String NAME_GENERATED = getNewName();
     ```
     ==>
     ```scala
-    class Constants {
-      val NAME: String("name") = "name"
-      val AGE: Int(0) = 0
-      val CHAR: Char('a') = 'a'
+    class Constants:
+       val NAME: String("name") = "name"
+       val AGE: Int(0) = 0
+       val CHAR: Char('a') = 'a'
 
-      val NAME_GENERATED: String | Null = ???
-    }
+       val NAME_GENERATED: String | Null = ???
     ```
 
   * We don't append `UncheckedNull` to a field nor to a return type of a method which is annotated with a
     `NotNull` annotation.
 
     ```java
-    class C {
-      @NotNull String name;
-      @NotNull List<String> getNames(String prefix); // List is Java-defined
-      @NotNull Box<String> getBoxedName(); // Box is Scala-defined
-    }
+    class C:
+       @NotNull String name;
+       @NotNull List<String> getNames(String prefix); // List is Java-defined
+       @NotNull Box<String> getBoxedName(); // Box is Scala-defined
     ```
     ==>
     ```scala
-    class C {
-      val name: String
-      def getNames(prefix: String | UncheckedNull): List[String] // we still need to nullify the paramter types
-      def getBoxedName(): Box[String | UncheckedNull] // we don't append `UncheckedNull` to the outmost level, but we still need to nullify inside
-    }
+    class C:
+       val name: String
+       def getNames(prefix: String | UncheckedNull): List[String] // we still need to nullify the paramter types
+       def getBoxedName(): Box[String | UncheckedNull] // we don't append `UncheckedNull` to the outmost level, but we still need to nullify inside
     ```
 
     The annotation must be from the list below to be recognized as `NotNull` by the compiler.
@@ -275,15 +267,13 @@ Without `UncheckedNull`, the chaining becomes too cumbersome
 
 ```scala
 val ret = someJavaMethod()
-val s2 = if (ret != null) {
-  val tmp = ret.trim()
-  if (tmp != null) {
-    val tmp2 = tmp.substring(2)
-    if (tmp2 != null) {
-      tmp2.toLowerCase()
-    }
-  }
-}
+val s2 =
+   if ret != null then
+      val tmp = ret.trim()
+      if tmp != null then
+         val tmp2 = tmp.substring(2)
+         if tmp2 != null then
+            tmp2.toLowerCase()
 // Additionally, we need to handle the `else` branches.
 ```
 
@@ -298,9 +288,9 @@ Example:
 
 ```scala
 val s: String|Null = ???
-if (s != null) {
-  // s: String
-}
+if s != null then
+   // s: String
+
 // s: String|Null
 
 assert(x != null)
@@ -310,11 +300,10 @@ assert(x != null)
 A similar inference can be made for the `else` case if the test is `p == null`
 
 ```scala
-if (s == null) {
-  // s: String|Null
-} else {
-  // s: String
-}
+if s == null then
+   // s: String|Null
+else
+   // s: String
 ```
 
 `==` and `!=` is considered a comparison for the purposes of the flow inference.
@@ -326,18 +315,16 @@ We also support logical operators (`&&`, `||`, and `!`):
 ```scala
 val s: String|Null = ???
 val s2: String|Null = ???
-if (s != null && s2 != null) {
-  // s: String
-  // s2: String
-}
+if s != null && s2 != null then
+   // s: String
+   // s2: String
 
-if (s == null || s2 == null) {
-  // s: String|Null
-  // s2: String|Null
-} else {
-  // s: String
-  // s2: String
-}
+if s == null || s2 == null then
+   // s: String|Null
+   // s2: String|Null
+else
+   // s: String
+   // s2: String
 ```
 
 ### Inside Conditions
@@ -347,15 +334,13 @@ We also support type specialization _within_ the condition, taking into account 
 ```scala
 val s: String|Null = ???
 
-if (s != null && s.length > 0) { // s: String in `s.length > 0`
-  // s: String
-}
+if s != null && s.length > 0 then // s: String in `s.length > 0`
+   // s: String
 
-if (s == null || s.length > 0) { // s: String in `s.length > 0`
-  // s: String|Null
-} else {
-  // s: String
-}
+if s == null || s.length > 0 then // s: String in `s.length > 0`
+   // s: String|Null
+else
+   // s: String
 ```
 
 ### Match Case
@@ -365,10 +350,9 @@ The non-null cases can be detected in match statements.
 ```scala
 val s: String|Null = ???
 
-s match {
-  case _: String => // s: String
-  case _ =>
-}
+s match
+case _: String => // s: String
+case _ =>
 ```
 
 ### Mutable Variable
@@ -380,15 +364,14 @@ class C(val x: Int, val next: C|Null)
 
 var xs: C|Null = C(1, C(2, null))
 // xs is trackable, since all assignments are in the same method
-while (xs != null) {
-  // xs: C
-  val xsx: Int = xs.x
-  val xscpy: C = xs
-  xs = xscpy // since xscpy is non-null, xs still has type C after this line
-  // xs: C
-  xs = xs.next // after this assignment, xs can be null again
-  // xs: C | Null
-}
+while xs != null do
+   // xs: C
+   val xsx: Int = xs.x
+   val xscpy: C = xs
+   xs = xscpy // since xscpy is non-null, xs still has type C after this line
+   // xs: C
+   xs = xs.next // after this assignment, xs can be null again
+   // xs: C | Null
 ```
 
 When dealing with local mutable variables, there are two questions:
@@ -400,13 +383,12 @@ When dealing with local mutable variables, there are two questions:
 
    ```scala
    var x: String|Null = ???
-   def y = {
-     x = null
-   }
-   if (x != null) {
-     // y can be called here, which would break the fact
-     val a: String = x // error: x is captured and mutated by the closure, not trackable
-   }
+   def y =
+      x = null
+
+   if x != null then
+      // y can be called here, which would break the fact
+      val a: String = x // error: x is captured and mutated by the closure, not trackable
    ```
 
 2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
@@ -418,17 +400,14 @@ When dealing with local mutable variables, there are two questions:
 
    ```scala
    var x: String|Null = ???
-   def y = {
-     if (x != null) {
-       // not safe to use the fact (x != null) here
-       // since y can be executed at the same time as the outer block
-       val _: String = x
-     }
-   }
-   if (x != null) {
-     val a: String = x // ok to use the fact here
-     x = null
-   }
+   def y =
+      if x != null then
+         // not safe to use the fact (x != null) here
+         // since y can be executed at the same time as the outer block
+         val _: String = x
+   if x != null then
+      val a: String = x // ok to use the fact here
+      x = null
    ```
 
 See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
@@ -440,15 +419,14 @@ For example, `x.a` if `x` is mutable.
 
 We don't support:
 
-- flow facts not related to nullability (`if (x == 0) { // x: 0.type not inferred }`)
+- flow facts not related to nullability (`if x == 0 then { // x: 0.type not inferred }`)
 - tracking aliasing between non-nullable paths
   ```scala
   val s: String|Null = ???
   val s2: String|Null = ???
-  if (s != null && s == s2) {
-    // s:  String inferred
-    // s2: String not inferred
-  }
+  if s != null && s == s2 then
+     // s:  String inferred
+     // s2: String not inferred
   ```
 
 ## Binary Compatibility

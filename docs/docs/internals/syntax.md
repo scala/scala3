@@ -104,10 +104,9 @@ yield
 ### Soft keywords
 
 ```
-as  derives  end  extension  inline  opaque  open  transparent  using
-*  +  -
+derives   end   extension   inline   infix   opaque   oapque   open
+transparent   using   |   *   +   -
 ```
-
 ## Context-free Syntax
 
 The context-free syntax of Scala is given by the following EBNF

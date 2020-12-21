@@ -76,10 +76,9 @@ Within `Types.scala`, we defined some extractors to work with nullable unions:
 `OrNull` and `OrUncheckedNull`.
 
 ```scala
-(tp: Type) match {
-  case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
-  case _ => // otherwise
-}
+(tp: Type) match
+   case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
+   case _ => // otherwise
 ```
 
 This extractor will call utility methods in `NullOpsDecorator.scala`. All of these

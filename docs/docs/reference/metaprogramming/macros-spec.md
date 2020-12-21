@@ -175,25 +175,25 @@ implementation of `power` otherwise.
 import scala.quoted._
 
 inline def power(x: Double, n: Int): Double =
-  ${ powerExpr('x, 'n) }
+   ${ powerExpr('x, 'n) }
 
 private def powerExpr(x: Expr[Double], n: Expr[Int])
                      (using Quotes): Expr[Double] =
-  n.value match
-    case Some(m) => powerExpr(x, m)
-    case _ => '{ dynamicPower($x, $n) }
+   n.value match
+   case Some(m) => powerExpr(x, m)
+   case _ => '{ dynamicPower($x, $n) }
 
 private def powerExpr(x: Expr[Double], n: Int)
                      (using Quotes): Expr[Double] =
-  if n == 0 then '{ 1.0 }
-  else if n == 1 then x
-  else if n % 2 == 0 then '{ val y = $x * $x; ${ powerExpr('y, n / 2) } }
-  else '{ $x * ${ powerExpr(x, n - 1) } }
+   if n == 0 then '{ 1.0 }
+   else if n == 1 then x
+   else if n % 2 == 0 then '{ val y = $x * $x; ${ powerExpr('y, n / 2) } }
+   else '{ $x * ${ powerExpr(x, n - 1) } }
 
 private def dynamicPower(x: Double, n: Int): Double =
-  if n == 0 then 1.0
-  else if n % 2 == 0 then dynamicPower(x * x, n / 2)
-  else x * dynamicPower(x, n - 1)
+   if n == 0 then 1.0
+   else if n % 2 == 0 then dynamicPower(x * x, n / 2)
+   else x * dynamicPower(x, n - 1)
 ```
 
 In the above, the method `.value` maps a constant expression of the type
@@ -204,17 +204,16 @@ that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
 given AsFunction1[T, U]: Conversion[Expr[T => U], Expr[T] => Expr[U]] with
-  def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
-   (x: Expr[T]) => f match {
-     case Lambda(g) => g(x)
-     case _ => '{ ($f)($x) }
-   }
+   def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
+      (x: Expr[T]) =>
+         f match
+         case Lambda(g) => g(x)
+         case _ => '{ ($f)($x) }
 ```
 This assumes an extractor
 ```scala
-object Lambda {
-  def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
-}
+object Lambda:
+   def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
 ```
 Once we allow inspection of code via extractors, it’s tempting to also
 add constructors that create typed trees directly without going

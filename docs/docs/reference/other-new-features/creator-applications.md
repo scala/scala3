@@ -7,9 +7,8 @@ Scala case classes generate apply methods, so that values of case classes can be
 
 Scala 3 generalizes this scheme to all concrete classes. Example:
 ```scala
-class StringBuilder(s: String) {
+class StringBuilder(s: String):
    def this() = this("")
-}
 
 StringBuilder("abc")  // same as new StringBuilder("abc")
 StringBuilder()       // same as new StringBuilder()
@@ -17,10 +16,9 @@ StringBuilder()       // same as new StringBuilder()
 This works since a companion object with two apply methods
 is generated together with the class. The object looks like this:
 ```scala
-object StringBuilder {
-  inline def apply(s: String): StringBuilder = new StringBuilder(s)
-  inline def apply(): StringBuilder = new StringBuilder()
-}
+object StringBuilder:
+   inline def apply(s: String): StringBuilder = new StringBuilder(s)
+   inline def apply(): StringBuilder = new StringBuilder()
 ```
 The synthetic object `StringBuilder` and its `apply` methods are called _constructor proxies_.
 Constructor proxies are generated even for Java classes and classes coming from Scala 2.

@@ -176,11 +176,10 @@ If `E` contains at least one simple case, its companion object will define in ad
      follows.
 
      ```scala
-     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
-       def ordinal = _$ordinal
-       override def productPrefix = $name // if not overridden in `E`
-       override def toString = $name      // if not overridden in `E`
-     }
+     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue with
+        def ordinal = _$ordinal
+        override def productPrefix = $name // if not overridden in `E`
+        override def toString = $name      // if not overridden in `E`
      ```
 
 The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.

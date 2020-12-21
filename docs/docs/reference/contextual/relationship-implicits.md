@@ -26,7 +26,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
  2. Parameterized givens are mapped to combinations of classes and implicit methods. For instance,
 
     ```scala
-      given listOrd[T](using ord: Ord[T]): Ord[List[T]] with { ... }
+    given listOrd[T](using ord: Ord[T]): Ord[List[T]] with { ... }
     ```
 
     maps to
@@ -114,14 +114,14 @@ Extension methods have no direct counterpart in Scala 2, but they can be simulat
 
 ```scala
 extension (c: Circle)
-  def circumference: Double = c.radius * math.Pi * 2
+   def circumference: Double = c.radius * math.Pi * 2
 ```
 
 could be simulated to some degree by
 
 ```scala
 implicit class CircleDecorator(c: Circle) extends AnyVal {
-  def circumference: Double = c.radius * math.Pi * 2
+   def circumference: Double = c.radius * math.Pi * 2
 }
 ```
 
@@ -153,7 +153,7 @@ one can write
 
 ```scala
 given stringToToken: Conversion[String, Token] with
-  def apply(str: String): Token = KeyWord(str)
+   def apply(str: String): Token = KeyWord(str)
 ```
 
 or

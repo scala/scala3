@@ -21,9 +21,8 @@ methods with context parameters. Specifically, the `N`-ary function type
 `ContextFunctionN[T1 , ... , TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
 ```scala
 package scala
-trait ContextFunctionN[-T1 , ... , -TN, +R] {
-  def apply(using x1: T1 , ... , xN: TN): R
-}
+trait ContextFunctionN[-T1 , ... , -TN, +R]:
+   def apply(using x1: T1 , ... , xN: TN): R
 ```
 Context function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
@@ -44,9 +43,8 @@ the context parameters `xi`.
 The context function literal is evaluated as the instance creation
 expression
 ```scala
-new scala.ContextFunctionN[T1, ..., Tn, T] {
-  def apply(using x1: T1, ..., xn: Tn): T = e
-}
+new scala.ContextFunctionN[T1, ..., Tn, T] with
+   def apply(using x1: T1, ..., xn: Tn): T = e
 ```
 A context parameter may also be a wildcard represented by an underscore `_`. In that case, a fresh name for the parameter is chosen arbitrarily.
 

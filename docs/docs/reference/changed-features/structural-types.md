@@ -33,15 +33,12 @@ configure how fields and methods should be resolved.
 
 Here's an example of a structural type `Person`:
 ```scala
-  class Record(elems: (String, Any)*) extends Selectable {
-    private val fields = elems.toMap
-    def selectDynamic(name: String): Any = fields(name)
-  }
-  type Person = Record {
-    val name: String
-    val age: Int
-  }
-```
+  class Record(elems: (String, Any)*) extends Selectable:
+     private val fields = elems.toMap
+     def selectDynamic(name: String): Any = fields(name)
+
+  type Person = Record { val name: String; val age: Int }
+ ```
 The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
 program would print  "Emma is 42 years old.":
 ```scala
@@ -76,15 +73,13 @@ Besides `selectDynamic`, a `Selectable` class sometimes also defines a method `a
 
 Structural types can also be accessed using Java reflection. Example:
 ```scala
-  type Closeable = {
+  type Closeable = { def close(): Unit }
+
+  class FileInputStream:
     def close(): Unit
-  }
-  class FileInputStream {
+
+  class Channel:
     def close(): Unit
-  }
-  class Channel {
-    def close(): Unit
-  }
 ```
 Here, we define a structural type `Closeable` that defines a `close` method. There are various classes that have `close` methods, we just list `FileInputStream` and `Channel` as two examples. It would be easiest if the two classes shared a common interface that factors out the `close` method. But such factorings are often not possible if different libraries are combined in one application. Yet, we can still have methods that work on
 all classes with a `close` method by using the `Closeable` type. For instance,
@@ -128,13 +123,13 @@ the database access example given at the beginning of this document.
 Local and anonymous classes that extend `Selectable` get more refined types
 than other classes. Here is an example:
 ```scala
-trait Vehicle extends reflect.Selectable {
-  val wheels: Int
-}
-val i3 = new Vehicle { // i3: Vehicle { val range: Int }
-  val wheels = 4
-  val range = 240
-}
+trait Vehicle extends reflect.Selectable:
+   val wheels: Int
+
+val i3 = new Vehicle with // i3: Vehicle { val range: Int }
+   val wheels = 4
+   val range = 240
+
 i3.range
 ```
 The type of `i3` in this example is `Vehicle { val range: Int }`. Hence,
@@ -144,13 +139,13 @@ defines the necessary `selectDynamic` member.
 
 `Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
 ```scala
-class Vehicle {
-  val wheels: Int
-}
-val i3 = new Vehicle { // i3: Vehicle
-  val wheels = 4
-  val range = 240
-}
+class Vehicle:
+   val wheels: Int
+
+val i3 = new Vehicle with // i3: Vehicle
+   val wheels = 4
+   val range = 240
+
 i3.range: // error: range is not a member of `Vehicle`
 ```
 The difference is that the type of an anonymous class that does not extend `Selectable` is just formed from the parent type(s) of the class, without

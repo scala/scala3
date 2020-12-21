@@ -21,9 +21,7 @@ def b = a._2
 
 case class C()
 
-implicit object Cops {
-  extension (x: C) def pair(y: C) = (x, y)
-}
+extension (x: C) def pair(y: C) = (x, y)
 ```
 There may be several source files in a package containing such top-level definitions, and source files can freely mix top-level value, method, and type definitions with classes and objects.
 
