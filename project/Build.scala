@@ -101,6 +101,8 @@ object Build {
     if (isRelease) baseSbtDottyVersion else baseSbtDottyVersion + "-SNAPSHOT"
   }
 
+  val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
+
   val agentOptions = List(
     // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"
     // "-agentpath:/home/dark/opt/yjp-2013-build-13072/bin/linux-x86-64/libyjpagent.so"
@@ -1272,6 +1274,45 @@ object Build {
       }.dependsOn(compile in Compile).evaluated
     )
 
+  lazy val `sbt-community-build` = project.in(file("sbt-community-build")).
+    enablePlugins(SbtPlugin).
+    settings(commonSettings).
+    settings(
+      name := "sbt-community-build",
+      version := sbtCommunityBuildVersion,
+      organization := "ch.epfl.lamp",
+      sbtTestDirectory := baseDirectory.value / "sbt-test",
+      scriptedLaunchOpts ++= Seq(
+        "-Dplugin.version=" + version.value,
+        "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
+        "-Dplugin.sbtDottyVersion=" + sbtDottyVersion,
+        "-Ddotty.communitybuild.dir=" + baseDirectory.value / "target",
+        "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
+      ),
+      // Pass along ivy home and repositories settings to sbt instances run from the tests
+      scriptedLaunchOpts ++= {
+        val repositoryPath = (io.Path.userHome / ".sbt" / "repositories").absolutePath
+        s"-Dsbt.repository.config=$repositoryPath" ::
+        ivyPaths.value.ivyHome.map("-Dsbt.ivy.home=" + _.getAbsolutePath).toList
+      },
+      scriptedBufferLog := true,
+      scriptedBatchExecution := true,
+      scripted := scripted.dependsOn(
+        publishLocal in `scala3-sbt-bridge`,
+        publishLocal in `scala3-interfaces`,
+        publishLocal in `scala3-compiler-bootstrapped`,
+        publishLocal in `scala3-library-bootstrapped`,
+        publishLocal in `scala3-library-bootstrappedJS`,
+        publishLocal in `tasty-core-bootstrapped`,
+        publishLocal in `scala3-staging`,
+        publishLocal in `scala3-tasty-inspector`,
+        publishLocal in `scaladoc`,
+        publishLocal in `scala3-bootstrapped`,
+        publishLocal in `sbt-dotty`,
+      ).evaluated
+   )
+
   val prepareCommunityBuild = taskKey[Unit]("Publish local the compiler and the sbt plugin. Also store the versions of the published local artefacts in two files, community-build/{scala3-bootstrapped.version,sbt-dotty-sbt}.")
 
   lazy val `community-build` = project.in(file("community-build")).
@@ -1289,13 +1330,16 @@ object Build {
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `scala3-bootstrapped`).value
         (publishLocal in `scala3-library-bootstrappedJS`).value
+        (publishLocal in `sbt-community-build`).value
         // (publishLocal in `scala3-staging`).value
         val pluginText =
           s"""updateOptions in Global ~= (_.withLatestSnapshots(false))
              |addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "$sbtDottyVersion")
+             |addSbtPlugin("ch.epfl.lamp" % "sbt-community-build" % "$sbtCommunityBuildVersion")
              |addSbtPlugin("org.scala-js" % "sbt-scalajs" % "$scalaJSVersion")""".stripMargin
         IO.write(baseDirectory.value / "sbt-dotty-sbt", pluginText)
         IO.write(baseDirectory.value / "scala3-bootstrapped.version", dottyVersion)
+        IO.delete(baseDirectory.value / "dotty-community-build-deps")  // delete any stale deps file
       },
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit,
