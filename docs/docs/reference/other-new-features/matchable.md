@@ -21,7 +21,7 @@ However, there is a potential hole due to pattern matching. Consider:
 ```scala
 val imm: IArray[Int] = ...
 imm match
-  case a: Array[Int] => a(0) = 1
+   case a: Array[Int] => a(0) = 1
 ```
 
 The test will succeed at runtime since `IArray`s _are_ represented as
@@ -40,7 +40,7 @@ type `T` as match selector leads to the same problem:
 
 ```scala
 def f[T](x: T) = x match
-  case a: Array[Int] => a(0) = 0
+   case a: Array[Int] => a(0) = 0
 f(imm)
 ```
 
@@ -76,15 +76,15 @@ Here is the hierarchy of top-level classes and traits with their defined methods
 
 ```scala
 abstract class Any:
-  def getClass
-  def isInstanceOf
-  def asInstanceOf
-  def ==
-  def !=
-  def ##
-  def equals
-  def hashCode
-  def toString
+   def getClass
+   def isInstanceOf
+   def asInstanceOf
+   def ==
+   def !=
+   def ##
+   def equals
+   def hashCode
+   def toString
 
 trait Matchable extends Any
 

@@ -84,7 +84,7 @@ For the `Tree` ADT from above the following `Mirror` instances will be automatic
 
 ```scala
 // Mirror for Tree
-new Mirror.Sum with
+new Mirror.Sum:
    type MirroredType = Tree
    type MirroredElemTypes[T] = (Branch[T], Leaf[T])
    type MirroredMonoType = Tree[_]
@@ -96,7 +96,7 @@ new Mirror.Sum with
       case _: Leaf[_] => 1
 
 // Mirror for Branch
-new Mirror.Product with
+new Mirror.Product:
    type MirroredType = Branch
    type MirroredElemTypes[T] = (Tree[T], Tree[T])
    type MirroredMonoType = Branch[_]
@@ -107,7 +107,7 @@ new Mirror.Product with
       new Branch(...)
 
 // Mirror for Leaf
-new Mirror.Product with
+new Mirror.Product:
    type MirroredType = Leaf
    type MirroredElemTypes[T] = Tuple1[T]
    type MirroredMonoType = Leaf[_]
@@ -212,7 +212,7 @@ instance for the appropriate ADT subtype using the auxiliary method `check` (4).
 
 ```scala
 def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
-   new Eq[T] with
+   new Eq[T]:
       def eqv(x: T, y: T): Boolean =
          val ordx = s.ordinal(x)                            // (3)
          (s.ordinal(y) == ordx) && check(elems(ordx))(x, y) // (4)
@@ -223,7 +223,7 @@ on the `Eq` instances for the fields of the data type (5),
 
 ```scala
 def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
-   new Eq[T] with
+   new Eq[T]:
       def eqv(x: T, y: T): Boolean =
          iterator(x).zip(iterator(y)).zip(elems.iterator).forall {  // (5)
             case ((x, y), elem) => check(elem)(x, y)
@@ -254,13 +254,13 @@ object Eq:
    def iterator[T](p: T) = p.asInstanceOf[Product].productIterator
 
    def eqSum[T](s: Mirror.SumOf[T], elems: => List[Eq[_]]): Eq[T] =
-      new Eq[T] with
+      new Eq[T]:
          def eqv(x: T, y: T): Boolean =
             val ordx = s.ordinal(x)
             (s.ordinal(y) == ordx) && check(elems(ordx))(x, y)
 
    def eqProduct[T](p: Mirror.ProductOf[T], elems: => List[Eq[_]]): Eq[T] =
-      new Eq[T] with
+      new Eq[T]:
          def eqv(x: T, y: T): Boolean =
             iterator(x).zip(iterator(y)).zip(elems.iterator).forall {
                case ((x, y), elem) => check(elem)(x, y)

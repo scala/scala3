@@ -59,7 +59,7 @@ We could create a type test at call site where the type test can be performed wi
 
 ```scala
 val tt: TypeTest[Any, String] =
-   new TypeTest[Any, String] with
+   new TypeTest[Any, String]:
       def unapply(s: Any): Option[s.type & String] =
          s match
          case s: String => Some(s)
@@ -70,7 +70,7 @@ f[AnyRef, String]("acb")(using tt)
 
 The compiler will synthesize a new instance of a type test if none is found in scope as:
 ```scala
-new TypeTest[A, B] with
+new TypeTest[A, B]:
    def unapply(s: A): Option[s.type & B] =
       s match
       case s: B => Some(s)

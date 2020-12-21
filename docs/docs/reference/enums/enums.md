@@ -127,7 +127,7 @@ Enum values with `extends` clauses get expanded to anonymous class instances.
 For instance, the `Venus` value above would be defined like this:
 
 ```scala
-val Venus: Planet = new Planet(4.869E24, 6051800.0) with
+val Venus: Planet = new Planet(4.869E24, 6051800.0):
    def ordinal: Int = 1
    override def productPrefix: String = "Venus"
    override def toString: String = "Venus"

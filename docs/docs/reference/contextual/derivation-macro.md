@@ -150,11 +150,11 @@ object Eq:
       def eqv(x: Int, y: Int) = x == y
 
    def eqProduct[T](body: (T, T) => Boolean): Eq[T] =
-      new Eq[T] with
+      new Eq[T]:
          def eqv(x: T, y: T): Boolean = body(x, y)
 
    def eqSum[T](body: (T, T) => Boolean): Eq[T] =
-      new Eq[T] with
+      new Eq[T]:
          def eqv(x: T, y: T): Boolean = body(x, y)
 
    def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] =

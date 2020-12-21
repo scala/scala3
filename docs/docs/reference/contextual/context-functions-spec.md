@@ -43,7 +43,7 @@ the context parameters `xi`.
 The context function literal is evaluated as the instance creation
 expression
 ```scala
-new scala.ContextFunctionN[T1, ..., Tn, T] with
+new scala.ContextFunctionN[T1, ..., Tn, T]:
    def apply(using x1: T1, ..., xn: Tn): T = e
 ```
 A context parameter may also be a wildcard represented by an underscore `_`. In that case, a fresh name for the parameter is chosen arbitrarily.

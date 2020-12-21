@@ -104,7 +104,7 @@ example, collects the pattern variables of a tree.
 
 ```scala
 def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] =
-   val acc = new TreeAccumulator[List[Symbol]] with
+   val acc = new TreeAccumulator[List[Symbol]]:
       def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) =
          tree match
          case Bind(_, body) => apply(tree.symbol :: syms, body)

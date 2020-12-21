@@ -44,7 +44,7 @@ Generally, context parameters may be defined either as a full parameter list `(p
 
 Here are two other methods that have a context parameter of type `Ord[T]`:
 ```scala
-def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T] with
+def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
    def compare(x: T, y: T) = asc.compare(y, x)
 
 def minimum[T](xs: List[T])(using Ord[T]) =

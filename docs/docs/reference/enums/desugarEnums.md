@@ -176,7 +176,7 @@ If `E` contains at least one simple case, its companion object will define in ad
      follows.
 
      ```scala
-     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue with
+     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue:
         def ordinal = _$ordinal
         override def productPrefix = $name // if not overridden in `E`
         override def toString = $name      // if not overridden in `E`
