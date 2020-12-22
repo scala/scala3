@@ -38,7 +38,7 @@ The rules in detail are:
  - The enumerators of a `for`-expression can be written without enclosing parentheses or braces if they are followed by a `yield` or `do`.
  - A `do` in a `for`-expression expresses a `for`-loop.
  - A `catch` can be followed by a single case on the same line.
-   If there are multiple cases, these have to be appear within braces (just like in Scala 2)
+   If there are multiple cases, these have to appear within braces (just like in Scala 2)
    or an indented block.
 ### Rewrites
 
