@@ -44,7 +44,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]) {
   private val input: html.Input = {
     val element = document.createElement("input").asInstanceOf[html.Input]
     element.id = "scala3doc-searchbar-input"
-    element.addEventListener("keyup", (e) => handleNewQuery(e.target.asInstanceOf[html.Input].value))
+    element.addEventListener("input", (e) => handleNewQuery(e.target.asInstanceOf[html.Input].value))
     element
   }
 
