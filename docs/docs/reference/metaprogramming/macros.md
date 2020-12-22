@@ -308,7 +308,7 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `ToExpr[Boolean]`:
 
 ```scala
-given ToExpr[Boolean] {
+given ToExpr[Boolean] with {
   def toExpr(b: Boolean) =
     if (b) '{ true } else '{ false }
 }
@@ -319,7 +319,7 @@ possible implementation of `ToExpr[Int]` that does not use the underlying
 tree machinery:
 
 ```scala
-given ToExpr[Int] {
+given ToExpr[Int] with {
   def toExpr(n: Int) = n match {
     case Int.MinValue    => '{ Int.MinValue }
     case _ if n < 0      => '{ - ${ toExpr(-n) } }
