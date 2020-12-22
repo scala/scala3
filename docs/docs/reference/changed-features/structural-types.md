@@ -126,7 +126,7 @@ than other classes. Here is an example:
 trait Vehicle extends reflect.Selectable:
    val wheels: Int
 
-val i3 = new Vehicle with // i3: Vehicle { val range: Int }
+val i3 = new Vehicle: // i3: Vehicle { val range: Int }
    val wheels = 4
    val range = 240
 
@@ -139,10 +139,10 @@ defines the necessary `selectDynamic` member.
 
 `Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
 ```scala
-class Vehicle:
+trait Vehicle:
    val wheels: Int
 
-val i3 = new Vehicle with // i3: Vehicle
+val i3 = new Vehicle: // i3: Vehicle
    val wheels = 4
    val range = 240
 

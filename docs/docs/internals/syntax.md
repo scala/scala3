@@ -104,8 +104,7 @@ yield
 ### Soft keywords
 
 ```
-derives   end   extension   inline   infix   opaque   oapque   open
-transparent   using   |   *   +   -
+derives  end  extension  inline  infix  opaque  open  transparent  using  |  *  +  -
 ```
 ## Context-free Syntax
 

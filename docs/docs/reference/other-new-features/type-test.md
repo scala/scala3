@@ -121,7 +121,7 @@ trait Peano:
    val Zero: Zero
 
    val Succ: SuccExtractor
-   trait SuccExtractor
+   trait SuccExtractor:
       def apply(nat: Nat): Succ
       def unapply(nat: Succ): Option[Nat]
 

@@ -44,10 +44,10 @@ types:
 ```scala
 import scala.language.implicitConversions
 implicit def ordT[T, S](
-   implicit conv: Conversion[T, S],
-            ordS: Ordering[S]
-  ): Ordering[T] =
-   // `ordS` compares values of type `S`, but we can convert from `T` to `S`
+      implicit conv: Conversion[T, S],
+               ordS: Ordering[S]
+   ): Ordering[T] =
+    // `ordS` compares values of type `S`, but we can convert from `T` to `S`
    (x: T, y: T) => ordS.compare(x, y)
 
 class A(val x: Int) // The type for which we want an `Ordering`

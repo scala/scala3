@@ -13,23 +13,23 @@ where the type may still be inferred:
 ```scala
   class C {
 
-    val ctx: Context = ...        // ok
+     val ctx: Context = ...        // ok
 
-    /*!*/ implicit val x = ...    // error: type must be given explicitly
+     /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-    /*!*/ implicit def y = ...    // error: type must be given explicitly
+     /*!*/ implicit def y = ...    // error: type must be given explicitly
   }
   val y = {
-    implicit val ctx = this.ctx // ok
-    ...
+     implicit val ctx = this.ctx // ok
+     ...
   }
 ```
 **2.** Nesting is now taken into account for selecting an implicit. Consider for instance the following scenario:
 ```scala
   def f(implicit i: C) = {
-    def g(implicit j: C) = {
-      implicitly[C]
-    }
+     def g(implicit j: C) = {
+        implicitly[C]
+     }
   }
 ```
 This will now resolve the `implicitly` call to `j`, because `j` is nested
@@ -43,10 +43,10 @@ no longer applies.
   package p
 
   given a: A = A()
-  
+
   object o:
-    given b: B = B()
-    type C
+     given b: B = B()
+     type C
 ```
 Both `a` and `b` are visible as implicits at the point of the definition
 of `type C`. However, a reference to `p.o.C` outside of package `p` will

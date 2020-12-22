@@ -141,9 +141,10 @@ does not need boxing either. Hence, the implementation of `ensuring` is as about
 as the best possible code one could write by hand:
 
 ```scala
-  val result = List(1, 2, 3).sum
-  assert(result == 6)
-  result
+val s =
+   val result = List(1, 2, 3).sum
+   assert(result == 6)
+   result
 ```
 ### Reference
 

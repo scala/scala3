@@ -79,11 +79,11 @@ class DivideZeroPhase extends PluginPhase:
 
    override def transformApply(tree: Apply)(implicit ctx: Context): Tree =
       tree match
-      case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
-          if rcvr.tpe <:< defn.IntType =>
-        report.error("dividing by zero", tree.pos)
-      case _ =>
-        ()
+         case Apply(Select(rcvr, nme.DIV), List(Literal(Constant(0))))
+         if rcvr.tpe <:< defn.IntType =>
+            report.error("dividing by zero", tree.pos)
+         case _ =>
+            ()
       tree
 end DivideZeroPhase
 ```
