@@ -15,7 +15,7 @@ val y: BigInt = 0x123_abc_789_def_345_678_901
 val z: BigDecimal = 110_222_799_799.99
 
 (y: BigInt) match
-  case 123_456_789_012_345_678_901 =>
+   case 123_456_789_012_345_678_901 =>
 ```
 The syntax of numeric literals is the same as before, except there are no pre-set limits
 how large they can be.
@@ -133,27 +133,27 @@ object BigFloat:
    def apply(digits: String): BigFloat =
       val (mantissaDigits, givenExponent) =
          digits.toUpperCase.split('E') match
-         case Array(mantissaDigits, edigits) =>
-            val expo =
-              try FromDigits.intFromDigits(edigits)
-              catch case ex: FromDigits.NumberTooLarge =>
-                throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
-            (mantissaDigits, expo)
-         case Array(mantissaDigits) =>
-            (mantissaDigits, 0)
+            case Array(mantissaDigits, edigits) =>
+               val expo =
+                  try FromDigits.intFromDigits(edigits)
+                  catch case ex: FromDigits.NumberTooLarge =>
+                     throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
+               (mantissaDigits, expo)
+            case Array(mantissaDigits) =>
+               (mantissaDigits, 0)
       val (intPart, exponent) =
          mantissaDigits.split('.') match
-         case Array(intPart, decimalPart) =>
-            (intPart ++ decimalPart, givenExponent - decimalPart.length)
-         case Array(intPart) =>
-            (intPart, givenExponent)
+            case Array(intPart, decimalPart) =>
+               (intPart ++ decimalPart, givenExponent - decimalPart.length)
+            case Array(intPart) =>
+               (intPart, givenExponent)
       BigFloat(BigInt(intPart), exponent)
 ```
 To accept `BigFloat` literals, all that's needed in addition is a `given` instance of type
 `FromDigits.Floating[BigFloat]`:
 ```scala
-  given FromDigits: FromDigits.Floating[BigFloat] with
-     def fromDigits(digits: String) = apply(digits)
+   given FromDigits: FromDigits.Floating[BigFloat] with
+      def fromDigits(digits: String) = apply(digits)
 end BigFloat
 ```
 Note that the `apply` method does not check the format of the `digits` argument. It is
@@ -194,17 +194,17 @@ no code that can be executed at runtime. That is why we define an intermediary c
 method in the `FromDigits` given instance. That method is defined in terms of a macro
 implementation method `fromDigitsImpl`. Here is its definition:
 ```scala
-  private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
-     digits.value match
-     case Some(ds) =>
-        try
-           val BigFloat(m, e) = apply(ds)
-           '{BigFloat(${Expr(m)}, ${Expr(e)})}
-        catch case ex: FromDigits.FromDigitsException =>
-           ctx.error(ex.getMessage)
-           '{BigFloat(0, 0)}
-     case None =>
-        '{apply($digits)}
+   private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
+      digits.value match
+         case Some(ds) =>
+            try
+               val BigFloat(m, e) = apply(ds)
+               '{BigFloat(${Expr(m)}, ${Expr(e)})}
+            catch case ex: FromDigits.FromDigitsException =>
+               ctx.error(ex.getMessage)
+               '{BigFloat(0, 0)}
+         case None =>
+            '{apply($digits)}
 end BigFloat
 ```
 The macro implementation takes an argument of type `Expr[String]` and yields

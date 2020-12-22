@@ -43,15 +43,15 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
    import quotes.reflect._
    val xTree: Term = x.asTerm
    xTree match
-   case Inlined(_, _, Literal(IntConstant(n))) =>
-      if n <= 0 then
-         report.error("Parameter must be natural number")
+      case Inlined(_, _, Literal(IntConstant(n))) =>
+         if n <= 0 then
+            report.error("Parameter must be natural number")
+            '{0}
+         else
+            xTree.asExprOf[Int]
+      case _ =>
+         report.error("Parameter must be a known constant")
          '{0}
-      else
-         xTree.asExprOf[Int]
-   case _ =>
-      report.error("Parameter must be a known constant")
-      '{0}
 ```
 
 We can easily know which extractors are needed using `Printer.TreeStructure.show`, which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
@@ -105,8 +105,7 @@ example, collects the pattern variables of a tree.
 ```scala
 def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] =
    val acc = new TreeAccumulator[List[Symbol]]:
-      def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) =
-         tree match
+      def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match
          case Bind(_, body) => apply(tree.symbol :: syms, body)
          case _ => foldOver(syms, tree)
    acc(Nil, tree)

@@ -41,9 +41,9 @@ The name of a given can be left out. So the definitions
 of the last section can also be expressed like this:
 ```scala
 given Ord[Int] with
-  ...
+   ...
 given [T](using Ord[T]): Ord[List[T]] with
-  ...
+   ...
 ```
 If the name of a given is missing, the compiler will synthesize a name from
 the implemented type(s).
@@ -98,7 +98,7 @@ Given instances can also appear in patterns. Example:
 for given Context <- applicationContexts do
 
 pair match
-  case (ctx @ given Context, y) => ...
+   case (ctx @ given Context, y) => ...
 ```
 In the first fragment above, anonymous given instances for class `Context` are established by enumerating over `applicationContexts`. In the second fragment, a given `Context`
 instance named `ctx` is established by matching against the first half of the `pair` selector.

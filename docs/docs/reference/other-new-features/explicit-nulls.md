@@ -351,8 +351,8 @@ The non-null cases can be detected in match statements.
 val s: String|Null = ???
 
 s match
-case _: String => // s: String
-case _ =>
+   case _: String => // s: String
+   case _ =>
 ```
 
 ### Mutable Variable

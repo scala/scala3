@@ -180,8 +180,8 @@ a `Mirror[T]`. Here is a possible implementation,
 inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
    val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
    inline m match                                               // (2)
-   case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
-   case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
+      case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
+      case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
 ```
 
 Note that `derived` is defined as an `inline` given. This means that the method will be expanded at
@@ -197,8 +197,8 @@ implementation of `summonAll` is `inline` and uses Scala 3's `summonInline` cons
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] =
    inline erasedValue[T] match
-   case _: EmptyTuple => Nil
-   case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+      case _: EmptyTuple => Nil
+      case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 ```
 
 with the instances for children in hand the `derived` method uses an `inline match` to dispatch to methods which can
@@ -238,8 +238,8 @@ import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] =
    inline erasedValue[T] match
-   case _: EmptyTuple => Nil
-   case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
+      case _: EmptyTuple => Nil
+      case _: (t *: ts) => summonInline[Eq[t]] :: summonAll[ts]
 
 trait Eq[T]:
    def eqv(x: T, y: T): Boolean
@@ -269,8 +269,8 @@ object Eq:
    inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
       lazy val elemInstances = summonAll[m.MirroredElemTypes]
       inline m match
-      case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
-      case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
+         case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
+         case p: Mirror.ProductOf[T] => eqProduct(p, elemInstances)
 end Eq
 ```
 

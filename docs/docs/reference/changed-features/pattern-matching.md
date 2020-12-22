@@ -104,9 +104,9 @@ object Even:
    def unapply(s: String): Boolean = s.size % 2 == 0
 
 "even" match
-case s @ Even() => println(s"$s has an even number of characters")
-case s          => println(s"$s has an odd number of characters")
-   
+   case s @ Even() => println(s"$s has an even number of characters")
+   case s          => println(s"$s has an odd number of characters")
+
 // even has an even number of characters
 ```
 
@@ -134,8 +134,8 @@ object FirstChars:
    def unapply(s: String): FirstChars = new FirstChars(s)
 
 "Hi!" match
-case FirstChars(char1, char2) =>
-   println(s"First: $char1; Second: $char2")
+   case FirstChars(char1, char2) =>
+      println(s"First: $char1; Second: $char2")
 
 // First: H; Second: i
 ```
@@ -155,8 +155,8 @@ object Nat:
    def unapply(x: Int): Nat = new Nat(x)
 
 5 match
-case Nat(n) => println(s"$n is a natural number")
-case _      => ()
+   case Nat(n) => println(s"$n is a natural number")
+   case _      => ()
 
 // 5 is a natural number
 ```
@@ -175,8 +175,8 @@ object ProdEmpty:
    def get = this
 
 "" match
-case ProdEmpty(_, _) => ???
-case _ => ()
+   case ProdEmpty(_, _) => ???
+   case _ => ()
 ```
 
 
@@ -186,10 +186,10 @@ case _ => ()
 
 ```Scala
 type X = {
-  def lengthCompare(len: Int): Int // or, `def length: Int`
-  def apply(i: Int): T1
-  def drop(n: Int): scala.Seq[T2]
-  def toSeq: scala.Seq[T3]
+   def lengthCompare(len: Int): Int // or, `def length: Int`
+   def apply(i: Int): T1
+   def drop(n: Int): scala.Seq[T2]
+   def toSeq: scala.Seq[T3]
 }
 ```
 
@@ -200,13 +200,13 @@ type X = {
 
 ```scala
 object CharList:
-  def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
+   def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
 
 "example" match
-case CharList(c1, c2, c3, c4, _, _, _) =>
-   println(s"$c1,$c2,$c3,$c4")
-case _ =>
-   println("Expected *exactly* 7 characters!")
+   case CharList(c1, c2, c3, c4, _, _, _) =>
+      println(s"$c1,$c2,$c3,$c4")
+   case _ =>
+      println("Expected *exactly* 7 characters!")
 
 // e,x,a,m
 ```

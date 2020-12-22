@@ -719,11 +719,11 @@ Sometimes it is necessary to get a more precise type for an expression. This can
 ```scala
 def f(expr: Expr[Any])(using Quotes) =
    expr match
-   case '{ $x: t } =>
-      // If the pattern match succeeds, then there is some type `t` such that
-      // - `x` is bound to a variable of type `Expr[t]`
-      // - `t` is bound to a new type `t` and a given instance `Type[t]` is provided for it
-      // That is, we have `x: Expr[t]` and `given Type[t]`, for some (unknown) type `t`.
+      case '{ $x: t } =>
+         // If the pattern match succeeds, then there is some type `t` such that
+         // - `x` is bound to a variable of type `Expr[t]`
+         // - `t` is bound to a new type `t` and a given instance `Type[t]` is provided for it
+         // That is, we have `x: Expr[t]` and `given Type[t]`, for some (unknown) type `t`.
 ```
 
 This might be used to then perform an implicit search as in:
@@ -734,22 +734,22 @@ extension (inline sc: StringContext)
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
    argsExpr match
-   case Varargs(argExprs) =>
-      val argShowedExprs = argExprs.map {
-         case '{ $arg: tp } =>
-            val showTp = Type.of[Show[tp]]
-            Expr.summon(using showTp) match
-            case Some(showExpr) =>
-               '{ $showExpr.show($arg) }
-            case None =>
-               report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
-      }
-      val newArgsExpr = Varargs(argShowedExprs)
-      '{ $sc.s($newArgsExpr: _*) }
-   case _ =>
-      // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
-      report.error(s"Args must be explicit", argsExpr)
-      '{???}
+      case Varargs(argExprs) =>
+         val argShowedExprs = argExprs.map {
+            case '{ $arg: tp } =>
+               val showTp = Type.of[Show[tp]]
+               Expr.summon(using showTp) match
+                  case Some(showExpr) =>
+                     '{ $showExpr.show($arg) }
+                  case None =>
+                     report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
+         }
+         val newArgsExpr = Varargs(argShowedExprs)
+         '{ $sc.s($newArgsExpr: _*) }
+      case _ =>
+         // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
+         report.error(s"Args must be explicit", argsExpr)
+         '{???}
 
 trait Show[-T]:
    def show(x: T): String
@@ -785,15 +785,14 @@ the subexpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]
 ```scala
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 
-private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] =
-   e match
+private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = e match
    case '{ val y: Int = $x; $body(y): Int } =>
       // body: Expr[Int => Int] where the argument represents references to y
       evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
    case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
-      case (Some(a), Some(b)) => Expr(a * b)
-      case _ => e
+         case (Some(a), Some(b)) => Expr(a * b)
+         case _ => e
    case _ => e
 ```
 

@@ -323,8 +323,8 @@ single inline match expression that picks a case based on its static type:
 ```scala
 transparent inline def g(x: Any): Any =
    inline x match
-   case x: String => (x, x) // Tuple2[String, String](x, x)
-   case x: Double => x
+      case x: String => (x, x) // Tuple2[String, String](x, x)
+      case x: Double => x
 
 g(1.0d) // Has type 1.0d which is a subtype of Double
 g("test") // Has type (String, String)
@@ -343,8 +343,8 @@ case class Succ[N <: Nat](n: N) extends Nat
 
 transparent inline def toInt(n: Nat): Int =
    inline n match
-   case Zero => 0
-   case Succ(n1) => toInt(n1) + 1
+      case Zero => 0
+      case Succ(n1) => toInt(n1) + 1
 
 final val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo
@@ -366,8 +366,8 @@ import scala.compiletime.{constValue, S}
 
 transparent inline def toIntC[N]: Int =
    inline constValue[N] match
-   case 0 => 0
-   case _: S[n1] => 1 + toIntC[n1]
+      case 0 => 0
+      case _: S[n1] => 1 + toIntC[n1]
 
 final val ctwo = toIntC[2]
 ```
@@ -402,16 +402,16 @@ import scala.compiletime.erasedValue
 
 inline def defaultValue[T] =
    inline erasedValue[T] match
-   case _: Byte => Some(0: Byte)
-   case _: Char => Some(0: Char)
-   case _: Short => Some(0: Short)
-   case _: Int => Some(0)
-   case _: Long => Some(0L)
-   case _: Float => Some(0.0f)
-   case _: Double => Some(0.0d)
-   case _: Boolean => Some(false)
-   case _: Unit => Some(())
-   case _ => None
+      case _: Byte => Some(0: Byte)
+      case _: Char => Some(0: Char)
+      case _: Short => Some(0: Short)
+      case _: Int => Some(0)
+      case _: Long => Some(0L)
+      case _: Float => Some(0.0f)
+      case _: Double => Some(0.0d)
+      case _: Boolean => Some(false)
+      case _: Unit => Some(())
+      case _ => None
 ```
 
 Then:
@@ -431,8 +431,8 @@ Match_ section above. Here is how `toIntT` can be defined:
 ```scala
 transparent inline def toIntT[N <: Nat]: Int =
    inline scala.compiletime.erasedValue[N] match
-   case _: Zero.type => 0
-   case _: Succ[n] => toIntT[n] + 1
+      case _: Zero.type => 0
+      case _: Succ[n] => toIntT[n] + 1
 
 final val two = toIntT[Succ[Succ[Zero.type]]]
 ```

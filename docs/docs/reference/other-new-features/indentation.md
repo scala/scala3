@@ -181,11 +181,11 @@ The rules allow to write `match` expressions where cases are not indented themse
 
 ```scala
 x match
-case 1 => print("I")
-case 2 => print("II")
-case 3 => print("III")
-case 4 => print("IV")
-case 5 => print("V")
+   case 1 => print("I")
+   case 2 => print("II")
+   case 3 => print("III")
+   case 4 => print("IV")
+   case 5 => print("V")
 
 println(".")
 ```
@@ -305,16 +305,15 @@ enum IndentWidth:
    case Run(ch: Char, n: Int)
    case Conc(l: IndentWidth, r: Run)
 
-   def <= (that: IndentWidth): Boolean =
-      this match
+   def <= (that: IndentWidth): Boolean = this match
       case Run(ch1, n1) =>
          that match
-         case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-         case Conc(l, r)   => this <= l
+            case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+            case Conc(l, r)   => this <= l
       case Conc(l1, r1) =>
          that match
-         case Conc(l2, r2) => l1 == l2 && r1 <= r2
-         case _            => false
+            case Conc(l2, r2) => l1 == l2 && r1 <= r2
+            case _            => false
 
    def < (that: IndentWidth): Boolean =
       this <= that && !(that <= this)

@@ -166,13 +166,13 @@ final class Off extends State
 class Machine[S <: State]:
    transparent inline def turnOn(): Machine[On] =
       inline erasedValue[S] match
-      case _: Off => new Machine[On]
-      case _: On  => error("Turning on an already turned on machine")
+         case _: Off => new Machine[On]
+         case _: On  => error("Turning on an already turned on machine")
 
    transparent inline def turnOff(): Machine[Off] =
       inline erasedValue[S] match
-      case _: On  => new Machine[Off]
-      case _: Off => error("Turning off an already turned off machine")
+         case _: On  => new Machine[Off]
+         case _: Off => error("Turning off an already turned off machine")
 
 object Machine:
    def newMachine(): Machine[Off] =

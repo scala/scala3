@@ -10,12 +10,12 @@ When pattern matching there are two situations where a runtime type test must be
 The first kind is an explicit type test using the ascription pattern notation.
 ```scala
 (x: X) match
-case y: Y =>
+   case y: Y =>
 ```
 The second is when an extractor takes an argument that is not a subtype of the scrutinee type.
 ```scala
 (x: X) match
-case y @ Y(n) =>
+   case y @ Y(n) =>
 
 object Y:
    def unapply(x: Y): Some[Int] = ...
@@ -36,8 +36,7 @@ trait TypeTest[-S, T]:
 It provides an extractor that returns its argument typed as a `T` if the argument is a `T`.
 It can be used to encode a type test.
 ```scala
-def f[X, Y](x: X)(using tt: TypeTest[X, Y]): Option[Y] =
-   x match
+def f[X, Y](x: X)(using tt: TypeTest[X, Y]): Option[Y] = x match
    case tt(x @ Y(1)) => Some(x)
    case tt(x) => Some(x)
    case _ => None
@@ -48,8 +47,7 @@ This means that `x: Y` is transformed to `tt(x)` and `x @ Y(_)` to `tt(x @ Y(_))
 The previous code is equivalent to
 
 ```scala
-def f[X, Y](x: X)(using TypeTest[X, Y]): Option[Y] =
-   x match
+def f[X, Y](x: X)(using TypeTest[X, Y]): Option[Y] = x match
    case x @ Y(1) => Some(x)
    case x: Y => Some(x)
    case _ => None
@@ -60,8 +58,7 @@ We could create a type test at call site where the type test can be performed wi
 ```scala
 val tt: TypeTest[Any, String] =
    new TypeTest[Any, String]:
-      def unapply(s: Any): Option[s.type & String] =
-         s match
+      def unapply(s: Any): Option[s.type & String] = s match
          case s: String => Some(s)
          case _ => None
 
@@ -71,8 +68,7 @@ f[AnyRef, String]("acb")(using tt)
 The compiler will synthesize a new instance of a type test if none is found in scope as:
 ```scala
 new TypeTest[A, B]:
-   def unapply(s: A): Option[s.type & B] =
-      s match
+   def unapply(s: A): Option[s.type & B] = s match
       case s: B => Some(s)
       case _ => None
 ```
@@ -91,11 +87,11 @@ This alias can be used as
 ```scala
 def f[T: Typeable]: Boolean =
    "abc" match
-   case x: T => true
-   case _ => false
+      case x: T => true
+      case _ => false
 
 f[String] // true
-f[Int] // fasle
+f[Int] // false
 ```
 
 ### TypeTest and ClassTag
@@ -138,8 +134,8 @@ val peano: Peano = ...
 import peano._
 def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] =
    n match
-   case Zero => None
-   case s @ Succ(_) => Some(safeDiv(m, s))
+      case Zero => None
+      case s @ Succ(_) => Some(safeDiv(m, s))
 
 val two = Succ(Succ(Zero))
 val five = Succ(Succ(Succ(two)))

@@ -189,8 +189,8 @@ trait SafeDiv:
    extension (i: Int) def divide(d: Int) : Option[(Int, Int)] =
       // extension methods imported and thus in scope
       (i.safeDiv(d), i.safeMod(d)) match
-      case (Some(d), Some(r)) => Some((d, r))
-      case _ => None
+         case (Some(d), Some(r)) => Some((d, r))
+         case _ => None
 ```
 
 By the second rule, an extension method can be made available by defining a given instance containing it, like this:

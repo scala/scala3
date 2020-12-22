@@ -180,8 +180,8 @@ inline def power(x: Double, n: Int): Double =
 private def powerExpr(x: Expr[Double], n: Expr[Int])
                      (using Quotes): Expr[Double] =
    n.value match
-   case Some(m) => powerExpr(x, m)
-   case _ => '{ dynamicPower($x, $n) }
+      case Some(m) => powerExpr(x, m)
+      case _ => '{ dynamicPower($x, $n) }
 
 private def powerExpr(x: Expr[Double], n: Int)
                      (using Quotes): Expr[Double] =
@@ -205,8 +205,7 @@ be implemented in user code:
 ```scala
 given AsFunction1[T, U]: Conversion[Expr[T => U], Expr[T] => Expr[U]] with
    def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
-      (x: Expr[T]) =>
-         f match
+      (x: Expr[T]) => f match
          case Lambda(g) => g(x)
          case _ => '{ ($f)($x) }
 ```

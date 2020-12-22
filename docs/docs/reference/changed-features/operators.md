@@ -60,7 +60,7 @@ val x: String or Int = ...
 
 ### Motivation
 
-The purpose of the `infix` modifier is to achieve consistency across a code base in how a method or type is applied. The idea is that the author of a method decides whether that method should be applied as an infix operator or in a regular application. Use sites then implement that decision consistently.
+The purpose of the `infix` modifier is to achieve consistency actross a code base in how a method or type is applied. The idea is that the author of a method decides whether that method should be applied as an infix operator or in a regular application. Use sites then implement that decision consistently.
 
 ### Details
 
