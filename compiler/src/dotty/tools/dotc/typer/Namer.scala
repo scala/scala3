@@ -988,6 +988,20 @@ class Namer { typer: Typer =>
          *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
          */
         def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
+          def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
+            : List[List[tpd.Tree]] = tp match
+              case mt: MethodType =>
+                // Note: in this branch we use the assumptions
+                // that `prefss.head` corresponds to `mt.paramInfos` and
+                // that `prefss.tail` corresponds to `mt.resType`
+                if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam then
+                  val init :+ vararg = prefss.head
+                  val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
+                  adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
+                else
+                  adaptForwarderParams(prefss.head :: acc, mt.resType, prefss.tail)
+              case _ =>
+                acc.reverse ::: prefss
           if (whyNoForwarder(mbr) == "") {
             val sym = mbr.symbol
             val forwarder =
@@ -1024,7 +1038,8 @@ class Namer { typer: Typer =>
                 import tpd._
                 val ref = path.select(sym.asTerm)
                 val ddef = tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
-                  ref.appliedToTypes(targs).appliedToArgss(prefss)
+                  ref.appliedToTypes(targs)
+                     .appliedToArgss(adaptForwarderParams(Nil, sym.info.stripPoly, prefss))
                 )
                 if forwarder.isInlineMethod then
                   PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
