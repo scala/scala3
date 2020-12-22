@@ -188,7 +188,7 @@ object BigFloat {
     def fromDigits(digits: String) = apply(digits)
   }
 
-  given FromDigits {
+  given FromDigits with {
     override inline def fromDigits(digits: String) = ${
       fromDigitsImpl('digits)
     }
