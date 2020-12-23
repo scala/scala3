@@ -59,13 +59,13 @@ sealed trait Mirror:
 
 object Mirror:
 
-  /** The Mirror for a product type */
-  trait Product extends Mirror:
+   /** The Mirror for a product type */
+   trait Product extends Mirror:
 
-     /** Create a new instance of type `T` with elements
-      *  taken from product `p`.
-      */
-     def fromProduct(p: scala.Product): MirroredMonoType
+      /** Create a new instance of type `T` with elements
+       *  taken from product `p`.
+       */
+      def fromProduct(p: scala.Product): MirroredMonoType
 
    trait Sum extends Mirror:
 
