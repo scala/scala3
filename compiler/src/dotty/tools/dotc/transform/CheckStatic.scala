@@ -36,6 +36,7 @@ class CheckStatic extends MiniPhase {
       if (defn.symbol.isScalaStatic) {
         if (!ctx.owner.is(Module))
           report.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.srcPos)
+          defn.symbol.resetFlag(JavaStatic)
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField)
           report.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.srcPos)
@@ -68,6 +69,7 @@ class CheckStatic extends MiniPhase {
           case t: Select => isSafeQual(t.qualifier) && symbolWhitelist.contains(t.symbol)
           case t: Ident => symbolWhitelist.contains(t.symbol)
           case t: Block => t.stats.forall(tpd.isPureExpr) && isSafeQual(t.expr)
+          case _ => false
         }
       if (isSafeQual(tree.qualifier))
         ref(tree.symbol)
