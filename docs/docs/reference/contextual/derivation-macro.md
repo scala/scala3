@@ -106,7 +106,7 @@ check we want to generate is the following:
    && Eq[Int].eqv(x.productElement(1), y.productElement(1))
 ```
 
-### Calling the derived method inside the macro
+## Calling the derived method inside the macro
 
 Following the rules in [Macros](../metaprogramming/toc.md) we create two methods.
 One that hosts the top-level splice `eqv` and one that is the implementation.

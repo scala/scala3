@@ -52,6 +52,6 @@ The correct way to write `E` is to extend both `Greeting` and
 class E extends Greeting("Bob"), FormalGreeting
 ```
 
-### Reference
+## Reference
 
 For more info, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).

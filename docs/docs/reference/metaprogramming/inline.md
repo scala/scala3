@@ -84,7 +84,7 @@ def factorial(n: BigInt): BigInt =
    result
 ```
 
-Note, that the by-value parameter `msg` is evaluated only once, per the usual Scala
+Note that the by-value parameter `msg` is evaluated only once, per the usual Scala
 semantics, by binding the value and reusing the `msg` through the body of
 `factorial`. Also, note the special handling of the assignment to the private var
 `indent`. It is achieved by generating a setter method `def inline$indent_=` and calling it instead.
@@ -236,7 +236,7 @@ It is also possible to have inline vals of types that do not have a syntax, such
 trait InlineConstants:
    inline val myShort: Short
 
-object Constants extends InlineConstants
+object Constants extends InlineConstants:
    inline val myShort/*: Short(4)*/ = 4
 ```
 

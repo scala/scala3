@@ -83,7 +83,8 @@ The compiler reports here:
 6 |  @targetName("g") def f(): Int = 2
   |                       ^
   |error overriding method f in class A of type (): Int;
-  |  method f of type (): Int should not have a @targetName annotation since the overridden member hasn't one either
+  |  method f of type (): Int should not have a @targetName
+  |  annotation since the overridden member hasn't one either
 ```
 
 The relevant overriding rules can be summarized as follows:

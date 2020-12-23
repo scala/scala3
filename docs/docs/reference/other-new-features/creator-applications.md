@@ -39,6 +39,7 @@ Constructor proxy companions cannot be used as values by themselves. A proxy com
 Constructor proxies are also not allowed to shadow normal definitions. That is,
 if an identifier resolves to a constructor proxy, and the same identifier is also
 defined or imported in some other scope, an ambiguity is reported.
+
 ### Motivation
 
 Leaving out `new` hides an implementation detail and makes code more pleasant to read. Even though it requires a new rule, it will likely increase the perceived regularity of the language, since case classes already provide function call creation syntax (and are often defined for this reason alone).

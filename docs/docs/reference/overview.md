@@ -88,7 +88,7 @@ The date when these constructs are dropped varies. The current status is:
  - Supported under `-source 3.0-migration`:
    - procedure syntax, class shadowing, symbol literals, auto application, auto tupling in a restricted form.
  - Supported in 3.0, to be deprecated and phased out later:
-   - XML literals, compound types.
+   - [XML literals](dropped-features/xml.md), compound types.
 
 
 ## Changes
@@ -126,7 +126,7 @@ To enable porting most uses of macros, we are experimenting with the advanced la
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
 - [Quotes and Splices](metaprogramming/macros.md) provide a principled way to express macros and staging with a unified set of abstractions.
 - [Type class derivation](contextual/derivation.md) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
-- [Implicit by-name parameters](contextual/implicit-by-name-parameters.md) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
+- [Implicit by-name parameters](contextual/implicit-by-name-parameters.md) provide a more robust in-language implementation of the `Lazy` macro in [Shapeless](https://github.com/milessabin/shapeless).
 
 ## See Also
 

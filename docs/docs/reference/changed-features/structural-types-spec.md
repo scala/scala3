@@ -20,7 +20,7 @@ The standard library defines a universal marker trait `Selectable` in the packag
 trait Selectable extends Any
 ```
 
-An implementation of `Selectable` that relies on Java reflection is
+An implementation of `Selectable` that relies on [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html) is
 available in the standard library: `scala.reflect.Selectable`. Other
 implementations can be envisioned for platforms where Java reflection
 is not available.

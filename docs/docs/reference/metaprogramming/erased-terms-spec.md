@@ -3,9 +3,9 @@ layout: doc-page
 title: "Erased Terms Spec"
 ---
 
-# Implementation
+## Implementation
 
-## Rules
+### Rules
 
 1. The `erased` modifier can appear:
    * At the start of a parameter block of a method, function or class

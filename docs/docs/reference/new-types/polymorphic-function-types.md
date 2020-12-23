@@ -33,7 +33,7 @@ then take a list of type `List[A]`, and return a list of the same type `List[A]`
 [More details](https://github.com/lampepfl/dotty/pull/4672)
 
 
-### Example Usage
+## Example Usage
 
 Polymorphic function type are particularly useful
 when callers of a method are required to provide a
@@ -42,7 +42,7 @@ meaning that it should accept arbitrary types as part of its inputs.
 
 For instance, consider the situation where we have
 a data type to represent the expressions of a simple language
-(consisting only of variables and function application)
+(consisting only of variables and function applications)
 in a strongly-typed way:
 
 ```scala
@@ -75,9 +75,7 @@ val e1 = mapSubexpressions(e0)(
 println(e1) // Apply(Apply(Var(wrap),Var(f)),Apply(Var(wrap),Var(a)))
 ```
 
-
-
-### Relationship With Type Lambdas
+## Relationship With Type Lambdas
 
 Polymorphic function types are not to be confused with
 [_type lambdas_](type-lambdas.md).

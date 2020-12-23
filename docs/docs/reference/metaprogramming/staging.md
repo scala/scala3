@@ -77,11 +77,11 @@ def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
 sbt new scala/scala3-staging.g8
 ```
 
-From [scala/scala3-staging.g8](https://github.com/scala/scala3-staging.g8).
+From [`scala/scala3-staging.g8`](https://github.com/scala/scala3-staging.g8).
 
 It will create a project with the necessary dependencies and some examples.
 
-In case you prefer to create the project on your own, make sure to define the following dependency in your build.sbt
+In case you prefer to create the project on your own, make sure to define the following dependency in your [`build.sbt` build definition](https://www.scala-sbt.org/1.x/docs/Basic-Def.html)
 
 ```scala
 libraryDependencies += "org.scala-lang" %% "scala3-staging" % scalaVersion.value
@@ -110,7 +110,8 @@ import scala.quoted.staging._
 given Toolbox = Toolbox.make(getClass.getClassLoader)
 
 val f: Array[Int] => Int = run {
-   val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+   val stagedSum: Expr[Array[Int] => Int] =
+      '{ (arr: Array[Int]) => ${sum('arr)}}
    println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
    stagedSum
 }

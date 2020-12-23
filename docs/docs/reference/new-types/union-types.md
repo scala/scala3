@@ -21,7 +21,7 @@ Union types are duals of intersection types. `|` is _commutative_:
 `A | B` is the same type as `B | A`.
 
 The compiler will assign a union type to an expression only if such a
-type is explicitly given. This can be seen in the following REPL transcript:
+type is explicitly given. This can be seen in the following [REPL](https://docs.scala-lang.org/overviews/repl/overview.html) transcript:
 
 ```scala
 scala> val password = Password(123)

@@ -95,7 +95,7 @@ mirroring the definition syntax. E.g, `max(2, 3)(using IntOrd)`.
 Scala 2 uses normal applications `max(2, 3)(IntOrd)` instead. The Scala 2 syntax has some inherent ambiguities and restrictions which are overcome by the new syntax. For instance, multiple implicit parameter lists are not available in the old syntax, even though they can be simulated using auxiliary objects in the "Aux" pattern.
 
 The `summon` method corresponds to `implicitly` in Scala 2.
-It is precisely the same as the `the` method in Shapeless.
+It is precisely the same as the `the` method in [Shapeless](https://github.com/milessabin/shapeless).
 The difference between `summon` (or `the`) and `implicitly` is
 that `summon` can return a more precise type than the type that was
 asked for.
@@ -129,7 +129,7 @@ Abstract extension methods in traits that are implemented in given instances hav
 
 ### Type Class Derivation
 
-Type class derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as Shapeless, Magnolia, or scalaz-deriving.
+Type class derivation has no direct counterpart in the Scala 2 language. Comparable functionality can be achieved by macro-based libraries such as [Shapeless](https://github.com/milessabin/shapeless), [Magnolia](https://propensive.com/opensource/magnolia), or [scalaz-deriving](https://github.com/scalaz/scalaz-deriving).
 
 ### Context Function Types
 

@@ -38,14 +38,14 @@ case _: (A | B) => ...
   A & (B | C) =:= A & B | A & C
   ```
 
-From these rules it follows that the _least upper bound_ (lub) of a set of types
+From these rules it follows that the _least upper bound_ (LUB) of a set of types
 is the union of these types. This replaces the
 [definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
 
 ## Motivation
 
 The primary reason for introducing union types in Scala is that they allow us to
-guarantee that for every set of types, we can always form a finite lub. This is
+guarantee that for every set of types, we can always form a finite LUB. This is
 both useful in practice (infinite lubs in Scala 2 were approximated in an ad-hoc
 way, resulting in imprecise and sometimes incredibly long types) and in theory
 (the type system of Scala 3 is based on the
@@ -145,9 +145,9 @@ exhaustive if all parts of the union are covered.
 
 The erased type for `A | B` is the _erased least upper bound_ of the erased
 types of `A` and `B`. Quoting from the documentation of `TypeErasure#erasedLub`,
-the erased lub is computed as follows:
+the erased LUB is computed as follows:
 
-- if both argument are arrays of objects, an array of the erased lub of the element types
+- if both argument are arrays of objects, an array of the erased LUB of the element types
 - if both arguments are arrays of same primitives, an array of this primitive
 - if one argument is array of primitives and the other is array of objects,
   [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)

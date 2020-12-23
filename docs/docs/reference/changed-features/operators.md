@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Rules for Operators
+title: "Rules for Operators"
 ---
 
 The rules for infix operators have changed in some parts:

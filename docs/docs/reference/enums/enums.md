@@ -44,7 +44,7 @@ The companion object of an enum also defines three utility methods.
 The `valueOf` method obtains an enum value
 by its name. The `values` method returns all enum values
 defined in an enumeration in an `Array`. The `fromOrdinal`
-method obtains an enum value from its ordinal (Int) value.
+method obtains an enum value from its ordinal (`Int`) value.
 
 ```scala
 scala> Color.valueOf("Blue")
@@ -63,7 +63,7 @@ It is possible to add your own definitions to an enum. Example:
 enum Planet(mass: Double, radius: Double):
    private final val G = 6.67300E-11
    def surfaceGravity = G * mass / (radius * radius)
-   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
+   def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity
 
    case Mercury extends Planet(3.303e+23, 2.4397e6)
    case Venus   extends Planet(4.869e+24, 6.0518e6)
@@ -72,7 +72,7 @@ enum Planet(mass: Double, radius: Double):
    case Jupiter extends Planet(1.9e+27,   7.1492e7)
    case Saturn  extends Planet(5.688e+26, 6.0268e7)
    case Uranus  extends Planet(8.686e+25, 2.5559e7)
-  case Neptune extends Planet(1.024e+26, 2.4746e7)
+   case Neptune extends Planet(1.024e+26, 2.4746e7)
 end Planet
 ```
 

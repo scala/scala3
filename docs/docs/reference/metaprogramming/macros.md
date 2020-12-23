@@ -42,7 +42,7 @@ def assertImpl(expr: Expr[Boolean])(using Quotes) = '{
 }
 
 def showExpr(expr: Expr[Boolean])(using Quotes): Expr[String] =
-  '{ "<some source code>" } // Better implementation later in this document
+   '{ "<some source code>" } // Better implementation later in this document
 ```
 
 If `e` is an expression, then `'{e}` represents the typed
@@ -256,15 +256,16 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
 import scala.quoted._
 
-def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match
-   case Num(n) =>
-      Expr(n)
-   case Plus(e1, e2) =>
-      '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
-   case Var(x) =>
-      env(x)
-   case Let(x, e, body) =>
-      '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
+def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] =
+   e match
+      case Num(n) =>
+         Expr(n)
+      case Plus(e1, e2) =>
+         '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
+      case Var(x) =>
+         env(x)
+      case Let(x, e, body) =>
+         '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
 ```
 
 Running `compile(letExp, Map())` would yield the following Scala code:
@@ -431,8 +432,8 @@ should be treated by the compiler as if it was quoted:
 
 ```scala
 @main def program = '{
-  val x = 1
-  ${ Macros.assertImpl('{ x != 0 }) }
+   val x = 1
+   ${ Macros.assertImpl('{ x != 0 }) }
 }
 ```
 
@@ -527,7 +528,8 @@ function `f` and one `sum` that performs a sum by delegating to `map`.
 ```scala
 object Macros:
 
-   def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using Type[T], Quotes): Expr[Unit] = '{
+   def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])
+             (using Type[T], Quotes): Expr[Unit] = '{
       var i: Int = 0
       while i < ($arr).length do
          val element: T = ($arr)(i)
@@ -582,7 +584,7 @@ val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 var sum = 0
 val f = x => '{sum += $x}
 var i: Int = 0
-while i < (arr).length do
+while i < arr.length do
    val element: Int = (arr)(i)
    sum += element
    i += 1
@@ -624,7 +626,8 @@ inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
 ```scala
-transparent inline def defaultOf(inline str: String) = ${ defaultOfImpl('str) }
+transparent inline def defaultOf(inline str: String) =
+   ${ defaultOfImpl('str) }
 
 def defaultOfImpl(strExpr: Expr[String])(using Quotes): Expr[Any] =
    strExpr.valueOrError match
@@ -693,14 +696,16 @@ optimize {
 ```scala
 def sum(args: Int*): Int = args.sum
 inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
-private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] = body match
-   // Match a call to sum without any arguments
-   case '{ sum() } => Expr(0)
-   // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
-   case '{ sum($n) } => n
-   // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-   case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
-   case body => body
+private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] =
+   body match
+      // Match a call to sum without any arguments
+      case '{ sum() } => Expr(0)
+      // Match a call to sum with an argument $n of type Int.
+      // n will be the Expr[Int] representing the argument.
+      case '{ sum($n) } => n
+      // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
+      case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
+      case body => body
 
 private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] =
    def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match
@@ -717,13 +722,15 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] =
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
 ```scala
-def f(expr: Expr[Any])(using Quotes) =
-   expr match
-      case '{ $x: t } =>
-         // If the pattern match succeeds, then there is some type `t` such that
-         // - `x` is bound to a variable of type `Expr[t]`
-         // - `t` is bound to a new type `t` and a given instance `Type[t]` is provided for it
-         // That is, we have `x: Expr[t]` and `given Type[t]`, for some (unknown) type `t`.
+def f(expr: Expr[Any])(using Quotes) = expr match
+   case '{ $x: t } =>
+      // If the pattern match succeeds, then there is
+      // some type `t` such that
+      // - `x` is bound to a variable of type `Expr[t]`
+      // - `t` is bound to a new type `t` and a given
+      //   instance `Type[t]` is provided for it
+      // That is, we have `x: Expr[t]` and `given Type[t]`,
+      // for some (unknown) type `t`.
 ```
 
 This might be used to then perform an implicit search as in:
@@ -787,7 +794,8 @@ inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 
 private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = e match
    case '{ val y: Int = $x; $body(y): Int } =>
-      // body: Expr[Int => Int] where the argument represents references to y
+      // body: Expr[Int => Int] where the argument represents
+      // references to y
       evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
    case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match

@@ -34,13 +34,14 @@ Classes that are not open can still be extended, but only if at least one of two
    ```scala
    import scala.language.adhocExtensions
    ```
-   Alternatively, the feature can be enabled by the command line option `-language:adhocExtensions`.
+   Alternatively, the feature can be enabled by the compiler option `-language:adhocExtensions`.
    If the feature is not enabled, the compiler will issue a "feature" warning. For instance, if the `open` modifier on class `Writer` is dropped, compiling `EncryptedWriter` would produce a warning:
    ```
    -- Feature Warning: EncryptedWriter.scala:6:14 ----
      |class EncryptedWriter[T: Encryptable] extends Writer[T]
      |                                              ^
-     |Unless class Writer is declared 'open', its extension in a separate file should be enabled
+     |Unless class Writer is declared 'open', its extension
+     | in a separate file should be enabled
      |by adding the import clause 'import scala.language.adhocExtensions'
      |or by setting the compiler option -language:adhocExtensions.
    ```
