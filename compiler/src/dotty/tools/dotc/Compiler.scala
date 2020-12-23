@@ -111,7 +111,6 @@ class Compiler {
          new CapturedVars) ::        // Represent vars captured by closures as heap objects
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-         new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation) ::     // Count calls and allocations under -Yinstrument
     List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
