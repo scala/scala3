@@ -8,4 +8,3 @@ object Test:
 
   extension(b:B)
     def x = b.a.x  // error
-
