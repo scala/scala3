@@ -123,7 +123,7 @@ Proof by structural induction over terms.
 
 To prove (1):
 
- - the cases for variables, lambdas and applications are as in [STL](https://en.wikipedia.org/wiki/Simply_typed_lambda_calculus).
+ - the cases for variables, lambdas and applications are as in [STLC](https://en.wikipedia.org/wiki/Simply_typed_lambda_calculus).
  - If `t = ’t2`, then by inversion we have ` ’ E1 |- t2: T2` for some type `T2`.
    By the second [induction hypothesis](https://en.wikipedia.org/wiki/Mathematical_induction) (I.H.), we have one of:
    - `t2 = u`, hence `’t2` is a value,
