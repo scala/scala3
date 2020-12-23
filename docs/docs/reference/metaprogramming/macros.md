@@ -466,8 +466,8 @@ inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 
 private def powerCode(x: Expr[Double], n: Expr[Int])(using Quotes): Expr[Double] =
    n.value match
-   case Some(m) => powerCode(x, m)
-   case None => '{ Math.pow($x, $n.toDouble) }
+      case Some(m) => powerCode(x, m)
+      case None => '{ Math.pow($x, $n.toDouble) }
 
 private def powerCode(x: Expr[Double], n: Int)(using Quotes): Expr[Double] =
    if n == 0 then '{ 1.0 }
@@ -613,8 +613,8 @@ inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
 def setForExpr[T: Type](using Quotes): Expr[Set[T]] =
    Expr.summon[Ordering[T]] match
-   case Some(ord) => '{ new TreeSet[T]()($ord) }
-   case _ => '{ new HashSet[T] }
+      case Some(ord) => '{ new TreeSet[T]()($ord) }
+      case _ => '{ new HashSet[T] }
 ```
 
 ## Relationship with Whitebox Inline
@@ -628,8 +628,8 @@ transparent inline def defaultOf(inline str: String) = ${ defaultOfImpl('str) }
 
 def defaultOfImpl(strExpr: Expr[String])(using Quotes): Expr[Any] =
    strExpr.valueOrError match
-   case "int" => '{1}
-   case "string" => '{"a"}
+      case "int" => '{1}
+      case "string" => '{"a"}
 
 // in a separate file
 val a: Int = defaultOf("int")
@@ -665,16 +665,16 @@ These could be used in the following way to optimize any call to `sum` that has 
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] =
    argsExpr match
-   case Varargs(args @ Exprs(argValues)) =>
-      // args is of type Seq[Expr[Int]]
-      // argValues is of type Seq[Int]
-      Expr(argValues.sum) // precompute result of sum
-   case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
-      val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
-      val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
-      dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
-   case _ =>
-      '{ $argsExpr.sum }
+      case Varargs(args @ Exprs(argValues)) =>
+         // args is of type Seq[Expr[Int]]
+         // argValues is of type Seq[Int]
+         Expr(argValues.sum) // precompute result of sum
+      case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
+         val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
+         val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
+         dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+      case _ =>
+         '{ $argsExpr.sum }
 ```
 
 ### Quoted patterns

@@ -106,8 +106,8 @@ Specifically, we patch
 
     ```java
     class C {
-      String s;
-      int x;
+       String s;
+       int x;
     }
     ```
     ==>
@@ -183,12 +183,13 @@ Specifically, we patch
   * We don't nullify _simple_ literal constant (`final`) fields, since they are known to be non-null
 
     ```java
-    class Constants:
+    class Constants {
        final String NAME = "name";
        final int AGE = 0;
        final char CHAR = 'a';
 
        final String NAME_GENERATED = getNewName();
+    }
     ```
     ==>
     ```scala
@@ -204,10 +205,11 @@ Specifically, we patch
     `NotNull` annotation.
 
     ```java
-    class C:
+    class C {
        @NotNull String name;
        @NotNull List<String> getNames(String prefix); // List is Java-defined
        @NotNull Box<String> getBoxedName(); // Box is Scala-defined
+    }
     ```
     ==>
     ```scala
