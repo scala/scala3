@@ -513,9 +513,19 @@ object Implicits:
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
+  /** A search failure type for attempted ill-typed extension method calls */
   class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
+
+   /** A search failure type for aborted searches of extension methods, typically
+    *  because of a cyclic reference or similar.
+    */
+  class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType:
+    def argument = EmptyTree
+    override def msg(using Context) = _msg
+    def explanation(using Context) = msg.toString
+
 end Implicits
 
 import Implicits._

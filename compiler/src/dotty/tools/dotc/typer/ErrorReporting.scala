@@ -13,6 +13,7 @@ import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting._
+import collection.mutable
 
 import scala.util.matching.Regex
 
@@ -143,16 +144,20 @@ object ErrorReporting {
     def selectErrorAddendum
       (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
       (using Context): String =
-      val attempts: List[Tree] = qual1.getAttachment(Typer.HiddenSearchFailure) match
+      val attempts = mutable.ListBuffer[Tree]()
+      val nested = mutable.ListBuffer[NestedFailure]()
+      qual1.getAttachment(Typer.HiddenSearchFailure) match
         case Some(failures) =>
-          for failure <- failures
-              if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits]
-          yield failure.tree
-        case _ => Nil
+          for failure <- failures do
+            failure.reason match
+              case fail: NestedFailure => nested += fail
+              case fail: Implicits.NoMatchingImplicits => // do nothing
+              case _ => attempts += failure.tree
+        case _ =>
       if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
-        val attemptStrings = attempts.map(_.showIndented(4)).distinct
+        val attemptStrings = attempts.toList.map(_.showIndented(4)).distinct
         val extMethods =
           if attemptStrings.length > 1 then "Extension methods were"
           else "An extension method was"
@@ -160,6 +165,11 @@ object ErrorReporting {
            |$extMethods tried, but could not be fully constructed:
            |
            |    $attemptStrings%\nor\n    %"""
+      else if nested.nonEmpty then
+        i""".
+           |Extension methods were tried, but the search failed with:
+           |
+           |    ${nested.head.explanation}"""
       else if tree.hasAttachment(desugar.MultiLineInfix) then
         i""".
            |Note that `${tree.name}` is treated as an infix operator in Scala 3.

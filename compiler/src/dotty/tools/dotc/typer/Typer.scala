@@ -3499,24 +3499,29 @@ class Typer extends Namer
       // try an extension method in scope
       pt match {
         case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+
           def tryExtension(using Context): Tree =
-            try
-              findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
+            findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
+              case ref: TermRef =>
+                extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
+              case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
                 case ref: TermRef =>
                   extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
-                  case ref: TermRef =>
-                    extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                  case _ => EmptyTree
-            catch case ex: TypeError => errorTree(tree, ex, tree.srcPos)
-          val nestedCtx = ctx.fresh.setNewTyperState()
-          val app = tryExtension(using nestedCtx)
-          if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
-            nestedCtx.typerState.commit()
-            return ExtMethodApply(app)
-          }
-          else if !app.isEmpty then
-            rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
+                case _ => EmptyTree
+
+          try
+            val nestedCtx = ctx.fresh.setNewTyperState()
+            val app = tryExtension(using nestedCtx)
+            if !app.isEmpty then
+              if !nestedCtx.reporter.hasErrors then
+                nestedCtx.typerState.commit()
+                return ExtMethodApply(app)
+              else
+                rememberSearchFailure(tree,
+                  SearchFailure(app.withType(FailedExtension(app, pt))))
+          catch case ex: TypeError =>
+            rememberSearchFailure(tree,
+              SearchFailure(tree.withType(NestedFailure(ex.toMessage, pt))))
         case _ =>
       }
 
