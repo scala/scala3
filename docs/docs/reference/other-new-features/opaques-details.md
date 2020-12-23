@@ -29,9 +29,8 @@ type T >: L <: U
 ```
 A special case arises if the opaque type alias is defined in an object. Example:
 ```
-object o {
-  opaque type T = R
-}
+object o:
+   opaque type T = R
 ```
 In this case we have inside the object (also for non-opaque types) that `o.T` is equal to
 `T` or its expanded form `o.this.T`. Equality is understood here as mutual subtyping, i.e.
@@ -39,10 +38,9 @@ In this case we have inside the object (also for non-opaque types) that `o.T` is
 that `o.this.T` equals `R`. The two equalities compose. That is, inside `o`, it is
 also known that `o.T` is equal to `R`. This means the following code type-checks:
 ```scala
-object o {
-  opaque type T = Int
-  val x: Int = id(2)
-}
+object o:
+   opaque type T = Int
+   val x: Int = id(2)
 def id(x: o.T): o.T = x
 ```
 
@@ -84,22 +82,20 @@ objects and classes and in all other source files. Example:
 opaque type A = String
 val x: A = "abc"
 
-object obj {
-  val y: A = "abc"  // error: found: "abc", required: A
-}
+object obj:
+   val y: A = "abc"  // error: found: "abc", required: A
 
 // in test2.scala
 def z: String = x   // error: found: A, required: String
 ```
 This behavior becomes clear if one recalls that top-level definitions are placed in their own synthetic object. For instance, the code in `test1.scala` would expand to
 ```scala
-object test1$package {
-  opaque type A = String
-  val x: A = "abc"
-}
-object obj {
-  val y: A = "abc"  // error: cannot assign "abc" to opaque type alias A
-}
+object test1$package:
+   opaque type A = String
+   val x: A = "abc"
+
+object obj:
+   val y: A = "abc"  // error: cannot assign "abc" to opaque type alias A
 ```
 The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
 

@@ -12,7 +12,6 @@ faster mechanism which is not thread-safe.
 ```scala
 import scala.annotation.threadUnsafe
 
-class Hello {
-  @threadUnsafe lazy val x: Int = 1
-}
+class Hello:
+   @threadUnsafe lazy val x: Int = 1
 ```

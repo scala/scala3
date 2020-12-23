@@ -100,14 +100,13 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-object Even {
-  def unapply(s: String): Boolean = s.size % 2 == 0
-}
+object Even:
+   def unapply(s: String): Boolean = s.size % 2 == 0
 
-"even" match {
-  case s @ Even() => println(s"$s has an even number of characters")
-  case s          => println(s"$s has an odd number of characters")
-}
+"even" match
+   case s @ Even() => println(s"$s has an even number of characters")
+   case s          => println(s"$s has an odd number of characters")
+
 // even has an even number of characters
 ```
 
@@ -122,24 +121,22 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class FirstChars(s: String) extends Product {
-  def _1 = s.charAt(0)
-  def _2 = s.charAt(1)
+class FirstChars(s: String) extends Product:
+   def _1 = s.charAt(0)
+   def _2 = s.charAt(1)
 
-  // Not used by pattern matching: Product is only used as a marker trait.
-  def canEqual(that: Any): Boolean = ???
-  def productArity: Int = ???
-  def productElement(n: Int): Any = ???
-}
+   // Not used by pattern matching: Product is only used as a marker trait.
+   def canEqual(that: Any): Boolean = ???
+   def productArity: Int = ???
+   def productElement(n: Int): Any = ???
 
-object FirstChars {
-  def unapply(s: String): FirstChars = new FirstChars(s)
-}
+object FirstChars:
+   def unapply(s: String): FirstChars = new FirstChars(s)
 
-"Hi!" match {
-  case FirstChars(char1, char2) =>
-    println(s"First: $char1; Second: $char2")
-}
+"Hi!" match
+   case FirstChars(char1, char2) =>
+      println(s"First: $char1; Second: $char2")
+
 // First: H; Second: i
 ```
 
@@ -150,19 +147,17 @@ object FirstChars {
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class Nat(val x: Int) {
-  def get: Int = x
-  def isEmpty = x < 0
-}
+class Nat(val x: Int):
+   def get: Int = x
+   def isEmpty = x < 0
 
-object Nat {
-  def unapply(x: Int): Nat = new Nat(x)
-}
+object Nat:
+   def unapply(x: Int): Nat = new Nat(x)
 
-5 match {
-  case Nat(n) => println(s"$n is a natural number")
-  case _      => ()
-}
+5 match
+   case Nat(n) => println(s"$n is a natural number")
+   case _      => ()
+
 // 5 is a natural number
 ```
 
@@ -172,18 +167,16 @@ object Nat {
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
 ```Scala
-object ProdEmpty {
-  def _1: Int = ???
-  def _2: String = ???
-  def isEmpty = true
-  def unapply(s: String): this.type = this
-  def get = this
-}
+object ProdEmpty:
+   def _1: Int = ???
+   def _2: String = ???
+   def isEmpty = true
+   def unapply(s: String): this.type = this
+   def get = this
 
-"" match {
-  case ProdEmpty(_, _) => ???
-  case _ => ()
-}
+"" match
+   case ProdEmpty(_, _) => ???
+   case _ => ()
 ```
 
 
@@ -193,10 +186,10 @@ object ProdEmpty {
 
 ```Scala
 type X = {
-  def lengthCompare(len: Int): Int // or, `def length: Int`
-  def apply(i: Int): T1
-  def drop(n: Int): scala.Seq[T2]
-  def toSeq: scala.Seq[T3]
+   def lengthCompare(len: Int): Int // or, `def length: Int`
+   def apply(i: Int): T1
+   def drop(n: Int): scala.Seq[T2]
+   def toSeq: scala.Seq[T3]
 }
 ```
 
@@ -206,16 +199,15 @@ type X = {
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-object CharList {
-  def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
-}
+object CharList:
+   def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
 
-"example" match {
-  case CharList(c1, c2, c3, c4, _, _, _) =>
-    println(s"$c1,$c2,$c3,$c4")
-  case _ =>
-    println("Expected *exactly* 7 characters!")
-}
+"example" match
+   case CharList(c1, c2, c3, c4, _, _, _) =>
+      println(s"$c1,$c2,$c3,$c4")
+   case _ =>
+      println("Expected *exactly* 7 characters!")
+
 // e,x,a,m
 ```
 
@@ -229,15 +221,13 @@ object CharList {
 
 ```Scala
 class Foo(val name: String, val children: Int *)
-object Foo {
-  def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
-    Some((f.name, f.children))
-}
+object Foo:
+   def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
+      Some((f.name, f.children))
 
-def foo(f: Foo) = f match {
-  case Foo(name, ns : _*) =>
-  case Foo(name, x, y, ns : _*) =>
-}
+def foo(f: Foo) = f match
+   case Foo(name, ns : _*) =>
+   case Foo(name, x, y, ns : _*) =>
 ```
 
 There are plans for further simplification, in particular to factor out *product

@@ -9,25 +9,23 @@ title: Inline
 definition will be inlined at the point of use. Example:
 
 ```scala
-object Config {
-  inline val logging = false
-}
+object Config:
+   inline val logging = false
 
-object Logger {
+object Logger:
 
-  private var indent = 0
+   private var indent = 0
 
-  inline def log[T](msg: String, indentMargin: =>Int)(op: => T): T =
-    if (Config.logging) {
-      println(s"${"  " * indent}start $msg")
-      indent += indentMargin
-      val result = op
-      indent -= indentMargin
-      println(s"${"  " * indent}$msg = $result")
-      result
-    }
-    else op
-}
+   inline def log[T](msg: String, indentMargin: =>Int)(op: => T): T =
+      if Config.logging then
+         println(s"${"  " * indent}start $msg")
+         indent += indentMargin
+         val result = op
+         indent -= indentMargin
+         println(s"${"  " * indent}$msg = $result")
+         result
+      else op
+end Logger
 ```
 
 The `Config` object contains a definition of the **inline value** `logging`.
@@ -42,7 +40,7 @@ method will always be inlined at the point of call.
 
 In the inlined code, an `if-then-else` with a constant condition will be rewritten
 to its `then`- or `else`-part. Consequently, in the `log` method above the
-`if (Config.logging)` with `Config.logging == true` will get rewritten into its
+`if Config.logging` with `Config.logging == true` will get rewritten into its
 `then`-part.
 
 Here's an example:
@@ -50,21 +48,19 @@ Here's an example:
 ```scala
 var indentSetting = 2
 
-def factorial(n: BigInt): BigInt = {
-  log(s"factorial($n)", indentSetting) {
-    if (n == 0) 1
-    else n * factorial(n - 1)
-  }
-}
+def factorial(n: BigInt): BigInt =
+   log(s"factorial($n)", indentSetting) {
+      if n == 0 then 1
+      else n * factorial(n - 1)
+   }
 ```
 
 If `Config.logging == false`, this will be rewritten (simplified) to:
 
 ```scala
-def factorial(n: BigInt): BigInt = {
-  if (n == 0) 1
-  else n * factorial(n - 1)
-}
+def factorial(n: BigInt): BigInt =
+   if n == 0 then 1
+   else n * factorial(n - 1)
 ```
 
 As you notice, since neither `msg` or `indentMargin` were used, they do not
@@ -76,17 +72,16 @@ Consequently, the code was inlined directly and the call was beta-reduced.
 In the `true` case the code will be rewritten to:
 
 ```scala
-def factorial(n: BigInt): BigInt = {
-  val msg = s"factorial($n)"
-  println(s"${"  " * indent}start $msg")
-  Logger.inline$indent_=(indent.+(indentSetting))
-  val result =
-    if (n == 0) 1
-    else n * factorial(n - 1)
-  Logger.inline$indent_=(indent.-(indentSetting))
-  println(s"${"  " * indent}$msg = $result")
-  result
-}
+def factorial(n: BigInt): BigInt =
+   val msg = s"factorial($n)"
+   println(s"${"  " * indent}start $msg")
+   Logger.inline$indent_=(indent.+(indentSetting))
+   val result =
+      if n == 0 then 1
+      else n * factorial(n - 1)
+   Logger.inline$indent_=(indent.-(indentSetting))
+   println(s"${"  " * indent}$msg = $result")
+   result
 ```
 
 Note, that the by-value parameter `msg` is evaluated only once, per the usual Scala
@@ -101,14 +96,12 @@ exponent `n`, the following method for `power` will be implemented by
 straight inline code without any loop or recursion.
 
 ```scala
-inline def power(x: Double, n: Int): Double = {
-  if (n == 0) 1.0
-  else if (n == 1) x
-  else {
-    val y = power(x, n / 2)
-    if (n % 2 == 0) y * y else y * y * x
-  }
-}
+inline def power(x: Double, n: Int): Double =
+   if n == 0 then 1.0
+   else if n == 1 then x
+   else
+      val y = power(x, n / 2)
+      if n % 2 == 0 then y * y else y * y * x
 
 power(expr, 10)
 // translates to
@@ -131,8 +124,8 @@ parameters:
 
 ```scala
 inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: Double): Unit =
-  if (actual - expected).abs > delta then
-    throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
+   if (actual - expected).abs > delta then
+      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
 funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 // translates to
@@ -150,14 +143,14 @@ Inline methods can override other non-inline methods. The rules are as follows:
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
 
     ```scala
-    abstract class A {
-      def f(): Int
-      def g(): Int = f()
-    }
-    class B extends A {
-      inline def f() = 22
-      override inline def g() = f() + 11
-    }
+    abstract class A:
+       def f(): Int
+       def g(): Int = f()
+
+    class B extends A:
+       inline def f() = 22
+       override inline def g() = f() + 11
+
     val b = B()
     val a: A = b
     // inlined invocatons
@@ -174,12 +167,12 @@ Inline methods can override other non-inline methods. The rules are as follows:
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
 
     ```scala
-    abstract class A {
-      inline def f(): Int
-    }
-    object B extends A {
-      inline def f(): Int = 22
-    }
+    abstract class A:
+       inline def f(): Int
+
+    object B extends A:
+       inline def f(): Int = 22
+
     B.f()         // OK
     val a: A = B
     a.f()         // error: cannot inline f() in A.
@@ -240,13 +233,11 @@ inline val four: 4 = 4
 It is also possible to have inline vals of types that do not have a syntax, such as `Short(4)`.
 
 ```scala
-trait InlineConstants {
-  inline val myShort: Short
-}
+trait InlineConstants:
+   inline val myShort: Short
 
-object Constants extends InlineConstants {
-  inline val myShort/*: Short(4)*/ = 4
-}
+object Constants extends InlineConstants
+   inline val myShort/*: Short(4)*/ = 4
 ```
 
 ## Transparent Inline Methods
@@ -257,12 +248,11 @@ specialized to a more precise type upon expansion. Example:
 
 ```scala
 class A
-class B extends A {
-  def m() = true
-}
+class B extends A:
+   def m() = true
 
 transparent inline def choose(b: Boolean): A =
-  if b then new A() else new B()
+   if b then new A() else new B()
 
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
@@ -302,15 +292,15 @@ Example:
 
 ```scala
 inline def update(delta: Int) =
-  inline if (delta >= 0) increaseBy(delta)
-  else decreaseBy(-delta)
+   inline if delta >= 0 then increaseBy(delta)
+   else decreaseBy(-delta)
 ```
 A call `update(22)` would rewrite to `increaseBy(22)`. But if `update` was called with
 a value that was not a compile-time constant, we would get a compile time error like the one
 below:
 
 ```scala
-   |  inline if (delta >= 0) ???
+   |  inline if delta >= 0 then ???
    |  ^
    |  cannot reduce inline if
    |   its condition
@@ -331,10 +321,10 @@ The example below defines an inline method with a
 single inline match expression that picks a case based on its static type:
 
 ```scala
-transparent inline def g(x: Any): Any = inline x match {
-  case x: String => (x, x) // Tuple2[String, String](x, x)
-  case x: Double => x
-}
+transparent inline def g(x: Any): Any =
+   inline x match
+      case x: String => (x, x) // Tuple2[String, String](x, x)
+      case x: Double => x
 
 g(1.0d) // Has type 1.0d which is a subtype of Double
 g("test") // Has type (String, String)
@@ -351,10 +341,10 @@ trait Nat
 case object Zero extends Nat
 case class Succ[N <: Nat](n: N) extends Nat
 
-transparent inline def toInt(n: Nat): Int = inline n match {
-  case Zero => 0
-  case Succ(n1) => toInt(n1) + 1
-}
+transparent inline def toInt(n: Nat): Int =
+   inline n match
+      case Zero => 0
+      case Succ(n1) => toInt(n1) + 1
 
 final val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo
@@ -375,10 +365,9 @@ type.
 import scala.compiletime.{constValue, S}
 
 transparent inline def toIntC[N]: Int =
-  inline constValue[N] match {
-    case 0 => 0
-    case _: S[n1] => 1 + toIntC[n1]
-  }
+   inline constValue[N] match
+      case 0 => 0
+      case _: S[n1] => 1 + toIntC[n1]
 
 final val ctwo = toIntC[2]
 ```
@@ -411,26 +400,26 @@ Using `erasedValue`, we can then define `defaultValue` as follows:
 ```scala
 import scala.compiletime.erasedValue
 
-inline def defaultValue[T] = inline erasedValue[T] match {
-  case _: Byte => Some(0: Byte)
-  case _: Char => Some(0: Char)
-  case _: Short => Some(0: Short)
-  case _: Int => Some(0)
-  case _: Long => Some(0L)
-  case _: Float => Some(0.0f)
-  case _: Double => Some(0.0d)
-  case _: Boolean => Some(false)
-  case _: Unit => Some(())
-  case _ => None
-}
+inline def defaultValue[T] =
+   inline erasedValue[T] match
+      case _: Byte => Some(0: Byte)
+      case _: Char => Some(0: Char)
+      case _: Short => Some(0: Short)
+      case _: Int => Some(0)
+      case _: Long => Some(0L)
+      case _: Float => Some(0.0f)
+      case _: Double => Some(0.0d)
+      case _: Boolean => Some(false)
+      case _: Unit => Some(())
+      case _ => None
 ```
 
 Then:
 ```scala
-  val dInt: Some[Int] = defaultValue[Int]
-  val dDouble: Some[Double] = defaultValue[Double]
-  val dBoolean: Some[Boolean] = defaultValue[Boolean]
-  val dAny: None.type = defaultValue[Any]
+val dInt: Some[Int] = defaultValue[Int]
+val dDouble: Some[Double] = defaultValue[Double]
+val dBoolean: Some[Boolean] = defaultValue[Boolean]
+val dAny: None.type = defaultValue[Any]
 ```
 
 As another example, consider the type-level version of `toInt` below:
@@ -441,10 +430,9 @@ Match_ section above. Here is how `toIntT` can be defined:
 
 ```scala
 transparent inline def toIntT[N <: Nat]: Int =
-  inline scala.compiletime.erasedValue[N] match {
-    case _: Zero.type => 0
-    case _: Succ[n] => toIntT[n] + 1
-  }
+   inline scala.compiletime.erasedValue[N] match
+      case _: Zero.type => 0
+      case _: Succ[n] => toIntT[n] + 1
 
 final val two = toIntT[Succ[Succ[Zero.type]]]
 ```
@@ -468,18 +456,18 @@ produces an error message containing the given `msgStr`.
 ```scala
 import scala.compiletime.{error, code}
 
-inline def fail() = {
-  error("failed for a reason")
-}
+inline def fail() =
+   error("failed for a reason")
+
 fail() // error: failed for a reason
 ```
 
 or
 
 ```scala
-inline def fail(p1: => Any) = {
-  error(code"failed on: $p1")
-}
+inline def fail(p1: => Any) =
+   error(code"failed on: $p1")
+
 fail(identity("foo")) // error: failed on: identity("foo")
 ```
 
@@ -521,10 +509,9 @@ import scala.compiletime.ops._
 
 import scala.annotation.infix
 
-type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
-  case (Int, Int) => int.+[X, Y]
-  case (String, String) => string.+[X, Y]
-}
+type +[X <: Int | String, Y <: Int | String] = (X, Y) match
+   case (Int, Int) => int.+[X, Y]
+   case (String, String) => string.+[X, Y]
 
 val concat: "a" + "b" = "ab"
 val addition: 1 + 1 = 2
@@ -542,12 +529,12 @@ not. We can create a set of implicit definitions like this:
 
 ```scala
 trait SetFor[T, S <: Set[T]]
-class LowPriority {
-  implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
-}
-object SetsFor extends LowPriority {
-  implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
-}
+
+class LowPriority:
+   implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
+
+object SetsFor extends LowPriority:
+   implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
 ```
 
 Clearly, this is not pretty. Besides all the usual indirection of implicit
@@ -572,8 +559,8 @@ would use it as follows:
 import scala.compiletime.summonFrom
 
 inline def setFor[T]: Set[T] = summonFrom {
-  case ord: Ordering[T] => new TreeSet[T](using ord)
-  case _                => new HashSet[T]
+   case ord: Ordering[T] => new TreeSet[T](using ord)
+   case _                => new HashSet[T]
 }
 ```
 A `summonFrom` call takes a pattern matching closure as argument. All patterns
@@ -586,8 +573,8 @@ Alternatively, one can also use a pattern-bound given instance, which avoids the
 import scala.compiletime.summonFrom
 
 inline def setFor[T]: Set[T] = summonFrom {
-  case given Ordering[T] => new TreeSet[T]
-  case _                 => new HashSet[T]
+   case given Ordering[T] => new TreeSet[T]
+   case _                 => new HashSet[T]
 }
 ```
 
@@ -603,16 +590,16 @@ println(setFor[String].getClass) // prints class scala.collection.immutable.Tree
 ```
 
 **Note** `summonFrom` applications can raise ambiguity errors. Consider the following
-code with two implicit values in scope of type `A`. The pattern match in `f` will raise
+code with two givens in scope of type `A`. The pattern match in `f` will raise
 an ambiguity error of `f` is applied.
 
 ```scala
 class A
-implicit val a1: A = new A
-implicit val a2: A = new A
+given a1: A = new A
+given a2: A = new A
 
 inline def f: Any = summonFrom {
-  case given _: A => ???  // error: ambiguous implicits
+   case given _: A => ???  // error: ambiguous givens
 }
 ```
 
@@ -621,7 +608,7 @@ inline def f: Any = summonFrom {
 The shorthand `summonInline` provides a simple way to write a `summon` that is delayed until the call is inlined.
 ```scala
 transparent inline def summonInline[T]: T = summonFrom {
-  case t: T => t
+   case t: T => t
 }
 ```
 

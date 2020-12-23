@@ -15,15 +15,16 @@ An `infix` modifier on a method definition allows using the method as an infix o
 ```scala
 import scala.annotation.targetName
 
-trait MultiSet[T] {
+trait MultiSet[T]:
 
-  infix def union(other: MultiSet[T]): MultiSet[T]
+   infix def union(other: MultiSet[T]): MultiSet[T]
 
-  def difference(other: MultiSet[T]): MultiSet[T]
+   def difference(other: MultiSet[T]): MultiSet[T]
 
-  @targetName("intersection")
-  def *(other: MultiSet[T]): MultiSet[T]
-}
+   @targetName("intersection")
+   def *(other: MultiSet[T]): MultiSet[T]
+
+end MultiSet
 
 val s1, s2: MultiSet[Int]
 
@@ -70,12 +71,13 @@ The purpose of the `infix` modifier is to achieve consistency across a code base
  3. `infix` modifiers can be given to method definitions. The first non-receiver parameter list of an `infix` method must define exactly one parameter. Examples:
 
     ```scala
-    infix def op(x: S): R                  // ok
-    infix def op[T](x: T)(y: S): R         // ok
-    infix def op[T](x: T, y: S): R         // error: two parameters
+    infix def op1(x: S): R             // ok
+    infix def op2[T](x: T)(y: S): R    // ok
+    infix def op3[T](x: T, y: S): R    // error: two parameters
 
-    infix def (x: A) op (y: B): R          // ok
-    infix def (x: A) op (y1: B, y2: B): R  // error: two parameters
+    extension (x: A)
+       infix def op4(y: B): R          // ok
+       infix def op5(y1: B, y2: B): R  // error: two parameters
     ```
 
  4. `infix` modifiers can also be given to type, trait or class definitions that have exactly two type parameters. An infix type like
@@ -107,13 +109,13 @@ It is recommended that definitions of symbolic operators carry a [`@targetName` 
 Infix operators can now appear at the start of lines in a multi-line expression. Examples:
 ```scala
 val str = "hello"
-  ++ " world"
-  ++ "!"
+   ++ " world"
+   ++ "!"
 
 def condition =
-     x > 0
-  || xs.exists(_ > 0)
-  || xs.isEmpty
+   x > 0
+   || xs.exists(_ > 0)
+   || xs.isEmpty
 ```
 Previously, those expressions would have been rejected, since the compiler's semicolon inference
 would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separate statements.

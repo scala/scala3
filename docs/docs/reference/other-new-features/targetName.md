@@ -8,9 +8,10 @@ A `@targetName` annotation on a definition defines an alternate name for the imp
 ```scala
 import scala.annotation.targetName
 
-object VecOps {
-  @targetName("append") def (xs: Vec[T]) ++= [T] (ys: Vec[T]): Vec[T] = ...
-}
+object VecOps:
+   extension [T](xs: Vec[T])
+      @targetName("append")
+      def ++= [T] (ys: Vec[T]): Vec[T] = ...
 ```
 
 Here, the `++=` operation is implemented (in Byte code or native code) under the name `append`. The implementation name affects the code that is generated, and is the name under which code from other languages can call the method. For instance, `++=` could be invoked from Java like this:
@@ -70,9 +71,9 @@ between two definitions that have otherwise the same names and types. So the fol
 ```scala
 import annotation.targetName
 class A:
-  def f(): Int = 1
+   def f(): Int = 1
 class B extends A:
-  @targetName("g") def f(): Int = 2
+   @targetName("g") def f(): Int = 2
 ```
 
 The compiler reports here:
@@ -97,9 +98,9 @@ be present in the original code. So the following example would also be in error
 ```scala
 import annotation.targetName
 class A:
-  def f(): Int = 1
+   def f(): Int = 1
 class B extends A:
-  @targetName("f") def g(): Int = 2
+   @targetName("f") def g(): Int = 2
 ```
 
 Here, the original methods `g` and `f` do not override each other since they have

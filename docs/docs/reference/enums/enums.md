@@ -6,9 +6,8 @@ title: "Enumerations"
 An enumeration is used to define a type consisting of a set of named values.
 
 ```scala
-enum Color {
-  case Red, Green, Blue
-}
+enum Color:
+   case Red, Green, Blue
 ```
 
 This defines a new `sealed` class, `Color`, with three values, `Color.Red`,
@@ -20,11 +19,10 @@ companion object.
 Enums can be parameterized.
 
 ```scala
-enum Color(val rgb: Int) {
-  case Red   extends Color(0xFF0000)
-  case Green extends Color(0x00FF00)
-  case Blue  extends Color(0x0000FF)
-}
+enum Color(val rgb: Int):
+   case Red   extends Color(0xFF0000)
+   case Green extends Color(0x00FF00)
+   case Blue  extends Color(0x0000FF)
 ```
 
 As the example shows, you can define the parameter value by using an
@@ -62,33 +60,32 @@ val res2: Color = Red
 It is possible to add your own definitions to an enum. Example:
 
 ```scala
-enum Planet(mass: Double, radius: Double) {
-  private final val G = 6.67300E-11
-  def surfaceGravity = G * mass / (radius * radius)
-  def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
+enum Planet(mass: Double, radius: Double):
+   private final val G = 6.67300E-11
+   def surfaceGravity = G * mass / (radius * radius)
+   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
 
-  case Mercury extends Planet(3.303e+23, 2.4397e6)
-  case Venus   extends Planet(4.869e+24, 6.0518e6)
-  case Earth   extends Planet(5.976e+24, 6.37814e6)
-  case Mars    extends Planet(6.421e+23, 3.3972e6)
-  case Jupiter extends Planet(1.9e+27,   7.1492e7)
-  case Saturn  extends Planet(5.688e+26, 6.0268e7)
-  case Uranus  extends Planet(8.686e+25, 2.5559e7)
+   case Mercury extends Planet(3.303e+23, 2.4397e6)
+   case Venus   extends Planet(4.869e+24, 6.0518e6)
+   case Earth   extends Planet(5.976e+24, 6.37814e6)
+   case Mars    extends Planet(6.421e+23, 3.3972e6)
+   case Jupiter extends Planet(1.9e+27,   7.1492e7)
+   case Saturn  extends Planet(5.688e+26, 6.0268e7)
+   case Uranus  extends Planet(8.686e+25, 2.5559e7)
   case Neptune extends Planet(1.024e+26, 2.4746e7)
-}
+end Planet
 ```
 
 It is also possible to define an explicit companion object for an enum:
 
 ```scala
-object Planet {
-  def main(args: Array[String]) = {
-    val earthWeight = args(0).toDouble
-    val mass = earthWeight / Earth.surfaceGravity
-    for (p <- values)
-      println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
-  }
-}
+object Planet:
+   def main(args: Array[String]) =
+      val earthWeight = args(0).toDouble
+      val mass = earthWeight / Earth.surfaceGravity
+      for p <- values do
+         println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+end Planet
 ```
 
 ### Compatibility with Java Enums
@@ -120,23 +117,20 @@ This trait defines a single public method, `ordinal`:
 package scala.reflect
 
 /** A base trait of all Scala enum definitions */
-transparent trait Enum extends Any with Product with Serializable {
+transparent trait Enum extends Any, Product, Serializable:
 
-  /** A number uniquely identifying a case of an enum */
-  def ordinal: Int
-}
+   /** A number uniquely identifying a case of an enum */
+   def ordinal: Int
 ```
 
 Enum values with `extends` clauses get expanded to anonymous class instances.
 For instance, the `Venus` value above would be defined like this:
 
 ```scala
-val Venus: Planet =
-  new Planet(4.869E24, 6051800.0) {
-    def ordinal: Int = 1
-    override def productPrefix: String = "Venus"
-    override def toString: String = "Venus"
-  }
+val Venus: Planet = new Planet(4.869E24, 6051800.0):
+   def ordinal: Int = 1
+   override def productPrefix: String = "Venus"
+   override def toString: String = "Venus"
 ```
 
 Enum values without `extends` clauses all share a single implementation

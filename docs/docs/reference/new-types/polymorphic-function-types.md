@@ -47,8 +47,8 @@ in a strongly-typed way:
 
 ```scala
 enum Expr[A]:
-  case Var(name: String)
-  case Apply[A, B](fun: Expr[B => A], arg: Expr[B]) extends Expr[A]
+   case Var(name: String)
+   case Apply[A, B](fun: Expr[B => A], arg: Expr[B]) extends Expr[A]
 ```
 
 We would like to provide a way for users to map a function
@@ -59,9 +59,9 @@ Here is how to implement this using polymorphic function types:
 
 ```scala
 def mapSubexpressions[A](e: Expr[A])(f: [B] => Expr[B] => Expr[B]): Expr[A] =
-  e match
-    case Apply(fun, arg) => Apply(f(fun), f(arg))
-    case Var(n) => Var(n)
+   e match
+      case Apply(fun, arg) => Apply(f(fun), f(arg))
+      case Var(n) => Var(n)
 ```
 
 And here is how to use this function to _wrap_ each subexpression
@@ -71,7 +71,7 @@ defined as a variable:
 ```scala
 val e0 = Apply(Var("f"), Var("a"))
 val e1 = mapSubexpressions(e0)(
-  [B] => (se: Expr[B]) => Apply(Var[B => B]("wrap"), se))
+   [B] => (se: Expr[B]) => Apply(Var[B => B]("wrap"), se))
 println(e1) // Apply(Apply(Var(wrap),Var(f)),Apply(Var(wrap),Var(a)))
 ```
 

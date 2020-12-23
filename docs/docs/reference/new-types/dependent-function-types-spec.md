@@ -25,9 +25,8 @@ refinement types of `scala.FunctionN`. A dependent function type
 `(x1: K1, ..., xN: KN) => R` of arity `N` translates to:
 
 ```scala
-FunctionN[K1, ..., Kn, R'] {
-  def apply(x1: K1, ..., xN: KN): R
-}
+FunctionN[K1, ..., Kn, R'] with
+   def apply(x1: K1, ..., xN: KN): R
 ```
 
 where the result type parameter `R'` is the least upper approximation of the

@@ -12,7 +12,7 @@ For example, with the [given instances](./givens.md) defined previously,
 a `max` function that works for any arguments for which an ordering exists can be defined as follows:
 ```scala
 def max[T](x: T, y: T)(using ord: Ord[T]): T =
-  if ord.compare(x, y) < 0 then y else x
+   if ord.compare(x, y) < 0 then y else x
 ```
 Here, `ord` is a _context parameter_ introduced with a `using` clause.
 The `max` function can be applied as follows:
@@ -33,7 +33,7 @@ other context parameters. In that case one can avoid defining a parameter name
 and just provide its type. Example:
 ```scala
 def maximum[T](xs: List[T])(using Ord[T]): T =
-  xs.reduceLeft(max)
+   xs.reduceLeft(max)
 ```
 `maximum` takes a context parameter of type `Ord` only to pass it on as an
 inferred argument to `max`. The name of the parameter is left out.
@@ -44,12 +44,11 @@ Generally, context parameters may be defined either as a full parameter list `(p
 
 Here are two other methods that have a context parameter of type `Ord[T]`:
 ```scala
-def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T] {
-  def compare(x: T, y: T) = asc.compare(y, x)
-}
+def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
+   def compare(x: T, y: T) = asc.compare(y, x)
 
 def minimum[T](xs: List[T])(using Ord[T]) =
-  maximum(xs)(using descending)
+   maximum(xs)(using descending)
 ```
 The `minimum` method's right hand side passes `descending` as an explicit argument to `maximum(xs)`.
 With this setup, the following calls are all well-formed, and they all normalize to the last one:

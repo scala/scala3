@@ -110,9 +110,9 @@ import scala.quoted.staging._
 given Toolbox = Toolbox.make(getClass.getClassLoader)
 
 val f: Array[Int] => Int = run {
-  val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
-  println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
-  stagedSum
+   val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => ${sum('arr)}}
+   println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"
+   stagedSum
 }
 
 f.apply(Array(1, 2, 3)) // Returns 6

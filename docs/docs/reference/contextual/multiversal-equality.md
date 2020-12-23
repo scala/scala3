@@ -49,9 +49,8 @@ import annotation.implicitNotFound
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait CanEqual[-L, -R]
 
-object CanEqual {
-  object derived extends CanEqual[Any, Any]
-}
+object CanEqual:
+   object derived extends CanEqual[Any, Any]
 ```
 
 One can have several `CanEqual` given instances for a type. For example, the four
@@ -159,24 +158,23 @@ we are dealing with a refinement of pre-existing, universal equality. It is best
 
 Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
-class List[+T] {
-  ...
-  def contains(x: Any): Boolean
-}
+class List[+T]:
+   ...
+   def contains(x: Any): Boolean
 ```
 That uses universal equality in an unsafe way since it permits arguments of any type to be compared with the list's elements. The "obvious" alternative definition
 ```scala
-  def contains(x: T): Boolean
+   def contains(x: T): Boolean
 ```
 does not work, since it refers to the covariant parameter `T` in a nonvariant context. The only variance-correct way to use the type parameter `T` in `contains` is as a lower bound:
 ```scala
-  def contains[U >: T](x: U): Boolean
+   def contains[U >: T](x: U): Boolean
 ```
 This generic version of `contains` is the one used in the current (Scala 2.13) version of `List`.
 It looks different but it admits exactly the same applications as the `contains(x: Any)` definition we started with.
 However, we can make it more useful (i.e. restrictive) by adding a `CanEqual` parameter:
 ```scala
-  def contains[U >: T](x: U)(using CanEqual[T, U]): Boolean // (1)
+   def contains[U >: T](x: U)(using CanEqual[T, U]): Boolean // (1)
 ```
 This version of `contains` is equality-safe! More precisely, given
 `x: T`, `xs: List[T]` and `y: U`, then `xs.contains(y)` is type-correct if and only if
@@ -184,7 +182,7 @@ This version of `contains` is equality-safe! More precisely, given
 
 Unfortunately, the crucial ability to "lift" equality type checking from simple equality and pattern matching to arbitrary user-defined operations gets lost if we restrict ourselves to an equality class with a single type parameter. Consider the following signature of `contains` with a hypothetical `CanEqual1[T]` type class:
 ```scala
-  def contains[U >: T](x: U)(using CanEqual1[U]): Boolean   // (2)
+   def contains[U >: T](x: U)(using CanEqual1[U]): Boolean   // (2)
 ```
 This version could be applied just as widely as the original `contains(x: Any)` method,
 since the `CanEqual1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `CanEqual[A, B]` is available only if neither `A` nor `B` have a reflexive `CanEqual` instance. That rule simply cannot be expressed if there is a single type parameter for `CanEqual`.

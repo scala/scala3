@@ -28,10 +28,9 @@ import scala.quoted._
 
 inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
-def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
-  import quotes.reflect._
-  ...
-}
+def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
+   import quotes.reflect._
+   ...
 ```
 
 ### Extractors
@@ -40,22 +39,19 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
 trees. For example the `Literal(_)` extractor used below.
 
 ```scala
-def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] = {
-  import quotes.reflect._
-  val xTree: Term = x.asTerm
-  xTree match {
-    case Inlined(_, _, Literal(IntConstant(n))) =>
-      if (n <= 0) {
-        report.error("Parameter must be natural number")
-        '{0}
-      } else {
-        xTree.asExprOf[Int]
-      }
-    case _ =>
-      report.error("Parameter must be a known constant")
-      '{0}
-  }
-}
+def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
+   import quotes.reflect._
+   val xTree: Term = x.asTerm
+   xTree match
+      case Inlined(_, _, Literal(IntConstant(n))) =>
+         if n <= 0 then
+            report.error("Parameter must be natural number")
+            '{0}
+         else
+            xTree.asExprOf[Int]
+      case _ =>
+         report.error("Parameter must be a known constant")
+         '{0}
 ```
 
 We can easily know which extractors are needed using `Printer.TreeStructure.show`, which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
@@ -81,19 +77,19 @@ such as the start line, the end line or even the source code at the expansion
 point.
 
 ```scala
-def macroImpl()(quotes: Quotes): Expr[Unit] = {
-  import quotes.reflect._
-  val pos = rootPosition
+def macroImpl()(quotes: Quotes): Expr[Unit] =
+   import quotes.reflect._
+   val pos = rootPosition
 
-  val path = pos.sourceFile.jpath.toString
-  val start = pos.start
-  val end = pos.end
-  val startLine = pos.startLine
-  val endLine = pos.endLine
-  val startColumn = pos.startColumn
-  val endColumn = pos.endColumn
-  val sourceCode = pos.sourceCode
-  ...
+   val path = pos.sourceFile.jpath.toString
+   val start = pos.start
+   val end = pos.end
+   val startLine = pos.startLine
+   val endLine = pos.endLine
+   val startColumn = pos.startColumn
+   val endColumn = pos.endColumn
+   val sourceCode = pos.sourceCode
+   ...
 ```
 
 ### Tree Utilities
@@ -107,16 +103,12 @@ of type List[Symbol] if we want to collect symbols). The code below, for
 example, collects the pattern variables of a tree.
 
 ```scala
-def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] = {
-  val acc = new TreeAccumulator[List[Symbol]] {
-    def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) =
-      tree match {
-        case Bind(_, body) => apply(tree.symbol :: syms, body)
-        case _ => foldOver(syms, tree)
-      }
-  }
-  acc(Nil, tree)
-}
+def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] =
+   val acc = new TreeAccumulator[List[Symbol]]:
+      def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match
+         case Bind(_, body) => apply(tree.symbol :: syms, body)
+         case _ => foldOver(syms, tree)
+   acc(Nil, tree)
 ```
 
 A `TreeTraverser` extends a `TreeAccumulator` and performs the same traversal
