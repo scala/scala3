@@ -146,7 +146,7 @@ val i3 = new Vehicle: // i3: Vehicle
    val wheels = 4
    val range = 240
 
-i3.range: // error: range is not a member of `Vehicle`
+i3.range // error: range is not a member of `Vehicle`
 ```
 The difference is that the type of an anonymous class that does not extend `Selectable` is just formed from the parent type(s) of the class, without
 adding any refinements. Hence, `i3` now has just type `Vehicle` and the selection `i3.range` gives a "member not found" error.

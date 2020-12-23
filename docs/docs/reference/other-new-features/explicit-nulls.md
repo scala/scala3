@@ -105,9 +105,10 @@ Specifically, we patch
   * The first two rules are easy: we nullify reference types but not value types.
 
     ```java
-    class C:
-       String s;
-       int x;
+    class C {
+      String s;
+      int x;
+    }
     ```
     ==>
     ```scala
