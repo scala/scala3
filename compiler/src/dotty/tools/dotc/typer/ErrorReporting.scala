@@ -144,27 +144,35 @@ object ErrorReporting {
     def selectErrorAddendum
       (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
       (using Context): String =
-      val attempts = mutable.ListBuffer[Tree]()
+
+      val attempts = mutable.ListBuffer[(Tree, FailedExtension)]()
       val nested = mutable.ListBuffer[NestedFailure]()
-      qual1.getAttachment(Typer.HiddenSearchFailure) match
-        case Some(failures) =>
-          for failure <- failures do
-            failure.reason match
-              case fail: NestedFailure => nested += fail
-              case fail: Implicits.NoMatchingImplicits => // do nothing
-              case _ => attempts += failure.tree
-        case _ =>
+      for
+        failures <- qual1.getAttachment(Typer.HiddenSearchFailure)
+        failure <- failures
+      do
+        failure.reason match
+          case fail: NestedFailure => nested += fail
+          case fail: FailedExtension => attempts += ((failure.tree, fail))
+          case _ =>
       if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
-        val attemptStrings = attempts.toList.map(_.showIndented(4)).distinct
+        val attemptStrings =
+          attempts.toList
+            .map((tree, whyFailed) => (tree.showIndented(4), whyFailed))
+            .distinctBy(_._1)
+            .map((treeStr, whyFailed) =>
+              i"""
+                 |    $treeStr    failed with
+                 |
+                 |${whyFailed.whyFailed.message.indented(8)}""")
         val extMethods =
           if attemptStrings.length > 1 then "Extension methods were"
           else "An extension method was"
         i""".
            |$extMethods tried, but could not be fully constructed:
-           |
-           |    $attemptStrings%\nor\n    %"""
+           |$attemptStrings%\n%"""
       else if nested.nonEmpty then
         i""".
            |Extension methods were tried, but the search failed with:

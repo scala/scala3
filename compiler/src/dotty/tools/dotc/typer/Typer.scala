@@ -3513,12 +3513,14 @@ class Typer extends Namer
             val nestedCtx = ctx.fresh.setNewTyperState()
             val app = tryExtension(using nestedCtx)
             if !app.isEmpty then
-              if !nestedCtx.reporter.hasErrors then
-                nestedCtx.typerState.commit()
-                return ExtMethodApply(app)
-              else
-                rememberSearchFailure(tree,
-                  SearchFailure(app.withType(FailedExtension(app, pt))))
+              nestedCtx.reporter.allErrors
+                .filterNot(_.msg.isInstanceOf[NotAnExtensionMethod]) match
+                case Nil =>
+                  nestedCtx.typerState.commit()
+                  return ExtMethodApply(app)
+                case err :: _ =>
+                  rememberSearchFailure(tree,
+                    SearchFailure(app.withType(FailedExtension(app, pt, err.msg))))
           catch case ex: TypeError =>
             rememberSearchFailure(tree,
               SearchFailure(tree.withType(NestedFailure(ex.toMessage, pt))))

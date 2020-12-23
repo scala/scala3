@@ -514,7 +514,7 @@ object Implicits:
   }
 
   /** A search failure type for attempted ill-typed extension method calls */
-  class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
+  class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
 

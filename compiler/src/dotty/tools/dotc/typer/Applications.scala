@@ -2163,8 +2163,7 @@ trait Applications extends Compatibility {
       case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtension(qual)
       case tree => tree.symbol.is(ExtensionMethod)
     }
-    if (!isExtension(app))
-      report.error(em"not an extension method: $methodRef", receiver.srcPos)
+    if !isExtension(app) then report.error(NotAnExtensionMethod(methodRef), receiver.srcPos)
     app
   }
 
