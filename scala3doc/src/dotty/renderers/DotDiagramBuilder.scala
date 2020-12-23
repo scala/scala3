@@ -19,7 +19,7 @@ object DotDiagramBuilder:
 
     val vWithId = diagram.verteciesWithId
     val vertecies = vWithId.map { (vertex, id) =>
-      s"""node${id} [label="${getHtmlLabel(vertex, renderer)}", style="${getStyle(vertex)}"];\n"""
+      s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer)}", style="${getStyle(vertex)}"];\n"""
     }.mkString
 
     val edges = diagram.edges.map { (from, to) =>

@@ -315,6 +315,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
       val graphHtml = MemberExtension.getFrom(m).map(_.graph) match
         case Some(graph) if graph.edges.nonEmpty =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
+            input(value := "Reset zoom", `type` := "button", cls := "btn", onclick := "zoomOut()"),
             svg(id := "graph"),
             script(`type` := "text/dot", id := "dot")(
               raw(DotDiagramBuilder.build(graph, signatureRenderer))
@@ -334,8 +335,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
       renderTabs(
         singleSelection = true,
         Tab("Graph", "graph", graphHtml, "showGraph"),
-        Tab("Super types", "supertypes", supertypes),
-        Tab("Known subtyes", "subtypes",subtypes),
+        Tab("Supertypes", "supertypes", supertypes),
+        Tab("Known subtypes", "subtypes", subtypes),
       )
 
   private def buildDocumentableFilter = div(cls := "documentableFilter")(
