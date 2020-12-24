@@ -80,6 +80,7 @@ import Instances.{im, given Ordering[?]}
 ```
 
 would import `im`, `intOrd`, and `listOrd` but leave out `ec`.
+
 ### Migration
 
 The rules for imports stated above have the consequence that a library

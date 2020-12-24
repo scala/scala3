@@ -96,7 +96,8 @@ class Box[T](x: T) derives CanEqual
 By the usual rules of [type class derivation](./derivation.md),
 this generates the following `CanEqual` instance in the companion object of `Box`:
 ```scala
-given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] = CanEqual.derived
+given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] =
+   CanEqual.derived
 ```
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
 ```scala

@@ -25,7 +25,7 @@ some terminology and notational conventions:
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
-There are nine desugaring rules. Rule (1) desugar enum definitions. Rules
+There are nine desugaring rules. Rule (1) desugars enum definitions. Rules
 (2) and (3) desugar simple cases. Rules (4) to (6) define `extends` clauses for cases that
 are missing them. Rules (7) to (9) define how such cases with `extends` clauses
 map into `case class`es or `val`s.
@@ -176,10 +176,11 @@ If `E` contains at least one simple case, its companion object will define in ad
      follows.
 
      ```scala
-     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue:
-        def ordinal = _$ordinal
-        override def productPrefix = $name // if not overridden in `E`
-        override def toString = $name      // if not overridden in `E`
+     private def $new(_$ordinal: Int, $name: String) =
+        new E with runtime.EnumValue:
+           def ordinal = _$ordinal
+           override def productPrefix = $name // if not overridden in `E`
+           override def toString = $name      // if not overridden in `E`
      ```
 
 The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.

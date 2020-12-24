@@ -59,13 +59,13 @@ sealed trait Mirror:
 
 object Mirror:
 
-  /** The Mirror for a product type */
-  trait Product extends Mirror:
+   /** The Mirror for a product type */
+   trait Product extends Mirror:
 
-     /** Create a new instance of type `T` with elements
-      *  taken from product `p`.
-      */
-     def fromProduct(p: scala.Product): MirroredMonoType
+      /** Create a new instance of type `T` with elements
+       *  taken from product `p`.
+       */
+      def fromProduct(p: scala.Product): MirroredMonoType
 
    trait Sum extends Mirror:
 
@@ -125,12 +125,12 @@ Note the following properties of `Mirror` types,
 + The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
   This allows `Mirrors` to support ADTs of all kinds.
 + There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
-  Scala 2 versions of shapeless). Instead the collection of child types of a data type is represented by an ordinary,
+  Scala 2 versions of Shapeless). Instead the collection of child types of a data type is represented by an ordinary,
   possibly parameterized, tuple type. Scala 3's metaprogramming facilities can be used to work with these tuple types
   as-is, and higher level libraries can be built on top of them.
 + For both product and sum types, the elements of `MirroredElemTypes` are arranged in definition order (i.e. `Branch[T]`
   precedes `Leaf[T]` in `MirroredElemTypes` for `Tree` because `Branch` is defined before `Leaf` in the source file).
-  This means that `Mirror.Sum` differs in this respect from shapeless's generic representation for ADTs in Scala 2,
+  This means that `Mirror.Sum` differs in this respect from Shapeless's generic representation for ADTs in Scala 2,
   where the constructors are ordered alphabetically by name.
 + The methods `ordinal` and `fromProduct` are defined in terms of `MirroredMonoType` which is the type of kind-`*`
   which is obtained from `MirroredType` by wildcarding its type parameters.
@@ -159,7 +159,7 @@ Type class authors will most likely use higher level derivation or generic progr
 described above and Scala 3's general metaprogramming features is provided below. It is not anticipated that type class
 authors would normally implement a `derived` method in this way, however this walkthrough can be taken as a guide for
 authors of the higher level derivation libraries that we expect typical type class authors will use (for a fully
-worked out example of such a library, see [shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
+worked out example of such a library, see [Shapeless 3](https://github.com/milessabin/shapeless/tree/shapeless-3)).
 
 #### How to write a type class `derived` method using low level mechanisms
 
@@ -307,7 +307,7 @@ Alternative approaches can be taken to the way that `derived` methods can be def
 inlined variants using Scala 3 macros, whilst being more involved for type class authors to write than the example
 above, can produce code for type classes like `Eq` which eliminate all the abstraction artefacts (eg. the `Lists` of
 child instances in the above) and generate code which is indistinguishable from what a programmer might write by hand.
-As a third example, using a higher level library such as shapeless the type class author could define an equivalent
+As a third example, using a higher level library such as Shapeless the type class author could define an equivalent
 `derived` method as,
 
 ```scala
@@ -317,9 +317,12 @@ given eqSum[A](using inst: => K0.CoproductInstances[Eq, A]): Eq[A] with
 
 given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
    def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
-      [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) => Complete(!eqt.eqv(t0, t1))(false)(true)
+      [t] => (acc: Boolean, eqt: Eq[t], t0: t, t1: t) =>
+         Complete(!eqt.eqv(t0, t1))(false)(true)
+   )
 
-inline def derived[A](using gen: K0.Generic[A]) as Eq[A] = gen.derive(eqSum, eqProduct)
+inline def derived[A](using gen: K0.Generic[A]) as Eq[A] =
+   gen.derive(eqSum, eqProduct)
 ```
 
 The framework described here enables all three of these approaches without mandating any of them.
@@ -385,6 +388,6 @@ written these casts will never fail.
 As mentioned, however, the compiler-provided mechanism is intentionally very low level and it is anticipated that
 higher level type class derivation and generic programming libraries will build on this and Scala 3's other
 metaprogramming facilities to hide these low-level details from type class authors and general users. Type class
-derivation in the style of both shapeless and Magnolia are possible (a prototype of shapeless 3, which combines
-aspects of both shapeless 2 and Magnolia has been developed alongside this language feature) as is a more aggressively
+derivation in the style of both Shapeless and Magnolia are possible (a prototype of Shapeless 3, which combines
+aspects of both Shapeless 2 and Magnolia has been developed alongside this language feature) as is a more aggressively
 inlined style, supported by Scala 3's new quote/splice macro and inlining facilities.

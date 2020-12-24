@@ -300,5 +300,5 @@ Java or Scala 2 is always safe.
 
 ## References
 
-- Fähndrich, M. and Leino, K.R.M., 2003, July. _Heap monotonic typestates_. In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
-- Lucassen, J.M. and Gifford, D.K., 1988, January. _Polymorphic effect systems_. In Proceedings of the 15th ACM SIGPLAN-SIGACT symposium on Principles of programming languages (pp. 47-57). ACM.
+- Fähndrich, M. and Leino, K.R.M., 2003, July. [_Heap monotonic typestates_](https://www.microsoft.com/en-us/research/publication/heap-monotonic-typestate/). In International Workshop on Aliasing, Confinement and Ownership in object-oriented programming (IWACO).
+- Lucassen, J.M. and Gifford, D.K., 1988, January. [_Polymorphic effect systems_](https://dl.acm.org/doi/10.1145/73560.73564). In Proceedings of the 15th ACM SIGPLAN-SIGACT symposium on Principles of programming languages (pp. 47-57). ACM.

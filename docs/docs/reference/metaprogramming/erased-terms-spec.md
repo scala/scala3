@@ -3,8 +3,6 @@ layout: doc-page
 title: "Erased Terms Spec"
 ---
 
-# Implementation
-
 ## Rules
 
 1. The `erased` modifier can appear:

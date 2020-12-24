@@ -171,9 +171,7 @@ and constraints.
 
    if
 
-   ```
-   S match { P1 => T1 ... Pn => Tn }  reduces-to  U
-   ```
+   `S match { P1 => T1 ... Pn => Tn }` reduces to `U`
 
 3. The third rule states that a match type conforms to its upper bound:
 
@@ -202,13 +200,14 @@ def g[X]: L[X] = ???
    |                ^
    |Recursion limit exceeded.
    |Maybe there is an illegal cyclic reference?
-   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |If that's not the case, you could also try to
+   |increase the stacksize using the -Xss JVM option.
    |A recurring operation is (inner to outer):
    |
    |  subtype LazyRef(Test.L[Int]) <:< Int
 ```
 
-Internally, `scalac` detects these cycles by turning selected stack overflows into
+Internally, the Scala compiler detects these cycles by turning selected stack overflows into
 type errors. If there is a stack overflow during subtyping, the exception will
 be caught and turned into a compile-time error that indicates a trace of the
 subtype tests that caused the overflow without showing a full stack trace.
@@ -218,7 +217,7 @@ NOTE: This section does not reflect the current implementation.
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 as covariant. By the nature of the cases `Ci` this means that occurrences in
-pattern position are contravarant (since patterns are represented as function
+pattern position are contravariant (since patterns are represented as function
 type arguments).
 
 ## Related Work

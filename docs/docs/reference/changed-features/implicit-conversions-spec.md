@@ -102,7 +102,7 @@ val x: String = 1  // Scala 2: assigns "abc" to x
 This snippet contains a type error. The right hand side of `val x`
 does not conform to type `String`. In Scala 2, the compiler will use
 `m` as an implicit conversion from `Int` to `String`, whereas Scala 3
-will report a type error, because Map isn't an instance of
+will report a type error, because `Map` isn't an instance of
 `Conversion`.
 
 ## Migration path

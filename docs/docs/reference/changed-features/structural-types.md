@@ -71,7 +71,7 @@ Besides `selectDynamic`, a `Selectable` class sometimes also defines a method `a
 
 ## Using Java Reflection
 
-Structural types can also be accessed using Java reflection. Example:
+Structural types can also be accessed using [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html). Example:
 ```scala
   type Closeable = { def close(): Unit }
 

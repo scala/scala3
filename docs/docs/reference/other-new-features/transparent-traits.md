@@ -17,7 +17,7 @@ val x = Set(if condition then Val else Var)
 ```
 Here, the inferred type of `x` is `Set[Kind & Product & Serializable]` whereas one would have hoped it to be `Set[Kind]`. The reasoning for this particular type to be inferred is as follows:
 
- - The type of the conditional above is the union type `Val | Var`.
+ - The type of the conditional above is the [union type](new-types/union-types.md) `Val | Var`.
  - A union type is widened in type inference to the least supertype that is
    not a union type. In the example, this type is `Kind & Product & Serializable` since all three traits are traits of both `Val` and `Var`.
    So that type becomes the inferred element type of the set.
@@ -33,7 +33,7 @@ val x = Set(if condition then Val else Var)
 Now `x` has inferred type `Set[Kind]`. The common transparent trait `S` does not
 appear in the inferred type.
 
-### Transparent Traits
+## Transparent Traits
 
 The traits `scala.Product`, `java.lang.Serializable` and `java.lang.Comparable`
 are treated automatically as transparent. Other traits are turned into transparent traits using the modifier `transparent`. Scala 2 traits can also be made transparent
@@ -49,7 +49,7 @@ that influence the implementation of inheriting classes and traits that are not 
 Generally, any trait that is extended recursively is a good candidate to be
 declared transparent.
 
-### Rules for Inference
+## Rules for Inference
 
 Transparent traits can be given as explicit types as usual. But they are often elided when types are inferred. Roughly, the rules for type inference say that transparent traits are dropped from intersections where possible.
 
