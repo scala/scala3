@@ -334,8 +334,11 @@ class Typer extends Namer
               checkNoOuterDefs(denot, outer, prevCtx)
             else if !owner.is(Package) then
               val scope = if owner.isClass then owner.info.decls else outer.scope
-              if scope.lookup(name).exists then
-                val symsMatch = scope.lookupAll(name).exists(denot.containsSym)
+              val competing = scope.denotsNamed(name).filterWithFlags(required, excluded)
+              if competing.exists then
+                val symsMatch = competing
+                  .filterWithPredicate(sd => denot.containsSym(sd.symbol))
+                  .exists
                 if !symsMatch && !suppressErrors then
                   report.errorOrMigrationWarning(
                     AmbiguousReference(name, Definition, Inheritance, prevCtx)(using outer),
