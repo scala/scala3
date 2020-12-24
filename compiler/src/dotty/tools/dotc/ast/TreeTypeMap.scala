@@ -4,7 +4,7 @@ package ast
 
 import core._
 import Types._, Contexts._
-import Symbols._, Annotations._, Trees._, Symbols._
+import Symbols._, Annotations._, Trees._, Symbols._, Constants.Constant
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
@@ -124,6 +124,8 @@ class TreeTypeMap(
           cpy.Labeled(labeled)(bind1, expr1)
         case Hole(isTermHole, n, args) =>
           Hole(isTermHole, n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
+        case lit @ Literal(Constant(tpe: Type)) =>
+          cpy.Literal(lit)(Constant(mapType(tpe)))
         case tree1 =>
           super.transform(tree1)
       }
