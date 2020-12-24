@@ -67,12 +67,6 @@ object Settings {
 
     private var changed: Boolean = false
 
-    def withAbbreviation(abbrv: String): Setting[T] =
-      copy(aliases = aliases :+ abbrv)(idx)
-
-    def dependsOn[U](setting: Setting[U], value: U): Setting[T] =
-      copy(depends = depends :+ (setting, value))(idx)
-
     def valueIn(state: SettingsState): T =
       state.value(idx).asInstanceOf[T]
 
@@ -170,9 +164,11 @@ object Settings {
           missingArg
       }
 
+      def matches(argName: String) = (name :: aliases).exists(_ == argName)
+
       if (prefix != "" && arg.startsWith(prefix))
         doSet(arg drop prefix.length)
-      else if (prefix == "" && name == arg.takeWhile(_ != ':'))
+      else if (prefix == "" && matches(arg.takeWhile(_ != ':')))
         doSet(arg.dropWhile(_ != ':').drop(1))
       else
         state
@@ -257,35 +253,32 @@ object Settings {
       setting
     }
 
-    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false): Setting[Boolean] =
-      publish(Setting(name, descr, initialValue))
+    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
+      publish(Setting(name, descr, initialValue, aliases = aliases))
 
     def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
       publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
-    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, Some(choices)))
+    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def IntSetting(name: String, descr: String, default: Int): Setting[Int] =
-      publish(Setting(name, descr, default))
+    def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
+      publish(Setting(name, descr, default, aliases = aliases))
 
     def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
       publish(Setting(name, descr, default, choices = Some(choices)))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, helpArg))
+    def MultiStringSetting(name: String, helpArg: String, descr: String, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, Nil, helpArg, aliases = aliases))
 
     def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
       publish(Setting(name, descr, default, helpArg))
 
-    def PathSetting(name: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default))
+    def PathSetting(name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, aliases = aliases))
 
-    def PathSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg))
-
-    def PhasesSetting(name: String, descr: String, default: String = ""): Setting[List[String]] =
-      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default)))
+    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
 
     def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, prefix = pre))
@@ -293,7 +286,7 @@ object Settings {
     def VersionSetting(name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
       publish(Setting(name, descr, default))
 
-    def OptionSetting[T: ClassTag](name: String, descr: String): Setting[Option[T]] =
-      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass)))
+    def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
+      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass), aliases = aliases))
   }
 }
