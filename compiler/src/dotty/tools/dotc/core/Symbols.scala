@@ -835,8 +835,10 @@ object Symbols {
           info = completer,
           privateWithin = ttmap1.mapOwner(odenot.privateWithin), // since this refers to outer symbols, need not include copies (from->to) in ownermap here.
           annotations = odenot.annotations)
-        copy.registeredCompanion =
-          copy.registeredCompanion.subst(originals, copies)
+        copy.denot match
+          case cd: ClassDenotation =>
+            cd.registeredCompanion = cd.unforcedRegisteredCompanion.subst(originals, copies)
+          case _ =>
       }
 
       copies.foreach(_.ensureCompleted()) // avoid memory leak
