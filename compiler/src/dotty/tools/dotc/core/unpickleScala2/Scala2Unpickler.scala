@@ -608,7 +608,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
       atReadPos(startCoord(denot).toIndex,
           () => withMode(Mode.Scala2Unpickling) {
-            atPhaseNoLater(picklerPhase) {
+            atPhaseBeforeTransforms {
               parseToCompletion(denot)
             }
           })

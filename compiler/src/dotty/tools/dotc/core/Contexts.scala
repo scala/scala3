@@ -76,6 +76,16 @@ object Contexts {
   inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
     atPhase(ctx.phase.next)(op)
 
+  /** Execute `op` at the current phase if it's before the first transform phase,
+   *  otherwise at the last phase before the first transform phase.
+   *
+   *  Note: this should be used instead of `atPhaseNoLater(ctx.picklerPhase)`
+   *  because the later won't work if the `Pickler` phase is not present (for example,
+   *  when using `QuoteCompiler`).
+   */
+  inline def atPhaseBeforeTransforms[T](inline op: Context ?=> T)(using Context): T =
+    atPhaseNoLater(firstTransformPhase.prev)(op)
+
   inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
     op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
 
