@@ -1283,7 +1283,7 @@ object Parsers {
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL || in.token == WITHEOL then
+      if in.token == COLONEOL || in.token == WITH then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
@@ -3545,7 +3545,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, tparams, vparamss, parents.head, subExpr())
-        else if in.token != WITH && in.token != WITHEOL && parentsIsType then
+        else if in.token != WITH && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, tparams, vparamss, parents.head, EmptyTree)
@@ -3633,12 +3633,12 @@ object Parsers {
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
     def withConstrApps(): List[Tree] =
-      if in.token == WITH then
-        in.observeWithEOL() // converts token to WITHEOL if at end of line
-        if in.token == WITH && in.lookahead.token != LBRACE then
-          in.nextToken()
-          constrApp() :: withConstrApps()
-        else Nil
+      def isTemplateStart =
+        val la = in.lookahead
+        la.isAfterLineEnd || la.token == LBRACE
+      if in.token == WITH && !isTemplateStart then
+        in.nextToken()
+        constrApp() :: withConstrApps()
       else Nil
 
     /** Template          ::=  InheritClauses [TemplateBody]
@@ -3708,8 +3708,8 @@ object Parsers {
 
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
-      if in.token != WITHEOL then accept(WITH)
-      possibleTemplateStart() // consumes a WITHEOL token
+      if in.token != WITH then syntaxError(em"`with` expected")
+      possibleTemplateStart() // consumes a WITH token
       val (self, stats) = templateBody()
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))

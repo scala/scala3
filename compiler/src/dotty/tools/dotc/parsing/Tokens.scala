@@ -204,8 +204,7 @@ object Tokens extends TokensCommon {
   final val QUOTE = 87;            enter(QUOTE, "'")
 
   final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
-  final val WITHEOL = 89;          enter(WITHEOL, "with", "with at eol")
-  final val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
+  final val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
   final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
@@ -277,8 +276,8 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, WITHEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
-      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
+    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
+    // TODO: add THROW, CTXARROW
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
