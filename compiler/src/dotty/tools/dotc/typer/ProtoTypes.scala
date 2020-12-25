@@ -38,13 +38,13 @@ object ProtoTypes {
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
-    /** Like isCompatibe, but using a subtype comparison with necessary eithers
-     *  that don't unnecessarily truncate the constraint space, returning false instead.
+    /** Like normalize and then isCompatible, but using a subtype comparison with
+     *  necessary eithers that does not unnecessarily truncate the constraint space,
+     *  returning false instead.
      */
     def necessarilyCompatible(tp: Type, pt: Type)(using Context): Boolean =
-      val tpw = tp.widenExpr
-      val ptw = pt.widenExpr
-      necessarySubType(tpw, ptw) || tpw.isValueSubType(ptw) || viewExists(tp, pt)
+      val tpn = normalize(tp, pt, followIFT = !defn.isContextFunctionType(pt))
+      necessarySubType(tpn, pt) || tpn.isValueSubType(pt) || viewExists(tpn, pt)
 
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
@@ -84,9 +84,9 @@ object ProtoTypes {
             case _ => true
           }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case _ =>
           true
       }
@@ -607,7 +607,7 @@ object ProtoTypes {
    * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
    * function type is not compatible with the prototype.
    */
-  def normalize(tp: Type, pt: Type)(using Context): Type = {
+  def normalize(tp: Type, pt: Type, followIFT: Boolean = true)(using Context): Type = {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
@@ -632,7 +632,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
         else tp
     }
   }
