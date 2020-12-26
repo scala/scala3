@@ -3,7 +3,7 @@ package dotc
 package ast
 
 import core._
-import Types._, Contexts._
+import Types._, Contexts._, Flags._
 import Symbols._, Annotations._, Trees._, Symbols._, Constants.Constant
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
@@ -187,11 +187,18 @@ class TreeTypeMap(
    */
   def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
     val symsChanged = syms ne mapped
-    val substMap = withSubstitution(syms, mapped)
+    val origTypeParams = syms.filter(_.isClass).flatMap(_.typeParams)
+    val mappedTypeParams = mapped.filter(_.isClass).flatMap(_.typeParams)
+    assert(origTypeParams.hasSameLengthAs(mappedTypeParams))
+    val substMap = withSubstitution(syms ++ origTypeParams, mapped ++ mappedTypeParams)
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-      val origDcls = cls.info.decls.toList
+      val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
       val mappedDcls = mapSymbols(origDcls, tmap)
-      val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
+       // type parameters were already copied in the `mapSymbols` call which produced `mapped`.
+      val tmap1 = tmap
+//        .withSubstitution(origTypeParams, cls.typeParams)
+          // type parameters were already mapped in the `mapSymbols` call which produced `mapped`.
+        .withMappedSyms(origDcls, mappedDcls)
       if (symsChanged)
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
       tmap1
