@@ -331,7 +331,7 @@ a `List` is liftable if its element type is:
 given [T: ToExpr : Type]: ToExpr[List[T]] with
    def toExpr(xs: List[T]) = xs match
       case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
-      case Nil => '{ Nil: List[T] }
+      case Nil          => '{ Nil: List[T] }
 ```
 
 In the end, `ToExpr` resembles very much a serialization
@@ -762,7 +762,7 @@ trait Show[-T]:
    def show(x: T): String
 
 // in a different file
-given Show[Boolean]:
+given Show[Boolean] with
    def show(b: Boolean) = "boolean!"
 
 println(showMe"${true}")
