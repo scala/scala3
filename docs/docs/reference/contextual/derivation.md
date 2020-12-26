@@ -295,7 +295,7 @@ given derived$Eq[T](using eqT: Eq[T]): Eq[Opt[T]] =
    eqSum(
       summon[Mirror[Opt[T]]],
       List(
-         eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]]))
+         eqProduct(summon[Mirror[Sm[T]]], List(summon[Eq[T]])),
          eqProduct(summon[Mirror[Nn.type]], Nil)
       )
    )
