@@ -137,21 +137,6 @@ object NameOps {
       else name.toTermName
     }
 
-    /** Does the name match `extension`? */
-    def isExtension: Boolean = name match
-      case name: SimpleName =>
-        name.length == "extension".length && name.startsWith("extension")
-      case _ => false
-
-    /** Does this name start with `extension_`? */
-    def isExtensionName: Boolean = name match
-      case name: SimpleName => name.startsWith("extension_")
-      case _ => false
-
-    // TODO: Drop next 3 methods once extension names have stabilized
-    /** Add an `extension_` in front of this name */
-    def toExtensionName(using Context): SimpleName = "extension_".concat(name)
-
     /** The expanded name.
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
      *  followed by `kind` and the name.

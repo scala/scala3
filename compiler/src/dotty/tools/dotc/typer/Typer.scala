@@ -3348,11 +3348,8 @@ class Typer extends Namer
     // implicit conversion to the receiver type.
     def sharpenedPt = pt match
       case pt: SelectionProto
-      if pt.name.isExtensionName
-         || pt.memberProto.revealIgnored.isExtensionApplyProto =>
-        pt.deepenProto
-      case _ =>
-        pt
+      if pt.memberProto.revealIgnored.isExtensionApplyProto => pt.deepenProto
+      case _ => pt
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
@@ -3504,10 +3501,8 @@ class Typer extends Namer
             findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
               case ref: TermRef =>
                 extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-              case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
-                case ref: TermRef =>
-                  extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => EmptyTree
+              case _ =>
+                EmptyTree
 
           try
             val nestedCtx = ctx.fresh.setNewTyperState()

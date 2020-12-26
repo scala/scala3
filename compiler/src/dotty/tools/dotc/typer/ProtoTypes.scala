@@ -147,11 +147,6 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    private var myExtensionName: TermName = null
-    def extensionName(using Context): TermName =
-      if myExtensionName == null then myExtensionName = name.toExtensionName
-      myExtensionName
-
     /** Is the set of members of this type unknown? This is the case if:
      *  1. The type has Nothing or Wildcard as a prefix or underlying type
      *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
@@ -447,8 +442,7 @@ object ProtoTypes {
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
           case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
-               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
-            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
+            ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
