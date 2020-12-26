@@ -2402,11 +2402,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class NotAnExtensionMethod(methodRef: untpd.Tree)(using Context)
-    extends TypeMsg(NotAnExtensionMethodID):
-    def msg = em"not an extension method: $methodRef"
-    def explain = ""
-
   class NoExtensionMethodAllowed(mdef: untpd.DefDef)(using Context)
     extends SyntaxMsg(NoExtensionMethodAllowedID) {
     def msg = em"No extension method allowed here, since collective parameters are given"

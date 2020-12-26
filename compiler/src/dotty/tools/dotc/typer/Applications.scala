@@ -2153,18 +2153,11 @@ trait Applications extends Compatibility {
         (tree, currentPt)
 
     val (core, pt1) = normalizePt(methodRef, pt)
-    val app = withMode(Mode.SynthesizeExtMethodReceiver) {
+    withMode(Mode.SynthesizeExtMethodReceiver) {
       typed(
         untpd.Apply(core, untpd.TypedSplice(receiver, isExtensionReceiver = true) :: Nil),
         pt1, ctx.typerState.ownedVars)
     }
-    def isExtension(tree: Tree): Boolean = methPart(tree) match {
-      case Inlined(call, _, _) => isExtension(call)
-      case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtension(qual)
-      case tree => tree.symbol.is(ExtensionMethod)
-    }
-    if !isExtension(app) then report.error(NotAnExtensionMethod(methodRef), receiver.srcPos)
-    app
   }
 
   def isApplicableExtensionMethod(ref: TermRef, receiver: Type)(using Context) =

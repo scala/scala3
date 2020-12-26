@@ -3516,12 +3516,9 @@ class Typer extends Namer
               nestedCtx.typerState.commit()
               return ExtMethodApply(app)
             else
-              nestedCtx.reporter.allErrors
-                .filterNot(_.msg.isInstanceOf[NotAnExtensionMethod]) match
-                case Nil =>
-                case err :: _ =>
-                  rememberSearchFailure(tree,
-                    SearchFailure(app.withType(FailedExtension(app, pt, err.msg))))
+              for err <- nestedCtx.reporter.allErrors.take(1) do
+                rememberSearchFailure(tree,
+                  SearchFailure(app.withType(FailedExtension(app, pt, err.msg))))
           catch case ex: TypeError =>
             rememberSearchFailure(tree,
               SearchFailure(tree.withType(NestedFailure(ex.toMessage, pt))))
