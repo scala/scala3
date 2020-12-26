@@ -187,23 +187,19 @@ class TreeTypeMap(
    */
   def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
     val symsChanged = syms ne mapped
-    val origTypeParams = syms.filter(_.isClass).flatMap(_.typeParams)
-    val mappedTypeParams = mapped.filter(_.isClass).flatMap(_.typeParams)
-    assert(origTypeParams.hasSameLengthAs(mappedTypeParams))
-    val substMap = withSubstitution(syms ++ origTypeParams, mapped ++ mappedTypeParams)
+    val substMap = withSubstitution(syms, mapped)
+    lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
     val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
       val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
       val mappedDcls = mapSymbols(origDcls, tmap)
-       // type parameters were already copied in the `mapSymbols` call which produced `mapped`.
-      val tmap1 = tmap
-//        .withSubstitution(origTypeParams, cls.typeParams)
-          // type parameters were already mapped in the `mapSymbols` call which produced `mapped`.
-        .withMappedSyms(origDcls, mappedDcls)
-      if (symsChanged)
+      val tmap1 = tmap.withMappedSyms(
+        origCls(cls).typeParams ::: origDcls,
+        cls.typeParams ::: mappedDcls)
+      if symsChanged then
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
       tmap1
     }
-    if (symsChanged || (fullMap eq substMap)) fullMap
+    if symsChanged || (fullMap eq substMap) then fullMap
     else withMappedSyms(syms, mapAlways = true)
   }
 }
