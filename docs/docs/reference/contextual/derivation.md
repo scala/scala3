@@ -123,7 +123,7 @@ Note the following properties of `Mirror` types,
 + Properties are encoded using types rather than terms. This means that they have no runtime footprint unless used and
   also that they are a compile time feature for use with Scala 3's metaprogramming facilities.
 + The kinds of `MirroredType` and `MirroredElemTypes` match the kind of the data type the mirror is an instance for.
-  This allows `Mirrors` to support ADTs of all kinds.
+  This allows `Mirror`s to support ADTs of all kinds.
 + There is no distinct representation type for sums or products (ie. there is no `HList` or `Coproduct` type as in
   Scala 2 versions of Shapeless). Instead the collection of child types of a data type is represented by an ordinary,
   possibly parameterized, tuple type. Scala 3's metaprogramming facilities can be used to work with these tuple types
@@ -167,7 +167,6 @@ The low-level method we will use to implement a type class `derived` method in t
 type-level constructs in Scala 3: inline methods, inline matches, and implicit searches via  `summonInline` or `summonFrom`. Given this definition of the
 `Eq` type class,
 
-
 ```scala
 trait Eq[T]:
    def eqv(x: T, y: T): Boolean
@@ -194,7 +193,6 @@ implementation of `summonAll` is `inline` and uses Scala 3's `summonInline` cons
 `List`,
 
 ```scala
-
 inline def summonAll[T <: Tuple]: List[Eq[_]] =
    inline erasedValue[T] match
       case _: EmptyTuple => Nil
@@ -357,10 +355,13 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
 
 Note: To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
 extended types to be separated by commas. So the following is now legal:
+
 ```scala
 class A extends B, C { ... }
 ```
+
 It is equivalent to the old form
+
 ```scala
 class A extends B with C { ... }
 ```
