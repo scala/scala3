@@ -61,6 +61,7 @@ l / l2                  // error: `/` is not a member of Logarithm
 ### Bounds For Opaque Type Aliases
 
 Opaque type aliases can also come with bounds. Example:
+
 ```scala
 object Access:
 
@@ -85,11 +86,12 @@ object Access:
 
 end Access
 ```
+
 The `Access` object defines three opaque type aliases:
 
- - `Permission`, representing a single permission,
- - `Permissions`, representing a set of permissions with the meaning "all of these permissions granted",
- - `PermissionChoice`, representing a set of permissions with the meaning "at least one of these permissions granted".
+- `Permission`, representing a single permission,
+- `Permissions`, representing a set of permissions with the meaning "all of these permissions granted",
+- `PermissionChoice`, representing a set of permissions with the meaning "at least one of these permissions granted".
 
 Outside the `Access` object, values of type `Permissions` may be combined using the `&` operator,
 where `x & y` means "all permissions in `x` *and* in `y` granted".
@@ -106,6 +108,7 @@ All three opaque type aliases have the same underlying representation type `Int`
 `Permission` type has an upper bound `Permissions & PermissionChoice`. This makes
 it known outside the `Access` object that `Permission` is a subtype of the other
 two types.  Hence, the following usage scenario type-checks.
+
 ```scala
 object User:
    import Access._
@@ -116,16 +119,17 @@ object User:
    val rwItem = Item(ReadWrite)
    val noItem = Item(NoPermission)
 
-   assert( roItem.rights.is(ReadWrite) == false )
-   assert( roItem.rights.isOneOf(ReadOrWrite) == true )
+   assert(!roItem.rights.is(ReadWrite))
+   assert(roItem.rights.isOneOf(ReadOrWrite))
 
-   assert( rwItem.rights.is(ReadWrite) == true )
-   assert( rwItem.rights.isOneOf(ReadOrWrite) == true )
+   assert(rwItem.rights.is(ReadWrite))
+   assert(rwItem.rights.isOneOf(ReadOrWrite))
 
-   assert( noItem.rights.is(ReadWrite) == false )
-   assert( noItem.rights.isOneOf(ReadOrWrite) == false )
+   assert(!noItem.rights.is(ReadWrite))
+   assert(!noItem.rights.isOneOf(ReadOrWrite))
 end User
 ```
+
 On the other hand, the call `roItem.rights.isOneOf(ReadWrite)` would give a type error
 since `Permissions` and `PermissionChoice` are different, unrelated types outside `Access`.
 
