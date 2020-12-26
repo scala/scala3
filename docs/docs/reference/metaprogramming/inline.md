@@ -144,22 +144,23 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     ```scala
     abstract class A:
-       def f(): Int
-       def g(): Int = f()
+       def f: Int
+       def g: Int = f
 
     class B extends A:
-       inline def f() = 22
-       override inline def g() = f() + 11
+       inline def f = 22
+       override inline def g = f + 11
 
-    val b = B()
+    val b = new B
     val a: A = b
     // inlined invocatons
-    assert(b.f() == 22)
-    assert(b.g() == 33)
+    assert(b.f == 22)
+    assert(b.g == 33)
     // dynamic invocations
-    assert(a.f() == 22)
-    assert(a.g() == 33)
+    assert(a.f == 22)
+    assert(a.g == 33)
     ```
+
     The inlined invocations and the dynamically dispatched invocations give the same results.
 
 2. Inline methods are effectively final.
@@ -168,14 +169,14 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     ```scala
     abstract class A:
-       inline def f(): Int
+       inline def f: Int
 
     object B extends A:
-       inline def f(): Int = 22
+       inline def f: Int = 22
 
-    B.f()         // OK
+    B.f         // OK
     val a: A = B
-    a.f()         // error: cannot inline f() in A.
+    a.f         // error: cannot inline f() in A.
     ```
 
 ### Relationship to `@inline`
@@ -224,6 +225,7 @@ including _platform-specific_ extensions such as constant folding of pure
 numeric computations.
 
 An inline value must have a literal type such as `1` or `true`.
+
 ```scala
 inline val four = 4
 // equivalent to
@@ -249,17 +251,18 @@ specialized to a more precise type upon expansion. Example:
 ```scala
 class A
 class B extends A:
-   def m() = true
+   def m = true
 
 transparent inline def choose(b: Boolean): A =
-   if b then new A() else new B()
+   if b then new A else new B
 
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
 
-// obj1.m() // compile-time error: `m` is not defined on `A`
-obj2.m()    // OK
+// obj1.m // compile-time error: `m` is not defined on `A`
+obj2.m    // OK
 ```
+
 Here, the inline method `choose` returns an instance of either of the two types `A` or `B`.
 If `choose` had not been declared to be `transparent`, the result
 of its expansion would always be of type `A`, even though the computed value might be of the subtype `B`.
@@ -276,9 +279,9 @@ the singleton type `0` permitting the addition to be ascribed with the correct
 type `1`.
 
 ```scala
-transparent inline def zero(): Int = 0
+transparent inline def zero: Int = 0
 
-val one: 1 = zero() + 1
+val one: 1 = zero + 1
 ```
 
 ## Inline Conditionals
@@ -295,6 +298,7 @@ inline def update(delta: Int) =
    inline if delta >= 0 then increaseBy(delta)
    else decreaseBy(-delta)
 ```
+
 A call `update(22)` would rewrite to `increaseBy(22)`. But if `update` was called with
 a value that was not a compile-time constant, we would get a compile time error like the one
 below:
@@ -343,10 +347,10 @@ case class Succ[N <: Nat](n: N) extends Nat
 
 transparent inline def toInt(n: Nat): Int =
    inline n match
-      case Zero => 0
+      case Zero     => 0
       case Succ(n1) => toInt(n1) + 1
 
-final val natTwo = toInt(Succ(Succ(Zero)))
+inline val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo
 ```
 
@@ -366,10 +370,10 @@ import scala.compiletime.{constValue, S}
 
 transparent inline def toIntC[N]: Int =
    inline constValue[N] match
-      case 0 => 0
+      case 0        => 0
       case _: S[n1] => 1 + toIntC[n1]
 
-final val ctwo = toIntC[2]
+inline val ctwo = toIntC[2]
 ```
 
 `constValueOpt` is the same as `constValue`, however returning an `Option[T]`
@@ -402,19 +406,20 @@ import scala.compiletime.erasedValue
 
 inline def defaultValue[T] =
    inline erasedValue[T] match
-      case _: Byte => Some(0: Byte)
-      case _: Char => Some(0: Char)
-      case _: Short => Some(0: Short)
-      case _: Int => Some(0)
-      case _: Long => Some(0L)
-      case _: Float => Some(0.0f)
-      case _: Double => Some(0.0d)
+      case _: Byte    => Some(0: Byte)
+      case _: Char    => Some(0: Char)
+      case _: Short   => Some(0: Short)
+      case _: Int     => Some(0)
+      case _: Long    => Some(0L)
+      case _: Float   => Some(0.0f)
+      case _: Double  => Some(0.0d)
       case _: Boolean => Some(false)
-      case _: Unit => Some(())
-      case _ => None
+      case _: Unit    => Some(())
+      case _          => None
 ```
 
 Then:
+
 ```scala
 val dInt: Some[Int] = defaultValue[Int]
 val dDouble: Some[Double] = defaultValue[Double]
@@ -434,7 +439,7 @@ transparent inline def toIntT[N <: Nat]: Int =
       case _: Zero.type => 0
       case _: Succ[n] => toIntT[n] + 1
 
-final val two = toIntT[Succ[Succ[Zero.type]]]
+inline val two = toIntT[Succ[Succ[Zero.type]]]
 ```
 
 `erasedValue` is an `erased` method so it cannot be used and has no runtime
@@ -555,6 +560,7 @@ keep the viral nature of implicit search programs based on logic programming.
 By contrast, the new `summonFrom` construct makes implicit search available
 in a functional context. To solve the problem of creating the right set, one
 would use it as follows:
+
 ```scala
 import scala.compiletime.summonFrom
 
@@ -563,12 +569,14 @@ inline def setFor[T]: Set[T] = summonFrom {
    case _                => new HashSet[T]
 }
 ```
+
 A `summonFrom` call takes a pattern matching closure as argument. All patterns
 in the closure are type ascriptions of the form `identifier : Type`.
 
 Patterns are tried in sequence. The first case with a pattern `x: T` such that an implicit value of type `T` can be summoned is chosen.
 
 Alternatively, one can also use a pattern-bound given instance, which avoids the explicit using clause. For instance, `setFor` could also be formulated as follows:
+
 ```scala
 import scala.compiletime.summonFrom
 
@@ -606,6 +614,7 @@ inline def f: Any = summonFrom {
 ## `summonInline`
 
 The shorthand `summonInline` provides a simple way to write a `summon` that is delayed until the call is inlined.
+
 ```scala
 transparent inline def summonInline[T]: T = summonFrom {
    case t: T => t
