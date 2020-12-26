@@ -185,11 +185,11 @@ class TreeTypeMap(
    *  and mapped symbols `mapped`. Also goes into mapped classes
    *  and substitutes their declarations.
    */
-  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
+  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
     val symsChanged = syms ne mapped
     val substMap = withSubstitution(syms, mapped)
     lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
-    val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
+    mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
       val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
       val mappedDcls = mapSymbols(origDcls, tmap)
       val tmap1 = tmap.withMappedSyms(
@@ -199,7 +199,4 @@ class TreeTypeMap(
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
       tmap1
     }
-    if symsChanged || (fullMap eq substMap) then fullMap
-    else withMappedSyms(syms, mapAlways = true)
-  }
 }
