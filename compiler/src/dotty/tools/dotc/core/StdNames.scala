@@ -830,6 +830,9 @@ object StdNames {
     final val Conforms: TypeName = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
+
+    val JFunctionPrefix: Seq[TypeName] = (0 to 2).map(i => s"scala.runtime.java8.JFunction${i}")
+    val JProcedure: Seq[TypeName] = (0 to 22).map(i => s"scala.runtime.function.JProcedure${i}")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

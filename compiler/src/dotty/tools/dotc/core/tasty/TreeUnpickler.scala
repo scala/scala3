@@ -116,7 +116,7 @@ class TreeUnpickler(reader: TastyReader,
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
-      treeAtAddr(currentAddr) = atPhaseNoLater(picklerPhase) {
+      treeAtAddr(currentAddr) = atPhaseBeforeTransforms {
         new TreeReader(reader).readIndexedDef()(
           using ctx.withOwner(owner).withSource(source))
       }
@@ -1392,7 +1392,7 @@ class TreeUnpickler(reader: TastyReader,
       op: TreeReader => Context ?=> T) extends Trees.Lazy[T] {
     def complete(using Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      atPhaseNoLater(picklerPhase) {
+      atPhaseBeforeTransforms {
         op(reader)(using ctx
           .withOwner(owner)
           .withModeBits(mode)

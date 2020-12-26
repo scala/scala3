@@ -4135,7 +4135,7 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def computeJSNativeLoadSpecOfValDef(sym: Symbol): js.JSNativeLoadSpec = {
-    atPhase(picklerPhase.next) {
+    atPhaseBeforeTransforms {
       computeJSNativeLoadSpecOfInPhase(sym)
     }
   }
@@ -4144,7 +4144,7 @@ class JSCodeGen()(using genCtx: Context) {
     if (sym.is(Trait) || sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) {
       None
     } else {
-      atPhase(picklerPhase.next) {
+      atPhaseBeforeTransforms {
         if (sym.owner.isStaticOwner)
           Some(computeJSNativeLoadSpecOfInPhase(sym))
         else
