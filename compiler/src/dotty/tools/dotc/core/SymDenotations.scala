@@ -1630,7 +1630,11 @@ object SymDenotations {
       myBaseTypeCachePeriod = Nowhere
     }
 
-    def invalidateMemberCaches(sym: Symbol)(using Context): Unit =
+    def invalidateMemberCaches()(using Context): Unit =
+      myMemberCachePeriod = Nowhere
+      invalidateMemberNamesCache()
+
+    def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
       if myMemberCache != null then myMemberCache.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
@@ -1831,7 +1835,7 @@ object SymDenotations {
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(using Context): Unit =
       scope.enter(sym)
-      invalidateMemberCaches(sym)
+      invalidateMemberCachesFor(sym)
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
      *  If `prev` is not defined in current class, do nothing.
