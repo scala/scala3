@@ -1979,6 +1979,7 @@ class Typer extends Namer
     val ValDef(name, tpt, _) = vdef
     completeAnnotations(vdef, sym)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
+    if sym.is(Module) then checkNoModuleClash(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
     val rhs1 = vdef.rhs match {
       case rhs @ Ident(nme.WILDCARD) => rhs withType tpt1.tpe

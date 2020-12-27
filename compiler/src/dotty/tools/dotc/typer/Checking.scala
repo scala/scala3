@@ -746,6 +746,17 @@ trait Checking {
         em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix " +
           "for a wildcard export, as it is a package.", path.srcPos)
 
+  /** Check that module `sym` does not clash with a class of the same name
+   *  that is concurrently compiled in another source file.
+   */
+  def checkNoModuleClash(sym: Symbol)(using Context): Unit =
+    if sym.effectiveOwner.is(Package)
+       && sym.owner.info.member(sym.name.moduleClassName).symbol.isAbsent()
+    then
+      val conflicting = sym.owner.info.member(sym.name.toTypeName).symbol
+      if conflicting.exists then
+        report.error(AlreadyDefined(sym.name, sym.owner, conflicting), sym.srcPos)
+
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.
   *   Also, if `stablePrefixReq` is true and phase is not after RefChecks,
@@ -1266,6 +1277,7 @@ trait ReChecking extends Checking {
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
+  override def checkNoModuleClash(sym: Symbol)(using Context) = ()
 }
 
 trait NoChecking extends ReChecking {

@@ -136,11 +136,10 @@ class Namer { typer: Typer =>
     var conflictsDetected = false
 
     def conflict(conflicting: Symbol) =
-      val where: String =
-        if conflicting.owner == owner then ""
-        else if conflicting.owner.isPackageObject then i" in ${conflicting.associatedFile}"
-        else i" in ${conflicting.owner}"
-      report.error(i"$name is already defined as $conflicting$where", ctx.source.atSpan(span))
+      val other =
+        if conflicting.is(ConstructorProxy) then conflicting.companionClass
+        else conflicting
+      report.error(AlreadyDefined(name, owner, other), ctx.source.atSpan(span))
       conflictsDetected = true
 
     def checkNoConflictIn(owner: Symbol) =
