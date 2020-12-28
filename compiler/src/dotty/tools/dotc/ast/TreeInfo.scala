@@ -245,6 +245,14 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   /** Is this case guarded? */
   def isGuardedCase(cdef: CaseDef): Boolean = cdef.guard ne EmptyTree
 
+  /** Is this parameter list a using clause? */
+  def isUsingClause(vparams: List[ValDef])(using Context): Boolean = vparams match
+    case vparam :: _ =>
+      val sym = vparam.symbol
+      if sym.exists then sym.is(Given) else vparam.mods.is(Given)
+    case _ =>
+      false
+
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)
