@@ -4,7 +4,7 @@ title: "TASTy Inspection"
 ---
 
 ```scala
-libraryDependencies += "ch.epfl.lamp" %% "scala3-tasty-inspector" % scalaVersion.value
+libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value
 ```
 
 TASTy files contain the full typed tree of a class including source positions
@@ -12,7 +12,6 @@ and documentation. This is ideal for tools that analyze or extract semantic
 information from the code. To avoid the hassle of working directly with the TASTy
 file we provide the `TastyInspector` which loads the contents and exposes it
 through the TASTy reflect API.
-
 
 ## Inspecting TASTy files
 
@@ -46,10 +45,12 @@ scalac -d out Test.scala
 scala -with-compiler -classpath out Test
 ```
 
-
 ## Template project
+
 Using sbt version `1.1.5+`, do:
-```
+
+```shell
 sbt new scala/scala3-tasty-inspector.g8
 ```
+
 in the folder where you want to clone the template.

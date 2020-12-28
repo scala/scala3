@@ -18,9 +18,9 @@ generation of code will be type-correct. Using TASTy Reflect will break these
 guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
-To provide reflection capabilities in macros we need to add an implicit
-parameter of type `scala.quoted.Quotes` and import `quotes.reflect._` from it in
-the scope where it is used.
+To provide reflection capabilities in macros we need to add an implicit parameter
+of type `scala.quoted.Quotes` and import `quotes.reflect._` from it in the scope
+where it is used.
 
 ```scala
 import scala.quoted._
@@ -103,9 +103,9 @@ of type `List[Symbol]` if we want to collect symbols). The code below, for
 example, collects the pattern variables of a tree.
 
 ```scala
-def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] =
+def collectPatternVariables(tree: Tree)(using ctx: Context): List[Symbol] =
    val acc = new TreeAccumulator[List[Symbol]]:
-      def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match
+      def apply(syms: List[Symbol], tree: Tree)(using ctx: Context): List[Symbol] = tree match
          case Bind(_, body) => apply(tree.symbol :: syms, body)
          case _             => foldOver(syms, tree)
    acc(Nil, tree)
