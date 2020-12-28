@@ -2412,6 +2412,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
+
+    def isEnumValueOrModule(ref: TermRef): Boolean =
+      val sym = ref.termSymbol
+      sym.isAllOf(EnumCase, butNot=JavaDefined) || sym.is(Module)
+
     /** Can we enumerate all instantiations of this type? */
     def isClosedSum(tp: Symbol): Boolean =
       tp.is(Sealed) && tp.isOneOf(AbstractOrTrait) && !tp.hasAnonymousChild
@@ -2517,6 +2522,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(gadtBounds(tp1.symbol).hi, tp2) || provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: NamedType) if gadtBounds(tp2.symbol) != null =>
         provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
+      case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
+        tp1.termSymbol != tp2.termSymbol
       case (tp1: TypeProxy, tp2: TypeProxy) =>
         provablyDisjoint(matchTypeSuperType(tp1), tp2) || provablyDisjoint(tp1, matchTypeSuperType(tp2))
       case (tp1: TypeProxy, _) =>
