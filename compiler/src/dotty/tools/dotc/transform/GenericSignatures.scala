@@ -33,8 +33,8 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `None` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type)(using Context): Option[String] =
-    // Avoid generating a signature for local symbols.
-    if (sym0.isLocal) None
+    // Avoid generating a signature for non-class local symbols.
+    if (sym0.isLocal && !sym0.isClass) None
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
   @noinline
