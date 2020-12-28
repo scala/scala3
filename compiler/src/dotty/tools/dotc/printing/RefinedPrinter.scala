@@ -794,29 +794,34 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd._
-
-    def splitParams(paramss: List[List[ValDef]]): (List[List[ValDef]], List[List[ValDef]]) =
-      paramss match
-        case params1 :: (rest @ (_ :: _)) if tree.name.isRightAssocOperatorName =>
-          val (leading, trailing) = splitParams(rest)
-          (leading, params1 :: trailing)
-        case _ =>
-          val trailing = paramss
-            .dropWhile(isUsingClause)
-            .drop(1)
-            .dropWhile(isUsingClause)
-          (paramss.take(paramss.length - trailing.length), trailing)
-
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
       val isExtension = tree.hasType && tree.symbol.is(ExtensionMethod)
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
           if isExtension then
-            val (leadingParamss, otherParamss) = splitParams(tree.vparamss)
+            val vparamss =
+              if tree.name.isRightAssocOperatorName then
+                // we have the encoding: leadingUsing rightParam trailingUsing leftParam
+                // we need to swap rightParam and leftParam
+                val (leadingUsing, rest1) = tree.vparamss.span(isUsingClause)
+                val (rightParamss, rest2) = rest1.splitAt(1)
+                val (trailingUsing, rest3) = rest2.span(isUsingClause)
+                val (leftParamss, rest4) = rest3.splitAt(1)
+                if leftParamss.nonEmpty then
+                  leadingUsing ::: leftParamss ::: trailingUsing ::: rightParamss ::: rest4
+                else
+                  tree.vparamss // it wasn't a binary operator, after all.
+              else
+                tree.vparamss
+            val trailingParamss = vparamss
+              .dropWhile(isUsingClause)
+              .drop(1)
+              .dropWhile(isUsingClause)
+            val leadingParamss = vparamss.take(vparamss.length - trailingParamss.length)
             (addVparamssText(keywordStr("extension "), leadingParamss)
              ~~ (defKeyword ~~ valDefText(nameIdText(tree))).close,
-             otherParamss)
+             trailingParamss)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)
 
         addVparamssText(prefix ~ tparamsText(tree.tparams), vparamss) ~

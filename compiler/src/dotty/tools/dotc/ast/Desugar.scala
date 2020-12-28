@@ -883,7 +883,9 @@ object desugar {
                 ext.vparamss ::: vparamss1
               vparams1 match
                 case vparam :: Nil =>
-                  if !vparam.mods.is(Given) then vparams1 :: ext.vparamss ::: vparamss1
+                  if !vparam.mods.is(Given) then
+                    val (leadingUsing, otherExtParamss) = ext.vparamss.span(isUsingClause)
+                    leadingUsing ::: vparams1 :: otherExtParamss ::: vparamss1
                   else badRightAssoc("cannot start with using clause")
                 case _ =>
                   badRightAssoc("must start with a single parameter")
