@@ -1,0 +1,8 @@
+-- Error: tests/neg/rightassoc-extmethod.scala:1:23 --------------------------------------------------------------------
+1 |extension (x: Int) def +: (using String): Int = x // error
+  |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                   right-associative extension method cannot start with using clause
+-- Error: tests/neg/rightassoc-extmethod.scala:2:23 --------------------------------------------------------------------
+2 |extension (x: Int) def *: (y: Int, z: Int) = x // error
+  |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                   right-associative extension method must start with a single parameter

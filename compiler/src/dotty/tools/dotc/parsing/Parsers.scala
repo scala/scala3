@@ -2997,7 +2997,7 @@ object Parsers {
         if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
         else
           val clause =
-            if prefix then param() :: Nil
+            if prefix && !isIdent(nme.using) then param() :: Nil
             else
               paramMods()
               if givenOnly && !impliedMods.is(Given) then
@@ -3389,7 +3389,6 @@ object Parsers {
      *            |  [‘case’] ‘object’ ObjectDef
      *            |  ‘enum’ EnumDef
      *            |  ‘given’ GivenDef
-     *            |  ‘extension’ ExtensionDef
      */
     def tmplDef(start: Int, mods: Modifiers): Tree =
       in.token match {
@@ -3566,8 +3565,15 @@ object Parsers {
     def extension(): ExtMethods =
       val start = in.skipToken()
       val tparams = typeParamClauseOpt(ParamOwner.Def)
-      val extParams = paramClause(0, prefix = true)
-      val givenParamss = paramClauses(givenOnly = true)
+      val leadParamss = ListBuffer[List[ValDef]]()
+      var nparams = 0
+      while
+        val extParams = paramClause(nparams, prefix = true)
+        leadParamss += extParams
+        nparams += extParams.length
+        isUsingClause(extParams)
+      do ()
+      leadParamss ++= paramClauses(givenOnly = true)
       if in.token == COLON then
         syntaxError("no `:` expected here")
         in.nextToken()
@@ -3579,7 +3585,7 @@ object Parsers {
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
           else { syntaxError("Extension without extension methods"); Nil }
-      val result = atSpan(start)(ExtMethods(tparams, extParams :: givenParamss, methods))
+      val result = atSpan(start)(ExtMethods(tparams, leadParamss.toList, methods))
       val comment = in.getDocComment(start)
       if comment.isDefined then
         for meth <- methods do

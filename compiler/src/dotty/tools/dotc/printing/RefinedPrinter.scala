@@ -794,18 +794,27 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def defDefToText[T >: Untyped](tree: DefDef[T]): Text = {
     import untpd._
+
+    def splitParams(paramss: List[List[ValDef]]): (List[List[ValDef]], List[List[ValDef]]) =
+      paramss match
+        case params1 :: (rest @ (_ :: _)) if tree.name.isRightAssocOperatorName =>
+          val (leading, trailing) = splitParams(rest)
+          (leading, params1 :: trailing)
+        case _ =>
+          val trailing = paramss
+            .dropWhile(isUsingClause)
+            .drop(1)
+            .dropWhile(isUsingClause)
+          (paramss.take(paramss.length - trailing.length), trailing)
+
     dclTextOr(tree) {
       val defKeyword = modText(tree.mods, tree.symbol, keywordStr("def"), isType = false)
       val isExtension = tree.hasType && tree.symbol.is(ExtensionMethod)
       withEnclosingDef(tree) {
         val (prefix, vparamss) =
           if isExtension then
-            val (leadingParams, otherParamss) = (tree.vparamss: @unchecked) match
-              case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
-                (vparams2, vparams1 :: rest)
-              case vparams1 :: rest =>
-                (vparams1, rest)
-            (keywordStr("extension") ~~ paramsText(leadingParams)
+            val (leadingParamss, otherParamss) = splitParams(tree.vparamss)
+            (addVparamssText(keywordStr("extension "), leadingParamss)
              ~~ (defKeyword ~~ valDefText(nameIdText(tree))).close,
              otherParamss)
           else (defKeyword ~~ valDefText(nameIdText(tree)), tree.vparamss)

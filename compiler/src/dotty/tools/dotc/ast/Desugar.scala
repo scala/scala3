@@ -878,7 +878,15 @@ object desugar {
           tparams = ext.tparams ++ mdef.tparams,
           vparamss = mdef.vparamss match
             case vparams1 :: vparamss1 if mdef.name.isRightAssocOperatorName =>
-              vparams1 :: ext.vparamss ::: vparamss1
+              def badRightAssoc(problem: String) =
+                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                ext.vparamss ::: vparamss1
+              vparams1 match
+                case vparam :: Nil =>
+                  if !vparam.mods.is(Given) then vparams1 :: ext.vparamss ::: vparamss1
+                  else badRightAssoc("cannot start with using clause")
+                case _ =>
+                  badRightAssoc("must start with a single parameter")
             case _ =>
               ext.vparamss ++ mdef.vparamss
         ).withMods(mdef.mods | ExtensionMethod)
