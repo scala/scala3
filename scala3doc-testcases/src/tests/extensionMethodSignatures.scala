@@ -15,7 +15,7 @@ class ClassOne
       = 56
 
   extension (c: ClassTwo)
-    def |||:(a: Int, b: Int, d: Int)(e: String): Int
+    def |||:(a: Int)(b: Int, d: Int)(e: String): Int
       = 56
     def ++:(a: Int): Int
       = 45
