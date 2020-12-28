@@ -1,0 +1,12 @@
+name: Community-Build
+
+on: pull_request
+
+jobs:
+  community-build:
+    name: Community Build
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Test
+        run: echo 'Hello World!'
