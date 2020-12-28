@@ -10,7 +10,6 @@ types (`quoted.Type`) from [Macros](./macros.md) or on full TASTy files.
 If you are writing macros, please first read [Macros](./macros.md).
 You may find all you need without using TASTy Reflect.
 
-
 ## API: From quotes and splices to TASTy reflect trees and back
 
 With `quoted.Expr` and `quoted.Type` we can compute code but also analyze code
@@ -35,8 +34,8 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
 
 ### Extractors
 
-`import quotes.reflect._` will provide all extractors and methods on TASTy Reflect
-trees. For example the `Literal(_)` extractor used below.
+`import quotes.reflect._` will provide all extractors and methods on TASTy
+Reflect trees. For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
@@ -54,7 +53,9 @@ def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
          '{0}
 ```
 
-We can easily know which extractors are needed using `Printer.TreeStructure.show`, which returns the string representation the structure of the tree. Other printers can also be found in the `Printer` module.
+We can easily know which extractors are needed using `Printer.TreeStructure.show`,
+which returns the string representation the structure of the tree. Other printers
+can also be found in the `Printer` module.
 
 ```scala
 xTree.show(using Printer.TreeStructure)
@@ -62,24 +63,23 @@ xTree.show(using Printer.TreeStructure)
 Printer.TreeStructure.show(xTree)
 ```
 
-
-The methods `quotes.reflect.Term.{asExpr, asExprOf}` provide a way to go back to a `quoted.Expr`.
-Note that `asExpr` returns a `Expr[Any]`.
-On the other hand `asExprOf[T]` returns a `Expr[T]`, if the type does not conform to it an exception will be thrown at runtime.
-
+The methods `quotes.reflect.Term.{asExpr, asExprOf}` provide a way to go back to
+a `quoted.Expr`. Note that `asExpr` returns a `Expr[Any]`. On the other hand
+`asExprOf[T]` returns a `Expr[T]`, if the type does not conform to it an exception
+will be thrown at runtime.
 
 ### Positions
 
-The `ast` in the context provides a `rootPosition` value. It corresponds to
-the expansion site for macros. The macro authors can obtain various information about that
-expansion site. The example below shows how we can obtain position information
-such as the start line, the end line or even the source code at the expansion
-point.
+The `Position` in the context provides an `ofMacroExpansion` value. It corresponds
+to the expansion site for macros. The macro authors can obtain various information
+about that expansion site. The example below shows how we can obtain position
+information such as the start line, the end line or even the source code at the
+expansion point.
 
 ```scala
 def macroImpl()(quotes: Quotes): Expr[Unit] =
    import quotes.reflect._
-   val pos = rootPosition
+   val pos = Position.ofMacroExpansion
 
    val path = pos.sourceFile.jpath.toString
    val start = pos.start
@@ -107,7 +107,7 @@ def collectPatternVariables(tree: Tree)(implicit ctx: Context): List[Symbol] =
    val acc = new TreeAccumulator[List[Symbol]]:
       def apply(syms: List[Symbol], tree: Tree)(implicit ctx: Context) = tree match
          case Bind(_, body) => apply(tree.symbol :: syms, body)
-         case _ => foldOver(syms, tree)
+         case _             => foldOver(syms, tree)
    acc(Nil, tree)
 ```
 
@@ -116,10 +116,10 @@ but without returning any value. Finally a `TreeMap` performs a transformation.
 
 #### Let
 
-`scala.tasty.Reflection` also offers a method `let` that allows us
-to bind the `rhs` (right-hand side) to a `val` and use it in `body`. Additionally, `lets` binds
-the given `terms` to names and allows to use them in the `body`. Their type definitions
-are shown below:
+`scala.tasty.Reflection` also offers a method `let` that allows us to bind the
+`rhs` (right-hand side) to a `val` and use it in `body`. Additionally, `lets`
+binds the given `terms` to names and allows to use them in the `body`. Their type
+definitions are shown below:
 
 ```scala
 def let(rhs: Term)(body: Ident => Term): Term = ...
@@ -130,3 +130,4 @@ def lets(terms: List[Term])(body: List[Term] => Term): Term = ...
 ## More Examples
 
 * Start experimenting with TASTy Reflect ([link](https://github.com/nicolasstucki/tasty-reflection-exercise))
+  (outdated, need update)
