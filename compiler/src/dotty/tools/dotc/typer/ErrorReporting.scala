@@ -141,11 +141,16 @@ object ErrorReporting {
       if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
       else ""
 
+    def whyFailedStr(fail: FailedExtension) =
+      i"""    failed with
+         |
+         |${fail.whyFailed.message.indented(8)}"""
+
     def selectErrorAddendum
       (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
       (using Context): String =
 
-      val attempts = mutable.ListBuffer[(Tree, FailedExtension)]()
+      val attempts = mutable.ListBuffer[(Tree, String)]()
       val nested = mutable.ListBuffer[NestedFailure]()
       for
         failures <- qual1.getAttachment(Typer.HiddenSearchFailure)
@@ -153,8 +158,9 @@ object ErrorReporting {
       do
         failure.reason match
           case fail: NestedFailure => nested += fail
-          case fail: FailedExtension => attempts += ((failure.tree, fail))
-          case _ =>
+          case fail: FailedExtension => attempts += ((failure.tree, whyFailedStr(fail)))
+          case fail: Implicits.NoMatchingImplicits => // do nothing
+          case _ => attempts += ((failure.tree, ""))
       if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
@@ -164,9 +170,7 @@ object ErrorReporting {
             .distinctBy(_._1)
             .map((treeStr, whyFailed) =>
               i"""
-                 |    $treeStr    failed with
-                 |
-                 |${whyFailed.whyFailed.message.indented(8)}""")
+                 |    $treeStr$whyFailed""")
         val extMethods =
           if attemptStrings.length > 1 then "Extension methods were"
           else "An extension method was"
