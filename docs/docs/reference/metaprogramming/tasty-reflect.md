@@ -99,7 +99,7 @@ transformation.
 
 `TreeAccumulator` ties the knot of a traversal. By calling `foldOver(x, tree))`
 we can dive into the `tree` node and start accumulating values of type `X` (e.g.,
-of type List[Symbol] if we want to collect symbols). The code below, for
+of type `List[Symbol]` if we want to collect symbols). The code below, for
 example, collects the pattern variables of a tree.
 
 ```scala
