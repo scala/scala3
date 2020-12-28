@@ -22,14 +22,22 @@ import dotty.tools.dotc.util.Spans.Span
  *
  *  However, implicit function types do not count as SAM types.
  */
-class ExpandSAMs extends MiniPhase {
-  override def phaseName: String = "expandSAMs"
-
-  import ast.tpd._
+object ExpandSAMs:
+  val name: String = "expandSAMs"
 
   /** Is the SAMType `cls` also a SAM under the rules of the platform? */
   def isPlatformSam(cls: ClassSymbol)(using Context): Boolean =
     ctx.platform.isSam(cls)
+
+  def needsWrapperClass(tpe: Type)(using Context): Boolean =
+    tpe.classSymbol match
+      case cls: ClassSymbol => !isPlatformSam(cls) || cls == defn.PartialFunctionClass
+      case _ => false
+
+class ExpandSAMs extends MiniPhase:
+  import ast.tpd._
+
+  override def phaseName: String = ExpandSAMs.name
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
     case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
@@ -41,7 +49,7 @@ class ExpandSAMs extends MiniPhase {
         case tpe @ SAMType(_) if tpe.isRef(defn.PartialFunctionClass) =>
           val tpe1 = checkRefinements(tpe, fn)
           toPartialFunction(tree, tpe1)
-        case tpe @ SAMType(_) if isPlatformSam(tpe.classSymbol.asClass) =>
+        case tpe @ SAMType(_) if ExpandSAMs.isPlatformSam(tpe.classSymbol.asClass) =>
           checkRefinements(tpe, fn)
           tree
         case tpe =>
@@ -176,5 +184,5 @@ class ExpandSAMs extends MiniPhase {
     case tpe =>
       tpe
   }
-}
+end ExpandSAMs
 
