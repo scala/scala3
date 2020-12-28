@@ -58,10 +58,7 @@ The three definitions above translate to
 Note the swap of the two parameters `x` and `xs` when translating
 the right-associative operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods. The Scala
-compiler preprocesses an infix operation `x +: xs` to `xs.+:(x)`, so the extension
-method ends up being applied to the sequence as first argument (in other words,
-the two swaps cancel each other out).
-
+compiler preprocesses an infix operation `x +: xs` to `xs.+:(x)`, so the extension method ends up being applied to the sequence as first argument (in other words, the two swaps cancel each other out).
 ### Generic Extensions
 
 It is also possible to extend generic types by adding type parameters to an extension. For instance:

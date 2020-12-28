@@ -3,12 +3,12 @@ trait Scope:
    type Value
    def expr(x: String): Expr
    def value(e: Expr): Value
-   def combine(e: Expr, str: String): Expr
+   def combine(e1: Expr, e2: Expr): Expr
 
 extension (using s: Scope)(expr: s.Expr)
    def show = expr.toString
    def eval = s.value(expr)
-   def *: (str: String) = s.combine(expr, str)
+   def *: (other: s.Expr) = s.combine(expr, other)
 
 def f(using s: Scope)(x: s.Expr): (String, s.Value) =
    (x.show, x.eval)
@@ -18,7 +18,7 @@ given scope: Scope with
    type Value = Int
    def expr(x: String) = Expr(x)
    def value(e: Expr) = e.str.toInt
-   def combine(e: Expr, str: String) = Expr(e.str ++ str)
+   def combine(e1: Expr, e2: Expr) = Expr(e1.str ++ e2.str)
 
 @main def Test =
    val e = scope.Expr("123")
@@ -29,7 +29,7 @@ given scope: Scope with
    println(ss)
    val vv = e.eval
    println(vv)
-   val e2 = e *: "4"
+   val e2 = e *: scope.Expr("4")
    println(e2.show)
    println(e2.eval)
 
