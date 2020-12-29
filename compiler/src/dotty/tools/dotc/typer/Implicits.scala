@@ -792,8 +792,8 @@ trait Implicits:
         val inferred = inferImplicit(adjust(to), from, from.span)
 
         inferred match {
-          case SearchSuccess(_, ref, _) =>
-            if isOldStyleFunctionConversion(ref.underlying) then
+          case SearchSuccess(tree, ref, _)
+            if isOldStyleFunctionConversion(ref.underlying) && !tree.isInstanceOf[Applications.ExtMethodApply] =>
               report.migrationWarning(
                 i"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
                 from
