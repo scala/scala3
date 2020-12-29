@@ -1086,15 +1086,24 @@ class Namer { typer: Typer =>
           }
         }
 
+        def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
+          List(name, name.toTypeName)
+            .flatMap(path.tpe.memberBasedOnFlags(_, excluded = Private|Given|ConstructorProxy).alternatives)
+            .foreach(addForwarder(name, _, span)) // ignore if any are not added
+
         def addWildcardForwarders(seen: List[TermName], span: Span): Unit =
+          val nonContextual = mutable.HashSet(seen: _*)
           for mbr <- path.tpe.membersBasedOnFlags(required = EmptyFlags, excluded = PrivateOrSynthetic) do
             if !mbr.symbol.isSuperAccessor then
               // Scala 2 superaccessors have neither Synthetic nor Artfact set, so we
               // need to filter them out here (by contrast, Scala 3 superaccessors are Artifacts)
               val alias = mbr.name.toTermName
-              if !seen.contains(alias)
-                && mbr.matchesImportBound(if mbr.symbol.is(Given) then givenBound else wildcardBound)
-              then addForwarder(alias, mbr, span)
+              if mbr.symbol.is(Given) then
+                if !seen.contains(alias) && mbr.matchesImportBound(givenBound) then
+                  addForwarder(alias, mbr, span)
+              else if !nonContextual.contains(alias) && mbr.matchesImportBound(wildcardBound) then
+                nonContextual += alias
+                addWildcardForwardersNamed(alias, span)
 
         def addForwarders(sels: List[untpd.ImportSelector], seen: List[TermName]): Unit = sels match
           case sel :: sels1 =>
