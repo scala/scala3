@@ -1716,6 +1716,19 @@ object Types {
         else funType
     }
 
+    final def dropJavaMethod(using Context): Type = this match
+      case pt: PolyType => pt.derivedLambdaType(resType = pt.resType.dropJavaMethod)
+
+      case mt: MethodType =>
+        if mt.isJavaMethod then
+          MethodType.apply(mt.paramNames, mt.paramInfos, mt.resType.dropJavaMethod)
+        else
+          mt.derivedLambdaType(resType = mt.resType.dropJavaMethod)
+
+      case _ => this
+
+    end dropJavaMethod
+
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
      *  (the reason why we deviate from the "final-method-with-pattern-match-in-base-class"

@@ -1024,7 +1024,7 @@ class Namer { typer: Typer =>
                   if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
                     (StableRealizable, ExprType(path.tpe.select(sym)))
                   else
-                    (EmptyFlags, mbr.info.ensureMethodic)
+                    (EmptyFlags, mbr.info.ensureMethodic.dropJavaMethod)
                 var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
                 if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
                 val forwarderName = checkNoConflict(alias, isPrivate = false, span)
