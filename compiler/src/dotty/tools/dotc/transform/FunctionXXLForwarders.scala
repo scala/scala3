@@ -34,7 +34,7 @@ class FunctionXXLForwarders extends MiniPhase with IdentityDenotTransformer {
       var idx = -1
       val argss = receiver.tpe.widenDealias.paramInfoss.map(_.map { param =>
         idx += 1
-        argsApply.appliedToArgs(List(Literal(Constant(idx)))).cast(param)
+        argsApply.appliedToTermArgs(List(Literal(Constant(idx)))).cast(param)
       })
       ref(receiver.symbol).appliedToArgss(argss).cast(defn.ObjectType)
     }

@@ -181,7 +181,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Nil)
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {

@@ -42,12 +42,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), mixinClass)
 
   def Apply(fn: Tree, args: List[Tree])(using Context): Apply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
+    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
     ta.assignType(untpd.Apply(fn, args), fn, args)
   }
 
   def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply[_]])
+    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply])
     ta.assignType(untpd.TypeApply(fn, args), fn, args)
   }
 
@@ -196,7 +196,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(untpd.Alternative(trees), trees)
 
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(using Context): UnApply = {
-    assert(fun.isInstanceOf[RefTree] || fun.isInstanceOf[GenericApply[_]])
+    assert(fun.isInstanceOf[RefTree] || fun.isInstanceOf[GenericApply])
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
   }
 
@@ -465,10 +465,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
+      newArr.appliedToTypeTrees(TypeTree(returnTpe) :: Nil).appliedToTermArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
     }
     else  // after erasure
-      newArr.appliedToArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
+      newArr.appliedToTermArgs(clsOf(elemTpe) :: clsOf(returnTpe) :: dims :: Nil).withSpan(span)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -502,7 +502,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     New(tycon)
       .select(TermRef(tycon, constr))
       .appliedToTypes(targs)
-      .appliedToArgs(args)
+      .appliedToTermArgs(args)
   }
 
   /** An object def
@@ -900,14 +900,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =
-      appliedToArgs(arg :: Nil)
+      appliedToTermArgs(arg :: Nil)
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Tree, args: Tree*)(using Context): Apply =
-      appliedToArgs(arg :: args.toList)
+      appliedToTermArgs(arg :: args.toList)
 
     /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))` */
-    def appliedToArgs(args: List[Tree])(using Context): Apply =
+    def appliedToTermArgs(args: List[Tree])(using Context): Apply =
       Apply(tree, args)
 
     /** An applied node that accepts only varargs as arguments */
@@ -918,10 +918,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Tree]])(using Context): Tree =
-      argss.foldLeft(tree: Tree)(Apply(_, _))
+      argss.foldLeft(tree: Tree) { (t, args) => args match
+        case arg :: args1 if arg.isType => TypeApply(tree, args)
+        case _ => Apply(t, args)
+      }
 
     /** The current tree applied to (): `tree()` */
-    def appliedToNone(using Context): Apply = appliedToArgs(Nil)
+    def appliedToNone(using Context): Apply = Apply(tree, Nil)
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
@@ -1226,7 +1229,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     letBindUnless(TreeInfo.Idempotent, tree)(within)
 
   def runtimeCall(name: TermName, args: List[Tree])(using Context): Tree =
-    Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToArgs(args)
+    Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToTermArgs(args)
 
   /** An extractor that pulls out type arguments */
   object MaybePoly {

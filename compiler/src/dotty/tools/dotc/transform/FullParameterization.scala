@@ -233,7 +233,7 @@ trait FullParameterization {
       originalDef.vparamss.foldLeft(fun)((acc, vparams) => {
         val meth = acc.tpe.asInstanceOf[MethodType]
         val paramTypes = meth.instantiateParamInfos(vparams.map(_.tpe))
-        acc.appliedToArgs(
+        acc.appliedToTermArgs(
           vparams.lazyZip(paramTypes).map((vparam, paramType) => {
             assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
             ref(vparam.symbol).ensureConforms(paramType)

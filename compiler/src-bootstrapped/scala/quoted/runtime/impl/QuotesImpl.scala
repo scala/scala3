@@ -381,7 +381,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
