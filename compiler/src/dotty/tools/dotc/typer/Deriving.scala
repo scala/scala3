@@ -271,14 +271,15 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
-        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
-          val tparams = tparamRefs.map(_.typeSymbol.asType)
+      def typeclassInstance(sym: Symbol)(using Context): List[tpd.Tree] => (List[List[tpd.Tree]] => tpd.Tree) = {
+        (tparamRefs: List[tpd.Tree]) => (paramRefss: List[List[tpd.Tree]]) =>
+          val tparamTypes = tparamRefs.tpes
+          val tparams = tparamTypes.map(_.typeSymbol.asType)
           val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           params.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
-            case info: PolyType => instantiated(info.instantiate(tparamRefs))
+            case info: PolyType => instantiated(info.instantiate(tparamTypes))
             case info: MethodType => info.instantiate(params.map(_.termRef))
             case info => info.widenExpr
           }

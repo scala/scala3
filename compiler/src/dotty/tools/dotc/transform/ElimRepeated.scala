@@ -228,7 +228,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
         ref(sym.termRef)
-          .appliedToTypes(trefs)
+          .appliedToTypeTrees(trefs)
           .appliedToArgss(init)
           .appliedToArgs(last :+ wrapArray(vararg, elemtp))
         })

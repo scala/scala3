@@ -230,7 +230,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
    *  are freshly generated if `rawParamss` is empty.
    */
-  def polyDefDef(sym: TermSymbol, rhsFn: List[Type] => List[List[Tree]] => Tree)(using Context): DefDef = {
+  def polyDefDef(sym: TermSymbol, rhsFn: List[Tree] => List[List[Tree]] => Tree)(using Context): DefDef = {
 
     val (tparams, existingParamss, mtp) = sym.info match {
       case tp: PolyType =>
@@ -281,7 +281,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case tp => (Nil, tp.widenExpr)
     }
     val (vparamss, rtp) = valueParamss(mtp, existingParamss)
-    val targs = tparams map (_.typeRef)
+    val targs = tparams.map(tparam => ref(tparam.typeRef))
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
     sym.setParamss(tparams, vparamss)
     DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
@@ -353,7 +353,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       for overridden <- fwdMeth.allOverriddenSymbols do
         if overridden.is(Extension) then fwdMeth.setFlag(Extension)
         if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
-      polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
+      polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypeTrees(tprefs).appliedToArgss(prefss))
     }
     val forwarders = fns.lazyZip(methNames).map(forwarder)
     val cdef = ClassDef(cls, DefDef(constr), forwarders)
