@@ -202,7 +202,7 @@ object Inliner {
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     polyDefDef(retainer, targs => prefss =>
       inlineCall(
-        ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
+        ref(meth).appliedToTypeTrees(targs).appliedToArgss(prefss)
           .withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)

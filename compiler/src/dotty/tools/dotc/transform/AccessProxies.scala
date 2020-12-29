@@ -42,7 +42,7 @@ abstract class AccessProxies {
           case info: PolyType => info.paramNames.length
           case _ => 0
         }
-        val (accessRef, forwardedTypes, forwardedArgss) =
+        val (accessRef, forwardedTpts, forwardedArgss) =
           if (passReceiverAsArg(accessor.name))
             (argss.head.head.select(accessed), tps.takeRight(numTypeParams), argss.tail)
           else
@@ -53,7 +53,7 @@ abstract class AccessProxies {
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
             accessRef.becomes(forwardedArgss.head.head)
           else
-            accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
+            accessRef.appliedToTypeTrees(forwardedTpts).appliedToArgss(forwardedArgss)
         rhs.withSpan(accessed.span)
       })
 

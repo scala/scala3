@@ -440,7 +440,7 @@ object PrepJSExports {
       proxySym: TermSymbol, span: Span)(using Context): Tree = {
 
     polyDefDef(proxySym, { targs => argss =>
-      This(clsSym).select(trgSym).appliedToTypes(targs).appliedToArgss(argss)
+      This(clsSym).select(trgSym).appliedToTypeTrees(targs).appliedToArgss(argss)
     }).withSpan(span)
   }
 

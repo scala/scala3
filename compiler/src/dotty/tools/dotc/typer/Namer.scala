@@ -1061,7 +1061,7 @@ class Namer { typer: Typer =>
                 import tpd._
                 val ref = path.select(sym.asTerm)
                 val ddef = tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
-                  ref.appliedToTypes(targs)
+                  ref.appliedToTypeTrees(targs)
                      .appliedToArgss(adaptForwarderParams(Nil, sym.info.stripPoly, prefss))
                 )
                 if forwarder.isInlineMethod then
