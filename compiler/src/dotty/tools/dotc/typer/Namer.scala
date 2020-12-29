@@ -784,7 +784,7 @@ class Namer { typer: Typer =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
       val isClashingSynthetic =
-        denot.is(Synthetic)
+        denot.is(Synthetic, butNot = ConstructorProxy)
         && desugar.isRetractableCaseClassMethodName(denot.name)
         && isCaseClassOrCompanion(denot.owner)
         && (definesMember || inheritsConcreteMember)
