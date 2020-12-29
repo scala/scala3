@@ -111,15 +111,8 @@ object ErrorReporting {
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type): String = {
-      def dropJavaMethod(tp: Type): Type = tp match {
-        case tp: PolyType =>
-          tp.derivedLambdaType(resType = dropJavaMethod(tp.resultType))
-        case tp: MethodType if tp.isJavaMethod =>
-          MethodType(tp.paramNames, tp.paramInfos, dropJavaMethod(tp.resultType))
-        case tp => tp
-      }
-      val found1 = dropJavaMethod(found)
-      val expected1 = dropJavaMethod(expected)
+      val found1 = found.dropJavaMethod
+      val expected1 = expected.dropJavaMethod
       if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
         i"""
            |(Note that Scala's and Java's representation of this type differs)"""
