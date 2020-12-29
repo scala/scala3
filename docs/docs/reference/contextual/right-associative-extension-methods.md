@@ -23,7 +23,7 @@ it has a name ending in `:` and is immediately followed by a
 single parameter. In the example above, that parameter is `(y: Y)`.
 
 The Scala compiler pre-processes a right-associative infix operation such as `x +: xs`
-to `xs.+:(x)` if `x` and `xs` are pure expressions or `x` is a call-by-name parameter and to `val y = x; xs.+:(y)` otherwise. This is necessary since a regular right-associative infix method
+to `xs.+:(x)` if `x` is a pure expression or a call-by-name parameter and to `val y = x; xs.+:(y)` otherwise. This is necessary since a regular right-associative infix method
 is defined in the class of its right operand. To make up for this swap,
 the expansion of right-associative extension methods performs an analogous parameter swap. More precisely, if `otherParams` consists of a single parameter
 `rightParam` followed by `remaining`, the total parameter sequence
