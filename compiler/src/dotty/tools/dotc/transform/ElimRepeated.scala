@@ -230,7 +230,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref(sym.termRef)
           .appliedToTypeTrees(trefs)
           .appliedToArgss(init)
-          .appliedToArgs(last :+ wrapArray(vararg, elemtp))
+          .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
         })
       Thicket(tree, forwarderDef)
     else

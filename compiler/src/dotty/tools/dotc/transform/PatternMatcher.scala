@@ -390,7 +390,7 @@ object PatternMatcher {
               case mt: MethodType =>
                 assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
-                applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
+                applyImplicits(acc.appliedToTermArgs(args), rest, mt.resultType)
               case _ =>
                 assert(implicits.isEmpty)
                 acc

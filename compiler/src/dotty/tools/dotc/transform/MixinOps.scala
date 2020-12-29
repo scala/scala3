@@ -74,7 +74,6 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     isCurrent(meth)
   }
 
-
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 

@@ -970,6 +970,7 @@ object Trees {
     type Super = Trees.Super[T]
     type Apply = Trees.Apply[T]
     type TypeApply = Trees.TypeApply[T]
+    type GenericApply = Trees.GenericApply[T]
     type Literal = Trees.Literal[T]
     type New = Trees.New[T]
     type Typed = Trees.Typed[T]

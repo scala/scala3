@@ -894,7 +894,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
      *  will return a term or type tree respectively.
      */
     def unapply(tree: tpd.Tree)(using Context): Option[tpd.Tree] = tree match {
-      case tree: GenericApply[Type] if tree.symbol.isQuote => Some(tree.args.head)
+      case tree: GenericApply if tree.symbol.isQuote => Some(tree.args.head)
       case _ => None
     }
   }
