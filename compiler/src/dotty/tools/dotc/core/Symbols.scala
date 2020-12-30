@@ -861,6 +861,16 @@ object Symbols {
       copies
     }
 
+  object TermSymbols:
+    def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
+      case (x: Symbol) :: _ if x.isType => None
+      case _ => Some(xs.asInstanceOf[List[TermSymbol]])
+
+  object TypeSymbols:
+    def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
+      case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
+      case _ => None
+
 // ----- Locating predefined symbols ----------------------------------------
 
   def requiredPackage(path: PreName)(using Context): TermSymbol = {

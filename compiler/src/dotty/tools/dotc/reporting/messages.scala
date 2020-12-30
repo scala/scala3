@@ -403,8 +403,8 @@ import transform.SymUtils._
     def explain = {
       val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
       val exampleArgs =
-        if(constr0.vparamss.isEmpty) "..."
-        else constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
+        if(constr0.termParamss.isEmpty) "..."
+        else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
       def defHasBody[T] = impl.body.exists(!_.isEmpty)
       val exampleBody = if (defHasBody) "{\n ...\n }" else ""
       em"""|There may not be any method, member or object in scope with the same name as
@@ -2432,7 +2432,7 @@ import transform.SymUtils._
     def explain =
       em"""|Extension method:
            |  `${mdef}`
-           |has type parameters `[${mdef.tparams.map(_.show).mkString(",")}]`, while the extension clause has
+           |has type parameters `[${mdef.leadingTypeParams.map(_.show).mkString(",")}]`, while the extension clause has
            |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
            |""".stripMargin
   }

@@ -780,7 +780,7 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss()(using Context): List[List[Tree]] =
+      def readParamss()(using Context): List[ParamClause] =
         def readRest() =
           if nextByte == SPLITCLAUSE then readByte()
           readParamss()
@@ -806,10 +806,10 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-        sym.setParamssFromDefs(tparams, vparamss)
+      def DefDef(paramss: List[ParamClause], tpt: Tree) =
+        sym.setParamssFromDefs(paramss)
         ta.assignType(
-          untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(using localCtx)),
+          untpd.DefDef(sym.name.asTermName, paramss, tpt, readRhs(using localCtx)),
           sym)
 
       def TypeDef(rhs: Tree) =
@@ -821,15 +821,13 @@ class TreeUnpickler(reader: TastyReader,
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
         case DEFDEF =>
-          val tparams = readParams[TypeDef](TYPEPARAM)(using localCtx)
-          val vparamss = readParamss()(using localCtx).asInstanceOf[List[List[ValDef]]]
+          val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
-          val typeParams = tparams.map(_.symbol)
-          val valueParamss = normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = methodType(typeParams, valueParamss, resType)
-          DefDef(tparams, vparamss, tpt)
+          val paramss = normalizeIfConstructor(
+              paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+          val resType = effectiveResultType(sym, paramss, tpt.tpe)
+          sym.info = methodType(paramss, resType)
+          DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe
@@ -875,7 +873,7 @@ class TreeUnpickler(reader: TastyReader,
           else {
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, Nil, tpt)
+            DefDef(Nil, tpt)
           }
       }
       goto(end)

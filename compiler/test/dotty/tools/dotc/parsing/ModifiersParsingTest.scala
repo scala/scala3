@@ -24,22 +24,22 @@ object ModifiersParsingTest {
   extension (code: Tree) {
     def firstConstrValDef: ValDef = code match {
       case d.TypeDef(_, d.Template(constr, _, _, _)) =>
-        constr.vparamss.head.head
+        constr.termParamss.head.head
     }
 
     def firstTypeParam: TypeDef = code match {
       case d.TypeDef(_, d.Template(constr, _, _, _)) =>
-        constr.tparams.head
+        constr.leadingTypeParams.head
     }
 
     def defParam(i: Int): ValDef = code match {
-      case d.DefDef(_, _, vparamss, _, _) =>
-        vparamss.head.toArray.apply(i)
+      case code @ d.DefDef(_, _, _, _) =>
+        code.termParamss.head.toArray.apply(i)
     }
 
     def defParam(i: Int, j: Int): ValDef = code match {
-      case d.DefDef(_, _, vparamss, _, _) =>
-        vparamss.toArray.apply(i).toArray.apply(j)
+      case code @ d.DefDef(_, _, _, _) =>
+        code.termParamss.toArray.apply(i).toArray.apply(j)
     }
 
     def funParam(i: Int): Tree = code match {

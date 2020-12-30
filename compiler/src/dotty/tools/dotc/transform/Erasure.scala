@@ -893,13 +893,15 @@ object Erasure {
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
-            ::: ddef.vparamss.flatten.filterConserve(!_.symbol.is(Flags.Erased))
+            ::: ddef.paramss.collect {
+              case untpd.ValDefs(vparams) => vparams
+            }.flatten.filterConserve(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
           else rhs match
             case closureDef(meth) =>
-              val contextParams = meth.vparamss.head
+              val contextParams = meth.termParamss.head
               for param <- contextParams do
                 param.symbol.copySymDenotation(owner = sym).installAfter(erasurePhase)
               vparams ++= contextParams
@@ -921,8 +923,7 @@ object Erasure {
           rhs1 = Block(paramDefs, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
-          tparams = Nil,
-          vparamss = vparams :: Nil,
+          paramss = vparams :: Nil,
           tpt = untpd.TypedSplice(TypeTree(restpe).withSpan(ddef.tpt.span)),
           rhs = rhs1)
         super.typedDefDef(ddef1, sym)

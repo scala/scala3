@@ -134,7 +134,7 @@ object JavaParsers {
 
     def makeConstructor(formals: List[Tree], tparams: List[TypeDef], flags: FlagSet = Flags.JavaDefined): DefDef = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p) }
-      DefDef(nme.CONSTRUCTOR, tparams, List(vparams), TypeTree(), EmptyTree).withMods(Modifiers(flags))
+      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), EmptyTree).withMods(Modifiers(flags))
     }
 
     // ------------- general parsing ---------------------------
@@ -509,8 +509,8 @@ object JavaParsers {
         optThrows()
         List {
           atSpan(start) {
-            DefDef(nme.CONSTRUCTOR, tparams,
-                List(vparams), TypeTree(), methodBody()).withMods(mods)
+            DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)),
+                   TypeTree(), methodBody()).withMods(mods)
           }
         }
       }
@@ -547,7 +547,7 @@ object JavaParsers {
           //if (inInterface) mods1 |= Flags.Deferred
           List {
             atSpan(start, nameOffset) {
-              DefDef(name.toTermName, tparams, List(vparams), rtpt, body).withMods(mods1 | Flags.Method)
+              DefDef(name.toTermName, joinParams(tparams, List(vparams)), rtpt, body).withMods(mods1 | Flags.Method)
             }
           }
         }
@@ -844,7 +844,7 @@ object JavaParsers {
           makeParam(dd.name, dd.tpt)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
-        List(), List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
+        List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
       val templ = makeTemplate(annotationParents, constr :: body, List(), true)
       val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.Abstract)
@@ -879,12 +879,12 @@ object JavaParsers {
           (List(), List())
       val predefs = List(
         DefDef(
-          nme.values, List(),
+          nme.values,
           ListOfNil,
           arrayOf(enumType),
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
-          nme.valueOf, List(),
+          nme.valueOf,
           List(List(makeParam("x".toTermName, TypeTree(StringType)))),
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))

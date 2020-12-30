@@ -14,22 +14,28 @@ object NamerOps:
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
    */
-  def effectiveResultType(sym: Symbol, typeParams: List[Symbol], givenTp: Type)(using Context): Type =
-    if (sym.name == nme.CONSTRUCTOR) sym.owner.typeRef.appliedTo(typeParams.map(_.typeRef))
+  def effectiveResultType(sym: Symbol, paramss: List[List[Symbol]], givenTp: Type)(using Context): Type =
+    if sym.name == nme.CONSTRUCTOR then
+      paramss match
+        case TypeSymbols(tparams) :: _ => sym.owner.typeRef.appliedTo(tparams.map(_.typeRef))
+        case _ => sym.owner.typeRef
     else givenTp
 
-  /** if isConstructor, make sure it has one non-implicit parameter list */
-  def normalizeIfConstructor(termParamss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
-    if (isConstructor &&
-      (termParamss.isEmpty || termParamss.head.nonEmpty && termParamss.head.head.isOneOf(GivenOrImplicit)))
-      Nil :: termParamss
-    else
-      termParamss
+  /** if isConstructor, make sure it has one leading non-implicit parameter list */
+  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =
+    if !isConstructor then paramss
+    else paramss match
+      case Nil :: _ => paramss
+      case TermSymbols(vparam :: _) :: _ if !vparam.isOneOf(GivenOrImplicit) => paramss
+      case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor)
+      case _ => Nil :: paramss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(typeParams: List[Symbol], valueParamss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
-    val monotpe =
-      valueParamss.foldRight(resultType) { (params, resultType) =>
+  def methodType(paramss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
+    def recur(paramss: List[List[Symbol]]): Type = (paramss: @unchecked) match
+      case Nil =>
+        resultType
+      case TermSymbols(params) :: paramss1 =>
         val (isContextual, isImplicit, isErased) =
           if params.isEmpty then (false, false, false)
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
@@ -37,11 +43,12 @@ object NamerOps:
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType
-        make.fromSymbols(params, resultType)
-      }
-    if typeParams.nonEmpty then PolyType.fromParams(typeParams.asInstanceOf[List[TypeSymbol]], monotpe)
-    else if valueParamss.isEmpty then ExprType(monotpe)
-    else monotpe
+        make.fromSymbols(params, recur(paramss1))
+      case TypeSymbols(tparams) :: paramss1 =>
+        PolyType.fromParams(tparams, recur(paramss1))
+
+    if paramss.isEmpty then ExprType(resultType) else recur(paramss)
+  end methodType
 
   /** Add moduleClass or sourceModule functionality to completer
    *  for a module or module class

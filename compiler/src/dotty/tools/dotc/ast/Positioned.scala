@@ -206,20 +206,15 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     this match {
       case tree: DefDef if tree.name == nme.CONSTRUCTOR && tree.mods.is(JavaDefined) =>
         // Special treatment for constructors coming from Java:
-        // Leave out tparams, they are copied with wrong positions from parent class
+        // Leave out leading type params, they are copied with wrong positions from parent class
         check(tree.mods)
-        check(tree.vparamss)
+        check(tree.trailingParamss)
       case tree: DefDef if tree.mods.is(ExtensionMethod) =>
-        tree.vparamss match {
+        tree.paramss match
           case vparams1 :: vparams2 :: rest if tree.name.isRightAssocOperatorName =>
-            check(tree.tparams)
-            check(vparams2)
-            check(vparams1)
-            check(rest)
+            // omit check for right-associatiove extension methods; their parameters were swapped
           case _ =>
-            check(tree.tparams)
-            check(tree.vparamss)
-        }
+            check(tree.paramss)
         check(tree.tpt)
         check(tree.rhs)
       case _ =>

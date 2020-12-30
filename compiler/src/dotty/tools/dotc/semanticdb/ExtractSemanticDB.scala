@@ -162,14 +162,13 @@ class ExtractSemanticDB extends Phase:
               traverse(tree.tpt)
           case tree: DefDef
           if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
-            tree.vparamss.foreach(_.foreach(traverse))
+            tree.trailingParamss.foreach(_.foreach(traverse))
             traverse(tree.rhs)
           case tree: (DefDef | ValDef)
           if tree.symbol.isSyntheticWithIdent =>
             tree match
               case tree: DefDef =>
-                tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
-                tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
+                tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
               case _ =>
             if !tree.symbol.isGlobal then
               localBodies(tree.symbol) = tree.rhs
@@ -185,7 +184,7 @@ class ExtractSemanticDB extends Phase:
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.vparamss, tree.body)
+            ctorParams(tree.constr.termParamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
@@ -498,7 +497,7 @@ class ExtractSemanticDB extends Phase:
 
     extension (tree: DefDef)
       private def isSetterDef(using Context): Boolean =
-        tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
+        tree.name.isSetterName && tree.mods.is(Accessor) && tree.termParamss.isSingleArg
 
     private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
