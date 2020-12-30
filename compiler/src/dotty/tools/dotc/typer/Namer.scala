@@ -766,23 +766,33 @@ class Namer { typer: Typer =>
      *  `denot` is a compiler generated case class method that clashes
      *  with a user-defined method in the same scope with a matching type.
      */
-    private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit = {
-      def isCaseClass(owner: Symbol) =
+    private def invalidateIfClashingSynthetic(denot: SymDenotation): Unit =
+
+      def isCaseClassOrCompanion(owner: Symbol) =
         owner.isClass && {
           if (owner.is(Module)) owner.linkedClass.is(CaseClass)
           else owner.is(CaseClass)
         }
-      val isClashingSynthetic =
-        denot.is(Synthetic) &&
-        desugar.isRetractableCaseClassMethodName(denot.name) &&
-        isCaseClass(denot.owner) &&
+
+      def definesMember =
         denot.owner.info.decls.lookupAll(denot.name).exists(alt =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
-      if (isClashingSynthetic) {
+
+      def inheritsConcreteMember =
+        denot.owner.asClass.classParents.exists(parent =>
+          parent.member(denot.name).hasAltWith(sd =>
+            !sd.symbol.is(Deferred) && sd.matches(denot)))
+
+      val isClashingSynthetic =
+        denot.is(Synthetic, butNot = ConstructorProxy)
+        && desugar.isRetractableCaseClassMethodName(denot.name)
+        && isCaseClassOrCompanion(denot.owner)
+        && (definesMember || inheritsConcreteMember)
+
+      if isClashingSynthetic then
         typr.println(i"invalidating clashing $denot in ${denot.owner}")
         denot.markAbsent()
-      }
-    }
+    end invalidateIfClashingSynthetic
 
     /** If completed symbol is an enum value or a named class, register it as a child
      *  in all direct parent classes which are sealed.
