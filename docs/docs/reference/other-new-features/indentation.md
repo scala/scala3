@@ -105,7 +105,7 @@ at the top-level, inside braces `{...}`, but not inside parentheses `(...)`, pat
 
 ### Optional Braces Around Template Bodies
 
-The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule
+The Scala grammar uses the term _template body_ for the definitions of a class, trait, or object that are normally enclosed in braces. The braces around a template body can also be omitted by means of the following rule.
 
 If at the point where a template body can start there is a `:` that occurs at the end
 of a line, and that is followed by at least one indented statement, the recognized
