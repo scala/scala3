@@ -107,11 +107,11 @@ Most aspects of old-style implicit resolution are still available under `-source
 These are additions to the language that make it more powerful or pleasant to use.
 
  - [Enums](enums/enums.md) provide concise syntax for enumerations and [algebraic data types](enums/adts.md).
- - [Parameter Untupling](other-new-features/parameter-untupling.md) avoids having to use `case` for tupled parameter destructuring.
- - [Dependent Function Types](new-types/dependent-function-types.md) generalize dependent methods to dependent function values and types.
- - [Polymorphic Function Types](new-types/polymorphic-function-types.md) generalize polymorphic methods to polymorphic function values and types. _Current status_: There is a proposal and a merged prototype implementation, but the implementation has not been finalized (it is notably missing type inference support).
- - [Kind Polymorphism](other-new-features/kind-polymorphism.md) allows the definition of operators working equally on types and type constructors.
- - [`@targetName` Annotations](other-new-features/targetName.md) make it easier to interoperate with code written in other languages and give more flexibility for avoiding name clashes.
+ - [Parameter untupling](other-new-features/parameter-untupling.md) avoids having to use `case` for tupled parameter destructuring.
+ - [Dependent function types](new-types/dependent-function-types.md) generalize dependent methods to dependent function values and types.
+ - [Polymorphic function types](new-types/polymorphic-function-types.md) generalize polymorphic methods to polymorphic function values and types. _Current status_: There is a proposal and a merged prototype implementation, but the implementation has not been finalized (it is notably missing type inference support).
+ - [Kind polymorphism](other-new-features/kind-polymorphism.md) allows the definition of operators working equally on types and type constructors.
+ - [`@targetName` annotations](other-new-features/targetName.md) make it easier to interoperate with code written in other languages and give more flexibility for avoiding name clashes.
 
 ## Metaprogramming
 
