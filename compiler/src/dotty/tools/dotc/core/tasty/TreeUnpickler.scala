@@ -139,7 +139,7 @@ class TreeUnpickler(reader: TastyReader,
     def skipParams(): Unit =
       while
         val tag = nextByte
-        tag == PARAM || tag == TYPEPARAM || tag == PARAMEND
+        tag == PARAM || tag == TYPEPARAM || tag == EMPTYCLAUSE || tag == SPLITCLAUSE
       do skipTree()
 
     /** Record all directly nested definitions and templates in current tree
@@ -780,12 +780,15 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss(using Context): List[List[ValDef]] = nextByte match
-        case PARAM | PARAMEND =>
-          readParams[ValDef](PARAM) ::
-            (if nextByte == PARAMEND then { readByte(); readParamss } else Nil)
-        case _ =>
-          Nil
+      def readParamss()(using Context): List[List[Tree]] =
+        def readRest() =
+          if nextByte == SPLITCLAUSE then readByte()
+          readParamss()
+        nextByte match
+          case PARAM => readParams[ValDef](PARAM) :: readRest()
+          case TYPEPARAM => readParams[TypeDef](TYPEPARAM) :: readRest()
+          case EMPTYCLAUSE => readByte(); Nil :: readRest()
+          case _ => Nil
 
       val localCtx = localContext(sym)
 
@@ -819,7 +822,7 @@ class TreeUnpickler(reader: TastyReader,
       val tree: MemberDef = tag match {
         case DEFDEF =>
           val tparams = readParams[TypeDef](TYPEPARAM)(using localCtx)
-          val vparamss = readParamss(using localCtx)
+          val vparamss = readParamss()(using localCtx).asInstanceOf[List[List[ValDef]]]
           val tpt = readTpt()(using localCtx)
           val typeParams = tparams.map(_.symbol)
           val valueParamss = normalizeIfConstructor(
