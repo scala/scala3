@@ -667,7 +667,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
-            .subst(dd.vparamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
+            .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
           treeMap = {
             case tree: This if tree.symbol == enclosingClass => selfParamRef
             case tree => tree
@@ -714,7 +714,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
-      val vparamss = dd.vparamss
+      val vparamss = dd.termParamss
       // the only method whose implementation is not emitted: getClass()
       if (dd.symbol eq defn.Any_getClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")

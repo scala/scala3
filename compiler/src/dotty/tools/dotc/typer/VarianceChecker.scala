@@ -208,10 +208,9 @@ class VarianceChecker(using Context) {
           }
         case tree: ValDef =>
           checkVariance(sym, tree.srcPos)
-        case DefDef(_, tparams, vparamss, _, _) =>
+        case DefDef(_, paramss, _, _) =>
           checkVariance(sym, tree.srcPos)
-          tparams foreach traverse
-          vparamss foreach (_ foreach traverse)
+          paramss.foreach(_.foreach(traverse))
         case _ =>
       }
       catch {

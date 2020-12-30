@@ -208,12 +208,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
-    sym.setParamss(tparams, vparamss)
+    sym.setParamss(tparams :: vparamss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
-        tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
-        vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span)),
+        joinParams(
+          tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
+          vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span))),
         TypeTree(resultType),
         rhs),
       sym)
@@ -283,7 +284,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val (vparamss, rtp) = valueParamss(mtp, existingParamss)
     val targs = tparams.map(tparam => ref(tparam.typeRef))
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
-    sym.setParamss(tparams, vparamss)
+    sym.setParamss(tparams :: vparamss)
     DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
   }
 
@@ -914,14 +915,16 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def appliedToVarargs(args: List[Tree], tpt: Tree)(using Context): Apply =
       appliedTo(repeated(args, tpt))
 
-    /** The current tree applied to given argument lists:
+    /** An apply or type apply node with given argument list */
+    def appliedToArgs(args: List[Tree])(using Context): GenericApply = args match
+      case arg :: args1 if arg.isType => TypeApply(tree, args)
+      case _ => Apply(tree, args)
+
+      /** The current tree applied to given argument lists:
      *  `tree (argss(0)) ... (argss(argss.length -1))`
      */
     def appliedToArgss(argss: List[List[Tree]])(using Context): Tree =
-      argss.foldLeft(tree: Tree) { (t, args) => args match
-        case arg :: args1 if arg.isType => TypeApply(tree, args)
-        case _ => Apply(t, args)
-      }
+      argss.foldLeft(tree: Tree)(_.appliedToArgs(_))
 
     /** The current tree applied to (): `tree()` */
     def appliedToNone(using Context): Apply = Apply(tree, Nil)

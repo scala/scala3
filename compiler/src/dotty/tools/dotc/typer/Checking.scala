@@ -1195,9 +1195,8 @@ trait Checking {
 
       if (stat.symbol.is(Case))
         stat match {
-          case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
-            tparams.foreach(check)
-            vparamss.foreach(_.foreach(check))
+          case TypeDef(_, Template(DefDef(_, paramss, _, _), parents, _, _)) =>
+            paramss.foreach(_.foreach(check))
             parents.foreach(check)
           case vdef: ValDef =>
             vdef.rhs match {
@@ -1212,7 +1211,7 @@ trait Checking {
         stat match {
           case TypeDef(_, impl: Template) =>
             for ((defaultGetter @
-                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
+                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _)) <- impl.body)
               check(defaultGetter.rhs)
           case _ =>
         }

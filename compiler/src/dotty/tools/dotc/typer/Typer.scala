@@ -1088,14 +1088,14 @@ class Typer extends Namer
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
       val params2 = params1.map(fixThis.transformSub)
-      val appDef0 = untpd.DefDef(nme.apply, Nil, List(params2), body, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, List(params2), body, EmptyTree).withSpan(tree.span)
       index(appDef0 :: Nil)
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
         report.error(i"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
-      val typeArgs = appDef.vparamss.head.map(_.tpt) :+ resTpt
+      val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
       val core = AppliedTypeTree(tycon, typeArgs)
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
@@ -2000,34 +2000,36 @@ class Typer extends Namer
       sym.owner.info.decls.openForMutations.unlink(sym)
       return EmptyTree
     }
-    val DefDef(name, tparams, vparamss, tpt, _) = ddef
+    val DefDef(name, paramss, tpt, _) = ddef
     completeAnnotations(ddef, sym)
-    val tparams1 = tparams.mapconserve(typed(_).asInstanceOf[TypeDef])
-    val vparamss1 = vparamss.nestedMapConserve(typed(_).asInstanceOf[ValDef])
-    vparamss1.foreach(checkNoForwardDependencies)
+    val paramss1 = paramss.nestedMapConserve(typed(_)).asInstanceOf[List[ParamClause]]
+    for case ValDefs(vparams) <- paramss1 do
+      checkNoForwardDependencies(vparams)
     if (sym.isOneOf(GivenOrImplicit)) checkImplicitConversionDefOK(sym)
     val tpt1 = checkSimpleKinded(typedType(tpt))
 
     val rhsCtx = ctx.fresh
-    if (tparams1.nonEmpty) {
+    val tparamss = paramss1.collect {
+      case untpd.TypeDefs(tparams) => tparams
+    }
+    if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
-      if (!sym.isConstructor)
+      val tparamSyms = tparamss.flatten.map(_.symbol)
+      if !sym.isConstructor then
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters
         // constructors are an exception as we don't allow constraining type params of classes
-        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-      else if (!sym.isPrimaryConstructor) {
+        rhsCtx.gadt.addToConstraint(tparamSyms)
+      else if !sym.isPrimaryConstructor then
         // otherwise, for secondary constructors we need a context that "knows"
         // that their type parameters are aliases of the class type parameters.
         // See pos/i941.scala
-        rhsCtx.gadt.addToConstraint(tparams1.map(_.symbol))
-        tparams1.lazyZip(sym.owner.typeParams).foreach { (tdef, tparam) =>
+        rhsCtx.gadt.addToConstraint(tparamSyms)
+        tparamSyms.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
           val tr = tparam.typeRef
-          rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = false)
-          rhsCtx.gadt.addBound(tdef.symbol, tr, isUpper = true)
+          rhsCtx.gadt.addBound(psym, tr, isUpper = false)
+          rhsCtx.gadt.addBound(psym, tr, isUpper = true)
         }
-      }
-    }
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
@@ -2045,7 +2047,7 @@ class Typer extends Namer
       if (sym.targetName != sym.name)
         report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
 
-      for (param <- tparams1 ::: vparamss1.flatten)
+      for params <- paramss1; param <- params do
         checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
       def checkThisConstrCall(tree: Tree): Unit = tree match {
@@ -2065,7 +2067,7 @@ class Typer extends Namer
           annot.tree.sourcePos
         )
 
-    val ddef2 = assignType(cpy.DefDef(ddef)(name, tparams1, vparamss1, tpt1, rhs1), sym)
+    val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
     checkSignatureRepeatedParam(sym)
     ddef2.setDefTree
@@ -2385,7 +2387,7 @@ class Typer extends Namer
     nestedCtx.typerState.commit()
     if sourceVersion.isAtLeast(`3.1`) then
       lazy val (prefix, suffix) = res match {
-        case Block(mdef @ DefDef(_, _, vparams :: Nil, _, _) :: Nil, _: Closure) =>
+        case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
           if (arity > 0) ("", "") else ("(() => ", "())")
         case _ =>

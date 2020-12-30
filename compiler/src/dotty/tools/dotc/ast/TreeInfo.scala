@@ -22,7 +22,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def unsplice(tree: Trees.Tree[T]): Trees.Tree[T] = tree
 
   def isDeclarationOrTypeDef(tree: Tree): Boolean = unsplice(tree) match {
-    case DefDef(_, _, _, _, EmptyTree)
+    case DefDef(_, _, _, EmptyTree)
       | ValDef(_, _, EmptyTree)
       | TypeDef(_, _) => true
     case _ => false
@@ -171,12 +171,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case nil => EmptyTree
   }
 
-  /** The arguments to the first constructor in `stats`. */
-  def firstConstructorArgs(stats: List[Tree]): List[Tree] = firstConstructor(stats) match {
-    case DefDef(_, _, args :: _, _, _) => args
-    case _                                => Nil
-  }
-
   /** Is tpt a vararg type of the form T* or => T*? */
   def isRepeatedParamType(tpt: Tree)(using Context): Boolean = tpt match {
     case ByNameTypeTree(tpt1) => isRepeatedParamType(tpt1)
@@ -198,7 +192,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
 
   /** All type and value parameter symbols of this DefDef */
   def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
-    (ddef.tparams ::: ddef.vparamss.flatten).map(_.symbol)
+    ddef.paramss.flatten.map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> : _* ? */
   def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
@@ -246,12 +240,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
   def isGuardedCase(cdef: CaseDef): Boolean = cdef.guard ne EmptyTree
 
   /** Is this parameter list a using clause? */
-  def isUsingClause(vparams: List[ValDef])(using Context): Boolean = vparams match
-    case vparam :: _ =>
+  def isUsingClause(params: ParamClause)(using Context): Boolean = params match
+    case ValDefs(vparam :: _) =>
       val sym = vparam.symbol
       if sym.exists then sym.is(Given) else vparam.mods.is(Given)
     case _ =>
       false
+
+  def isUsingOrTypeParamClause(params: ParamClause)(using Context): Boolean = params match
+    case TypeDefs(_) => true
+    case _ => isUsingClause(params)
 
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
@@ -313,11 +311,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
-    case Block(DefDef(nme.ANON_FUN, _, params :: _, _, _) :: Nil, cl: Closure) =>
-      params match {
-        case param :: _ => param.mods.is(Given)
-        case Nil => cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
-      }
+    case Block(DefDef(nme.ANON_FUN, params :: _, _, _) :: Nil, cl: Closure) =>
+      if params.isEmpty then
+        cl.tpt.eq(untpd.ContextualEmptyTree) || defn.isContextFunctionType(cl.tpt.typeOpt)
+      else
+        isUsingClause(params)
     case _ => false
   }
 
@@ -328,11 +326,17 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case EmptyTree | _: Import => NoInitsInterface
     case tree: TypeDef => if (tree.isClassDef) NoInits else NoInitsInterface
     case tree: DefDef =>
-      if (tree.unforcedRhs == EmptyTree &&
-          tree.vparamss.forall(_.forall(_.rhs.isEmpty))) NoInitsInterface
-      else if (tree.mods.is(Given) && tree.tparams.isEmpty && tree.vparamss.isEmpty)
+      if tree.unforcedRhs == EmptyTree
+         && tree.paramss.forall {
+              case ValDefs(vparams) => vparams.forall(_.rhs.isEmpty)
+              case _ => true
+            }
+      then
+        NoInitsInterface
+      else if tree.mods.is(Given) && tree.paramss.isEmpty then
         EmptyFlags // might become a lazy val: TODO: check whether we need to suppress NoInits once we have new lazy val impl
-      else NoInits
+      else
+        NoInits
     case tree: ValDef => if (tree.unforcedRhs == EmptyTree) NoInitsInterface else EmptyFlags
     case _ => EmptyFlags
   }
@@ -354,8 +358,6 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
       case _ => None
     }
   }
-
-  // todo: fill with other methods from TreeInfo that only apply to untpd.Tree's
 }
 
 trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
@@ -371,7 +373,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case EmptyTree
        | TypeDef(_, _)
        | Import(_, _)
-       | DefDef(_, _, _, _, _) =>
+       | DefDef(_, _, _, _) =>
       Pure
     case vdef @ ValDef(_, _, _) =>
       if (vdef.symbol.flags is Mutable) Impure else exprPurity(vdef.rhs) `min` Pure

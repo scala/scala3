@@ -94,10 +94,9 @@ class TreeMapWithImplicits extends tpd.TreeMap {
         inContext(localCtx) {
           cpy.DefDef(tree)(
             tree.name,
-            transformSub(tree.tparams),
-            tree.vparamss mapConserve (transformSub(_)),
+            transformParamss(tree.paramss),
             transform(tree.tpt),
-            transform(tree.rhs)(using nestedScopeCtx(tree.vparamss.flatten)))
+            transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
         }
       case EmptyValDef =>
         tree

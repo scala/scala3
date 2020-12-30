@@ -140,7 +140,7 @@ class TailRec extends MiniPhase {
       // than first one will collect info about which transformations and rewritings should be applied
       // and second one will actually apply,
       // now this speculatively transforms tree and throws away result in many cases
-      val transformer = new TailRecElimination(method, enclosingClass, tree.vparamss.head.map(_.symbol), mandatory)
+      val transformer = new TailRecElimination(method, enclosingClass, tree.termParamss.head.map(_.symbol), mandatory)
       val rhsSemiTransformed = transformer.transform(tree.rhs)
 
       if (transformer.rewrote) {

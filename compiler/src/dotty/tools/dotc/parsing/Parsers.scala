@@ -1298,7 +1298,7 @@ object Parsers {
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
-        case ExtMethods(_, _, _) =>
+        case ExtMethods(_, _) =>
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
@@ -3306,7 +3306,7 @@ object Parsers {
             accept(EQUALS)
             expr()
 
-        val ddef = DefDef(name, tparams, vparamss, tpt, rhs)
+        val ddef = DefDef(name, joinParams(tparams, vparamss), tpt, rhs)
         if (isBackquoted(ident)) ddef.pushAttachment(Backquoted, ())
         finalizeDef(ddef, mods1, start)
       }
@@ -3506,9 +3506,9 @@ object Parsers {
           syntaxError(i"no extension method allowed here since leading parameter was already given", stat.span)
         else if !stat.mods.is(ExtensionMethod) && vparamss.isEmpty then
           syntaxError(i"an extension method is required here", stat.span)
-        else if tparams.nonEmpty && stat.tparams.nonEmpty then
+        else if tparams.nonEmpty && stat.leadingTypeParams.nonEmpty then
           syntaxError(i"extension method cannot have type parameters since some were already given previously",
-            stat.tparams.head.span)
+            stat.leadingTypeParams.head.span)
         else if stat.rhs.isEmpty then
           syntaxError(i"extension method cannot be abstract", stat.span)
       case EmptyTree =>
@@ -3543,11 +3543,11 @@ object Parsers {
             mods1 |= Lazy
             ValDef(name, parents.head, subExpr())
           else
-            DefDef(name, tparams, vparamss, parents.head, subExpr())
+            DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
         else if in.token != WITH && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
-          DefDef(name, tparams, vparamss, parents.head, EmptyTree)
+          DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
         else
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
@@ -3585,7 +3585,7 @@ object Parsers {
           newLineOptWhenFollowedBy(LBRACE)
           if in.isNestedStart then inDefScopeBraces(extMethods())
           else { syntaxError("Extension without extension methods"); Nil }
-      val result = atSpan(start)(ExtMethods(tparams, leadParamss.toList, methods))
+      val result = atSpan(start)(ExtMethods(joinParams(tparams, leadParamss.toList), methods))
       val comment = in.getDocComment(start)
       if comment.isDefined then
         for meth <- methods do
@@ -3841,7 +3841,7 @@ object Parsers {
         val problem = tree match
           case tree: MemberDef if !(tree.mods.flags & ModifierFlags).isEmpty =>
             i"refinement cannot be ${(tree.mods.flags & ModifierFlags).flagStrings().mkString("`", "`, `", "`")}"
-          case tree: DefDef if tree.vparamss.nestedExists(!_.rhs.isEmpty) =>
+          case tree: DefDef if tree.termParamss.nestedExists(!_.rhs.isEmpty) =>
             i"refinement cannot have default arguments"
           case tree: ValOrDefDef =>
             if tree.rhs.isEmpty then ""

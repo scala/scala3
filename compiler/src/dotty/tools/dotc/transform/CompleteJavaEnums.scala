@@ -89,8 +89,10 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     val sym = tree.symbol
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
-        vparamss = tree.vparamss.init :+ (tree.vparamss.last ++ addedParams(sym, isLocal=false, Param)))
-      sym.setParamssFromDefs(tree1.tparams, tree1.vparamss)
+        paramss = tree.paramss.init
+          :+ (tree.paramss.last.asInstanceOf[List[ValDef]]
+              ++ addedParams(sym, isLocal=false, Param)))
+      sym.setParamssFromDefs(tree1.paramss)
       tree1
     else tree
   }

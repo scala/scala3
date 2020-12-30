@@ -111,7 +111,7 @@ class ExpandSAMs extends MiniPhase:
       }
     }
 
-    val closureDef(anon @ DefDef(_, _, List(List(param)), _, _)) = tree
+    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree
     anon.rhs match {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
