@@ -12,4 +12,4 @@ Additionally, the contents of code can be inspected and created with a more comp
 
 * `inline` has been [implemented](../metaprogramming/inline.md) in Scala 3.
 * Quotes `'{ ... }` and splices `${ ... }` has been [implemented](../metaprogramming/macros.md) in Scala 3.
-  * [TASTy reflect](../metaprogramming/tasty-reflect.md) provides more complex tree based APIs to inspect or create quoted code.
+* [TASTy reflect](../metaprogramming/tasty-reflect.md) provides more complex tree based APIs to inspect or create quoted code.

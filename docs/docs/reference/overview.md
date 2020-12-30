@@ -36,7 +36,7 @@ These constructs replace existing constructs with the aim of making the language
  - [Given instances](contextual/givens.md)
    replace implicit objects and defs, focussing on intent over mechanism.
  - [Using clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
- - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
+ - [Extension methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
  - [Opaque type aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
  - [Top-level definitions](dropped-features/package-objects.md) replace package objects, dropping syntactic boilerplate.

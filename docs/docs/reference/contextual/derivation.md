@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Type Class Derivation
+title: "Type Class Derivation"
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple
@@ -353,7 +353,7 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
 ```
 
-Note: To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
+Note: To align `extends`{.scala} clauses and `derives`{.scala} clauses, Scala 3 also allows multiple
 extended types to be separated by commas. So the following is now legal:
 
 ```scala

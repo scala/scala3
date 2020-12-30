@@ -35,6 +35,7 @@ The precise steps for synthesizing an argument for a by-name context parameter o
     ```scala
     given lv: T = ???
     ```
+
     where `lv` is an arbitrary fresh name.
 
  1. This given is not immediately available as candidate for argument inference (making it immediately available could result in a loop in the synthesized computation). But it becomes available in all nested contexts that look again for an argument to a by-name context parameter.
@@ -51,7 +52,7 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = summon[Test.Codec[Option[Int]]](
-  optionCodec[Int](using intCodec)
+   optionCodec[Int](using intCodec)
 )
 ```
 
@@ -59,5 +60,5 @@ No local given instance was generated because the synthesized argument is not re
 
 ### Reference
 
-For more info, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
+For more information, see [Issue #1998](https://github.com/lampepfl/dotty/issues/1998)
 and the associated [Scala SIP](https://docs.scala-lang.org/sips/byname-implicits.html).

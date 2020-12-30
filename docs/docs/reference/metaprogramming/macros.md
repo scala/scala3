@@ -158,9 +158,11 @@ is legal because it is spliced, then quoted.
 They can be used as follows:
 
 ```scala
-val f1: Expr[Int => String] = to((x: Expr[Int]) => '{ $x.toString }) // '{ (x: Int) => x.toString }
+val f1: Expr[Int => String] =
+   to((x: Expr[Int]) => '{ $x.toString }) // '{ (x: Int) => x.toString }
 
-val f2: Expr[Int] => Expr[String] = from('{ (x: Int) => x.toString }) // (x: Expr[Int]) => '{ ((x: Int) => x.toString)($x) }
+val f2: Expr[Int] => Expr[String] =
+   from('{ (x: Int) => x.toString }) // (x: Expr[Int]) => '{ ((x: Int) => x.toString)($x) }
 f2('{2}) // '{ ((x: Int) => x.toString)(2) }
 ```
 

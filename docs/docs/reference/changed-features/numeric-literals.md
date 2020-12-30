@@ -1,14 +1,16 @@
 ---
 layout: doc-page
-title: Numeric Literals
+title: "Numeric Literals"
 ---
 
 **Note**: This feature is not yet part of the Scala 3 language definition. It can be made available by a language import:
+
 ```scala
 import scala.language.experimental.genericNumberLiterals
 ```
 
-In Scala 2, numeric literals were confined to the primitive numeric types `Int`, `Long`, `Float`, and `Double`. Scala 3 allows to write numeric literals also for user defined types. Example:
+In Scala 2, numeric literals were confined to the primitive numeric types `Int`, `Long`, `Float`, and `Double`. Scala 3 allows to write numeric literals also for user-defined types. Example:
+
 ```scala
 val x: Long = -10_000_000_000
 val y: BigInt = 0x123_abc_789_def_345_678_901
@@ -17,6 +19,7 @@ val z: BigDecimal = 110_222_799_799.99
 (y: BigInt) match
    case 123_456_789_012_345_678_901 =>
 ```
+
 The syntax of numeric literals is the same as before, except there are no pre-set limits
 how large they can be.
 
@@ -63,7 +66,7 @@ gives a type error, since without an expected type `-10_000_000_000` is treated 
 
 ### The FromDigits Trait
 
-To allow numeric literals, a type simply has to define a `given` instance of the
+To allow numeric literals, a type simply has to define a `given`{.scala} instance of the
 `scala.util.FromDigits` type class, or one of its subclasses. `FromDigits` is defined
 as follows:
 

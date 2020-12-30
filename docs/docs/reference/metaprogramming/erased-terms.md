@@ -65,8 +65,8 @@ def methodWithErasedInt2(erased i: Int): Int =
    methodWithErasedInt1(i) // OK
 ```
 
-Not only parameters can be marked as erased, `val` and `def` can also be marked
-with `erased`. These will also only be usable as arguments to `erased`
+Not only parameters can be marked as erased, `val`{.scala} and `def`{.scala} can also be marked
+with `erased`{.scala}. These will also only be usable as arguments to `erased`{.scala}
 parameters.
 
 ```scala
@@ -153,7 +153,7 @@ object Machine:
 ```
 
 Note that in [Inline](./inline.md) we discussed `erasedValue` and inline
-matches. `erasedValue` is implemented with `erased`, so the state machine above
+matches. `erasedValue` is implemented with `erased`{.scala}, so the state machine above
 can be encoded as follows:
 
 ```scala

@@ -3,7 +3,7 @@ layout: doc-page
 title: "Dependent Function Types - More Details"
 ---
 
-Initial implementation in [#3464](https://github.com/lampepfl/dotty/pull/3464)
+Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464).
 
 ## Syntax
 
@@ -37,8 +37,8 @@ one of regular functions. Eta expansion is naturally generalized to produce
 dependent function types for methods with dependent result types.
 
 Dependent functions can be implicit, and generalize to arity `N > 22` in the
-same way that other functions do, see [the corresponding
-documentation](../dropped-features/limit22.md).
+same way that other functions do, see
+[the corresponding documentation](../dropped-features/limit22.md).
 
 ## Examples
 

@@ -5,13 +5,14 @@ title: "Rules for Operators"
 
 The rules for infix operators have changed in some parts:
 
-First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier. Second, it is recommended (but not enforced) to
-augment definitions of symbolic operators with `@targetName` annotations. Finally,
+First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix`{.scala} modifier. Second, it is recommended (but not enforced) to
+augment definitions of symbolic operators with `@targetName`{.scala} annotations. Finally,
 a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The `infix` Modifier
 
-An `infix` modifier on a method definition allows using the method as an infix operation. Example:
+An `infix`{.scala} modifier on a method definition allows using the method as an infix operation. Example:
+
 ```scala
 import scala.annotation.targetName
 
@@ -40,6 +41,7 @@ s1 * s2             // OK
 s1 `*` s2           // also OK, but unusual
 s1.*(s2)            // also OK, but unusual
 ```
+
 Infix operations involving alphanumeric operators are deprecated, unless
 one of the following conditions holds:
 
@@ -52,8 +54,9 @@ any Unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` re
 
 Infix operations involving symbolic operators are always allowed, so `infix` is redundant for methods with symbolic names.
 
-The `infix` modifier can also be given to a type:
-```
+The `infix`{.scala} modifier can also be given to a type:
+
+```scala
 infix type or[X, Y]
 val x: String or Int = ...
 ```
@@ -107,6 +110,7 @@ It is recommended that definitions of symbolic operators carry a [`@targetName` 
 ## Syntax Change
 
 Infix operators can now appear at the start of lines in a multi-line expression. Examples:
+
 ```scala
 val str = "hello"
    ++ " world"
@@ -117,6 +121,7 @@ def condition =
    || xs.exists(_ > 0)
    || xs.isEmpty
 ```
+
 Previously, those expressions would have been rejected, since the compiler's semicolon inference
 would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separate statements.
 
@@ -133,19 +138,24 @@ Example:
     freezing
   | boiling
 ```
+
 This is recognized as a single infix operation. Compare with:
+
 ```scala
     freezing
   !boiling
 ```
+
 This is seen as two statements, `freezing` and `!boiling`. The difference is that only the operator in the first example
 is followed by a space.
 
 Another example:
+
 ```scala
   println("hello")
   ???
   ??? match { case 0 => 1 }
 ```
+
 This code is recognized as three different statements. `???` is syntactically a symbolic identifier, but
 neither of its occurrences is followed by a space and a token that can start an expression.

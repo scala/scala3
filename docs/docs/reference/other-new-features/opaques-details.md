@@ -9,6 +9,7 @@ title: "Opaque Type Aliases: More Details"
 Modifier          ::=  ...
                     |  ‘opaque’
 ```
+
 `opaque` is a [soft modifier](../soft-modifier.md). It can still be used as a normal identifier when it is not in front of a definition keyword.
 
 Opaque type aliases must be members of classes, traits, or objects, or they are defined
@@ -17,9 +18,11 @@ at the top-level. They cannot be defined in local blocks.
 ### Type Checking
 
 The general form of a (monomorphic) opaque type alias is
+
 ```scala
 opaque type T >: L <: U = R
 ```
+
 where the lower bound `L` and the upper bound `U` may be missing, in which case they are assumed to be `scala.Nothing` and `scala.Any`, respectively. If bounds are given, it is checked that the right hand side `R` conforms to them, i.e. `L <: R` and `R <: U`. F-bounds are not supported for opaque type aliases: `T` is not allowed to appear in `L` or `U`.
 
 Inside the scope of the alias definition, the alias is transparent: `T` is treated
@@ -28,15 +31,18 @@ as a normal alias of `R`. Outside its scope, the alias is treated as the abstrac
 type T >: L <: U
 ```
 A special case arises if the opaque type alias is defined in an object. Example:
-```
+
+```scala
 object o:
    opaque type T = R
 ```
+
 In this case we have inside the object (also for non-opaque types) that `o.T` is equal to
 `T` or its expanded form `o.this.T`. Equality is understood here as mutual subtyping, i.e.
 `o.T <: o.this.T` and `o.this.T <: T`. Furthermore, we have by the rules of opaque type aliases
 that `o.this.T` equals `R`. The two equalities compose. That is, inside `o`, it is
 also known that `o.T` is equal to `R`. This means the following code type-checks:
+
 ```scala
 object o:
    opaque type T = Int

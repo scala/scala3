@@ -19,7 +19,7 @@ parameterized with a value parameter `x`. It is a shorthand for writing a
 case class that extends `Option`. Since `None` is not parameterized, it
 is treated as a normal enum value.
 
-The `extends` clauses that were omitted in the example above can also
+The `extends`{.scala} clauses that were omitted in the example above can also
 be given explicitly:
 
 ```scala
@@ -30,12 +30,12 @@ enum Option[+T]:
 
 Note that the parent type of the `None` value is inferred as
 `Option[Nothing]`. Generally, all covariant type parameters of the enum
-class are minimized in a compiler-generated `extends` clause whereas all
+class are minimized in a compiler-generated `extends`{.scala} clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
 you would need to give the extends clause of `None` explicitly.
 
-As for normal enum values, the cases of an `enum` are all defined in
-the `enum`s companion object. So it's `Option.Some` and `Option.None`
+As for normal enum values, the cases of an `enum`{.scala} are all defined in
+the `enum`{.scala}s companion object. So it's `Option.Some` and `Option.None`
 unless the definitions are "pulled out" with an import:
 
 ```scala
@@ -98,12 +98,15 @@ below:
 
 The following `View` enum has a contravariant type parameter `T` and a single case `Refl`, representing a function
 mapping a type `T` to itself:
+
 ```scala
 enum View[-T]:
    case Refl(f: T => T)
 ```
+
 The definition of `Refl` is incorrect, as it uses contravariant type `T` in the covariant result position of a
 function type, leading to the following error:
+
 ```scala
 -- Error: View.scala:2:12 --------
 2 |   case Refl(f: T => T)
@@ -111,7 +114,9 @@ function type, leading to the following error:
   |contravariant type T occurs in covariant position in type T => T of value f
   |enum case Refl requires explicit declaration of type T to resolve this issue.
 ```
+
 Because `Refl` does not declare explicit parameters, it looks to the compiler like the following:
+
 ```scala
 enum View[-T]:
    case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
@@ -126,6 +131,7 @@ enum View[-T]:
 -   case Refl(f: T => T)
 +   case Refl[R](f: R => R) extends View[R]
 ```
+
 Above, type `R` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
 type `T` in `View`, but any name will do.
 
@@ -163,4 +169,4 @@ The changes are specified below as deltas with respect to the Scala syntax given
 
 ### Reference
 
-For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).
+For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970).

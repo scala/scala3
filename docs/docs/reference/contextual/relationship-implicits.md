@@ -143,7 +143,7 @@ Implicit by-name parameters are not supported in Scala 2, but can be emulated to
 
 ### Implicit Conversions
 
-Implicit conversion methods in Scala 2 can be expressed as given instances of the `scala.Conversion` class in Scala 3. E.g. instead of
+Implicit conversion methods in Scala 2 can be expressed as given instances of the `scala.Conversion` class in Scala 3. For instance, instead of
 
 ```scala
 implicit def stringToToken(str: String): Token = new Keyword(str)
@@ -169,7 +169,7 @@ Implicit classes in Scala 2 are often used to define extension methods, which ar
 ### Implicit Values
 
 Implicit `val` definitions in Scala 2 can be expressed in Scala 3 using a regular `val` definition and an alias given.
-E.g., Scala 2's
+For instance, Scala 2's
 
 ```scala
 lazy implicit val pos: Position = tree.sourcePos
@@ -184,7 +184,7 @@ given Position = pos
 
 ### Abstract Implicits
 
-An abstract implicit `val` or `def` in Scala 2 can be expressed in Scala 3 using a regular abstract definition and an alias given. E.g., Scala 2's
+An abstract implicit `val` or `def` in Scala 2 can be expressed in Scala 3 using a regular abstract definition and an alias given. For instance, Scala 2's
 
 ```scala
 implicit def symDecorator: SymDecorator
@@ -199,7 +199,7 @@ given SymDecorator = symDecorator
 
 ## Implementation Status and Timeline
 
-The Scala 3 implementation implements both Scala 2's implicits and the new abstractions. In fact, support for Scala 2's implicits is an essential part of the common language subset between 2.13/2.14 and Scala 3.
+The Scala 3 implementation implements both Scala 2's implicits and the new abstractions. In fact, support for Scala 2's implicits is an essential part of the common language subset between 2.13 and Scala 3.
 Migration to the new abstractions will be supported by making automatic rewritings available.
 
 Depending on adoption patterns, old style implicits might start to be deprecated in a version following Scala 3.0.
