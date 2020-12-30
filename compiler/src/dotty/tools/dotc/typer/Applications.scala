@@ -1076,7 +1076,7 @@ trait Applications extends Compatibility {
           case _ =>
         }
         def tryDynamicTypeApply(): Tree = typedFn match {
-          case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, typedArgs, pt)
+          case typedFn: Select if !pt.isInstanceOf[FunProto] => typedDynamicSelect(typedFn, tree.args, pt)
           case _                                             => tree.withType(TryDynamicCallType)
         }
         if (typedFn.tpe eq TryDynamicCallType) tryDynamicTypeApply()
