@@ -76,9 +76,9 @@ object Implicits:
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
     case selProto @ SelectionProto(selName: TermName, _, _, _) =>
-         tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
-      || tp.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists
-    case _ => false
+      tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
+    case _ =>
+      false
 
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
@@ -513,9 +513,19 @@ object Implicits:
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
-  class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
+  /** A search failure type for attempted ill-typed extension method calls */
+  class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
+
+   /** A search failure type for aborted searches of extension methods, typically
+    *  because of a cyclic reference or similar.
+    */
+  class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType:
+    def argument = EmptyTree
+    override def msg(using Context) = _msg
+    def explanation(using Context) = msg.toString
+
 end Implicits
 
 import Implicits._
@@ -1013,12 +1023,7 @@ trait Implicits:
           pt match
             case selProto @ SelectionProto(selName: TermName, mbrType, _, _) if cand.isExtension =>
               def tryExtension(using Context) =
-                val xname =
-                  if ref.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists then
-                    selProto.extensionName
-                  else
-                    selName
-                extMethodApply(untpd.Select(untpdGenerated, xname), argument, mbrType)
+                extMethodApply(untpd.Select(untpdGenerated, selName), argument, mbrType)
               if cand.isConversion then
                 val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
                 val extensionResult = tryExtension(using extensionCtx)

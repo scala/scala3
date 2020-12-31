@@ -56,6 +56,10 @@ object Decorators {
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
       case _ => termName(s.concat(name.toString))
+
+    def indented(width: Int): String =
+      val padding = " " * width
+      padding + s.replace("\n", "\n" + padding)
   end extension
 
   /** Implements a findSymbol method on iterators of Symbols that

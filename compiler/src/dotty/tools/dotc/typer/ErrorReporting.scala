@@ -13,6 +13,7 @@ import util.SrcPos
 import config.Feature
 import java.util.regex.Matcher.quoteReplacement
 import reporting._
+import collection.mutable
 
 import scala.util.matching.Regex
 
@@ -133,26 +134,47 @@ object ErrorReporting {
       if Feature.migrateTo3 then "\nThis patch can be inserted automatically under -rewrite."
       else ""
 
+    def whyFailedStr(fail: FailedExtension) =
+      i"""    failed with
+         |
+         |${fail.whyFailed.message.indented(8)}"""
+
     def selectErrorAddendum
       (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
       (using Context): String =
-      val attempts: List[Tree] = qual1.getAttachment(Typer.HiddenSearchFailure) match
-        case Some(failures) =>
-          for failure <- failures
-              if !failure.reason.isInstanceOf[Implicits.NoMatchingImplicits]
-          yield failure.tree
-        case _ => Nil
+
+      val attempts = mutable.ListBuffer[(Tree, String)]()
+      val nested = mutable.ListBuffer[NestedFailure]()
+      for
+        failures <- qual1.getAttachment(Typer.HiddenSearchFailure)
+        failure <- failures
+      do
+        failure.reason match
+          case fail: NestedFailure => nested += fail
+          case fail: FailedExtension => attempts += ((failure.tree, whyFailedStr(fail)))
+          case fail: Implicits.NoMatchingImplicits => // do nothing
+          case _ => attempts += ((failure.tree, ""))
       if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
-        val attemptStrings = attempts.map(_.showIndented(4)).distinct
+        val attemptStrings =
+          attempts.toList
+            .map((tree, whyFailed) => (tree.showIndented(4), whyFailed))
+            .distinctBy(_._1)
+            .map((treeStr, whyFailed) =>
+              i"""
+                 |    $treeStr$whyFailed""")
         val extMethods =
           if attemptStrings.length > 1 then "Extension methods were"
           else "An extension method was"
         i""".
            |$extMethods tried, but could not be fully constructed:
+           |$attemptStrings%\n%"""
+      else if nested.nonEmpty then
+        i""".
+           |Extension methods were tried, but the search failed with:
            |
-           |    $attemptStrings%\nor\n    %"""
+           |    ${nested.head.explanation}"""
       else if tree.hasAttachment(desugar.MultiLineInfix) then
         i""".
            |Note that `${tree.name}` is treated as an infix operator in Scala 3.

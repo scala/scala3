@@ -3348,11 +3348,8 @@ class Typer extends Namer
     // implicit conversion to the receiver type.
     def sharpenedPt = pt match
       case pt: SelectionProto
-      if pt.name.isExtensionName
-         || pt.memberProto.revealIgnored.isExtensionApplyProto =>
-        pt.deepenProto
-      case _ =>
-        pt
+      if pt.memberProto.revealIgnored.isExtensionApplyProto => pt.deepenProto
+      case _ => pt
 
     def adaptNoArgs(wtp: Type): Tree = {
       val ptNorm = underlyingApplied(pt)
@@ -3499,24 +3496,27 @@ class Typer extends Namer
       // try an extension method in scope
       pt match {
         case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+
           def tryExtension(using Context): Tree =
-            try
-              findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
-                case ref: TermRef =>
-                  extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                case _ => findRef(selProto.extensionName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
-                  case ref: TermRef =>
-                    extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-                  case _ => EmptyTree
-            catch case ex: TypeError => errorTree(tree, ex, tree.srcPos)
-          val nestedCtx = ctx.fresh.setNewTyperState()
-          val app = tryExtension(using nestedCtx)
-          if (!app.isEmpty && !nestedCtx.reporter.hasErrors) {
-            nestedCtx.typerState.commit()
-            return ExtMethodApply(app)
-          }
-          else if !app.isEmpty then
-            rememberSearchFailure(tree, SearchFailure(app.withType(FailedExtension(app, pt))))
+            findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
+              case ref: TermRef =>
+                extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
+              case _ =>
+                EmptyTree
+
+          try
+            val nestedCtx = ctx.fresh.setNewTyperState()
+            val app = tryExtension(using nestedCtx)
+            if !app.isEmpty && !nestedCtx.reporter.hasErrors then
+              nestedCtx.typerState.commit()
+              return ExtMethodApply(app)
+            else
+              for err <- nestedCtx.reporter.allErrors.take(1) do
+                rememberSearchFailure(tree,
+                  SearchFailure(app.withType(FailedExtension(app, pt, err.msg))))
+          catch case ex: TypeError =>
+            rememberSearchFailure(tree,
+              SearchFailure(tree.withType(NestedFailure(ex.toMessage, pt))))
         case _ =>
       }
 
