@@ -148,7 +148,8 @@ trait FullParameterization {
    *  of class that contained original defDef
    */
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(using Context): Tree =
-    polyDefDef(derived, trefs => vrefss => {
+    DefDef(derived, prefss => {
+      val (trefs, vrefss) = splitArgs(prefss)
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)

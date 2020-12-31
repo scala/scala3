@@ -200,10 +200,9 @@ object Inliner {
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
-    polyDefDef(retainer, targs => prefss =>
+    DefDef(retainer, prefss =>
       inlineCall(
-        ref(meth).appliedToTypeTrees(targs).appliedToArgss(prefss)
-          .withSpan(mdef.rhs.span.startPos))(
+        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
 

@@ -877,9 +877,6 @@ object Symbols {
       case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
       case _ => None
 
-  def joinSymbols(xs: List[Symbol], ys: List[List[Symbol]]): List[List[Symbol]] =
-    if xs.isEmpty then ys else xs :: ys
-
 // ----- Locating predefined symbols ----------------------------------------
 
   def requiredPackage(path: PreName)(using Context): TermSymbol = {
