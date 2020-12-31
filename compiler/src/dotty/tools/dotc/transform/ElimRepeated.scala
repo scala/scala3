@@ -222,13 +222,12 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .get
         .symbol.asTerm
       // Generate the method
-      val forwarderDef = polyDefDef(forwarderSym, trefs => vrefss => {
-        val init :+ (last :+ vararg) = vrefss
+      val forwarderDef = DefDef(forwarderSym, prefss => {
+        val init :+ (last :+ vararg) = prefss
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
         ref(sym.termRef)
-          .appliedToTypeTrees(trefs)
           .appliedToArgss(init)
           .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
         })
