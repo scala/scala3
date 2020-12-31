@@ -206,15 +206,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
 
-  def DefDef(sym: TermSymbol, tparams: List[TypeSymbol], vparamss: List[List[TermSymbol]],
+  def DefDef(sym: TermSymbol, paramss: List[List[Symbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
-    sym.setParamss(tparams :: vparamss)
+    sym.setParamss(paramss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
-        joinParams(
-          tparams.map(tparam => TypeDef(tparam).withSpan(tparam.span)),
-          vparamss.nestedMap(vparam => ValDef(vparam).withSpan(vparam.span))),
+        paramss.map {
+          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
+          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
+          case _ => ???
+        },
         TypeTree(resultType),
         rhs),
       sym)
@@ -223,7 +225,57 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     ta.assignType(DefDef(sym, Function.const(rhs) _), sym)
 
   def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
-    polyDefDef(sym, Function.const(rhsFn))
+
+    // Map method type `tp` with remaining parameters stored in rawParamss to
+    // final result type and all (given or synthesized) parameters
+    def recur(tp: Type, remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
+      case tp: PolyType =>
+        val (tparams: List[TypeSymbol], remaining1) = remaining match
+          case tparams :: remaining1 =>
+            assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
+            (tparams.asInstanceOf[List[TypeSymbol]], remaining1)
+          case nil =>
+            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
+        val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
+        (rtp, tparams :: paramss)
+      case tp: MethodType =>
+        val isParamDependent = tp.isParamDependent
+        val previousParamRefs = if isParamDependent then mutable.ListBuffer[TermRef]() else null
+
+        def valueParam(name: TermName, origInfo: Type): TermSymbol =
+          val maybeImplicit =
+            if tp.isContextualMethod then Given
+            else if tp.isImplicitMethod then Implicit
+            else EmptyFlags
+          val maybeErased = if tp.isErasedMethod then Erased else EmptyFlags
+
+          def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
+
+          if isParamDependent then
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
+            previousParamRefs += sym.termRef
+            sym
+          else makeSym(origInfo)
+        end valueParam
+
+        val (vparams: List[TermSymbol], remaining1) =
+          if tp.paramNames.isEmpty then (Nil, remaining)
+          else remaining match
+            case vparams :: remaining1 =>
+              assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
+              (vparams.asInstanceOf[List[TermSymbol]], remaining1)
+            case nil =>
+              (tp.paramNames.lazyZip(tp.paramInfos).map(valueParam), Nil)
+        val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
+        (rtp, vparams :: paramss)
+      case _ =>
+        assert(remaining.isEmpty)
+        (tp.widenExpr, Nil)
+    end recur
+
+    val (rtp, paramss) = recur(sym.info, sym.rawParamss)
+    DefDef(sym, paramss, rtp, rhsFn(paramss.nestedMap(ref)))
+  end DefDef
 
   /** A DefDef with given method symbol `sym`.
    *  @rhsFn  A function from type parameter types and term parameter references
@@ -285,7 +337,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val targs = tparams.map(tparam => ref(tparam.typeRef))
     val argss = vparamss.nestedMap(vparam => Ident(vparam.termRef))
     sym.setParamss(tparams :: vparamss)
-    DefDef(sym, tparams, vparamss, rtp, rhsFn(targs)(argss))
+    DefDef(sym, joinSymbols(tparams, vparamss), rtp, rhsFn(targs)(argss))
   }
 
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =

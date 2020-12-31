@@ -156,7 +156,7 @@ class ExpandSAMs extends MiniPhase:
         }
 
         def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) = {
-          val List(paramRef, defaultRef) = paramRefss.head
+          val List(paramRef, defaultRef) = paramRefss(1)
           def translateCase(cdef: CaseDef) =
             cdef.changeOwner(anonSym, applyOrElseFn)
           val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
