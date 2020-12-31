@@ -773,11 +773,8 @@ object Trees {
       case _ => paramss
 
     def termParamss(using Context): List[List[ValDef[T]]] =
-      if ctx.erasedTypes then paramss.asInstanceOf[List[List[ValDef[T]]]]
-      else paramss.collect {
-        case Nil => Nil
-        case vparams @ (vparam: ValDef[_]) :: _ => vparams.asInstanceOf[List[ValDef[T]]]
-      }
+      (if ctx.erasedTypes then paramss else untpd.termParamssIn(paramss))
+        .asInstanceOf[List[List[ValDef[T]]]]
   }
 
   /** mods class name template     or
@@ -1604,6 +1601,16 @@ object Trees {
         case Nil => Some(Nil)
         case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])
         case _ => None
+
+    def termParamssIn(paramss: List[ParamClause]): List[List[ValDef]] = paramss match
+      case ValDefs(vparams) :: paramss1 =>
+        val paramss2 = termParamssIn(paramss1)
+        if paramss2 eq paramss1 then paramss.asInstanceOf[List[List[ValDef]]]
+        else vparams :: paramss2
+      case _ :: paramss1 =>
+        termParamssIn(paramss1)
+      case nil =>
+        Nil
 
     /** If `tparams` is non-empty, add it to the left `paramss`, merging
      *  it with a leading type parameter list of `paramss`, if one exists.
