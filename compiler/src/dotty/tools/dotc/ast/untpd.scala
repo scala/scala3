@@ -345,6 +345,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     def derivedTree(originalSym: Symbol)(using Context): tpd.Tree
   }
 
+  /** A type tree that memoizes the result of a typed tree. Used when
+   *  typechecking selectDynamic calls to prevent typechecking type arguments
+   *  multiple types.
+   */
+  final class MemoizedTypeTree(val result: tpd.Tree)(implicit @constructorOnly src: SourceFile) extends TypeTree
+
   /** Property key containing TypeTrees whose type is computed
    *  from the symbol in this type. These type trees have marker trees
    *  TypeRefOfSym or InfoOfSym as their originals.

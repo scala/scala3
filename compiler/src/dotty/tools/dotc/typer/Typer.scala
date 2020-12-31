@@ -1695,6 +1695,7 @@ class Typer extends Namer
           case None =>
             errorTree(tree, "Something's wrong: missing original symbol for type tree")
         }
+      case tree: untpd.MemoizedTypeTree => tree.result
       case _ =>
         tree.withType(
           if (isFullyDefined(pt, ForceDegree.flipBottom)) pt
