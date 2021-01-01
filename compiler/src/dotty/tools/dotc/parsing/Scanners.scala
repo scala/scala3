@@ -74,6 +74,9 @@ object Scanners {
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
+
+    /** Is current token first one after a newline? */
+    def isAfterLineEnd: Boolean = lineOffset >= 0
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -512,15 +515,12 @@ object Scanners {
          |Previous indent : $lastWidth
          |Latest indent   : $nextWidth"""
 
-    private def switchAtEOL(testToken: Token, eolToken: Token): Unit =
-      if token == testToken then
+    def observeColonEOL(): Unit =
+      if token == COLON then
         lookAhead()
         val atEOL = isAfterLineEnd || token == EOF
         reset()
-        if atEOL then token = eolToken
-
-    def observeColonEOL(): Unit = switchAtEOL(COLON, COLONEOL)
-    def observeWithEOL(): Unit = switchAtEOL(WITH, WITHEOL)
+        if atEOL then token = COLONEOL
 
     def observeIndented(): Unit =
       if indentSyntax && isNewLine then
@@ -609,9 +609,6 @@ object Scanners {
         case _ =>
       }
     }
-
-    /** Is current token first one after a newline? */
-    def isAfterLineEnd: Boolean = lineOffset >= 0
 
     /** Is there a blank line between the current token and the last one?
      *  A blank line consists only of characters <= ' '.

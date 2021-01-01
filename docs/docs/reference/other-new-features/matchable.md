@@ -94,3 +94,45 @@ class Object extends Any, Matchable
 
 `Matchable` is currently a marker trait without any methods. Over time
 we might migrate methods `getClass` and `isInstanceOf` to it, since these are closely related to pattern-matching.
+
+### `Matchable` and Universal Equality
+
+Methods that pattern-match on selectors of type `Any` will need a cast once the
+Matchable warning is turned on. The most common such method is the universal
+`equals` method. It will have to be written as in the following example:
+
+```scala
+class C(val x: String):
+
+   override def equals(that: Any): Boolean =
+      that.asInstanceOf[Matchable] match
+         case that: C => this.x == that.x
+         case _ => false
+```
+The cast of `that` to `Matchable` serves as an indication that universal equality
+is unsafe in the presence of abstract types and opaque types since it cannot properly distinguish the meaning of a type from its representation. The cast
+is guaranteed to succeed at run-time since `Any` and `Matchable` both erase to
+`Object`.
+
+For instance, consider the definitions
+```scala
+opaque type Meter = Double
+def Meter(x: Double) = x
+
+opaque type Second = Double
+def Second(x: Double) = x
+```
+Here, universal `equals` will return true for
+```scala
+   Meter(10).equals(Second(10))
+```
+even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.html) one can mitigate that problem somewhat by turning
+```scala
+   Meter(10) == Second(10)
+```
+into a type error.
+
+
+
+
+

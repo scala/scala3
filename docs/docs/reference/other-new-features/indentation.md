@@ -64,8 +64,8 @@ There are two rules:
      - after one of the following tokens:
 
        ```
-       =  =>  <-  catch  do  else  finally  for
-       if  match  return  then  try  while  yield
+       =  =>  ?=>  <-  catch  do  else  finally  for
+       if  match  return  then  throw  try  while  yield
        ```
 
     If an `<indent>` is inserted, the indentation width of the token on the next line
