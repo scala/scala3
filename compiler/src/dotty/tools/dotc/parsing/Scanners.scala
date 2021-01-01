@@ -345,7 +345,7 @@ object Scanners {
       allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
-      && ch == ' '
+      && ch <= ' '
       && !pastBlankLine
       && {
         val lookahead = LookaheadScanner()
@@ -353,6 +353,7 @@ object Scanners {
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
         canStartExprTokens.contains(lookahead.token)
+        || lookahead.token == NEWLINE && canStartExprTokens.contains(lookahead.next.token)
       }
       && {
         if migrateTo3 then
