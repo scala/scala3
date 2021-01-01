@@ -5,13 +5,13 @@ title: "Rules for Operators"
 
 The rules for infix operators have changed in some parts:
 
-First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix`{.scala} modifier. Second, it is recommended (but not enforced) to
-augment definitions of symbolic operators with `@targetName`{.scala} annotations. Finally,
+First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier. Second, it is recommended (but not enforced) to
+augment definitions of symbolic operators with `@targetName` annotations. Finally,
 a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The `infix` Modifier
 
-An `infix`{.scala} modifier on a method definition allows using the method as an infix operation. Example:
+An `infix` modifier on a method definition allows using the method as an infix operation. Example:
 
 ```scala
 import scala.annotation.targetName
@@ -54,7 +54,7 @@ any Unicode character `c` for which `java.lang.Character.isIdentifierPart(c)` re
 
 Infix operations involving symbolic operators are always allowed, so `infix` is redundant for methods with symbolic names.
 
-The `infix`{.scala} modifier can also be given to a type:
+The `infix` modifier can also be given to a type:
 
 ```scala
 infix type or[X, Y]

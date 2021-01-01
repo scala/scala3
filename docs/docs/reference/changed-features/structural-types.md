@@ -144,7 +144,7 @@ val i3 = new Vehicle: // i3: Vehicle { val range: Int }
 i3.range
 ```
 
-The type of `i3` in this example is `Vehicle { val range: Int }`{.scala}. Hence,
+The type of `i3` in this example is `Vehicle { val range: Int }`. Hence,
 `i3.range` is well-formed. Since the base class `Vehicle` does not define a `range` field or method, we need structural dispatch to access the `range` field of the anonymous class that initializes `id3`. Structural dispatch
 is implemented by the base trait `reflect.Selectable` of `Vehicle`, which
 defines the necessary `selectDynamic` member.

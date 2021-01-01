@@ -8,7 +8,7 @@ A _type class_ is an abstract, parameterized type that lets you add new behavior
 * expressing how a type you don't own (from the standard or 3rd-party library) conforms to such behavior
 * expressing such a behavior for multiple types without involving sub-typing relationships (one `extends` another) between those types (see: [ad hoc polymorphism](https://en.wikipedia.org/wiki/Ad_hoc_polymorphism) for instance)
 
-Therefore in Scala 3, _type classes_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends`{.scala} keyword, but by **given instances**.
+Therefore in Scala 3, _type classes_ are just _traits_ with one or more parameters whose implementations are not defined through the `extends` keyword, but by **given instances**.
 Here are some examples of common type classes:
 
 ### Semigroups and monoids
@@ -272,9 +272,9 @@ end readerMonad
 
 ### Summary
 
-The definition of a _type class_ is expressed with a parameterised type with abstract members, such as a `trait`{.scala}.
+The definition of a _type class_ is expressed with a parameterised type with abstract members, such as a `trait`.
 The main difference between subtype polymorphism and ad-hoc polymorphism with _type classes_ is how the definition of the _type class_ is implemented, in relation to the type it acts upon.
-In the case of a _type class_, its implementation for a concrete type is expressed through a `given`{.scala} instance definition, which is supplied as an implicit argument alongside the value it acts upon. With subtype polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation. The type class solution
+In the case of a _type class_, its implementation for a concrete type is expressed through a `given` instance definition, which is supplied as an implicit argument alongside the value it acts upon. With subtype polymorphism, the implementation is mixed into the parents of a class, and only a single term is required to perform a polymorphic operation. The type class solution
 takes more effort to set up, but is more extensible: Adding a new interface to a
 class requires changing the source code of that class. But contrast, instances for type classes can be defined anywhere.
 

@@ -353,7 +353,7 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
 ```
 
-Note: To align `extends`{.scala} clauses and `derives`{.scala} clauses, Scala 3 also allows multiple
+Note: To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
 extended types to be separated by commas. So the following is now legal:
 
 ```scala

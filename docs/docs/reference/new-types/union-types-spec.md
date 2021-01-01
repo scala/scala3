@@ -87,7 +87,7 @@ The join of `A | B` is `C[A | B] & D`
 
 ## Type inference
 
-When inferring the result type of a definition (`val`{.scala}, `var`{.scala}, or `def`{.scala}) and the
+When inferring the result type of a definition (`val`, `var`, or `def`) and the
 type we are about to infer is a union type, then we replace it by its join.
 Similarly, when instantiating a type argument, if the corresponding type
 parameter is not upper-bounded by a union type and the type we are about to

@@ -19,7 +19,7 @@ parameterized with a value parameter `x`. It is a shorthand for writing a
 case class that extends `Option`. Since `None` is not parameterized, it
 is treated as a normal enum value.
 
-The `extends`{.scala} clauses that were omitted in the example above can also
+The `extends` clauses that were omitted in the example above can also
 be given explicitly:
 
 ```scala
@@ -30,12 +30,12 @@ enum Option[+T]:
 
 Note that the parent type of the `None` value is inferred as
 `Option[Nothing]`. Generally, all covariant type parameters of the enum
-class are minimized in a compiler-generated `extends`{.scala} clause whereas all
+class are minimized in a compiler-generated `extends` clause whereas all
 contravariant type parameters are maximized. If `Option` was non-variant,
 you would need to give the extends clause of `None` explicitly.
 
-As for normal enum values, the cases of an `enum`{.scala} are all defined in
-the `enum`{.scala}s companion object. So it's `Option.Some` and `Option.None`
+As for normal enum values, the cases of an `enum` are all defined in
+the `enum`s companion object. So it's `Option.Some` and `Option.None`
 unless the definitions are "pulled out" with an import:
 
 ```scala

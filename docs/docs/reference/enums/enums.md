@@ -110,7 +110,7 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 
 ### Implementation
 
-Enums are represented as `sealed`{.scala} classes that extend the `scala.reflect.Enum` trait.
+Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
 This trait defines a single public method, `ordinal`:
 
 ```scala
@@ -123,7 +123,7 @@ transparent trait Enum extends Any, Product, Serializable:
    def ordinal: Int
 ```
 
-Enum values with `extends`{.scala} clauses get expanded to anonymous class instances.
+Enum values with `extends` clauses get expanded to anonymous class instances.
 For instance, the `Venus` value above would be defined like this:
 
 ```scala
@@ -133,7 +133,7 @@ val Venus: Planet = new Planet(4.869E24, 6051800.0):
    override def toString: String = "Venus"
 ```
 
-Enum values without `extends`{.scala} clauses all share a single implementation
+Enum values without `extends` clauses all share a single implementation
 that can be instantiated using a private method that takes a tag and a name as arguments.
 For instance, the first
 definition of value `Color.Red` above would expand to:

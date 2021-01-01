@@ -23,11 +23,11 @@ some terminology and notational conventions:
 
   Simple cases and value cases are collectively called _singleton cases_.
 
-The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val`{.scala} definitions.
+The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
 There are nine desugaring rules. Rule (1) desugars enum definitions. Rules
-(2) and (3) desugar simple cases. Rules (4) to (6) define `extends`{.scala} clauses for cases that
-are missing them. Rules (7) to (9) define how such cases with `extends`{.scala} clauses
+(2) and (3) desugar simple cases. Rules (4) to (6) define `extends` clauses for cases that
+are missing them. Rules (7) to (9) define how such cases with `extends` clauses
 map into `case class`es or `val`s.
 
 1. An `enum` definition
@@ -82,7 +82,7 @@ map into `case class`es or `val`s.
    ```
    where `Bi` is `Li` if `Vi = '+'` and `Ui` if `Vi = '-'`. This result is then further
    rewritten with rule (8). Simple cases of enums with non-variant type
-   parameters are not permitted (however value cases with explicit `extends`{.scala} clause are)
+   parameters are not permitted (however value cases with explicit `extends` clause are)
 
 5. A class case without an extends clause
    ```scala
@@ -191,7 +191,7 @@ The `ordinal` method is only generated if the enum does not extend from `java.la
 
 ### Scopes for Enum Cases
 
-A case in an `enum`{.scala} is treated similarly to a secondary constructor. It can access neither the enclosing `enum`{.scala} using `this`, nor its value parameters or instance members using simple
+A case in an `enum` is treated similarly to a secondary constructor. It can access neither the enclosing `enum` using `this`, nor its value parameters or instance members using simple
 identifiers.
 
 Even though translated enum cases are located in the enum's companion object, referencing
@@ -202,7 +202,7 @@ A Java-compatible enum is an enum that extends `java.lang.Enum`. The translation
 
 It is a compile-time error for a Java-compatible enum to have class cases.
 
-Cases such as `case C`{.scala} expand to a `@static val`{.scala} as opposed to a `val`{.scala}. This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
+Cases such as `case C` expand to a `@static val` as opposed to a `val`. This allows them to be generated as static fields of the enum type, thus ensuring they are represented the same way as Java enums.
 
 ### Other Rules
 
@@ -210,5 +210,5 @@ Cases such as `case C`{.scala} expand to a `@static val`{.scala} as opposed to a
 `scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
 explicitly declared in it.
 
- - If an enum case has an `extends`{.scala} clause, the enum class must be one of the
+ - If an enum case has an `extends` clause, the enum class must be one of the
    classes that's extended.
