@@ -906,15 +906,6 @@ object desugar {
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
     for mdef <- ext.methods yield
-      var extParamss = ext.paramss
-      var mdefParamss = mdef.paramss
-      if mdef.leadingTypeParams.nonEmpty then
-        report.error("extension method cannot have type parameters here, all type parameters go after `extension`",
-          mdef.leadingTypeParams.head.srcPos)
-        extParamss = extParamss match
-          case TypeDefs(tparams) :: paramss1 => (tparams ++ mdef.leadingTypeParams) :: paramss1
-          case _ => mdef.leadingTypeParams :: extParamss
-        mdefParamss = mdef.trailingParamss
       defDef(
         cpy.DefDef(mdef)(
           name = normalizeName(mdef, ext).asTermName,
@@ -922,17 +913,17 @@ object desugar {
             case params1 :: paramss1 if mdef.name.isRightAssocOperatorName =>
               def badRightAssoc(problem: String) =
                 report.error(i"right-associative extension method $problem", mdef.srcPos)
-                extParamss ++ mdefParamss
+                ext.paramss ++ mdef.paramss
               params1 match
                 case ValDefs(vparam :: Nil) =>
                   if !vparam.mods.is(Given) then
-                    val (leadingUsing, otherExtParamss) = extParamss.span(isUsingOrTypeParamClause)
+                    val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
                     leadingUsing ::: params1 :: otherExtParamss ::: paramss1
                   else badRightAssoc("cannot start with using clause")
                 case _ =>
                   badRightAssoc("must start with a single parameter")
             case _ =>
-              extParamss ++ mdefParamss
+              ext.paramss ++ mdef.paramss
         ).withMods(mdef.mods | ExtensionMethod)
       )
   }

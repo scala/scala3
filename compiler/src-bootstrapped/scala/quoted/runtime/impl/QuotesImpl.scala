@@ -55,14 +55,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   end extension
 
-  extension [X](self: scala.quoted.Expr[Any])
+  extension (self: scala.quoted.Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using scala.quoted.Type[X]): Boolean =
+    def isExprOf[X](using scala.quoted.Type[X]): Boolean =
       reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
@@ -109,7 +109,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       extension [T](self: Tree)
         def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
-          QuotesImpl.this.asExprOf[T](self.asExpr)(using tp)
+          QuotesImpl.this.asExprOf(self.asExpr)[T](using tp)
       end extension
 
       extension [ThisTree <: Tree](self: ThisTree)

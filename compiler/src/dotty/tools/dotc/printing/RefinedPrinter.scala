@@ -647,6 +647,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         keywordStr("${") ~ toTextGlobal(dropBlock(tree)) ~ keywordStr("}")
       case tree: Applications.IntegratedTypeArgs =>
         toText(tree.app) ~ Str("(with integrated type args)").provided(printDebug)
+      case tree: Applications.ExtMethodApply =>
+        toText(tree.app) ~ Str("(ext method apply)").provided(printDebug)
       case Thicket(trees) =>
         "Thicket {" ~~ toTextGlobal(trees, "\n") ~~ "}"
       case MacroTree(call) =>

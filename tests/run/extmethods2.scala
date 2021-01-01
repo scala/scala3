@@ -21,8 +21,8 @@ object Test extends App {
       def third: T = xs.tail.tail.head
       def concat(ys: List[T]) = xs ++ ys
     }
-    extension [T, U](xs: List[T]) {
-      def zipp(ys: List[U]): List[(T, U)] = xs.zip(ys)
+    extension [T](xs: List[T]) {
+      def zipp[U](ys: List[U]): List[(T, U)] = xs.zip(ys)
     }
     extension (xs: List[Int]) {
       def prod = (1 /: xs)(_ * _)
@@ -32,14 +32,14 @@ object Test extends App {
   object B {
     import A._
     val xs = List(1, 2, 3)
-    assert(xs.second[Int] == 2)
+    assert(xs.second == 2)
     assert(xs.third == 3)
     assert(A.second[Int](xs) == 2)
     assert(A.third(xs) == 3)
     assert(xs.prod == 6)
     assert(xs.concat(xs).length == 6)
     assert(xs.zipp(xs).map(_ + _).prod == 36)
-    assert(xs.zipp[Int, Int](xs).map(_ + _).prod == 36)
+    assert(xs.zipp[Int](xs).map(_ + _).prod == 36)
   }
 }
 

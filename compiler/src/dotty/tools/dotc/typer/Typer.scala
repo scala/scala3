@@ -553,6 +553,8 @@ class Typer extends Namer
         case _: PolyProto => qual // keep the IntegratedTypeArgs to strip at next typedTypeApply
         case _ => app
       }
+    case qual: ExtMethodApply =>
+      qual.app
     case qual =>
       val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
       val select1 = toNotNullTermRef(select, pt)
@@ -2604,18 +2606,16 @@ class Typer extends Namer
   }
 
   /** Interpolate and simplify the type of the given tree. */
-  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type = {
-    if (!tree.denot.isOverloaded &&
-          // for overloaded trees: resolve overloading before simplifying
-        !tree.isInstanceOf[Applications.IntegratedTypeArgs])
-          // don't interpolate in the middle of an extension method application
-      if (!tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
-          || tree.isDef) {                             // ... unless tree is a definition
+  protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
+    if !tree.denot.isOverloaded // for overloaded trees: resolve overloading before simplifying
+       && !tree.isInstanceOf[Applications.AppProxy] // don't interpolate in the middle of an extension method application
+    then
+      if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
+         || tree.isDef                              // ... unless tree is a definition
+      then
         interpolateTypeVars(tree, pt, locked)
         tree.overwriteType(tree.tpe.simplified)
-      }
     tree
-  }
 
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true, _) = pt.dropDependentRefinement

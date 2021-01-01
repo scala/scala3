@@ -564,6 +564,11 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
+  def isExtMethodApply(tree: Tree)(using Context): Boolean = methPart(tree) match
+    case Inlined(call, _, _) => isExtMethodApply(call)
+    case tree @ Select(qual, nme.apply) => tree.symbol.is(ExtensionMethod) || isExtMethodApply(qual)
+    case tree => tree.symbol.is(ExtensionMethod)
+
   /** Is symbol potentially a getter of a mutable variable?
    */
   def mayBeVarGetter(sym: Symbol)(using Context): Boolean = {

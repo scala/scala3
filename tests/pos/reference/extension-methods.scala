@@ -20,7 +20,7 @@ object ExtMethods:
   extension [T](xs: List[T])
     def second = xs.tail.head
 
-  assert(List(1, 2, 3).second[Int] == List(1, 2, 3).second)
+  assert(second[Int](List(1, 2, 3)) == List(1, 2, 3).second)
 
   extension [T: Numeric](x: T)
     def + (y: T): T = summon[Numeric[T]].plus(x, y)
