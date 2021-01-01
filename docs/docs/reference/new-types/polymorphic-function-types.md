@@ -5,6 +5,7 @@ title: "Polymorphic Function Types"
 
 A polymorphic function type is a function type which accepts type parameters.
 For example:
+
 ```scala
 // A polymorphic method:
 def foo[A](xs: List[A]): List[A] = xs.reverse
@@ -15,6 +16,7 @@ val bar: [A] => List[A] => List[A]
 //       a polymorphic function type
        = [A] => (xs: List[A]) => foo[A](xs)
 ```
+
 Scala already has _polymorphic methods_, i.e. methods which accepts type parameters.
 Method `foo` above is an example, accepting a type parameter `A`.
 So far, it

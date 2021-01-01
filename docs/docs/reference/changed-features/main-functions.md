@@ -6,6 +6,7 @@ title: "Main Methods"
 Scala 3 offers a new way to define programs that can be invoked from the command line:
 A `@main` annotation on a method turns this method into an executable program.
 Example:
+
 ```scala
 @main def happyBirthday(age: Int, name: String, others: String*) =
    val suffix =
@@ -21,11 +22,14 @@ Example:
    for other <- others do bldr.append(" and ").append(other)
    bldr.toString
 ```
+
 This would generate a main program `happyBirthday` that could be called like this
+
 ```
 > scala happyBirthday 23 Lisa Peter
 Happy 23rd Birthday, Lisa and Peter!
 ```
+
 A `@main` annotated method can be written either at the top-level or in a statically accessible object. The name of the program is in each case the name of the method, without any object prefixes. The `@main` method can have an arbitrary number of parameters.
 For each parameter type there must be an instance of the `scala.util.FromString` type class
 that is used to convert an argument string to the required parameter type.
@@ -52,9 +56,10 @@ The Scala compiler generates a program from a `@main` method `f` as follows:
  - The class has a static method `main` with the usual signature. It takes an `Array[String]`
    as argument and returns `Unit`.
  - The generated `main` method calls method `f` with arguments converted using
-   methods in the `scala.util.CommandLineParser` object.
+   methods in the [`scala.util.CommandLineParser` object](https://dotty.epfl.ch/api/scala/util/CommandLineParser$.html).
 
 For instance, the `happyBirthDay` method above would generate additional code equivalent to the following class:
+
 ```scala
 final class happyBirthday:
    import scala.util.{CommandLineParser => CLP}
@@ -67,6 +72,7 @@ final class happyBirthday:
       catch
          case error: CLP.ParseError => CLP.showError(error)
 ```
+
 **Note**: The `<static>` modifier above expresses that the `main` method is generated
 as a static method of class `happyBirthDay`. It is not available for user programs in Scala. Regular "static" members are generated in Scala using objects instead.
 
@@ -78,5 +84,5 @@ object happyBirthday extends App:
    ...
 ```
 
-The previous functionality of `App`, which relied on the "magic" `DelayedInit` trait, is no longer available. `App` still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
+The previous functionality of `App`, which relied on the "magic" [`DelayedInit`](../dropped-features/delayed-init.md) trait, is no longer available. `App` still exists in limited form for now, but it does not support command line arguments and will be deprecated in the future. If programs need to cross-build
 between Scala 2 and Scala 3, it is recommended to use an explicit `main` method with an `Array[String]` argument instead.

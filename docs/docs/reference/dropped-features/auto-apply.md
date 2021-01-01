@@ -5,28 +5,36 @@ title: "Dropped: Auto-Application"
 
 Previously an empty argument list `()` was implicitly inserted when
 calling a nullary method without arguments. Example:
+
 ```scala
 def next(): T = ...
 next     // is expanded to next()
 ```
+
 In Scala 3, this idiom is an error.
+
 ```scala
 next
 ^
 missing arguments for method next
 ```
+
 In Scala 3, the application syntax has to follow exactly the parameter
 syntax. Excluded from this rule are methods that are defined in Java
 or that override methods defined in Java. The reason for being more
 lenient with such methods is that otherwise everyone would have to
 write
+
 ```scala
 xs.toString().length()
 ```
+
 instead of
+
 ```scala
 xs.toString.length
 ```
+
 The latter is idiomatic Scala because it conforms to the _uniform
 access principle_. This principle states that one should be able to
 change an object member from a field to a non-side-effecting method
@@ -47,9 +55,11 @@ the correspondence between definition and call was not enforced in
 Scala so far, there are quite a few method definitions in Scala 2
 libraries that use `()` in an inconsistent way. For instance, we
 find in `scala.math.Numeric`
+
 ```scala
 def toInt(): Int
 ```
+
 whereas `toInt` is written without parameters everywhere
 else. Enforcing strict parameter correspondence for references to
 such methods would project the inconsistencies to client code, which
@@ -61,12 +71,15 @@ Stricter conformance rules also apply to overriding of nullary
 methods.  It is no longer allowed to override a parameterless method
 by a nullary method or _vice versa_. Instead, both methods must agree
 exactly in their parameter lists.
+
 ```scala
 class A:
    def next(): Int
+
 class B extends A:
    def next: Int // overriding error: incompatible type
 ```
+
 Methods overriding Java or Scala 2 methods are again exempted from this
 requirement.
 
@@ -79,4 +92,4 @@ stricter checking.
 
 ### Reference
 
-For more info, see [Issue #2570](https://github.com/lampepfl/dotty/issues/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).
+For more information, see [Issue #2570](https://github.com/lampepfl/dotty/issues/2570) and [PR #2716](https://github.com/lampepfl/dotty/pull/2716).

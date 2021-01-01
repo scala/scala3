@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Type Class Derivation
+title: "Type Class Derivation"
 ---
 
 Type class derivation is a way to automatically generate given instances for type classes which satisfy some simple

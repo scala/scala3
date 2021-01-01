@@ -144,5 +144,5 @@ val Red: Color = $new(0, "Red")
 
 ### Reference
 
-For more info, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970) and
+For more information, see [Issue #1970](https://github.com/lampepfl/dotty/issues/1970) and
 [PR #4003](https://github.com/lampepfl/dotty/pull/4003).

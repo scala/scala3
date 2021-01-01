@@ -13,6 +13,7 @@ val xs: List[(Int, Int)]
 
 and you want to map `xs` to a list of `Int`s so that each pair of numbers is mapped to their sum.
 Previously, the best way to do this was with a pattern-matching decomposition:
+
 ```scala
 xs.map {
    case (x, y) => x + y
@@ -25,7 +26,9 @@ xs.map {
    (x, y) => x + y
 }
 ```
+
 or, equivalently:
+
 ```scala
 xs.map(_ + _)
 ```
@@ -51,6 +54,7 @@ can in turn be adapted to the expected type with auto-tupling.
 #### Term adaptation
 
 If the function
+
 ```scala
 (p1: T1, ..., pn: Tn) => e
 ```
@@ -75,9 +79,9 @@ Translation of such a tuples would use the `apply` method on the tuple to access
 Code like this could not be written before, hence the new notation would not be ambiguous after adoption.
 
 Though it is possible that someone has written an implicit conversion form `(T1, ..., Tn) => R` to `TupleN[T1, ..., Tn] => R`
-for some `n`. This change could be detected and fixed by `Scalafix`. Furthermore, such conversion would probably
+for some `n`. This change could be detected and fixed by [`Scalafix`](https://scalacenter.github.io/scalafix/). Furthermore, such conversion would probably
 be doing the same translation (semantically) but in a less efficient way.
 
 ### Reference
 
-For more info see [Issue #897](https://github.com/lampepfl/dotty/issues/897).
+For more information, see [Issue #897](https://github.com/lampepfl/dotty/issues/897).

@@ -28,9 +28,9 @@ letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
 digit            ::=  ‘0’ | … | ‘9’
 paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
-opchar           ::=  “printableChar not matched by (whiteSpace | upper | lower |
-                       letter | digit | paren | delim | opchar | Unicode_Sm |
-                       Unicode_So)”
+opchar           ::=  “printableChar not matched by (whiteSpace | upper |
+                       lower | letter | digit | paren | delim | opchar |
+                       Unicode_Sm | Unicode_So)”
 printableChar    ::=  “all characters in [\u0020, \u007F] inclusive”
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 
@@ -93,8 +93,8 @@ colonEol         ::=  ": at end of line that can start a template body"
 abstract  case      catch     class     def       do        else
 enum      export    extends   false     final     finally   for
 given     if        implicit  import    lazy      match     new
-null      object    package   private   protected override  return
-super     sealed    then      throw     trait     true      try
+null      object    override  package   private   protected return
+sealed    super     then      throw     trait     true      try
 type      val       var       while     with      yield
 :         =         <-        =>        <:        :>        #
 @         =>>       ?=>

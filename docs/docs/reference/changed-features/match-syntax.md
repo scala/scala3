@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Match Expressions
+title: "Match Expressions"
 ---
 
 The syntactical precedence of match expressions has been changed.

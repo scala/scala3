@@ -15,11 +15,15 @@ lower precedence than `:` as used in typed patterns, this means that:
 ```scala
 case _: A | B => ...
 ```
+
 is still equivalent to:
+
 ```scala
 case (_: A) | B => ...
 ```
+
 and not to:
+
 ```scala
 case _: (A | B) => ...
 ```
@@ -29,18 +33,21 @@ case _: (A | B) => ...
 - `A` is always a subtype of `A | B` for all `A`, `B`.
 - If `A <: C` and `B <: C` then `A | B <: C`
 - Like `&`, `|` is commutative and associative:
+
   ```scala
   A | B =:= B | A
   A | (B | C) =:= (A | B) | C
   ```
+
 - `&` is distributive over `|`:
+
   ```scala
   A & (B | C) =:= A & B | A & C
   ```
 
 From these rules it follows that the _least upper bound_ (LUB) of a set of types
 is the union of these types. This replaces the
-[definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
+[definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
 
 ## Motivation
 
@@ -92,9 +99,10 @@ which are "too precise" can lead to unintuitive typechecking issues later on.
 Note: Since this behavior limits the usability of union types, it might
 be changed in the future. For example by not widening unions that have been
 explicitly written down by the user and not inferred, or by not widening a type
-argument when the corresponding type parameter is covariant. See
-[#2330](https://github.com/lampepfl/dotty/pull/2330) and
-[#4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
+argument when the corresponding type parameter is covariant.
+
+See [PR #2330](https://github.com/lampepfl/dotty/pull/2330) and
+[Issue #4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
 
 ### Example
 

@@ -148,7 +148,7 @@ val s =
 ```
 ### Reference
 
-For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
+For more information, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).
 
 [More details](./context-functions-spec.md)

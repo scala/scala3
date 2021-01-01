@@ -34,12 +34,12 @@ Since these are additions, there's generally no migration cost for old code. An 
 
 These constructs replace existing constructs with the aim of making the language safer and simpler to use, and to promote uniformity in code style.
 
- - [Trait Parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
- - [Given Instances](contextual/givens.md)
+ - [Trait parameters](other-new-features/trait-parameters.md) replace [early initializers](dropped-features/early-initializers.md) with a more generally useful construct.
+ - [Given instances](contextual/givens.md)
    replace implicit objects and defs, focussing on intent over mechanism.
  - [Using Clauses](contextual/using-clauses.md) replace implicit parameters, avoiding their ambiguities.
- - [Extension Methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
- - [Opaque Type Aliases](other-new-features/opaques.md) replace most uses
+ - [Extension methods](contextual/extension-methods.md) replace implicit classes with a clearer and simpler mechanism.
+ - [Opaque type aliases](other-new-features/opaques.md) replace most uses
    of value classes while guaranteeing absence of boxing.
  - [Top-level definitions](dropped-features/package-objects.md) replace package objects, dropping syntactic boilerplate.
  - [Export clauses](other-new-features/export.md)

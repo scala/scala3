@@ -4,6 +4,7 @@ title: "Export Clauses"
 ---
 
 An export clause defines aliases for selected members of an object. Example:
+
 ```scala
 class BitMap
 class InkJet
@@ -26,22 +27,29 @@ class Copier:
 
    def status: List[String] = printUnit.status ++ scanUnit.status
 ```
+
 The two `export` clauses define the following _export aliases_ in class `Copier`:
+
 ```scala
 final def scan(): BitMap            = scanUnit.scan()
 final def print(bits: BitMap): Unit = printUnit.print(bits)
 final type PrinterType              = printUnit.PrinterType
 ```
+
 They can be accessed inside `Copier` as well as from outside:
+
 ```scala
 val copier = new Copier
 copier.print(copier.scan())
 ```
+
 An export clause has the same format as an import clause. Its general form is:
+
 ```scala
 export path . { sel_1, ..., sel_n }
 export given path . { sel_1, ..., sel_n }
 ```
+
 It consists of a qualifier expression `path`, which must be a stable identifier, followed by
 one or more selectors `sel_i` that identify what gets an alias. Selectors can be
 of one of the following forms:
@@ -93,7 +101,7 @@ Export clauses can appear in classes or they can appear at the top-level. An exp
 
 It is a standard recommendation to prefer composition over inheritance. This is really an application of the principle of least power: Composition treats components as blackboxes whereas inheritance can affect the internal workings of components through overriding. Sometimes the close coupling implied by inheritance is the best solution for a problem, but where this is not necessary the looser coupling of composition is better.
 
-So far, object oriented languages including Scala made it much easier to use inheritance than composition. Inheritance only requires an `extends` clause whereas composition required a verbose elaboration of a sequence of forwarders. So in that sense, object-oriented languages are pushing
+So far, object-oriented languages including Scala made it much easier to use inheritance than composition. Inheritance only requires an `extends` clause whereas composition required a verbose elaboration of a sequence of forwarders. So in that sense, object-oriented languages are pushing
 programmers to a solution that is often too powerful. Export clauses redress the balance. They make composition relationships as concise and easy to express as inheritance relationships. Export clauses also offer more flexibility than extends clauses since members can be renamed or omitted.
 
 Export clauses also fill a gap opened by the shift from package objects to top-level definitions. One occasionally useful idiom that gets lost in this shift is a package object inheriting from some class. The idiom is often used in a facade like pattern, to make members
@@ -114,17 +122,21 @@ Export         ::=  ‘export’ [‘given’] ImportExpr {‘,’ ImportExpr}
 
 Export clauses raise questions about the order of elaboration during type checking.
 Consider the following example:
+
 ```scala
 class B { val c: Int }
 object a { val b = new B }
 export a._
 export b._
 ```
+
 Is the `export b._` clause legal? If yes, what does it export? Is it equivalent to `export a.b._`? What about if we swap the last two clauses?
+
 ```
 export b._
 export a._
 ```
+
 To avoid tricky questions like these, we fix the elaboration order of exports as follows.
 
 Export clauses are processed when the type information of the enclosing object or class is completed. Completion so far consisted of the following steps:

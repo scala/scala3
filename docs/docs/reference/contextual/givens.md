@@ -66,7 +66,7 @@ use named instances.
 
 ## Alias Givens
 
-An alias can be used to define a given instance that is equal to some expression. E.g.:
+An alias can be used to define a given instance that is equal to some expression. Example:
 
 ```scala
 given global: ExecutionContext = ForkJoinPool()

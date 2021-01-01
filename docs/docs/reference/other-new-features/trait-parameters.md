@@ -54,4 +54,4 @@ class E extends Greeting("Bob"), FormalGreeting
 
 ## Reference
 
-For more info, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).
+For more information, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).

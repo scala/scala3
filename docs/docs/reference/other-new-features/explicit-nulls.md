@@ -11,10 +11,10 @@ This means the following code will no longer typecheck:
 val x: String = null // error: found `Null`,  but required `String`
 ```
 
-Instead, to mark a type as nullable we use a [union type](https://dotty.epfl.ch/docs/reference/new-types/union-types.html)
+Instead, to mark a type as nullable we use a [union type](../new-types/union-types.md)
 
 ```scala
-val x: String|Null = null // ok
+val x: String | Null = null // ok
 ```
 
 Explicit nulls are enabled via a `-Yexplicit-nulls` flag.
@@ -37,6 +37,7 @@ After erasure, `Null` remains a subtype of all reference types (as forced by the
 The new type system is unsound with respect to `null`. This means there are still instances where an expression has a non-nullable type like `String`, but its value is actually `null`.
 
 The unsoundness happens because uninitialized fields in a class start out as `null`:
+
 ```scala
 class C:
    val f: String = foo(f)

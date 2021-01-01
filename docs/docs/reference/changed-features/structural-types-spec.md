@@ -30,9 +30,11 @@ the methods `selectDynamic` and `applyDynamic`. The methods could be members of 
 
 The `selectDynamic` method takes a field name and returns the value associated with that name in the `Selectable`.
 It should have a signature of the form:
+
 ```scala
 def selectDynamic(name: String): T
 ```
+
 Often, the return type `T` is `Any`.
 
 Unlike `scala.Dynamic`, there is no special meaning for an `updateDynamic` method.
@@ -41,10 +43,12 @@ Consequently, it is recommended not to define any member called `updateDynamic` 
 
 The `applyDynamic` method is used for selections that are applied to arguments. It takes a method name and possibly `Class`es representing its parameters types as well as the arguments to pass to the function.
 Its signature should be of one of the two following forms:
+
 ```scala
 def applyDynamic(name: String)(args: Any*): T
 def applyDynamic(name: String, ctags: Class[?]*)(args: Any*): T
 ```
+
 Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of `java.lang.Class`es that identify the method's parameter classes. Such an argument is needed
 if `applyDynamic` is implemented using Java reflection, but it could be
 useful in other cases as well. `selectDynamic` and `applyDynamic` can also take additional context parameters in using clauses. These are resolved in the normal way at the callsite.
@@ -94,5 +98,4 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
 
 ## Context
 
-For more info, see [Rethink Structural
-Types](https://github.com/lampepfl/dotty/issues/1886).
+For more information, see [Rethink Structural Types](https://github.com/lampepfl/dotty/issues/1886).

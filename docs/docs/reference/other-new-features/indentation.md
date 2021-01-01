@@ -83,9 +83,9 @@ There are two rules:
     - the first token on the next line is not a
         [leading infix operator](../changed-features/operators.md).
 
-     If an `<outdent>` is inserted, the top element is popped from `IW`.
-     If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
-     may be inserted in a row.
+    If an `<outdent>` is inserted, the top element is popped from `IW`.
+    If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
+    may be inserted in a row.
 
     An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
 
@@ -134,9 +134,11 @@ new A:
 
 package p:
    def a = 1
+
 package q:
    def b = 2
 ```
+
 In each case, the `:` at the end of line can be replaced without change of meaning by a pair of braces that enclose the following indented definition(s).
 
 The syntax changes allowing this are as follows:
@@ -356,7 +358,7 @@ Significant indentation is enabled by default. It can be turned off by giving an
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
 indented regions where possible. When invoked with options `-rewrite -noindent` it will rewrite in the reverse direction, inserting braces for indentation regions.
-The `-indent` option only works on [new-style syntax](./control-syntax.html). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
+The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -noindent`, followed by `-rewrite -old-syntax`.
 
 ### Variant: Indentation Marker `:`

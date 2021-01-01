@@ -119,4 +119,4 @@ Resolution](implicit-resolution.md) for more information.
 For more information about implicit resolution, see [Changes in
 Implicit Resolution](implicit-resolution.md).
 Other details are available in
-[PR #2065](https://github.com/lampepfl/dotty/pull/2065)
+[PR #2065](https://github.com/lampepfl/dotty/pull/2065).
