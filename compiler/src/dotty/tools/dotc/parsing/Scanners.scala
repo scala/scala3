@@ -462,7 +462,7 @@ object Scanners {
           indentPrefix = r.prefix
         case r =>
           indentIsSignificant = indentSyntax
-          if (r.knownWidth == null) r.knownWidth = nextWidth
+          r.proposeKnownWidth(nextWidth, lastToken)
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
@@ -1349,6 +1349,18 @@ object Scanners {
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
       if knownWidth == null then IndentWidth.Zero else knownWidth
+
+    def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
+      if knownWidth == null then
+        this match
+          case InParens(_, _) if lastToken != LPAREN =>
+            useOuterWidth()
+          case _ =>
+            knownWidth = width
+
+    private def useOuterWidth(): Unit =
+      if enclosing.knownWidth == null then enclosing.useOuterWidth()
+      knownWidth = enclosing.knownWidth
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region
