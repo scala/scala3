@@ -74,27 +74,28 @@ extension [T: Numeric](x: T)
    def + (y: T): T = summon[Numeric[T]].plus(x, y)
 ```
 
-If an extension method has type parameters, they come immediately after `extension` and are followed by the extended parameter.
-When calling a generic extension method, any explicitly given type arguments follow the method name.
-So the `second` method could be instantiated as follows:
-
+Type parameters on extensions can also be combined with type parameters on the methods
+themselves:
 ```scala
-List(1, 2, 3).second[Int]
+extension [T](xs: List[T])
+   def map [U](op: T => U): List[U] = ...
 ```
 
-Of course, the type argument here would usually be left out since it can be inferred.
-
+Type arguments matching method type parameters are passed as usual:
+```scala
+List(1, 2, 3).map[String](_.toString)
+```
+By contrast, type arguments matching type parameters following `extension` can be passed
+only if the method is referenced as a regular method:
+```scala
+map[Int](List(1, 2, 3))(_ + 1)
+```
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 
 ```scala
 extension [T](x: T)(using n: Numeric[T])
    def + (y: T): T = n.plus(x, y)
 ```
-
-**Note**: Type parameters have to be given after the `extension` keyword; they cannot be given after the `def`.
-This restriction might be lifted in the future once we support multiple type parameter clauses in a method.
-By contrast, using clauses can be defined for the `extension` as well as per `def`.
-
 ### Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
