@@ -818,7 +818,7 @@ object JavaParsers {
         }
       }
       def forwarders(sdef: Tree): List[Tree] = sdef match {
-        case TypeDef(name, _) if (parentToken == INTERFACE) =>
+        case TypeDef(name, _) if (parentToken != AT) =>
           var rhs: Tree = Select(Ident(parentName.toTermName), name)
           List(TypeDef(name, rhs).withMods(Modifiers(Flags.Protected)))
         case _ =>
