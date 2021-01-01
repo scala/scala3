@@ -30,7 +30,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   // Positive tests ------------------------------------------------------------
 
-  @Test def posMacros: Unit = {
+  //@Test
+  def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions),
@@ -102,7 +103,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   // Negative tests ------------------------------------------------------------
 
-  @Test def negMacros: Unit = {
+  //@Test
+  def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
     aggregateTests(
       compileFilesInDir("tests/neg-macros", defaultOptions),
@@ -120,7 +122,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runMacros: Unit = {
+  //@Test
+  def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     aggregateTests(
       compileFilesInDir("tests/run-macros", defaultOptions),
