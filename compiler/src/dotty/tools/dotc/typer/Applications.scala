@@ -196,12 +196,8 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
-  /** A wrapper indicating that its `app` argument has already integrated the type arguments
-   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
-   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
-   *  `args` are the type arguments of the expected type.
-   */
-  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
+  abstract class AppProxy(implicit @constructorOnly src: SourceFile) extends ProxyTree {
+    def app: Tree
     override def span = app.span
 
     def forwardTo = app
@@ -209,6 +205,13 @@ object Applications {
     def productArity: Int = app.productArity
     def productElement(n: Int): Any = app.productElement(n)
   }
+
+  /** A wrapper indicating that its `app` argument has already integrated the type arguments
+   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
+   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
+   *  `args` are the type arguments of the expected type.
+   */
+  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy
 
   /** The unapply method of this extractor also recognizes IntegratedTypeArgs in closure blocks.
    *  This is necessary to deal with closures as left arguments of extension method applications.
@@ -225,12 +228,10 @@ object Applications {
 
   /** A wrapper indicating that its argument is an application of an extension method.
    */
-  class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
-  extends IntegratedTypeArgs(app) {
-    overwriteType(WildcardType)
+  class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy:
+    overwriteType(app.tpe)
       // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
       // such as eta expansion before the method is fully applied.
-  }
 }
 
 trait Applications extends Compatibility {
@@ -2146,9 +2147,6 @@ trait Applications extends Compatibility {
       // Always hide expected member to allow for chained extensions (needed for i6900.scala)
       case _: SelectionProto =>
         (tree, IgnoredProto(currentPt))
-      case PolyProto(targs, restpe) =>
-        val tree1 = untpd.TypeApply(tree, targs.map(untpd.TypedSplice(_)))
-        normalizePt(tree1, restpe)
       case _ =>
         (tree, currentPt)
 
