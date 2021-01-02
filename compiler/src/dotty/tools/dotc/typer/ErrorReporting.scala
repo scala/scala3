@@ -84,7 +84,13 @@ object ErrorReporting {
       else anonymousTypeMemberStr(denot.info)
 
     def refStr(tp: Type): String = tp match {
-      case tp: NamedType => denotStr(tp.denot)
+      case tp: NamedType =>
+        if tp.denot.symbol.exists then tp.denot.symbol.showLocated
+        else
+          val kind = tp.info match
+            case _: MethodOrPoly | _: ExprType => "method"
+            case _ => if tp.isType then "type" else "value"
+          s"$kind ${tp.name}"
       case _ => anonymousTypeMemberStr(tp)
     }
 

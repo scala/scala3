@@ -1778,7 +1778,7 @@ import transform.SymUtils._
           |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
   }
 
-  class MissingEmptyArgumentList(method: Symbol)(using Context)
+  class MissingEmptyArgumentList(method: String)(using Context)
     extends SyntaxMsg(MissingEmptyArgumentListID) {
     def msg = em"$method must be called with ${hl("()")} argument"
     def explain = {

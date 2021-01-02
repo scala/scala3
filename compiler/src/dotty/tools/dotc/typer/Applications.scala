@@ -373,7 +373,7 @@ trait Applications extends Compatibility {
     def success: Boolean = ok
 
     protected def methodType: MethodType = methType.asInstanceOf[MethodType]
-    private def methString: String = i"${methRef.symbol}: ${methType.show}"
+    private def methString: String = i"${err.refStr(methRef)}: ${methType.show}"
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
