@@ -106,7 +106,7 @@ trait Dynamic {
    *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
-  def typedDynamicSelect(tree: untpd.Select, targs: List[Tree], pt: Type)(using Context): Tree =
+  def typedDynamicSelect(tree: untpd.Select, targs: List[untpd.Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
