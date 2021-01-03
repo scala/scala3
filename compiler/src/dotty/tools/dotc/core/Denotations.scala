@@ -1063,7 +1063,16 @@ object Denotations {
           info.asSeenFrom(pre, owner),
           if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
 
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+      // Tt could happen that we see the symbol with prefix `this` as a member a different class
+      // through a self type and that it then has a different info. In this case we have to go
+      // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
+      def hasOriginalInfo: Boolean = this match
+        case sd: SymDenotation => true
+        case _ => info eq symbol.info
+
+      if !owner.membersNeedAsSeenFrom(pre) && ((pre ne owner.thisType) || hasOriginalInfo)
+         || symbol.is(NonMember)
+      then this
       else derived(symbol.info)
     }
   }
