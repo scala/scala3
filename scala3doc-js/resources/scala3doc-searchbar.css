@@ -2,6 +2,35 @@
     --inkuire-logo-size: 20px;
 }
 
+/* button */
+.search span {
+    background: #ED3522;
+    fill: #fff;
+    cursor: pointer;
+    border: none;
+    padding: 9px;
+    border-radius: 24px;
+    box-shadow: 0 0 16px #F27264;
+}
+.search span:hover {
+    fill: #F27264;
+}
+
+@media(max-width: 576px) {
+    .search span {
+        background: none;
+        fill: var(--icon-color);
+        cursor: pointer;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+        margin-top: 2px;
+    }
+    .search span:hover {
+        fill: var(--link-hover-fg);
+    }
+}
+
 #scala3doc-search {
     margin-top: 2px;
     cursor: pointer;
@@ -9,13 +38,6 @@
     top: 0;
     right: 20px;
     z-index: 5;
-}
-
-#scala3doc-search::before {
-    content: "";
-    display:block;
-    height: var(--inkuire-logo-size);
-    width: var(--inkuire-logo-size);
 }
 
 #scala3doc-searchbar.hidden {

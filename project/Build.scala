@@ -1644,6 +1644,19 @@ object Build {
           ),
           Compile / buildInfoKeys := Seq[BuildInfoKey](version),
           Compile / buildInfoPackage := "dotty.dokka",
+          Compile / resourceGenerators += Def.task {
+            val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
+            sbt.IO.copyFile((fullOptJS in Compile in `scala3doc-js`).value.data, jsDestinationFile)
+            Seq(jsDestinationFile)
+          }.taskValue,
+          Compile / resourceGenerators += Def.task {
+            val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scala3doc-searchbar.css"
+            val cssSourceFile = (resourceDirectory in Compile in `scala3doc-js`).value / "scala3doc-searchbar.css"
+            FileFunction.cached(streams.value.cacheDirectory / "css-cache") { (in: Set[File]) =>
+              in.headOption.map(sbt.IO.copyFile(_, cssDesitnationFile))
+              Set(cssDesitnationFile)
+            }.apply(Set(cssSourceFile)).toSeq
+          }.taskValue,
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
           buildInfoPackage in Test := "dotty.dokka.test",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
