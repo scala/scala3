@@ -130,16 +130,13 @@ object Checking {
 
     tpl.parents.foreach {
       case tree @ Block(_, parent) =>
-        val (ctor, _, _) = decomposeCall(parent)
-        checkConstructor(ctor.symbol, parent.tpe, tree)
+        checkConstructor(funPart(parent).symbol, parent.tpe, tree)
 
       case tree @ Apply(Block(_, parent), _) =>
-        val (ctor, _, _) = decomposeCall(parent)
-        checkConstructor(ctor.symbol, tree.tpe, tree)
+        checkConstructor(funPart(parent).symbol, tree.tpe, tree)
 
       case parent : Apply =>
-        val (ctor, _, argss) = decomposeCall(parent)
-        checkConstructor(ctor.symbol, parent.tpe, parent)
+        checkConstructor(funPart(parent).symbol, parent.tpe, parent)
 
       case ref =>
         val cls = ref.tpe.classSymbol.asClass
