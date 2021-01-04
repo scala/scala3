@@ -34,8 +34,8 @@ class ReplCompiler extends Compiler {
   override protected def frontendPhases: List[List[Phase]] = List(
     List(new REPLFrontEnd),
     List(new CollectTopLevelImports),
+    List(new PostTyper),
     List(new Staging),
-    List(new PostTyper)
   )
 
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
