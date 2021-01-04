@@ -107,8 +107,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](self: Tree)
-        def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
+      extension (self: Tree)
+        def asExprOf[T](using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
           QuotesImpl.this.asExprOf(self.asExpr)[T](using tp)
       end extension
 
