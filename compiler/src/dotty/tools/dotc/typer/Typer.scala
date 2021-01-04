@@ -3535,7 +3535,9 @@ class Typer extends Namer
         else err.typeMismatch(tree, pt, failure)
 
       if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
-        if pt.isRef(defn.AnyValClass) || pt.isRef(defn.ObjectClass) then
+        if pt.isRef(defn.AnyValClass, skipRefined = false)
+           || pt.isRef(defn.ObjectClass, skipRefined = false)
+        then
           report.error(em"the result of an implicit conversion must be more specific than $pt", tree.srcPos)
         inferView(tree, pt) match {
           case SearchSuccess(found: ExtMethodApply, _, _) =>
