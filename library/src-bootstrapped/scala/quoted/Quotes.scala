@@ -248,8 +248,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
-      extension [T](self: Tree)
-        def asExprOf(using Type[T]): Expr[T]
+      extension (self: Tree)
+        def asExprOf[T](using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree)
         /** Changes the owner of the symbols in the tree */
