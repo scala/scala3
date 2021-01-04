@@ -1250,7 +1250,7 @@ trait Implicits:
         val arity2 = sym2.info.firstParamTypes.length
         if arity1 < arity2 then return true
         if arity1 > arity2 then return false
-        compareOwner(sym1, sym2) == 1
+        compareOwner(sym1.owner, sym2.owner) == 1
 
       /** Sort list of implicit references according to `prefer`.
        *  This is just an optimization that aims at reducing the average
