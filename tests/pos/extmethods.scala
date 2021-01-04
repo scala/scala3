@@ -45,3 +45,13 @@ object CC extends TT:
   val m = Nil
 
 val xx = CC.foo(List(1, 2, 3))
+
+extension (x: TT)
+  def ff[X](): Int = 1
+  def ff[X](s: String): Int = s.length
+  def ff[X](n: Int): Int = n
+
+val yy =
+  CC.ff[Int]()
+  + CC.ff[String]("abc")
+  + CC.ff[Int](22)

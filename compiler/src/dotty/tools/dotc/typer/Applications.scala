@@ -1929,7 +1929,7 @@ trait Applications extends Compatibility {
     else
       val deepPt = pt.deepenProto
       deepPt match
-        case pt @ FunProto(_, resType: FunProto) =>
+        case pt @ FunProto(_, resType: FunOrPolyProto) =>
           // try to narrow further with snd argument list
           resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
         case _ =>
