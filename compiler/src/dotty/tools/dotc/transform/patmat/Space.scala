@@ -388,7 +388,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       projectSeq(pats)
 
     case UnApply(fun, _, pats) =>
-      val (fun1, _, _) = decomposeCall(fun)
+      val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)

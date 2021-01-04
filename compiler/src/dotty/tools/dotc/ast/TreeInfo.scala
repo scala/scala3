@@ -621,24 +621,38 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** Decompose a call fn[targs](vargs_1)...(vargs_n)
-   *  into its constituents (fn, targs, vargss).
-   *
-   *  Note: targ and vargss may be empty
-   */
-  def decomposeCall(tree: Tree): (Tree, List[Tree], List[List[Tree]]) = {
+  /** The type arguemnts of a possibly curried call */
+  def typeArgss(tree: Tree): List[List[Tree]] =
     @tailrec
-    def loop(tree: Tree, targss: List[Tree], argss: List[List[Tree]]): (Tree, List[Tree], List[List[Tree]]) =
-      tree match {
-        case Apply(fn, args) =>
-          loop(fn, targss, args :: argss)
-        case TypeApply(fn, targs) =>
-          loop(fn, targs ::: targss, argss)
-        case _ =>
-          (tree, targss, argss)
-      }
-    loop(tree, Nil, Nil)
-  }
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case TypeApply(fn, args) => loop(fn, args :: argss)
+      case Apply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
+
+  /** The term arguemnts of a possibly curried call */
+  def termArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case Apply(fn, args) => loop(fn, args :: argss)
+      case TypeApply(fn, args) => loop(fn, argss)
+      case _ => argss
+    loop(tree, Nil)
+
+  /** The type and term arguemnts of a possibly curried call, in the order they are given */
+  def allArgss(tree: Tree): List[List[Tree]] =
+    @tailrec
+    def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
+      case tree: GenericApply => loop(tree.fun, tree.args :: argss)
+      case _ => argss
+    loop(tree, Nil)
+
+  /** The function part of a possibly curried call. Unlike `methPart` this one does
+   *  not decompose blocks
+   */
+  def funPart(tree: Tree): Tree = tree match
+    case tree: GenericApply => funPart(tree.fun)
+    case tree => tree
 
   /** Decompose a template body into parameters and other statements */
   def decomposeTemplateBody(body: List[Tree])(using Context): (List[Tree], List[Tree]) =

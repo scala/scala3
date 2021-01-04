@@ -20,3 +20,10 @@ object CollectionStrawMan {
     protected[this] def newBuilder = new ArrayBuffer[A].mapResult(_.toArray(elemTag))
   }
 }
+
+extension [A](xs: List[A])
+  inline def foldl[B](z: B)(op: (B, A) => B): B =
+    (xs: List[A]).foldLeft(z)(op)
+
+val x = List("a", "b").foldl[Int](0)((x, y) => x + y.length)
+

@@ -364,7 +364,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   import tpd._
   import Inliner._
 
-  private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
+  private val methPart = funPart(call)
+  private val callTypeArgs = typeArgss(call).flatten
+  private val callValueArgss = termArgss(call)
   private val inlinedMethod = methPart.symbol
   private val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
@@ -456,7 +458,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
-      computeParamBindings(tp.resultType, Nil, argss)
+      computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss)
     case tp: MethodType =>
       if argss.isEmpty then
         report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)

@@ -309,7 +309,7 @@ class ImplicitSearchError(
     //     implicitly[Int => String] // found: x => f[Any](x)
 
     val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
-    val (_, targs, _) = tpd.decomposeCall(call)
+    val targs = tpd.typeArgss(call).flatten
     val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
     userDefinedErrorString(raw, params, args)
   }
@@ -336,7 +336,8 @@ class ImplicitSearchError(
    */
   private def userDefinedImplicitNotFoundParamMessage: Option[String] = paramSymWithMethodCallTree.flatMap { (sym, applTree) =>
     userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
-      val (fn, targs, _) = tpd.decomposeCall(applTree)
+      val fn = tpd.funPart(applTree)
+      val targs = tpd.typeArgss(applTree).flatten
       val methodOwner = fn.symbol.owner
       val methodOwnerType = tpd.qualifier(fn).tpe
       val methodTypeParams = fn.symbol.paramSymss.flatten.filter(_.isType)

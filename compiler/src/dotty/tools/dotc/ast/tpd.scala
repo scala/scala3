@@ -1246,6 +1246,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     case TypeArgs(targs) :: argss1 => (targs, argss1)
     case _ => (Nil, argss)
 
+  def joinArgs(targs: List[Tree], argss: List[List[Tree]]): List[List[Tree]] =
+    if targs.isEmpty then argss else targs :: argss
+
   /** A key to be used in a context property that tracks enclosing inlined calls */
   private val InlinedCalls = Property.Key[List[Tree]]()
 
