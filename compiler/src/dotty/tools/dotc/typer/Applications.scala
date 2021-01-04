@@ -111,20 +111,22 @@ object Applications {
   }
 
   def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
-    def tupleSelectors(n: Int, tp: Type): List[Type] = {
-      val sel = extractorMemberType(tp, nme.selectorName(n), errorPos)
-      // extractorMemberType will return NoType if this is the tail of tuple with an unknown tail
-      // such as `Int *: T` where `T <: Tuple`.
-      if (sel.exists) sel :: tupleSelectors(n + 1, tp) else Nil
-    }
-    def genTupleSelectors(n: Int, tp: Type): List[Type] = tp match {
-      case tp: AppliedType if !defn.isTupleClass(tp.tycon.typeSymbol) && tp.derivesFrom(defn.PairClass) =>
-        val List(head, tail) = tp.args
-        head :: genTupleSelectors(n, tail)
-      case _ => tupleSelectors(n, tp)
-    }
-    genTupleSelectors(0, tp)
+    val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
+    sels.takeWhile(_.exists).toList
   }
+
+  def tupleComponentTypes(tp: Type)(using Context): List[Type] =
+    tp.widenExpr.dealias match
+    case tp: AppliedType =>
+      if defn.isTupleClass(tp.tycon.typeSymbol) then
+        tp.args
+      else if tp.tycon.derivesFrom(defn.PairClass) then
+        val List(head, tail) = tp.args
+        head :: tupleComponentTypes(tail)
+      else
+        Nil
+    case _ =>
+      Nil
 
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1

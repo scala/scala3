@@ -33,7 +33,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
     case Origin.Overrides(defs) =>
       def renderDef(d: Overriden): Seq[TagArg] =
         Seq(" -> ", signatureRenderer.renderLink(d.name, d.dri))
-      val headNode = m.inheritedFrom.map(signatureRenderer.renderLink(_, _))
+      val headNode = m.inheritedFrom.map(form => signatureRenderer.renderLink(form.name, form.dri))
       val tailNodes = defs.flatMap(renderDef)
       val nodes = headNode.fold(tailNodes.drop(1))(_ +: tailNodes)
       tableRow("Definition Classes", div(nodes:_*))
