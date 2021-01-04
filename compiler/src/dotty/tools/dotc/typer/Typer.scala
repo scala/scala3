@@ -3592,26 +3592,17 @@ class Typer extends Namer
 
     /** Convert constructor proxy reference to a new expression */
     def newExpr =
-      def recur(tpt: Tree, pt: Type): Tree = pt.revealIgnored match
-        case PolyProto(targs, pt1) =>
-          if targs.exists(_.isInstanceOf[NamedArg]) then
-            errorTree(tpt, "Named type argument not allowed in constructor application")
-          else
-            IntegratedTypeArgs(recur(AppliedTypeTree(tpt, targs), pt1))
-        case _ =>
-          typed(untpd.Select(untpd.New(untpd.TypedSplice(tpt)), nme.CONSTRUCTOR), pt)
-
-      tree match
-        case Select(qual, nme.apply) =>
-          val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
-          val tpt = qual match
-            case Ident(name) => cpy.Ident(qual)(name.toTypeName)
-            case Select(pre, name) => cpy.Select(qual)(pre, name.toTypeName)
-          recur(tpt.withType(tycon), pt)
-            .showing(i"convert creator $tree -> $result", typr)
-        case _ =>
-          throw AssertionError(i"bad case for newExpr: $tree, $pt")
-    end newExpr
+      val Select(qual, nme.apply) = tree; @unchecked
+      val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
+      val tpt = qual match
+        case Ident(name) => cpy.Ident(qual)(name.toTypeName)
+        case Select(pre, name) => cpy.Select(qual)(pre, name.toTypeName)
+      typed(
+        untpd.Select(
+          untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
+          nme.CONSTRUCTOR),
+        pt)
+        .showing(i"convert creator $tree -> $result", typr)
 
     tree match {
       case _: MemberDef | _: PackageDef | _: Import | _: WithoutTypeOrPos[?] | _: Closure => tree
