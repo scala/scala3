@@ -78,17 +78,21 @@ Type parameters on extensions can also be combined with type parameters on the m
 themselves:
 ```scala
 extension [T](xs: List[T])
-   def map [U](op: T => U): List[U] = ...
+   def def sumBy[B](f: A => B)(using Numeric[B]): B = ...
 ```
 
 Type arguments matching method type parameters are passed as usual:
 ```scala
-List(1, 2, 3).map[String](_.toString)
+List("a", "bb", "ccc").sumBy[Int](_.length)
 ```
 By contrast, type arguments matching type parameters following `extension` can be passed
 only if the method is referenced as a regular method:
 ```scala
-map[Int](List(1, 2, 3))(_ + 1)
+List[String]("a", "bb", "ccc").sumBy(_.length)
+```
+or, passing, both type arguments
+```scala
+List[String]("a", "bb", "ccc").sumBy[Int](_.length)
 ```
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 
