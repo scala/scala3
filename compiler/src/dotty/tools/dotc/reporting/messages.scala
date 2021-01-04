@@ -1847,6 +1847,19 @@ import transform.SymUtils._
     def explain = ""
   }
 
+  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
+    private def where: String =
+      if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
+        i" in ${conflicting.associatedFile}"
+      else if conflicting.owner == owner then ""
+      else i" in ${conflicting.owner}"
+    def msg =
+      if conflicting.isTerm != name.isTermName then
+        em"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        em"$name is already defined as $conflicting$where"
+    def explain = ""
+
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
     lazy val (where, or) =
       if pkg.associatedFile == null then ("", "")
