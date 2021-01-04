@@ -1927,35 +1927,40 @@ trait Applications extends Compatibility {
       case _ => false
 
     record("resolveOverloaded.narrowedApplicable", candidates.length)
-    val found = narrowMostSpecific(candidates)
-    if (found.length <= 1) found
+    if pt.isErroneous then
+      // `pt` might have become erroneous by typing arguments of FunProtos.
+      // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
+      candidates 
     else
-      val deepPt = pt.deepenProto
-      deepPt match
-        case pt @ FunProto(_, resType: FunOrPolyProto) =>
-          // try to narrow further with snd argument list
-          resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
-        case _ =>
-          // prefer alternatives that need no eta expansion
-          val noCurried = alts.filter(!resultIsMethod(_))
-          val noCurriedCount = noCurried.length
-          if noCurriedCount == 1 then
-            noCurried
-          else if noCurriedCount > 1 && noCurriedCount < alts.length then
-            resolveOverloaded1(noCurried, pt)
-          else
-            // prefer alternatves that match without default parameters
-            val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-            val noDefaultsCount = noDefaults.length
-            if noDefaultsCount == 1 then
-              noDefaults
-            else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-              resolveOverloaded1(noDefaults, pt)
-            else if deepPt ne pt then
-              // try again with a deeper known expected type
-              resolveOverloaded1(alts, deepPt)
+      val found = narrowMostSpecific(candidates)
+      if found.length <= 1 then found
+      else
+        val deepPt = pt.deepenProto
+        deepPt match
+          case pt @ FunProto(_, resType: FunOrPolyProto) =>
+            // try to narrow further with snd argument list
+            resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
+          case _ =>
+            // prefer alternatives that need no eta expansion
+            val noCurried = alts.filter(!resultIsMethod(_))
+            val noCurriedCount = noCurried.length
+            if noCurriedCount == 1 then
+              noCurried
+            else if noCurriedCount > 1 && noCurriedCount < alts.length then
+              resolveOverloaded1(noCurried, pt)
             else
-              candidates
+              // prefer alternatves that match without default parameters
+              val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+              val noDefaultsCount = noDefaults.length
+              if noDefaultsCount == 1 then
+                noDefaults
+              else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+                resolveOverloaded1(noDefaults, pt)
+              else if deepPt ne pt then
+                // try again with a deeper known expected type
+                resolveOverloaded1(alts, deepPt)
+              else
+                candidates
     }
   end resolveOverloaded1
 
