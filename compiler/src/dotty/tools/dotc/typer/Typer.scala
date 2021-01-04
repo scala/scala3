@@ -2951,7 +2951,7 @@ class Typer extends Namer
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
     def missingArgs(mt: MethodType) = {
-      val meth = methPart(tree).symbol
+      val meth = err.exprStr(methPart(tree))
       if (mt.paramNames.length == 0) report.error(MissingEmptyArgumentList(meth), tree.srcPos)
       else report.error(em"missing arguments for $meth", tree.srcPos)
       tree.withType(mt.resultType)
@@ -3221,7 +3221,7 @@ class Typer extends Namer
       def isAutoApplied(sym: Symbol): Boolean =
         sym.isConstructor
         || sym.matchNullaryLoosely
-        || warnOnMigration(MissingEmptyArgumentList(sym), tree.srcPos)
+        || warnOnMigration(MissingEmptyArgumentList(sym.show), tree.srcPos)
            && { patch(tree.span.endPos, "()"); true }
 
       // Reasons NOT to eta expand:
