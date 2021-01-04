@@ -67,7 +67,7 @@ class SpecializeFunctions extends MiniPhase {
   /** Dispatch to specialized `apply`s in user code when available */
   override def transformApply(tree: Apply)(using Context) =
     tree match {
-      case Apply(fun: NameTree, args) if fun.name == nme.apply && args.size <= 3 =>
+      case Apply(fun: NameTree, args) if fun.name == nme.apply && args.size <= 3 && fun.symbol.owner.isType =>
         val argTypes = fun.tpe.widen.firstParamTypes.map(_.widenSingleton.dealias)
         val retType  = tree.tpe.widenSingleton.dealias
         val isSpecializable =
