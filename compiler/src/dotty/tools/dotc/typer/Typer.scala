@@ -30,7 +30,7 @@ import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{ExtMethodApply, IntegratedTypeArgs, productSelectorTypes, wrapDefs}
+import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs}
 
 import collection.mutable
 import annotation.tailrec
@@ -548,11 +548,6 @@ class Typer extends Namer
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
   def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(using Context): Tree = qual match {
-    case qual @ IntegratedTypeArgs(app) =>
-      pt.revealIgnored match {
-        case _: PolyProto => qual // keep the IntegratedTypeArgs to strip at next typedTypeApply
-        case _ => app
-      }
     case qual: ExtMethodApply =>
       qual.app
     case qual =>
@@ -3638,10 +3633,7 @@ class Typer extends Namer
               if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
               else adaptToArgs(wtp, pt)
             case pt: PolyProto =>
-              tree match {
-                case _: IntegratedTypeArgs => tree
-                case _ =>  tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
-              }
+              tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
             case pt: SelectionProto if tree.isInstanceOf[ExtMethodApply] =>
               tree
             case _ =>

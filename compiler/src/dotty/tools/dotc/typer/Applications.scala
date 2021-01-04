@@ -206,26 +206,6 @@ object Applications {
     def productElement(n: Int): Any = app.productElement(n)
   }
 
-  /** A wrapper indicating that its `app` argument has already integrated the type arguments
-   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
-   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
-   *  `args` are the type arguments of the expected type.
-   */
-  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy
-
-  /** The unapply method of this extractor also recognizes IntegratedTypeArgs in closure blocks.
-   *  This is necessary to deal with closures as left arguments of extension method applications.
-   *  A test case is i5606.scala
-   */
-  object IntegratedTypeArgs {
-    def apply(app: Tree)(using Context) = new IntegratedTypeArgs(app)
-    def unapply(tree: Tree)(using Context): Option[Tree] = tree match {
-      case tree: IntegratedTypeArgs => Some(tree.app)
-      case Block(stats, IntegratedTypeArgs(app)) => Some(tpd.cpy.Block(tree)(stats, app))
-      case _ => None
-    }
-  }
-
   /** A wrapper indicating that its argument is an application of an extension method.
    */
   class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy:
@@ -1061,8 +1041,6 @@ trait Applications extends Compatibility {
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case IntegratedTypeArgs(app) =>
-        app
       case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
       case typedFn =>
