@@ -147,7 +147,7 @@ trait ExprMap:
     }
     new MapChildren()
       .transformTermChildren(e.asTerm, TypeRepr.of[T])(Symbol.spliceOwner)
-      .asExprOf: Expr[T]
+      .asExprOf[T]
   }
 
 end ExprMap

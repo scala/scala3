@@ -60,7 +60,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
     def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
