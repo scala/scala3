@@ -2848,7 +2848,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     val ctx1 =
       if typeHoles.isEmpty then ctx
       else
-        val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(dotc.core.Mode.GadtConstraintInference)
+        val ctx1 = ctx.fresh.setFreshGadtState.addMode(dotc.core.Mode.GadtConstraintInference)
         ctx1.gadt.addToConstraint(typeHoles)
         ctx1
 

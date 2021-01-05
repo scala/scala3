@@ -1386,7 +1386,7 @@ class Typer extends Namer
               case (pat: untpd.Typed, pt) =>
                 // To check that pattern types correspond we need to type
                 // check `pat` here and throw away the result.
-                val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
+                val gadtCtx: Context = ctx.fresh.setFreshGadtState
                 val pat1 = typedPattern(pat, selType)(using gadtCtx)
                 val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1))
                 instantiateMatchTypeProto(pat1, pt) match {
@@ -1497,7 +1497,7 @@ class Typer extends Namer
   /** Type a case. */
   def typedCase(tree: untpd.CaseDef, sel: Tree, wideSelType: Type, pt: Type)(using Context): CaseDef = {
     val originalCtx = ctx
-    val gadtCtx: Context = ctx.fresh.setFreshGADTBounds
+    val gadtCtx: Context = ctx.fresh.setFreshGadtState
 
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
@@ -1535,7 +1535,7 @@ class Typer extends Namer
         body1 = TypeTree(errorType("<error: not a type>", cdef.srcPos))
       assignType(cpy.CaseDef(cdef)(pat2, EmptyTree, body1), pat2, body1)
     }
-    caseRest(using ctx.fresh.setFreshGADTBounds.setNewScope)
+    caseRest(using ctx.fresh.setFreshGadtState.setNewScope)
   }
 
   def typedReturn(tree: untpd.Return)(using Context): Return = {
@@ -2010,7 +2010,7 @@ class Typer extends Namer
 
     val rhsCtx = ctx.fresh
     if (tparams1.nonEmpty) {
-      rhsCtx.setFreshGADTBounds
+      rhsCtx.setFreshGadtState
       if (!sym.isConstructor)
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters

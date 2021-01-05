@@ -170,10 +170,11 @@ object Contexts {
     final def typerState: TyperState = _typerState
 
     /** The current bounds in force for type parameters appearing in a GADT */
-    private var _gadt: GadtConstraint = _
-    protected def gadt_=(gadt: GadtConstraint): Unit = _gadt = gadt
-    final def gadt: GadtConstraint = _gadt
+    private var _gadtState: GadtScopeState = _
+    protected def gadtState_=(gadt: GadtScopeState): Unit = _gadtState = gadt
+    final def gadtState: GadtScopeState = _gadtState
 
+    final def gadt: GadtConstraintHandling = comparer.gadt
     /** The history of implicit searches that are currently active */
     private var _searchHistory: SearchHistory = null
     protected def searchHistory_= (searchHistory: SearchHistory): Unit = _searchHistory = searchHistory
@@ -454,7 +455,7 @@ object Contexts {
       val constrCtx = outersIterator.dropWhile(_.outer.owner == owner).next()
       superOrThisCallContext(owner, constrCtx.scope)
         .setTyperState(typerState)
-        .setGadt(gadt)
+        .setGadtState(gadtState)
         .fresh
         .setScope(this.scope)
     }
@@ -506,7 +507,7 @@ object Contexts {
       _owner = origin.owner
       _tree = origin.tree
       _scope = origin.scope
-      _gadt = origin.gadt
+      _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
       _moreProperties = origin.moreProperties
@@ -597,11 +598,11 @@ object Contexts {
     def setExploreTyperState(): this.type = setTyperState(typerState.fresh().setCommittable(false))
     def setReporter(reporter: Reporter): this.type = setTyperState(typerState.fresh().setReporter(reporter))
     def setTyper(typer: Typer): this.type = { this.scope = typer.scope; setTypeAssigner(typer) }
-    def setGadt(gadt: GadtConstraint): this.type =
-      util.Stats.record("Context.setGadt")
-      this.gadt = gadt
+    def setGadtState(gadt: GadtScopeState): this.type =
+      util.Stats.record("Context.setGadtState")
+      this.gadtState = gadtState
       this
-    def setFreshGADTBounds: this.type = setGadt(gadt.fresh)
+    def setFreshGadtState: this.type = setGadtState(gadtState.fresh)
     def setSearchHistory(searchHistory: SearchHistory): this.type =
       util.Stats.record("Context.setSearchHistory")
       this.searchHistory = searchHistory
@@ -793,7 +794,7 @@ object Contexts {
       .updated(settingsStateLoc, settingsGroup.defaultState)
       .updated(notNullInfosLoc, Nil)
     searchHistory = new SearchRoot
-    gadt = EmptyGadtConstraint
+    gadtState = new GadtScopeState()
   }
 
   @sharable object NoContext extends Context(null) {

@@ -1409,7 +1409,7 @@ class Namer { typer: Typer =>
         // we'll be typing an expression from a polymorphic definition's body,
         // so we must allow constraining its type parameters
         // compare with typedDefDef, see tests/pos/gadt-inference.scala
-        rhsCtx.setFreshGADTBounds
+        rhsCtx.setFreshGadtState
         rhsCtx.gadt.addToConstraint(typeParams)
       }
       def rhsType = PrepareInlineable.dropInlineIfError(sym,

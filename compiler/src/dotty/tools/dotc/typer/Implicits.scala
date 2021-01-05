@@ -401,7 +401,7 @@ object Implicits:
    *  @param level  The level where the reference was found
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtConstraint)
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtScopeState)
   extends SearchResult with RefAndLevel with Showable
 
   /** A failed search */
@@ -964,7 +964,7 @@ trait Implicits:
         result0 match {
           case result: SearchSuccess =>
             result.tstate.commit()
-            ctx.gadt.restore(result.gstate)
+            ctx.gadtState.restore(result.gstate)
             if hasSkolem(false, result.tree) then
               report.error(SkolemInInferred(result.tree, pt, argument), ctx.source.atSpan(span))
             implicits.println(i"success: $result")
@@ -1058,7 +1058,7 @@ trait Implicits:
         val returned =
           if (cand.isExtension) Applications.ExtMethodApply(adapted)
           else adapted
-        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
+        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadtState)
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
@@ -1090,7 +1090,7 @@ trait Implicits:
       else {
         val history = ctx.searchHistory.nest(cand, pt)
         val result =
-          typedImplicit(cand, pt, argument, span)(using nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
+          typedImplicit(cand, pt, argument, span)(using nestedContext().setNewTyperState().setFreshGadtState.setSearchHistory(history))
         result match {
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
@@ -1213,7 +1213,7 @@ trait Implicits:
             case _: SearchFailure =>
               SearchSuccess(ref(defn.NotGiven_value), defn.NotGiven_value.termRef, 0)(
                 ctx.typerState.fresh().setCommittable(true),
-                ctx.gadt
+                ctx.gadtState
               )
             case _: SearchSuccess =>
               NoMatchingImplicitsFailure
@@ -1316,7 +1316,7 @@ trait Implicits:
       // other candidates need to be considered.
       recursiveRef match
         case ref: TermRef =>
-          SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadt)
+          SearchSuccess(tpd.ref(ref).withSpan(span.startPos), ref, 0)(ctx.typerState, ctx.gadtState)
         case _ =>
           searchImplicit(contextual = true)
     end bestImplicit

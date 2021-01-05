@@ -91,7 +91,7 @@ object TypeTestsCasts {
     }.apply(tp)
 
     /** Returns true if the type arguments of `P` can be determined from `X` */
-    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
+    def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGadtState) {
       val AppliedType(tycon, _) = P
 
       def underlyingLambda(tp: Type): TypeLambda = tp.ensureLambdaSub match {

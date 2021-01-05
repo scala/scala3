@@ -10,10 +10,8 @@ import util.SimpleIdentityMap
 import collection.mutable
 import printing._
 
-import scala.annotation.internal.sharable
-
 /** Represents GADT constraints currently in scope */
-sealed abstract class GadtConstraint extends Showable {
+abstract class GadtConstraintHandling extends Showable {
   /** Immediate bounds of `sym`. Does not contain lower/upper symbols (see [[fullBounds]]). */
   def bounds(sym: Symbol)(using Context): TypeBounds
 
@@ -49,36 +47,25 @@ sealed abstract class GadtConstraint extends Showable {
   /** See [[ConstraintHandling.approximation]] */
   def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type
 
-  def fresh: GadtConstraint
-
-  /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
-  def restore(other: GadtConstraint): Unit
-
   def debugBoundsDescription(using Context): String
 }
 
-final class ProperGadtConstraint private(
-  private var myConstraint: Constraint,
-  private var mapping: SimpleIdentityMap[Symbol, TypeVar],
-  private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-) extends GadtConstraint with ConstraintHandling {
+final class GadtConstraintHandlingImpl(
+  initctx: Context
+) extends GadtConstraintHandling with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
-  def this() = this(
-    myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
-    mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty
-  )
+  def myConstraint: Constraint = initctx.gadtState.constraint
+  def myConstraint_=(c: Constraint): Unit = initctx.gadtState.constraint = c
+  def mapping: SimpleIdentityMap[Symbol, TypeVar] = initctx.gadtState.mapping
+  def mapping_=(m: SimpleIdentityMap[Symbol, TypeVar]): Unit = initctx.gadtState.mapping = m
+  def reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol] = initctx.gadtState.reverseMapping
+  def reverseMapping_=(m: SimpleIdentityMap[TypeParamRef, Symbol]): Unit = initctx.gadtState.reverseMapping = m
 
   /** Exposes ConstraintHandling.subsumes */
-  def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
-    def extractConstraint(g: GadtConstraint) = g match {
-      case s: ProperGadtConstraint => s.constraint
-      case EmptyGadtConstraint => OrderingConstraint.empty
-    }
-    subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+  def subsumes(left: GadtScopeState, right: GadtScopeState, pre: GadtScopeState)(implicit ctx: Context): Boolean = {
+    subsumes(left.constraint, right.constraint, pre.constraint)
   }
-
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
@@ -199,20 +186,6 @@ final class ProperGadtConstraint private(
     res
   }
 
-  override def fresh: GadtConstraint = new ProperGadtConstraint(
-    myConstraint,
-    mapping,
-    reverseMapping
-  )
-
-  def restore(other: GadtConstraint): Unit = other match {
-    case other: ProperGadtConstraint =>
-      this.myConstraint = other.myConstraint
-      this.mapping = other.mapping
-      this.reverseMapping = other.reverseMapping
-    case _ => ;
-  }
-
   override def isEmpty: Boolean = mapping.size == 0
 
   // ---- Protected/internal -----------------------------------------------
@@ -285,28 +258,4 @@ final class ProperGadtConstraint private(
     }
     sb.result
   }
-}
-
-@sharable object EmptyGadtConstraint extends GadtConstraint {
-  override def bounds(sym: Symbol)(using Context): TypeBounds = null
-  override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
-
-  override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
-
-  override def isEmpty: Boolean = true
-
-  override def contains(sym: Symbol)(using Context) = false
-
-  override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
-  override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
-
-  override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
-
-  override def fresh = new ProperGadtConstraint
-  override def restore(other: GadtConstraint): Unit =
-    if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
-
-  override def debugBoundsDescription(using Context): String = "EmptyGadtConstraint"
-
-  override def toText(printer: Printer): Texts.Text = "EmptyGadtConstraint"
 }

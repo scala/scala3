@@ -39,6 +39,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected var state: TyperState = null
   def constraint: Constraint = state.constraint
   def constraint_=(c: Constraint): Unit = state.constraint = c
+  val gadt = new GadtConstraintHandlingImpl(initctx)
 
   def init(c: Context): Unit =
     myContext = c
@@ -1654,37 +1655,34 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def necessaryEither(op1: => Boolean, op2: => Boolean): Boolean =
     val preConstraint = constraint
-    val preGadt = ctx.gadt.fresh
+    val preGadt = ctx.gadtState.fresh
 
-    def allSubsumes(leftGadt: GadtConstraint, rightGadt: GadtConstraint, left: Constraint, right: Constraint): Boolean =
-      subsumes(left, right, preConstraint) && preGadt.match
-        case preGadt: ProperGadtConstraint =>
-          preGadt.subsumes(leftGadt, rightGadt, preGadt)
-        case _ =>
-          true
+
+    def allSubsumes(leftGadt: GadtScopeState, rightGadt: GadtScopeState, left: Constraint, right: Constraint): Boolean =
+      subsumes(left, right, preConstraint) && gadt.subsumes(leftGadt, rightGadt, preGadt)
 
     if op1 then
       val op1Constraint = constraint
-      val op1Gadt = ctx.gadt.fresh
+      val op1Gadt = ctx.gadtState.fresh
       constraint = preConstraint
-      ctx.gadt.restore(preGadt)
+      ctx.gadtState.restore(preGadt)
       if op2 then
-        if allSubsumes(op1Gadt, ctx.gadt, op1Constraint, constraint) then
+        if allSubsumes(op1Gadt, ctx.gadtState, op1Constraint, constraint) then
           gadts.println(i"GADT CUT - prefer ${ctx.gadt} over $op1Gadt")
           constr.println(i"CUT - prefer $constraint over $op1Constraint")
-        else if allSubsumes(ctx.gadt, op1Gadt, constraint, op1Constraint) then
+        else if allSubsumes(ctx.gadtState, op1Gadt, constraint, op1Constraint) then
           gadts.println(i"GADT CUT - prefer $op1Gadt over ${ctx.gadt}")
           constr.println(i"CUT - prefer $op1Constraint over $constraint")
           constraint = op1Constraint
-          ctx.gadt.restore(op1Gadt)
+          ctx.gadtState.restore(op1Gadt)
         else
           gadts.println(i"GADT CUT - no constraint is preferable, reverting to $preGadt")
           constr.println(i"CUT - no constraint is preferable, reverting to $preConstraint")
           constraint = preConstraint
-          ctx.gadt.restore(preGadt)
+          ctx.gadtState.restore(preGadt)
       else
         constraint = op1Constraint
-        ctx.gadt.restore(op1Gadt)
+        ctx.gadtState.restore(op1Gadt)
       true
     else op2
   end necessaryEither
