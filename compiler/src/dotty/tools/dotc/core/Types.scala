@@ -332,13 +332,17 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
+    /** A conservative approximation whether a type might have errors.
+     *  It's OK to predict "no errors" even though errors might be present.
+     *  But one should never force or loop.
+     */
     def hasErrors(using Context): Boolean = widenDealias match
-      case _: NamedType => false
       case AppliedType(tycon, args) => tycon.hasErrors || args.exists(_.hasErrors)
       case RefinedType(parent, _, rinfo) => parent.hasErrors || rinfo.hasErrors
       case TypeBounds(lo, hi) => lo.hasErrors || hi.hasErrors
       case tp: AndOrType => tp.tp1.hasErrors || tp.tp2.hasErrors
-      case tp: TypeProxy => tp.underlying.hasErrors
+      case tp: LambdaType => tp.resultType.hasErrors || tp.paramInfos.exists(_.hasErrors)
+      case WildcardType(optBounds) => optBounds.hasErrors
       case _: ErrorType => true
       case _ => false
 

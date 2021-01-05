@@ -455,7 +455,9 @@ trait Applications extends Compatibility {
     def success: Boolean = ok
 
     protected def methodType: MethodType = methType.asInstanceOf[MethodType]
-    private def methString: String = i"${err.refStr(methRef)}: ${methType.show}"
+    private def methString: String =
+      def infoStr = if methType.hasErrors then "" else i": $methType"
+      i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
