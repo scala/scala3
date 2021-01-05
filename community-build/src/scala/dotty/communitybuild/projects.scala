@@ -40,6 +40,7 @@ object Versions:
   val discipline = "1.1.3-SNAPSHOT"
   val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val disciplineSpecs2 = "1.1.3-SNAPSHOT"
+  val izumiReflect = "1.0.0-SNAPSHOT"
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
@@ -147,6 +148,7 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
     s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
     s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
+    s""""dev.zio" %% "izumi-reflect" % "${Versions.izumiReflect}"""",
   )
 
   private val baseCommand =
@@ -395,7 +397,8 @@ object projects:
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    sbtDocCommand  = forceDoc("coreJVM"),
+    sbtDocCommand = forceDoc("coreJVM"),
+    dependencies = List(izumiReflect)
   )
 
   lazy val munit = SbtCommunityProject(
@@ -613,6 +616,13 @@ object projects:
     extraSbtArgs      = List("-Dde.sciss.lucre.ShortTests=true"),
     sbtPublishCommand = "adjunctJVM/publishLocal;baseJVM/publishLocal;confluentJVM/publishLocal;coreJVM/publishLocal;dataJVM/publishLocal;expr0JVM/publishLocal;expr1JVM/publishLocal;exprJVM/publishLocal;geomJVM/publishLocal;lucre-bdb/publishLocal",
     dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
+  )
+
+  lazy val izumiReflect = SbtCommunityProject(
+    project = "izumi-reflect",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
   )
 
 end projects
