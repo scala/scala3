@@ -867,20 +867,20 @@ class Definitions {
 
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
-  @tu lazy val RuntimeTupleModule: Symbol = requiredModule("scala.runtime.Tuple")
-  @tu lazy val RuntimeTupleModuleClass: Symbol = RuntimeTupleModule.moduleClass
-    lazy val RuntimeTuple_consIterator: Symbol = RuntimeTupleModule.requiredMethod("consIterator")
-    lazy val RuntimeTuple_concatIterator: Symbol = RuntimeTupleModule.requiredMethod("concatIterator")
-    lazy val RuntimeTuple_apply: Symbol = RuntimeTupleModule.requiredMethod("apply")
-    lazy val RuntimeTuple_cons: Symbol = RuntimeTupleModule.requiredMethod("cons")
-    lazy val RuntimeTuple_size: Symbol = RuntimeTupleModule.requiredMethod("size")
-    lazy val RuntimeTuple_tail: Symbol = RuntimeTupleModule.requiredMethod("tail")
-    lazy val RuntimeTuple_concat: Symbol = RuntimeTupleModule.requiredMethod("concat")
-    lazy val RuntimeTuple_toArray: Symbol = RuntimeTupleModule.requiredMethod("toArray")
-    lazy val RuntimeTuple_productToArray: Symbol = RuntimeTupleModule.requiredMethod("productToArray")
-    lazy val RuntimeTuple_isInstanceOfTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfTuple")
-    lazy val RuntimeTuple_isInstanceOfEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfEmptyTuple")
-    lazy val RuntimeTuple_isInstanceOfNonEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfNonEmptyTuple")
+  @tu lazy val RuntimeTuplesModule: Symbol = requiredModule("scala.runtime.Tuples")
+  @tu lazy val RuntimeTuplesModuleClass: Symbol = RuntimeTuplesModule.moduleClass
+    lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
+    lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
+    lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
+    lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
+    lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
+    lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
+    lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
+    lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
+    lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
+    lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
+    lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
+    lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
