@@ -332,6 +332,16 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
+    def hasErrors(using Context): Boolean = widenDealias match
+      case _: NamedType => false
+      case AppliedType(tycon, args) => tycon.hasErrors || args.exists(_.hasErrors)
+      case RefinedType(parent, _, rinfo) => parent.hasErrors || rinfo.hasErrors
+      case TypeBounds(lo, hi) => lo.hasErrors || hi.hasErrors
+      case tp: AndOrType => tp.tp1.hasErrors || tp.tp2.hasErrors
+      case tp: TypeProxy => tp.underlying.hasErrors
+      case _: ErrorType => true
+      case _ => false
+
     /** Is some part of the widened version of this type produced as a repair for an error? */
     def isErroneous(using Context): Boolean =
       widen.existsPart(_.isError, forceLazy = false)

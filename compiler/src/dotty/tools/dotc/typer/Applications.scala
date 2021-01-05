@@ -1927,10 +1927,10 @@ trait Applications extends Compatibility {
       case _ => false
 
     record("resolveOverloaded.narrowedApplicable", candidates.length)
-    if pt.isErroneous then
+    if pt.hasErrors then
       // `pt` might have become erroneous by typing arguments of FunProtos.
       // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
-      candidates 
+      candidates
     else
       val found = narrowMostSpecific(candidates)
       if found.length <= 1 then found

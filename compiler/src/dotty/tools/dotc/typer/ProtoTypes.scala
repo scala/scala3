@@ -193,6 +193,8 @@ object ProtoTypes {
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
+    override def hasErrors(using Context): Boolean = memberProto.hasErrors
+
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
@@ -403,6 +405,8 @@ object ProtoTypes {
     override def isErroneous(using Context): Boolean =
       state.typedArgs.tpes.exists(_.isErroneous)
 
+    override def hasErrors(using Context): Boolean = state.typedArgs.exists(_.tpe.hasErrors)
+
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
     def map(tm: TypeMap)(using Context): FunProto =
@@ -453,6 +457,8 @@ object ProtoTypes {
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
       else ViewProto(argType, resultType)
 
+    override def hasErrors(using Context): Boolean = argType.hasErrors || resType.hasErrors
+
     def map(tm: TypeMap)(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
@@ -495,6 +501,8 @@ object ProtoTypes {
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
+
+    override def hasErrors(using Context): Boolean = targs.exists(_.tpe.hasErrors)
 
     def map(tm: TypeMap)(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
