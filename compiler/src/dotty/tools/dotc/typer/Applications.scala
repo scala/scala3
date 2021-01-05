@@ -1363,7 +1363,10 @@ trait Applications extends Compatibility {
    */
   def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =
-      mbr.exists && isApplicableType(tp.select(xname, mbr), argType :: Nil, resultType)
+      mbr.exists
+      && isApplicableType(
+            normalize(tp.select(xname, mbr), WildcardType),
+            argType :: Nil, resultType)
     tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
       case mbr: SingleDenotation => qualifies(mbr)
       case mbr => mbr.hasAltWith(qualifies(_))
