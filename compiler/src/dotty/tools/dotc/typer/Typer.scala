@@ -30,7 +30,7 @@ import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs}
+import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
@@ -3081,34 +3081,56 @@ class Typer extends Namer
 
       def addImplicitArgs(using Context) = {
         def hasDefaultParams = methPart(tree).symbol.hasDefaultParams
-        def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match {
+        def implicitArgs(formals: List[Type], argIndex: Int, pt: Type): List[Tree] = formals match
           case Nil => Nil
           case formal :: formals1 =>
+            // If the implicit parameter list is dependent we must propagate inferred
+            // types through the remainder of the parameter list similarly to how it's
+            // done for non-implicit parameter lists in Applications#matchArgs#addTyped.
+            def inferArgsAfter(leading: Tree) =
+              val formals2 =
+                if wtp.isParamDependent && leading.tpe.exists then
+                  formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), leading.tpe))
+                else formals1
+              implicitArgs(formals2, argIndex + 1, pt)
+
             val arg = inferImplicitArg(formal, tree.span.endPos)
-            arg.tpe match {
+            arg.tpe match
               case failed: AmbiguousImplicits =>
                 val pt1 = pt.deepenProto
                 if (pt1 `ne` pt) && (pt1 ne sharpenedPt)
                    && constrainResult(tree.symbol, wtp, pt1)
                 then implicitArgs(formals, argIndex, pt1)
                 else arg :: implicitArgs(formals1, argIndex + 1, pt1)
-              case failed: SearchFailureType if !hasDefaultParams =>
-                // no need to search further, the adapt fails in any case
-                // the reason why we continue inferring arguments in case of an AmbiguousImplicits
-                // is that we need to know whether there are further errors.
-                // If there are none, we have to propagate the ambiguity to the caller.
-                arg :: formals1.map(dummyArg)
+              case failed: SearchFailureType =>
+                lazy val defaultArg =
+                  def appPart(t: Tree): Tree = t match
+                    case Block(stats, expr) => appPart(expr)
+                    case Inlined(_, _, expr) => appPart(expr)
+                    case _ => t
+                  defaultArgument(appPart(tree), argIndex, testOnly = false)
+                    .showing(i"default argument: for $formal, $tree, $argIndex = $result", typr)
+                if !hasDefaultParams || defaultArg.isEmpty then
+                  // no need to search further, the adapt fails in any case
+                  // the reason why we continue inferring arguments in case of an AmbiguousImplicits
+                  // is that we need to know whether there are further errors.
+                  // If there are none, we have to propagate the ambiguity to the caller.
+                  arg :: formals1.map(dummyArg)
+                else
+                  // This is tricky. On the one hand, we need the defaultArg to
+                  // correctly type subsequent formal parameters in the same using
+                  // clause in case there are parameter dependencies. On the other hand,
+                  // we cannot simply use `defaultArg` as inferred argument since some parts
+                  // of it might need lifting out. What we do instead is to use `defaultArg` for
+                  // computing parameter-dependent formals but leave the original erroneous
+                  // `arg` in place. We come back to this later in the code conditioned by
+                  // `if propFail.exists` where we re-type the whole using clause with named
+                  // arguments for all implicits that were found.
+                  arg :: inferArgsAfter(defaultArg)
               case _ =>
-                // If the implicit parameter list is dependent we must propagate inferred
-                // types through the remainder of the parameter list similarly to how it's
-                // done for non-implicit parameter lists in Applications#matchArgs#addTyped.
-                val formals2 =
-                  if (wtp.isParamDependent && arg.tpe.exists)
-                    formals1.mapconserve(f1 => safeSubstParam(f1, wtp.paramRefs(argIndex), arg.tpe))
-                  else formals1
-                arg :: implicitArgs(formals2, argIndex + 1, pt)
-            }
-        }
+                arg :: inferArgsAfter(arg)
+        end implicitArgs
+
         val args = implicitArgs(wtp.paramInfos, 0, pt)
 
         def propagatedFailure(args: List[Tree]): Type = args match {
