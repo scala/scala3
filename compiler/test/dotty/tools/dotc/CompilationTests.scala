@@ -250,7 +250,7 @@ class CompilationTests {
     val tastyCoreSources = sources(Paths.get("tasty/src"))
     val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
 
-    val compilerSources = sources(Paths.get("compiler/src"))
+    val compilerSources = sources(Paths.get("compiler/src")) ++ sources(Paths.get("compiler/src-bootstrapped"))
     val compilerManagedSources = sources(Properties.dottyCompilerManagedSources)
 
     val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
