@@ -255,6 +255,10 @@ object DottyPlugin extends AutoPlugin {
         }
       }.value,
 
+      // Prevent the consoleProject task from using the Scala 3 compiler bridge
+      // The consoleProject must load the Scala 2.12 instance and the sbt classpath
+      consoleProject / scalaCompilerBridgeBinaryJar := None,
+
       // Needed for RCs publishing
       scalaBinaryVersion := {
         scalaVersion.value.split("[\\.-]").toList match {
