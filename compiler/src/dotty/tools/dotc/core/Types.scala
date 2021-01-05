@@ -5006,7 +5006,9 @@ object Types {
                     mapOver(tp)
                 }
               }
-              val approx = approxParams(mt).asInstanceOf[MethodType]
+              val approx =
+                if ctx.owner.isContainedIn(cls) then mt
+                else approxParams(mt).asInstanceOf[MethodType]
               Some(approx)
             case _ =>
               None

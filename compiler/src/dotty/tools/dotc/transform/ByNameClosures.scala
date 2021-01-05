@@ -26,6 +26,10 @@ class ByNameClosures extends TransformByNameApply with IdentityDenotTransformer 
 
   override def phaseName: String = ByNameClosures.name
 
+  override def runsAfterGroupsOf: Set[String] = Set(ExpandSAMs.name)
+    // ExpanSAMs applied to partial functions creates methods that need
+    // to be fully defined before converting. Test case is pos/i9391.scala.
+
   override def mkByNameClosure(arg: Tree, argType: Type)(using Context): Tree = {
     val meth = newSymbol(
       ctx.owner, nme.ANON_FUN, Synthetic | Method, MethodType(Nil, Nil, argType))

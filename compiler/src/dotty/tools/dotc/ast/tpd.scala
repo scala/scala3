@@ -350,7 +350,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
     def forwarder(fn: TermSymbol, name: TermName) = {
       val fwdMeth = fn.copy(cls, name, Synthetic | Method | Final).entered.asTerm
-      if (fwdMeth.allOverriddenSymbols.exists(!_.is(Deferred))) fwdMeth.setFlag(Override)
+      for overridden <- fwdMeth.allOverriddenSymbols do
+        if overridden.is(Extension) then fwdMeth.setFlag(Extension)
+        if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
       polyDefDef(fwdMeth, tprefs => prefss => ref(fn).appliedToTypes(tprefs).appliedToArgss(prefss))
     }
     val forwarders = fns.lazyZip(methNames).map(forwarder)
