@@ -200,7 +200,7 @@ object desugar {
     paramss.mapConserve {
       case TypeDefs(tparams) => tparams.mapConserve(mapTypeParam)
       case ValDefs(vparams) => vparams.mapConserve(mapTermParam)
-      case _ => ??? // impossible
+      case _ => unreachable()
     }
 
   /** 1. Expand context bounds to evidence params. E.g.,

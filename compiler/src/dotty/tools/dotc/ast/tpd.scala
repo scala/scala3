@@ -215,7 +215,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         paramss.map {
           case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
           case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
-          case _ => ???
+          case _ => unreachable()
         },
         TypeTree(resultType),
         rhs),
