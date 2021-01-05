@@ -28,10 +28,10 @@ given FoodOps with
 val monkey = new Monkey {}
 
 val foods = Seq(
-  monkey.food1, // doesn't compile
-  monkey.food2, // compiles
-  monkey.food3, // compiles
-  monkey.food4, // compiles
-  monkey.food5, // doesn't compile
-  monkey.food6, // compiles
+  monkey.food1,
+  monkey.food2,
+  monkey.food3,
+  monkey.food4,
+  monkey.food5,
+  monkey.food6,
 )
