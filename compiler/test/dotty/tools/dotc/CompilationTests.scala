@@ -55,6 +55,7 @@ class CompilationTests {
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
       compileFile("tests/pos-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFilesInDir("tests/pos-custom-args/deprecation", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-custom-args/i8875.scala", defaultOptions.and("-Xprint:getters")),
       compileFile("tests/pos-custom-args/i9267.scala", defaultOptions.and("-Ystop-after:erasure")),
       compileFile("tests/pos-special/extend-java-enum.scala", defaultOptions.and("-source", "3.0-migration")),
