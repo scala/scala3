@@ -744,7 +744,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
+        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head.map(withDefaultPos)), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
