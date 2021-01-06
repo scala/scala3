@@ -337,15 +337,15 @@ object Scanners {
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
-      *   - it is followed on the same line by at least one ' '
-      *     and a token that can start an expression.
+      *   - it is followed by at least one whitespace character and a
+      *     token that can start an expression.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
-      && ch <= ' '
+      && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
         val lookahead = LookaheadScanner()
