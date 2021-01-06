@@ -13,4 +13,9 @@ trait STMLike[F[_]] {
     case class Abort(error: Throwable) extends Txn[Nothing]
     case object Noop extends Txn[Nothing]
   }
+
+  class Foo {
+    case class Abort(error: Throwable) extends Txn[Nothing]
+    case object Noop extends Txn[Nothing]
+  }
 }
