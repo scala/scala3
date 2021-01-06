@@ -1657,14 +1657,15 @@ sealed class TermRefSet(using Context):
 
   def += (ref: TermRef): Unit =
     val pre = ref.prefix
-    val sym = ref.symbol.asTerm
-    elems.get(sym) match
-      case null =>
-        elems.put(sym, pre)
-      case prefix: Type =>
-        if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
-      case prefixes: List[Type] =>
-        if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
+    if ref.symbol.exists then
+      val sym = ref.symbol.asTerm
+      elems.get(sym) match
+        case null =>
+          elems.put(sym, pre)
+        case prefix: Type =>
+          if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+        case prefixes: List[Type] =>
+          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
 
   def ++= (that: TermRefSet): Unit =
     if !that.isEmpty then that.foreach(+=)
