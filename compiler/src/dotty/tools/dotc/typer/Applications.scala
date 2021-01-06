@@ -456,7 +456,7 @@ trait Applications extends Compatibility {
 
     protected def methodType: MethodType = methType.asInstanceOf[MethodType]
     private def methString: String =
-      def infoStr = if methType.hasErrors then "" else i": $methType"
+      def infoStr = if methType.isErroneous then "" else i": $methType"
       i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
@@ -1927,7 +1927,7 @@ trait Applications extends Compatibility {
       case _ => false
 
     record("resolveOverloaded.narrowedApplicable", candidates.length)
-    if pt.hasErrors then
+    if pt.unusableForInference then
       // `pt` might have become erroneous by typing arguments of FunProtos.
       // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
       candidates

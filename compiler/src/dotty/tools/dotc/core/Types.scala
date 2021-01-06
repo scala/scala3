@@ -332,23 +332,27 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
-    /** A conservative approximation whether a type might have errors.
-     *  It's OK to predict "no errors" even though errors might be present.
-     *  But one should never force or loop.
+    /** Is some part of the widened version of this type produced as a repair for an error?
+     *
      */
-    def hasErrors(using Context): Boolean = widenDealias match
-      case AppliedType(tycon, args) => tycon.hasErrors || args.exists(_.hasErrors)
-      case RefinedType(parent, _, rinfo) => parent.hasErrors || rinfo.hasErrors
-      case TypeBounds(lo, hi) => lo.hasErrors || hi.hasErrors
-      case tp: AndOrType => tp.tp1.hasErrors || tp.tp2.hasErrors
-      case tp: LambdaType => tp.resultType.hasErrors || tp.paramInfos.exists(_.hasErrors)
-      case WildcardType(optBounds) => optBounds.hasErrors
-      case _: ErrorType => true
-      case _ => false
-
-    /** Is some part of the widened version of this type produced as a repair for an error? */
     def isErroneous(using Context): Boolean =
       widen.existsPart(_.isError, forceLazy = false)
+
+    /** Is this type unusable for implicit search or overloading resolution
+     *  since it has embedded errors that can match anything? This is weaker and more
+     *  ad-hoc than isErroneous. The main differences are that we always consider aliases
+     *  (since these are relevant for inference or resolution) but never consider prefixes
+     *  (since these often do not constrain the search space anyway).
+     */
+    def unusableForInference(using Context): Boolean = widenDealias match
+      case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
+      case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
+      case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
+      case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
+      case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
+      case WildcardType(optBounds) => optBounds.unusableForInference
+      case _: ErrorType => true
+      case _ => false
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match {
