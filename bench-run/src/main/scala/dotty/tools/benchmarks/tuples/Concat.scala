@@ -27,6 +27,6 @@ class Concat {
 
   @Benchmark
   def tupleConcat(): Tuple = {
-    runtime.Tuple.concat(tuple1, tuple2)
+    runtime.Tuples.concat(tuple1, tuple2)
   }
 }
