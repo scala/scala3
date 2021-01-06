@@ -349,12 +349,15 @@ class ClassfileParser(
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case 'L' =>
-          def processInner(tp: Type): Type = tp match {
-            case tp: TypeRef if !tp.symbol.owner.is(Flags.ModuleClass) =>
-              TypeRef(processInner(tp.prefix.widen), tp.symbol.asType)
-            case _ =>
-              tp
-          }
+          /** A type representation where inner classes become `A#B` instead of `A.this.B` (like with `typeRef`) */
+          def innerType(symbol: Symbol): Type =
+            if symbol.is(Flags.Package) then
+              symbol.thisType
+            else if symbol.isType then
+              TypeRef(innerType(symbol.owner), symbol)
+            else
+              throw new RuntimeException("unexpected term symbol " + symbol)
+
           def processClassType(tp: Type): Type = tp match {
             case tp: TypeRef =>
               if (sig(index) == '<') {
@@ -388,13 +391,13 @@ class ClassfileParser(
           }
 
           val classSym = classNameToSymbol(subName(c => c == ';' || c == '<'))
-          val classTpe = if (classSym eq defn.ObjectClass) defn.FromJavaObjectType else classSym.typeRef
-          var tpe = processClassType(processInner(classTpe))
+          val classTpe = if (classSym eq defn.ObjectClass) defn.FromJavaObjectType else innerType(classSym)
+          var tpe = processClassType(classTpe)
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
             val clazz = tpe.member(name).symbol
-            tpe = processClassType(processInner(TypeRef(tpe, clazz)))
+            tpe = processClassType(innerType(clazz))
           }
           accept(';')
           tpe
