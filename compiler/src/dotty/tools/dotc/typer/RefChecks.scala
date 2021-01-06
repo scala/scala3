@@ -524,10 +524,10 @@ object RefChecks {
 
       def isImplemented(mbr: Symbol) =
         val mbrType = clazz.thisType.memberInfo(mbr)
-        extension (sym: Symbol) def isConcrete = sym.exists && !sym.is(Deferred)
+        def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
-            impl => impl.symbol.isConcrete && mbrType.matchesLoosely(impl.info))
+            impl => isConcrete(impl.symbol) && mbrType.matchesLoosely(impl.info))
           .exists
 
       /** The term symbols in this class and its baseclasses that are
@@ -641,7 +641,11 @@ object RefChecks {
 
                     undefined(s"\n(Note that ${pa.show} does not match ${pc.show}$addendum)")
                   case xs =>
-                    undefined(s"\n(The class implements a member with a different type: ${concrete.showDcl})")
+                    undefined(
+                      if concrete.symbol.is(AbsOverride) then
+                        s"\n(The class implements ${concrete.showDcl} but that definition still needs an implementation)"
+                      else
+                        s"\n(The class implements a member with a different type: ${concrete.showDcl})")
                 }
               case Nil =>
                 undefined("")

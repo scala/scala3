@@ -530,6 +530,7 @@ object Flags {
 
 // ------- Other flag sets -------------------------------------
 
+  val NotConcrete: FlagSet                   = AbsOverride | Deferred
   val AbstractFinal: FlagSet                 = Abstract | Final
   val AbstractOverride: FlagSet              = Abstract | Override
   val AbstractSealed: FlagSet                = Abstract | Sealed
