@@ -378,7 +378,7 @@ object Parsers {
 
     def rewriteNotice(additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
-      i"\nThis construct can be rewritten automatically under$optionStr -rewrite."
+      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source 3.0-migration."
     }
 
     def syntaxVersionError(option: String, span: Span) =
