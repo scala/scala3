@@ -212,12 +212,11 @@ object Applications {
     overwriteType(app.tpe)
       // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
       // such as eta expansion before the method is fully applied.
-  }
 
   /** Find reference to default parameter getter for parameter #n in current
     *  parameter list, or NoType if none was found
     */
-  def findDefaultGetter(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree = {
+  def findDefaultGetter(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
     if fn.symbol.isTerm then
       val meth = fn.symbol.asTerm
       val receiver: Tree = methPart(fn) match {
@@ -270,7 +269,6 @@ object Applications {
         }
       }
     else EmptyTree // structural applies don't have symbols or defaults
-  }//.showing(i"find getter $fn, $n = $result")
   end findDefaultGetter
 
   /** Splice new method reference `meth` into existing application `app` */
