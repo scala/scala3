@@ -46,7 +46,7 @@ class PrinterTests extends DottyTest {
 
     checkCompile("typer", source) { (tree, context) =>
       given Context = context
-      val bar @ Trees.DefDef(_, _, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get
+      val bar @ Trees.DefDef(_, _, _, _) = tree.find(tree => tree.symbol.name == termName("bar2")).get
       assertEquals("Int & (Boolean | String)", bar.tpt.show)
     }
   }

@@ -53,12 +53,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
   end extension
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
-  extension [X](self: Expr[Any])
+  extension (self: Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using Type[X]): Boolean
+    def isExprOf[X](using Type[X]): Boolean
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using Type[X]): Expr[X]
+    def asExprOf[X](using Type[X]): Expr[X]
   end extension
 
   /** Low-level Typed AST metaprogramming API.
@@ -248,8 +248,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
-      extension [T](self: Tree)
-        def asExprOf(using Type[T]): Expr[T]
+      extension (self: Tree)
+        def asExprOf[T](using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree)
         /** Changes the owner of the symbols in the tree */

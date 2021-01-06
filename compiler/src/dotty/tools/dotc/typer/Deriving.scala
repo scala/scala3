@@ -271,15 +271,17 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
-        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
-          val tparams = tparamRefs.map(_.typeSymbol.asType)
-          val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
+      def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =
+        (paramRefss: List[List[tpd.Tree]]) =>
+          val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
+          val tparamTypes = tparamRefs.tpes
+          val tparams = tparamTypes.map(_.typeSymbol.asType)
+          val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
-          params.foreach(ctx.enter(_))
+          vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
-            case info: PolyType => instantiated(info.instantiate(tparamRefs))
-            case info: MethodType => info.instantiate(params.map(_.termRef))
+            case info: PolyType => instantiated(info.instantiate(tparamTypes))
+            case info: MethodType => info.instantiate(vparams.map(_.termRef))
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {
@@ -292,11 +294,11 @@ trait Deriving {
           val module = untpd.ref(companionRef(resultType)).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
           typed(rhs, resultType)
-      }
+      end typeclassInstance
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
-        if sym.is(Method) then tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
-        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil)(Nil))
+        if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
+        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
       }
 
       synthetics.map(syntheticDef).toList

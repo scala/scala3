@@ -200,10 +200,9 @@ object Inliner {
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
-    polyDefDef(retainer, targs => prefss =>
+    DefDef(retainer, prefss =>
       inlineCall(
-        ref(meth).appliedToTypes(targs).appliedToArgss(prefss)
-          .withSpan(mdef.rhs.span.startPos))(
+        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
 
@@ -365,7 +364,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   import tpd._
   import Inliner._
 
-  private val (methPart, callTypeArgs, callValueArgss) = decomposeCall(call)
+  private val methPart = funPart(call)
+  private val callTypeArgs = typeArgss(call).flatten
+  private val callValueArgss = termArgss(call)
   private val inlinedMethod = methPart.symbol
   private val inlineCallPrefix =
      qualifier(methPart).orElse(This(inlinedMethod.enclosingClass.asClass))
@@ -457,7 +458,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         paramSpan(name) = arg.span
         paramBinding(name) = arg.tpe.stripTypeVar
       }
-      computeParamBindings(tp.resultType, Nil, argss)
+      computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss)
     case tp: MethodType =>
       if argss.isEmpty then
         report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
@@ -523,7 +524,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case EmptyTree
          | TypeDef(_, _)
          | Import(_, _)
-         | DefDef(_, _, _, _, _) =>
+         | DefDef(_, _, _, _) =>
         true
       case vdef @ ValDef(_, _, _) =>
         if (vdef.symbol.flags is Mutable) false else apply(vdef.rhs)
@@ -961,7 +962,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     def betaReduce(tree: Tree)(using Context): Tree = tree match {
       case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
         ddef.tpe.widen match {
-          case mt: MethodType if ddef.vparamss.head.length == args.length =>
+          case mt: MethodType if ddef.paramss.head.length == args.length =>
             val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
             val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
               arg.tpe.dealias match {
@@ -975,7 +976,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             val expander = new TreeTypeMap(
               oldOwners = ddef.symbol :: Nil,
               newOwners = ctx.owner :: Nil,
-              substFrom = ddef.vparamss.head.map(_.symbol),
+              substFrom = ddef.paramss.head.map(_.symbol),
               substTo = argSyms)
             Block(bindingsBuf.toList, expander.transform(ddef.rhs))
           case _ => tree
@@ -1367,7 +1368,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
-        case ddef @ DefDef(_, Nil, Nil, _, _) => isElideableExpr(ddef.rhs)
+        case ddef @ DefDef(_, Nil, _, _) => isElideableExpr(ddef.rhs)
         case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
         case _ => false
       }

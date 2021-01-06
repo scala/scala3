@@ -196,12 +196,8 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
-  /** A wrapper indicating that its `app` argument has already integrated the type arguments
-   *  of the expected type, provided that type is a (possibly ignored) PolyProto.
-   *  I.e., if the expected type is a PolyProto, then `app` will be a `TypeApply(_, args)` where
-   *  `args` are the type arguments of the expected type.
-   */
-  class IntegratedTypeArgs(val app: Tree)(implicit @constructorOnly src: SourceFile) extends ProxyTree {
+  abstract class AppProxy(implicit @constructorOnly src: SourceFile) extends ProxyTree {
+    def app: Tree
     override def span = app.span
 
     def forwardTo = app
@@ -210,27 +206,12 @@ object Applications {
     def productElement(n: Int): Any = app.productElement(n)
   }
 
-  /** The unapply method of this extractor also recognizes IntegratedTypeArgs in closure blocks.
-   *  This is necessary to deal with closures as left arguments of extension method applications.
-   *  A test case is i5606.scala
-   */
-  object IntegratedTypeArgs {
-    def apply(app: Tree)(using Context) = new IntegratedTypeArgs(app)
-    def unapply(tree: Tree)(using Context): Option[Tree] = tree match {
-      case tree: IntegratedTypeArgs => Some(tree.app)
-      case Block(stats, IntegratedTypeArgs(app)) => Some(tpd.cpy.Block(tree)(stats, app))
-      case _ => None
-    }
-  }
-
   /** A wrapper indicating that its argument is an application of an extension method.
    */
-  class ExtMethodApply(app: Tree)(implicit @constructorOnly src: SourceFile)
-  extends IntegratedTypeArgs(app) {
-    overwriteType(WildcardType)
+  class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy:
+    overwriteType(app.tpe)
       // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
       // such as eta expansion before the method is fully applied.
-  }
 }
 
 trait Applications extends Compatibility {
@@ -434,7 +415,7 @@ trait Applications extends Compatibility {
     /** Splice new method reference into existing application */
     def spliceMeth(meth: Tree, app: Tree): Tree = app match {
       case Apply(fn, args) =>
-        spliceMeth(meth, fn).appliedToArgs(args)
+        spliceMeth(meth, fn).appliedToTermArgs(args)
       case TypeApply(fn, targs) =>
         // Note: It is important that the type arguments `targs` are passed in new trees
         // instead of being spliced in literally. Otherwise, a type argument to a default
@@ -1060,8 +1041,6 @@ trait Applications extends Compatibility {
     val typedArgs = if (isNamed) typedNamedArgs(tree.args) else tree.args.mapconserve(typedType(_))
     record("typedTypeApply")
     typedExpr(tree.fun, PolyProto(typedArgs, pt)) match {
-      case IntegratedTypeArgs(app) =>
-        app
       case _: TypeApply if !ctx.isAfterTyper =>
         errorTree(tree, "illegal repeated type application")
       case typedFn =>
@@ -1095,7 +1074,7 @@ trait Applications extends Compatibility {
       def newGenericArrayCall =
         ref(defn.DottyArraysModule)
           .select(defn.newGenericArrayMethod).withSpan(tree.span)
-          .appliedToTypeTrees(targs).appliedToArgs(args)
+          .appliedToTypeTrees(targs).appliedToTermArgs(args)
 
       if (TypeErasure.isGeneric(targ.tpe))
         newGenericArrayCall
@@ -1384,7 +1363,10 @@ trait Applications extends Compatibility {
    */
   def hasExtensionMethodNamed(tp: Type, xname: TermName, argType: Type, resultType: Type)(using Context) = {
     def qualifies(mbr: Denotation) =
-      mbr.exists && isApplicableType(tp.select(xname, mbr), argType :: Nil, resultType)
+      mbr.exists
+      && isApplicableType(
+            normalize(tp.select(xname, mbr), WildcardType),
+            argType :: Nil, resultType)
     tp.memberBasedOnFlags(xname, required = ExtensionMethod) match {
       case mbr: SingleDenotation => qualifies(mbr)
       case mbr => mbr.hasAltWith(qualifies(_))
@@ -1950,7 +1932,7 @@ trait Applications extends Compatibility {
     else
       val deepPt = pt.deepenProto
       deepPt match
-        case pt @ FunProto(_, resType: FunProto) =>
+        case pt @ FunProto(_, resType: FunOrPolyProto) =>
           // try to narrow further with snd argument list
           resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
         case _ =>
@@ -2146,9 +2128,6 @@ trait Applications extends Compatibility {
       // Always hide expected member to allow for chained extensions (needed for i6900.scala)
       case _: SelectionProto =>
         (tree, IgnoredProto(currentPt))
-      case PolyProto(targs, restpe) =>
-        val tree1 = untpd.TypeApply(tree, targs.map(untpd.TypedSplice(_)))
-        normalizePt(tree1, restpe)
       case _ =>
         (tree, currentPt)
 

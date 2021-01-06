@@ -280,7 +280,7 @@ class ReplCompiler extends Compiler {
         if (errorsAllowed || !ctx.reporter.hasErrors)
           unwrapped(unit.tpdTree, src)
         else
-          ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+          ctx.reporter.removeBufferedMessages.errors
       }
     }
   }

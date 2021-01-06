@@ -937,7 +937,7 @@ trait Implicits:
           case Select(qual, _) => apply(x, qual)
           case Apply(fn, _) => apply(x, fn)
           case TypeApply(fn, _) => apply(x, fn)
-          case tree: Applications.IntegratedTypeArgs => apply(x, tree.app)
+          case tree: Applications.AppProxy => apply(x, tree.app)
           case _: This => false
           case _ => foldOver(x, tree)
       }

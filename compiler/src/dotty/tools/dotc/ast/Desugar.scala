@@ -177,11 +177,10 @@ object desugar {
       // The rhs gets filled in later, when field is generated and getter has parameters (see Memoize miniphase)
       val setterRhs = if (vdef.rhs.isEmpty) EmptyTree else unitLiteral
       val setter = cpy.DefDef(vdef)(
-        name     = valName.setterName,
-        tparams  = Nil,
-        vparamss = (setterParam :: Nil) :: Nil,
-        tpt      = TypeTree(defn.UnitType),
-        rhs      = setterRhs
+        name    = valName.setterName,
+        paramss = (setterParam :: Nil) :: Nil,
+        tpt     = TypeTree(defn.UnitType),
+        rhs     = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
       Thicket(vdef1, setter)
     }
@@ -193,6 +192,15 @@ object desugar {
        val paramFlags: FlagSet = if (forPrimaryConstructor) LocalParamAccessor else Param
        val epname = EvidenceParamName.fresh()
        ValDef(epname, tpt, EmptyTree).withFlags(paramFlags | implicitFlag)
+    }
+
+  def mapParamss(paramss: List[ParamClause])
+                (mapTypeParam: TypeDef => TypeDef)
+                (mapTermParam: ValDef => ValDef)(using Context): List[ParamClause] =
+    paramss.mapConserve {
+      case TypeDefs(tparams) => tparams.mapConserve(mapTypeParam)
+      case ValDefs(vparams) => vparams.mapConserve(mapTermParam)
+      case _ => unreachable()
     }
 
   /** 1. Expand context bounds to evidence params. E.g.,
@@ -209,83 +217,100 @@ object desugar {
    *      def f$default$1[T] = 1
    *      def f$default$2[T](x: Int) = x + "m"
    */
-  private def defDef(meth0: DefDef, isPrimaryConstructor: Boolean = false)(using Context): Tree = {
-    val meth @ DefDef(_, tparams, vparamss, tpt, rhs) = meth0
-    val methName = normalizeName(meth, tpt).asTermName
-    val mods = meth.mods
-    val epbuf = ListBuffer[ValDef]()
-    def desugarContextBounds(rhs: Tree): Tree = rhs match {
+  private def defDef(meth: DefDef, isPrimaryConstructor: Boolean = false)(using Context): Tree =
+    addDefaultGetters(elimContextBounds(meth, isPrimaryConstructor))
+
+  private def elimContextBounds(meth: DefDef, isPrimaryConstructor: Boolean)(using Context): DefDef =
+    val DefDef(_, paramss, tpt, rhs) = meth
+    val evidenceParamBuf = ListBuffer[ValDef]()
+
+    def desugarContextBounds(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, cxbounds) =>
         val iflag = if sourceVersion.isAtLeast(`3.1`) then Given else Implicit
-        epbuf ++= makeImplicitParameters(cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
+        evidenceParamBuf ++= makeImplicitParameters(
+          cxbounds, iflag, forPrimaryConstructor = isPrimaryConstructor)
         tbounds
       case LambdaTypeTree(tparams, body) =>
         cpy.LambdaTypeTree(rhs)(tparams, desugarContextBounds(body))
       case _ =>
         rhs
-    }
 
-    def dropContextBounds(tparam: TypeDef): TypeDef = {
-      def dropInRhs(rhs: Tree): Tree = rhs match {
+    val paramssNoContextBounds =
+      mapParamss(paramss) {
+        tparam => cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
+      }(identity)
+
+    rhs match
+      case MacroTree(call) =>
+        cpy.DefDef(meth)(rhs = call).withMods(meth.mods | Macro | Erased)
+      case _ =>
+        addEvidenceParams(
+          cpy.DefDef(meth)(
+            name = normalizeName(meth, tpt).asTermName,
+            paramss = paramssNoContextBounds),
+          evidenceParamBuf.toList)
+  end elimContextBounds
+
+  def addDefaultGetters(meth: DefDef)(using Context): Tree =
+
+    /** The longest prefix of parameter lists in =paramss whose total number of
+     *  ValDefs does not exceed `n`
+     */
+    def takeUpTo(paramss: List[ParamClause], n: Int): List[ParamClause] = paramss match
+      case ValDefs(vparams) :: paramss1 =>
+        val len = vparams.length
+        if len <= n then vparams :: takeUpTo(paramss1, n - len) else Nil
+      case TypeDefs(tparams) :: paramss1 =>
+        tparams :: takeUpTo(paramss1, n)
+      case _ =>
+        Nil
+
+    def dropContextBounds(tparam: TypeDef): TypeDef =
+      def dropInRhs(rhs: Tree): Tree = rhs match
         case ContextBounds(tbounds, _) =>
           tbounds
         case rhs @ LambdaTypeTree(tparams, body) =>
           cpy.LambdaTypeTree(rhs)(tparams, dropInRhs(body))
         case _ =>
           rhs
-      }
       cpy.TypeDef(tparam)(rhs = dropInRhs(tparam.rhs))
+
+    def paramssNoRHS = mapParamss(meth.paramss)(identity) {
+      vparam =>
+        if vparam.rhs.isEmpty then vparam
+        else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
     }
 
-    val tparams1 = tparams mapConserve { tparam =>
-      cpy.TypeDef(tparam)(rhs = desugarContextBounds(tparam.rhs))
-    }
+    def getterParamss(n: Int): List[ParamClause] =
+      mapParamss(takeUpTo(paramssNoRHS, n)) {
+        tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))
+      } {
+        vparam => toDefParam(vparam, keepAnnotations = true, keepDefault = false)
+      }
 
-    val meth1 =
-      rhs match
-        case MacroTree(call) => cpy.DefDef(meth)(rhs = call).withMods(mods | Macro | Erased)
-        case _ => addEvidenceParams(cpy.DefDef(meth)(name = methName, tparams = tparams1), epbuf.toList)
-
-    /** The longest prefix of parameter lists in vparamss whose total length does not exceed `n` */
-    def takeUpTo(vparamss: List[List[ValDef]], n: Int): List[List[ValDef]] = vparamss match {
-      case vparams :: vparamss1 =>
-        val len = vparams.length
-        if (n >= len) vparams :: takeUpTo(vparamss1, n - len) else Nil
-      case _ =>
-        Nil
-    }
-
-    def normalizedVparamss = meth1.vparamss.nestedMapConserve(vparam =>
-      if vparam.rhs.isEmpty then vparam
-      else cpy.ValDef(vparam)(rhs = EmptyTree).withMods(vparam.mods | HasDefault)
-    )
-
-    def defaultGetters(vparamss: List[List[ValDef]], n: Int): List[DefDef] = vparamss match {
-      case (vparam :: vparams) :: vparamss1 =>
+    def defaultGetters(paramss: List[ParamClause], n: Int): List[DefDef] = paramss match
+      case ValDefs(vparam :: vparams) :: paramss1 =>
         def defaultGetter: DefDef =
           DefDef(
-            name = DefaultGetterName(methName, n),
-            tparams = meth.tparams.map(tparam => dropContextBounds(toDefParam(tparam, keepAnnotations = true))),
-            vparamss = takeUpTo(normalizedVparamss.nestedMap(toDefParam(_, keepAnnotations = true, keepDefault = false)), n),
+            name = DefaultGetterName(meth.name, n),
+            paramss = getterParamss(n),
             tpt = TypeTree(),
             rhs = vparam.rhs
           )
-          .withMods(Modifiers(mods.flags & (AccessFlags | Synthetic), mods.privateWithin))
-        val rest = defaultGetters(vparams :: vparamss1, n + 1)
-        if (vparam.rhs.isEmpty) rest else defaultGetter :: rest
-      case Nil :: vparamss1 =>
-        defaultGetters(vparamss1, n)
-      case nil =>
+          .withMods(Modifiers(
+            meth.mods.flags & (AccessFlags | Synthetic),
+            meth.mods.privateWithin))
+        val rest = defaultGetters(vparams :: paramss1, n + 1)
+        if vparam.rhs.isEmpty then rest else defaultGetter :: rest
+      case _ :: paramss1 =>  // skip empty parameter lists and type parameters
+        defaultGetters(paramss1, n)
+      case Nil =>
         Nil
-    }
 
-    val defGetters = defaultGetters(meth1.vparamss, 0)
-    if (defGetters.isEmpty) meth1
-    else {
-      val meth2 = cpy.DefDef(meth1)(vparamss = normalizedVparamss)
-      Thicket(meth2 :: defGetters)
-    }
-  }
+    val defGetters = defaultGetters(meth.paramss, 0)
+    if defGetters.isEmpty then meth
+    else Thicket(cpy.DefDef(meth)(paramss = paramssNoRHS) :: defGetters)
+  end addDefaultGetters
 
   /** Add an explicit ascription to the `expectedTpt` to every tail splice.
    *
@@ -323,26 +348,28 @@ object desugar {
     adaptToExpectedTpt(tree)
   }
 
-  // Add all evidence parameters in `params` as implicit parameters to `meth` */
+  /**  Add all evidence parameters in `params` as implicit parameters to `meth`.
+   *   If the parameters of `meth` end in an implicit parameter list or using clause,
+   *   evidence parameters are added in front of that list. Otherwise they are added
+   *   as a separate parameter clause.
+   */
   private def addEvidenceParams(meth: DefDef, params: List[ValDef])(using Context): DefDef =
-    params match {
+    params match
       case Nil =>
         meth
       case evidenceParams =>
-        val vparamss1 = meth.vparamss.reverse match {
-          case (vparams @ (vparam :: _)) :: rvparamss if vparam.mods.isOneOf(GivenOrImplicit) =>
-            ((evidenceParams ++ vparams) :: rvparamss).reverse
+        val paramss1 = meth.paramss.reverse match
+          case ValDefs(vparams @ (vparam :: _)) :: rparamss if vparam.mods.isOneOf(GivenOrImplicit) =>
+            ((evidenceParams ++ vparams) :: rparamss).reverse
           case _ =>
-            meth.vparamss :+ evidenceParams
-        }
-        cpy.DefDef(meth)(vparamss = vparamss1)
-    }
+            meth.paramss :+ evidenceParams
+        cpy.DefDef(meth)(paramss = paramss1)
 
   /** The implicit evidence parameters of `meth`, as generated by `desugar.defDef` */
   private def evidenceParams(meth: DefDef)(using Context): List[ValDef] =
-    meth.vparamss.reverse match {
-      case (vparams @ (vparam :: _)) :: _ if vparam.mods.isOneOf(GivenOrImplicit) =>
-        vparams.dropWhile(!_.name.is(EvidenceParamName))
+    meth.paramss.reverse match {
+      case ValDefs(vparams @ (vparam :: _)) :: _ if vparam.mods.isOneOf(GivenOrImplicit) =>
+        vparams.takeWhile(_.name.is(EvidenceParamName))
       case _ =>
         Nil
     }
@@ -411,8 +438,8 @@ object desugar {
     val isValueClass = parents.nonEmpty && isAnyVal(parents.head)
       // This is not watertight, but `extends AnyVal` will be replaced by `inline` later.
 
-    val originalTparams = constr1.tparams
-    val originalVparamss = constr1.vparamss
+    val originalTparams = constr1.leadingTypeParams
+    val originalVparamss = asTermOnly(constr1.trailingParamss)
     lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParamWithVariance)
     val impliedTparams =
       if (isEnumCase) {
@@ -451,7 +478,7 @@ object desugar {
       constrVparamss.nestedMap(vparam =>
         derivedTermParam(vparam).withAnnotations(Nil))
 
-    val constr = cpy.DefDef(constr1)(tparams = constrTparams, vparamss = constrVparamss)
+    val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
 
     val (normalizedBody, enumCases, enumCompanionRef) = {
       // Add constructor type parameters and evidence implicit parameters
@@ -461,7 +488,7 @@ object desugar {
           decompose(
             defDef(
               addEvidenceParams(
-                cpy.DefDef(ddef)(tparams = constrTparams ++ ddef.tparams),
+                cpy.DefDef(ddef)(paramss = joinParams(constrTparams, ddef.paramss)),
                 evidenceParams(constr1).map(toDefParam(_, keepAnnotations = false, keepDefault = false)))))
         case stat =>
           stat
@@ -584,14 +611,14 @@ object desugar {
     // two errors without @uncheckedVariance, one of them spurious.
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
-        DefDef(name, Nil, Nil, tpt, rhs).withMods(synthetic)
+        DefDef(name, Nil, tpt, rhs).withMods(synthetic)
 
       def productElemMeths =
         val caseParams = derivedVparamss.head.toArray
         val selectorNamesInBody = normalizedBody.collect {
           case vdef: ValDef if vdef.name.isSelectorName =>
             vdef.name
-          case ddef: DefDef if ddef.name.isSelectorName && ddef.tparams.isEmpty && ddef.vparamss.isEmpty =>
+          case ddef: DefDef if ddef.name.isSelectorName && ddef.paramss.isEmpty =>
             ddef.name
         }
         for i <- List.range(0, arity)
@@ -617,8 +644,12 @@ object desugar {
             cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
-          DefDef(nme.copy, derivedTparams, copyFirstParams :: copyRestParamss, TypeTree(), creatorExpr)
-            .withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
+          DefDef(
+            nme.copy,
+            joinParams(derivedTparams, copyFirstParams :: copyRestParamss),
+            TypeTree(),
+            creatorExpr
+          ).withMods(Modifiers(Synthetic | constr1.mods.flags & copiedAccessFlags, constr1.mods.privateWithin)) :: Nil
         }
       }
 
@@ -688,7 +719,7 @@ object desugar {
             val appParamss =
               derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
                 ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
-            DefDef(nme.apply, derivedTparams, appParamss, TypeTree(), creatorExpr)
+            DefDef(nme.apply, joinParams(derivedTparams, appParamss), TypeTree(), creatorExpr)
               .withMods(appMods) :: Nil
           }
         val unapplyMeth = {
@@ -699,11 +730,15 @@ object desugar {
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
           val unapplyRHS = if (arity == 0) Literal(Constant(true)) else Ident(unapplyParam.name)
           val unapplyResTp = if (arity == 0) Literal(Constant(true)) else TypeTree()
-          DefDef(methName, derivedTparams, (unapplyParam :: Nil) :: Nil, unapplyResTp, unapplyRHS)
-            .withMods(synthetic)
+          DefDef(
+            methName,
+            joinParams(derivedTparams, (unapplyParam :: Nil) :: Nil),
+            unapplyResTp,
+            unapplyRHS
+          ).withMods(synthetic)
         }
         val toStringMeth =
-          DefDef(nme.toString_, Nil, Nil, TypeTree(), Literal(Constant(className.toString))).withMods(Modifiers(Override | Synthetic))
+          DefDef(nme.toString_, Nil, TypeTree(), Literal(Constant(className.toString))).withMods(Modifiers(Override | Synthetic))
 
         companionDefs(anyRef, applyMeths ::: unapplyMeth :: toStringMeth :: companionMembers)
       }
@@ -751,7 +786,9 @@ object desugar {
         }
         // implicit wrapper is typechecked in same scope as constructor, so
         // we can reuse the constructor parameters; no derived params are needed.
-        DefDef(className.toTermName, constrTparams, defParamss, classTypeRef, creatorExpr)
+        DefDef(
+          className.toTermName, joinParams(constrTparams, defParamss),
+          classTypeRef, creatorExpr)
           .withMods(companionMods | mods.flags.toTermFlags & GivenOrImplicit | Synthetic | Final)
           .withSpan(cdef.span) :: Nil
       }
@@ -869,18 +906,24 @@ object desugar {
   /** Transform extension construct to list of extension methods */
   def extMethods(ext: ExtMethods)(using Context): Tree = flatTree {
     for mdef <- ext.methods yield
-      if mdef.tparams.nonEmpty then
-        report.error("extension method cannot have type parameters here, all type parameters go after `extension`",
-          mdef.tparams.head.srcPos)
       defDef(
         cpy.DefDef(mdef)(
           name = normalizeName(mdef, ext).asTermName,
-          tparams = ext.tparams ++ mdef.tparams,
-          vparamss = mdef.vparamss match
-            case vparams1 :: vparamss1 if mdef.name.isRightAssocOperatorName =>
-              vparams1 :: ext.vparamss ::: vparamss1
+          paramss = mdef.paramss match
+            case params1 :: paramss1 if mdef.name.isRightAssocOperatorName =>
+              def badRightAssoc(problem: String) =
+                report.error(i"right-associative extension method $problem", mdef.srcPos)
+                ext.paramss ++ mdef.paramss
+              params1 match
+                case ValDefs(vparam :: Nil) =>
+                  if !vparam.mods.is(Given) then
+                    val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
+                    leadingUsing ::: params1 :: otherExtParamss ::: paramss1
+                  else badRightAssoc("cannot start with using clause")
+                case _ =>
+                  badRightAssoc("must start with a single parameter")
             case _ =>
-              ext.vparamss ++ mdef.vparamss
+              ext.paramss ++ mdef.paramss
         ).withMods(mdef.mods | ExtensionMethod)
       )
   }
@@ -1262,7 +1305,7 @@ object desugar {
    */
   def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(using Context): Block =
     Block(
-      DefDef(nme.ANON_FUN, Nil, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+      DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
@@ -1314,7 +1357,7 @@ object desugar {
     val vdefs =
       params.zipWithIndex.map {
         case (param, idx) =>
-          DefDef(param.name, Nil, Nil, param.tpt, selector(idx)).withSpan(param.span)
+          DefDef(param.name, Nil, param.tpt, selector(idx)).withSpan(param.span)
       }
     Function(param :: Nil, Block(vdefs, body))
   }
@@ -1357,7 +1400,7 @@ object desugar {
   }
 
   private def derivedDefDef(original: Tree, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(implicit src: SourceFile) =
-    DefDef(named.name.asTermName, Nil, Nil, tpt, rhs)
+    DefDef(named.name.asTermName, Nil, tpt, rhs)
       .withMods(mods)
       .withSpan(original.span.withPoint(named.span.start))
 
@@ -1554,6 +1597,7 @@ object desugar {
       case Parens(body1) =>
         makePolyFunction(targs, body1)
       case Function(vargs, res) =>
+        assert(targs.nonEmpty)
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
         val mods = body match {
           case body: FunctionWithMods => body.mods
@@ -1570,7 +1614,7 @@ object desugar {
             case (p, n) => makeSyntheticParameter(n + 1, p).withAddedFlags(mods.flags)
           }
           RefinedTypeTree(polyFunctionTpt, List(
-            DefDef(nme.apply, applyTParams, List(applyVParams), res, EmptyTree)
+            DefDef(nme.apply, applyTParams :: applyVParams :: Nil, res, EmptyTree)
           ))
         }
         else {
@@ -1580,7 +1624,7 @@ object desugar {
           val applyVParams = vargs.asInstanceOf[List[ValDef]]
             .map(varg => varg.withAddedFlags(mods.flags | Param))
             New(Template(emptyConstructor, List(polyFunctionTpt), Nil, EmptyValDef,
-              List(DefDef(nme.apply, applyTParams, List(applyVParams), TypeTree(), res))
+              List(DefDef(nme.apply, applyTParams :: applyVParams :: Nil, TypeTree(), res))
               ))
         }
       case _ =>

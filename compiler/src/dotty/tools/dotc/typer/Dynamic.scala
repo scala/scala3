@@ -160,10 +160,11 @@ trait Dynamic {
    *  where c11, ..., cNn are the classOf constants representing the erasures of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
-   *  type.
+   *  type
    */
   def handleStructural(tree: Tree)(using Context): Tree = {
-    val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
+    val fun @ Select(qual, name) = funPart(tree)
+    val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)

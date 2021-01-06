@@ -49,7 +49,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         else {
           // val it = Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
           // TupleN+1(it.next(), ..., it.next())
-          val fullIterator = ref(defn.RuntimeTuples_consIterator).appliedToArgs(head :: tail :: Nil)
+          val fullIterator = ref(defn.RuntimeTuples_consIterator).appliedToTermArgs(head :: tail :: Nil)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(tpes.length, it).asInstance(tree.tpe)
           }
@@ -127,7 +127,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         else {
           // val it = self.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator
           // TupleN+M(it.next(), ..., it.next())
-          val fullIterator = ref(defn.RuntimeTuples_concatIterator).appliedToArgs(tree.args)
+          val fullIterator = ref(defn.RuntimeTuples_concatIterator).appliedToTermArgs(tree.args)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(n + m, it).asInstance(tree.tpe)
           }
@@ -192,7 +192,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).classSymbol.companionModule
-    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements)
+    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToTermArgs(elements)
   }
 
   private def knownTupleFromIterator(size: Int, it: Tree)(using Context): Tree =

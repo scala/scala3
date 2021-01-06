@@ -59,7 +59,7 @@ class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
         initFlags = sym.flags &~ Lazy | Method,
         info = ExprType(sym.info))
       .installAfter(thisPhase)
-      cpy.DefDef(tree)(tree.name, Nil, Nil, tree.tpt, tree.rhs)
+      cpy.DefDef(tree)(tree.name, Nil, tree.tpt, tree.rhs)
     else tree
 end UncacheGivenAliases
 

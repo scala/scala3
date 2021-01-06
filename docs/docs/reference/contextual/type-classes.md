@@ -101,16 +101,16 @@ As in the previous example of Monoids, [`extension` methods](extension-methods.m
 
 ```scala
 trait Functor[F[_]]:
-   extension [A, B](x: F[A])
-      def map(f: A => B): F[B]
+   extension [A](x: F[A])
+      def map[B](f: A => B): F[B]
 ```
 
 The instance of `Functor` for `List` now becomes:
 
 ```scala
 given Functor[List] with
-   extension [A, B](xs: List[A])
-      def map(f: A => B): List[B] =
+   extension [A](xs: List[A])
+      def map[B](f: A => B): List[B] =
          xs.map(f) // List already has a `map` method
 
 ```
@@ -143,12 +143,12 @@ trait Monad[F[_]] extends Functor[F]:
    /** The unit value for a monad */
    def pure[A](x: A): F[A]
 
-   extension [A, B](x: F[A])
+   extension [A](x: F[A])
       /** The fundamental composition operation */
-      def flatMap(f: A => F[B]): F[B]
+      def flatMap[B](f: A => F[B]): F[B]
 
       /** The `map` operation can now be defined in terms of `flatMap` */
-      def map(f: A => B) = x.flatMap(f.andThen(pure))
+      def map[B](f: A => B) = x.flatMap(f.andThen(pure))
 
 end Monad
 ```
@@ -161,8 +161,8 @@ A `List` can be turned into a monad via this `given` instance:
 given listMonad: Monad[List] with
    def pure[A](x: A): List[A] =
       List(x)
-   extension [A, B](xs: List[A])
-      def flatMap(f: A => List[B]): List[B] =
+   extension [A](xs: List[A])
+      def flatMap[B](f: A => List[B]): List[B] =
          xs.flatMap(f) // rely on the existing `flatMap` method of `List`
 ```
 
@@ -178,8 +178,8 @@ it explicitly.
 given optionMonad: Monad[Option] with
    def pure[A](x: A): Option[A] =
       Option(x)
-   extension [A, B](xo: Option[A])
-      def flatMap(f: A => Option[B]): Option[B] = xo match
+   extension [A](xo: Option[A])
+      def flatMap[B](f: A => Option[B]): Option[B] = xo match
          case Some(x) => f(x)
          case None => None
 ```
@@ -227,8 +227,8 @@ given configDependentMonad: Monad[ConfigDependent] with
    def pure[A](x: A): ConfigDependent[A] =
       config => x
 
-   extension [A, B](x: ConfigDependent[A])
-      def flatMap(f: A => ConfigDependent[B]): ConfigDependent[B] =
+   extension [A](x: ConfigDependent[A])
+      def flatMap[B](f: A => ConfigDependent[B]): ConfigDependent[B] =
          config => f(x(config))(config)
 
 end configDependentMonad
@@ -248,8 +248,8 @@ given configDependentMonad: Monad[[Result] =>> Config => Result] with
    def pure[A](x: A): Config => A =
       config => x
 
-   extension [A, B](x: Config => A)
-      def flatMap(f: A => Config => B): Config => B =
+   extension [A](x: Config => A)
+      def flatMap[B](f: A => Config => B): Config => B =
          config => f(x(config))(config)
 
 end configDependentMonad
@@ -263,8 +263,8 @@ given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
    def pure[A](x: A): Ctx => A =
       ctx => x
 
-   extension [A, B](x: Ctx => A)
-      def flatMap(f: A => Ctx => B): Ctx => B =
+   extension [A](x: Ctx => A)
+      def flatMap[B](f: A => Ctx => B): Ctx => B =
          ctx => f(x(ctx))(ctx)
 
 end readerMonad

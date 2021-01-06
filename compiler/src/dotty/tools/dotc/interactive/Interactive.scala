@@ -111,7 +111,7 @@ object Interactive {
           val classTree = funSym.topLevelClass.asClass.rootTree
           val paramSymbol =
             for {
-              DefDef(_, _, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
+              DefDef(_, paramss, _, _) <- tpd.defPath(funSym, classTree).lastOption
               param <- paramss.flatten.find(_.name == name)
             }
             yield param.symbol
@@ -288,8 +288,7 @@ object Interactive {
         case tree: DefDef =>
           assert(tree.symbol.exists)
           val localCtx = outer.localContext(tree, tree.symbol).setNewScope
-          for (tparam <- tree.tparams) localCtx.enter(tparam.symbol)
-          for (vparams <- tree.vparamss; vparam <- vparams) localCtx.enter(vparam.symbol)
+          for params <- tree.paramss; param <- params do localCtx.enter(param.symbol)
             // Note: this overapproximates visibility a bit, since value parameters are only visible
             // in subsequent parameter sections
           localCtx

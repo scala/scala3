@@ -60,7 +60,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
     def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
@@ -255,17 +255,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss => {
+          val (tparams, vparamss) = tpd.splitArgs(prefss)
+          yCheckedOwners(rhsFn(tparams.map(_.tpe))(vparamss), symbol).getOrElse(tpd.EmptyTree)
+        }))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, tpd.joinParams(typeParams, paramss), tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs))
+        (ddef.name.toString, ddef.typeParams, ddef.termParamss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+        def typeParams: List[TypeDef] = self.leadingTypeParams // TODO: adapt to multiple type parameter clauses
+        def paramss: List[List[ValDef]] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -378,7 +381,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -2653,6 +2656,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
+          // TODO detect when we do not have a source and return None
           Some(new String(self.source.content(), self.start, self.end - self.start))
       end extension
     end PositionMethods
@@ -2667,6 +2671,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       extension (self: SourceFile)
         def jpath: java.nio.file.Path = self.file.jpath
         def content: Option[String] =
+          // TODO detect when we do not have a source and return None
           Some(new String(self.content()))
       end extension
     end SourceFileMethods
@@ -2863,8 +2868,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       if pat1.isType then matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
       else matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
 
+    // val matchings = matcher.termMatch(scrutinee, pattern)
     if typeHoles.isEmpty then matchings
     else {
+      // After matching and doing all subtype checks, we have to approximate all the type bindings
+      // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
         ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
       matchings.map { tup =>

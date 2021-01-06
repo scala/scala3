@@ -122,9 +122,10 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
-          val (refPart, targs, argss) = decomposeCall(tree)
+          val refPart = funPart(tree)
+          val argss = allArgss(tree)
           val qual = qualifier(refPart)
-          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, $argss%, %")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
@@ -159,10 +160,12 @@ object PrepareInlineable {
             accessorInfo = abstractQualType(addQualType(dealiasMap(accessedType))),
             accessed = accessed)
 
-          ref(accessor)
-            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
-            .appliedToArgss((qual :: Nil) :: argss)
-            .withSpan(tree.span)
+          val (leadingTypeArgs, otherArgss) = splitArgs(argss)
+          val argss1 = joinArgs(
+            localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
+            (qual :: Nil) :: otherArgss
+          )
+          ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 
             // TODO: Handle references to non-public types.
             // This is quite tricky, as such types can appear anywhere, including as parts
@@ -265,7 +268,7 @@ object PrepareInlineable {
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)
-        case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+        case Block(DefDef(nme.ANON_FUN, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
           report.error(
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.

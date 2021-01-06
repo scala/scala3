@@ -696,7 +696,7 @@ class Namer { typer: Typer =>
     protected def typeSig(sym: Symbol): Type = original match {
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
-        else valOrDefDefSig(original, sym, Nil, Nil, identity)(using localContext(sym).setNewScope)
+        else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
       case original: DefDef =>
         val typer1 = ctx.typer.newLikeThis
         nestedTyper(sym) = typer1
@@ -1011,21 +1011,23 @@ class Namer { typer: Typer =>
          *  provided `mbr` is accessible and of the right implicit/non-implicit kind.
          */
         def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
+
           def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
             : List[List[tpd.Tree]] = tp match
-              case mt: MethodType =>
+              case mt: MethodType
+              if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam =>
                 // Note: in this branch we use the assumptions
                 // that `prefss.head` corresponds to `mt.paramInfos` and
                 // that `prefss.tail` corresponds to `mt.resType`
-                if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam then
-                  val init :+ vararg = prefss.head
-                  val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
-                  adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
-                else
-                  adaptForwarderParams(prefss.head :: acc, mt.resType, prefss.tail)
+                val init :+ vararg = prefss.head
+                val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
+                adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
+              case mt: MethodOrPoly =>
+                adaptForwarderParams(prefss.head :: acc, mt.resultType, prefss.tail)
               case _ =>
                 acc.reverse ::: prefss
-          if (whyNoForwarder(mbr) == "") {
+
+          if whyNoForwarder(mbr) == "" then
             val sym = mbr.symbol
             val forwarder =
               if mbr.isType then
@@ -1060,9 +1062,8 @@ class Namer { typer: Typer =>
               else {
                 import tpd._
                 val ref = path.select(sym.asTerm)
-                val ddef = tpd.polyDefDef(forwarder.asTerm, targs => prefss =>
-                  ref.appliedToTypes(targs)
-                     .appliedToArgss(adaptForwarderParams(Nil, sym.info.stripPoly, prefss))
+                val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
+                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
                 )
                 if forwarder.isInlineMethod then
                   PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
@@ -1070,7 +1071,7 @@ class Namer { typer: Typer =>
               }
 
             buf += forwarderDef.withSpan(span)
-          }
+        end addForwarder
 
         def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
           val size = buf.size
@@ -1329,7 +1330,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, typeParams: List[Symbol], paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = {
       /** A type for this definition that might be inherited from elsewhere:
@@ -1340,35 +1341,37 @@ class Namer { typer: Typer =>
        */
       val inherited =
         if (sym.owner.isTerm) NoType
-        else {
+        else
           // TODO: Look only at member of supertype instead?
           lazy val schema = paramFn(WildcardType)
           val site = sym.owner.thisType
+
           sym.owner.info.baseClasses.tail.foldLeft(NoType: Type) { (tp, cls) =>
-            def instantiatedResType(info: Type, tparams: List[Symbol], paramss: List[List[Symbol]]): Type = info match {
+            def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
               case info: PolyType =>
-                if (info.paramNames.length == typeParams.length)
-                  instantiatedResType(info.instantiate(tparams.map(_.typeRef)), Nil, paramss)
-                else NoType
-              case info: MethodType =>
-                paramss match {
-                  case params :: paramss1 if info.paramNames.length == params.length =>
-                    instantiatedResType(info.instantiate(params.map(_.termRef)), tparams, paramss1)
+                paramss match
+                  case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
+                    instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
                   case _ =>
                     NoType
-                }
+              case info: MethodType =>
+                paramss match
+                  case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
+                    instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
+                  case _ =>
+                    NoType
               case _ =>
-                if (tparams.isEmpty && paramss.isEmpty) info.widenExpr
+                if paramss.isEmpty then info.widenExpr
                 else NoType
-            }
+
             val iRawInfo =
               cls.info.nonPrivateDecl(sym.name).matchingDenotation(site, schema, sym.targetName).info
-            val iResType = instantiatedResType(iRawInfo, typeParams, paramss).asSeenFrom(site, cls)
+            val iResType = instantiatedResType(iRawInfo, paramss).asSeenFrom(site, cls)
             if (iResType.exists)
               typr.println(i"using inherited type for ${mdef.name}; raw: $iRawInfo, inherited: $iResType")
             tp & iResType
           }
-        }
+      end inherited
 
       /** The proto-type to be used when inferring the result type from
        *  the right hand side. This is `WildcardType` except if the definition
@@ -1419,6 +1422,7 @@ class Namer { typer: Typer =>
       var rhsCtx = ctx.fresh.addMode(Mode.InferringReturnType)
       if sym.isInlineMethod then rhsCtx = rhsCtx.addMode(Mode.InlineableBody)
       if sym.is(ExtensionMethod) then rhsCtx = rhsCtx.addMode(Mode.InExtensionMethod)
+      val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
       if (typeParams.nonEmpty) {
         // we'll be typing an expression from a polymorphic definition's body,
         // so we must allow constraining its type parameters
@@ -1453,6 +1457,7 @@ class Namer { typer: Typer =>
         lhsType orElse WildcardType
       }
     }
+    lazy val termParamss = paramss.collect { case TermSymbols(vparams) => vparams }
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
@@ -1460,7 +1465,7 @@ class Namer { typer: Typer =>
       case TypeTree() =>
         checkMembersOK(inferredType, mdef.srcPos)
       case DependentTypeTree(tpFun) =>
-        val tpe = tpFun(paramss.head)
+        val tpe = tpFun(termParamss.head)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe).tpe
       case TypedSplice(tpt: TypeTree) if !isFullyDefined(tpt.tpe, ForceDegree.none) =>
@@ -1479,11 +1484,11 @@ class Namer { typer: Typer =>
             // are better ways to achieve this. It would be good if we could get rid of this code.
             // It seems at least partially redundant with the nesting level checking on TypeVar
             // instantiation.
-            val hygienicType = TypeOps.avoid(rhsType, paramss.flatten)
+            val hygienicType = TypeOps.avoid(rhsType, termParamss.flatten)
             if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
               report.error(i"return type ${tpt.tpe} of lambda cannot be made hygienic;\n" +
                 i"it is not a supertype of the hygienic type $hygienicType", mdef.srcPos)
-            //println(i"lifting $rhsType over $paramss -> $hygienicType = ${tpt.tpe}")
+            //println(i"lifting $rhsType over $termParamss -> $hygienicType = ${tpt.tpe}")
             //println(TypeComparer.explained { implicit ctx => hygienicType <:< tpt.tpe })
           case _ =>
         }
@@ -1500,7 +1505,6 @@ class Namer { typer: Typer =>
   /** The type signature of a DefDef with given symbol */
   def defDefSig(ddef: DefDef, sym: Symbol)(using Context): Type = {
     // Beware: ddef.name need not match sym.name if sym was freshened!
-    val DefDef(_, tparams, vparamss, _, _) = ddef
     val isConstructor = sym.name == nme.CONSTRUCTOR
 
     // The following 3 lines replace what was previously just completeParams(tparams).
@@ -1526,23 +1530,22 @@ class Namer { typer: Typer =>
     //   3. Info of CP is computed (to be copied to DP).
     //   4. CP is completed.
     //   5. Info of CP is copied to DP and DP is completed.
-    index(tparams)
+    index(ddef.leadingTypeParams)
     if (isConstructor) sym.owner.typeParams.foreach(_.ensureCompleted())
-    for (tparam <- tparams) typedAheadExpr(tparam)
+    for (tparam <- ddef.leadingTypeParams) typedAheadExpr(tparam)
 
-    vparamss foreach completeParams
-    def typeParams = tparams map symbolOfTree
-    val termParamss = normalizeIfConstructor(vparamss.nestedMap(symbolOfTree), isConstructor)
-    sym.setParamss(typeParams, termParamss)
+    ddef.trailingParamss.foreach(completeParams)
+    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor)
+    sym.setParamss(paramSymss)
     def wrapMethType(restpe: Type): Type = {
-      instantiateDependent(restpe, typeParams, termParamss)
-      methodType(tparams map symbolOfTree, termParamss, restpe, isJava = ddef.mods.is(JavaDefined))
+      instantiateDependent(restpe, paramSymss)
+      methodType(paramSymss, restpe, isJava = ddef.mods.is(JavaDefined))
     }
     if (isConstructor) {
       // set result type tree to unit, but take the current class as result type of the symbol
       typedAheadType(ddef.tpt, defn.UnitType)
-      wrapMethType(effectiveResultType(sym, typeParams, NoType))
+      wrapMethType(effectiveResultType(sym, paramSymss, NoType))
     }
-    else valOrDefDefSig(ddef, sym, typeParams, termParamss, wrapMethType)
+    else valOrDefDefSig(ddef, sym, paramSymss, wrapMethType)
   }
 }

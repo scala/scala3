@@ -145,7 +145,9 @@ trait ExprMap:
         trees.mapConserve(x => transformTypeCaseDef(x)(owner))
 
     }
-    new MapChildren().transformTermChildren(e.asTerm, TypeRepr.of[T])(Symbol.spliceOwner).asExprOf[T]
+    new MapChildren()
+      .transformTermChildren(e.asTerm, TypeRepr.of[T])(Symbol.spliceOwner)
+      .asExprOf[T]
   }
 
 end ExprMap

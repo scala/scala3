@@ -62,17 +62,20 @@ Standard-Section: "ASTs" TopLevelStat*
                   IMPORT         Length qual_Term Selector*                        -- import qual selectors
                   EXPORT         Length qual_Term Selector*                        -- export qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
-                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term
-                                        rhs_Term? Modifier*                        -- modifiers def name [typeparams] paramss : returnType (= rhs)?
+                  DEFDEF         Length NameRef Param* returnType_Term rhs_Term?
+                                        Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
   Selector      = IMPORTED              name_NameRef                               -- name, "_" for normal wildcards, "" for given wildcards
                   RENAMED               to_NameRef                                 -- => name
                   BOUNDED               type_Term                                  -- type bound
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
-  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
-                  PARAMEND                                                         -- ends a parameter clause
-                                                																   -- needed if previous parameter clause is empty or another parameter clause follows
-  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+  TermParam     = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
+                  EMPTYCLAUSE                                                      -- an empty parameter clause ()
+                  SPLITCLAUSE                                                      -- splits two non-empty parameter clauses of the same kind
+  Param         = TypeParam
+                  TermParam
+  Template      = TEMPLATE       Length TypeParam* TermParam* parent_Term* Self?
+                                        Stat*                                      -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
 
   Term          = Path                                                             -- Paths represent both types and terms
@@ -222,9 +225,9 @@ Note: The signature of a SELECTin or TERMREFin node is the signature of the sele
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
-  Category 1 (tags 1-49)   :  tag
-  Category 2 (tags 50-79)  :  tag Nat
-  Category 3 (tags 80-109) :  tag AST
+  Category 1 (tags 1-59)   :  tag
+  Category 2 (tags 60-89)  :  tag Nat
+  Category 3 (tags 90-109) :  tag AST
   Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
@@ -260,8 +263,8 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 26
-  val MinorVersion: Int = 1
+  val MajorVersion: Int = 27
+  val MinorVersion: Int = 0
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
@@ -374,46 +377,47 @@ object TastyFormat {
   final val PARAMsetter = 38
   final val EXPORTED = 39
   final val OPEN = 40
-  final val PARAMEND = 41
-  final val PARAMalias = 42
-  final val TRANSPARENT = 43
-  final val INFIX = 44
+  final val PARAMalias = 41
+  final val TRANSPARENT = 42
+  final val INFIX = 43
+  final val EMPTYCLAUSE = 44
+  final val SPLITCLAUSE = 45
 
   // Cat. 2:    tag Nat
 
-  final val SHAREDterm = 50
-  final val SHAREDtype = 51
-  final val TERMREFdirect = 52
-  final val TYPEREFdirect = 53
-  final val TERMREFpkg = 54
-  final val TYPEREFpkg = 55
-  final val RECthis = 56
-  final val BYTEconst = 57
-  final val SHORTconst = 58
-  final val CHARconst = 59
-  final val INTconst = 60
-  final val LONGconst = 61
-  final val FLOATconst = 62
-  final val DOUBLEconst = 63
-  final val STRINGconst = 64
-  final val IMPORTED = 65
-  final val RENAMED = 66
+  final val SHAREDterm = 60
+  final val SHAREDtype = 61
+  final val TERMREFdirect = 62
+  final val TYPEREFdirect = 63
+  final val TERMREFpkg = 64
+  final val TYPEREFpkg = 65
+  final val RECthis = 66
+  final val BYTEconst = 67
+  final val SHORTconst = 68
+  final val CHARconst = 69
+  final val INTconst = 70
+  final val LONGconst = 71
+  final val FLOATconst = 72
+  final val DOUBLEconst = 73
+  final val STRINGconst = 74
+  final val IMPORTED = 75
+  final val RENAMED = 76
 
   // Cat. 3:    tag AST
 
-  final val THIS = 80
-  final val QUALTHIS = 81
-  final val CLASSconst = 82
-  final val BYNAMEtype = 83
-  final val BYNAMEtpt = 84
-  final val NEW = 85
-  final val THROW = 86
-  final val IMPLICITarg = 87
-  final val PRIVATEqualified = 88
-  final val PROTECTEDqualified = 89
-  final val RECtype = 90
-  final val SINGLETONtpt = 91
-  final val BOUNDED = 92
+  final val THIS = 90
+  final val QUALTHIS = 91
+  final val CLASSconst = 92
+  final val BYNAMEtype = 93
+  final val BYNAMEtpt = 94
+  final val NEW = 95
+  final val THROW = 96
+  final val IMPLICITarg = 97
+  final val PRIVATEqualified = 98
+  final val PROTECTEDqualified = 99
+  final val RECtype = 100
+  final val SINGLETONtpt = 101
+  final val BOUNDED = 102
 
   // Cat. 4:    tag Nat AST
 
@@ -493,7 +497,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= INFIX ||
+    firstSimpleTreeTag <= tag && tag <= SPLITCLAUSE ||
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -602,8 +606,9 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
-    case PARAMEND => "PARAMEND"
     case PARAMalias => "PARAMalias"
+    case EMPTYCLAUSE => "EMPTYCLAUSE"
+    case SPLITCLAUSE => "SPLITCLAUSE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"

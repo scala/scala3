@@ -23,8 +23,8 @@ class SpecializeFunctions extends MiniPhase {
    */
   override def transformDefDef(ddef: DefDef)(using Context) = {
     if ddef.name != nme.apply
-       || ddef.vparamss.length != 1
-       || ddef.vparamss.head.length > 2
+       || ddef.termParamss.length != 1
+       || ddef.termParamss.head.length > 2
        || !ctx.owner.isClass
     then
       return ddef
@@ -35,7 +35,7 @@ class SpecializeFunctions extends MiniPhase {
     var specName: Name = null
 
     def isSpecializable = {
-      val paramTypes = ddef.vparamss.head.map(_.symbol.info)
+      val paramTypes = ddef.termParamss.head.map(_.symbol.info)
       val retType = sym.info.finalResultType
       specName = nme.apply.specializedFunction(retType, paramTypes)
       defn.isSpecializableFunction(cls, paramTypes, retType)
@@ -54,12 +54,12 @@ class SpecializeFunctions extends MiniPhase {
       DefDef(specializedApply.asTerm, vparamss => {
         ddef.rhs
           .changeOwner(ddef.symbol, specializedApply)
-          .subst(ddef.vparamss.head.map(_.symbol), vparamss.head.map(_.symbol))
+          .subst(ddef.termParamss.head.map(_.symbol), vparamss.head.map(_.symbol))
       })
 
     // create a forwarding to the specialized apply
-    val args = ddef.vparamss.head.map(vparam => ref(vparam.symbol))
-    val rhs = This(cls).select(specializedApply).appliedToArgs(args)
+    val args = ddef.termParamss.head.map(vparam => ref(vparam.symbol))
+    val rhs = This(cls).select(specializedApply).appliedToTermArgs(args)
     val ddef1 = cpy.DefDef(ddef)(rhs = rhs)
     Thicket(ddef1, specializedDecl)
   }
@@ -92,7 +92,7 @@ class SpecializeFunctions extends MiniPhase {
             }
         }
 
-        newSel.appliedToArgs(args)
+        newSel.appliedToTermArgs(args)
 
       case _ => tree
     }

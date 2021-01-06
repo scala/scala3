@@ -55,14 +55,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   end extension
 
-  extension [X](self: scala.quoted.Expr[Any])
+  extension (self: scala.quoted.Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using scala.quoted.Type[X]): Boolean =
+    def isExprOf[X](using scala.quoted.Type[X]): Boolean =
       reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
@@ -107,9 +107,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](self: Tree)
-        def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
-          QuotesImpl.this.asExprOf[T](self.asExpr)(using tp)
+      extension (self: Tree)
+        def asExprOf[T](using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
+          QuotesImpl.this.asExprOf(self.asExpr)[T](using tp)
       end extension
 
       extension [ThisTree <: Tree](self: ThisTree)
@@ -257,17 +257,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss => {
+          val (tparams, vparamss) = tpd.splitArgs(prefss)
+          yCheckedOwners(rhsFn(tparams.map(_.tpe))(vparamss), symbol).getOrElse(tpd.EmptyTree)
+        }))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, tpd.joinParams(typeParams, paramss), tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs))
+        (ddef.name.toString, ddef.typeParams, ddef.termParamss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+        def typeParams: List[TypeDef] = self.leadingTypeParams // TODO: adapt to multiple type parameter clauses
+        def paramss: List[List[ValDef]] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -380,7 +383,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 

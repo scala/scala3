@@ -291,16 +291,14 @@ object SymDenotations {
     final def rawParamss_=(pss: List[List[Symbol]]): Unit =
       myParamss = pss
 
-    final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
-      rawParamss = (tparams :: vparamss).filterConserve(!_.isEmpty)
+    final def setParamss(paramss: List[List[Symbol]])(using Context): Unit =
+      rawParamss = paramss.filterConserve(!_.isEmpty)
 
-    final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
-      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
-
+    final def setParamssFromDefs(paramss: List[tpd.ParamClause])(using Context): Unit =
+      setParamss(paramss.map(_.map(_.symbol)))
 
     /** The symbols of each type parameter list and value parameter list of this
      *  method, or Nil if this isn't a method.
-     *
      *
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.

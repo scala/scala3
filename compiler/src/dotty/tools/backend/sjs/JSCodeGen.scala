@@ -1035,7 +1035,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
     implicit val pos = dd.span
     val sym = dd.symbol
-    val vparamss = dd.vparamss
+    val vparamss = dd.termParamss
     val rhs = dd.rhs
 
     withScopedVars(
