@@ -840,6 +840,20 @@ class Namer { typer: Typer =>
     private var nestedCtx: Context = null
     assert(!original.isClassDef)
 
+    /** If completion of the owner of the to be completed symbol has not yet started,
+     *  complete the owner first and check again. This prevents cyclic references
+     *  where we need to copmplete a type parameter that has an owner that is not
+     *  yet completed. Test case is pos/i10967.scala.
+     */
+    override def needsCompletion(symd: SymDenotation)(using Context): Boolean =
+      val owner = symd.owner
+      !owner.exists
+      || owner.is(Touched)
+      || {
+        owner.ensureCompleted()
+        !symd.isCompleted
+      }
+
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
       if myTypeParams == null then
         //println(i"completing type params of $sym in ${sym.owner}")

@@ -141,30 +141,31 @@ object SymDenotations {
     }
 
     final def completeFrom(completer: LazyType)(using Context): Unit =
-      if (Config.showCompletions) {
-        println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
-        indent += 1
+      if completer.needsCompletion(this) then
+        if (Config.showCompletions) {
+          println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+          indent += 1
 
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+          if (myFlags.is(Touched)) throw CyclicReference(this)
+          myFlags |= Touched
 
-        // completions.println(s"completing ${this.debugString}")
-        try atPhase(validFor.firstPhaseId)(completer.complete(this))
-        catch {
-          case ex: CyclicReference =>
-            println(s"error while completing ${this.debugString}")
-            throw ex
+          // completions.println(s"completing ${this.debugString}")
+          try atPhase(validFor.firstPhaseId)(completer.complete(this))
+          catch {
+            case ex: CyclicReference =>
+              println(s"error while completing ${this.debugString}")
+              throw ex
+          }
+          finally {
+            indent -= 1
+            println(i"${"  " * indent}completed $name in $owner")
+          }
         }
-        finally {
-          indent -= 1
-          println(i"${"  " * indent}completed $name in $owner")
+        else {
+          if (myFlags.is(Touched)) throw CyclicReference(this)
+          myFlags |= Touched
+          atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
-      }
-      else {
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
-        atPhase(validFor.firstPhaseId)(completer.complete(this))
-      }
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -2517,6 +2518,13 @@ object SymDenotations {
     def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
 
     override def toString: String = getClass.toString
+
+    /** A hook that is called before trying to complete a symbol with its
+     *  associated cycle detection via the Touched flag. This is overridden
+     *  for Type definitions in Namer, where we make sure that owners are
+     *  completed before nested types.
+     */
+    def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
 
   object LazyType:
