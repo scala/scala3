@@ -74,7 +74,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   SPLITCLAUSE                                                      -- splits two non-empty parameter clauses of the same kind
   Param         = TypeParam
                   TermParam
-                                                																   -- needed if previous parameter clause is empty or another parameter clause follows
   Template      = TEMPLATE       Length TypeParam* TermParam* parent_Term* Self?
                                         Stat*                                      -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
