@@ -118,7 +118,8 @@ val str = "hello"
 
 def condition =
    x > 0
-   || xs.exists(_ > 0)
+   ||
+   xs.exists(_ > 0)
    || xs.isEmpty
 ```
 
@@ -129,8 +130,8 @@ To make this syntax work, the rules are modified to not infer semicolons in fron
 A _leading infix operator_ is
  - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks,
  - that starts a new line,
- - that precedes a token on the same line that can start an expression,
- - and that is immediately followed by at least one space character `' '`.
+ - that precedes a token on the same or the next line that can start an expression,
+ - and that is immediately followed by at least one whitespace character.
 
 Example:
 

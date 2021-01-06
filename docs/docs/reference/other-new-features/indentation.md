@@ -161,13 +161,37 @@ Indentation prefixes can consist of spaces and/or tabs. Indentation widths are t
 
 ### Indentation and Braces
 
-Indentation can be mixed freely with braces. For interpreting indentation inside braces, the following rules apply.
+Indentation can be mixed freely with braces `{...}`, as well as brackets `[...]` and parentheses `(...)`. For interpreting indentation inside such regions, the following rules apply.
 
  1. The assumed indentation width of a multiline region enclosed in braces is the
     indentation width of the first token that starts a new line after the opening brace.
 
- 2. On encountering a closing brace `}`, as many `<outdent>` tokens as necessary are
-    inserted to close all open indentation regions inside the pair of braces.
+ 2. The assumed indentation width of a multiline region inside brackets or parentheses is:
+
+     - if the opening bracket or parenthesis is at the end of a line, the indentation width of token following it,
+     - otherwise, the indentation width of the enclosing region.
+
+ 3. On encountering a closing brace `}`, bracket `]` or parenthesis `)`, as many `<outdent>` tokens as necessary are inserted to close all open nested indentation regions.
+
+For instance, consider:
+```scala
+{
+   val x = f(x: Int, y =>
+      x * (
+         y + 1
+      ) +
+      (x +
+      x)
+   )
+}
+```
+ - Here, the indentation width of the region enclosed by the braces is 3 (i.e. the indentation width of the
+statement starting with `val`).
+ - The indentation width of the region in parentheses that follows `f` is also 3, since the opening
+   parenthesis is not at the end of a line.
+ - The indentation width of the region in parentheses around `y + 1` is 9
+   (i.e. the indentation width of `y + 1`).
+ - Finally, the indentation width of the last region in parentheses starting with `(x` is 6 (i.e. the indentation width of the indented region following the `=>`.
 
 ### Special Treatment of Case Clauses
 

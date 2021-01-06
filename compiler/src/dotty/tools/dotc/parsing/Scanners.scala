@@ -337,15 +337,15 @@ object Scanners {
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
-      *   - it is followed on the same line by at least one ' '
-      *     and a token that can start an expression.
+      *   - it is followed by at least one whitespace character and a
+      *     token that can start an expression.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
-      && ch == ' '
+      && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
         val lookahead = LookaheadScanner()
@@ -353,6 +353,7 @@ object Scanners {
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
         canStartExprTokens.contains(lookahead.token)
+        || lookahead.token == NEWLINE && canStartExprTokens.contains(lookahead.next.token)
       }
       && {
         if migrateTo3 then
@@ -462,7 +463,7 @@ object Scanners {
           indentPrefix = r.prefix
         case r =>
           indentIsSignificant = indentSyntax
-          if (r.knownWidth == null) r.knownWidth = nextWidth
+          r.proposeKnownWidth(nextWidth, lastToken)
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
@@ -1349,6 +1350,18 @@ object Scanners {
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
       if knownWidth == null then IndentWidth.Zero else knownWidth
+
+    def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
+      if knownWidth == null then
+        this match
+          case InParens(_, _) if lastToken != LPAREN =>
+            useOuterWidth()
+          case _ =>
+            knownWidth = width
+
+    private def useOuterWidth(): Unit =
+      if enclosing.knownWidth == null then enclosing.useOuterWidth()
+      knownWidth = enclosing.knownWidth
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region
