@@ -109,12 +109,14 @@ class C(val x: String):
          case that: C => this.x == that.x
          case _ => false
 ```
+
 The cast of `that` to `Matchable` serves as an indication that universal equality
 is unsafe in the presence of abstract types and opaque types since it cannot properly distinguish the meaning of a type from its representation. The cast
 is guaranteed to succeed at run-time since `Any` and `Matchable` both erase to
 `Object`.
 
 For instance, consider the definitions
+
 ```scala
 opaque type Meter = Double
 def Meter(x: Double) = x
@@ -122,17 +124,17 @@ def Meter(x: Double) = x
 opaque type Second = Double
 def Second(x: Double) = x
 ```
+
 Here, universal `equals` will return true for
+
 ```scala
    Meter(10).equals(Second(10))
 ```
-even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.html) one can mitigate that problem somewhat by turning
+
+even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.md) one can mitigate that problem somewhat by turning
+
 ```scala
    Meter(10) == Second(10)
 ```
+
 into a type error.
-
-
-
-
-

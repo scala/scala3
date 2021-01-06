@@ -14,7 +14,8 @@ RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 
 ## Implementation of structural types
 
-The standard library defines a universal marker trait `Selectable` in the package `scala`:
+The standard library defines a universal marker trait
+[`scala.Selectable`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Selectable.scala):
 
 ```scala
 trait Selectable extends Any
@@ -78,7 +79,8 @@ and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we
   type, an error is emitted.
 
 Note that `v`'s static type does not necessarily have to conform to `Selectable`, nor does it need to have `selectDynamic` and `applyDynamic` as members. It suffices that there is an implicit
-conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as extension methods.
+conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as
+[extension methods](../contextual/extension-methods.md).
 
 ## Limitations of structural types
 

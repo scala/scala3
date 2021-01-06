@@ -42,7 +42,30 @@ same way that other functions do, see
 
 ## Examples
 
-- [depfuntype.scala](https://github.com/lampepfl/dotty/blob/master/tests/pos/depfuntype.scala)
+The example below defines a trait `C` and the two dependent function types
+`DF` and `IDF` and prints the results of the respective function applications:
+
+[depfuntype.scala]: https://github.com/lampepfl/dotty/blob/master/tests/pos/depfuntype.scala
+
+```scala
+trait C { type M; val m: M }
+
+type DF = (x: C) => x.M
+
+type IDF = (x: C) ?=> x.M
+
+@main def test =
+   val c = new C { type M = Int; val m = 3 }
+
+   val depfun: DF = (x: C) => x.m
+   val t = depfun(c)
+   println(s"t=$t")   // prints "t=3"
+
+   val idepfun: IDF = summon[C].m
+   val u = idepfun(using c)
+   println(s"u=$u")   // prints "u=3"
+
+```
 
 - [eff-dependent.scala](https://github.com/lampepfl/dotty/blob/master/tests/run/eff-dependent.scala)
 

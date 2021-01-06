@@ -60,7 +60,7 @@ the right-associative operator `+:` to an extension method. This is analogous
 to the implementation of right binding operators as normal methods. The Scala
 compiler preprocesses an infix operation `x +: xs` to `xs.+:(x)`, so the extension
 method ends up being applied to the sequence as first argument (in other words, the
-two swaps cancel each other out). See [here for details](./right-associative-extension-methods.html).
+two swaps cancel each other out). See [here for details](./right-associative-extension-methods.md).
 
 ### Generic Extensions
 

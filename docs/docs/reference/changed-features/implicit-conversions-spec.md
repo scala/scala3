@@ -87,10 +87,10 @@ Scala 3.
 
 ## Motivation for the changes
 
-The introduction of `Conversion` in Scala 3 and the decision to
-restrict implicit values of this type to be considered as potential
-views comes from the desire to remove surprising behavior from the
-language:
+The introduction of [`scala.Conversion`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Conversion.scala)
+in Scala 3 and the decision to restrict implicit values of this type to be
+considered as potential views comes from the desire to remove surprising
+behavior from the language:
 
 ```scala
 implicit val m: Map[Int, String] = Map(1 -> "abc")

@@ -23,18 +23,22 @@ If `y` gets compared to other values of type `T`,
 the program will still typecheck, since values of all types can be compared with each other.
 But it will probably give unexpected results and fail at runtime.
 
-Multiversal equality is an opt-in way to make universal equality
-safer. It uses a binary type class `CanEqual` to indicate that values of
-two given types can be compared with each other.
+Multiversal equality is an opt-in way to make universal equality safer.
+It uses a binary type class [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+to indicate that values of two given types can be compared with each other.
 The example above would not typecheck if `S` or `T` was a class
 that derives `CanEqual`, e.g.
+
 ```scala
 class T derives CanEqual
 ```
+
 Alternatively, one can also provide a `CanEqual` given instance directly, like this:
+
 ```scala
 given CanEqual[T, T] = CanEqual.derived
 ```
+
 This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
 affects type checking but it has no significance for runtime
@@ -42,6 +46,7 @@ behavior, since `==` always maps to `equals` and `!=` always maps to
 the negation of `equals`. The right hand side `CanEqual.derived` of the definition
 is a value that has any `CanEqual` instance as its type. Here is the definition of class
 `CanEqual` and its companion object:
+
 ```scala
 package scala
 import annotation.implicitNotFound
@@ -63,7 +68,9 @@ given CanEqual[B, B] = CanEqual.derived
 given CanEqual[A, B] = CanEqual.derived
 given CanEqual[B, A] = CanEqual.derived
 ```
-The `scala.CanEqual` object defines a number of `CanEqual` given instances that together
+
+The [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+object defines a number of `CanEqual` given instances that together
 define a rule book for what standard types can be compared (more details below).
 
 There is also a "fallback" instance named `canEqualAny` that allows comparisons
@@ -73,7 +80,8 @@ over all types that do not themselves have a `CanEqual` given.  `canEqualAny` is
 def canEqualAny[L, R]: CanEqual[L, R] = CanEqual.derived
 ```
 
-Even though `canEqualAny` is not declared as `given`, the compiler will still construct an `canEqualAny` instance as answer to an implicit search for the
+Even though `canEqualAny` is not declared as `given`, the compiler will still
+construct an `canEqualAny` instance as answer to an implicit search for the
 type `CanEqual[L, R]`, unless `L` or `R` have `CanEqual` instances
 defined on them, or the language feature `strictEquality` is enabled.
 
@@ -90,16 +98,21 @@ or with a command line option `-language:strictEquality`.
 ## Deriving CanEqual Instances
 
 Instead of defining `CanEqual` instances directly, it is often more convenient to derive them. Example:
+
 ```scala
 class Box[T](x: T) derives CanEqual
 ```
+
 By the usual rules of [type class derivation](./derivation.md),
 this generates the following `CanEqual` instance in the companion object of `Box`:
+
 ```scala
 given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] =
    CanEqual.derived
 ```
+
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
+
 ```scala
 new Box(1) == new Box(1L)   // ok since there is an instance for `CanEqual[Int, Long]`
 new Box(1) == new Box("a")  // error: can't compare
