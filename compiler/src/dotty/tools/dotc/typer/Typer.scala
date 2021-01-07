@@ -1320,7 +1320,9 @@ class Typer extends Namer
                   EmptyTree
             }
           case tp =>
-            throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.span}")
+            if !tp.isErroneous then
+              throw new java.lang.Error(i"internal error: closing over non-method $tp, pos = ${tree.span}")
+            TypeTree(defn.AnyType)
         }
       else typed(tree.tpt)
     //println(i"typing closure $tree : ${meth1.tpe.widen}")

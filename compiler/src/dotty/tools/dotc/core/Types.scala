@@ -542,16 +542,17 @@ object Types {
      *  Inherited by all type proxies. Overridden for And and Or types.
      *  `Nil` for all other types.
      */
-    def baseClasses(using Context): List[ClassSymbol] = {
+    def baseClasses(using Context): List[ClassSymbol] =
       record("baseClasses")
-      this match {
-        case tp: TypeProxy =>
-          tp.underlying.baseClasses
-        case tp: ClassInfo =>
-          tp.cls.classDenot.baseClasses
-        case _ => Nil
-      }
-    }
+      try
+        this match
+          case tp: TypeProxy =>
+            tp.underlying.baseClasses
+          case tp: ClassInfo =>
+            tp.cls.classDenot.baseClasses
+          case _ => Nil
+      catch case ex: Throwable =>
+        handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
