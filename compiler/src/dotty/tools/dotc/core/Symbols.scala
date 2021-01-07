@@ -429,7 +429,7 @@ object Symbols {
 
     /** The source or class file from which this class was generated, null if not applicable. */
     override def associatedFile(using Context): AbstractFile =
-      if (assocFile != null || this.owner.is(PackageClass) || this.isEffectiveRoot) assocFile
+      if assocFile != null || this.is(Package) || this.owner.is(Package) then assocFile
       else super.associatedFile
 
     private var mySource: SourceFile = NoSource
