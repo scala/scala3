@@ -18,7 +18,7 @@ def m(x: Int, y: String) = ???
 val f = m // becomes: val f = (x: Int, y: String) => m(x, y)
 ```
 
-In Scala 2, a method reference `m` was converted to a function value only if the expected type was a function type, which means the conversion in the example above would not have been triggered, because `val f` does not have a type ascription. To still get eta-expansion, a shortcut `m _` would force the conversion.
+In Scala 2, a method reference `m` is converted to a function value only if the expected type is a function type, which means the conversion in the example above would not have been triggered, because `val f` does not have a type ascription. To still get eta-expansion, a shortcut `m _` would force the conversion.
 
 For methods with one or more parameters like in the example above, this restriction has now been dropped. The syntax `m _` is no longer needed and will be deprecated in the future.
 

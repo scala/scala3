@@ -3,8 +3,9 @@ layout: doc-page
 title: "Dropped: Weak Conformance - More Details"
 ---
 
-To simplify the underlying type theory, Scala 3 drops the notion of weak
-conformance altogether. Instead, it provides more flexibility when
+To simplify the underlying type theory, Scala 3 drops the notion of
+[*weak conformance*](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#weak-conformance)
+altogether. Instead, it provides more flexibility when
 assigning a type to a constant expression. The new rule is:
 
  - If a list of expressions `Es` appears as one of

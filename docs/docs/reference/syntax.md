@@ -3,7 +3,7 @@ layout: doc-page
 title: "Scala 3 Syntax Summary"
 ---
 
-The following descriptions of Scala tokens uses literal characters `‘c’` when
+The following description of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
 _Unicode escapes_ are used to represent the [Unicode character](https://www.w3.org/International/articles/definitions-characters/) with the given

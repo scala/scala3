@@ -20,12 +20,12 @@ Context function types associate to the right, e.g.
 Context function types are shorthands for class types that define `apply`
 methods with context parameters. Specifically, the `N`-ary function type
 `T1, ..., TN => R` is a shorthand for the class type
-`ContextFunctionN[T1 , ... , TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
+`ContextFunctionN[T1, ..., TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
 
 ```scala
 package scala
-trait ContextFunctionN[-T1 , ... , -TN, +R]:
-   def apply(using x1: T1 , ... , xN: TN): R
+trait ContextFunctionN[-T1, ..., -TN, +R]:
+   def apply(using x1: T1, ..., xN: TN): R
 ```
 
 Context function types erase to normal function types, so these classes are

@@ -6,7 +6,7 @@ title: "Rules for Operators"
 The rules for infix operators have changed in some parts:
 
 First, an alphanumeric method can be used as an infix operator only if its definition carries an `infix` modifier. Second, it is recommended (but not enforced) to
-augment definitions of symbolic operators with `@targetName` annotations. Finally,
+augment definitions of symbolic operators with [`@targetName` annotations](../other-new-features/targetName.md). Finally,
 a syntax change allows infix operators to be written on the left in a multi-line expression.
 
 ## The `infix` Modifier
