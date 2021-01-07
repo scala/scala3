@@ -15,6 +15,7 @@ i8052.scala
 tuple-filter.scala
 i7740a.scala
 i7740b.scala
+i6507b.scala
 
 # Stale symbol: package object scala
 seqtype-cycle
