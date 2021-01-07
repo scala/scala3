@@ -70,7 +70,7 @@ object Access:
    opaque type Permission <: Permissions & PermissionChoice = Int
 
    extension (x: Permissions)
-      def & (y: Permissions): Permissions = x | y
+      def & (y: Permissions): Permissions = x & y
    extension (x: PermissionChoice)
       def | (y: PermissionChoice): PermissionChoice = x | y
    extension (granted: Permissions)
