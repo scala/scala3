@@ -1410,7 +1410,8 @@ object SymDenotations {
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
 
-    /** The typeRef where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object
+    /** Like typeRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
      *
      *  This is required to avoid owner crash in ExplicitOuter.
      *  See tests/pos/i10769.scala
@@ -1418,7 +1419,8 @@ object SymDenotations {
      def reachableTypeRef(using Context) =
        TypeRef(owner.reachableThisType, symbol)
 
-    /** The termRef where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object
+    /** Like termRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
      *
      *  This is required to avoid owner crash in ExplicitOuter.
      *  See tests/pos/i10769.scala
@@ -1426,7 +1428,9 @@ object SymDenotations {
     def reachableTermRef(using Context) =
       TermRef(owner.reachableThisType, symbol)
 
-    /** The thisType where `pre.O$.this` is changed to `pre.O.type` if `O` is a non-static object */
+    /** Like thisType, but objects in the type are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     */
     def reachableThisType(using Context): Type =
       if this.is(Package) then
         symbol.thisType
