@@ -1223,7 +1223,7 @@ object Types {
      *  then the top-level union isn't widened. This is needed so that type inference can infer nullable types.
      */
     def widenUnion(using Context): Type = widen match
-      case tp @ OrNull(tp1): OrType =>
+      case tp @ OrNull(tp1) =>
         // Don't widen `T|Null`, since otherwise we wouldn't be able to infer nullable unions.
         val tp1Widen = tp1.widenUnionWithoutNull
         if (tp1Widen.isRef(defn.AnyClass)) tp1Widen
@@ -3158,7 +3158,7 @@ object Types {
   object OrNull {
     def apply(tp: Type)(using Context) =
       OrType(tp, defn.NullType, soft = false)
-    def unapply(tp: Type)(using Context): Option[Type] =
+    def unapply(tp: OrType)(using Context): Option[Type] =
       if (ctx.explicitNulls) {
         val tp1 = tp.stripNull()
         if tp1 ne tp then Some(tp1) else None
