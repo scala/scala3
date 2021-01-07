@@ -246,7 +246,7 @@ object JavaParsers {
 
     def qualId(): RefTree = {
       var t: RefTree = atSpan(in.offset) { Ident(ident()) }
-      while (in.token == DOT) {
+      while (in.token == DOT && in.lookaheadToken == IDENTIFIER) {
         in.nextToken()
         t = atSpan(t.span.start, in.offset) { Select(t, ident()) }
       }
@@ -346,20 +346,86 @@ object JavaParsers {
     /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
       */
     def annotation(): Option[Tree] = {
-      val id = convertToTypeId(qualId())
-      // only parse annotations without arguments
-      if (in.token == LPAREN && in.lookaheadToken != RPAREN) {
-        skipAhead()
-        accept(RPAREN)
-        None
-      }
-      else {
-        if (in.token == LPAREN) {
+      object LiteralT:
+        def unapply(token: Token) = Option(token match {
+          case TRUE      => true
+          case FALSE     => false
+          case CHARLIT   => in.name(0)
+          case INTLIT    => in.intVal(false).toInt
+          case LONGLIT   => in.intVal(false)
+          case FLOATLIT  => in.floatVal(false).toFloat
+          case DOUBLELIT => in.floatVal(false)
+          case STRINGLIT => in.name.toString
+          case _         => null
+        }).map(Constant(_))
+
+      def classOrId(): Tree =
+        val id = qualId()
+        if in.lookaheadToken == CLASS then
           in.nextToken()
-          accept(RPAREN)
+          accept(CLASS)
+          TypeApply(
+            Select(
+              scalaDot(nme.Predef),
+              nme.classOf),
+            convertToTypeId(id) :: Nil
+          )
+        else id
+
+      def array(): Tree =
+        accept(LBRACE)
+        val buffer = ListBuffer[Tree]()
+        while (in.token != RBRACE) {
+          buffer += argValue()
+          if (in.token == COMMA) in.nextToken() // using this instead of repsep allows us to handle trailing commas
         }
-        Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
-      }
+        val ok = !buffer.contains(EmptyTree)
+        in.token match {
+          case RBRACE if ok =>
+            accept(RBRACE)
+            Apply(scalaDot(nme.Array), buffer.toList)
+          case _            =>
+            skipTo(RBRACE)
+            EmptyTree
+        }
+
+      def argValue(): Tree =
+        in.token match {
+          case LiteralT(c) =>
+            val tree = atSpan(in.offset)(Literal(c))
+            in.nextToken()
+            tree
+          case AT =>
+            in.nextToken()
+            annotation().get
+          case IDENTIFIER => classOrId()
+          case LBRACE => array()
+          case _ => EmptyTree
+        }
+
+      def annArg(): Tree =
+        if (in.token == IDENTIFIER && in.lookaheadToken == EQUALS)
+          val name = ident()
+          accept(EQUALS)
+          val argv = argValue()
+          NamedArg(name, argv)
+
+        else
+          NamedArg(nme.value, argValue())
+
+
+      val id = convertToTypeId(qualId())
+      val args = if in.token == LPAREN then
+        in.nextToken()
+        val args = repsep(annArg, COMMA)
+        accept(RPAREN)
+        args
+      else Nil
+
+      Some(Apply(
+        Select(New(id), nme.CONSTRUCTOR),
+        args
+      ))
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
