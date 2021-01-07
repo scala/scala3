@@ -1386,7 +1386,11 @@ import transform.SymUtils._
 
   class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
-    def msg = em"$tpe does not take type parameters"
+    private def fboundsAddendum =
+      if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
+        "\n(Note that F-bounds of type parameters may not be type lambdas)"
+      else ""
+    def msg = em"$tpe does not take type parameters$fboundsAddendum"
     def explain =
       val ps =
         if (params.size == 1) s"a type parameter ${params.head}"
