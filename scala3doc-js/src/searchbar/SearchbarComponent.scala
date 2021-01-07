@@ -33,9 +33,10 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     span.innerHTML = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M19.64 18.36l-6.24-6.24a7.52 7.52 0 10-1.28 1.28l6.24 6.24zM7.5 13.4a5.9 5.9 0 115.9-5.9 5.91 5.91 0 01-5.9 5.9z"></path></svg>"""
     span.id = "scala3doc-search"
     span.onclick = (event: Event) =>
-      if (rootDiv.className.contains("hidden"))
-        rootDiv.className = rootShowClasses
-      else rootDiv.className = rootHiddenClasses
+      if (document.body.contains(rootDiv)) {
+        document.body.removeChild(rootDiv)
+      }
+      else document.body.appendChild(rootDiv)
 
     val element = createNestingDiv("search-content")(
       createNestingDiv("search-conatiner")(
@@ -72,12 +73,14 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     val element = document.createElement("div").asInstanceOf[html.Div]
     element.addEventListener("click", (e: Event) => e.stopPropagation())
     logoClick.addEventListener("click", (e: Event) => e.stopPropagation())
-    document.body.addEventListener("click", (e: Event) => element.className = rootHiddenClasses)
-    element.className = rootHiddenClasses
+    document.body.addEventListener("click", (e: Event) =>
+      if (document.body.contains(element)) {
+        document.body.removeChild(element)
+      }
+    )
     element.id = "scala3doc-searchbar"
     element.appendChild(input)
     element.appendChild(resultsDiv)
-    document.body.appendChild(element)
     element
 
   handleNewQuery("")

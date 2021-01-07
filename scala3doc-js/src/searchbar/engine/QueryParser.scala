@@ -15,9 +15,9 @@ class QueryParser:
     "package",
     "given",
   )
-  val kindRegex = (kinds.mkString("(","|",")") + " (.+)").r
-  val restRegex = raw"(.+)".r
-  val escapedRegex = raw"`(.+)`".r
+  val kindRegex = (kinds.mkString("(","|",")") + " (.*)").r
+  val restRegex = raw"(.*)".r
+  val escapedRegex = raw"`(.*)`".r
 
   def parse(query: String): List[Matchers] = query.toLowerCase match {
     case escapedRegex(rest) => List(Matchers.ByName(rest))
