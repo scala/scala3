@@ -2809,11 +2809,13 @@ object Parsers {
       if (isIdent(nme.raw.BAR)) { in.nextToken(); pattern1(location) :: patternAlts(location) }
       else Nil
 
-    /**  Pattern1     ::= Pattern2 [Ascription]
+    /**  Pattern1     ::= PatVar Ascription
+     *                  | SimpleLiteral Ascription
+     *                  | Pattern2
      */
     def pattern1(location: Location = Location.InPattern): Tree =
       val p = pattern2()
-      if in.isColon then
+      if (isVarPattern(p) || p.isInstanceOf[Number]) && in.isColon then
         in.nextToken()
         ascription(p, location)
       else p
