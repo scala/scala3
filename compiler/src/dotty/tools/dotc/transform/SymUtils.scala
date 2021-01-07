@@ -223,9 +223,9 @@ object SymUtils:
       else owner.isLocal
     }
 
-    /** The typeRef with wildcard arguments for each type parameter */
-    def rawTypeRef(using Context) =
-      self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
+    /** The reachable typeRef with wildcard arguments for each type parameter */
+    def reachableRawTypeRef(using Context) =
+      self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
     /** Is symbol a quote operation? */
     def isQuote(using Context): Boolean =

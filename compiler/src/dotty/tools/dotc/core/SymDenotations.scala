@@ -1408,6 +1408,37 @@ object SymDenotations {
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
 
+    /** Like typeRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+     def reachableTypeRef(using Context) =
+       TypeRef(owner.reachableThisType, symbol)
+
+    /** Like termRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+    def reachableTermRef(using Context) =
+      TermRef(owner.reachableThisType, symbol)
+
+    /** Like thisType, but objects in the type are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     */
+    def reachableThisType(using Context): Type =
+      if this.is(Package) then
+        symbol.thisType
+      else if this.isTerm then
+        NoPrefix
+      else if this.is(Module) then
+        TermRef(owner.reachableThisType, this.sourceModule)
+      else
+        ThisType.raw(TypeRef(owner.reachableThisType, symbol.asType))
+
     /** The variance of this type parameter or type member as a subset of
      *  {Covariant, Contravariant}
      */
