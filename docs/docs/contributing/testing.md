@@ -157,5 +157,5 @@ Expect files are used as regression tests to detect changes in the compiler.
 
 The test suite will create a new file if it detects any difference, which can be compared with the
 original expect file, or if the user wants to globally replace all expect files for semanticdb they can use
-`dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
+`scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect`, and compare the changes via version
 control.

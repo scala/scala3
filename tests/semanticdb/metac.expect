@@ -2710,7 +2710,7 @@ Uri => ValPattern.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 63 entries
+Occurrences => 61 entries
 
 Symbols:
 example/ValPattern# => class ValPattern
@@ -2754,9 +2754,7 @@ Occurrences:
 [8:15..8:15): -> scala/Some.unapply().
 [8:16..8:18): q1 <- example/ValPattern#q1.
 [8:21..8:25): None -> scala/None.
-[8:27..8:31): None -> scala/None.
-[8:38..8:42): None -> scala/None.
-[8:46..8:49): ??? -> scala/Predef.`???`().
+[8:29..8:32): ??? -> scala/Predef.`???`().
 [10:7..10:14): leftVar <- example/ValPattern#leftVar().
 [10:16..10:24): rightVar <- example/ValPattern#rightVar().
 [10:29..10:29): -> scala/Tuple2.apply().
