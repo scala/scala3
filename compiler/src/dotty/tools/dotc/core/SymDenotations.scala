@@ -1393,10 +1393,10 @@ object SymDenotations {
     def thisType(using Context): Type = NoPrefix
 
     def typeRef(using Context): TypeRef =
-      TypeRef(owner.thisType, symbol)
+      TypeRef(maybeOwner.thisType, symbol)
 
     def termRef(using Context): TermRef =
-      TermRef(owner.thisType, symbol)
+      TermRef(maybeOwner.thisType, symbol)
 
     /** The typeRef applied to its own type parameters */
     def appliedRef(using Context): Type =
