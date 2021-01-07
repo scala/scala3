@@ -3493,7 +3493,7 @@ Uri => ValPattern.scala
 Text => empty
 Language => Scala
 Symbols => 22 entries
-Occurrences => 46 entries
+Occurrences => 44 entries
 Synthetics => 11 entries
 
 Symbols:
@@ -3532,9 +3532,7 @@ Occurrences:
 [8:11..8:15): Some -> scala/Some.
 [8:16..8:18): q1 <- example/ValPattern#q1.
 [8:21..8:25): None -> scala/None.
-[8:27..8:31): None -> scala/None.
-[8:38..8:42): None -> scala/None.
-[8:46..8:49): ??? -> scala/Predef.`???`().
+[8:29..8:32): ??? -> scala/Predef.`???`().
 [10:7..10:14): leftVar <- example/ValPattern#leftVar().
 [10:16..10:24): rightVar <- example/ValPattern#rightVar().
 [11:6..11:10): Some -> scala/Some.
