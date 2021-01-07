@@ -888,8 +888,32 @@ object RefChecks {
    * in either a deprecated member or a scala bridge method, issue a warning.
    */
   private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
+
+    /** is the owner an enum or its companion and also the owner of sym */
+    def isEnumOwner(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      if owner.isEnumClass then owner.companionClass eq sym.owner
+      else if owner.is(ModuleClass) && owner.companionClass.isEnumClass then owner eq sym.owner
+      else false
+
+    def isDeprecatedOrEnum(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      owner.isDeprecated
+      || isEnumOwner(owner)
+
+    /**Scan the chain of outer declaring scopes from the current context
+     * a deprecation warning will be skipped if one the following holds
+     * for a given declaring scope:
+     * - the symbol associated with the scope is also deprecated.
+     * - if and only if `sym` is an enum case, the scope is either
+     *   a module that declares `sym`, or the companion class of the
+     *   module that declares `sym`.
+     */
+    def skipWarning(using Context) =
+      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
-      if !ctx.owner.ownersIterator.exists(_.isDeprecated) then
+      if !skipWarning then
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
