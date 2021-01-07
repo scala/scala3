@@ -10,10 +10,10 @@ import org.jetbrains.dokka.model.properties._
 import dotty.dokka.model._
 import dotty.dokka.model.api._
 
-class ImplicitMembersExtensionTransformer(using DocContext) extends DocumentableTransformer:
-  override def invoke(original: DModule, context: DokkaContext): DModule =
+class ImplicitMembersExtensionTransformer(using context: DocContext) extends ModuleTransformer:
+  override def apply(original: DModule): DModule =
     val classlikeMap = original.driMap
-    val logger = context.getLogger
+    val logger = context.logger
 
     def retrieveCompanion(m: Member) = m.companion.flatMap { dri =>
      val res = classlikeMap.get(dri)

@@ -10,8 +10,8 @@ import dotty.dokka.model._
 import dotty.dokka.model.api._
 
 
-class InheritanceInformationTransformer(val ctx: DokkaContext) extends DocumentableTransformer:
-  override def invoke(original: DModule, context: DokkaContext): DModule =
+class InheritanceInformationTransformer(using context: DocContext) extends ModuleTransformer:
+  override def apply(original: DModule): DModule =
     val subtypes = getSupertypes(original.getPackages.get(0)).groupBy(_._1).transform((k, v) => v.map(_._2))
     original.updateMembers { m =>
       val st: Seq[LinkToType] = subtypes.getOrElse(m.dri, Nil)

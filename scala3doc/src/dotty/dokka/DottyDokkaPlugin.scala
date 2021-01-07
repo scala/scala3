@@ -88,19 +88,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       }.overrideExtension(dokkaBase.getDocumentableToPageTranslator)
   )
 
-  val packageHierarchyTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getPageTransformer)
-      .fromRecipe(PackageHierarchyTransformer(_))
-      .before(dokkaBase.getRootCreator)
-      .overrideExtension(dokkaBase.getDefaultSamplesTransformer)
-  )
-
-  val inheritanceTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
-      .fromRecipe(InheritanceInformationTransformer(_))
-      .name("inheritanceTransformer")
-  )
-
   val ourRenderer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getRenderer)
       .fromRecipe { case ctx @ given DokkaContext => new ScalaHtmlRenderer }
@@ -111,13 +98,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
     _.extensionPoint(dokkaBase.getCommentsToContentConverter)
     .fromInstance(ScalaCommentToContentConverter)
     .overrideExtension(dokkaBase.getDocTagToContentConverter)
-  )
-
-  val implicitMembersExtensionTransformer = extend(
-    _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableTransformer)
-      .fromRecipe { case ctx @ given DokkaContext =>
-        new ImplicitMembersExtensionTransformer
-      }.name("implicitMembersExtensionTransformer")
   )
 
   val customDocumentationProvider = extend(
