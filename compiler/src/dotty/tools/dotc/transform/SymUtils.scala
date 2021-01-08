@@ -91,7 +91,7 @@ object SymUtils:
     *  It must satisfy the following conditions:
     *   - it has at least one child class or object
     *   - none of its children are anonymous classes
-    *   - all of its children are addressable through a path from its companion object
+    *   - all of its children are addressable through a path from the parent class
     *   - all of its children are generic products or singletons
     */
     def whyNotGenericSum(using Context): String =
@@ -99,11 +99,10 @@ object SymUtils:
         s"it is not a sealed ${self.kindString}"
       else {
         val children = self.children
-        val companion = self.linkedClass
         def problem(child: Symbol) = {
 
           def isAccessible(sym: Symbol): Boolean =
-            companion.isContainedIn(sym) || sym.is(Module) && isAccessible(sym.owner)
+            self.isContainedIn(sym) || sym.is(Module) && isAccessible(sym.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!isAccessible(child.owner)) i"its child $child is not accessible"
