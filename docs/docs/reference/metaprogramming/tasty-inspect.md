@@ -13,7 +13,6 @@ information from the code. To avoid the hassle of working directly with the TAST
 file we provide the `TastyInspector` which loads the contents and exposes it
 through the TASTy reflect API.
 
-
 ## Inspecting TASTy files
 
 To inspect the TASTy Reflect trees of a TASTy file a consumer can be defined in
@@ -46,10 +45,12 @@ scalac -d out Test.scala
 scala -with-compiler -classpath out Test
 ```
 
-
 ## Template project
+
 Using sbt version `1.1.5+`, do:
-```
+
+```shell
 sbt new scala/scala3-tasty-inspector.g8
 ```
+
 in the folder where you want to clone the template.
