@@ -2,9 +2,14 @@ package tests
 package typeAppliance
 
 trait AClass[A, B]:
-  def fun[C]: AClass[A, C]
+  def funASD[C, D](f: B => C): AClass[A, C]
 
 trait BClass[A, B] extends AClass[A, B]:
-  override def fun[C]: BClass[A, C]
+  override def funASD[X, D](f: B => X): BClass[A, X]
+  val f: (=> B) => String = _ => "abc"
 
-abstract class CClass[B] extends BClass[Int, B]
+
+abstract class CClass[U] extends BClass[Int, U]:
+  def xdxdkk(n: Int)(b: Int): Int = 1
+  def isByNameType: String = "xd"
+  def vararg1(a: A*): C

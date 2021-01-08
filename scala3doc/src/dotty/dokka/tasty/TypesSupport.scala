@@ -68,10 +68,14 @@ trait TypesSupport:
     case List(single) => single
     case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
 
-  private def isRepeated(tpeAnnotation: Term) =
+  // weird name fot type-erasure purposes
+  private def isRepeatedTerm(term: Term) =
     // For some reason annotation.tpe.typeSymbol != defn.RepeatedParamClass
     // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
-    tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
+    term.tpe.typeSymbol.toString == "class Repeated"
+
+  private def isRepeatedTypeRepr(typeRepr: TypeRepr) =
+    typeRepr.typeSymbol.toString == "class <repeated>"
 
   // TODO #23 add support for all types signatures that makes sense
   private def inner(tp: TypeRepr): List[JProjection] =
@@ -86,7 +90,9 @@ trait TypesSupport:
       case ConstantType(constant) =>
         texts(constant.show)
       case ThisType(tpe) => inner(tpe)
-      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
+      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedTerm(annotation) =>
+        inner(tpe) :+ text("*")
+      case AppliedType(repeatedClass, Seq(tpe)) if isRepeatedTypeRepr(repeatedClass) =>
         inner(tpe) :+ text("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
