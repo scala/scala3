@@ -31,7 +31,7 @@ Happy 23rd Birthday, Lisa and Peter!
 ```
 
 A `@main` annotated method can be written either at the top-level or in a statically accessible object. The name of the program is in each case the name of the method, without any object prefixes. The `@main` method can have an arbitrary number of parameters.
-For each parameter type there must be an instance of the `scala.util.FromString` type class
+For each parameter type there must be an instance of the `scala.util.CommandLineParser.FromString` type class
 that is used to convert an argument string to the required parameter type.
 The parameter list of a main method can end in a repeated parameter that then
 takes all remaining arguments given on the command line.
