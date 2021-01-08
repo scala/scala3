@@ -44,8 +44,15 @@ class ScalaPageCreator(
     )
 
   private def pagesForMembers(member: Member): JList[PageNode] =
+    def filterFunc(kind: Kind): Boolean = kind match {
+      case Kind.Package => true
+      case _ if kind.isInstanceOf[Classlike] => true
+      case Kind.Given(inner, _, _) => filterFunc(inner)
+      case Kind.EnumCase(inner) => filterFunc(inner)
+      case _ => false
+    }
     val all = member
-      .membersBy(m => m.kind == Kind.Package || m.kind.isInstanceOf[Classlike])
+      .membersBy(m => filterFunc(m.kind))
       .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
     all.map(pageForMember(_)).asJava
 
