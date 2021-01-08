@@ -742,12 +742,12 @@ extension (inline sc: StringContext)
    inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
 private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
+   import quotes.reflect.report
    argsExpr match
       case Varargs(argExprs) =>
          val argShowedExprs = argExprs.map {
             case '{ $arg: tp } =>
-               val showTp = Type.of[Show[tp]]
-               Expr.summon(using showTp) match
+               Expr.summon[Show[tp]] match
                   case Some(showExpr) =>
                      '{ $showExpr.show($arg) }
                   case None =>
