@@ -81,10 +81,10 @@ sidebar:
               url: docs/reference/metaprogramming/inline.html
             - title: Macros
               url: docs/reference/metaprogramming/macros.html
-            - title: Staging
+            - title: Runtime Staging
               url: docs/reference/metaprogramming/staging.html
-            - title: TASTy Reflection
-              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: Reflection
+              url: docs/reference/metaprogramming/reflection.html
             - title: TASTy Inspection
               url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
