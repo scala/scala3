@@ -78,7 +78,7 @@ Type parameters on extensions can also be combined with type parameters on the m
 themselves:
 ```scala
 extension [T](xs: List[T])
-   def def sumBy[B](f: A => B)(using Numeric[B]): B = ...
+   def sumBy[B](f: A => B)(using Numeric[B]): B = ...
 ```
 
 Type arguments matching method type parameters are passed as usual:
