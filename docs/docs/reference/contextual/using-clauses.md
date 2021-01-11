@@ -59,7 +59,7 @@ def minimum[T](xs: List[T])(using Ord[T]) =
    maximum(xs)(using descending)
 ```
 
-The `minimum` method's right hand side passes `descending` as an explicit argument to `maximum(xs)`.
+The `minimum` method's right-hand side passes `descending` as an explicit argument to `maximum(xs)`.
 With this setup, the following calls are all well-formed, and they all normalize to the last one:
 
 ```scala

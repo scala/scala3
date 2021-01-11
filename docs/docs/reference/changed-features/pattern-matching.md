@@ -87,7 +87,7 @@ precedence over _product-sequence match_.
 A usage of a variadic extractor is irrefutable if one of the following conditions holds:
 
 - the extractor is used directly as a sequence match or product-sequence match
-- `U = Some[T]` (for Scala2 compatibility)
+- `U = Some[T]` (for Scala 2 compatibility)
 - `U <: R` and `U <: { def isEmpty: false }`
 
 ## Boolean Match

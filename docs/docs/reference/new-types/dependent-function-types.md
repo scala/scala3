@@ -35,8 +35,8 @@ This type describes function values that take any argument `e` of type
 `Entry` and return a result of type `e.Key`.
 
 Recall that a normal function type `A => B` is represented as an
-instance of the `Function1` trait (i.e. `Function1[A, B]`) and
-analogously for functions with more parameters. Dependent functions
+instance of the [`Function1` trait](https://dotty.epfl.ch/api/scala/Function1.html)
+(i.e. `Function1[A, B]`) and analogously for functions with more parameters. Dependent functions
 are also represented as instances of these traits, but they get an additional
 refinement. In fact, the dependent function type above is just syntactic sugar for
 

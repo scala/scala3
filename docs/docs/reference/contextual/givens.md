@@ -33,8 +33,7 @@ a given for the type `Ord[Int]` whereas `listOrd[T]` defines givens
 for `Ord[List[T]]` for all types `T` that come with a given instance for `Ord[T]`
 themselves. The `using` clause in `listOrd` defines a condition: There must be a
 given of type `Ord[T]` for a given of type `Ord[List[T]]` to exist.
-Such conditions are expanded by the compiler to [context
-parameters](./using-clauses.md).
+Such conditions are expanded by the compiler to [context parameters](./using-clauses.md).
 
 ## Anonymous Givens
 
@@ -98,7 +97,7 @@ transparent inline given mkAnnotations[A, T]: Annotations[A, T] = ${
 }
 ```
 
-Since `mkAnnotations` is `transparent`, the type of an application is the type of its right hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
+Since `mkAnnotations` is `transparent`, the type of an application is the type of its right-hand side, which can be a proper subtype of the declared result type `Annotations[A, T]`.
 
 ## Pattern-Bound Given Instances
 
@@ -167,5 +166,5 @@ of given instances:
 
 - A _structural instance_ contains one or more types or constructor applications,
   followed by `with` and a template body that contains member definitions of the instance.
-- An _alias instance_ contains a type, followed by `=` and a right hand side expression.
+- An _alias instance_ contains a type, followed by `=` and a right-hand side expression.
 - An _abstract instance_ contains just the type, which is not followed by anything.

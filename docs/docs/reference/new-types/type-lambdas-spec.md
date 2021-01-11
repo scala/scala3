@@ -96,7 +96,7 @@ with types that satisfy these constraints. Likewise
 ```scala
 opaque type O[X] = List[X]
 ```
-`O` is known to be invariant (and not covariant, as its right hand side would suggest). On the other hand, a transparent alias
+`O` is known to be invariant (and not covariant, as its right-hand side would suggest). On the other hand, a transparent alias
 ```scala
 type O2[X] = List[X]
 ```

@@ -81,9 +81,7 @@ implicit val myConverter: Int => String = _.toString
 implicit val myConverter: Conversion[Int, String] = _.toString
 ```
 
-Note that implicit conversions are also affected by the
-[changes to implicit resolution](implicit-resolution.md) between Scala 2 and
-Scala 3.
+Note that implicit conversions are also affected by the [changes to implicit resolution](implicit-resolution.md) between Scala 2 and Scala 3.
 
 ## Motivation for the changes
 
@@ -99,7 +97,7 @@ val x: String = 1  // Scala 2: assigns "abc" to x
                    // Scala 3: type error
 ```
 
-This snippet contains a type error. The right hand side of `val x`
+This snippet contains a type error. The right-hand side of `val x`
 does not conform to type `String`. In Scala 2, the compiler will use
 `m` as an implicit conversion from `Int` to `String`, whereas Scala 3
 will report a type error, because `Map` isn't an instance of
@@ -107,16 +105,12 @@ will report a type error, because `Map` isn't an instance of
 
 ## Migration path
 
-Implicit values that are used as views should see their type changed
-to `Conversion`.
+Implicit values that are used as views should see their type changed to `Conversion`.
 
 For the migration of implicit conversions that are affected by the
-changes to implicit resolution, refer to the [Changes in Implicit
-Resolution](implicit-resolution.md) for more information.
+changes to implicit resolution, refer to the [Changes in Implicit Resolution](implicit-resolution.md) for more information.
 
 ## Reference
 
-For more information about implicit resolution, see [Changes in
-Implicit Resolution](implicit-resolution.md).
-Other details are available in
-[PR #2065](https://github.com/lampepfl/dotty/pull/2065).
+For more information about implicit resolution, see [Changes in Implicit Resolution](implicit-resolution.md).
+Other details are available in [PR #2065](https://github.com/lampepfl/dotty/pull/2065).

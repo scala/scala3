@@ -43,7 +43,7 @@ title: "Erased Terms Spec"
    if `def f(erased x: T): U` then `f: (erased T) => U`.
 
 
-5. Erasure Semantics
+5. Erasure semantics
    * All `erased` parameters are removed from the function
    * All argument to `erased` parameters are not passed to the function
    * All `erased` definitions are removed
