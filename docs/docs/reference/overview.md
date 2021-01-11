@@ -17,7 +17,7 @@ The language redesign was guided by three main goals:
  - Further improve the consistency and expressiveness of Scala's language constructs.
 
 Corresponding to these goals, the language changes fall into seven categories:
-(1) Core constructs to strengthen foundations, (2) simplifications and (3) [restrictions](#restrictions), to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) [changed constructs](#changes) to remove warts, and increase consistency and usability, (6) [new constructs](#new_constructs) to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces today's experimental macros.
+(1) Core constructs to strengthen foundations, (2) simplifications and (3) [restrictions](#restrictions), to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) [changed constructs](#changes) to remove warts, and increase consistency and usability, (6) [new constructs](#new_constructs) to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces [Scala 2 experimental macros](https://docs.scala-lang.org/overviews/macros/overview.html).
 
 ## Essential Foundations
 
@@ -50,7 +50,7 @@ These constructs replace existing constructs with the aim of making the language
 
 With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
-Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might want to bring them back in a more general form if they are supported natively by the JVM as is planned by [project Valhalla](https://openjdk.java.net/projects/valhalla/).
+Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might bring them back in a more general form if they are supported natively by the JVM as is planned by [project Valhalla](https://openjdk.java.net/projects/valhalla/).
 
 ## Restrictions
 
@@ -117,7 +117,7 @@ These are additions to the language that make it more powerful or pleasant to us
 
 The following constructs together aim to put metaprogramming in Scala on a new basis. So far, metaprogramming was achieved by a combination of macros and libraries such as [Shapeless](https://github.com/milessabin/shapeless) that were in turn based on some key macros. Current Scala 2 macro mechanisms are a thin veneer on top the current Scala 2 compiler, which makes them fragile and in many cases impossible to port to Scala 3.
 
-It's worth noting that macros were never included in the Scala 2 language specification and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
+It's worth noting that macros were never included in the [Scala 2 language specification](https://scala-lang.org/files/archive/spec/2.13/) and were so far made available only under an `-experimental` flag. This has not prevented their widespread usage.
 
 To enable porting most uses of macros, we are experimenting with the advanced language constructs listed below. These designs are more provisional than the rest of the proposed language constructs for Scala 3.0. There might still be some changes until the final release. Stabilizing the feature set needed for metaprogramming is our first priority.
 

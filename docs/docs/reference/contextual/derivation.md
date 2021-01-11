@@ -326,8 +326,7 @@ inline def derived[A](using gen: K0.Generic[A]) as Eq[A] =
 The framework described here enables all three of these approaches without mandating any of them.
 
 For a brief discussion on how to use macros to write a type class `derived`
-method please read more at [How to write a type class `derived` method using
-macros](./derivation-macro.md).
+method please read more at [How to write a type class `derived` method using macros](./derivation-macro.md).
 
 ### Deriving instances elsewhere
 
@@ -353,7 +352,7 @@ ConstrApps        ::=  ConstrApp {‘with’ ConstrApp}
                     |  ConstrApp {‘,’ ConstrApp}
 ```
 
-Note: To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
+**Note:** To align `extends` clauses and `derives` clauses, Scala 3 also allows multiple
 extended types to be separated by commas. So the following is now legal:
 
 ```scala

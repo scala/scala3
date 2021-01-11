@@ -38,7 +38,7 @@ Given instances can be mapped to combinations of implicit objects, classes and i
     ```
 
  3. Alias givens map to implicit methods or implicit lazy vals. If an alias has neither type nor context parameters,
-    it is treated as a lazy val, unless the right hand side is a simple reference, in which case we can use a forwarder to
+    it is treated as a lazy val, unless the right-hand side is a simple reference, in which case we can use a forwarder to
     that reference without caching it.
 
 Examples:

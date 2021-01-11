@@ -43,7 +43,7 @@ This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
 affects type checking but it has no significance for runtime
 behavior, since `==` always maps to `equals` and `!=` always maps to
-the negation of `equals`. The right hand side `CanEqual.derived` of the definition
+the negation of `equals`. The right-hand side `CanEqual.derived` of the definition
 is a value that has any `CanEqual` instance as its type. Here is the definition of class
 `CanEqual` and its companion object:
 

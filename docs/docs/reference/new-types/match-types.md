@@ -22,7 +22,7 @@ Elem[List[Float]]  =:=  Float
 Elem[Nil.type]     =:=  Nothing
 ```
 
-Here `=:=` is understood to mean that left and right hand sides are mutually
+Here `=:=` is understood to mean that left and right-hand sides are mutually
 subtypes of each other.
 
 In general, a match type is of the form
@@ -214,7 +214,8 @@ be caught and turned into a compile-time error that indicates a trace of the
 subtype tests that caused the overflow without showing a full stack trace.
 
 ## Variance Laws for Match Types
-NOTE: This section does not reflect the current implementation.
+
+**Note:** This section does not reflect the current implementation.
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 as covariant. By the nature of the cases `Ci` this means that occurrences in

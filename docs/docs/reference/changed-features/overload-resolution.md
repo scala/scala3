@@ -40,8 +40,8 @@ as follows:
 resolution yields several competing alternatives when `n >= 1` parameter lists are taken
 into account, then resolution re-tried using `n + 1` argument lists.
 
-This change is motivated by the new language feature [extension
-methods](../contextual/extension-methods.md), where emerges the need to do
+This change is motivated by the new language feature
+[extension methods](../contextual/extension-methods.md), where emerges the need to do
 overload resolution based on additional argument blocks.
 
 ## Parameter Types of Function Values
@@ -51,12 +51,14 @@ pass such values in the first argument list of an overloaded application, provid
 that the remaining parameters suffice for picking a variant of the overloaded function.
 For example, the following code compiles in Scala 3, while it results in an
 missing parameter type error in Scala2:
+
 ```scala
 def f(x: Int, f2: Int => Int) = f2(x)
 def f(x: String, f2: String => String) = f2(x)
 f("a", _.toUpperCase)
 f(2, _ * 2)
 ```
+
 To make this work, the rules for overloading resolution in [SLS §6.26.3](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) are modified
 as follows:
 
@@ -75,11 +77,15 @@ is determined as followed:
  - Otherwise the known type of `E` is the result of typing `E` with an undefined expected type.
 
 A pattern matching closure
+
 ```scala
 { case P1 => B1 ... case P_n => B_n }
 ````
+
 is treated as if it was expanded to the function value
+
 ```scala
 x => x match { case P1 => B1 ... case P_n => B_n }
 ```
+
 and is therefore also approximated with a `? => ?` type.

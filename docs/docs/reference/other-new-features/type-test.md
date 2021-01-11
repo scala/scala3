@@ -3,16 +3,18 @@ layout: doc-page
 title: "TypeTest"
 ---
 
-TypeTest
---------
+## TypeTest
 
 When pattern matching there are two situations where a runtime type test must be performed.
-The first kind is an explicit type test using the ascription pattern notation.
+The first case is an explicit type test using the ascription pattern notation.
+
 ```scala
 (x: X) match
    case y: Y =>
 ```
-The second is when an extractor takes an argument that is not a subtype of the scrutinee type.
+
+The second case is when an extractor takes an argument that is not a subtype of the scrutinee type.
+
 ```scala
 (x: X) match
    case y @ Y(n) =>
@@ -35,6 +37,7 @@ trait TypeTest[-S, T]:
 
 It provides an extractor that returns its argument typed as a `T` if the argument is a `T`.
 It can be used to encode a type test.
+
 ```scala
 def f[X, Y](x: X)(using tt: TypeTest[X, Y]): Option[Y] = x match
    case tt(x @ Y(1)) => Some(x)
@@ -76,6 +79,7 @@ If the type tests cannot be done there will be an unchecked warning that will be
 
 The most common `TypeTest` instances are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
 To make it possible to use such instances directly in context bounds we provide the alias
+
 ```scala
 package scala.reflect
 
@@ -94,15 +98,15 @@ f[String] // true
 f[Int] // false
 ```
 
-### TypeTest and ClassTag
+## TypeTest and ClassTag
+
 `TypeTest` is a replacement for functionality provided previously by `ClassTag.unapply`.
 Using `ClassTag` instances was unsound since classtags can check only the class component of a type.
 `TypeTest` fixes that unsoundness.
 `ClassTag` type tests are still supported but a warning will be emitted after 3.0.
 
 
-Examples
---------
+## Examples
 
 Given the following abstract definition of `Peano` numbers that provides `TypeTest[Nat, Zero]` and `TypeTest[Nat, Succ]`
 

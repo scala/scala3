@@ -13,7 +13,7 @@ From Scala 3.1 on, type checking rules will be tightened so that warnings are re
 ```scala
 val xs: List[Any] = List(1, 2, 3)
 val (x: String) :: _ = xs   // error: pattern's type String is more specialized
-                            // than the right hand side expression's type Any
+                            // than the right-hand side expression's type Any
 ```
 This code gives a compile-time warning in Scala 3.1 (and also in Scala 3.0 under the `-source 3.1` setting) whereas it will fail at runtime with a `ClassCastException` in Scala 2. In Scala 3.1, a pattern binding is only allowed if the pattern is _irrefutable_, that is, if the right-hand side's type conforms to the pattern's type. For instance, the following is OK:
 ```scala
@@ -38,7 +38,7 @@ Analogous changes apply to patterns in `for` expressions. For instance:
 ```scala
 val elems: List[Any] = List((1, 2), "hello", (3, 4))
 for (x, y) <- elems yield (y, x) // error: pattern's type (Any, Any) is more specialized
-                                 // than the right hand side expression's type Any
+                                 // than the right-hand side expression's type Any
 ```
 This code gives a compile-time warning in Scala 3.1 whereas in Scala 2 the list `elems`
 is filtered to retain only the elements of tuple type that match the pattern `(x, y)`.

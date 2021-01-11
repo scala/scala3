@@ -53,7 +53,7 @@ new scala.ContextFunctionN[T1, ..., Tn, T]:
 
 A context parameter may also be a wildcard represented by an underscore `_`. In that case, a fresh name for the parameter is chosen arbitrarily.
 
-Note: The closing paragraph of the
+**Note:** The closing paragraph of the
 [Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#anonymous-functions)
 of Scala 2.13 is subsumed by context function types and should be removed.
 

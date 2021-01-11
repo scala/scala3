@@ -53,7 +53,7 @@ is the union of these types. This replaces the
 
 The primary reason for introducing union types in Scala is that they allow us to
 guarantee that for every set of types, we can always form a finite LUB. This is
-both useful in practice (infinite lubs in Scala 2 were approximated in an ad-hoc
+both useful in practice (infinite LUBs in Scala 2 were approximated in an ad-hoc
 way, resulting in imprecise and sometimes incredibly long types) and in theory
 (the type system of Scala 3 is based on the
 [DOT calculus](https://infoscience.epfl.ch/record/227176/files/soundness_oopsla16.pdf),
@@ -96,7 +96,7 @@ treatment of singleton types which are also widened to their underlying type
 unless explicitly specified. The motivation is the same: inferring types
 which are "too precise" can lead to unintuitive typechecking issues later on.
 
-Note: Since this behavior limits the usability of union types, it might
+**Note:** Since this behavior limits the usability of union types, it might
 be changed in the future. For example by not widening unions that have been
 explicitly written down by the user and not inferred, or by not widening a type
 argument when the corresponding type parameter is covariant.
@@ -135,7 +135,8 @@ trait B { def hello: String }
 def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 ```
 
-On the otherhand, the following would be allowed
+On the other hand, the following would be allowed
+
 ```scala
 trait C { def hello: String }
 trait A extends C with D 
