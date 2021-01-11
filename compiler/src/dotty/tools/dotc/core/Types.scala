@@ -289,14 +289,15 @@ object Types {
     def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
 
     /** True iff `symd` is a denotation of a class type parameter and the reference
-     *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
-     *  from the ThisType of `symd`'s owner.
+     *  `<pre> . <symd>` is an actual argument reference, i.e. `pre` is not the
+     *  ThisType of `symd`'s owner, or a reference to `symd`'s owner.'
      */
     def isArgPrefixOf(symd: SymDenotation)(using Context): Boolean =
       symd.exists && !symd.owner.is(Package) && // Early exit if possible because the next check would force SymbolLoaders
       symd.isAllOf(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
+          case tp: TypeRef => tp.symbol ne symd.owner
           case _ => true
         }
       }
@@ -2212,7 +2213,8 @@ object Types {
           throw new TypeError(
             i"""bad parameter reference $this at ${ctx.phase}
                |the parameter is ${param.showLocated} but the prefix $prefix
-               |does not define any corresponding arguments.""")
+               |does not define any corresponding arguments.
+               |idx = $idx, args = $args""")
         NoDenotation
       }
     }
