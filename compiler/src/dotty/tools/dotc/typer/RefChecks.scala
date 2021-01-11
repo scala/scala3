@@ -905,12 +905,12 @@ object RefChecks {
       owner.isDeprecated
       || isEnumOwner(owner)
 
-    def isDeprecatedOrSyntheticMethod(owner: Symbol) = owner.isDeprecated || owner.isAllOf(Method & Synthetic)
+    def isDeprecatedOrSyntheticMethod(owner: Symbol) = owner.isDeprecated || (owner.isRealMethod && owner.is(Synthetic))
 
     /**Scan the chain of outer declaring scopes from the current context
      * a deprecation warning will be skipped if one the following holds
      * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated or synthetic method.
+     * - the symbol associated with the scope is also deprecated or synthetic real method.
      * - if and only if `sym` is an enum case, the scope is either
      *   a module that declares `sym`, or the companion class of the
      *   module that declares `sym`.
