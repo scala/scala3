@@ -12,7 +12,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = Globals.pathToRoot + p.location
-      resultA.text = s"${p.name}"
+      resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
       location.classList.add("pull-right")

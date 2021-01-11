@@ -11,10 +11,11 @@ trait PageEntryJS extends js.Object {
 }
 
 case class PageEntry(
-  name: String,
+  fullName: String,
   description: String,
   location: String,
-  searchKeys: Array[String]
+  shortName: String,
+  acronym: Option[String],
 )
 
 object PageEntry {
@@ -22,6 +23,7 @@ object PageEntry {
     jsObj.name,
     jsObj.description,
     jsObj.location,
-    jsObj.searchKeys.toArray
+    jsObj.searchKeys.head.toLowerCase,
+    Option.when(jsObj.searchKeys.size > 1)(jsObj.searchKeys.last)
   )
 }
