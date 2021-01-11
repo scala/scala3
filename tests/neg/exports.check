@@ -10,7 +10,7 @@
 -- Error: tests/neg/exports.scala:25:21 --------------------------------------------------------------------------------
 25 |    export printUnit.bitmap         // error: no eligible member
    |                     ^
-   |                     non-private method bitmap in class Copier refers to private value printUnit
+   |                     non-private given instance bitmap in class Copier refers to private value printUnit
    |                     in its type signature => Copier.this.printUnit.bitmap$
 -- [E120] Naming Error: tests/neg/exports.scala:23:33 ------------------------------------------------------------------
 23 |    export printUnit.{stat => _, _} // error: double definition

@@ -426,6 +426,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else if (sym.isType) "type"
     else if (sym.isGetter) "getter"
     else if (sym.isSetter) "setter"
+    else if sym.is(Param) then "parameter"
+    else if sym.is(Given) then "given instance"
     else if (flags.is(Lazy)) "lazy value"
     else if (flags.is(Mutable)) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
