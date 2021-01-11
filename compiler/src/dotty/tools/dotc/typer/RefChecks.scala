@@ -905,16 +905,19 @@ object RefChecks {
       owner.isDeprecated
       || isEnumOwner(owner)
 
+    def isDeprecatedOrSyntheticMethod(owner: Symbol) = owner.isDeprecated || owner.isAllOf(Method & Synthetic)
+
     /**Scan the chain of outer declaring scopes from the current context
      * a deprecation warning will be skipped if one the following holds
      * for a given declaring scope:
-     * - the symbol associated with the scope is also deprecated.
+     * - the symbol associated with the scope is also deprecated or synthetic method.
      * - if and only if `sym` is an enum case, the scope is either
      *   a module that declares `sym`, or the companion class of the
      *   module that declares `sym`.
      */
     def skipWarning(using Context) =
-      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+      if sym.isEnum then ctx.owner.ownersIterator.exists(isDeprecatedOrEnum)
+      else ctx.owner.ownersIterator.exists(isDeprecatedOrSyntheticMethod)
 
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then
