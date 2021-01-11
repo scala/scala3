@@ -48,7 +48,7 @@ Recursive match type definitions can also be given an upper bound, like this:
 
 ```scala
 type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match
-   case Unit => Ys
+   case EmptyTuple => Ys
    case x *: xs => x *: Concat[xs, Ys]
 ```
 
@@ -126,6 +126,7 @@ Disjointness proofs rely on the following properties of Scala types:
 1. Single inheritance of classes
 2. Final classes cannot be extended
 3. Constant types with distinct values are nonintersecting
+4. Singleton paths to distinct values are nonintersecting, such as `object` definitions or singleton enum cases.
 
 Type parameters in patterns are minimally instantiated when computing `S <: Pi`.
 An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that
@@ -240,4 +241,3 @@ main differences here are:
    whereas match types also work for type parameters and abstract types.
  - Match types support direct recursion.
  - Conditional types distribute through union types.
-
