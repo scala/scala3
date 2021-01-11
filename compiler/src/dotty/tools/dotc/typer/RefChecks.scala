@@ -902,7 +902,7 @@ object RefChecks {
 
     def isDeprecatedOrEnum(owner: Symbol)(using Context) =
       // pre: sym is an enumcase
-      owner.isDeprecated
+      isDeprecatedOrSyntheticMethod(owner)
       || isEnumOwner(owner)
 
     def isDeprecatedOrSyntheticMethod(owner: Symbol) = owner.isDeprecated || (owner.isRealMethod && owner.is(Synthetic))
@@ -916,8 +916,7 @@ object RefChecks {
      *   module that declares `sym`.
      */
     def skipWarning(using Context) =
-      if sym.isEnum then ctx.owner.ownersIterator.exists(isDeprecatedOrEnum)
-      else ctx.owner.ownersIterator.exists(isDeprecatedOrSyntheticMethod)
+      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else isDeprecatedOrSyntheticMethod)
 
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
       if !skipWarning then
