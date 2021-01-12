@@ -306,7 +306,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         compareWild
       case tp2: LazyRef =>
-        !tp2.evaluating && recur(tp1, tp2.ref)
+        isBottom(tp1) || !tp2.evaluating && recur(tp1, tp2.ref)
       case tp2: AnnotatedType if !tp2.isRefining =>
         recur(tp1, tp2.parent)
       case tp2: ThisType =>
@@ -373,7 +373,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             if (recur(info1.alias, tp2)) return true
             if (tp1.prefix.isStable) return tryLiftedToThis1
           case _ =>
-            if (tp1 eq NothingType) return true
+            if (tp1 eq NothingType) || isBottom(tp1) then return true
         }
         thirdTry
       case tp1: TypeParamRef =>
@@ -420,7 +420,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // If `tp1` is in train of being evaluated, don't force it
         // because that would cause an assertionError. Return false instead.
         // See i859.scala for an example where we hit this case.
-        !tp1.evaluating && recur(tp1.ref, tp2)
+        tp2.isRef(AnyClass, skipRefined = false)
+        || !tp1.evaluating && recur(tp1.ref, tp2)
       case tp1: AnnotatedType if !tp1.isRefining =>
         recur(tp1.parent, tp2)
       case AndType(tp11, tp12) =>
