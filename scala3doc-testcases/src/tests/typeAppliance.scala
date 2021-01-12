@@ -6,10 +6,11 @@ trait AClass[A, B]:
 
 trait BClass[A, B] extends AClass[A, B]:
   override def funASD[X, D](f: B => X): BClass[A, X]
-  val f: (=> B) => String = _ => "abc"
+  val f: (=> B) => String
+  = _ => "abc"
 
 
 abstract class CClass[U] extends BClass[Int, U]:
-  def xdxdkk(n: Int)(b: Int): Int = 1
-  def isByNameType: String = "xd"
-  def vararg1(a: A*): C
+  def someFun(n: Int)(b: Int): Int
+  = 1
+

@@ -389,7 +389,7 @@ trait ClassLikeSupport:
         inlinePrefix + prefix(argument.symbol),
         nameIfNotSynthetic,
         argument.symbol.dri,
-        memberInfo.flatMap(_.get(name).map(_.dokkaType.asSignature)).getOrElse(argument.tpt.dokkaType.asSignature),
+        memberInfo.flatMap(_.get(name)).fold(argument.tpt.dokkaType.asSignature)(_.dokkaType.asSignature),
         isExtendedSymbol,
         isGrouped
       )
@@ -405,7 +405,7 @@ trait ClassLikeSupport:
       variancePrefix,
       name,
       argument.symbol.dri,
-      memberInfo.flatMap(_.get(name).map(_.dokkaType.asSignature)).getOrElse(argument.rhs.dokkaType.asSignature)
+      memberInfo.flatMap(_.get(name)).fold(argument.rhs.dokkaType.asSignature)(_.dokkaType.asSignature)
     )
 
   def parseTypeDef(typeDef: TypeDef): Member =
@@ -479,9 +479,7 @@ trait ClassLikeSupport:
   case class MemberInfo(genericTypes: Map[String, TypeBounds], paramLists: List[Map[String, TypeRepr]], res: TypeRepr)
 
   def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
-    val baseTypeRepr = typeForClass(c).asInstanceOf[dotty.tools.dotc.core.Types.Type]
-      .memberInfo(symbol.asInstanceOf[dotty.tools.dotc.core.Symbols.Symbol])(using qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx)
-      .asInstanceOf[TypeRepr]
+    val baseTypeRepr = memberInfo(c, symbol)
 
     def handlePolyType(polyType: PolyType): MemberInfo =
       MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, List.empty, polyType.resType)

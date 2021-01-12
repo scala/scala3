@@ -105,4 +105,12 @@ trait SyntheticsSupport:
     given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
     cSym.typeRef.appliedTo(cSym.typeParams.map(_.typeRef)).asInstanceOf[TypeRepr]
-    
+
+  def memberInfo(c: ClassDef, symbol: Symbol): TypeRepr =
+    import qctx.reflect._
+    import dotty.tools.dotc
+    given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    typeForClass(c).asInstanceOf[dotc.core.Types.Type]
+      .memberInfo(symbol.asInstanceOf[dotc.core.Symbols.Symbol])
+      .asInstanceOf[TypeRepr]
+

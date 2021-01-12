@@ -174,7 +174,10 @@ trait TypesSupport:
             case Seq(rtpe) =>
               text("() => ") :: inner(rtpe)
             case Seq(arg, rtpe) =>
-              inner(arg) ++ texts(" => ") ++ inner(rtpe)
+              val ar = arg match
+                case a: ByNameType => texts("(") ++ inner(a) ++ texts(")")
+                case o => inner(o)
+              ar ++ texts(" => ") ++ inner(rtpe)
             case args =>
               texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
         else if t.isTupleType then
