@@ -753,7 +753,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     if (targetSym.isJSType) {
       if (defaultGetter.owner.isNonNativeJSClass) {
-        genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
+        if (defaultGetter.hasAnnotation(jsdefn.JSOptionalAnnot))
+          js.Undefined()
+        else
+          genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
       } else {
         report.error(
             "When overriding a native method with default arguments, " +

@@ -1148,12 +1148,14 @@ object Build {
       },
 
       managedSources in Compile ++= {
-        val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
-        val filter = (
-          ("*.scala": FileFilter)
+        val dir = fetchScalaJSSource.value
+        (
+          (dir / "test-suite/js/src/main/scala" ** (("*.scala": FileFilter)
             -- "Typechecking*.scala" // defines a Scala 2 macro
+            )).get
+
+          ++ (dir / "junit-async/js/src/main/scala" ** "*.scala").get
         )
-        (dir ** filter).get
       },
 
       // A first blacklist of tests for those that do not compile or do not link
