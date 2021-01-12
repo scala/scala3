@@ -1884,7 +1884,13 @@ trait Applications extends Compatibility {
       case pt @ PolyProto(targs1, pt1) =>
         val alts1 = alts.filter(pt.canInstantiate)
         if isDetermined(alts1) then alts1
-        else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
+        else
+          def withinBounds(alt: TermRef) = alt.widen match
+            case tp: PolyType =>
+              TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
+          val alts2 = alts1.filter(withinBounds)
+          if isDetermined(alts2) then alts2
+          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
 
       case defn.FunctionOf(args, resultType, _, _) =>
         narrowByTypes(alts, args, resultType)
