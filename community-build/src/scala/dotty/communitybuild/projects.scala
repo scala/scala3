@@ -156,7 +156,10 @@ final case class SbtCommunityProject(
     ++ s"""set dependencyOverrides in ThisBuild ++= ${dependencyOverrides.mkString("Seq(", ", ", ")")}; """
     ++ s"++$compilerVersion!; "
 
-  override val testCommand = s"$baseCommand$sbtTestCommand"
+  override val testCommand =
+    """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
+    ++ s"$baseCommand$sbtTestCommand"
+
   override val publishCommand = if sbtPublishCommand eq null then null else
     val disableDocCommand =
       if sbtDocCommand eq null then "" else "set every useScala3doc := false;"
