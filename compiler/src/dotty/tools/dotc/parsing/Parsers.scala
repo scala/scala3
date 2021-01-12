@@ -3020,7 +3020,8 @@ object Parsers {
      */
     def paramClauses(ofClass: Boolean = false,
                      ofCaseClass: Boolean = false,
-                     givenOnly: Boolean = false): List[List[ValDef]] =
+                     givenOnly: Boolean = false,
+                     numLeadParams: Int = 0): List[List[ValDef]] =
 
       def recur(firstClause: Boolean, nparams: Int): List[List[ValDef]] =
         newLineOptWhenFollowedBy(LPAREN)
@@ -3039,7 +3040,7 @@ object Parsers {
         else Nil
       end recur
 
-      recur(firstClause = true, 0)
+      recur(firstClause = true, numLeadParams)
     end paramClauses
 
 /* -------- DEFS ------------------------------------------- */
@@ -3244,7 +3245,7 @@ object Parsers {
      *  DefSig  ::=  id [DefTypeParamClause] DefParamClauses
      *            |  ExtParamClause [nl] [‘.’] id DefParamClauses
      */
-    def defDefOrDcl(start: Offset, mods: Modifiers): DefDef = atSpan(start, nameStart) {
+    def defDefOrDcl(start: Offset, mods: Modifiers, numLeadParams: Int = 0): DefDef = atSpan(start, nameStart) {
 
       def scala2ProcedureSyntax(resultTypeStr: String) =
         def toInsert =
@@ -3261,7 +3262,7 @@ object Parsers {
 
       if (in.token == THIS) {
         in.nextToken()
-        val vparamss = paramClauses()
+        val vparamss = paramClauses(numLeadParams = numLeadParams)
         if (vparamss.isEmpty || vparamss.head.take(1).exists(_.mods.isOneOf(GivenOrImplicit)))
           in.token match {
             case LBRACKET   => syntaxError("no type parameters allowed here")
@@ -3280,7 +3281,7 @@ object Parsers {
         val ident = termIdent()
         var name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
-        val vparamss = paramClauses()
+        val vparamss = paramClauses(numLeadParams = numLeadParams)
         var tpt = fromWithinReturnType {
           if in.token == COLONEOL then in.token = COLON
      	      // a hack to allow
@@ -3566,24 +3567,23 @@ object Parsers {
       val start = in.skipToken()
       val tparams = typeParamClauseOpt(ParamOwner.Def)
       val leadParamss = ListBuffer[List[ValDef]]()
-      var nparams = 0
+      def nparams = leadParamss.map(_.length).sum
       while
         val extParams = paramClause(nparams, prefix = true)
         leadParamss += extParams
-        nparams += extParams.length
         isUsingClause(extParams)
       do ()
-      leadParamss ++= paramClauses(givenOnly = true)
+      leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
       if in.token == COLON then
         syntaxError("no `:` expected here")
         in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
-          extMethod() :: Nil
+          extMethod(nparams) :: Nil
         else
           in.observeIndented()
           newLineOptWhenFollowedBy(LBRACE)
-          if in.isNestedStart then inDefScopeBraces(extMethods())
+          if in.isNestedStart then inDefScopeBraces(extMethods(nparams))
           else { syntaxError("Extension without extension methods"); Nil }
       val result = atSpan(start)(ExtMethods(joinParams(tparams, leadParamss.toList), methods))
       val comment = in.getDocComment(start)
@@ -3595,20 +3595,20 @@ object Parsers {
 
     /**  ExtMethod  ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
      */
-    def extMethod(): DefDef =
+    def extMethod(numLeadParams: Int): DefDef =
       val start = in.offset
       val mods = defAnnotsMods(modifierTokens)
       accept(DEF)
-      defDefOrDcl(start, mods)
+      defDefOrDcl(start, mods, numLeadParams)
 
     /** ExtMethods ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
      */
-    def extMethods(): List[DefDef] = checkNoEscapingPlaceholders {
+    def extMethods(numLeadParams: Int): List[DefDef] = checkNoEscapingPlaceholders {
       val meths = new ListBuffer[DefDef]
       val exitOnError = false
       while !isStatSeqEnd && !exitOnError do
         setLastStatOffset()
-        meths += extMethod()
+        meths += extMethod(numLeadParams)
         acceptStatSepUnlessAtEnd(meths)
       if meths.isEmpty then syntaxError("`def` expected")
       meths.toList
