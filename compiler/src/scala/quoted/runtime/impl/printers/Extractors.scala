@@ -117,8 +117,8 @@ object Extractors {
         this += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
-      case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
-        this += "DefDef(\"" += name += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
+      case DefDef(name, paramsClauses, returnTpt, rhs) =>
+        this += "DefDef(\"" += name += "\", " ++= paramsClauses += ", " += returnTpt += ", " += rhs += ")"
       case TypeDef(name, rhs) =>
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
       case ClassDef(name, constr, parents, derived, self, body) =>
@@ -256,6 +256,11 @@ object Extractors {
       else if x.isTypeDef then this += "IsTypeDefSymbol(<" += x.fullName += ">)"
       else { assert(x.isNoSymbol); this += "NoSymbol()" }
 
+    def visitParamClause(x: ParamClause): this.type =
+      x match
+        case TermParamClause(params) => this += "TermParamClause(" ++= params += ")"
+        case TypeParamClause(params) => this += "TypeParamClause(" ++= params += ")"
+
     def +=(x: Boolean): this.type = { sb.append(x); this }
     def +=(x: Byte): this.type = { sb.append(x); this }
     def +=(x: Short): this.type = { sb.append(x); this }
@@ -299,6 +304,10 @@ object Extractors {
 
     private implicit class SymbolOps(buff: self.type) {
       def +=(x: Symbol): self.type = { visitSymbol(x); buff }
+    }
+
+    private implicit class ParamClauseOps(buff: self.type) {
+      def ++=(x: List[ParamClause]): self.type = { visitList(x, visitParamClause); buff }
     }
 
     private def visitOption[U](opt: Option[U], visit: U => this.type): this.type = opt match {

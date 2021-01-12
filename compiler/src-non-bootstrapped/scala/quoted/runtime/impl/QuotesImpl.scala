@@ -261,14 +261,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         }))
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
         tpd.cpy.DefDef(original)(name.toTermName, tpd.joinParams(typeParams, paramss), tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.typeParams, ddef.termParamss, ddef.tpt, optional(ddef.rhs))
+      // def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
+      //   (ddef.name.toString, ddef.typeParams, ddef.termParamss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
         def typeParams: List[TypeDef] = self.leadingTypeParams // TODO: adapt to multiple type parameter clauses
-        def paramss: List[List[ValDef]] = self.termParamss
+        // def paramss: List[List[ValDef]] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -747,12 +747,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
         tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
 
-      def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
-        if ddef.symbol == meth.symbol =>
-          Some((params, body))
-        case _ => None
-      }
+      def unapply(tree: Block): Option[(List[ValDef], Term)] = ???
     end Lambda
 
     type If = tpd.If

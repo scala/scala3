@@ -12,7 +12,7 @@ def compileImpl[T](expr : Expr[T])(using Quotes) : Expr[T] = {
       case s : (Select|Ident) => {
         if( s.symbol.isDefDef ) {
           s.symbol.tree match {
-            case DefDef(name, typeParams, params, returnTp, Some(rhs)) => proc(rhs)
+            case DefDef(name, paramss, returnTp, Some(rhs)) => proc(rhs)
           }
         } else {
           ???

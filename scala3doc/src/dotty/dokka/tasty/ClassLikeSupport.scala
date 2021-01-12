@@ -45,7 +45,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.paramss.map(pList => ParametersList(pList.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList) then "using " else ""))
+        _.termParamss.map(pList => ParametersList(pList.params.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList.params) then "using " else ""))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -328,33 +328,33 @@ trait ClassLikeSupport:
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists =
+    val paramLists: List[TermParamClause] =
       if emptyParamsList then Nil
       else if methodSymbol.isExtensionMethod then
-        val params = method.paramss
+        val params = method.termParamss
         if methodSymbol.isLeftAssoc || params.size == 1 then params.tail
         else params.head :: params.tail.drop(1)
-      else method.paramss
-    val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
+      else method.termParamss
+    val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.leadingTypeParams
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
     val basicKind: Kind.Def = Kind.Def(
       genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
       paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList) then "using " else "")
+        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList.params) then "using " else "")
       }
     )
 
     val methodKind =
       if methodSymbol.isClassConstructor then Kind.Constructor(basicKind)
       else if methodSymbol.flags.is(Flags.Implicit) then extractImplicitConversion(method.returnTpt.tpe) match
-        case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.size == 0) =>
+        case Some(conversion) if paramLists.size == 0 || (paramLists.size == 1 && paramLists.head.params.size == 0) =>
           Kind.Implicit(basicKind, Some(conversion))
-        case None if paramLists.size == 1 && paramLists(0).size == 1 =>
+        case None if paramLists.size == 1 && paramLists(0).params.size == 1 =>
           Kind.Implicit(basicKind, Some(
             ImplicitConversion(
-              paramLists(0)(0).tpt.tpe.typeSymbol.dri,
+              paramLists(0).params(0).tpt.tpe.typeSymbol.dri,
               method.returnTpt.tpe.typeSymbol.dri
             )
           ))

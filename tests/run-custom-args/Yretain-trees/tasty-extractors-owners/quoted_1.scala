@@ -22,7 +22,7 @@ object Macros {
     import quotes.reflect._
     override def traverseTree(tree: Tree)(owner: Symbol): Unit = {
       tree match {
-        case tree @ DefDef(name, _, _, _, _) =>
+        case tree @ DefDef(name, _, _, _) =>
           buff.append(name)
           buff.append("\n")
           buff.append(tree.symbol.owner.tree.show(using Printer.TreeStructure))

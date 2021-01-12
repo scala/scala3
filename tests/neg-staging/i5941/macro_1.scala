@@ -24,7 +24,7 @@ object Lens {
       case Inlined(
         None, Nil,
         Block(
-          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Select(o, field))) :: Nil,
+          DefDef(_, TermParamClause(param :: Nil) :: Nil, _, Some(Select(o, field))) :: Nil,
           Lambda(meth, _)
         )
       ) if o.symbol == param.symbol =>
