@@ -15,7 +15,9 @@ object Main:
 
   def main(args: Array[String]): Unit =
     val (compilerArgs, scriptFile, scriptArgs) = distinguishArgs(args)
-    try ScriptingDriver(compilerArgs, scriptFile, scriptArgs).compileAndRun()
+    try ScriptingDriver(compilerArgs, scriptFile, scriptArgs).compileAndRun { (tmpDir:java.nio.file.Path,cp:String) =>
+      // compile to jar, with classpath
+    }
     catch
       case ScriptingException(msg) =>
         println(s"Error: $msg")
