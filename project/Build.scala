@@ -397,7 +397,7 @@ object Build {
         "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
         "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
         Dependencies.`jackson-dataformat-yaml`,
-        "nl.big-o" % "liqp" % "0.6.7"
+        "nl.big-o" % "liqp" % "0.7.9"
       )
     }
   )
