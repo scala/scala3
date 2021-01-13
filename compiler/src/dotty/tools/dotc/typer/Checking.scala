@@ -1207,7 +1207,7 @@ trait Checking {
             }
           case _ =>
         }
-      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
+      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, impl: Template) =>
             for ((defaultGetter @
