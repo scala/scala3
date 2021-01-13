@@ -333,9 +333,27 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
-    /** Is some part of the widened version of this type produced as a repair for an error? */
+    /** Is some part of the widened version of this type produced as a repair for an error?
+     *
+     */
     def isErroneous(using Context): Boolean =
       widen.existsPart(_.isError, forceLazy = false)
+
+    /** Is this type unusable for implicit search or overloading resolution
+     *  since it has embedded errors that can match anything? This is weaker and more
+     *  ad-hoc than isErroneous. The main differences are that we always consider aliases
+     *  (since these are relevant for inference or resolution) but never consider prefixes
+     *  (since these often do not constrain the search space anyway).
+     */
+    def unusableForInference(using Context): Boolean = widenDealias match
+      case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
+      case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
+      case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
+      case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
+      case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
+      case WildcardType(optBounds) => optBounds.unusableForInference
+      case _: ErrorType => true
+      case _ => false
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match {

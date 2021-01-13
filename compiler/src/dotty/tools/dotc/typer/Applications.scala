@@ -212,6 +212,105 @@ object Applications {
     overwriteType(app.tpe)
       // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
       // such as eta expansion before the method is fully applied.
+
+  /** Find reference to default parameter getter for parameter #n in current
+    *  parameter list, or NoType if none was found
+    */
+  def findDefaultGetter(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
+    if fn.symbol.isTerm then
+      val meth = fn.symbol.asTerm
+      val receiver: Tree = methPart(fn) match {
+        case Select(receiver, _) => receiver
+        case mr => mr.tpe.normalizedPrefix match {
+          case mr: TermRef => ref(mr)
+          case mr =>
+            if testOnly then
+              // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
+              ref(mr.narrow)
+            else
+              EmptyTree
+        }
+      }
+      val getterPrefix =
+        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+      def getterName = DefaultGetterName(getterPrefix, n + numArgs(fn))
+      if !meth.hasDefaultParams then
+        EmptyTree
+      else if (receiver.isEmpty) {
+        def findGetter(cx: Context): Tree =
+          if (cx eq NoContext) EmptyTree
+          else if (cx.scope != cx.outer.scope &&
+            cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
+            val denot = cx.denotNamed(getterName)
+            if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
+            else findGetter(cx.outer)
+          }
+          else findGetter(cx.outer)
+        findGetter(ctx)
+      }
+      else {
+        def selectGetter(qual: Tree): Tree = {
+          val getterDenot = qual.tpe.member(getterName)
+          if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
+          else EmptyTree
+        }
+        if (!meth.isClassConstructor)
+          selectGetter(receiver)
+        else {
+          // default getters for class constructors are found in the companion object
+          val cls = meth.owner
+          val companion = cls.companionModule
+          if (companion.isTerm) {
+            val prefix = receiver.tpe.baseType(cls).normalizedPrefix
+            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
+            else EmptyTree
+          }
+          else EmptyTree
+        }
+      }
+    else EmptyTree // structural applies don't have symbols or defaults
+  end findDefaultGetter
+
+  /** Splice new method reference `meth` into existing application `app` */
+  private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
+    case Apply(fn, args) =>
+      spliceMeth(meth, fn).appliedToArgs(args)
+    case TypeApply(fn, targs) =>
+      // Note: It is important that the type arguments `targs` are passed in new trees
+      // instead of being spliced in literally. Otherwise, a type argument to a default
+      // method could be constructed as the definition site of the type variable for
+      // that default constructor. This would interpolate type variables too early,
+      // causing lots of tests (among them tasty_unpickleScala2) to fail.
+      //
+      // The test case is in i1757.scala. Here we have a variable `s` and a method `cpy`
+      // defined like this:
+      //
+      //      var s
+      //      def cpy[X](b: List[Int] = b): B[X] = new B[X](b)
+      //
+      // The call `s.cpy()` then gets expanded to
+      //
+      //      { val $1$: B[Int] = this.s
+      //        $1$.cpy[X']($1$.cpy$default$1[X']
+      //      }
+      //
+      // A type variable gets interpolated if it does not appear in the type
+      // of the current tree and the current tree contains the variable's "definition".
+      // Previously, the polymorphic function tree to which the variable was first added
+      // was taken as the variable's definition. But that fails here because that
+      // tree was `s.cpy` but got transformed into `$1$.cpy`. We now take the type argument
+      // [X'] of the variable as its definition tree, which is more robust. But then
+      // it's crucial that the type tree is not copied directly as argument to
+      // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
+      // when typing the default argument, which is too early.
+      spliceMeth(meth, fn).appliedToTypes(targs.tpes)
+    case _ => meth
+  }
+
+  def defaultArgument(fn: Tree, n: Int, testOnly: Boolean)(using Context): Tree =
+    val getter = findDefaultGetter(fn, n, testOnly)
+    if getter.isEmpty then getter
+    else spliceMeth(getter.withSpan(fn.span), fn)
 }
 
 trait Applications extends Compatibility {
@@ -354,7 +453,9 @@ trait Applications extends Compatibility {
     def success: Boolean = ok
 
     protected def methodType: MethodType = methType.asInstanceOf[MethodType]
-    private def methString: String = i"${err.refStr(methRef)}: ${methType.show}"
+    private def methString: String =
+      def infoStr = if methType.isErroneous then "" else i": $methType"
+      i"${err.refStr(methRef)}$infoStr"
 
     /** Re-order arguments to correctly align named arguments */
     def reorder[T >: Untyped](args: List[Trees.Tree[T]]): List[Trees.Tree[T]] = {
@@ -412,98 +513,6 @@ trait Applications extends Compatibility {
       handlePositional(methodType.paramNames, args)
     }
 
-    /** Splice new method reference into existing application */
-    def spliceMeth(meth: Tree, app: Tree): Tree = app match {
-      case Apply(fn, args) =>
-        spliceMeth(meth, fn).appliedToTermArgs(args)
-      case TypeApply(fn, targs) =>
-        // Note: It is important that the type arguments `targs` are passed in new trees
-        // instead of being spliced in literally. Otherwise, a type argument to a default
-        // method could be constructed as the definition site of the type variable for
-        // that default constructor. This would interpolate type variables too early,
-        // causing lots of tests (among them tasty_unpickleScala2) to fail.
-        //
-        // The test case is in i1757.scala. Here we have a variable `s` and a method `cpy`
-        // defined like this:
-        //
-        //      var s
-        //      def cpy[X](b: List[Int] = b): B[X] = new B[X](b)
-        //
-        // The call `s.cpy()` then gets expanded to
-        //
-        //      { val $1$: B[Int] = this.s
-        //        $1$.cpy[X']($1$.cpy$default$1[X']
-        //      }
-        //
-        // A type variable gets interpolated if it does not appear in the type
-        // of the current tree and the current tree contains the variable's "definition".
-        // Previously, the polymorphic function tree to which the variable was first added
-        // was taken as the variable's definition. But that fails here because that
-        // tree was `s.cpy` but got transformed into `$1$.cpy`. We now take the type argument
-        // [X'] of the variable as its definition tree, which is more robust. But then
-        // it's crucial that the type tree is not copied directly as argument to
-        // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
-        // when typing the default argument, which is too early.
-        spliceMeth(meth, fn).appliedToTypes(targs.tpes)
-      case _ => meth
-    }
-
-    /** Find reference to default parameter getter for parameter #n in current
-     *  parameter list, or NoType if none was found
-     */
-    def findDefaultGetter(n: Int)(using Context): Tree = {
-      val meth = methRef.symbol.asTerm
-      val receiver: Tree = methPart(normalizedFun) match {
-        case Select(receiver, _) => receiver
-        case mr => mr.tpe.normalizedPrefix match {
-          case mr: TermRef => ref(mr)
-          case mr =>
-            if (this.isInstanceOf[TestApplication[?]])
-              // In this case it is safe to skolemize now; we will produce a stable prefix for the actual call.
-              ref(mr.narrow)
-            else
-              EmptyTree
-        }
-      }
-      val getterPrefix =
-        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
-      def getterName = DefaultGetterName(getterPrefix, n)
-      if (!meth.hasDefaultParams)
-        EmptyTree
-      else if (receiver.isEmpty) {
-        def findGetter(cx: Context): Tree =
-          if (cx eq NoContext) EmptyTree
-          else if (cx.scope != cx.outer.scope &&
-            cx.denotNamed(meth.name).hasAltWith(_.symbol == meth)) {
-            val denot = cx.denotNamed(getterName)
-            if (denot.exists) ref(TermRef(cx.owner.thisType, getterName, denot))
-            else findGetter(cx.outer)
-          }
-          else findGetter(cx.outer)
-        findGetter(ctx)
-      }
-      else {
-        def selectGetter(qual: Tree): Tree = {
-          val getterDenot = qual.tpe.member(getterName)
-          if (getterDenot.exists) qual.select(TermRef(qual.tpe, getterName, getterDenot))
-          else EmptyTree
-        }
-        if (!meth.isClassConstructor)
-          selectGetter(receiver)
-        else {
-          // default getters for class constructors are found in the companion object
-          val cls = meth.owner
-          val companion = cls.companionModule
-          if (companion.isTerm) {
-            val prefix = receiver.tpe.baseType(cls).normalizedPrefix
-            if (prefix.exists) selectGetter(ref(TermRef(prefix, companion.asTerm)))
-            else EmptyTree
-          }
-          else EmptyTree
-        }
-      }
-    }
-
     /** Is `sym` a constructor of a Java-defined annotation? */
     def isJavaAnnotConstr(sym: Symbol): Boolean =
       sym.is(JavaDefined) && sym.isConstructor && sym.owner.derivesFrom(defn.AnnotationClass)
@@ -554,18 +563,7 @@ trait Applications extends Compatibility {
                 else
                   EmptyTree
               }
-              else {
-                val getter =
-                  if (sym.exists) // `sym` doesn't exist for structural calls
-                    findDefaultGetter(n + numArgs(normalizedFun))
-                  else
-                    EmptyTree
-
-                if (!getter.isEmpty)
-                  spliceMeth(getter.withSpan(normalizedFun.span), normalizedFun)
-                else
-                  EmptyTree
-              }
+              else defaultArgument(normalizedFun, n, this.isInstanceOf[TestApplication[?]])
 
             def implicitArg = implicitArgTree(formal, appPos.span)
 
@@ -1927,35 +1925,40 @@ trait Applications extends Compatibility {
       case _ => false
 
     record("resolveOverloaded.narrowedApplicable", candidates.length)
-    val found = narrowMostSpecific(candidates)
-    if (found.length <= 1) found
+    if pt.unusableForInference then
+      // `pt` might have become erroneous by typing arguments of FunProtos.
+      // If `pt` is erroneous, don't try to go further; report the error in `pt` instead.
+      candidates
     else
-      val deepPt = pt.deepenProto
-      deepPt match
-        case pt @ FunProto(_, resType: FunOrPolyProto) =>
-          // try to narrow further with snd argument list
-          resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
-        case _ =>
-          // prefer alternatives that need no eta expansion
-          val noCurried = alts.filter(!resultIsMethod(_))
-          val noCurriedCount = noCurried.length
-          if noCurriedCount == 1 then
-            noCurried
-          else if noCurriedCount > 1 && noCurriedCount < alts.length then
-            resolveOverloaded1(noCurried, pt)
-          else
-            // prefer alternatves that match without default parameters
-            val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
-            val noDefaultsCount = noDefaults.length
-            if noDefaultsCount == 1 then
-              noDefaults
-            else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
-              resolveOverloaded1(noDefaults, pt)
-            else if deepPt ne pt then
-              // try again with a deeper known expected type
-              resolveOverloaded1(alts, deepPt)
+      val found = narrowMostSpecific(candidates)
+      if found.length <= 1 then found
+      else
+        val deepPt = pt.deepenProto
+        deepPt match
+          case pt @ FunProto(_, resType: FunOrPolyProto) =>
+            // try to narrow further with snd argument list
+            resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
+          case _ =>
+            // prefer alternatives that need no eta expansion
+            val noCurried = alts.filter(!resultIsMethod(_))
+            val noCurriedCount = noCurried.length
+            if noCurriedCount == 1 then
+              noCurried
+            else if noCurriedCount > 1 && noCurriedCount < alts.length then
+              resolveOverloaded1(noCurried, pt)
             else
-              candidates
+              // prefer alternatves that match without default parameters
+              val noDefaults = alts.filter(!_.symbol.hasDefaultParams)
+              val noDefaultsCount = noDefaults.length
+              if noDefaultsCount == 1 then
+                noDefaults
+              else if noDefaultsCount > 1 && noDefaultsCount < alts.length then
+                resolveOverloaded1(noDefaults, pt)
+              else if deepPt ne pt then
+                // try again with a deeper known expected type
+                resolveOverloaded1(alts, deepPt)
+              else
+                candidates
     }
   end resolveOverloaded1
 

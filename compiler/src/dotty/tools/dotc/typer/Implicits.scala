@@ -954,6 +954,11 @@ trait Implicits:
       assert(ctx.phase.allowsImplicitSearch,
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
+
+      if pt.unusableForInference
+         || !argument.isEmpty && argument.tpe.unusableForInference
+      then return NoMatchingImplicitsFailure
+
       val result0 =
         try ImplicitSearch(pt, argument, span).bestImplicit
         catch case ce: CyclicReference =>
