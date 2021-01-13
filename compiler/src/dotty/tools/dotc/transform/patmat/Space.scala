@@ -870,18 +870,19 @@ class SpaceEngine(using Context) extends SpaceLogic {
         project(OrType(selTyp, constantNullType, soft = false))
 
     // in redundancy check, take guard as false in order to soundly approximate
-    def projectPrevCases(cases: List[CaseDef]): Space =
+    def projectPrevCases(cases: List[CaseDef]): List[Space] =
       cases.map { x =>
         if (x.guard.isEmpty) project(x.pat)
         else Empty
-      }.reduce((a, b) => Or(List(a, b)))
+      }
+
+    val spaces = projectPrevCases(cases)
 
     (1 until cases.length).foreach { i =>
-      val prevs = projectPrevCases(cases.take(i))
-
       val pat = cases(i).pat
 
       if (pat != EmptyTree) { // rethrow case of catch uses EmptyTree
+        val prevs = Or(spaces.take(i))
         val curr = project(pat)
 
         debug.println(s"---------------reachable? ${show(curr)}")
