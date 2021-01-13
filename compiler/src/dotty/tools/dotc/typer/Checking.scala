@@ -1193,7 +1193,7 @@ trait Checking {
         checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
       }
 
-      if (stat.symbol.is(Case))
+      if (stat.symbol.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, Template(DefDef(_, paramss, _, _), parents, _, _)) =>
             paramss.foreach(_.foreach(check))
