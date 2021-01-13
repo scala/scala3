@@ -6,4 +6,4 @@
   |
   |                         Bar.given_Bar
   |
-  |                     But method given_Bar in object Bar does not match type Bar.
+  |                     But given instance given_Bar in object Bar does not match type Bar.
