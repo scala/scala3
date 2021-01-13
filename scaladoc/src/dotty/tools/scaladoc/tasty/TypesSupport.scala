@@ -40,7 +40,7 @@ trait TypesSupport:
     extension (tpeTree: Tree)
       def asSignature: DocSignature =
         tpeTree match
-          case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
+          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low, high)
           case tpeTree: TypeTree =>  inner(tpeTree.tpe)
           case term:  Term => inner(term.tpe)
 
@@ -95,9 +95,10 @@ trait TypesSupport:
       case AnnotatedType(tpe, _) =>
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType) =>
-        // println(params)
-        // println(paramBounds)
-        texts("[") ++ commas(params.zip(paramBounds).map( (name, typ) => texts(s"${name}") ++ inner(typ) )) ++ texts("]")
+        texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+          val normalizedName = name.takeWhile(_ != '$')
+          texts(normalizedName) ++ inner(typ)
+        }) ++ texts("]")
         ++ texts(" =>> ")
         ++ inner(resType)
 
@@ -184,7 +185,10 @@ trait TypesSupport:
               Nil
             case args =>
               texts("(") ++ commas(args.map(inner)) ++ texts(")")
-        else inner(tpe) ++ texts("[") ++ commas(typeList.map(inner)) ++ texts("]")
+        else inner(tpe) ++ texts("[") ++ commas(typeList.map { t => t match
+          case _: TypeBounds => texts("_") ++ inner(t)
+          case _ => inner(t)
+        }) ++ texts("]")
 
       case tp @ TypeRef(qual, typeName) =>
         qual match {
@@ -267,3 +271,17 @@ trait TypesSupport:
       case _ => Nil
     }
 
+  private def typeBoundsTreeOfHigherKindedType(low: TypeTree, high: TypeTree) =
+    def regularTypeBounds(low: TypeTree, high: TypeTree) =
+      typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
+    high.tpe.match
+      case t: TypeLambda => t.match
+        case TypeLambda(params, paramBounds, resType) =>
+          if resType.typeSymbol == defn.AnyClass && params.foldLeft(true)((acc,e) => acc && e.contains("$")) then
+            texts("[") ++ commas(paramBounds.map { typ =>
+              texts("_") ++ inner(typ)
+            }) ++ texts("]")
+          else
+            regularTypeBounds(low, high)
+        case _ => regularTypeBounds(low, high)
+      case _ => regularTypeBounds(low, high)
