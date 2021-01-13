@@ -1337,6 +1337,33 @@ object Build {
     dependsOn(dottyLibrary(Bootstrapped)).
     settings(commonBootstrappedSettings).
     settings(
+      scalaInstance := {
+        val externalBootstrappedDeps = externalDependencyClasspath.in(`scala3-doc-bootstrapped`, Compile).value
+        val scalaLibrary = findArtifact(externalBootstrappedDeps, "scala-library")
+
+        // IMPORTANT: We need to use actual jars to form the ScalaInstance and not
+        // just directories containing classfiles because sbt maintains a cache of
+        // compiler instances. This cache is invalidated based on timestamps
+        // however this is only implemented on jars, directories are never
+        // invalidated.
+        val tastyCore = packageBin.in(`tasty-core-bootstrapped`, Compile).value
+        val dottyLibrary = packageBin.in(`scala3-library-bootstrapped`, Compile).value
+        val dottyInterfaces = packageBin.in(`scala3-interfaces`, Compile).value
+        val dottyCompiler = packageBin.in(`scala3-compiler-bootstrapped`, Compile).value
+        val dottyDoc = packageBin.in(`scala3-doc-bootstrapped`, Compile).value
+
+        val allJars = Seq(tastyCore, dottyLibrary, dottyInterfaces, dottyCompiler, dottyDoc) ++ externalBootstrappedDeps.map(_.data)
+
+        makeScalaInstance(
+          state.value,
+          scalaVersion.value,
+          scalaLibrary,
+          dottyLibrary,
+          dottyCompiler,
+          allJars,
+          appConfiguration.value
+        )
+      },
       prepareCommunityBuild := {
         (publishLocal in `scala3-sbt-bridge`).value
         (publishLocal in `scala3-interfaces`).value
