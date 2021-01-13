@@ -343,7 +343,20 @@ object JavaParsers {
       annots.toList
     }
 
-    /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
+    /** Annotation                   ::= TypeName [`(` [AnnotationArgument {`,` AnnotationArgument}] `)`]
+      * AnnotationArgument           ::= ElementValuePair | ELementValue
+      * ElementValuePair             ::= Identifier `=` ElementValue
+      * ElementValue                 ::= ConstExpressionSubset
+      *                                | ElementValueArrayInitializer
+      *                                | Annotation
+      * ElementValueArrayInitializer ::= `{` [ElementValue {`,` ElementValue}] [`,`]  `}`
+      * ConstExpressionSubset        ::= Literal
+      *                                | QualifiedName
+      *                                | ClassLiteral
+      *
+      * We support only subset of const expressions expected in this context by java.
+      * If we encounter expression that we cannot parse, we do not raise parsing error,
+      * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
       object LiteralT:
@@ -372,60 +385,64 @@ object JavaParsers {
           )
         else id
 
-      def array(): Tree =
+      def array(): Option[Tree] =
         accept(LBRACE)
-        val buffer = ListBuffer[Tree]()
-        while (in.token != RBRACE) {
+        val buffer = ListBuffer[Option[Tree]]()
+        while in.token != RBRACE do
           buffer += argValue()
-          if (in.token == COMMA) in.nextToken() // using this instead of repsep allows us to handle trailing commas
-        }
-        val ok = !buffer.contains(EmptyTree)
-        in.token match {
-          case RBRACE if ok =>
-            accept(RBRACE)
-            Apply(scalaDot(nme.Array), buffer.toList)
-          case _            =>
-            skipTo(RBRACE)
-            EmptyTree
+          if in.token == COMMA then
+            in.nextToken() // using this instead of repsep allows us to handle trailing commas
+        accept(RBRACE)
+        Option.unless(buffer contains None) {
+          Apply(scalaDot(nme.Array), buffer.flatten.toList)
         }
 
-      def argValue(): Tree =
-        in.token match {
+      def argValue(): Option[Tree] =
+        val tree = in.token match {
           case LiteralT(c) =>
             val tree = atSpan(in.offset)(Literal(c))
             in.nextToken()
-            tree
+            Some(tree)
           case AT =>
             in.nextToken()
-            annotation().get
-          case IDENTIFIER => classOrId()
+            annotation()
+          case IDENTIFIER => Some(classOrId())
           case LBRACE => array()
-          case _ => EmptyTree
+          case _ => None
         }
-
-      def annArg(): Tree =
-        if (in.token == IDENTIFIER && in.lookaheadToken == EQUALS)
-          val name = ident()
-          accept(EQUALS)
-          val argv = argValue()
-          NamedArg(name, argv)
-
+        if in.token == COMMA || in.token == RBRACE || in.token == RPAREN then
+          tree
         else
-          NamedArg(nme.value, argValue())
+          skipTo(COMMA, RBRACE, RPAREN)
+          None
+
+      def annArg(): Option[Tree] =
+        val name = if (in.token == IDENTIFIER && in.lookaheadToken == EQUALS)
+          val n = ident()
+          accept(EQUALS)
+          n
+        else
+          nme.value
+        argValue().map(NamedArg(name, _))
 
 
       val id = convertToTypeId(qualId())
-      val args = if in.token == LPAREN then
+      val args = ListBuffer[Option[Tree]]()
+      if in.token == LPAREN then
         in.nextToken()
-        val args = repsep(annArg, COMMA)
+        if in.token != RPAREN then
+          args += annArg()
+          while in.token == COMMA do
+            in.nextToken()
+            args += annArg()
         accept(RPAREN)
-        args
-      else Nil
 
-      Some(Apply(
-        Select(New(id), nme.CONSTRUCTOR),
-        args
-      ))
+      Option.unless(args contains None) {
+        Apply(
+          Select(New(id), nme.CONSTRUCTOR),
+          args.flatten.toList
+        )
+      }
     }
 
     def modifiers(inInterface: Boolean): Modifiers = {
