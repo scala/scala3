@@ -1943,7 +1943,7 @@ import transform.SymUtils._
   }
 
   class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using Context) extends SyntaxMsg(StaticFieldsOnlyAllowedInObjectsID) {
-    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside an ${hl("object")}."
+    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside a static ${hl("object")}."
     def explain =
       em"${hl("@static")} members are only allowed inside objects."
   }
