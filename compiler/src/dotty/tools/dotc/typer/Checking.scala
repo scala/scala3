@@ -1180,7 +1180,7 @@ trait Checking {
    */
   def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = {
 
-    def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
+    def checkEnumCaseOrDefault(stat: Tree, caseCtx: Context) = {
 
       def check(tree: Tree) = {
         // allow access to `sym` if a typedIdent just outside the enclosing enum
@@ -1219,16 +1219,16 @@ trait Checking {
 
     cdef.rhs match {
       case impl: Template =>
-        def isCase(stat: Tree) = stat match {
-          case _: ValDef | _: TypeDef => stat.symbol.is(Case)
+        def isEnumCase(stat: Tree) = stat match {
+          case _: ValDef | _: TypeDef => stat.symbol.isAllOf(EnumCase)
           case _ => false
         }
         val cases =
-          for (stat <- impl.body if isCase(stat))
+          for (stat <- impl.body if isEnumCase(stat))
           yield untpd.ImportSelector(untpd.Ident(stat.symbol.name.toTermName))
         val caseImport: Import = Import(ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
-        for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
+        for (stat <- impl.body) checkEnumCaseOrDefault(stat, caseCtx)
       case _ =>
     }
   }
