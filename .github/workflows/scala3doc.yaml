@@ -1,4 +1,4 @@
-name: CI for Scala3doc
+name: Scala3doc
 
 on:
   push:

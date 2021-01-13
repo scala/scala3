@@ -1,4 +1,4 @@
-name: Dotty CI
+name: Dotty
 
 on:
   push:
