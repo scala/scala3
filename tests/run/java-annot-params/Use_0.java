@@ -17,4 +17,6 @@ package annots;
   value = "ABC",
   clazz = A.class
 )
+@ShouldNotCrash(false ? "A" + A.CONST : "B")
+@ShouldAlsoNotCrash(value = "C", ints = { 1, 2, 3, 5 - 1 })
 public class Use_0 {}

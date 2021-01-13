@@ -65,6 +65,18 @@ import java.lang.annotation.*;
   Class<?> clazz();
   String[] value();
 }
+
+@Retention(RetentionPolicy.RUNTIME)
+@interface ShouldNotCrash {
+  String value();
+}
+
+@Retention(RetentionPolicy.RUNTIME)
+@interface ShouldAlsoNotCrash {
+  String value();
+  int[] ints();
+}
+
 class A {
   static final String CONST = "VALUE OF CONST";
 }
