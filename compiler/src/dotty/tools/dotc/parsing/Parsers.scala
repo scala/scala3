@@ -3534,7 +3534,9 @@ object Parsers {
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then accept(COLON)
-        val parents = constrApp() :: withConstrApps()
+        val parents =
+          if isSimpleLiteral then toplevelTyp() :: Nil
+          else constrApp() :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
