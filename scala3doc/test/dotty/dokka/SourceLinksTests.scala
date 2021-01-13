@@ -69,7 +69,6 @@ class SourceLinksTest:
         case (path: String, line: Int) => links.pathTo(projectRoot.resolve(path), line = Some(line))
         case (path: String, operation: Operation) => links.pathTo(projectRoot.resolve(path), operation = operation)
         case (path: String, line: Int, operation: Operation) => links.pathTo(projectRoot.resolve(path), operation = operation, line = Some(line))
-        case _ => ??? // needed due to handling of singleton types inside union types
 
       val expectedRes = expected match
         case s: String => Some(s)
