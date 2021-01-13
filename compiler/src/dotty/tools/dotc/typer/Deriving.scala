@@ -291,9 +291,11 @@ trait Deriving {
               companionRef(tp.underlying)
           }
           val resultType = instantiated(sym.info)
-          val module = untpd.ref(companionRef(resultType)).withSpan(sym.span)
+          val companion = companionRef(resultType)
+          val module = untpd.ref(companion).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
-          typed(rhs, resultType)
+          if companion.termSymbol.exists then typed(rhs, resultType)
+          else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
       end typeclassInstance
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
