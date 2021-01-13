@@ -582,4 +582,37 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
     }
   }
+
+  @Test def i9456 = {
+    val source = """class Foo {
+                   |  def test: Int = inline2(inline1(2.+))
+                   |
+                   |  inline def inline1(inline f: Int => Int): Int => Int = i => f(1)
+                   |
+                   |  inline def inline2(inline f: Int => Int): Int = f(2) + 3
+                   |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = // TODO room for constant folding
+        List(
+          Op(ICONST_1),
+          VarOp(ISTORE, 1),
+          Op(ICONST_2),
+          VarOp(ILOAD, 1),
+          Op(IADD),
+          Op(ICONST_3),
+          Op(IADD),
+          Op(IRETURN),
+        )
+      assert(instructions == expected,
+        "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
 }
