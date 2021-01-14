@@ -61,20 +61,23 @@ trait ClassLikeSupport:
     modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
   ): Member =
 
-    // This Try is here because of problem that code compiles, but at runtime fails claiming
-    // java.lang.ClassCastException: class dotty.tools.dotc.ast.Trees$DefDef cannot be cast to class dotty.tools.dotc.ast.Trees$TypeDef (dotty.tools.dotc.ast.Trees$DefDef and dotty.tools.dotc.ast.Trees$TypeDef are in unnamed module of loader 'app')
-    // It is probably bug in Tasty
-    def hackGetParents(classDef: ClassDef): Option[List[Tree]] = scala.util.Try(classDef.parents).toOption
+    def unpackTreeToClassDef(tree: Tree): ClassDef = tree match
+      case tree: ClassDef => tree
+      case TypeDef(_, tbt: TypeBoundsTree) => unpackTreeToClassDef(tbt.tpe.typeSymbol.tree)
+      case TypeDef(_, tt: TypeTree) => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
+      case c: Apply =>
+        c.symbol.owner.tree.symbol.tree match
+          case tree: ClassDef => tree
+      case tt: TypeTree => unpackTreeToClassDef(tt.tpe.typeSymbol.tree)
 
-    def getSupertypesGraph(classDef: ClassDef, link: LinkToType): Seq[(LinkToType, LinkToType)] =
+    def getSupertypesGraph(classDef: Tree, link: LinkToType): Seq[(LinkToType, LinkToType)] =
       val smbl = classDef.symbol
-      val parents = if smbl.exists then hackGetParents(smbl.tree.asInstanceOf[ClassDef]) else None
-      parents.fold(Seq())(_.flatMap { case tree =>
-          val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-          val superLink = LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
-          Seq(link -> superLink) ++ getSupertypesGraph(tree.asInstanceOf[ClassDef], superLink)
-        }
-      )
+      val parents = unpackTreeToClassDef(classDef).parents
+      parents.flatMap { case tree =>
+        val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
+        val superLink = LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        Seq(link -> superLink) ++ getSupertypesGraph(tree, superLink)
+      }
 
     val supertypes = getSupertypes(using qctx)(classDef).map {
       case (symbol, tpe) =>
