@@ -34,6 +34,7 @@ import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap}
 import scala.collection.JavaConverters._
 import scala.annotation.internal.sharable
 import config.Printers.typr
+import annotation.targetName
 
 object Symbols {
 
@@ -42,12 +43,120 @@ object Symbols {
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
 
+  abstract class SymbolDecl extends Designator, ParamInfo, SrcPos, printing.Showable:
+    type ThisName <: Name
+
+    /** A unique id */
+    def id: Int
+
+    /** The coordinate of this symbol (either an index or a span) */
+    def coord: Coord
+
+    /** Set the coordinate of this symbol. This is only useful when the coordinate is
+     *  not known at symbol creation. This is the case for root symbols unpickled from TASTY.
+     *
+     *  @pre coord == NoCoord
+     */
+    private[core] def coord_=(c: Coord): Unit
+
+    /** The tree defining the symbol at pickler time, EmptyTree if none was retained */
+    def defTree: Tree
+
+    /** Set defining tree if this symbol retains its definition tree */
+    def defTree_=(tree: Tree)(using Context): Unit
+
+    /** Does this symbol retain its definition tree?
+     *  A good policy for this needs to balance costs and benefits, where
+     *  costs are mainly memoty leaks, in particular across runs.
+     */
+    def retainsDefTree(using Context): Boolean
+
+    def denot(using Context): SymDenotation
+    private[core] def denot_=(d: SymDenotation): Unit
+    private[core] def invalidateDenotCache(): Unit
+
+    def originDenotation: SymDenotation
+    def lastKnownDenotation: SymDenotation
+    private[core] def defRunId: RunId
+    def isDefinedInCurrentRun(using Context): Boolean
+    def isValidInCurrentRun(using Context): Boolean
+
+    @targetName("invalidSymbol")
+    def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing
+
+    def isTerm(using Context): Boolean
+    def isType(using Context): Boolean
+    def asTerm(using Context): TermSymbol
+    def asType(using Context): TypeSymbol
+    def isClass: Boolean
+    def asClass: ClassSymbol
+
+    def isPrivate(using Context): Boolean
+    def isPatternBound(using Context): Boolean
+    def isStatic(using Context): Boolean
+
+    def name(using Context): ThisName
+    def signature(using Context): Signature
+
+    def span: Span
+    def sourcePos(using Context): SourcePosition
+
+    def associatedFile(using Context): AbstractFile
+    def binaryFile(using Context): AbstractFile
+    def source(using Context): SourceFile
+
+    def sourceSymbol(using Context): Symbol
+
+    def entered(using Context): this.type
+    def enteredAfter(phase: DenotTransformer)(using Context): this.type
+
+    def drop()(using Context): Unit
+    def dropAfter(phase: DenotTransformer)(using Context): Unit
+
+    inline def orElse(inline that: Symbol)(using Context): Symbol
+    def filter(p: Symbol => Boolean): Symbol
+
+    // ParamInfo types and methods
+    def isTypeParam(using Context): Boolean
+    def paramName(using Context): ThisName
+    def paramInfo(using Context): Type
+    def paramInfoAsSeenFrom(pre: Type)(using Context): Type
+    def paramInfoOrCompleter(using Context): Type
+    def paramVariance(using Context): Variance
+    def paramRef(using Context): TypeRef
+
+    // Printing
+    def toText(printer: Printer): Text
+    def showLocated(using Context): String
+    def showExtendedLocation(using Context): String
+    def showDcl(using Context): String
+    def showKind(using Context): String
+    def showName(using Context): String
+    def showFullName(using Context): String
+  end SymbolDecl
+
+  trait ClassSymbolDecl extends SymbolDecl:
+    type ThisName = TypeName
+    type TreeOrProvider = tpd.TreeProvider | tpd.Tree
+
+    def classDenot(using Context): ClassDenotation
+
+    def assocFile: AbstractFile
+
+    def rootTree(using Context): Tree
+    def rootTreeContaining(id: String)(using Context): Tree
+    def rootTreeOrProvider: TreeOrProvider
+    private[dotc] def rootTreeOrProvider_=(t: TreeOrProvider)(using Context): Unit
+
+    def sourceOfClass(using Context): SourceFile
+  end ClassSymbolDecl
+
   /** A Symbol represents a Scala definition/declaration or a package.
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
   class Symbol private[Symbols] (private var myCoord: Coord, val id: Int)
-    extends Designator, ParamInfo, SrcPos, printing.Showable {
+    extends SymbolDecl {
 
     type ThisName <: Name
 
@@ -275,8 +384,8 @@ object Symbols {
      *  the same as `x`.
      *  With the given setup, all such calls will give implicit-not found errors
      */
+    @targetName("invalidSymbol")
     final def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing = unsupported("symbol")
-    type DontUseSymbolOnSymbol
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
@@ -369,7 +478,7 @@ object Symbols {
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
   class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
-    extends Symbol(coord, id) {
+    extends Symbol(coord, id), ClassSymbolDecl {
 
     type ThisName = TypeName
 
@@ -505,6 +614,8 @@ object Symbols {
   type MutableSymbolMap[T] = EqHashMap[Symbol, T]
   def MutableSymbolMap[T](): EqHashMap[Symbol, T] = EqHashMap[Symbol, T]()
   def MutableSymbolMap[T](initialCapacity: Int): EqHashMap[Symbol, T] = EqHashMap[Symbol, T](initialCapacity)
+
+  type DontUseSymbolOnSymbol
 
 // ---- Symbol creation methods ----------------------------------
 
