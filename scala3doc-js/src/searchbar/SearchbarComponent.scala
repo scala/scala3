@@ -6,7 +6,7 @@ import org.scalajs.dom.html.Input
 class SearchbarComponent(val callback: (String) => List[PageEntry]):
   extension (p: PageEntry)
     def toHTML =
-      val wrapper = document.createElement("div")
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
       wrapper.classList.add("scala3doc-searchbar-result")
       wrapper.classList.add("monospace")
 
@@ -25,8 +25,23 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
 
   def handleNewQuery(query: String) =
     val result = callback(query).map(_.toHTML)
+    resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
-    result.foreach(resultsDiv.appendChild)
+    val fragment = document.createDocumentFragment()
+    result.take(100).foreach(fragment.appendChild)
+    resultsDiv.appendChild(fragment)
+    def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
+      resultsDiv.onscroll = (event: Event) => {
+          if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
+          {
+              val fragment = document.createDocumentFragment()
+              result.take(100).foreach(fragment.appendChild)
+              resultsDiv.appendChild(fragment)
+              loadMoreResults(result.drop(100))
+          }
+      }
+    }
+    loadMoreResults(result.drop(100))
 
   private val logoClick: html.Div =
     val span = document.createElement("span").asInstanceOf[html.Span]
@@ -39,7 +54,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       else document.body.appendChild(rootDiv)
 
     val element = createNestingDiv("search-content")(
-      createNestingDiv("search-conatiner")(
+      createNestingDiv("search-container")(
         createNestingDiv("search")(
           span
         )
@@ -71,9 +86,9 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
 
   private val rootDiv: html.Div =
     val element = document.createElement("div").asInstanceOf[html.Div]
-    element.addEventListener("click", (e: Event) => e.stopPropagation())
-    logoClick.addEventListener("click", (e: Event) => e.stopPropagation())
-    document.body.addEventListener("click", (e: Event) =>
+    element.addEventListener("mousedown", (e: Event) => e.stopPropagation())
+    logoClick.addEventListener("mousedown", (e: Event) => e.stopPropagation())
+    document.body.addEventListener("mousedown", (e: Event) =>
       if (document.body.contains(element)) {
         document.body.removeChild(element)
       }

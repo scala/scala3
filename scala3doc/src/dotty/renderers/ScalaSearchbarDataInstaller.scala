@@ -61,7 +61,7 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
   }
 
   private def createAcronym(s: String): Option[String] =
-    if s.head.isUpper then Some(s.filter(_.isUpper)) else None
+    s.headOption.filter(_.isUpper).map(_ => s.filter(_.isUpper))
 
   override def generatePagesList(): String = {
     val mapper = jacksonObjectMapper()
