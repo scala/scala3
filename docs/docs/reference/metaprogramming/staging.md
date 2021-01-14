@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: "Multi-Stage Programming"
+title: "Runtime Multi-Stage Programming"
 ---
 
 The framework expresses at the same time compile-time metaprogramming and
