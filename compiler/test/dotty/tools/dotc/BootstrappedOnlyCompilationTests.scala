@@ -13,20 +13,11 @@ import vulpix._
 import java.nio.file._
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class BootstrappedOnlyCompilationTests extends ParallelTesting {
+class BootstrappedOnlyCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import BootstrappedOnlyCompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 60.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -211,7 +202,19 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   }
 }
 
-object BootstrappedOnlyCompilationTests {
+object BootstrappedOnlyCompilationTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 60.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }
