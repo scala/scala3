@@ -34,7 +34,12 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
       PropertyContainer.Companion.empty()
     ).withNewMembers(packageMembers).withKind(Kind.RootPackage).withDocs(rootDoc).asInstanceOf[DPackage]
 
-    new DModule(
+    val transformers = List(
+      ImplicitMembersExtensionTransformer(),
+      InheritanceInformationTransformer()
+    )
+
+    val module = new DModule(
       sourceSet.getDisplayName,
       JList(topLevelPackage),
       JMap(),
@@ -42,6 +47,8 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
       sourceSet.toSet,
       PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
     )
+
+    transformers.foldLeft(module)( (module, transformer) => transformer(module) )
 
 object EmptyModuleProvider extends SourceToDocumentableTranslator:
    override def invoke(sourceSet: DokkaSourceSet, cxt: DokkaContext, unused: Continuation[? >: DModule]) =
