@@ -68,7 +68,11 @@ private class QuoteCompiler extends Compiler:
           val cls = newCompleteClassSymbol(defn.RootClass, outputClassName, EmptyFlags,
             defn.ObjectType :: Nil, newScope, coord = pos, assocFile = assocFile).entered.asClass
           cls.enter(newDefaultConstructor(cls), EmptyScope)
-          val meth = newSymbol(cls, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
+          val meth = newSymbol(cls.asInstanceOf, nme.apply, Method, ExprType(defn.AnyType), coord = pos).entered
+            //TODO (dotty problem): we get an error for `cls` above without the `asInstanceOf`:
+            //  Found:    (cls : dotty.tools.dotc.core.Symbols.ClassSymbol)
+            //  Required: dotty.tools.dotc.core.Symbols.Symbol
+            //Figure out what'st he cause of this.
 
           val quoted =
             given Context = unitCtx.withOwner(meth)
