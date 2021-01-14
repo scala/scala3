@@ -38,6 +38,12 @@ import annotation.targetName
 
 object Symbols {
 
+  opaque type Symbol >: Null <: SymbolDecl = SymbolImpl
+  opaque type ClassSymbol >: Null <: Symbol & ClassSymbolDecl = ClassSymbolImpl
+
+  type TermSymbol = Symbol { type ThisName = TermName }
+  type TypeSymbol = Symbol { type ThisName = TypeName }
+
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
@@ -100,6 +106,7 @@ object Symbols {
 
     def span: Span
     def sourcePos(using Context): SourcePosition
+    def srcPos: SrcPos
 
     def associatedFile(using Context): AbstractFile
     def binaryFile(using Context): AbstractFile
@@ -113,7 +120,10 @@ object Symbols {
     def drop()(using Context): Unit
     def dropAfter(phase: DenotTransformer)(using Context): Unit
 
-    inline def orElse(inline that: Symbol)(using Context): Symbol
+    /** This symbol, if it exists, otherwise the result of evaluating `that` */
+    inline def orElse(inline that: Symbol)(using Context): Symbol =
+      if denot.exists then this.asInstanceOf[Symbol] else that
+
     def filter(p: Symbol => Boolean): Symbol
 
     // ParamInfo types and methods
@@ -155,7 +165,7 @@ object Symbols {
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class Symbol private[Symbols] (private var myCoord: Coord, val id: Int)
+  class SymbolImpl private[Symbols] (private var myCoord: Coord, val id: Int)
     extends SymbolDecl {
 
     type ThisName <: Name
@@ -354,10 +364,6 @@ object Symbols {
         drop()
       }
 
-    /** This symbol, if it exists, otherwise the result of evaluating `that` */
-    inline def orElse(inline that: Symbol)(using Context): Symbol =
-      if (this.exists) this else that
-
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
@@ -413,7 +419,7 @@ object Symbols {
      *
      *  @see enclosingSourceSymbols
      */
-    @annotation.tailrec final def sourceSymbol(using Context): Symbol =
+    final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
         this
       else if (denot.is(ModuleVal))
@@ -474,11 +480,8 @@ object Symbols {
     override def hashCode(): Int = id // for debugging.
   }
 
-  type TermSymbol = Symbol { type ThisName = TermName }
-  type TypeSymbol = Symbol { type ThisName = TypeName }
-
-  class ClassSymbol private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
-    extends Symbol(coord, id), ClassSymbolDecl {
+  class ClassSymbolImpl private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
+    extends SymbolImpl(coord, id), ClassSymbolDecl {
 
     type ThisName = TypeName
 
@@ -569,7 +572,7 @@ object Symbols {
   }
 
   @sharable
-  val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
+  val NoSymbol: Symbol = new SymbolImpl(NoCoord, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
