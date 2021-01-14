@@ -568,11 +568,11 @@ object Symbols {
     override protected def prefixString: String = "ClassSymbol"
   }
 
-  @sharable object NoSymbol extends Symbol(NoCoord, 0) {
+  @sharable
+  val NoSymbol: Symbol = new Symbol(NoCoord, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
   }
-
   NoDenotation // force it in order to set `denot` field of NoSymbol
 
   extension [N <: Name](sym: Symbol { type ThisName = N })(using Context) {
