@@ -1214,7 +1214,7 @@ class ClassfileParser(
       }
       else c = value match {
           case tp: Type => tp
-          case cls: Symbol => cls.typeRef
+          case cls: Symbol @unchecked => cls.typeRef
       }
       c
     }
@@ -1252,7 +1252,7 @@ class ClassfileParser(
       }
       value match {
         case ct: Constant  => ct
-        case cls: Symbol   => Constant(cls.typeRef)
+        case cls: Symbol @unchecked   => Constant(cls.typeRef)
         case arr: Type     => Constant(arr)
       }
     }

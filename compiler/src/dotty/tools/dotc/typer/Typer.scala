@@ -1788,7 +1788,7 @@ class Typer extends Namer
               (arg, WildcardType)
           if (tpt1.symbol.isClass)
             tparam match {
-              case tparam: Symbol =>
+              case tparam: Symbol @unchecked =>
                 tparam.ensureCompleted() // This is needed to get the test `compileParSetSubset` to work
               case _ =>
             }
@@ -3518,7 +3518,7 @@ class Typer extends Namer
       case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
       case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
         tycon.typeParams match {
-          case tparams @ ((_: Symbol) :: _) =>
+          case tparams @ ((_: Symbol @unchecked) :: _) =>
             val boundss = tparams.map(_.paramInfo.substApprox(tparams.asInstanceOf[List[TypeSymbol]], args))
             val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
               arg match {

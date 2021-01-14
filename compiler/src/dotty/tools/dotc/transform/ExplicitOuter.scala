@@ -147,7 +147,7 @@ object ExplicitOuter {
     if (cls.is(Scala2x))
       encl.asClass.classInfo.selfInfo match {
         case tp: TypeRef => tp.classSymbol
-        case self: Symbol => self
+        case self: Symbol @unchecked => self
         case _ => encl
       }
     else encl
@@ -299,7 +299,7 @@ object ExplicitOuter {
   private def outerPrefix(tpe: Type)(using Context): Type = tpe match {
     case tpe: TypeRef =>
       tpe.symbol match {
-        case cls: ClassSymbol =>
+        case cls: ClassSymbol @unchecked =>
           if (tpe.prefix eq NoPrefix) cls.owner.enclosingClass.thisType
           else tpe.prefix
         case _ =>

@@ -1014,7 +1014,7 @@ object SymDenotations {
           case ClassInfo(_, _, _, _, selfType) =>
             def sourceOfSelf(tp: TypeOrSymbol): Symbol = (tp: @unchecked) match {
               case tp: TermRef => tp.symbol
-              case tp: Symbol => sourceOfSelf(tp.info)
+              case tp: Symbol @unchecked => sourceOfSelf(tp.info)
               case tp: RefinedType => sourceOfSelf(tp.parent)
             }
             sourceOfSelf(selfType)
@@ -1748,7 +1748,7 @@ object SymDenotations {
      */
     def givenSelfType(using Context): Type = classInfo.selfInfo match {
       case tp: Type => tp
-      case self: Symbol => self.info
+      case self: Symbol @unchecked => self.info
     }
 
    // ------ class-specific operations -----------------------------------
@@ -1804,7 +1804,7 @@ object SymDenotations {
       def traverse(parents: List[Type]): Unit = parents match {
         case p :: parents1 =>
           p.classSymbol match {
-            case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
+            case pcls: ClassSymbol @unchecked => builder.addAll(pcls.baseClasses)
             case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)

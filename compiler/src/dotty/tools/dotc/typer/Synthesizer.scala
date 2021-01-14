@@ -273,7 +273,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
-        case caseClass: ClassSymbol =>
+        case caseClass: ClassSymbol @unchecked =>
           assert(caseClass.is(Case))
           if caseClass.is(Module) then
             caseClass.sourceModule.termRef

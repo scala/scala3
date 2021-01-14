@@ -141,7 +141,7 @@ object Variances {
    */
   def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(using Context): Boolean =
     val needsDetailedCheck = tparams2 match
-      case (_: Symbol) :: _ => true
+      case (_: Symbol @unchecked) :: _ => true
       case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isDeclaredVarianceLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)

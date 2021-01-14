@@ -41,7 +41,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** eliminate self symbol in ClassInfo */
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
-    case tp @ ClassInfo(_, _, _, _, self: Symbol) =>
+    case tp @ ClassInfo(_, _, _, _, self: Symbol @unchecked) =>
       tp.derivedClassInfo(selfInfo = self.info)
     case _ =>
       tp

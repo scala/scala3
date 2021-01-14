@@ -34,7 +34,7 @@ class ReadTasty extends Phase {
       }
 
       def compilationUnit(cls: Symbol): Option[CompilationUnit] = cls match {
-        case cls: ClassSymbol =>
+        case cls: ClassSymbol @unchecked =>
           (cls.rootTreeOrProvider: @unchecked) match {
             case unpickler: tasty.DottyUnpickler =>
               if (cls.rootTree.isEmpty) None

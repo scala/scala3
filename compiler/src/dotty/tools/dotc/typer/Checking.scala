@@ -932,7 +932,7 @@ trait Checking {
 
     cls.info.decls.foreach(checkDecl)
     cls.info match {
-      case ClassInfo(_, _, _, _, selfSym: Symbol) => checkDecl(selfSym)
+      case ClassInfo(_, _, _, _, selfSym: Symbol @unchecked) => checkDecl(selfSym)
       case _ =>
     }
   }
@@ -1002,7 +1002,7 @@ trait Checking {
    */
   def checkTraitInheritance(parent: Symbol, cls: ClassSymbol, pos: SrcPos)(using Context): Unit =
     parent match {
-      case parent: ClassSymbol if parent.is(Trait) =>
+      case parent: ClassSymbol @unchecked if parent.is(Trait) =>
         val psuper = parent.superClass
         val csuper = cls.superClass
         val ok = csuper.derivesFrom(psuper) ||
@@ -1017,7 +1017,7 @@ trait Checking {
    */
   def checkCaseInheritance(parent: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit =
     parent match {
-      case parent: ClassSymbol =>
+      case parent: ClassSymbol @unchecked =>
         if (parent.is(Case))
           report.error(ex"""case $caseCls has case ancestor $parent, but case-to-case inheritance is prohibited.
                         |To overcome this limitation, use extractors to pattern match on non-leaf nodes.""", pos)

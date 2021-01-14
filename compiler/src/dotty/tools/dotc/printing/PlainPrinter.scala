@@ -388,7 +388,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
         val selfText: Text = selfInfo match {
           case NoType => Text()
-          case sym: Symbol if !sym.isCompleted => "this: ? =>"
+          case sym: Symbol @unchecked if !sym.isCompleted => "this: ? =>"
           case _ => "this: " ~ atPrec(InfixPrec) { toText(tp.selfType) } ~ " =>"
         }
         val trueDecls = otherDecls.filterNot(treatAsTypeArg)

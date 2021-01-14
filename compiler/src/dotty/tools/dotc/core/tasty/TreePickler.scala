@@ -223,7 +223,7 @@ class TreePickler(pickler: TastyPickler) {
         case name: Name =>
           writeByte(if (tpe.isType) TYPEREF else TERMREF)
           pickleName(name); pickleType(tpe.prefix)
-        case sym: Symbol =>
+        case sym: Symbol @unchecked =>
           if (isLocallyDefined(sym)) {
             writeByte(if (tpe.isType) TYPEREFsymbol else TERMREFsymbol)
             pickleSymRef(sym); pickleType(tpe.prefix)
@@ -583,7 +583,7 @@ class TreePickler(pickler: TastyPickler) {
                 if (!tree.self.isEmpty) registerTreeAddr(tree.self)
                 pickleType {
                   selfInfo match {
-                    case sym: Symbol => sym.info
+                    case sym: Symbol @unchecked => sym.info
                     case tp: Type => tp
                   }
                 }

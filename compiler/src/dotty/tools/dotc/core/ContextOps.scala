@@ -18,7 +18,7 @@ object ContextOps:
     */
     def enter(sym: Symbol): Symbol = inContext(ctx) {
       ctx.owner match
-        case cls: ClassSymbol => cls.classDenot.enter(sym)
+        case cls: ClassSymbol @unchecked => cls.classDenot.enter(sym)
         case _ => ctx.scope.openForMutations.enter(sym)
       sym
     }
@@ -63,7 +63,7 @@ object ContextOps:
     def inClassContext(selfInfo: TypeOrSymbol): Context = inContext(ctx) {
       val localCtx: Context = ctx.fresh.setNewScope
       selfInfo match {
-        case sym: Symbol if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
+        case sym: Symbol @unchecked if sym.exists && sym.name != nme.WILDCARD => localCtx.scope.openForMutations.enter(sym)
         case _ =>
       }
       localCtx

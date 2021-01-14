@@ -31,7 +31,7 @@ object ExpandSAMs:
 
   def needsWrapperClass(tpe: Type)(using Context): Boolean =
     tpe.classSymbol match
-      case cls: ClassSymbol => !isPlatformSam(cls) || cls == defn.PartialFunctionClass
+      case cls: ClassSymbol @unchecked => !isPlatformSam(cls) || cls == defn.PartialFunctionClass
       case _ => false
 
 class ExpandSAMs extends MiniPhase:

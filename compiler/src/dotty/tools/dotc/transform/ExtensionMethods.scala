@@ -56,7 +56,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
   override def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
     case moduleClassSym: ClassDenotation if moduleClassSym.is(ModuleClass) =>
       moduleClassSym.linkedClass match {
-        case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+        case valueClass: ClassSymbol @unchecked if isDerivedValueClass(valueClass) =>
           val cinfo = moduleClassSym.classInfo
           val decls1 = cinfo.decls.cloneScope
           val moduleSym = moduleClassSym.symbol.asClass
@@ -116,7 +116,7 @@ class ExtensionMethods extends MiniPhase with DenotTransformer with FullParamete
       ref.info match {
         case ClassInfo(pre, cls, _, _, _) if cls is ModuleClass =>
           cls.linkedClass match {
-            case valueClass: ClassSymbol if isDerivedValueClass(valueClass) =>
+            case valueClass: ClassSymbol @unchecked if isDerivedValueClass(valueClass) =>
               val info1 = atPhase(ctx.phase.next)(cls.denot).asClass.classInfo.derivedClassInfo(prefix = pre)
               ref.derivedSingleDenotation(ref.symbol, info1)
             case _ => ref

@@ -249,7 +249,7 @@ final class ProperGadtConstraint private(
 
   private def externalize(param: TypeParamRef)(using Context): Type =
     reverseMapping(param) match {
-      case sym: Symbol => sym.typeRef
+      case sym: Symbol @unchecked => sym.typeRef
       case null => param
     }
 

@@ -1228,7 +1228,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkUndesiredProperties(sym, tree.srcPos)
     currentLevel.enterReference(sym, tree.span)
     tpe.dealias.foreachPart {
-      case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
+      case TermRef(_, s: Symbol @unchecked) => currentLevel.enterReference(s, tree.span)
       case _ =>
     }
     tree

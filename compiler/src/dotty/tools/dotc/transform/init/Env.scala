@@ -56,7 +56,7 @@ case class Env(ctx: Context) {
     }
 
   /** Cache for outer this */
-  private case class OuterKey(warm: Warm, cls: ClassSymbol)
+  private case class OuterKey(warm: Warm, cls: ClassSymbol @unchecked)
   private val outerCache: mutable.Map[OuterKey, Potentials] = mutable.Map.empty
   def resolveOuter(warm: Warm, cls: ClassSymbol)(implicit env: Env): Potentials =
     val key = OuterKey(warm, cls)

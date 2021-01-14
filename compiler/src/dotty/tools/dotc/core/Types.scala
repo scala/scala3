@@ -2029,7 +2029,7 @@ object Types {
 
     private def computeName: Name = designator match {
       case name: Name => name
-      case sym: Symbol => sym.originDenotation.name
+      case sym: Symbol @unchecked => sym.originDenotation.name
     }
 
     /** The signature computed from the last known denotation with `sigFromDenot`,
@@ -2073,7 +2073,7 @@ object Types {
 
     private def computeSymbol(using Context): Symbol =
       designator match {
-        case sym: Symbol =>
+        case sym: Symbol @unchecked =>
           if (sym.isValidInCurrentRun) sym else denot.symbol
         case name =>
           (if (denotationIsCurrent) lastDenotation else denot).symbol
@@ -2095,7 +2095,7 @@ object Types {
      *  Normally, it's better to use `symbol`, not `currentSymbol`.
      */
     final def currentSymbol(using Context): Symbol = designator match {
-      case sym: Symbol => sym
+      case sym: Symbol @unchecked => sym
       case _ => if (denotationIsCurrent) lastDenotation.symbol else NoSymbol
     }
 
@@ -2141,7 +2141,7 @@ object Types {
           val sym = lastSymbol
           val allowPrivate = sym == null || (sym == NoSymbol) || sym.lastKnownDenotation.flagsUNSAFE.is(Private)
           finish(memberDenot(name, allowPrivate))
-        case sym: Symbol =>
+        case sym: Symbol @unchecked =>
           val symd = sym.lastKnownDenotation
           if (symd.validFor.runId != ctx.runId && !stillValid(symd))
             finish(memberDenot(symd.initial.name, allowPrivate = false))
@@ -2252,7 +2252,7 @@ object Types {
       lastSymbol = denot.symbol
       checkedPeriod = if (prefix.isProvisional) Nowhere else ctx.period
       designator match {
-        case sym: Symbol if designator ne lastSymbol =>
+        case sym: Symbol @unchecked if designator ne lastSymbol =>
           designator = lastSymbol.asInstanceOf[Designator{ type ThisName = self.ThisName }]
         case _ =>
       }
@@ -2302,7 +2302,7 @@ object Types {
 
     /** Is this a reference to a class or object member? */
     def isMemberRef(using Context): Boolean = designator match {
-      case sym: Symbol => infoDependsOnPrefix(sym, prefix)
+      case sym: Symbol @unchecked => infoDependsOnPrefix(sym, prefix)
       case _ => true
     }
 
@@ -2462,7 +2462,7 @@ object Types {
         val adapted = withSym(denot.symbol)
         val result =
           if (adapted.eq(this)
-              || designator.isInstanceOf[Symbol]
+              || designator.isInstanceOf[Symbol @unchecked]
               || !adapted.denotationIsCurrent
               || adapted.info.eq(denot.info))
             adapted
@@ -2488,7 +2488,7 @@ object Types {
       if (prefix eq this.prefix) this
       else if (lastDenotation == null) NamedType(prefix, designator)
       else designator match {
-        case sym: Symbol =>
+        case sym: Symbol @unchecked =>
           if (infoDependsOnPrefix(sym, prefix) && !prefix.isArgPrefixOf(sym)) {
             val candidate = reload()
             val falseOverride = sym.isClass && candidate.symbol.exists && candidate.symbol != symbol
@@ -2615,12 +2615,12 @@ object Types {
   }
 
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
+    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol @unchecked])
     myHash = hc
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
-    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
+    assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol @unchecked])
     myHash = hc
   }
 
@@ -2647,7 +2647,7 @@ object Types {
 
   object NamedType {
     def isType(desig: Designator)(using Context): Boolean = desig match {
-      case sym: Symbol => sym.isType
+      case sym: Symbol @unchecked => sym.isType
       case name: Name => name.isTypeName
     }
     def apply(prefix: Type, designator: Designator)(using Context): NamedType =
@@ -2693,7 +2693,7 @@ object Types {
    */
   abstract case class ThisType(tref: TypeRef) extends CachedProxyType with SingletonType {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
-      case cls: ClassSymbol => cls
+      case cls: ClassSymbol @unchecked => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
     }
 
@@ -3843,7 +3843,7 @@ object Types {
         else
           super.fromParams(params, tp)
       def isOpaqueAlias = params match
-        case (param: Symbol) :: _ => param.owner.is(Opaque)
+        case (param: Symbol @unchecked) :: _ => param.owner.is(Opaque)
         case _ => false
       bounds match {
         case bounds: MatchAlias =>
@@ -4607,7 +4607,7 @@ object Types {
             case self: Type =>
               cinfo.derivedClassInfo(
                 selfInfo = refineSelfType(self.orElse(defn.AnyType)))
-            case self: Symbol =>
+            case self: Symbol @unchecked =>
               self.info = refineSelfType(self.info)
               cinfo
         else cinfo

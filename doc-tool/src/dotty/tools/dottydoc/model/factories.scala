@@ -160,7 +160,7 @@ object factories {
     }
 
   def constructors(sym: Symbol)(using Context): List[List[ParamList]] = sym match {
-    case sym: ClassSymbol =>
+    case sym: ClassSymbol @unchecked =>
       paramLists(sym.primaryConstructor.info) :: Nil
     case _ => Nil
   }

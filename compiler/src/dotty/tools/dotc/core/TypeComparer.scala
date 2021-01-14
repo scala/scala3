@@ -1433,7 +1433,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
          *  paths is less intrusive than skolemization.
          */
         def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
-          case tparam: Symbol =>
+          case tparam: Symbol @unchecked =>
             if (leftRoot.isStable || (ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
                 && leftRoot.member(tparam.name).exists) {
               val captured = TypeRef(leftRoot, tparam)
@@ -1458,7 +1458,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             val arg1norm = arg1 match {
               case arg1: TypeBounds =>
                 tparam match {
-                  case tparam: Symbol => arg1 & paramBounds(tparam)
+                  case tparam: Symbol @unchecked => arg1 & paramBounds(tparam)
                   case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
                 }
               case _ => arg1

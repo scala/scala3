@@ -67,7 +67,7 @@ object Annotations {
             // seems to be enough to ensure this (note that after erasure, `ctx.typer`
             // will be the Erasure typer, but that doesn't seem to affect the annotation
             // trees we create, so we leave it as is)
-        case sym: Symbol if sym.defRunId != parentCtx.runId =>
+        case sym: Symbol @unchecked if sym.defRunId != parentCtx.runId =>
           mySym = sym.denot.current.symbol
         case _ =>
       }

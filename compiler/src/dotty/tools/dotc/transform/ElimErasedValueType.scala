@@ -30,9 +30,9 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
   override def runsAfter: Set[String] = Set(Erasure.name)
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = sym match {
-    case sym: ClassSymbol if sym.is(ModuleClass) =>
+    case sym: ClassSymbol @unchecked if sym.is(ModuleClass) =>
       sym.companionClass match {
-        case origClass: ClassSymbol if isDerivedValueClass(origClass) =>
+        case origClass: ClassSymbol @unchecked if isDerivedValueClass(origClass) =>
           val cinfo = tp.asInstanceOf[ClassInfo]
           val decls1 = cinfo.decls.cloneScope
           // Remove synthetic cast methods introduced by ExtensionMethods,

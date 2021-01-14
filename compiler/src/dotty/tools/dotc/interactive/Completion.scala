@@ -183,7 +183,7 @@ object Completion {
       if (ctx.owner.isClass) {
         addAccessibleMembers(ctx.owner.thisType)
         ctx.owner.asClass.classInfo.selfInfo match {
-          case selfSym: Symbol => add(selfSym, selfSym.name)
+          case selfSym: Symbol @unchecked => add(selfSym, selfSym.name)
           case _ =>
         }
       }

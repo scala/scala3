@@ -92,7 +92,7 @@ object Formatting {
     def isSensical(arg: Any): Boolean = arg match {
       case tpe: Type =>
         tpe.exists && !tpe.isErroneous
-      case sym: Symbol if sym.isCompleted =>
+      case sym: Symbol @unchecked if sym.isCompleted =>
         sym.info match {
           case _: ErrorType | TypeAlias(_: ErrorType) | NoType => false
           case _ => true
@@ -118,7 +118,7 @@ object Formatting {
        *  and scala.collection.immutable.List as two different types
        */
       def followAlias(e1: Recorded): Recorded = e1 match {
-        case e1: Symbol if e1.isAliasType =>
+        case e1: Symbol @unchecked if e1.isAliasType =>
           val underlying = e1.typeRef.underlyingClassRef(refinementOK = false).typeSymbol
           if (underlying.name == e1.name) underlying else e1
         case _ => e1
@@ -202,7 +202,7 @@ object Formatting {
         s"is a type variable${addendum("constraint", TypeComparer.bounds(param))}"
       case param: TermParamRef =>
         s"is a reference to a value parameter"
-      case sym: Symbol =>
+      case sym: Symbol @unchecked =>
         val info =
           if (ctx.gadt.contains(sym))
             sym.info & ctx.gadt.fullBounds(sym)
@@ -224,7 +224,7 @@ object Formatting {
       case param: TypeParamRef => ctx.typerState.constraint.contains(param)
       case param: ParamRef     => false
       case skolem: SkolemType => true
-      case sym: Symbol =>
+      case sym: Symbol @unchecked =>
         ctx.gadt.contains(sym) && ctx.gadt.fullBounds(sym) != TypeBounds.empty
     }
 

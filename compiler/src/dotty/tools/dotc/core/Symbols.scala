@@ -333,7 +333,7 @@ object Symbols {
       if ctx.phaseId != phase.next.id then
         atPhase(phase.next)(enteredAfter(phase))
       else this.owner match {
-        case owner: ClassSymbol =>
+        case owner: ClassSymbol @unchecked =>
           if (owner.is(Package)) {
             denot.validFor |= InitialPeriod
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
@@ -405,7 +405,7 @@ object Symbols {
             valid(denot.owner.source) match {
               case NoSource =>
                 this match {
-                  case cls: ClassSymbol      => valid(cls.sourceOfClass)
+                  case cls: ClassSymbol @unchecked => valid(cls.sourceOfClass)
                   case _ if denot.is(Module) => valid(denot.moduleClass.source)
                   case _ => NoSource
                 }
@@ -419,7 +419,7 @@ object Symbols {
      *
      *  @see enclosingSourceSymbols
      */
-    final def sourceSymbol(using Context): Symbol =
+    final def sourceSymbol(using Context): SymbolImpl =
       if (!denot.exists)
         this
       else if (denot.is(ModuleVal))
@@ -948,7 +948,7 @@ object Symbols {
    */
   object TermSymbols:
     def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => None
+      case (x: Symbol @unchecked) :: _ if x.isType => None
       case _ => Some(xs.asInstanceOf[List[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
@@ -956,7 +956,7 @@ object Symbols {
    */
   object TypeSymbols:
     def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
+      case (x: Symbol @unchecked) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
       case _ => None
 
 // ----- Locating predefined symbols ----------------------------------------
@@ -971,7 +971,7 @@ object Symbols {
   def requiredClass(path: PreName)(using Context): ClassSymbol = {
     val name = path.toTypeName
     staticRef(name).requiredSymbol("class", name)(_.isClass) match {
-      case cls: ClassSymbol => cls
+      case cls: ClassSymbol @unchecked => cls
       case sym => defn.AnyClass
     }
   }

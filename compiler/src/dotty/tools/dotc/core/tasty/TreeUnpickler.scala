@@ -586,7 +586,7 @@ class TreeUnpickler(reader: TastyReader,
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass  =>
+        case cls: ClassSymbol @unchecked if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass  =>
           // Enter all members of classes that are not Scala 2 macros.
           //
           // For `StringContext`, enter `s`, `f` and `raw`
