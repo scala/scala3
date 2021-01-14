@@ -602,7 +602,7 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
-      else if (sym.isInlineMethod)
+      else if (sym.isInlineMethod && !sym.is(Deferred))
         sym.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
           val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
