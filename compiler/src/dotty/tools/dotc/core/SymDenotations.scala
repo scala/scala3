@@ -1601,17 +1601,7 @@ object SymDenotations {
     end children
   }
 
-  /** The contents of a class definition during a period
-   */
-  class ClassDenotation private[SymDenotations] (
-    symbol: Symbol,
-    maybeOwner: Symbol,
-    name: Name,
-    initFlags: FlagSet,
-    initInfo: Type,
-    initPrivateWithin: Symbol)
-    extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
-
+  trait ClassDenotation extends SymDenotation:
     import util.EqHashMap
 
     // ----- caches -------------------------------------------------------
@@ -1687,7 +1677,7 @@ object SymDenotations {
 
     // ----- denotation fields and accessors ------------------------------
 
-    if (initFlags.is(Module, butNot = Package))
+    if (flagsUNSAFE.is(Module, butNot = Package))
       assert(name.is(ModuleClassName), s"module naming inconsistency: ${name.debugString}")
 
     /** The symbol asserted to have type ClassSymbol */
@@ -2213,19 +2203,24 @@ object SymDenotations {
     override def nestingLevel(using Context) =
       if myNestingLevel == -1 then myNestingLevel = owner.nestingLevel + 1
       myNestingLevel
-  }
+  end ClassDenotation
 
-  /** The denotation of a package class.
-   *  It overrides ClassDenotation to take account of package objects when looking for members
+  /** The contents of a class definition during a period
    */
-  final class PackageClassDenotation private[SymDenotations] (
+  class ClassDenotationImpl private[SymDenotations] (
     symbol: Symbol,
-    ownerIfExists: Symbol,
+    maybeOwner: Symbol,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
     initPrivateWithin: Symbol)
-    extends ClassDenotation(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin) {
+    extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin),
+      ClassDenotation
+
+  /** The denotation of a package class.
+   *  It overrides ClassDenotation to take account of package objects when looking for members
+   */
+  trait PackageClassDenotation extends ClassDenotation:
 
     private var packageObjsCache: List[ClassDenotation] = _
     private var packageObjsRunId: RunId = NoRunId
@@ -2383,7 +2378,18 @@ object SymDenotations {
         if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.assocFile == file)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
-  }
+  end PackageClassDenotation
+
+  class PackageClassDenotationImpl private[SymDenotations] (
+    symbol: Symbol,
+    ownerIfExists: Symbol,
+    name: Name,
+    initFlags: FlagSet,
+    initInfo: Type,
+    initPrivateWithin: Symbol)
+    extends
+      ClassDenotationImpl(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin),
+      PackageClassDenotation
 
   @sharable object NoDenotation
   extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
@@ -2428,8 +2434,8 @@ object SymDenotations {
     initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags.is(Package)) new PackageClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-        else new ClassDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        if (initFlags.is(Package)) new PackageClassDenotationImpl(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        else new ClassDenotationImpl(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
       else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
     result.validFor = currentStablePeriod
     result

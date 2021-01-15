@@ -40,6 +40,7 @@ object Symbols {
 
   opaque type Symbol >: Null <: SymbolDecl = SymbolImpl
   opaque type ClassSymbol >: Null <: Symbol & ClassSymbolDecl = ClassSymbolImpl
+  opaque type PackageSymbol >: Null <: ClassSymbol = PackageClassSymbolImpl
 
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
@@ -49,7 +50,7 @@ object Symbols {
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
 
-  abstract class SymbolDecl extends Designator, ParamInfo, SrcPos, printing.Showable:
+  trait SymbolDecl extends Designator, ParamInfo, SrcPos, printing.Showable:
     type ThisName <: Name
 
     /** A unique id */
@@ -590,6 +591,9 @@ object Symbols {
     override protected def prefixString: String = "ClassSymbol"
   }
 
+  /** Kept separate since it keeps only PackageClassDenotation */
+  class PackageClassSymbolImpl(id: Int) extends ClassSymbolImpl(NoCoord, null, id)
+
   @sharable
   val NoSymbol: Symbol = new SymbolImpl(NoCoord, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
@@ -649,7 +653,7 @@ object Symbols {
       info: Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } = {
-    val sym = new Symbol(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
+    val sym = new SymbolImpl(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
     val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
     sym.denot = denot
     sym
@@ -667,7 +671,11 @@ object Symbols {
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null)(using Context): ClassSymbol
   = {
-    val cls = new ClassSymbol(coord, assocFile, ctx.base.nextSymId)
+    val cls =
+      if flags.is(Package) then
+        new PackageClassSymbolImpl(ctx.base.nextSymId)
+      else
+        new ClassSymbolImpl(coord, assocFile, ctx.base.nextSymId)
     val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
     cls.denot = denot
     cls
