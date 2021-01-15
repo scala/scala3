@@ -25,12 +25,13 @@ import Decorators._
 import ErrorReporting._
 import Checking._
 import Inferencing._
+import Dynamic.isDynamicExpansion
 import EtaExpansion.etaExpand
 import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{ExtMethodApply, productSelectorTypes, wrapDefs, defaultArgument}
+import Applications.{productSelectorTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
@@ -547,29 +548,46 @@ class Typer extends Namer
     then
       report.error(StableIdentPattern(tree, pt), tree.srcPos)
 
-  def typedSelect(tree: untpd.Select, pt: Type, qual: Tree)(using Context): Tree = qual match {
-    case qual: ExtMethodApply =>
-      qual.app
-    case qual =>
-      val select = assignType(cpy.Select(tree)(qual, tree.name), qual)
-      val select1 = toNotNullTermRef(select, pt)
-
-      if (tree.name.isTypeName) checkStable(qual.tpe, qual.srcPos, "type prefix")
-
-      if select1.tpe ne TryDynamicCallType then
-        checkStableIdentPattern(select1, pt)
-        ConstFold(select1)
-      else if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
-        select1
+  def typedSelect(tree0: untpd.Select, pt: Type, qual: Tree)(using Context): Tree =
+    val selName = tree0.name
+    val tree = cpy.Select(tree0)(qual, selName)
+    val superAccess = qual.isInstanceOf[Super]
+    val rawType = selectionType(tree, qual)
+    val checkedType = accessibleType(rawType, superAccess)
+    if checkedType.exists then
+      val select = toNotNullTermRef(assignType(tree, checkedType), pt)
+      if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
+      checkStableIdentPattern(select, pt)
+      ConstFold(select)
+    else if couldInstantiateTypeVar(qual.tpe.widen) then
+      // try again with more defined qualifier type
+      typedSelect(tree, pt, qual)
+    else
+      val tree1 = tryExtensionOrConversion(
+          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, privateOK = true)
+      if !tree1.isEmpty then
+        tree1
+      else if qual.tpe.derivesFrom(defn.DynamicClass)
+        && selName.isTermName && !isDynamicExpansion(tree)
+      then
+        if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
+          assignType(tree, TryDynamicCallType)
+        else
+          typedDynamicSelect(tree0, Nil, pt)
       else
-        typedDynamicSelect(tree, Nil, pt)
-  }
+        assignType(tree,
+          rawType match
+            case rawType: NamedType =>
+              inaccessibleErrorType(rawType, superAccess, tree.srcPos)
+            case _ =>
+              notAMemberErrorType(tree, qual))
+  end typedSelect
 
   def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      typedSelect(tree, pt, typedExpr(tree.qualifier, selectionProto(tree.name, pt, this)))
+      typedSelect(tree, pt, typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this)))
         .withSpan(tree.span)
         .computeNullable()
 
@@ -586,7 +604,7 @@ class Typer extends Namer
       tryAlternatively(typeSelectOnTerm)(fallBack)
 
     if (tree.qualifier.isType) {
-      val qual1 = typedType(tree.qualifier, selectionProto(tree.name, pt, this))
+      val qual1 = typedType(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       assignType(cpy.Select(tree)(qual1, tree.name), qual1)
     }
     else if (ctx.isJava && tree.name.isTypeName)
@@ -658,7 +676,7 @@ class Typer extends Namer
           case Floating => defn.FromDigits_FloatingClass
         }
         inferImplicit(fromDigitsCls.typeRef.appliedTo(target), EmptyTree, tree.span) match {
-          case SearchSuccess(arg, _, _) =>
+          case SearchSuccess(arg, _, _, _) =>
             val fromDigits = untpd.Select(untpd.TypedSplice(arg), nme.fromDigits).withSpan(tree.span)
             val firstArg = Literal(Constant(digits))
             val otherArgs = tree.kind match {
@@ -819,7 +837,7 @@ class Typer extends Namer
         withoutMode(Mode.Pattern)(
           inferImplicit(tpe, EmptyTree, tree.tpt.span)
         ) match
-          case SearchSuccess(clsTag, _, _) =>
+          case SearchSuccess(clsTag, _, _, _) =>
             withMode(Mode.InTypeTest) {
               Some(typed(untpd.Apply(untpd.TypedSplice(clsTag), untpd.TypedSplice(tree.expr)), pt))
             }
@@ -2604,9 +2622,7 @@ class Typer extends Namer
 
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
-    if !tree.denot.isOverloaded // for overloaded trees: resolve overloading before simplifying
-       && !tree.isInstanceOf[Applications.AppProxy] // don't interpolate in the middle of an extension method application
-    then
+    if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
       if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
          || tree.isDef                              // ... unless tree is a definition
       then
@@ -2880,22 +2896,80 @@ class Typer extends Namer
     }
   }
 
-  /** If this tree is a select node `qual.name`, try to insert an implicit conversion
-   *  `c` around `qual` so that `c(qual).name` conforms to `pt`.
+  /** If this tree is a select node `qual.name` that does not conform to `pt`,
+   *  try to insert an implicit conversion `c` around `qual` so that
+   *  `c(qual).name` conforms to `pt`.
    */
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type, locked: TypeVars)(using Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
     tree match {
-      case Select(qual, name) if name != nme.CONSTRUCTOR =>
-        val qualProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
-        tryEither {
-          val qual1 = adapt(qual, qualProto, locked)
-          if ((qual eq qual1) || summon[Context].reporter.hasErrors) None
-          else Some(typed(cpy.Select(tree)(untpd.TypedSplice(qual1), name), pt, locked))
-        } { (_, _) => None
-        }
+      case tree @ Select(qual, name) if name != nme.CONSTRUCTOR =>
+        val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
+        if selProto.isMatchedBy(qual.tpe) then None
+        else
+          tryEither {
+            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, privateOK = false)
+            if tree1.isEmpty then None
+            else Some(adapt(tree1, pt, locked))
+          } { (_, _) => None
+          }
       case _ => None
     }
   }
+
+  /** Given a selection `qual.name`, try to convert to an extension method
+   *  application `name(qual)` or insert an implicit conversion `c(qual).name`.
+   *  @return The converted tree, or `EmptyTree` is not successful.
+   */
+  def tryExtensionOrConversion
+      (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, privateOK: Boolean)
+      (using Context): Tree =
+
+    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK)
+
+    def tryExtension(using Context): Tree =
+      findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
+        case ref: TermRef =>
+          extMethodApply(untpd.ref(ref).withSpan(tree.span), qual, pt)
+        case _ =>
+          EmptyTree
+
+    // try an extension method in scope
+    try
+      val nestedCtx = ctx.fresh.setNewTyperState()
+      val app = tryExtension(using nestedCtx)
+      if !app.isEmpty && !nestedCtx.reporter.hasErrors then
+        nestedCtx.typerState.commit()
+        return app
+      for err <- nestedCtx.reporter.allErrors.take(1) do
+        rememberSearchFailure(qual,
+          SearchFailure(app.withType(FailedExtension(app, selectionProto, err.msg))))
+    catch case ex: TypeError =>
+      rememberSearchFailure(qual,
+        SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
+
+    // try an implicit conversion or given extension
+    if ctx.mode.is(Mode.ImplicitsEnabled) && qual.tpe.isValueType then
+      trace(i"try insert impl on qualifier $tree $pt") {
+        val selProto = selectionProto
+        inferView(qual, selProto) match
+          case SearchSuccess(found, _, _, isExtension) =>
+            if isExtension then return found
+            else
+              checkImplicitConversionUseOK(found)
+              val qual1 = withoutMode(Mode.ImplicitsEnabled)(adapt(found, selProto, locked))
+              return typedSelect(tree, pt, qual1)
+          case failure: SearchFailure =>
+            if failure.isAmbiguous then
+              return (
+                if canDefineFurther(qual.tpe.widen) then
+                  tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, privateOK)
+                else
+                  err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
+              )
+            rememberSearchFailure(qual, failure)
+      }
+    EmptyTree
+  end tryExtensionOrConversion
 
   /** Perform the following adaptations of expression, pattern or type `tree` wrt to
    *  given prototype `pt`:
@@ -3461,7 +3535,7 @@ class Typer extends Namer
       case _ => tp
     }
 
-    def adaptToSubType(wtp: Type): Tree = {
+    def adaptToSubType(wtp: Type): Tree =
       // try converting a constant to the target type
       ConstFold(tree).tpe.widenTermRefExpr.normalized match
         case ConstantType(x) =>
@@ -3500,48 +3574,6 @@ class Typer extends Namer
         case _ =>
       }
 
-      // try GADT approximation, but only if we're trying to select a member
-      // Member lookup cannot take GADTs into account b/c of cache, so we
-      // approximate types based on GADT constraints instead. For an example,
-      // see MemberHealing in gadt-approximation-interaction.scala.
-      pt match {
-        case pt: SelectionProto if ctx.gadt.nonEmpty =>
-          gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
-          val gadtApprox = Inferencing.approximateGADT(wtp)
-          gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
-          if pt.isMatchedBy(gadtApprox) then
-            gadts.println(i"Member selection healed by GADT approximation")
-            return tpd.Typed(tree, TypeTree(gadtApprox))
-        case _ => ;
-      }
-
-      // try an extension method in scope
-      pt match {
-        case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
-
-          def tryExtension(using Context): Tree =
-            findRef(selName, WildcardType, ExtensionMethod, EmptyFlags, tree.srcPos) match
-              case ref: TermRef =>
-                extMethodApply(untpd.ref(ref).withSpan(tree.span), tree, mbrType)
-              case _ =>
-                EmptyTree
-
-          try
-            val nestedCtx = ctx.fresh.setNewTyperState()
-            val app = tryExtension(using nestedCtx)
-            if !app.isEmpty && !nestedCtx.reporter.hasErrors then
-              nestedCtx.typerState.commit()
-              return ExtMethodApply(app)
-            else
-              for err <- nestedCtx.reporter.allErrors.take(1) do
-                rememberSearchFailure(tree,
-                  SearchFailure(app.withType(FailedExtension(app, pt, err.msg))))
-          catch case ex: TypeError =>
-            rememberSearchFailure(tree,
-              SearchFailure(tree.withType(NestedFailure(ex.toMessage, pt))))
-        case _ =>
-      }
-
       // try an Any -> Matchable conversion
       if pt.isMatchableBound && !wtp.derivesFrom(defn.MatchableClass) then
         checkMatchable(wtp, tree.srcPos, pattern = false)
@@ -3549,36 +3581,45 @@ class Typer extends Namer
         if target <:< pt then
           return readapt(tree.cast(target))
 
-      // try an implicit conversion
-      val prevConstraint = ctx.typerState.constraint
       def recover(failure: SearchFailureType) =
-        if (isFullyDefined(wtp, force = ForceDegree.all) &&
-            ctx.typerState.constraint.ne(prevConstraint)) readapt(tree)
+        if canDefineFurther(wtp) then readapt(tree)
         else err.typeMismatch(tree, pt, failure)
 
-      if ctx.mode.is(Mode.ImplicitsEnabled) && tree.typeOpt.isValueType then
-        if pt.isRef(defn.AnyValClass, skipRefined = false)
-           || pt.isRef(defn.ObjectClass, skipRefined = false)
-        then
-          report.error(em"the result of an implicit conversion must be more specific than $pt", tree.srcPos)
-        inferView(tree, pt) match {
-          case SearchSuccess(found: ExtMethodApply, _, _) =>
-            found // nothing to check or adapt for extension method applications
-          case SearchSuccess(found, _, _) =>
-            checkImplicitConversionUseOK(found)
-            withoutMode(Mode.ImplicitsEnabled)(readapt(found))
-          case failure: SearchFailure =>
-            if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
-              // don't report the failure but return the tree unchanged. This
-              // will cause a failure at the next level out, which usually gives
-              // a better error message. To compensate, store the encountered failure
-              // as an attachment, so that it can be reported later as an addendum.
-              rememberSearchFailure(tree, failure)
-              tree
-            else recover(failure.reason)
-        }
-      else recover(NoMatchingImplicits)
-    }
+      pt match
+        case pt: SelectionProto =>
+          if ctx.gadt.nonEmpty then
+            // try GADT approximation if we're trying to select a member
+            // Member lookup cannot take GADTs into account b/c of cache, so we
+            // approximate types based on GADT constraints instead. For an example,
+            // see MemberHealing in gadt-approximation-interaction.scala.
+            gadts.println(i"Trying to heal member selection by GADT-approximating $wtp")
+            val gadtApprox = Inferencing.approximateGADT(wtp)
+            gadts.println(i"GADT-approximated $wtp ~~ $gadtApprox")
+            if pt.isMatchedBy(gadtApprox) then
+              gadts.println(i"Member selection healed by GADT approximation")
+              tpd.Typed(tree, TypeTree(gadtApprox))
+            else tree
+          else tree // other adaptations for selections are handled in typedSelect
+        case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
+          checkConversionsSpecific(pt, tree.srcPos)
+          inferView(tree, pt) match
+            case SearchSuccess(found, _, _, isExtension) =>
+              if isExtension then found
+              else
+                checkImplicitConversionUseOK(found)
+                withoutMode(Mode.ImplicitsEnabled)(readapt(found))
+            case failure: SearchFailure =>
+              if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
+                // don't report the failure but return the tree unchanged. This
+                // will cause a failure at the next level out, which usually gives
+                // a better error message. To compensate, store the encountered failure
+                // as an attachment, so that it can be reported later as an addendum.
+                rememberSearchFailure(tree, failure)
+                tree
+              else recover(failure.reason)
+        case _ =>
+          recover(NoMatchingImplicits)
+    end adaptToSubType
 
     def adaptType(tp: Type): Tree = {
       val tree1 =
@@ -3658,8 +3699,6 @@ class Typer extends Namer
               else adaptToArgs(wtp, pt)
             case pt: PolyProto =>
               tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
-            case pt: SelectionProto if tree.isInstanceOf[ExtMethodApply] =>
-              tree
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
               else adaptNoArgs(wtp)

@@ -196,23 +196,6 @@ object Applications {
   def wrapDefs(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
     if (defs != null && defs.nonEmpty) tpd.Block(defs.toList, tree) else tree
 
-  abstract class AppProxy(implicit @constructorOnly src: SourceFile) extends ProxyTree {
-    def app: Tree
-    override def span = app.span
-
-    def forwardTo = app
-    def canEqual(that: Any): Boolean = app.canEqual(that)
-    def productArity: Int = app.productArity
-    def productElement(n: Int): Any = app.productElement(n)
-  }
-
-  /** A wrapper indicating that its argument is an application of an extension method.
-   */
-  class ExtMethodApply(val app: Tree)(implicit @constructorOnly src: SourceFile) extends AppProxy:
-    overwriteType(app.tpe)
-      // ExtMethodApply always has wildcard type in order not to prompt any further adaptations
-      // such as eta expansion before the method is fully applied.
-
   /** Find reference to default parameter getter for parameter #n in current
     *  parameter list, or NoType if none was found
     */

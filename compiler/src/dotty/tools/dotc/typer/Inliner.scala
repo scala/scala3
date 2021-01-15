@@ -16,7 +16,7 @@ import transform.SymUtils._
 import Contexts._
 import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName, BodyRetainerName}
-import ProtoTypes.selectionProto
+import ProtoTypes.shallowSelectionProto
 import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
@@ -1240,7 +1240,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.hasType, tree)
-      val qual1 = typed(tree.qualifier, selectionProto(tree.name, pt, this))
+      val qual1 = typed(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
       val resNoReduce = untpd.cpy.Select(tree)(qual1, tree.name).withType(tree.typeOpt)
       val resMaybeReduced = constToLiteral(reducer.reduceProjection(resNoReduce))
       if (resNoReduce ne resMaybeReduced)

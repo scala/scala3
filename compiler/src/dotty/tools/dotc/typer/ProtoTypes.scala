@@ -235,12 +235,11 @@ object ProtoTypes {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
+  def shallowSelectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
     if (name.isConstructorName) WildcardType
-    else tp match {
+    else tp match
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
-    }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
