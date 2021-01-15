@@ -98,7 +98,10 @@ abstract class SignatureTest(
           case unexpectedRegex(signature) => findName(signature, kinds).map(Unexpected(_))
           case expectedRegex(signature) => findName(signature, kinds).map(Expected(_, signature))
           case signature =>
-            findName(signature, kinds).map(Expected(_, commentRegex.replaceAllIn(signature, "").compactWhitespaces))
+            findName(signature, kinds).map(
+              Expected(_, commentRegex.replaceAllIn(signature, "")
+                .compactWhitespaces.reverse.dropWhile(List('{', ':').contains(_)).reverse)
+            )
         }
 
   private def signaturesFromDocumentation(root: PageNode)(using DocContext): Seq[String] =

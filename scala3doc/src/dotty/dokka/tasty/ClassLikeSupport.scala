@@ -27,7 +27,7 @@ trait ClassLikeSupport:
         else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
-    def typeArgs = classDef.getTypeParams.map(mkTypeArgument)
+    def typeArgs = classDef.getTypeParams.map(mkTypeArgument(_))
 
     def parameterModifier(parameter: Symbol): String =
       val fieldSymbol = classDef.symbol.declaredField(parameter.normalizedName)
@@ -125,7 +125,7 @@ trait ClassLikeSupport:
   private def isDocumentableExtension(s: Symbol) =
     !s.isHiddenByVisibility && !s.isSyntheticFunc && s.isExtensionMethod
 
-  private def parseMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
+  private def parseMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
       case dd: DefDef if isDocumentableExtension(dd.symbol) =>
         dd.symbol.extendedSymbol.map { extSym =>
           val target = ExtensionTarget(
@@ -134,14 +134,14 @@ trait ClassLikeSupport:
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
-          parseMethod(dd.symbol,specificKind = Kind.Extension(target, _))
+          parseMethod(c, dd.symbol,specificKind = Kind.Extension(target, _))
         }
       // TODO check given methods?
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
         Some(dd.symbol.owner.memberType(dd.name))
           .filterNot(_.exists)
           .map { _ =>
-            parseMethod(dd.symbol, specificKind =
+            parseMethod(c, dd.symbol, specificKind =
               Kind.Given(_, getGivenInstance(dd).map(_.asSignature), None)
             )
           }
@@ -160,11 +160,11 @@ trait ClassLikeSupport:
           case s: Select if s.symbol.isDefDef => s.symbol.dri
         }.orElse(exportedTarget.map(_.qualifier.tpe.typeSymbol.dri))
 
-        Some(parseMethod(dd.symbol, specificKind = Kind.Exported(_))
+        Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
           .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
-        Some(parseMethod(dd.symbol))
+        Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
         Some(parseTypeDef(td))
@@ -173,10 +173,10 @@ trait ClassLikeSupport:
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
         && vd.symbol.isGiven =>
           val classDef = Some(vd.tpt.tpe).flatMap(_.classSymbol.map(_.tree.asInstanceOf[ClassDef]))
-          Some(classDef.filter(_.symbol.flags.is(Flags.Module)).fold[Member](parseValDef(vd))(parseGivenClasslike(_)))
+          Some(classDef.filter(_.symbol.flags.is(Flags.Module)).fold[Member](parseValDef(c, vd))(parseGivenClasslike(_)))
 
       case vd: ValDef if !isSyntheticField(vd.symbol) && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum)) =>
-        Some(parseValDef(vd))
+        Some(parseValDef(c, vd))
 
       case c: ClassDef if c.symbol.owner.memberMethod(c.name).exists(_.flags.is(Flags.Given)) =>
         Some(parseGivenClasslike(c))
@@ -210,9 +210,9 @@ trait ClassLikeSupport:
     )
   }
 
-  private def parseInheritedMember(s: Tree): Option[Member] = processTreeOpt(s)(s match
+  private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
     case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-    case other => parseMember(other)
+    case other => parseMember(c)(other)
   ).map(_.withInheritedFrom(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
 
   extension (c: ClassDef)
@@ -228,8 +228,8 @@ trait ClassLikeSupport:
         case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
         case other => other
       }
-      c.membersToDocument.flatMap(parseMember) ++
-        inherited.flatMap(s => parseInheritedMember(s))
+      c.membersToDocument.flatMap(parseMember(c)) ++
+        inherited.flatMap(s => parseInheritedMember(c)(s))
     }
 
     /** Extracts members while taking Dotty logic for patching the stdlib into account. */
@@ -240,7 +240,7 @@ trait ClassLikeSupport:
         val ownMemberDRIs = ownMembers.iterator.map(_.name).toSet + "experimental$"
         sym.tree.asInstanceOf[ClassDef]
           .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
-          .flatMap(parseMember)
+          .flatMap(parseMember(c))
       }
       c.symbol.fullName match {
         case "scala.Predef$" =>
@@ -302,7 +302,7 @@ trait ClassLikeSupport:
 
     val enumVals = companion.membersToDocument.collect {
       case vd: ValDef if !isSyntheticField(vd.symbol) && vd.symbol.flags.is(Flags.Enum) && vd.symbol.flags.is(Flags.Case) => vd
-    }.toList.map(parseValDef(_))
+    }.toList.map(parseValDef(classDef, _))
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
@@ -321,6 +321,7 @@ trait ClassLikeSupport:
     classlikie.withNewMembers(cases).asInstanceOf[DClass]
 
   def parseMethod(
+      c: ClassDef,
       methodSymbol: Symbol,
       emptyParamsList: Boolean = false,
       paramPrefix: Symbol => String = _ => "",
@@ -336,9 +337,13 @@ trait ClassLikeSupport:
       else method.paramss
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.typeParams
 
+    val memberInfo = unwrapMemberInfo(c, methodSymbol)
+
     val basicKind: Kind.Def = Kind.Def(
-      genericTypes.map(mkTypeArgument),
-      paramLists.map(pList => ParametersList(pList.map(mkParameter(_, paramPrefix)), if isUsingModifier(pList) then "using " else ""))
+      genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
+      paramLists.zipWithIndex.map { (pList, index) =>
+        ParametersList(pList.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList) then "using " else "")
+      }
     )
 
     val methodKind =
@@ -368,7 +373,7 @@ trait ClassLikeSupport:
         methodSymbol.getExtraModifiers(),
         methodKind,
         methodSymbol.getAnnotations(),
-        method.returnTpt.dokkaType.asSignature,
+        memberInfo.res.dokkaType.asSignature,
         methodSymbol.source(using qctx),
         origin
       )
@@ -377,32 +382,33 @@ trait ClassLikeSupport:
   def mkParameter(argument: ValDef,
     prefix: Symbol => String = _ => "",
     isExtendedSymbol: Boolean = false,
-    isGrouped: Boolean = false) =
+    isGrouped: Boolean = false,
+    memberInfo: Map[String, TypeRepr] = Map.empty) =
       val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
-      val name = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
-
+      val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
+      val name = argument.symbol.normalizedName
       Parameter(
         argument.symbol.getAnnotations(),
         inlinePrefix + prefix(argument.symbol),
-        name,
+        nameIfNotSynthetic,
         argument.symbol.dri,
-        argument.tpt.dokkaType.asSignature,
+        memberInfo.get(name).fold(argument.tpt.dokkaType.asSignature)(_.dokkaType.asSignature),
         isExtendedSymbol,
         isGrouped
       )
 
-  def mkTypeArgument(argument: TypeDef): TypeParameter =
+  def mkTypeArgument(argument: TypeDef, memberInfo: Map[String, TypeBounds] = Map.empty): TypeParameter =
     val variancePrefix: "+" | "-" | "" =
       if  argument.symbol.flags.is(Flags.Covariant) then "+"
       else if argument.symbol.flags.is(Flags.Contravariant) then "-"
       else ""
-
+    val name = argument.symbol.normalizedName
     TypeParameter(
       argument.symbol.getAnnotations(),
       variancePrefix,
-      argument.symbol.normalizedName,
+      name,
       argument.symbol.dri,
-      argument.rhs.dokkaType.asSignature
+      memberInfo.get(name).fold(argument.rhs.dokkaType.asSignature)(_.dokkaType.asSignature)
     )
 
   def parseTypeDef(typeDef: TypeDef): Member =
@@ -413,7 +419,7 @@ trait ClassLikeSupport:
     }
 
     val (generics, tpeTree) = typeDef.rhs match
-      case LambdaTypeTree(params, body) => (params.map(mkTypeArgument), body)
+      case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
       case tpe => (Nil, tpe)
 
     mkMember(
@@ -428,8 +434,9 @@ trait ClassLikeSupport:
         )
     )
 
-  def parseValDef(valDef: ValDef): Member =
+  def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
+    val memberInfo = unwrapMemberInfo(c, valDef.symbol)
     val kind = if valDef.symbol.flags.is(Flags.Implicit) then
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
         else defaultKind
@@ -441,7 +448,7 @@ trait ClassLikeSupport:
           valDef.symbol.getExtraModifiers(),
           kind,
           valDef.symbol.getAnnotations(),
-          valDef.tpt.tpe.dokkaType.asSignature,
+          memberInfo.res.dokkaType.asSignature,
           valDef.symbol.source(using qctx)
       )
     )
@@ -471,6 +478,28 @@ trait ClassLikeSupport:
         /*isExpectActual =*/ false,
         PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation)).plus(compositeExt)
     )
+
+  case class MemberInfo(genericTypes: Map[String, TypeBounds], paramLists: List[Map[String, TypeRepr]], res: TypeRepr)
+
+  def unwrapMemberInfo(c: ClassDef, symbol: Symbol): MemberInfo =
+    val baseTypeRepr = memberInfo(c, symbol)
+
+    def handlePolyType(polyType: PolyType): MemberInfo =
+      MemberInfo(polyType.paramNames.zip(polyType.paramBounds).toMap, List.empty, polyType.resType)
+
+    def handleMethodType(memberInfo: MemberInfo, methodType: MethodType): MemberInfo =
+      MemberInfo(memberInfo.genericTypes, memberInfo.paramLists ++ List(methodType.paramNames.zip(methodType.paramTypes).toMap), methodType.resType)
+
+    def handleByNameType(memberInfo: MemberInfo, byNameType: ByNameType): MemberInfo =
+      MemberInfo(memberInfo.genericTypes, memberInfo.paramLists, byNameType.underlying)
+
+    def recursivelyCalculateMemberInfo(memberInfo: MemberInfo): MemberInfo = memberInfo.res match
+      case p: PolyType => recursivelyCalculateMemberInfo(handlePolyType(p))
+      case m: MethodType => recursivelyCalculateMemberInfo(handleMethodType(memberInfo, m))
+      case b: ByNameType => handleByNameType(memberInfo, b)
+      case _ => memberInfo
+
+    recursivelyCalculateMemberInfo(MemberInfo(Map.empty, List.empty, baseTypeRepr))
 
   private def isUsingModifier(parameters: Seq[ValDef]): Boolean =
     parameters.size > 0 && parameters(0).symbol.flags.is(Flags.Given)
