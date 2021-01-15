@@ -35,24 +35,6 @@ class MoveStatics extends MiniPhase with SymTransformer {
     }
     else sym
 
-  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
-    if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
-      def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer
-        t match {
-          case t: This => true
-          case t: Select => isSafeQual(t.qualifier)
-          case t: Block => t.stats.forall(tpd.isPureExpr) && isSafeQual(t.expr)
-          case _ => false
-        }
-
-      if (isSafeQual(tree.qualifier))
-        ref(tree.symbol)
-      else
-        Block(tree.qualifier :: Nil, ref(tree.symbol))
-    }
-    else tree
-
-
   override def transformStats(trees: List[Tree])(using Context): List[Tree] =
     if (ctx.owner.is(Flags.Package)) {
       val (classes, others) = trees.partition(x => x.isInstanceOf[TypeDef] && x.symbol.isClass)
