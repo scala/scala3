@@ -4,7 +4,7 @@ import scala.quoted.staging._
 
 object Test {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = run {
     def test[T: Type](clazz: Quotes ?=> java.lang.Class[T]) = {

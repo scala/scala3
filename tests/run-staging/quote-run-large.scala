@@ -60,7 +60,7 @@ object Test {
       new Foo(5)
     }
 
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
 
     withQuotes {
       a.show // Force unpiclking of the expression

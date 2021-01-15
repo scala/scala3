@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Macros {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   inline def foo(i: => Int): Int = ${ fooImpl('i) }
   def fooImpl(i: Expr[Int])(using Quotes): Expr[Int] = {
     val y: Int = run(i)

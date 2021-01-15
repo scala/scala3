@@ -66,9 +66,9 @@ On the other hand `withQuotes` provides a `Quotes` without evaluating the expres
 ```scala
 package scala.quoted.staging
 
-def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
+def run[T](expr: Quotes ?=> Expr[T])(using Compiler): T = ...
 
-def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
+def withQuotes[T](thunk: Quotes ?=> T)(using Compiler): T = ...
 ```
 
 ## Create a new Scala 3 project with staging enabled
@@ -106,8 +106,8 @@ to get a source-like representation of the expression.
 ```scala
 import scala.quoted.staging._
 
-// make available the necessary toolbox for runtime code generation
-given Toolbox = Toolbox.make(getClass.getClassLoader)
+// make available the necessary compiler for runtime code generation
+given Compiler = Compiler.make(getClass.getClassLoader)
 
 val f: Array[Int] => Int = run {
    val stagedSum: Expr[Array[Int] => Int] =

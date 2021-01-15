@@ -14,7 +14,7 @@ object Arrays {
 }
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     import Arrays._
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}

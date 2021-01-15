@@ -5,7 +5,7 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     def runAndPrint[T](expr: Quotes ?=> Expr[T]): Unit = println(run(expr))
 
     runAndPrint(Expr(true))

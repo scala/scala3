@@ -3,7 +3,7 @@ import scala.quoted.staging._
 import scala.util.control.NonLocalReturns._
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit =
     try run {returning('{ { (x: Int) => ${ throwReturn('x) }} apply 0 })}
     catch {

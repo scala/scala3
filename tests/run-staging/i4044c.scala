@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 class Foo {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def foo: Unit = withQuotes {
     val q = '{ ${ '{ ${ '{ 5 } } } } }
     println(q.show)
