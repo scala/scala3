@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg/i8032.scala:1:15 --------------------------------------------------------------
+1 |val x: 1 | 2 = 3 // error
+  |               ^
+  |               Found:    (3 : Int)
+  |               Required: (1 : Int) | (2 : Int)
+-- [E008] Not Found Error: tests/neg/i8032.scala:3:12 ------------------------------------------------------------------
+3 |val y = ???.map // error
+  |        ^^^^^^^
+  |        value map is not a member of Nothing

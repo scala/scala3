@@ -492,12 +492,14 @@ object Implicits:
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
-    override def whyNoConversion(using Context): String = {
-      val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
-      i"""
-         |Note that implicit $what cannot be applied because they are ambiguous;
-         |$explanation"""
-    }
+    override def whyNoConversion(using Context): String =
+      if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
+        ""
+      else
+        val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
+        i"""
+           |Note that implicit $what cannot be applied because they are ambiguous;
+           |$explanation"""
   }
 
   class MismatchedImplicit(ref: TermRef,
