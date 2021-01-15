@@ -68,14 +68,19 @@ trait TypesSupport:
     case List(single) => single
     case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
 
-  // weird name fot type-erasure purposes
-  private def isRepeatedTerm(term: Term) =
-    // For some reason annotation.tpe.typeSymbol != defn.RepeatedParamClass
-    // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
-    term.tpe.typeSymbol.toString == "class Repeated"
+  private def isRepeatedAnnotation(term: Term) =
+    term.tpe match
+      case t: TypeRef => t.name == "Repeated" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "internal" => true
+        case _ => false
+      case _ => false
 
-  private def isRepeatedTypeRepr(typeRepr: TypeRepr) =
-    typeRepr.typeSymbol.toString == "class <repeated>"
+  private def isRepeated(typeRepr: TypeRepr) =
+    typeRepr match
+      case t: TypeRef => t.name == "<repeated>" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "scala" => true
+        case _ => false
+      case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
   private def inner(tp: TypeRepr): List[JProjection] =
@@ -90,9 +95,9 @@ trait TypesSupport:
       case ConstantType(constant) =>
         texts(constant.show)
       case ThisType(tpe) => inner(tpe)
-      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedTerm(annotation) =>
+      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
         inner(tpe) :+ text("*")
-      case AppliedType(repeatedClass, Seq(tpe)) if isRepeatedTypeRepr(repeatedClass) =>
+      case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe) :+ text("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
@@ -174,10 +179,10 @@ trait TypesSupport:
             case Seq(rtpe) =>
               text("() => ") :: inner(rtpe)
             case Seq(arg, rtpe) =>
-              val ar = arg match
-                case a: ByNameType => texts("(") ++ inner(a) ++ texts(")")
-                case o => inner(o)
-              ar ++ texts(" => ") ++ inner(rtpe)
+              val partOfSignature = arg match
+                case byName: ByNameType => texts("(") ++ inner(byName) ++ texts(")")
+                case _ => inner(arg)
+              partOfSignature ++ texts(" => ") ++ inner(rtpe)
             case args =>
               texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
         else if t.isTupleType then

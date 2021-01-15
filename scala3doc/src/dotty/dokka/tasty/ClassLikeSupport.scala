@@ -337,9 +337,9 @@ trait ClassLikeSupport:
     val memberInfo = unwrapMemberInfo(c, methodSymbol)
 
     val basicKind: Kind.Def = Kind.Def(
-      genericTypes.map(mkTypeArgument(_, Some(memberInfo.genericTypes))),
+      genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
       paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.map(mkParameter(_, paramPrefix, memberInfo = Some(memberInfo.paramLists(index)))), if isUsingModifier(pList) then "using " else "")
+        ParametersList(pList.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList) then "using " else "")
       }
     )
 
@@ -380,7 +380,7 @@ trait ClassLikeSupport:
     prefix: Symbol => String = _ => "",
     isExtendedSymbol: Boolean = false,
     isGrouped: Boolean = false,
-    memberInfo: Option[Map[String, TypeRepr]] = None) =
+    memberInfo: Map[String, TypeRepr] = Map.empty) =
       val inlinePrefix = if argument.symbol.flags.is(Flags.Inline) then "inline " else ""
       val nameIfNotSynthetic = Option.when(!argument.symbol.flags.is(Flags.Synthetic))(argument.symbol.normalizedName)
       val name = argument.symbol.normalizedName
@@ -389,12 +389,12 @@ trait ClassLikeSupport:
         inlinePrefix + prefix(argument.symbol),
         nameIfNotSynthetic,
         argument.symbol.dri,
-        memberInfo.flatMap(_.get(name)).fold(argument.tpt.dokkaType.asSignature)(_.dokkaType.asSignature),
+        memberInfo.get(name).fold(argument.tpt.dokkaType.asSignature)(_.dokkaType.asSignature),
         isExtendedSymbol,
         isGrouped
       )
 
-  def mkTypeArgument(argument: TypeDef, memberInfo: Option[Map[String, TypeBounds]] = None): TypeParameter =
+  def mkTypeArgument(argument: TypeDef, memberInfo: Map[String, TypeBounds] = Map.empty): TypeParameter =
     val variancePrefix: "+" | "-" | "" =
       if  argument.symbol.flags.is(Flags.Covariant) then "+"
       else if argument.symbol.flags.is(Flags.Contravariant) then "-"
@@ -405,7 +405,7 @@ trait ClassLikeSupport:
       variancePrefix,
       name,
       argument.symbol.dri,
-      memberInfo.flatMap(_.get(name)).fold(argument.rhs.dokkaType.asSignature)(_.dokkaType.asSignature)
+      memberInfo.get(name).fold(argument.rhs.dokkaType.asSignature)(_.dokkaType.asSignature)
     )
 
   def parseTypeDef(typeDef: TypeDef): Member =
