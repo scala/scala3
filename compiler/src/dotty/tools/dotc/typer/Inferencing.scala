@@ -38,6 +38,9 @@ object Inferencing {
     result
   }
 
+  /** Try to fully define `tp`. Return whether constraint has changed.
+   *  Any changed constraint is kept.
+   */
   def canDefineFurther(tp: Type)(using Context): Boolean =
     val prevConstraint = ctx.typerState.constraint
     isFullyDefined(tp, force = ForceDegree.all)

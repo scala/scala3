@@ -570,10 +570,11 @@ class Typer extends Namer
       else if qual.tpe.derivesFrom(defn.DynamicClass)
         && selName.isTermName && !isDynamicExpansion(tree)
       then
+        val tree2 = cpy.Select(tree0)(untpd.TypedSplice(qual), selName)
         if pt.isInstanceOf[FunOrPolyProto] || pt == AssignProto then
-          assignType(tree, TryDynamicCallType)
+          assignType(tree2, TryDynamicCallType)
         else
-          typedDynamicSelect(tree0, Nil, pt)
+          typedDynamicSelect(tree2, Nil, pt)
       else
         assignType(tree,
           rawType match
