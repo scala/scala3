@@ -700,7 +700,6 @@ trait Checking {
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
       pt.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {

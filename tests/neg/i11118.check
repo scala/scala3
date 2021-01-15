@@ -1,0 +1,4 @@
+-- Error: tests/neg/i11118.scala:2:6 -----------------------------------------------------------------------------------
+2 |  val (a,b) = (1,2,3) // error
+  |      ^
+  |      this case is unreachable since type (Int, Int, Int) is not a subclass of class Tuple2
