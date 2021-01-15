@@ -247,7 +247,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }.close
 
   def toTextSingleton(tp: SingletonType): Text =
-    "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    tp match {
+      case ConstantType(value) => toText(value)
+      case tp => "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    }
 
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(name: Name, tp: Type) =

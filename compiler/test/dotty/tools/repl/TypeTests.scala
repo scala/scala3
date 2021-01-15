@@ -26,4 +26,12 @@ class TypeTests extends ReplTest {
     run(":type")
     assertEquals(":type <expression>", storedOutput().trim)
   }
+
+  @Test def typeOfUnion =
+    fromInitialState { implicit s => run("val bit: 0|1 = 1") }
+    .andThen { implicit s =>
+      storedOutput() // discard output
+      run(":type bit")
+      assertEquals("0 | 1", storedOutput().trim)
+    }
 }
