@@ -90,17 +90,27 @@ object Symbols {
     @targetName("invalidSymbol")
     def symbol(implicit ev: DontUseSymbolOnSymbol): Nothing
 
+    @targetName("Symbol_isTerm")
     def isTerm(using Context): Boolean
+
+    @targetName("Symbol_isType")
     def isType(using Context): Boolean
     def asTerm(using Context): TermSymbol
     def asType(using Context): TypeSymbol
+
+    @targetName("Symbol_isClass")
     def isClass: Boolean
+
+    @targetName("Symbol_asClass")
     def asClass: ClassSymbol
 
     def isPrivate(using Context): Boolean
     def isPatternBound(using Context): Boolean
+
+    @targetName("Symbol_isStatic")
     def isStatic(using Context): Boolean
 
+    @targetName("Symbol_name")
     def name(using Context): ThisName
     def signature(using Context): Signature
 
@@ -274,10 +284,14 @@ object Symbols {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
+    @targetName("Symbol_isTerm")
     final def isTerm(using Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isTerm
+
+    @targetName("Symbol_isType")
     final def isType(using Context): Boolean =
       (if (defRunId == ctx.runId) lastDenot else denot).isType
+
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -287,7 +301,10 @@ object Symbols {
       asInstanceOf[TypeSymbol]
     }
 
+    @targetName("Symbol_isClass")
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
+
+    @targetName("Symbol_asClass")
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     /** Test whether symbol is private. This
@@ -312,6 +329,7 @@ object Symbols {
         Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
+    @targetName("Symbol_isStatic")
     final def isStatic(using Context): Boolean =
       lastDenot != null && lastDenot.initial.isStatic
 
@@ -368,6 +386,7 @@ object Symbols {
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** The current name of this symbol */
+    @targetName("Symbol_name")
     final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
 
     /** The source or class file from which this class or
