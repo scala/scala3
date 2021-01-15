@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.typer.ConstFold
 
 /**
   * MiniPhase to transform s and raw string interpolators from using StringContext to string
@@ -162,6 +163,18 @@ class StringInterpolatorOpt extends MiniPhase {
           }
       }
     else
-      tree
+      tree.tpe match
+        case _: ConstantType => tree
+        case _ =>
+          ConstFold.Apply(tree).tpe match
+            case ConstantType(x) => Literal(x).withSpan(tree.span).ensureConforms(tree.tpe)
+            case _ => tree
   }
+
+  override def transformSelect(tree: Select)(using Context): Tree = {
+    ConstFold.Select(tree).tpe match
+      case ConstantType(x) => Literal(x).withSpan(tree.span).ensureConforms(tree.tpe)
+      case _ => tree
+  }
+
 }

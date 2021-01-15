@@ -73,8 +73,8 @@ ConstantType(IntConstant(2))
 Inlined(None, Nil, Try(Literal(IntConstant(3)), List(CaseDef(Ident("_"), None, Block(Nil, Literal(UnitConstant())))), Some(Literal(UnitConstant()))))
 OrType(ConstantType(IntConstant(3)), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit"))
 
-Inlined(None, Nil, Apply(Select(Literal(StringConstant("a")), "=="), List(Literal(StringConstant("b")))))
-TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Boolean")
+Inlined(None, Nil, Literal(BooleanConstant(false)))
+ConstantType(BooleanConstant(false))
 
 Inlined(None, Nil, Apply(Select(New(TypeIdent("Object")), "<init>"), Nil))
 TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")
