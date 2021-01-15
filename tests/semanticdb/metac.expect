@@ -971,7 +971,7 @@ Occurrences:
 [54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
 [54:23..54:23): -> scala/Some.apply().
-[54:27..54:27): -> _empty_/Enums.`<:<`.given_T().
+[54:34..54:34): -> _empty_/Enums.`<:<`.given_T().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
 [56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
 [56:14..56:18): mass <- _empty_/Enums.Planet#mass.

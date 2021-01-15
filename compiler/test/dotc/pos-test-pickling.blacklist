@@ -55,3 +55,6 @@ annot-bootstrap.scala
 # interaction with Scala-2's implicitly
 i9793.scala
 
+# lazy_implicit symbol has different position after pickling
+i8182.scala
+
