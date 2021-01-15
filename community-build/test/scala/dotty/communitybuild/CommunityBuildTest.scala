@@ -140,7 +140,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scalap = projects.scalap.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
-  @Test def ScalaPB = projects.ScalaPB.run()
+  @Test def scalaPB = projects.scalaPB.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()

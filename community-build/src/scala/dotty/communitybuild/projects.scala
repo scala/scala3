@@ -324,7 +324,7 @@ object projects:
     sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
   )
 
-  lazy val ScalaPB = SbtCommunityProject(
+  lazy val scalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
     // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
@@ -630,6 +630,67 @@ object projects:
 
 end projects
 
-def allProjects = projects.reflectedFields.of[CommunityProject].sortBy(_.project)
+def allProjects = List(
+  projects.utest,
+  projects.sourcecode,
+  projects.oslib,
+  projects.oslibWatch,
+  projects.ujson,
+  projects.upickle,
+  projects.upickleCore,
+  projects.geny,
+  projects.fansi,
+  projects.pprint,
+  projects.requests,
+  projects.scas,
+  projects.intent,
+  projects.algebra,
+  projects.scalacheck,
+  projects.scalatest,
+  projects.scalatestplusScalacheck,
+  projects.scalatestplusJunit,
+  projects.scalaXml,
+  projects.scalap,
+  projects.betterfiles,
+  projects.scalaPB,
+  projects.minitest,
+  projects.fastparse,
+  projects.stdLib213,
+  projects.shapeless,
+  projects.xmlInterpolator,
+  projects.effpi,
+  projects.sconfig,
+  projects.zio,
+  projects.munit,
+  projects.scodecBits,
+  projects.scodec,
+  projects.scalaParserCombinators,
+  projects.dottyCpsAsync,
+  projects.scalaz,
+  projects.endpoints4s,
+  projects.catsEffect2,
+  projects.catsEffect3,
+  projects.scalaParallelCollections,
+  projects.scalaCollectionCompat,
+  projects.verify,
+  projects.discipline,
+  projects.disciplineMunit,
+  projects.disciplineSpecs2,
+  projects.simulacrumScalafixAnnotations,
+  projects.cats,
+  projects.catsMtl,
+  projects.coop,
+  projects.scissEqual,
+  projects.scissFingerTree,
+  projects.scissLog,
+  projects.scissModel,
+  projects.scissNumbers,
+  projects.scissSerial,
+  projects.scissAsyncFile,
+  projects.scissSpan,
+  projects.scalaSTM,
+  projects.scissLucre,
+  projects.izumiReflect,
+)
 
 lazy val projectMap = allProjects.map(p => p.project -> p).toMap
