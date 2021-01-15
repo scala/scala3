@@ -2957,8 +2957,7 @@ class Typer extends Namer
             if isExtension then return found
             else
               checkImplicitConversionUseOK(found)
-              val qual1 = withoutMode(Mode.ImplicitsEnabled)(adapt(found, selProto, locked))
-              return typedSelect(tree, pt, qual1)
+              return typedSelect(tree, pt, found)
           case failure: SearchFailure =>
             if failure.isAmbiguous then
               return (
