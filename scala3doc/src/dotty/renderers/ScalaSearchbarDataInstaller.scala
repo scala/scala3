@@ -60,11 +60,8 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
     pages.addOne(p.getName + link, PageEntry(p.getName, p.getName, link, ""))
   }
 
-  private def createAcronym(s: String): Option[String] =
-    s.headOption.filter(_.isUpper).map(_ => s.filter(_.isUpper))
-
   override def generatePagesList(): String = {
     val mapper = jacksonObjectMapper()
-    val pagesList = pages.values.map(p => createSearchRecord(p.signature, p.pkg, p.link, (List(p.name) ++ createAcronym(p.name)).asJava)).toList.asJava
+    val pagesList = pages.values.map(p => createSearchRecord(p.signature, p.pkg, p.link, (List(p.name)).asJava)).toList.asJava
     mapper.writeValueAsString(pagesList)
   }

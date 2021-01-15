@@ -4,6 +4,7 @@ import org.scalajs.dom._
 import org.scalajs.dom.html.Input
 
 class SearchbarComponent(val callback: (String) => List[PageEntry]):
+  val resultsChunkSize = 100
   extension (p: PageEntry)
     def toHTML =
       val wrapper = document.createElement("div").asInstanceOf[html.Div]
@@ -28,22 +29,22 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
-    result.take(100).foreach(fragment.appendChild)
+    result.take(resultsChunkSize).foreach(fragment.appendChild)
     resultsDiv.appendChild(fragment)
     def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
       resultsDiv.onscroll = (event: Event) => {
           if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
           {
               val fragment = document.createDocumentFragment()
-              result.take(100).foreach(fragment.appendChild)
+              result.take(resultsChunkSize).foreach(fragment.appendChild)
               resultsDiv.appendChild(fragment)
-              loadMoreResults(result.drop(100))
+              loadMoreResults(result.drop(resultsChunkSize))
           }
       }
     }
-    loadMoreResults(result.drop(100))
+    loadMoreResults(result.drop(resultsChunkSize))
 
-  private val logoClick: html.Div =
+  private val searchIcon: html.Div =
     val span = document.createElement("span").asInstanceOf[html.Span]
     span.innerHTML = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M19.64 18.36l-6.24-6.24a7.52 7.52 0 10-1.28 1.28l6.24 6.24zM7.5 13.4a5.9 5.9 0 115.9-5.9 5.91 5.91 0 01-5.9 5.9z"></path></svg>"""
     span.id = "scala3doc-search"
@@ -87,7 +88,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
   private val rootDiv: html.Div =
     val element = document.createElement("div").asInstanceOf[html.Div]
     element.addEventListener("mousedown", (e: Event) => e.stopPropagation())
-    logoClick.addEventListener("mousedown", (e: Event) => e.stopPropagation())
+    searchIcon.addEventListener("mousedown", (e: Event) => e.stopPropagation())
     document.body.addEventListener("mousedown", (e: Event) =>
       if (document.body.contains(element)) {
         document.body.removeChild(element)
