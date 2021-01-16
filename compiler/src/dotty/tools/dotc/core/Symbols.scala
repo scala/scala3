@@ -45,6 +45,9 @@ object Symbols {
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
 
+  extension (sym: Symbol) def toSymbolImpl: SymbolImpl = sym
+  extension (sym: SymbolImpl) def fromSymbolImpl: Symbol = sym
+
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */

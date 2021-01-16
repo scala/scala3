@@ -757,7 +757,7 @@ object Types {
         }
         else
           val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
+            new JointRefDenotation(NoSymbol.toSymbolImpl, rinfo, Period.allInRun(ctx.runId), pre),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
@@ -814,7 +814,7 @@ object Types {
       def goSuper(tp: SuperType) = go(tp.underlying) match {
         case d: JointRefDenotation =>
           typr.println(i"redirecting super.$name from $tp to ${d.symbol.showLocated}")
-          new UniqueRefDenotation(d.symbol, tp.memberInfo(d.symbol), d.validFor, pre)
+          new UniqueRefDenotation(d.symbol.toSymbolImpl, tp.memberInfo(d.symbol), d.validFor, pre)
         case d => d
       }
 
@@ -4684,7 +4684,7 @@ object Types {
         // also other information about the named type (e.g. bounds).
         contains(
           TypeRef(tp.prefix, cls)
-            .withDenot(new UniqueRefDenotation(cls, tp, cls.validFor, tp.prefix)))
+            .withDenot(new UniqueRefDenotation(cls.toSymbolImpl, tp, cls.validFor, tp.prefix)))
       case _ =>
         lo <:< tp && tp <:< hi
     }

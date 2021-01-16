@@ -33,14 +33,16 @@ object SymDenotations {
    *  during a period.
    */
   class SymDenotation private[SymDenotations] (
-    symbol: Symbol,
-    final val maybeOwner: Symbol,
+    _symbol: SymbolImpl,
+    final val _maybeOwner: SymbolImpl,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol = NoSymbol) extends SingleDenotation(symbol, initInfo) {
+    initPrivateWithin: SymbolImpl = NoSymbol.toSymbolImpl) extends SingleDenotation(_symbol, initInfo) {
 
     //assert(symbol.id != 4940, name)
+
+    final val maybeOwner: Symbol = _maybeOwner.fromSymbolImpl
 
     override def hasUniqueSym: Boolean = exists
 
@@ -54,7 +56,7 @@ object SymDenotations {
     // ------ Getting and setting fields -----------------------------
 
     private var myFlags: FlagSet = adaptFlags(initFlags)
-    private var myPrivateWithin: Symbol = initPrivateWithin
+    private var myPrivateWithin: Symbol = initPrivateWithin.fromSymbolImpl
     private var myAnnotations: List[Annotation] = Nil
     private var myParamss: List[List[Symbol]] = Nil
 
@@ -1498,7 +1500,7 @@ object SymDenotations {
     // ----- copies and transforms  ----------------------------------------
 
     protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+      new UniqueRefDenotation(s.toSymbolImpl, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -2208,13 +2210,13 @@ object SymDenotations {
   /** The contents of a class definition during a period
    */
   class ClassDenotationImpl private[SymDenotations] (
-    symbol: Symbol,
-    maybeOwner: Symbol,
+    _symbol: SymbolImpl,
+    _maybeOwner: SymbolImpl,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol)
-    extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin),
+    initPrivateWithin: SymbolImpl)
+    extends SymDenotation(_symbol, _maybeOwner, name, initFlags, initInfo, initPrivateWithin),
       ClassDenotation
 
   /** The denotation of a package class.
@@ -2381,18 +2383,18 @@ object SymDenotations {
   end PackageClassDenotation
 
   class PackageClassDenotationImpl private[SymDenotations] (
-    symbol: Symbol,
-    ownerIfExists: Symbol,
+    _symbol: SymbolImpl,
+    _maybeOwner: SymbolImpl,
     name: Name,
     initFlags: FlagSet,
     initInfo: Type,
-    initPrivateWithin: Symbol)
+    initPrivateWithin: SymbolImpl)
     extends
-      ClassDenotationImpl(symbol, ownerIfExists, name, initFlags, initInfo, initPrivateWithin),
+      ClassDenotationImpl(_symbol, _maybeOwner, name, initFlags, initInfo, initPrivateWithin),
       PackageClassDenotation
 
   @sharable object NoDenotation
-  extends SymDenotation(NoSymbol, NoSymbol, "<none>".toTermName, Permanent, NoType) {
+  extends SymDenotation(NoSymbol.toSymbolImpl, NoSymbol.toSymbolImpl, "<none>".toTermName, Permanent, NoType) {
     override def isType: Boolean = false
     override def isTerm: Boolean = false
     override def exists: Boolean = false
@@ -2434,9 +2436,9 @@ object SymDenotations {
     initPrivateWithin: Symbol = NoSymbol)(using Context): SymDenotation = {
     val result =
       if (symbol.isClass)
-        if (initFlags.is(Package)) new PackageClassDenotationImpl(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-        else new ClassDenotationImpl(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
-      else new SymDenotation(symbol, owner, name, initFlags, initInfo, initPrivateWithin)
+        if (initFlags.is(Package)) new PackageClassDenotationImpl(symbol.toSymbolImpl, owner.toSymbolImpl, name, initFlags, initInfo, initPrivateWithin.toSymbolImpl)
+        else new ClassDenotationImpl(symbol.toSymbolImpl, owner.toSymbolImpl, name, initFlags, initInfo, initPrivateWithin.toSymbolImpl)
+      else new SymDenotation(symbol.toSymbolImpl, owner.toSymbolImpl, name, initFlags, initInfo, initPrivateWithin.toSymbolImpl)
     result.validFor = currentStablePeriod
     result
   }

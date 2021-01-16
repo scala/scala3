@@ -176,8 +176,10 @@ object Denotations {
    *
    *  @param symbol  The referencing symbol, or NoSymbol is none exists
    */
-  abstract class Denotation(val symbol: Symbol, protected var myInfo: Type) extends PreDenotation with printing.Showable {
+  abstract class Denotation(_symbol: SymbolImpl, protected var myInfo: Type) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
+
+    val symbol: Symbol = _symbol.fromSymbolImpl
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -477,7 +479,7 @@ object Denotations {
             val jointInfo = infoMeet(info1, info2, safeIntersection)
             if jointInfo.exists then
               val sym = if symScore >= 0 then sym1 else sym2
-              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+              JointRefDenotation(sym.toSymbolImpl, jointInfo, denot1.validFor & denot2.validFor, pre)
             else if symScore == 2 then denot1
             else if symScore == -2 then denot2
             else
@@ -568,7 +570,7 @@ object Denotations {
   end infoMeet
 
   /** A non-overloaded denotation */
-  abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
+  abstract class SingleDenotation(_symbol: SymbolImpl, initInfo: Type) extends Denotation(_symbol, initInfo) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
 
     final def name(using Context): Name = symbol.name
@@ -1077,34 +1079,34 @@ object Denotations {
     }
   }
 
-  abstract class NonSymSingleDenotation(symbol: Symbol, initInfo: Type, override val prefix: Type) extends SingleDenotation(symbol, initInfo) {
+  abstract class NonSymSingleDenotation(_symbol: SymbolImpl, initInfo: Type, override val prefix: Type) extends SingleDenotation(_symbol, initInfo) {
     def infoOrCompleter: Type = initInfo
     def isType: Boolean = infoOrCompleter.isInstanceOf[TypeType]
   }
 
   class UniqueRefDenotation(
-    symbol: Symbol,
+    _symbol: SymbolImpl,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type) extends NonSymSingleDenotation(_symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
     protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+      new UniqueRefDenotation(s.toSymbolImpl, i, validFor, pre)
   }
 
   class JointRefDenotation(
-    symbol: Symbol,
+    _symbol: SymbolImpl,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type) extends NonSymSingleDenotation(_symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
     protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre)
+      new JointRefDenotation(s.toSymbolImpl, i, validFor, pre)
   }
 
-  class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
+  class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol.toSymbolImpl, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
@@ -1171,7 +1173,7 @@ object Denotations {
 
   /** An overloaded denotation consisting of the alternatives of both given denotations.
    */
-  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol, NoType) with MultiPreDenotation {
+  case class MultiDenotation(denot1: Denotation, denot2: Denotation) extends Denotation(NoSymbol.toSymbolImpl, NoType) with MultiPreDenotation {
     final def infoOrCompleter: Type = multiHasNot("info")
     final def validFor: Period = denot1.validFor & denot2.validFor
     final def isType: Boolean = false
