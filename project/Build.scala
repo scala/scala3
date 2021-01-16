@@ -1256,6 +1256,7 @@ object Build {
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
         "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
       // Pass along ivy home and repositories settings to sbt instances run from the tests
