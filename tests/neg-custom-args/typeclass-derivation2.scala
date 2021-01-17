@@ -26,8 +26,8 @@ object TypeLevel {
     val label: Array[Array[String]] =
       initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
 
-    private final val elemSeparator = '\000'
-    private final val caseSeparator = '\001'
+    private final val elemSeparator = '\u0000'
+    private final val caseSeparator = '\u0001'
 
     private def initLabels(start: Int, cur: Int,
                            elems: mutable.ArrayBuffer[String],
@@ -135,7 +135,7 @@ object Lst {
     Shape.Case[Nil.type, EmptyTuple]
   )]
 
-  val genericClass = new GenericClass("Cons\000hd\000tl\001Nil")
+  val genericClass = new GenericClass("Cons\u0000hd\u0000tl\u0001Nil")
   import genericClass.mirror
 
   val NilMirror = mirror(1)
@@ -165,7 +165,7 @@ object Pair {
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
-  val genericClass = new GenericClass("Pair\000x\000y")
+  val genericClass = new GenericClass("Pair\u0000x\u0000y")
   import genericClass.mirror
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
@@ -189,7 +189,7 @@ object Either {
     Shape.Case[Right[R], R *: EmptyTuple]
   )]
 
-  val genericClass = new GenericClass("Left\000x\001Right\000x")
+  val genericClass = new GenericClass("Left\u0000x\u0001Right\u0000x")
   import genericClass.mirror
 
   implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
