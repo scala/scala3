@@ -36,7 +36,7 @@ import scala.annotation.internal.sharable
 import config.Printers.typr
 import annotation.targetName
 
-object Symbols {
+object Symbols:
 
   opaque type Symbol >: Null <: SymbolDecl = SymbolImpl
   opaque type ClassSymbol >: Null <: Symbol & ClassSymbolDecl = ClassSymbolImpl
@@ -102,19 +102,14 @@ object Symbols {
     def asTerm(using Context): TermSymbol
     def asType(using Context): TypeSymbol
 
-    @targetName("Symbol_isClass")
     def isClass: Boolean
-
-    @targetName("Symbol_asClass")
     def asClass: ClassSymbol
 
     def isPrivate(using Context): Boolean
     def isPatternBound(using Context): Boolean
 
-    @targetName("Symbol_isStatic")
     def isStatic(using Context): Boolean
 
-    @targetName("Symbol_name")
     def name(using Context): ThisName
     def signature(using Context): Signature
 
@@ -305,10 +300,8 @@ object Symbols {
       asInstanceOf[TypeSymbol]
     }
 
-    @targetName("Symbol_isClass")
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
 
-    @targetName("Symbol_asClass")
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     /** Test whether symbol is private. This
@@ -333,7 +326,6 @@ object Symbols {
         Signature.NotAMethod
 
     /** Special cased here, because it may be used on naked symbols in substituters */
-    @targetName("Symbol_isStatic")
     final def isStatic(using Context): Boolean =
       lastDenot != null && lastDenot.initial.isStatic
 
@@ -390,7 +382,6 @@ object Symbols {
     def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
 
     /** The current name of this symbol */
-    @targetName("Symbol_name")
     final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
 
     /** The source or class file from which this class or
@@ -1048,4 +1039,4 @@ object Symbols {
   }
 
   def requiredMethodRef(path: PreName)(using Context): TermRef = requiredMethod(path).termRef
-}
+end Symbols

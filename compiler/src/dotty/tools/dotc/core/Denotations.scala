@@ -179,7 +179,9 @@ object Denotations {
   abstract class Denotation(_symbol: SymbolImpl, protected var myInfo: Type) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
-    val symbol: Symbol = _symbol.fromSymbolImpl
+    val symbol: Symbol =
+      if _symbol == null then this.asInstanceOf[Symbol]
+      else _symbol.fromSymbolImpl
 
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
@@ -573,7 +575,7 @@ object Denotations {
   abstract class SingleDenotation(_symbol: SymbolImpl, initInfo: Type) extends Denotation(_symbol, initInfo) {
     protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
 
-    final def name(using Context): Name = symbol.name
+    def name(using Context): Name = symbol.name
 
     /** If this is not a SymDenotation: The prefix under which the denotation was constructed.
      *  NoPrefix for SymDenotations.
@@ -773,7 +775,7 @@ object Denotations {
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
         case _ =>
 
-      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere)
+      def escapeToNext = nextDefined.ensuring(_.validFor != Nowhere, name)
 
       def toNewRun =
         util.Stats.record("current.bringForward")

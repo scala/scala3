@@ -32,7 +32,7 @@ object SymDenotations {
   /** A sym-denotation represents the contents of a definition
    *  during a period.
    */
-  class SymDenotation private[SymDenotations] (
+  class SymDenotation private[core] (
     _symbol: SymbolImpl,
     final val _maybeOwner: SymbolImpl,
     final val name: Name,
@@ -543,7 +543,7 @@ object SymDenotations {
     final def isRealClass(using Context): Boolean = isClass && !is(Trait)
 
     /** Cast to class denotation */
-    final def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
+    def asClass: ClassDenotation = asInstanceOf[ClassDenotation]
 
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
@@ -2209,7 +2209,7 @@ object SymDenotations {
 
   /** The contents of a class definition during a period
    */
-  class ClassDenotationImpl private[SymDenotations] (
+  class ClassDenotationImpl private[core] (
     _symbol: SymbolImpl,
     _maybeOwner: SymbolImpl,
     name: Name,
@@ -2382,7 +2382,7 @@ object SymDenotations {
     }
   end PackageClassDenotation
 
-  class PackageClassDenotationImpl private[SymDenotations] (
+  class PackageClassDenotationImpl private[core] (
     _symbol: SymbolImpl,
     _maybeOwner: SymbolImpl,
     name: Name,
