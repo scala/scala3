@@ -38,15 +38,20 @@ import annotation.targetName
 
 object Symbols:
 
-  opaque type Symbol >: Null <: SymbolDecl = SymbolImpl
-  opaque type ClassSymbol >: Null <: Symbol & ClassSymbolDecl = ClassSymbolImpl
-  opaque type PackageSymbol >: Null <: ClassSymbol = PackageClassSymbolImpl
+  object Vault:
+
+    opaque type Symbol >: Null <: SymbolDecl = SymbolImpl
+    opaque type ClassSymbol >: Null <: Symbol & ClassSymbolDecl = ClassSymbolImpl
+    opaque type PackageSymbol >: Null <: ClassSymbol = PackageClassSymbolImpl
+
+    extension (sym: Symbol) def toSymbolImpl: SymbolImpl = sym
+    extension (sym: SymbolImpl) def fromSymbolImpl: Symbol = sym
+
+  end Vault
+  export Vault._
 
   type TermSymbol = Symbol { type ThisName = TermName }
   type TypeSymbol = Symbol { type ThisName = TypeName }
-
-  extension (sym: Symbol) def toSymbolImpl: SymbolImpl = sym
-  extension (sym: SymbolImpl) def fromSymbolImpl: Symbol = sym
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
@@ -300,7 +305,7 @@ object Symbols:
       asInstanceOf[TypeSymbol]
     }
 
-    final def isClass: Boolean = isInstanceOf[ClassSymbol]
+    final def isClass: Boolean = isInstanceOf[ClassSymbol @unchecked]
 
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
@@ -332,7 +337,7 @@ object Symbols:
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
       if (this.owner.isClass) {
-        this.owner.asClass.enter(this)
+        this.owner.asClass.enter(this.fromSymbolImpl)
         if (this.is(Module)) this.owner.asClass.enter(this.moduleClass)
       }
       this
@@ -360,7 +365,7 @@ object Symbols:
 
     /** Remove symbol from scope of owning class */
     final def drop()(using Context): Unit = {
-      this.owner.asClass.delete(this)
+      this.owner.asClass.delete(this.fromSymbolImpl)
       if (this.is(Module)) this.owner.asClass.delete(this.moduleClass)
     }
 
@@ -379,7 +384,7 @@ object Symbols:
       }
 
     /** If this symbol satisfies predicate `p` this symbol, otherwise `NoSymbol` */
-    def filter(p: Symbol => Boolean): Symbol = if (p(this)) this else NoSymbol
+    def filter(p: Symbol => Boolean): Symbol = if (p(this.fromSymbolImpl)) this.fromSymbolImpl else NoSymbol
 
     /** The current name of this symbol */
     final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
@@ -433,9 +438,9 @@ object Symbols:
      *
      *  @see enclosingSourceSymbols
      */
-    final def sourceSymbol(using Context): SymbolImpl =
+    final def sourceSymbol(using Context): Symbol =
       if (!denot.exists)
-        this
+        this.fromSymbolImpl
       else if (denot.is(ModuleVal))
         this.moduleClass.sourceSymbol // The module val always has a zero-extent position
       else if (denot.is(Synthetic)) {
@@ -447,7 +452,7 @@ object Symbols:
       }
       else if (denot.isPrimaryConstructor)
         denot.owner.sourceSymbol
-      else this
+      else this.fromSymbolImpl
 
     /** The position of this symbol, or NoSpan if the symbol was not loaded
      *  from source or from TASTY. This is always a zero-extent position.
@@ -468,7 +473,7 @@ object Symbols:
     def isTypeParam(using Context): Boolean = denot.is(TypeParam)
     def paramName(using Context): ThisName = name.asInstanceOf[ThisName]
     def paramInfo(using Context): Type = denot.info
-    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(this)
+    def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(this.fromSymbolImpl)
     def paramInfoOrCompleter(using Context): Type = denot.infoOrCompleter
     def paramVariance(using Context): Variance = denot.variance
     def paramRef(using Context): TypeRef = denot.typeRef
@@ -482,14 +487,14 @@ object Symbols:
       if (lastDenot == null) s"Naked$prefixString#$id"
       else lastDenot.toString// + "#" + id // !!! DEBUG
 
-    def toText(printer: Printer): Text = printer.toText(this)
+    def toText(printer: Printer): Text = printer.toText(this.fromSymbolImpl)
 
-    def showLocated(using Context): String = ctx.printer.locatedText(this).show
-    def showExtendedLocation(using Context): String = ctx.printer.extendedLocationText(this).show
-    def showDcl(using Context): String = ctx.printer.dclText(this).show
-    def showKind(using Context): String = ctx.printer.kindString(this)
-    def showName(using Context): String = ctx.printer.nameString(this)
-    def showFullName(using Context): String = ctx.printer.fullNameString(this)
+    def showLocated(using Context): String = ctx.printer.locatedText(this.fromSymbolImpl).show
+    def showExtendedLocation(using Context): String = ctx.printer.extendedLocationText(this.fromSymbolImpl).show
+    def showDcl(using Context): String = ctx.printer.dclText(this.fromSymbolImpl).show
+    def showKind(using Context): String = ctx.printer.kindString(this.fromSymbolImpl)
+    def showName(using Context): String = ctx.printer.nameString(this.fromSymbolImpl)
+    def showFullName(using Context): String = ctx.printer.fullNameString(this.fromSymbolImpl)
 
     override def hashCode(): Int = id // for debugging.
   }
@@ -567,7 +572,7 @@ object Symbols:
         if file != null && file.extension != "class" then
           mySource = ctx.getSource(file)
         else
-          mySource = defn.patchSource(this)
+          mySource = defn.patchSource(this.fromSymbolImpl)
           if !mySource.exists then
             mySource = atPhaseNoLater(flattenPhase) {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
@@ -592,7 +597,7 @@ object Symbols:
   val NoSymbol: Symbol = new SymbolImpl(NoCoord, 0) {
     override def associatedFile(using Context): AbstractFile = NoSource.file
     override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
-  }
+  }.fromSymbolImpl
   NoDenotation // force it in order to set `denot` field of NoSymbol
 
   extension [N <: Name](sym: Symbol { type ThisName = N })(using Context) {
@@ -621,9 +626,11 @@ object Symbols:
 
   /** Makes all denotation operations available on symbols */
   implicit def toDenot(sym: Symbol)(using Context): SymDenotation = sym.denot
+  implicit def toDenot2(sym: SymbolImpl)(using Context): SymDenotation = sym.denot
 
   /** Makes all class denotation operations available on class symbols */
   implicit def toClassDenot(cls: ClassSymbol)(using Context): ClassDenotation = cls.classDenot
+  implicit def toClassDenot2(cls: ClassSymbolImpl)(using Context): ClassDenotation = cls.classDenot
 
   /** The Definitions object */
   def defn(using Context): Definitions = ctx.definitions
@@ -665,11 +672,12 @@ object Symbols:
       coord: Coord = NoCoord,
       assocFile: AbstractFile = null)(using Context): ClassSymbol
   = {
-    val cls =
+    val cls = (
       if flags.is(Package) then
         new PackageClassSymbolImpl(ctx.base.nextSymId)
       else
         new ClassSymbolImpl(coord, assocFile, ctx.base.nextSymId)
+    ).fromSymbolImpl.asClass
     val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
     cls.denot = denot
     cls
