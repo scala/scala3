@@ -1146,6 +1146,7 @@ object Scanners {
       if (ch == '\\') {
         nextChar()
         if ('0' <= ch && ch <= '7') {
+          val start = charOffset - 2
           val leadch: Char = ch
           var oct: Int = digit2int(ch, 8)
           nextChar()
@@ -1157,6 +1158,8 @@ object Scanners {
               nextChar()
             }
           }
+          val alt = if oct == LF then raw"\n" else f"\u$oct%04x"
+          error(s"octal escape literals are unsupported: use $alt instead", start)
           putChar(oct.toChar)
         }
         else if (ch == 'u' || ch == 'U') {
