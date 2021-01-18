@@ -2089,25 +2089,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def <:<(that: TypeRepr): Boolean
 
         /** Widen from singleton type to its underlying non-singleton
-        *  base type by applying one or more `underlying` dereferences,
-        *  Also go from => T to T.
-        *  Identity for all other types. Example:
-        *
-        *  class Outer { class C ; val x: C }
-        *  def o: Outer
-        *  <o.x.type>.widen = o.C
-        */
+         *  base type by applying one or more `underlying` dereferences,
+         *  Also go from => T to T.
+         *  Identity for all other types. Example:
+         *
+         *  class Outer { class C ; val x: C }
+         *  def o: Outer
+         *  <o.x.type>.widen = o.C
+         */
         def widen: TypeRepr
 
         /** Widen from TermRef to its underlying non-termref
-          *  base type, while also skipping `=>T` types.
-          */
-        def widenTermRefExpr: TypeRepr
+         *  base type, while also skipping ByName types.
+         */
+        def widenTermRefByName: TypeRepr
 
-        /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
-          *  TypeVars until type is no longer alias type, annotated type, LazyRef,
-          *  or instantiated type variable.
-          */
+        /** Widen from ByName type to its result type. */
+        def widenByName: TypeRepr
+
+        /** Follow aliases, annotated types until type is no longer alias type, annotated type. */
         def dealias: TypeRepr
 
         /** A simplified version of this type which is equivalent wrt =:= to this type.
@@ -2439,7 +2439,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchTypeMethods
 
-    /** Type of a by by name parameter */
+    /** Type of a by-name definition of type `=>T`.
+     *
+     *  May represent by-name parameter such as `thunk` in
+     *  ```scala
+     *    def log[T](thunk: =>T): T = ...
+     *  ```
+     *
+     *  May also represent a the return type of a parameterless method definition such as
+     *  ```scala
+     *    def foo: Int = ...
+     *  ```
+     */
     type ByNameType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ByNameType` */
