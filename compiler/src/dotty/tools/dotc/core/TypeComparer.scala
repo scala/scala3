@@ -166,6 +166,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     try op finally frozenGadt = savedFrozenGadt
   }
 
+  private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
+    inFrozenGadtIf(true)(inFrozenConstraint(op))
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
     val savedLeftRoot = leftRoot
@@ -432,17 +435,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case Some(b) => return b
           case None =>
 
-        /** `recur` shouldn't normally be used with approximated types, according to its
-          * documentation. In the specific examples where this function is
-          * called, it is sound to do so as long as we freeze GADTs.
-          */
-        def recurInFrozenGadt(tp1: Type, tp2: Type) =
-          inFrozenGadt { recur(tp1, tp2) }
-
         def widenOK =
           (tp2.widenSingletons eq tp2)
           && (tp1.widenSingletons ne tp1)
-          && recurInFrozenGadt(tp1.widenSingletons, tp2)
+          && inFrozenGadtAndConstraint(recur(tp1.widenSingletons, tp2))
 
         def joinOK = tp2.dealiasKeepRefiningAnnots match {
           case tp2: AppliedType if !tp2.tycon.typeSymbol.isClass =>
@@ -450,7 +446,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // type parameter, we will instantiate `C` to `A` and then fail when comparing
             // with `B[Y]`. To do the right thing, we need to instantiate `C` to the
             // common superclass of `A` and `B`.
-            recurInFrozenGadt(tp1.join, tp2)
+            inFrozenGadtAndConstraint(recur(tp1.join, tp2))
           case _ =>
             false
         }
@@ -477,7 +473,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
-        || containsAnd(tp1) && recurInFrozenGadt(tp1.join, tp2)
+        || containsAnd(tp1) && inFrozenGadt(recur(tp1.join, tp2))
      case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry

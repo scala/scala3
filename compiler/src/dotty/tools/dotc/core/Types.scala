@@ -3124,7 +3124,10 @@ object Types {
 
     private def ensureAtomsComputed()(using Context): Unit =
       if atomsRunId != ctx.runId then
-        myAtoms = tp1.atoms | tp2.atoms
+        myAtoms =
+          if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
+          else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
+          else tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
