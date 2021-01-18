@@ -39,8 +39,19 @@ class Inlining extends MacroTransform {
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
-      case tree: RefTree if !Inliner.inInlineMethod && StagingContext.level == 0 =>
-        assert(!tree.symbol.isInlineMethod)
+      case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
+        new TreeTraverser {
+          def traverse(tree: Tree)(using Context): Unit =
+            tree match
+              case _: GenericApply if tree.symbol.isQuote =>
+                traverseChildren(tree)(using StagingContext.quoteContext)
+              case _: GenericApply if tree.symbol.isExprSplice =>
+                traverseChildren(tree)(using StagingContext.spliceContext)
+              case tree: RefTree if !Inliner.inInlineMethod && StagingContext.level == 0 =>
+                assert(!tree.symbol.isInlineMethod, tree.show)
+              case _ =>
+                traverseChildren(tree)
+        }.traverse(tree)
       case _ =>
     }
 
@@ -57,9 +68,11 @@ class Inlining extends MacroTransform {
           val inlined = Inliner.inlineCall(tree1)
           if tree1 eq inlined then inlined
           else transform(inlined)
-        case _: TypeApply if tree.symbol.isQuote =>
+        case _: GenericApply if tree.symbol.isQuote =>
           ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
+          super.transform(tree)(using StagingContext.quoteContext)
+        case _: GenericApply if tree.symbol.isExprSplice =>
+          super.transform(tree)(using StagingContext.spliceContext)
         case _ =>
           super.transform(tree)
 
