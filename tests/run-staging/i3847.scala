@@ -14,7 +14,7 @@ object Arrays {
 }
 
 object Test {
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(this.getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(this.getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     import Arrays._
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}

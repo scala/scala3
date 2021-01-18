@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 class Foo {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def foo: Unit = withQuotes {
     val e: Expr[Int] = '{3}
     val f: Expr[Int] = '{5}

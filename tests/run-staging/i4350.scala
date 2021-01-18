@@ -7,7 +7,7 @@ class Foo[T: Type] {
 }
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     println((new Foo[Object]).q.show)
     println((new Foo[String]).q.show)

@@ -60,15 +60,15 @@ The framework as discussed so far allows code to be staged, i.e. be prepared
 to be executed at a later stage. To run that code, there is another method
 in class `Expr` called `run`. Note that `$` and `run` both map from `Expr[T]`
 to `T` but only `$` is subject to the PCP, whereas `run` is just a normal method.
-`run` provides a `Quotes` that can be used to show the expression in its scope.
-On the other hand `withQuotes` provides a `Quotes` without evaluating the expression.
+`scala.quoted.staging.run` provides a `Quotes` that can be used to show the expression in its scope.
+On the other hand `scala.quoted.staging.withQuotes` provides a `Quotes` without evaluating the expression.
 
 ```scala
 package scala.quoted.staging
 
-def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = ...
+def run[T](expr: Quotes ?=> Expr[T])(using Compiler): T = ...
 
-def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T = ...
+def withQuotes[T](thunk: Quotes ?=> T)(using Compiler): T = ...
 ```
 
 ## Create a new Scala 3 project with staging enabled
@@ -99,17 +99,17 @@ scala -with-compiler -classpath out Test
 Now take exactly the same example as in [Macros](./macros.md). Assume that we
 do not want to pass an array statically but generate code at run-time and pass
 the value, also at run-time. Note, how we make a future-stage function of type
-`Expr[Array[Int] => Int]` in line 6 below. Using `run { ... }` we can evaluate an
-expression at runtime. Within the scope of `run` we can also invoke `show` on an expression
+`Expr[Array[Int] => Int]` in line 6 below. Using `staging.run { ... }` we can evaluate an
+expression at runtime. Within the scope of `staging.run` we can also invoke `show` on an expression
 to get a source-like representation of the expression.
 
 ```scala
-import scala.quoted.staging._
+import scala.quoted._
 
-// make available the necessary toolbox for runtime code generation
-given Toolbox = Toolbox.make(getClass.getClassLoader)
+// make available the necessary compiler for runtime code generation
+given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)
 
-val f: Array[Int] => Int = run {
+val f: Array[Int] => Int = staging.run {
    val stagedSum: Expr[Array[Int] => Int] =
       '{ (arr: Array[Int]) => ${sum('arr)}}
    println(stagedSum.show) // Prints "(arr: Array[Int]) => { var sum = 0; ... }"

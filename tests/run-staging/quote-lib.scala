@@ -9,7 +9,7 @@ import liftable.Lists._
 import liftable.Exprs._
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     val liftedUnit: Expr[Unit] = '{}
 

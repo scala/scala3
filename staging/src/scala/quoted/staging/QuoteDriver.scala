@@ -9,7 +9,7 @@ import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.util.ClasspathFromClassloader
 import scala.quoted._
-import scala.quoted.staging.Toolbox
+import scala.quoted.staging.Compiler
 import java.io.File
 import scala.annotation.tailrec
 
@@ -22,7 +22,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
 
   private[this] val contextBase: ContextBase = new ContextBase
 
-  def run[T](exprBuilder: Quotes => Expr[T], settings: Toolbox.Settings): T =
+  def run[T](exprBuilder: Quotes => Expr[T], settings: Compiler.Settings): T =
     val outDir: AbstractFile =
       settings.outDir match
         case Some(out) =>
@@ -34,7 +34,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     end outDir
 
     val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
-    val ctx = setToolboxSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
+    val ctx = setCompilerSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
       case Right(value) =>
@@ -59,7 +59,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
     ictx.settings.classpath.update(ClasspathFromClassloader(appClassloader))(using ictx)
     ictx
 
-  private def setToolboxSettings(ctx: FreshContext, settings: Toolbox.Settings): ctx.type =
+  private def setCompilerSettings(ctx: FreshContext, settings: Compiler.Settings): ctx.type =
     // An error in the generated code is a bug in the compiler
     // Setting the throwing reporter however will report any exception
     ctx.setReporter(new ThrowingReporter(ctx.reporter))

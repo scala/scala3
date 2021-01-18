@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 object Test:
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit =
     def reduce[T: Type](using Quotes)(succ: Expr[T] => Expr[T], zero: Expr[T]): Expr[T] = '{

@@ -5,26 +5,26 @@ import scala.annotation.implicitNotFound
 
 import scala.quoted.runtime.impl.ScopeException
 
-@implicitNotFound("Could not find implicit scala.quoted.staging.Toolbox.\n\nDefault toolbox can be instantiated with:\n  `given scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)`\n\n")
-trait Toolbox:
+@implicitNotFound("Could not find implicit scala.quoted.staging.Compiler.\n\nDefault compiler can be instantiated with:\n  `import scala.quoted.staging.Compiler; given Compiler = Compiler.make(getClass.getClassLoader)`\n\n")
+trait Compiler:
   def run[T](expr: Quotes => Expr[T]): T
 
-object Toolbox:
+object Compiler:
 
-  /** Create a new instance of the toolbox using the the classloader of the application.
+  /** Create a new instance of the compiler using the the classloader of the application.
    *
    * Usuage:
    * ```
    * import scala.quoted.staging._
-   * given Toolbox = Toolbox.make(getClass.getClassLoader)
+   * given Compiler = Compiler.make(getClass.getClassLoader)
    * ```
    *
    * @param appClassloader classloader of the application that generated the quotes
-   * @param settings toolbox settings
-   * @return A new instance of the toolbox
+   * @param settings compiler settings
+   * @return A new instance of the compiler
    */
-  def make(appClassloader: ClassLoader)(implicit settings: Settings): Toolbox =
-    new Toolbox:
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Compiler =
+    new Compiler:
 
       private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
 
@@ -43,14 +43,14 @@ object Toolbox:
 
     end new
 
-  /** Setting of the Toolbox instance. */
+  /** Setting of the Compiler instance. */
   case class Settings private (outDir: Option[String], compilerArgs: List[String])
 
   object Settings:
 
     implicit def default: Settings = make()
 
-    /** Make toolbox settings
+    /** Make compiler settings
      *  @param outDir Output directory for the compiled quote. If set to None the output will be in memory
      *  @param compilerArgs Compiler arguments. Use only if you know what you are doing.
      */
@@ -62,4 +62,4 @@ object Toolbox:
 
   end Settings
 
-end Toolbox
+end Compiler

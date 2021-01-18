@@ -6,7 +6,7 @@ import scala.quoted.staging._
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     def expr(using Quotes) = '{
       val a = 3
       println("foo")
@@ -22,8 +22,8 @@ object Test {
     Files.deleteIfExists(classFile)
 
     {
-      implicit val settings = Toolbox.Settings.make(outDir = Some(outDir.toString))
-      implicit val toolbox2: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+      implicit val settings = Compiler.Settings.make(outDir = Some(outDir.toString))
+      implicit val toolbox2: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(getClass.getClassLoader)
       println(run(expr))
       assert(Files.exists(classFile))
     }
