@@ -31,7 +31,7 @@ import TypeComparer.CompareResult
 import util.Spans._
 import util.common._
 import util.{Property, SimpleIdentityMap, SrcPos}
-import Applications.{productSelectorTypes, wrapDefs, defaultArgument}
+import Applications.{tupleComponentTypes, wrapDefs, defaultArgument}
 
 import collection.mutable
 import annotation.tailrec
@@ -1273,8 +1273,8 @@ class Typer extends Namer
     /** Is `formal` a product type which is elementwise compatible with `params`? */
     def ptIsCorrectProduct(formal: Type) =
       isFullyDefined(formal, ForceDegree.flipBottom) &&
-      (defn.isProductSubType(formal) || formal.derivesFrom(defn.PairClass)) &&
-      productSelectorTypes(formal, tree.srcPos).corresponds(params) {
+      defn.isProductSubType(formal) &&
+      tupleComponentTypes(formal).corresponds(params) {
         (argType, param) =>
           param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
       }
