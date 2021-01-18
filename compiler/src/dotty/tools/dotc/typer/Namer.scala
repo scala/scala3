@@ -995,7 +995,7 @@ class Namer { typer: Typer =>
         def whyNoForwarder(mbr: SingleDenotation): String = {
           val sym = mbr.symbol
           if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
-          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge)) SKIP
+          else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy)) SKIP
           else if (cls.derivesFrom(sym.owner) &&
                    (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
           else if (sym.is(Override))
