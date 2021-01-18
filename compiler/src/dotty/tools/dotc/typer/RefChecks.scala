@@ -387,9 +387,11 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
         overrideError("is a normal method, cannot override an extension method")
-      else if (!other.is(Deferred) &&
-                 !other.name.is(DefaultGetterName) &&
-                 !member.isAnyOverride)
+      else if !other.is(Deferred)
+            && !member.is(Deferred)
+            && !other.name.is(DefaultGetterName)
+            && !member.isAnyOverride
+      then
         // Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
         // Also exclusion for implicit shortcut methods
@@ -485,6 +487,22 @@ object RefChecks {
     while opc.hasNext do
       checkOverride(opc.overriding, opc.overridden)
       opc.next()
+
+    // The OverridingPairs cursor does assume that concrete overrides abstract
+    // We have to check separately for an abstract definition in a subclass that
+    // overrides a concrete definition in a superclass. E.g. the following (inspired
+    // from neg/i11130.scala) needs to be rejected as well:
+    //
+    //   class A { type T = B }
+    //   class B extends A { override type T }
+    for
+      dcl <- clazz.info.decls.iterator
+      if dcl.is(Deferred)
+      other <- dcl.allOverriddenSymbols
+      if !other.is(Deferred)
+    do
+      checkOverride(dcl, other)
+
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
@@ -748,17 +766,6 @@ object RefChecks {
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
     }
-    else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass))
-      // For non-AnyVal classes, prevent abstract methods in interfaces that override
-      // final members in Object; see #4431
-      for (decl <- clazz.info.decls) {
-        // Have to use matchingSymbol, not a method involving overridden symbols,
-        // because the scala type system understands that an abstract method here does not
-        // override a concrete method in Object. The jvm, however, does not.
-        val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
-        if (overridden.is(Final))
-          report.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.srcPos)
-      }
 
     if (!clazz.is(Trait)) {
       // check that parameterized base classes and traits are typed in the same way as from the superclass
