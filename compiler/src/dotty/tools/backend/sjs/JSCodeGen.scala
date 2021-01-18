@@ -1201,7 +1201,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     val (beforeSuper, superCall :: afterSuper) =
-      bodyStats.span(!_.isInstanceOf[js.JSSuperConstructorCall])
+      bodyStats.span(!_.isInstanceOf[js.JSSuperConstructorCall]): @unchecked
 
     assert(!beforeSuper.exists(_.isInstanceOf[js.VarDef]),
         s"Trying to move a local VarDef after the super constructor call of a non-native JS class at ${body.pos}")
@@ -1728,7 +1728,7 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+    val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree: @unchecked
     val sym = fun.symbol
 
     if (sym == defn.Any_getClass) {
@@ -1769,7 +1769,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genApplyNew(tree: Apply): js.Tree = {
     implicit val pos: SourcePosition = tree.sourcePos
 
-    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree
+    val Apply(fun @ Select(New(tpt), nme.CONSTRUCTOR), args) = tree: @unchecked
     val ctor = fun.symbol
     val tpe = tpt.tpe
 
@@ -1818,7 +1818,7 @@ class JSCodeGen()(using genCtx: Context) {
     acquireContextualJSClassValue { jsClassValue =>
       implicit val pos: Position = tree.span
 
-      val Apply(fun @ Select(New(tpt), _), args) = tree
+      val Apply(fun @ Select(New(tpt), _), args) = tree: @unchecked
       val cls = tpt.tpe.typeSymbol
       val ctor = fun.symbol
 
@@ -2504,7 +2504,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     implicit val pos = tree.span
 
-    val Apply(fun, args) = tree
+    val Apply(fun, args) = tree: @unchecked
     val arrayObj = qualifierOf(fun)
 
     val genArray = genExpr(arrayObj)
@@ -2543,7 +2543,7 @@ class JSCodeGen()(using genCtx: Context) {
     /* JavaScript is single-threaded, so we can drop the
      * synchronization altogether.
      */
-    val Apply(fun, List(arg)) = tree
+    val Apply(fun, List(arg)) = tree: @unchecked
     val receiver = qualifierOf(fun)
 
     val genReceiver = genExpr(receiver)
@@ -2811,7 +2811,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {
     acquireContextualJSClassValue { explicitJSSuperClassValue =>
       implicit val pos = tree.span
-      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree
+      val Apply(fun @ Select(sup @ Super(qual, _), _), args) = tree: @unchecked
       val sym = fun.symbol
 
       val genReceiver = genExpr(qual)
@@ -2887,7 +2887,7 @@ class JSCodeGen()(using genCtx: Context) {
   /** Gen JS code for a switch-`Match`, which is translated into an IR `js.Match`. */
   def genMatch(tree: Tree, isStat: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Match(selector, cases) = tree
+    val Match(selector, cases) = tree: @unchecked
 
     def abortMatch(msg: String): Nothing =
       throw new FatalError(s"$msg in switch-like pattern match at ${tree.span}: $tree")
@@ -3098,7 +3098,7 @@ class JSCodeGen()(using genCtx: Context) {
       val call = if (isStaticCall) {
         genApplyStatic(sym, formalCaptures.map(_.ref) ::: actualParams)
       } else {
-        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref)
+        val thisCaptureRef :: argCaptureRefs = formalCaptures.map(_.ref): @unchecked
         if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
           genApplyMethodMaybeStatically(thisCaptureRef, sym, argCaptureRefs ::: actualParams)
         else
@@ -3110,7 +3110,7 @@ class JSCodeGen()(using genCtx: Context) {
     val funInterfaceSym = functionalInterface.tpe.typeSymbol
 
     if (jsdefn.isJSThisFunctionClass(funInterfaceSym)) {
-      val thisParam :: otherParams = formalParams
+      val thisParam :: otherParams = formalParams: @unchecked
       js.Closure(
           arrow = false,
           formalCaptures,
@@ -3610,7 +3610,7 @@ class JSCodeGen()(using genCtx: Context) {
    */
   private def genReflectiveCall(tree: Apply, isSelectDynamic: Boolean): js.Tree = {
     implicit val pos = tree.span
-    val Apply(fun @ Select(receiver, _), args) = tree
+    val Apply(fun @ Select(receiver, _), args) = tree: @unchecked
 
     val selectedValueTree = js.Apply(js.ApplyFlags.empty, genExpr(receiver),
         js.MethodIdent(selectedValueMethodName), Nil)(jstpe.AnyType)
@@ -3875,7 +3875,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genCaptureValuesFromFakeNewInstance(tree: Tree): List[js.Tree] = {
     implicit val pos: Position = tree.span
 
-    val Apply(fun @ Select(New(_), _), args) = tree
+    val Apply(fun @ Select(New(_), _), args) = tree: @unchecked
     val sym = fun.symbol
 
     /* We use the same strategy as genActualJSArgs to detect which parameters were
@@ -4188,7 +4188,7 @@ class JSCodeGen()(using genCtx: Context) {
         pathName.split('.').toList
 
       def parseGlobalPath(pathName: String): Global = {
-        val globalRef :: path = parsePath(pathName)
+        val globalRef :: path = parsePath(pathName): @unchecked
         Global(globalRef, path)
       }
 

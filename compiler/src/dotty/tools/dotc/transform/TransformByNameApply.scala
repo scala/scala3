@@ -57,7 +57,7 @@ abstract class TransformByNameApply extends MiniPhase { thisPhase: DenotTransfor
           arg
       }
 
-      val mt @ MethodType(_) = tree.fun.tpe.widen
+      val mt @ MethodType(_) = tree.fun.tpe.widen: @unchecked
       val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
     }

@@ -1388,7 +1388,7 @@ object Parsers {
               syntaxError("context function types require at least one parameter", paramSpan)
             new FunctionWithMods(params, t, imods)
           else if ctx.settings.YkindProjector.value then
-            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
+            val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t): @unchecked
 
             lambdaAbstract(tparams, Function(newParams, newT))
           else
@@ -2089,7 +2089,7 @@ object Parsers {
         case _ =>
           val tpt = typeDependingOn(location)
           if (isWildcard(t) && !location.inPattern) {
-            val vd :: rest = placeholderParams
+            val vd :: rest = placeholderParams: @unchecked
             placeholderParams =
               cpy.ValDef(vd)(tpt = tpt).withSpan(vd.span.union(tpt.span)) :: rest
           }

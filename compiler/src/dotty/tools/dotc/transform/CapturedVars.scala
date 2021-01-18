@@ -141,7 +141,7 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformAssign(tree: Assign)(using Context): Tree = {
     def recur(lhs: Tree): Tree = lhs match {
       case TypeApply(Select(qual, nme.asInstanceOf_), _) =>
-        val Select(_, nme.elem) = qual
+        val Select(_, nme.elem) = qual: @unchecked
         recur(qual)
       case Select(_, nme.elem) if refInfo.boxedRefClasses.contains(lhs.symbol.maybeOwner) =>
         val tempDef = transformFollowing(SyntheticValDef(TempResultName.fresh(), tree.rhs))

@@ -104,7 +104,7 @@ object Checking {
     }
 
     def checkSecondaryConstructor(ctor: Symbol)(implicit state: State): Unit = traceOp("checking " + ctor.show, init) {
-      val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs
+      val Block(ctorCall :: stats, expr) = ctor.defTree.asInstanceOf[DefDef].rhs: @unchecked
       val cls = ctor.owner.asClass
 
       traceOp("check ctor: " + ctorCall.show, init) {

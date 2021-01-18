@@ -390,7 +390,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
         None
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
-        val List(arg) = formalArgsRegistry.genFormalArgs()
+        val List(arg) = formalArgsRegistry.genFormalArgs(): @unchecked
         val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported.apply), static, None)
         Some((arg, body))
       }

@@ -270,7 +270,7 @@ object JSConstructorGen {
           (prepStats, applyCtor)
       }
       val js.ApplyStatic(_, _, js.MethodIdent(ctorName), js.This() :: ctorArgs) =
-        applyCtor
+        applyCtor: @unchecked
       assert(ctorName.isConstructor,
           s"unexpected super constructor call to non-constructor $ctorName at ${applyCtor.pos}")
       (prepStats, ctorName, ctorArgs)
@@ -357,7 +357,7 @@ object JSConstructorGen {
         case _: js.JSSuperConstructorCall => true
         case _                            => false
       }
-    }
+    }: @unchecked
 
     val ctorToChildren = secondaryCtors.map { ctor =>
       findCtorForwarderCall(ctor.body.get) -> ctor

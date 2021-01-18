@@ -121,7 +121,7 @@ object Applications {
       if defn.isTupleClass(tp.tycon.typeSymbol) then
         tp.args
       else if tp.tycon.derivesFrom(defn.PairClass) then
-        val List(head, tail) = tp.args
+        val List(head, tail) = tp.args: @unchecked
         head :: tupleComponentTypes(tail)
       else
         Nil
@@ -1623,7 +1623,7 @@ trait Applications extends Compatibility {
             }
           case Nil => previous
         }
-        val best :: rest = survivors(alt :: Nil, alts1)
+        val best :: rest = survivors(alt :: Nil, alts1): @unchecked
         def asGood(alts: List[TermRef]): List[TermRef] = alts match {
           case alt :: alts1 =>
             if (compare(alt, best) < 0) asGood(alts1) else alt :: asGood(alts1)

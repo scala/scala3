@@ -256,7 +256,7 @@ class PickleQuotes extends MacroTransform {
                 defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
               args => {
                 val cases = termSplices.map { case (splice, idx) =>
-                  val defn.FunctionOf(_, defn.FunctionOf(qctxType :: _, _, _, _), _, _) = splice.tpe
+                  val defn.FunctionOf(_, defn.FunctionOf(qctxType :: _, _, _, _), _, _) = splice.tpe: @unchecked
                   val rhs = splice.select(nme.apply).appliedTo(args(1)).select(nme.apply).appliedTo(args(2).asInstance(qctxType))
                   CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
                 }

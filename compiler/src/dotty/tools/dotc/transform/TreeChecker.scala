@@ -427,7 +427,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = {
-      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef
+      val TypeDef(_, impl @ Template(constr, _, _, _)) = cdef: @unchecked
       assert(cdef.symbol == cls)
       assert(impl.symbol.owner == cls)
       assert(constr.symbol.owner == cls)

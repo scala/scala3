@@ -426,7 +426,7 @@ class Namer { typer: Typer =>
             annots // can happen if a class has several inaccessible children
           else {
             assert(childStart != other.span.start, i"duplicate child annotation $child / $other")
-            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot)
+            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
           }
         case _ =>
@@ -464,7 +464,7 @@ class Namer { typer: Typer =>
 
     /** Remove the subtree `tree` from the expanded tree of `mdef` */
     def removeInExpanded(mdef: Tree, tree: Tree): Unit = {
-      val Thicket(trees) = expanded(mdef)
+      val Thicket(trees) = expanded(mdef): @unchecked
       mdef.putAttachment(ExpandedTree, Thicket(trees.filter(_ != tree)))
     }
 
@@ -480,7 +480,7 @@ class Namer { typer: Typer =>
      */
     def mergeModuleClass(mdef: Tree, modCls: TypeDef, fromCls: TypeDef): TypeDef = {
       var res: TypeDef = null
-      val Thicket(trees) = expanded(mdef)
+      val Thicket(trees) = expanded(mdef): @unchecked
       val merged = trees.map { tree =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
@@ -966,7 +966,7 @@ class Namer { typer: Typer =>
     /** info to be used temporarily while completing the class, to avoid cyclic references. */
     private var tempInfo: TempClassInfo = _
 
-    val TypeDef(name, impl @ Template(constr, _, self, _)) = original
+    val TypeDef(name, impl @ Template(constr, _, self, _)) = original: @unchecked
 
     private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods.is(Param)
@@ -1019,7 +1019,7 @@ class Namer { typer: Typer =>
                 // Note: in this branch we use the assumptions
                 // that `prefss.head` corresponds to `mt.paramInfos` and
                 // that `prefss.tail` corresponds to `mt.resType`
-                val init :+ vararg = prefss.head
+                val init :+ vararg = prefss.head: @unchecked
                 val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
                 adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
               case mt: MethodOrPoly =>

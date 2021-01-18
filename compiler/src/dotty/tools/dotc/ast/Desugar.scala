@@ -390,7 +390,7 @@ object desugar {
 
   /** The expansion of a class definition. See inline comments for what is involved */
   def classDef(cdef: TypeDef)(using Context): Tree = {
-    val impl @ Template(constr0, _, self, _) = cdef.rhs
+    val impl @ Template(constr0, _, self, _) = cdef.rhs: @unchecked
     val className = normalizeName(cdef, impl).asTypeName
     val parents = impl.parents
     val mods = cdef.mods
@@ -750,7 +750,7 @@ object desugar {
 
     enumCompanionRef match {
       case ref: TermRefTree => // have the enum import watch the companion object
-        val (modVal: ValDef) :: _ = companions
+        val (modVal: ValDef) :: _ = companions: @unchecked
         ref.watching(modVal)
       case _ =>
     }
@@ -1139,7 +1139,7 @@ object desugar {
 
   /** Expand variable identifier x to x @ _ */
   def patternVar(tree: Tree)(using Context): Bind = {
-    val Ident(name) = unsplice(tree)
+    val Ident(name) = unsplice(tree): @unchecked
     Bind(name, Ident(nme.WILDCARD)).withSpan(tree.span)
   }
 

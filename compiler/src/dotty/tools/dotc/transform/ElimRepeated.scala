@@ -223,7 +223,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .symbol.asTerm
       // Generate the method
       val forwarderDef = DefDef(forwarderSym, prefss => {
-        val init :+ (last :+ vararg) = prefss
+        val init :+ (last :+ vararg) = prefss: @unchecked
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
@@ -244,7 +244,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    */
   private def isValidJavaVarArgs(tp: Type)(using Context): Boolean = tp match
     case mt: MethodType =>
-      val initp :+ lastp = mt.paramInfoss
+      val initp :+ lastp = mt.paramInfoss: @unchecked
       initp.forall(_.forall(!_.isRepeatedParam)) &&
       lastp.nonEmpty &&
       lastp.init.forall(!_.isRepeatedParam) &&
@@ -315,7 +315,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         case m: MethodType => // multiple param lists
           tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
         case _ =>
-          val init :+ last = tp.paramInfos
+          val init :+ last = tp.paramInfos: @unchecked
           val vararg = varargArrayType(last)
           tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
 

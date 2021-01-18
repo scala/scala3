@@ -60,7 +60,7 @@ trait Plugins {
       plugNames: Set[String]): List[Plugin] = {
       if (plugins.isEmpty) return Nil // early return
 
-      val plug :: tail      = plugins
+      val plug :: tail      = plugins: @unchecked
       def withoutPlug       = pick(tail, plugNames)
       def withPlug          = plug :: pick(tail, plugNames + plug.name)
 

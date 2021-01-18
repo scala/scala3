@@ -515,7 +515,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   }
 
   private def eraseArray(tp: Type)(using Context) = {
-    val defn.ArrayOf(elemtp) = tp
+    val defn.ArrayOf(elemtp) = tp: @unchecked
     if (classify(elemtp).derivesFrom(defn.NullClass)) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp) && !isJava) defn.ObjectType
     else JavaArrayType(erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))

@@ -208,7 +208,7 @@ class JUnitBootstrappers extends MiniPhase {
       MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef)) = paramRefss
+      val List(List(instanceParamRef)) = paramRefss: @unchecked
       val calls = annotatedMethods(testClass, annot)
         .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
       Block(calls, unitLiteral)
@@ -258,7 +258,7 @@ class JUnitBootstrappers extends MiniPhase {
       MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
     DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef, nameParamRef)) = paramRefss
+      val List(List(instanceParamRef, nameParamRef)) = paramRefss: @unchecked
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,

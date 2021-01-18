@@ -111,7 +111,7 @@ trait ConstraintHandling {
         (c1 eq constraint)
         || {
           constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param)
+          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
           isSub(lo, hi)
         }
   end addOneBound
@@ -226,7 +226,7 @@ trait ConstraintHandling {
    */
   protected final def isSatisfiable(using Context): Boolean =
     constraint.forallParams { param =>
-      val TypeBounds(lo, hi) = constraint.entry(param)
+      val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
       isSub(lo, hi) || {
         report.log(i"sub fail $lo <:< $hi")
         false

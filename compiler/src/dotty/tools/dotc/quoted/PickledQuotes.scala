@@ -55,7 +55,7 @@ object PickledQuotes {
   /** Unpickle the tree contained in the TastyExpr */
   def unpickleTerm(pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?])(using Context): Tree = {
     val unpickled = withMode(Mode.ReadPositions)(unpickle(pickled, isType = false))
-    val Inlined(call, Nil, expnasion) = unpickled
+    val Inlined(call, Nil, expnasion) = unpickled: @unchecked
     val inlineCtx = inlineContext(call)
     val expansion1 = spliceTypes(expnasion, typeHole, termHole)(using inlineCtx)
     val expansion2 = spliceTerms(expansion1, typeHole, termHole)(using inlineCtx)

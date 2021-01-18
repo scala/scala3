@@ -286,7 +286,7 @@ object Inliner {
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree
+      val Apply(_, codeArg :: Nil) = tree: @unchecked
       val underlyingCodeArg = stripTyped(codeArg.underlying)
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
@@ -1349,14 +1349,14 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         typeMap = new TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tr: TypeRef if tr.prefix.eq(NoPrefix) && typeBindingsSet.contains(tr.symbol) =>
-              val TypeAlias(res) = tr.info
+              val TypeAlias(res) = tr.info: @unchecked
               res
             case tp => mapOver(tp)
           }
         },
         treeMap = {
           case ident: Ident if ident.isType && typeBindingsSet.contains(ident.symbol) =>
-            val TypeAlias(r) = ident.symbol.info
+            val TypeAlias(r) = ident.symbol.info: @unchecked
             TypeTree(r).withSpan(ident.span)
           case tree => tree
         }

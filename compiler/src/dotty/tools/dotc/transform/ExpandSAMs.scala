@@ -54,7 +54,7 @@ class ExpandSAMs extends MiniPhase:
           tree
         case tpe =>
           val tpe1 = checkRefinements(tpe, fn)
-          val Seq(samDenot) = tpe1.possibleSamMethods
+          val Seq(samDenot) = tpe1.possibleSamMethods: @unchecked
           cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
       }
@@ -111,7 +111,7 @@ class ExpandSAMs extends MiniPhase:
       }
     }
 
-    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree
+    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
     anon.rhs match {
       case PartialFunctionRHS(pf) =>
         val anonSym = anon.symbol
@@ -156,7 +156,7 @@ class ExpandSAMs extends MiniPhase:
         }
 
         def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) = {
-          val List(paramRef, defaultRef) = paramRefss(1)
+          val List(paramRef, defaultRef) = paramRefss(1): @unchecked
           def translateCase(cdef: CaseDef) =
             cdef.changeOwner(anonSym, applyOrElseFn)
           val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)

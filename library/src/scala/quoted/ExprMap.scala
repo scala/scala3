@@ -48,7 +48,7 @@ trait ExprMap:
         case Super(qual, mix) =>
           tree
         case tree @ Apply(fun, args) =>
-          val MethodType(_, tpes, _) = fun.tpe.widen
+          val MethodType(_, tpes, _) = fun.tpe.widen: @unchecked
           Apply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), transformTerms(args, tpes)(owner))
         case TypeApply(fun, args) =>
           TypeApply.copy(tree)(transformTerm(fun, TypeRepr.of[Any])(owner), args)
@@ -127,7 +127,7 @@ trait ExprMap:
       def transformTerms(trees: List[Term], tpes: List[TypeRepr])(owner: Symbol): List[Term] =
         var tpes2 = tpes // TODO use proper zipConserve
         trees.mapConserve{ x =>
-          val tpe :: tail = tpes2
+          val tpe :: tail = tpes2: @unchecked
           tpes2 = tail
           transformTerm(x, tpe)(owner)
         }

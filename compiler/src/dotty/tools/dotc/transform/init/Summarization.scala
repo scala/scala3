@@ -292,15 +292,15 @@ object Summarization {
       val effsAll = tpl.parents.foldLeft(effs) { (effs, parent) =>
         effs ++ (parent match {
           case tree @ Block(stats, parent) =>
-            val ctor @ Select(qual, _) = funPart(parent)
+            val ctor @ Select(qual, _) = funPart(parent): @unchecked
             parentArgEffsWithInit(qual :: stats ++ termArgss(parent).flatten, ctor.symbol, tree)
 
           case tree @ Apply(Block(stats, parent), args) =>
-            val ctor @ Select(qual, _) = funPart(parent)
+            val ctor @ Select(qual, _) = funPart(parent): @unchecked
             parentArgEffsWithInit(qual :: stats ++ args ++ termArgss(parent).flatten, ctor.symbol, tree)
 
           case parent : Apply =>
-            val ctor @ Select(qual, _) = funPart(parent)
+            val ctor @ Select(qual, _) = funPart(parent): @unchecked
             parentArgEffsWithInit(qual :: termArgss(parent).flatten, ctor.symbol, parent)
 
           case ref =>
