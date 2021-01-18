@@ -209,7 +209,7 @@ object Matcher {
               case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
               case arg => arg.symbol.name
             }
-            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+            val argTypes = args.map(x => x.tpe.widenTermRefByName)
             val resType = pattern.tpe
             val res = Lambda(Symbol.spliceOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
             matched(res.asExpr)

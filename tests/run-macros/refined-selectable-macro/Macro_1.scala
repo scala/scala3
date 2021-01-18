@@ -17,7 +17,7 @@ object Macro {
   private def toTupleImpl(s: Expr[Selectable])(using qctx:Quotes) : Expr[Tuple] = {
     import quotes.reflect._
 
-    val repr = s.asTerm.tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefByName.dealias
 
     def rec(tpe: TypeRepr): List[(String, TypeRepr)] = {
       tpe match {
@@ -51,7 +51,7 @@ object Macro {
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:Quotes) : Expr[Any] = {
     import quotes.reflect._
 
-    val repr = s.asTerm.tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefByName.dealias
 
     def isTupleCons(sym: Symbol): Boolean = sym.owner == defn.ScalaPackageClass && sym.name == "*:"
 

@@ -1368,6 +1368,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def widen: TypeRepr
 
         def widenTermRefExpr: TypeRepr
+        def widenTermRefByName: TypeRepr = widenTermRefExpr
 
         def dealias: TypeRepr
 
