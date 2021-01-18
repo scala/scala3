@@ -1328,8 +1328,9 @@ class Namer { typer: Typer =>
    */
   def moduleValSig(sym: Symbol)(using Context): Type = {
     val clsName = sym.name.moduleClassName
-    val cls = ctx.denotNamed(clsName).suchThat(_.is(ModuleClass))
-      .orElse(newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
+    val cls = ctx.effectiveScope.lookupAll(clsName)
+      .find(_.is(ModuleClass))
+      .getOrElse(newStubSymbol(ctx.owner, clsName).assertingErrorsReported)
     ctx.owner.thisType.select(clsName, cls)
   }
 
