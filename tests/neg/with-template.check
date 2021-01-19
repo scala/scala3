@@ -1,0 +1,22 @@
+-- Error: tests/neg/with-template.scala:6:5 ----------------------------------------------------------------------------
+6 |  B  with  // error // error this one allows an informative hint
+  |     ^^^^
+  |     end of statement expected but 'with' found
+  |
+  |     Maybe you meant to write a mixin in an extends clause?
+  |     Note that this requires the `with` to come first now.
+  |     I.e.
+  |
+  |         with B
+-- [E006] Not Found Error: tests/neg/with-template.scala:6:2 -----------------------------------------------------------
+6 |  B  with  // error // error this one allows an informative hint
+  |  ^
+  |  Not found: B
+
+longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/with-template.scala:10:2 ----------------------------------------------------------
+10 |  B { // error  this one is harder since it is syntactically correct
+   |  ^
+   |  Not found: B
+
+longer explanation available when compiling with `-explain`

@@ -82,8 +82,7 @@ object Test with
     x < 10
   do ()
 
-class Test2 with
-  self =>
+class Test2 with self: Test2 =>
   def foo(x: Int) =
     if x < 0 then throw
       val ex = new AssertionError()
@@ -98,8 +97,10 @@ class Test2 with
 end Test2
 
 class Test3 with
- self =>
+  self =>
   def foo = 1
+
+class Test4 with { val x = 5 }
 
 import collection.mutable.HashMap
 

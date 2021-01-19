@@ -148,7 +148,7 @@ FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
 MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
+RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 
@@ -401,6 +401,7 @@ ConstrExpr        ::=  SelfInvocation
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
 TemplateBody      ::=  [nl | ‘with’] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
+                    |  ‘with’ [SelfType] indent TemplateStats outdent
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -412,7 +413,9 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStats ‘}’
+                    |  ‘with’ [SelfType] indent EnumStats outdent
+EnumStats         ::=  EnumStat {semi EnumStat}
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
