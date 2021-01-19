@@ -81,9 +81,10 @@ So far, we have found the following useful:
   - An extension method `.nn` to "cast away" nullability
 
     ```scala
-    def[T] (x: T|Null) nn: x.type & T =
-       if x == null then new NullPointerException("tried to cast away nullability, but value is null")
-       else x.asInstanceOf[x.type & T]
+    extension [T](x: T | Null)
+      inline def nn: T =
+        assert(x != null)
+        x.asInstanceOf[T]
     ```
 
     This means that given `x: String|Null`, `x.nn` has type `String`, so we can call all the
