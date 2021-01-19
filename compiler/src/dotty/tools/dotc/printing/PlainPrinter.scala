@@ -219,7 +219,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        toTextLocal(tpe) ~ " " ~ toText(annot)
+        if annot.symbol == defn.InlineParamAnnot then toText(tpe)
+        else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
