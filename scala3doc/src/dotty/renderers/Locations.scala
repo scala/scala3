@@ -71,12 +71,14 @@ trait Locations(using ctx: DocContext):
     pathTo(to.split("/").toList, from)
 
   def resolveRoot(dri: DRI, path: String): String = resolveRoot(rawLocation(dri), path)
+  def absolutePath(dri: DRI): String = rawLocation(dri).mkString("", "/", ".html")
 
   def resolveLink(dri: DRI, url: String): String =
     if URI(url).isAbsolute then url else resolveRoot(dri, url)
 
-  def pathToRoot(dri: DRI): String =
-    pathTo(rawLocation(dri), Nil).dropRight(1)
+  def pathToRoot(dri: DRI): String = rawLocation(dri).drop(1).map(_ => "..") match
+    case Nil => ""
+    case seq => seq.mkString("", "/", "/")
 
   def driExisits(dri: DRI) = true // TODO implement checks!
 

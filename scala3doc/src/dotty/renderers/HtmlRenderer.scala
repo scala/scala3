@@ -61,6 +61,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member], buildNode
   val hiddenPages: Seq[Page] =
     staticSite.toSeq.flatMap(c => c.orphanedTemplates.map(templateToPage(_, c)))
 
+  val allPages = navigablePage +: hiddenPages
+
   def renderContent(page: Page) = page.content match
     case m: Member =>
       val signatureRenderer = new SignatureRenderer:
@@ -103,15 +105,14 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member], buildNode
         files.map(p => siteRoot.relativize(p).toString).toList
     }
 
-    val siteResourcesPaths =
-      (navigablePage +: hiddenPages).toSet.flatMap(specificResources) ++ siteImages
+    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ siteImages
 
-    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(rootPackage)
+    val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages)
     resources.flatMap(renderResource)
 
   def render(): Unit =
     val renderedResources = renderResources()
-    val sites = (navigablePage +: hiddenPages).map(renderPage(_, Vector.empty))
+    val sites = allPages.map(renderPage(_, Vector.empty))
 
   def mkHead(page: Page): AppliedTag =
     val resources = page.content match
@@ -187,7 +188,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member], buildNode
         div (id := "leftToggler")(
           span(cls := "icon-toggler")
         ),
-        div(id := "searchBar"),
+        div(id := "scala3doc-searchBar"),
         main(
           div(id := "content")(
             parentsHtml,

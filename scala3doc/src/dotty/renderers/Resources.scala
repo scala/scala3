@@ -60,6 +60,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writter:
       "styles/diagram.css",
       "styles/filter-bar.css",
       "styles/search-bar.css",
+      "styles/scala3doc-searchbar.css",
       "hljs/highlight.pack.js",
       "hljs/LICENSE",
       "scripts/hljs-scala3.js",
@@ -71,6 +72,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writter:
       "scripts/components/Input.js",
       "scripts/components/FilterGroup.js",
       "scripts/components/Filter.js",
+      "scripts/searchbar.js"
     ).map(dottyRes)
 
     val urls = List(
@@ -82,18 +84,58 @@ trait Resources(using ctx: DocContext) extends Locations, Writter:
 
     fromResources ++ urls ++ projectLogo ++ Seq(scala3docVersionFile, dynamicJsData)
 
-  val memberResourcesPaths = memberResources.map(_.path)
+  val searchDataPath = "scripts/searchData.js"
+  val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
 
-  val scala3docLogo = dottyRes("images/scala3doc_logo.svg")
+  case class PageEntry(
+    dri: DRI,
+    name: String,
+    text: String,
+    descr: String,
+  ):
+    // for jackson
+    def getL: String = absolutePath(dri)
+    def getN: String = name
+    def getT: String = text
+    def getD: String = descr
 
-  def packageList(topLevelPackage: Member) = Resource.Text("scala3doc/package-list", "TODO")
+  def searchData(pages: Seq[Page]) =
+    def flattenToText(signature: Signature): String =
+      signature.map {
+        case Link(name, dri) => name
+        case s: String => s
+      }.mkString
 
-  def allResources(topLevelPackage: Member): Seq[Resource] = memberResources ++ Seq(
+    def processPage(page: Page): Seq[PageEntry] =
+      val res =  page.content match
+        case m: Member =>
+          val descr = m.dri.location.replace("/", ".")
+          def processMember(member: Member): Seq[PageEntry] =
+            val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
+            val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
+            val entry = PageEntry(member.dri, member.name, flattenToText(sig), descr)
+            val children = member
+                .membersBy(m => m.kind != dotty.dokka.model.api.Kind.Package && !m.kind.isInstanceOf[Classlike])
+                .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
+            Seq(entry) ++ children.flatMap(processMember)
+
+          processMember(m)
+        case _ =>
+          Seq(PageEntry(page.link.dri, page.link.name, page.link.name, ""))
+
+      res ++ page.children.flatMap(processPage)
+
+    val entries = pages.flatMap(processPage).toArray
+    val entriesText = new ObjectMapper().writeValueAsString(entries)
+    Resource.Text(searchDataPath, s"pages = $entriesText;")
+
+
+  def allResources(pages: Seq[Page]): Seq[Resource] = memberResources ++ Seq(
     dottyRes("favicon.ico"),
     dottyRes("fonts/dotty-icons.woff"),
     dottyRes("fonts/dotty-icons.ttf"),
-    scala3docLogo,
-    packageList(topLevelPackage)
+    dottyRes("images/scala3doc_logo.svg"),
+    searchData(pages)
   )
 
   def renderResource(resource: Resource): Seq[String] =
