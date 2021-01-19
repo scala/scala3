@@ -42,7 +42,7 @@ pluginClass=dividezero.DivideZero
 This is different from `scalac` plugins that required a `scalac-plugin.xml` file.
 
 Starting from 1.1.5, `sbt` also supports Scala 3 compiler plugins. Please refer to the
-`sbt` [documentation][2] for more information.
+[`sbt` documentation][2] for more information.
 
 ## Writing a Standard Compiler Plugin
 

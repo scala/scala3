@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: How to write a type class `derived` method using macros
+title: "How to write a type class `derived` method using macros"
 ---
 
 In the main [derivation](./derivation.md) documentation page, we explained the
@@ -97,8 +97,8 @@ One additional difference with the body of `derived` here as opposed to the one
 with `inline` is that with macros we need to synthesize the body of the code during the
 macro-expansion time. That is the rationale behind the `eqProductBody` function.
 Assuming that we calculate the equality of two `Person`s defined with a case
-class that holds a name of type `String` and an age of type `Int`, the equality
-check we want to generate is the following:
+class that holds a name of type [`String`](https://dotty.epfl.ch/api/scala/Predef$.html#String)
+and an age of type `Int`, the equality check we want to generate is the following:
 
 ```scala
    true

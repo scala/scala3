@@ -141,7 +141,9 @@ field points to an initialized object may not later point to an
 object under initialization. As an example, the following code will be rejected:
 
 ``` scala
-trait Reporter { def report(msg: String): Unit }
+trait Reporter:
+   def report(msg: String): Unit
+
 class FileReporter(ctx: Context) extends Reporter:
    ctx.typer.reporter = this                // ctx now reaches an uninitialized object
    val file: File = new File("report.txt")

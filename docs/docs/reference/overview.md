@@ -48,7 +48,7 @@ These constructs replace existing constructs with the aim of making the language
  instead of `new` expressions. `new` expressions stay around as a fallback for
  the cases where creator applications cannot be used.
 
-With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
+With the exception of [early initializers](dropped-features/early-initializers.md) and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
 Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might bring them back in a more general form if they are supported natively by the JVM as is planned by [project Valhalla](https://openjdk.java.net/projects/valhalla/).
 
