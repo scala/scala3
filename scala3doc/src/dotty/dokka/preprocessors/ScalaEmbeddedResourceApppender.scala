@@ -21,6 +21,7 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
           "styles/diagram.css",
           "styles/filter-bar.css",
           "styles/search-bar.css",
+          "styles/scala3doc-searchbar.css",
           "https://code.jquery.com/jquery-3.5.1.min.js",
           "https://d3js.org/d3.v6.min.js",
           "https://cdn.jsdelivr.net/npm/graphlib-dot@0.6.2/dist/graphlib-dot.min.js",
@@ -36,7 +37,8 @@ class ScalaEmbeddedResourceAppender extends PageTransformer {
           "scripts/components/Input.js",
           "scripts/components/FilterGroup.js",
           "scripts/components/Filter.js",
-          "scripts/data.js"
+          "scripts/data.js",
+          "scripts/searchbar.js"
         )).asJava,
         page.getChildren
       )

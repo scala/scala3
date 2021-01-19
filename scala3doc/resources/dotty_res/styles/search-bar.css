@@ -9,20 +9,6 @@
   background: none;
 }
 
-/* button */
-.search button {
-  background: #ED3522;
-  fill: #fff;
-  cursor: pointer;
-  border: none;
-  padding: 9px;
-  border-radius: 24px;
-  box-shadow: 0 0 16px #F27264;
-}
-.search button:hover {
-  fill: #F27264;
-}
-
 /* popup */
 .popup-wrapper {
   box-shadow: 0 0 10px var(--border-light) !important;
@@ -58,18 +44,6 @@
 
 /* Portrait phones */
 @media(max-width: 576px) {
-  .search button {
-    background: none;
-    fill: var(--icon-color);
-    cursor: pointer;
-    border: none;
-    padding: 0;
-    box-shadow: none;
-    margin-top: 2px;
-  }
-  .search button:hover {
-    fill: var(--link-hover-fg);
-  }
   .search-content {
     margin: 0 !important;
     top: 9px !important;

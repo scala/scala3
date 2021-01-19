@@ -279,7 +279,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
               div (id := "leftToggler")(
                 span(cls := "icon-toggler")
               ),
-              div(id := "searchBar"),
+              div(id := "scala3doc-searchBar"),
               main(
                 raw(buildWithKotlinx(kotlinxContent))
               ),
@@ -297,8 +297,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
               )
             )
           ),
-          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/pages.js")),
-          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/main.js"))
+          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/pages.js"))
       )
     ).toString
 

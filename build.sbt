@@ -22,6 +22,7 @@ val `tasty-core-bootstrapped` = Build.`tasty-core-bootstrapped`
 val `tasty-core-scala2` = Build.`tasty-core-scala2`
 val scala3doc = Build.scala3doc
 val `scala3doc-testcases` = Build.`scala3doc-testcases`
+val `scala3doc-js` = Build.`scala3doc-js`
 val `scala3-bench-run` = Build.`scala3-bench-run`
 val dist = Build.dist
 val `community-build` = Build.`community-build`

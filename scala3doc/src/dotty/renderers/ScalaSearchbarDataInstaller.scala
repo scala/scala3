@@ -29,7 +29,14 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
 
   override def processPage(page: ContentPage, link: String) =
     Option(page.getDocumentable) match {
-      case Some(member) => processMember(member, link)
+      case Some(member) => {
+        // All members that don't have their own page
+        val all = member
+          .membersBy(m => m.kind != dotty.dokka.model.api.Kind.Package && !m.kind.isInstanceOf[Classlike])
+          .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
+        all.foreach(processMember(_, link))
+        processMember(member, link)
+      }
       case None => page match {
         case p: StaticPageNode => processStaticSite(p, link)
         case _ => ()
@@ -55,6 +62,6 @@ class ScalaSearchbarDataInstaller(val ctx: DokkaContext) extends SearchbarDataIn
 
   override def generatePagesList(): String = {
     val mapper = jacksonObjectMapper()
-    val pagesList = pages.values.map(p => createSearchRecord(p.signature, p.pkg, p.link, List(p.name).asJava)).toList.asJava
+    val pagesList = pages.values.map(p => createSearchRecord(p.signature, p.pkg, p.link, (List(p.name)).asJava)).toList.asJava
     mapper.writeValueAsString(pagesList)
   }

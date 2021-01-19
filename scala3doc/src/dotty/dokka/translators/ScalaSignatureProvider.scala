@@ -48,7 +48,7 @@ object ScalaSignatureProvider:
       case tpe: Kind.Type =>
         typeSignature(tpe, documentable, builder)
       case Kind.Package =>
-        builder.text("package").text(" ").name(documentable.name, documentable.dri)
+        builder.text("package ").name(documentable.name, documentable.dri)
       case Kind.RootPackage =>
         builder
       case Kind.Unknown =>

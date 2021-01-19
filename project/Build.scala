@@ -28,6 +28,8 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+
 object MyScalaJSPlugin extends AutoPlugin {
   import Build._
 
@@ -1230,6 +1232,8 @@ object Build {
   lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
   lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
 
+  lazy val `scala3doc-js` = project.in(file("scala3doc-js")).asScala3docJs
+
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
   lazy val `sbt-dotty` = project.in(file("sbt-dotty")).
@@ -1643,6 +1647,19 @@ object Build {
           ),
           Compile / buildInfoKeys := Seq[BuildInfoKey](version),
           Compile / buildInfoPackage := "dotty.dokka",
+          Compile / resourceGenerators += Def.task {
+            val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
+            sbt.IO.copyFile((fullOptJS in Compile in `scala3doc-js`).value.data, jsDestinationFile)
+            Seq(jsDestinationFile)
+          }.taskValue,
+          Compile / resourceGenerators += Def.task {
+            val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scala3doc-searchbar.css"
+            val cssSourceFile = (resourceDirectory in Compile in `scala3doc-js`).value / "scala3doc-searchbar.css"
+            FileFunction.cached(streams.value.cacheDirectory / "css-cache") { (in: Set[File]) =>
+              in.headOption.map(sbt.IO.copyFile(_, cssDesitnationFile))
+              Set(cssDesitnationFile)
+            }.apply(Set(cssSourceFile)).toSeq
+          }.taskValue,
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
           buildInfoPackage in Test := "dotty.dokka.test",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
@@ -1655,6 +1672,17 @@ object Build {
 
     def asScala3docTestcases: Project =
       project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
+
+    def asScala3docJs: Project =
+      project.
+        enablePlugins(MyScalaJSPlugin).
+        dependsOn(`scala3-library-bootstrappedJS`).
+        settings(
+          fork in Test := false,
+          scalaJSUseMainModuleInitializer := true,
+          libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").withDottyCompat(scalaVersion.value)
+        )
+
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
