@@ -253,7 +253,7 @@ object desugar {
 
   def addDefaultGetters(meth: DefDef)(using Context): Tree =
 
-    /** The longest prefix of parameter lists in =paramss whose total number of
+    /** The longest prefix of parameter lists in paramss whose total number of
      *  ValDefs does not exceed `n`
      */
     def takeUpTo(paramss: List[ParamClause], n: Int): List[ParamClause] = paramss match

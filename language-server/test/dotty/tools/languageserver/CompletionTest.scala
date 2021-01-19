@@ -58,7 +58,7 @@ class CompletionTest {
 
   // TODO: Also add tests with concrete classes, where the completion will
   // include the constructor proxy companion
-  
+
   @Test def importCompleteClassWithPrefix: Unit = {
     withSources(
       code"""object Foo { abstract class MyClass }""",
@@ -328,7 +328,7 @@ class CompletionTest {
           |given Baz = new Baz {}
           |extension (foo: Foo.type)(using Bar, Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(using x$1: Bar, x$2: Baz): Int")))
+      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int")))
   }
 
   @Test def completeExtensionMethodFromExtenionWithMultipleUsingSections: Unit = {
@@ -339,7 +339,7 @@ class CompletionTest {
           |given Baz = new Baz {}
           |extension (foo: Foo.type)(using Bar)(using Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
-      .completion(m1, Set(("xxxx", Method, "(using x$1: Bar)(using x$2: Baz): Int")))
+      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int")))
   }
 
   @Test def completeInheritedExtensionMethod: Unit = {
