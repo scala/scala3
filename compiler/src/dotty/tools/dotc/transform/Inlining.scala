@@ -26,6 +26,7 @@ import dotty.tools.dotc.quoted._
 import dotty.tools.dotc.transform.TreeMapWithStages._
 import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
+import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 import scala.annotation.constructorOnly
 
@@ -57,6 +58,11 @@ class Inlining extends MacroTransform {
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
+      new InliningTreeMap().transform(tree)
+  }
+
+  private class InliningTreeMap extends TreeMapWithImplicits {
+    override def transform(tree: Tree)(using Context): Tree = {
       tree match
         case tree: DefTree =>
           if tree.symbol.is(Inline) then tree
@@ -75,7 +81,7 @@ class Inlining extends MacroTransform {
           super.transform(tree)(using StagingContext.spliceContext)
         case _ =>
           super.transform(tree)
-
+    }
   }
 }
 
