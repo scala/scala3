@@ -27,7 +27,6 @@ import org.jetbrains.dokka.base.resolvers.shared._
 import dotty.dokka.site.NavigationCreator
 import dotty.dokka.site.SitePagesCreator
 import dotty.dokka.site.StaticSiteContext
-import dotty.dokka.site.SiteResourceManager
 import dotty.dokka.site.StaticSiteLocationProviderFactory
 
 /** Main Dokka plugin for the doctool.
@@ -62,20 +61,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
       .overrideExtension(dokkaBase.getModulesAndPackagesDocumentation)
   )
 
-  val scalaResourceInstaller = extend(
-    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromRecipe{ case ctx @ given DokkaContext => new ScalaResourceInstaller }
-      .name("scalaResourceInstaller")
-      .after(dokkaBase.getCustomResourceInstaller)
-  )
-
-  val scalaEmbeddedResourceAppender =  extend(
-    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-      .fromInstance(new ScalaEmbeddedResourceAppender())
-      .after(dokkaBase.getCustomResourceInstaller)
-      .name("scalaEmbeddedResourceAppender")
-  )
-
   val scalaDocumentableToPageTranslator = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getDocumentableToPageTranslator)
       .fromRecipe { case ctx @ given DokkaContext =>
@@ -90,7 +75,7 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
 
   val ourRenderer = extend(
     _.extensionPoint(CoreExtensions.INSTANCE.getRenderer)
-      .fromRecipe { case ctx @ given DokkaContext => new ScalaHtmlRenderer }
+      .fromRecipe { case ctx @ given DokkaContext => new DokkaScalaHtmlRenderer }
       .overrideExtension(dokkaBase.getHtmlRenderer)
   )
 
@@ -127,16 +112,6 @@ class DottyDokkaPlugin extends DokkaJavaPlugin:
         after = Seq(customDocumentationProvider.getValue)
       )
       .overrideExtension(dokkaBase.getNavigationPageInstaller)
-  )
-
-  val customDocumentationResources = extend(
-    _.extensionPoint(dokkaBase.getHtmlPreprocessors)
-    .fromRecipe{ case c @ given DokkaContext => new SiteResourceManager }
-      .name("customDocumentationResources")
-      .after(
-        scalaEmbeddedResourceAppender.getValue,
-        customDocumentationProvider.getValue
-      )
   )
 
   val locationProvider = extend(

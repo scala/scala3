@@ -125,6 +125,24 @@ abstract class BaseStaticSiteProcessor(using ctx: DocContext)
 
     protected def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode
 
+// Needed until we will migrate away from dokka
+case class FakeContentPage(
+  dri: DRI,
+  override val getContent: ContentNode) extends ContentPage:
+  override val getName: String = ""
+  override val getChildren: JList[PageNode] = JList()
+  override val getEmbeddedResources: JList[String] = JList()
+  override def getDocumentable: Documentable = null
+  override def modified(
+    name: String,
+    content: ContentNode,
+    dri: JSet[DRI],
+    embeddedResources: JList[String],
+    children: JList[_ <: PageNode]
+  ): ContentPage = this
+  override def modified(name: String, children: JList[_ <: PageNode]): PageNode = this
+  override val getDri: JSet[DRI] = JSet(dri)
+
 case class AContentPage(
   override val getName: String,
   override val getChildren: JList[PageNode],

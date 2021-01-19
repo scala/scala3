@@ -22,6 +22,8 @@ case class StaticPageNode(
   def title(): String = template.title
   def hasFrame(): Boolean = template.hasFrame
 
+  def dri = getDri.iterator.next()
+
   override def modified(
     name: String,
     content: ContentNode,

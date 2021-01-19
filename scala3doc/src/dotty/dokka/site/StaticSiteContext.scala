@@ -28,14 +28,16 @@ class StaticSiteContext(
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexPage(): Option[StaticPageNode] =
+  def indexTemplate(): Seq[LoadedTemplate] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
 
     if files.size > 1 then
       val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
       report.error(msg)
 
-    files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
+    files.flatMap(loadTemplate(_, isBlog = false)).take(1)
+
+  def indexPage(): Option[StaticPageNode] = indexTemplate().headOption.map(templateToPage)
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
@@ -48,6 +50,27 @@ class StaticSiteContext(
     else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
 
   lazy val templates: Seq[LoadedTemplate] = sideBarConfig.fold(loadAllFiles())(_.map(loadSidebarContent))
+
+  lazy val orphanedTemplates: Seq[LoadedTemplate] = {
+    def doFlatten(t: LoadedTemplate): Seq[Path] =
+      t.file.toPath +: t.children.flatMap(doFlatten)
+    val mainFiles = templates.flatMap(doFlatten)
+
+    val allPaths =
+      if !Files.exists(docsPath) then Nil
+      else Files.walk(docsPath, FileVisitOption.FOLLOW_LINKS).iterator().asScala.toList
+
+    val orphanedFiles = allPaths.filterNot { p =>
+       def name = p.getFileName.toString
+       def isMain = name == "index.html" || name == "index.md"
+       mainFiles.contains(p) || (isMain && mainFiles.contains(p.getParent))
+    }.filter { p =>
+        val name = p.getFileName.toString
+        name.endsWith(".md") || name.endsWith(".html")
+    }
+
+    orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
+  }
 
   lazy val mainPages: Seq[StaticPageNode] = templates.map(templateToPage)
 
@@ -168,7 +191,25 @@ class StaticSiteContext(
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
   def driFor(dest: Path): DRI =
-    DRI(location = root.toPath.relativize(dest).iterator.asScala.mkString("."))
+    val rawFilePath = root.toPath.relativize(dest)
+    val pageName = dest.getFileName.toString
+    val dotIndex = pageName.lastIndexOf('.')
+
+    val relativePath =
+      if rawFilePath.startsWith(Paths.get("blog","_posts")) then
+        val regex = raw"(\d*)-(\d*)-(\d*)-(.*)\..*".r
+        pageName.toString match
+          case regex(year, month, day, name) =>
+            rawFilePath.getParent.resolveSibling(Paths.get(year, month, day, name))
+          case _ =>
+            val msg = s"Relative path for blog: $rawFilePath doesn't match `yyy-mm-dd-name.md` format."
+            report.warn(msg, dest.toFile)
+            rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+      else
+        if (dotIndex < 0) rawFilePath.resolve("index")
+        else rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+
+    DRI.forPath(relativePath)
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 

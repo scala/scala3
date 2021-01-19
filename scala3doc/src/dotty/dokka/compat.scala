@@ -15,6 +15,7 @@ import java.util.Collections
 import org.jetbrains.dokka.plugability._
 import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 import org.jetbrains.dokka.links._
+import java.nio.file.Path
 
 val U: kotlin.Unit = kotlin.Unit.INSTANCE
 
@@ -42,6 +43,8 @@ extension (dri: DRI)
     extra = Option(dri.getExtra).fold(null)(e => raw"\[origin:(.*)\]".r.replaceAllIn(e, ""))
   )
 
+  def isStaticFile = dri.getExtra == staticFileExtra
+
   def location: String = dri.getPackageName
 
   def anchor: Option[String] = Option(dri.getClassNames).filterNot(_.isEmpty)
@@ -57,7 +60,11 @@ extension (dri: DRI)
     extra: String = dri.extra
   ) = new DRI(location, anchor.getOrElse(""), null, target, extra)
 
+val staticFileExtra = "___staticFile___"
+
 object DRI:
+  def forPath(path: Path) = apply(location = path.toString, extra = staticFileExtra)
+
   def apply(
     location: String = "",
     anchor: Option[String] = None,

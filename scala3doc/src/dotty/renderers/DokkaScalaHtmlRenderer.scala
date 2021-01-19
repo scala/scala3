@@ -4,6 +4,7 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages._
 import org.jetbrains.dokka.model._
 import org.jetbrains.dokka.base.renderers.html.HtmlRenderer
+import org.jetbrains.dokka.base.renderers.DefaultRenderer
 import org.jetbrains.dokka._
 import HTML._
 import collection.JavaConverters._
@@ -28,10 +29,11 @@ import org.jetbrains.dokka.base.renderers.html.SearchbarDataInstaller
 import org.jsoup.Jsoup
 import java.nio.file.Paths
 
-class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
-  val currentDri = pageContext.getDri.asScala.head
+trait SignatureRenderer:
+  def currentDri: DRI
+  def link(dri: DRI): Option[String]
 
-  def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
+  def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
     link(dri) match
@@ -43,19 +45,51 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
     case name: String => raw(name)
     case Link(name, dri) => renderLink(name, dri, modifiers:_*)
 
+class SignatureRendererImpl(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider) extends SignatureRenderer:
+  val currentDri = pageContext.getDri.asScala.head
 
-  def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
+  def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
 
-class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
+class DokkaScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
   val args = summon[DocContext].args
 
-  // TODO #239
-  val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {
-    val f = classOf[HtmlRenderer].getDeclaredField("searchbarDataInstaller")
+  override def render(root: RootPageNode): Unit =
+    def getModule(node: PageNode): Seq[DModule] = node match
+      case m: ModulePageNode =>
+        m.getDocumentable match
+          case dmodule: DModule => Seq(dmodule)
+          case _ => Nil
+      case other => Nil
+
+    val module = getModule(root).head
+    val pck = module.getPackages.get(0)
+    import dotty.dokka.model.api.driMap
+    val ourRenderer = new dotty.dokka.renderers.HtmlRenderer(
+      pck,
+      module.driMap,
+      dri => c => buildWithKotlinx(c, site.FakeContentPage(dri, c), null)
+    )
+
+    val f = classOf[DefaultRenderer[_]].getDeclaredField("locationProvider")
     f.setAccessible(true)
-    f.set(this, ScalaSearchbarDataInstaller(ctx))
-    f.get(this).asInstanceOf[ScalaSearchbarDataInstaller]
-  }
+    f.set(this, new LocationProvider {
+      type DSS = JSet[org.jetbrains.dokka.model.DisplaySourceSet]
+      def resolve(to: DRI, sourceSets: DSS, context: PageNode): String =
+        context match
+          case null => ???
+          case fromPage: ContentPage =>
+            val from = fromPage.getDri.asScala.head
+            val path = ourRenderer.pathToPage(to, from)
+            path
+
+      // None other operation is needed
+      // This will goes away once we migrate away from dokka
+      def resolve(node: PageNode, context: PageNode, skipExtension: Boolean): String = ???
+      def pathToRoot(from: PageNode): String = ???
+      def ancestors(node: PageNode): JList[PageNode] = ???
+      def expectedLocationForDri(dri: DRI): String = ???
+    })
+    ourRenderer.render()
 
   // Implementation below is based on Kotlin bytecode and we will try to migrate it to dokka
   // TODO (https://github.com/lampepfl/scala3doc/issues/232): Move this method to dokka
@@ -111,7 +145,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
   }
 
   private def renderers(pageContext: ContentPage): (SignatureRenderer, MemberRenderer) =
-    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
+    val renderer = SignatureRendererImpl(pageContext, sourceSets, getLocationProvider)
     (renderer, new MemberRenderer(renderer, buildWithKotlinx(_, pageContext, null)))
 
   private def buildNavigation(r: SignatureRenderer)(rootNav: NavigationNode): AppliedTag =
@@ -232,7 +266,6 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
       case content =>
         build(content, context, page, /*sourceSetRestriction=*/null)
 
-
   override def buildHtml(page: PageNode, resources: JList[String], kotlinxContent: FlowContentConsumer): String =
     val (pageTitle, noFrame) = page match
       case static: StaticPageNode =>
@@ -246,7 +279,7 @@ class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
         span(img(src := resolveRoot(page, s"project-logo/$fileName")))
       }.toSeq
 
-    val renderer = SignatureRenderer(page.asInstanceOf[ContentPage], sourceSets, getLocationProvider)
+    val renderer = SignatureRendererImpl(page.asInstanceOf[ContentPage], sourceSets, getLocationProvider)
 
     html(
       head(

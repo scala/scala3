@@ -45,7 +45,7 @@ class ScalaModuleProvider(using ctx: DocContext) extends SourceToDocumentableTra
       JMap(),
       null,
       sourceSet.toSet,
-      PropertyContainer.Companion.empty() plus ModuleExtension(result.flatMap(flattenMember).toMap)
+      PropertyContainer.Companion.empty() plus ModuleExtension(flattenMember(topLevelPackage).toMap)
     )
 
     transformers.foldLeft(module)( (module, transformer) => transformer(module) )
