@@ -1,4 +1,4 @@
 import scala.quoted._
 def test(using Quotes) = {
-  '{ case class Foo() }
+  '{ case class Foo() } // error
 }

@@ -1,5 +1,5 @@
 inline def species() = {
-  case class FooT()
+  case class FooT() // error
   FooT()
 }
 val foo = species()

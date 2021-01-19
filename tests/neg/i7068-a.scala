@@ -3,7 +3,7 @@ sealed trait Foo[T] {
 }
 
 inline def species[T](t: T) = {
-  case class FooT(x: T) extends Foo[T] {
+  case class FooT(x: T) extends Foo[T] { // error
     def foo(s: Foo[T]) = s match {
       case FooT(x) => ???
     }
