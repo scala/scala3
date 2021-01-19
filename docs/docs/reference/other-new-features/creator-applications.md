@@ -9,7 +9,7 @@ function application, without needing to write `new`.
 Scala 3 generalizes this scheme to all concrete classes. Example:
 
 ```scala
-class StringBuilder(s: String):
+class StringBuilder(s: String) with
    def this() = this("")
 
 StringBuilder("abc")  // same as new StringBuilder("abc")

@@ -153,7 +153,7 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
-This trait defines a single public method, `ordinal`:
+This trait defines a single public method, `ordinal` with
 
 ```scala
 package scala.reflect

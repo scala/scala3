@@ -1,6 +1,6 @@
 import scala.quoted._
 
-object Test:
+object Test with
 
   def f1(using Quotes)(t: quotes.reflect.Tree): Unit = ()
 

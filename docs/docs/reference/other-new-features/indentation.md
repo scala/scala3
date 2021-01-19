@@ -120,7 +120,7 @@ With these new rules, the following constructs are all valid:
 trait A:
    def f: Int
 
-class C(x: Int) extends A:
+class C(x: Int) extends A with
    def f = x
 
 object O:
@@ -256,7 +256,7 @@ For instance, the following end markers are all legal:
 ```scala
 package p1.p2:
 
-   abstract class C():
+   abstract class C() with
 
       def this(x: Int) =
          this()

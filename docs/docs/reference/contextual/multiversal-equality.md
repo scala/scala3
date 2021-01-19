@@ -172,7 +172,7 @@ we are dealing with a refinement of pre-existing, universal equality. It is best
 
 Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
-class List[+T]:
+class List[+T] with
    ...
    def contains(x: Any): Boolean
 ```

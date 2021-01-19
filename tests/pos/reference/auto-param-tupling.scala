@@ -1,6 +1,6 @@
 package autoParamTupling
 
-object t1:
+object t1 with
   val xs: List[(Int, Int)] = ???
 
   xs.map {

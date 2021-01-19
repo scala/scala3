@@ -70,9 +70,9 @@ between two definitions that have otherwise the same names and types. So the fol
 
 ```scala
 import annotation.targetName
-class A:
+class A with
    def f(): Int = 1
-class B extends A:
+class B extends A with
    @targetName("g") def f(): Int = 2
 ```
 
@@ -98,9 +98,9 @@ be present in the original code. So the following example would also be in error
 
 ```scala
 import annotation.targetName
-class A:
+class A with
    def f(): Int = 1
-class B extends A:
+class B extends A with
    @targetName("f") def g(): Int = 2
 ```
 
@@ -109,7 +109,7 @@ different names. But once we switch to target names, there is a clash that is re
 
 ```
 -- [E120] Naming Error: test.scala:4:6 -----------------------------------------
-4 |class B extends A:
+4 |class B extends A with
   |      ^
   |      Name clash between defined and inherited member:
   |      def f(): Int in class A at line 3 and

@@ -59,7 +59,7 @@ So if one defines a class `C` that inherits `A` and `B`, one needs
 to give at that point a definition of a `children` method with the required type.
 
 ```scala
-class C extends A, B:
+class C extends A, B with
    def children: List[A & B] = ???
 ```
 

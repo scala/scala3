@@ -1,5 +1,5 @@
 // Demonstrates that monomorphic givens are cached
-object a:
+object a with
   private var x = 1
   given Int = x
   def init(x: Int) = this.x = x

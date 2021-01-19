@@ -1,30 +1,30 @@
-class Common:
+class Common with
 
-  trait Ord[T]:
+  trait Ord[T] with
     extension (x: T) def compareTo(y: T): Int
     extension (x: T) def < (y: T) = x.compareTo(y) < 0
     extension (x: T) def > (y: T) = x.compareTo(y) > 0
 
-  trait Convertible[From, To]:
+  trait Convertible[From, To] with
     extension (x: From) def convert: To
 
-  trait SemiGroup[T]:
+  trait SemiGroup[T] with
     extension (x: T) def combine(y: T): T
 
-  trait Monoid[T] extends SemiGroup[T]:
+  trait Monoid[T] extends SemiGroup[T] with
     def unit: T
 
-  trait Functor[F[_]]:
+  trait Functor[F[_]] with
     extension [A](x: F[A]) def map[B](f: A => B): F[B]
 
-  trait Monad[F[_]] extends Functor[F]:
+  trait Monad[F[_]] extends Functor[F] with
     extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
     extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
 end Common
 
-object Instances extends Common:
+object Instances extends Common with
 
   given intOrd: Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
@@ -64,7 +64,7 @@ object Instances extends Common:
   def maximum[T](xs: List[T])(using Ord[T]): T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T]:
+  def descending[T](using asc: Ord[T]): Ord[T] = new Ord[T] with
     extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(using Ord[T]) =
@@ -85,20 +85,20 @@ object Instances extends Common:
   class B
   val ab: (x: A, y: B) ?=> Int = (a: A, b: B) ?=> 22
 
-  trait TastyAPI:
+  trait TastyAPI with
     type Symbol
-    trait SymDeco:
+    trait SymDeco with
       extension (sym: Symbol) def name: String
     given symDeco: SymDeco
 
-  object TastyImpl extends TastyAPI:
+  object TastyImpl extends TastyAPI with
     type Symbol = String
     given symDeco: SymDeco with
       extension (sym: Symbol) def name = sym
 
   class D[T]
 
-  class C(using ctx: Context):
+  class C(using ctx: Context) with
     def f() =
       locally {
         given Context = this.ctx
@@ -121,14 +121,14 @@ object Instances extends Common:
 
   class Token(str: String)
 
-  object Token:
+  object Token with
     given StringToToken: Conversion[String, Token] with
       def apply(str: String): Token = new Token(str)
 
   val x: Token = "if"
 end Instances
 
-object PostConditions:
+object PostConditions with
   opaque type WrappedResult[T] = T
 
   def result[T](using x: WrappedResult[T]): T = x
@@ -139,7 +139,7 @@ object PostConditions:
       x
 end PostConditions
 
-object AnonymousInstances extends Common:
+object AnonymousInstances extends Common with
   given Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
@@ -173,12 +173,12 @@ object AnonymousInstances extends Common:
       xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
 end AnonymousInstances
 
-object Implicits extends Common:
-  implicit object IntOrd extends Ord[Int]:
+object Implicits extends Common with
+  implicit object IntOrd extends Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
 
-  class ListOrd[T: Ord] extends Ord[List[T]]:
+  class ListOrd[T: Ord] extends Ord[List[T]] with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -199,31 +199,31 @@ object Implicits extends Common:
                 (implicit cmp: Ord[T]): T =
     xs.reduceLeft((x, y) => if (x < y) y else x)
 
-  def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T]:
+  def descending[T](implicit asc: Ord[T]): Ord[T] = new Ord[T] with
     extension (x: T) def compareTo(y: T) = asc.compareTo(y)(x)
 
   def minimum[T](xs: List[T])(implicit cmp: Ord[T]) =
     maximum(xs)(descending)
 
-object Test extends App:
+object Test extends App with
   Instances.test()
   import PostConditions.{result, ensuring}
   val s = List(1, 2, 3).sum
   s.ensuring(result == 6)
 end Test
 
-object Completions:
+object Completions with
 
   class Future[T]
   class HttpResponse
   class StatusCode
 
   // The argument "magnet" type
-  enum CompletionArg:
+  enum CompletionArg with
     case Error(s: String)
     case Response(f: Future[HttpResponse])
     case Status(code: Future[StatusCode])
-  object CompletionArg:
+  object CompletionArg with
 
     // conversions defining the possible arguments to pass to `complete`
     // these always come with CompletionArg

@@ -3,7 +3,7 @@ package a
 import scala.quoted._
 
 
-object A:
+object A with
 
   inline def transform[A](inline expr: A): A = ${
     transformImplExpr('expr)

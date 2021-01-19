@@ -4,7 +4,7 @@ def f7[T](x: Option[T]) = x match
   case None =>
 end if  // error: misaligned end marker
 
-object Test4:
+object Test4 with
   def f[T](x: Option[T]) = x match
     case Some(y) =>
     case None =>

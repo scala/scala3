@@ -1,5 +1,5 @@
 package matches
-object Test:
+object Test with
   2 min 3 match
     case 2 => "OK"
     case 3 => "?"

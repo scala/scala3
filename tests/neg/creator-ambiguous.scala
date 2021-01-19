@@ -2,11 +2,11 @@
 // This used to succeed with old creator methods scheme
 // What happened was: the overloading resolution gave an ambiguous
 // overload, but then the falblback picked the constructor
-object Test:
+object Test with
 
   case class Record(elems: (String, Any)*)
 
-  object Record:
+  object Record with
 
     inline def apply[R <: Record](elems: (String, Any)*) : R = new Record(elems: _*).asInstanceOf[R]
 

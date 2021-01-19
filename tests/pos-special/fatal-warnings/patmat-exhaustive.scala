@@ -1,5 +1,5 @@
 def foo: Unit =
-  object O:
+  object O with
     sealed abstract class A
   class B extends O.A
   class C extends O.A

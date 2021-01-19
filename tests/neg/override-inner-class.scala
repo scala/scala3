@@ -1,5 +1,5 @@
-class C:
+class C with
   type T >: String <: Any
 
-class D extends C:
+class D extends C with
   class T  // error

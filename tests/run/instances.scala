@@ -40,10 +40,10 @@ object Test extends App {
   assert(List(names, List("!")).flattened == names :+ "!")
   assert(Nil.flattened == Nil)
 
-  trait SemiGroup[T]:
+  trait SemiGroup[T] with
     extension (x: T) def combine(y: T): T
 
-  trait Monoid[T] extends SemiGroup[T]:
+  trait Monoid[T] extends SemiGroup[T] with
     def unit: T
 
   given StringMonoid: Monoid[String] with
@@ -56,7 +56,7 @@ object Test extends App {
 
   println(sum(names))
 
-  trait Ord[T]:
+  trait Ord[T] with
     extension (x: T) def compareTo(y: T): Int
     extension (x: T) def < (y: T) = x.compareTo(y) < 0
     extension (x: T) def > (y: T) = x.compareTo(y) > 0
@@ -88,11 +88,11 @@ object Test extends App {
 
   println(max(List(1, 2, 3), List(2)))
 
-  trait Functor[F[_]]:
+  trait Functor[F[_]] with
     extension [A](x: F[A]) def map[B](f: A => B): F[B]
   end Functor
 
-  trait Monad[F[_]] extends Functor[F]:
+  trait Monad[F[_]] extends Functor[F] with
     extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
     extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 

@@ -75,7 +75,7 @@ In the following example the depend type `f.Eff` refers to the effect type `CanT
 trait Effect
 
 // Type X => Y
-abstract class Fun[-X, +Y]:
+abstract class Fun[-X, +Y] with
    type Eff <: Effect
    def apply(x: X): Eff ?=> Y
 
@@ -85,11 +85,11 @@ class CanIO extends Effect
 given ct: CanThrow = new CanThrow
 given ci: CanIO = new CanIO
 
-class I2S extends Fun[Int, String]:
+class I2S extends Fun[Int, String] with
    type Eff = CanThrow
    def apply(x: Int) = x.toString
 
-class S2I extends Fun[String, Int]:
+class S2I extends Fun[String, Int] with
    type Eff = CanIO
    def apply(x: String) = x.length
 

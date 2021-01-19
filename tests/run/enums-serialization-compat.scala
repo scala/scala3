@@ -1,22 +1,22 @@
 import java.io._
 import scala.util.Using
 
-enum JColor extends java.lang.Enum[JColor]:
+enum JColor extends java.lang.Enum[JColor] with
   case Red // java enum has magic JVM support
 
-enum SColor:
+enum SColor with
   case Green // simple case last
 
-enum SColorTagged[T]:
+enum SColorTagged[T] with
   case Blue                                     extends SColorTagged[Unit]
   case Rgb(r: Byte, g: Byte, b: Byte)           extends SColorTagged[(Byte, Byte, Byte)] // mixing pattern kinds
   case Indigo                                   extends SColorTagged[Unit]
   case Cmyk(c: Byte, m: Byte, y: Byte, k: Byte) extends SColorTagged[(Byte, Byte, Byte, Byte)] // class case last
 
-enum Nucleobase:
+enum Nucleobase with
   case A,C,G,T // patdef last
 
-enum MyClassTag[T](wrapped: Class[?]):
+enum MyClassTag[T](wrapped: Class[?]) with
   case IntTag  extends MyClassTag[Int](classOf[Int])
   case UnitTag extends MyClassTag[Unit](classOf[Unit]) // value case last
 

@@ -1,14 +1,14 @@
 import scala.quoted._
 
-trait Foo:
+trait Foo with
   def mcrImpl1(e: Expr[Any])(using ctx: Quotes): Expr[Any] =
     '{println(s"Hello ${$e}")}
 
-object Foo extends Foo:
+object Foo extends Foo with
   def mcrImpl2(e: Expr[Any])(using ctx: Quotes): Expr[Any] =
     '{println(s"Hello ${$e}")}
 
-object Bar:
+object Bar with
   import Foo._
   inline def mcr1(e: => Any) = ${mcrImpl1('e)}
 

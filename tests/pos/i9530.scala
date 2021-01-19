@@ -1,12 +1,12 @@
 trait Food
 case class Banana(color: String) extends Food
 
-trait Diet[A <: Animal]:
+trait Diet[A <: Animal] with
   type F <: Food
   def food: Seq[F]
 
 trait Animal
-object Animal:
+object Animal with
   extension [A <: Animal](using diet: Diet[A])(animal: A) def food1 = diet.food
   extension [A <: Animal](animal: A)(using diet: Diet[A]) def food2 = diet.food
 

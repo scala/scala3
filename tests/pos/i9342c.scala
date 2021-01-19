@@ -1,4 +1,4 @@
-trait Label[A]:
+trait Label[A] with
   def apply(v: A): String
 
 def g[A]: Label[A] = _.toString

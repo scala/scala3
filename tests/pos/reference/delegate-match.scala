@@ -1,6 +1,6 @@
 package implicitmatch
 
-class Test extends App:
+class Test extends App with
   import scala.collection.immutable.{TreeSet, HashSet}
   import scala.compiletime.summonFrom
 

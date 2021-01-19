@@ -75,7 +75,7 @@ extended by both `AnyVal` and `AnyRef`. Since `Matchable` is a supertype of ever
 Here is the hierarchy of top-level classes and traits with their defined methods:
 
 ```scala
-abstract class Any:
+abstract class Any with
    def getClass
    def isInstanceOf
    def asInstanceOf
@@ -102,7 +102,7 @@ Matchable warning is turned on. The most common such method is the universal
 `equals` method. It will have to be written as in the following example:
 
 ```scala
-class C(val x: String):
+class C(val x: String) with
 
    override def equals(that: Any): Boolean =
       that.asInstanceOf[Matchable] match

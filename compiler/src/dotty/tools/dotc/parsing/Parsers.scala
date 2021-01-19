@@ -1288,7 +1288,7 @@ object Parsers {
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
+            syntaxErrorOrIncomplete(i"indented definitions expected, ${in} found")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
@@ -2315,7 +2315,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApps(commaOK = false)
+        else constrApp() :: withConstrApps()
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -3494,7 +3494,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true)
+          constrApps()
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3626,24 +3626,37 @@ object Parsers {
         // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 
-    /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
+    /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
-    def constrApps(commaOK: Boolean): List[Tree] =
+    def constrApps(): List[Tree] =
       val t = constrApp()
-      val ts =
-        if in.token == WITH || commaOK && in.token == COMMA then
-          in.nextToken()
-          constrApps(commaOK)
-        else Nil
+      val ts = if in.token == COMMA then commaConstrApps() else withConstrApps()
       t :: ts
 
+    /** `{`,` ConstrApp} */
+    def commaConstrApps(): List[Tree] =
+      if in.token == COMMA then
+        in.nextToken()
+        constrApp() :: commaConstrApps()
+      else Nil
 
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
     def withConstrApps(): List[Tree] =
       def isTemplateStart =
         val la = in.lookahead
-        la.isAfterLineEnd || la.token == LBRACE
+        la.token == LBRACE
+        || la.isAfterLineEnd
+           && {
+             if migrateTo3 then
+                warning(
+                  em"""In Scala 3, `with` at the end of a line will start definitions,
+                      |so it cannot be used in front of a parent constructor anymore.
+                      |Place the `with` at the beginning of the next line instead.""")
+                false
+              else
+                true
+           }
       if in.token == WITH && !isTemplateStart then
         in.nextToken()
         constrApp() :: withConstrApps()
@@ -3662,7 +3675,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true)
+          else constrApps()
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3806,7 +3819,16 @@ object Parsers {
         }
         else {
           stats += first
-          acceptStatSepUnlessAtEnd(stats)
+          if in.token == WITH then
+            syntaxError(
+              i"""end of statement expected but ${showToken(WITH)} found
+                 |
+                 |Maybe you meant to write a mixin in an extends clause?
+                 |Note that this requires the `with` to come first now.
+                 |I.e.
+                 |
+                 |    with $first""")
+          else acceptStatSepUnlessAtEnd(stats)
         }
       }
       var exitOnError = false

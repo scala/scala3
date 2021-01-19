@@ -1,6 +1,6 @@
 import scala.language.dynamics
 
-object Dyn extends Dynamic:
+object Dyn extends Dynamic with
   def selectDynamic[T](name: String): Option[T] = None
 
 val a: Option[(Int, Int)] = Dyn.asdf[Tuple2[Int, Int]]

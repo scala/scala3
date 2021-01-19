@@ -1,14 +1,14 @@
 class Animal
 class Dog extends Animal
 
-enum Opt[+T]:
+enum Opt[+T] with
   case Sm(t: T)
   case None
 
 val smDog: Opt.Sm[Dog] = new Opt.Sm(Dog())
 val smAnimal: Opt.Sm[Animal] = smDog
 
-enum Show[-T]:
+enum Show[-T] with
   case Refl(op: T => String)
 
   def show(t: T): String = this match

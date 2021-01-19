@@ -3,7 +3,7 @@ trait Frag
 case class IntFrag(x: Int) extends Frag
 case class StringFrag(x: String) extends Frag
 
-trait Fragable[T]:
+trait Fragable[T] with
   extension (x: T)
     def toFrags: List[Frag]
 

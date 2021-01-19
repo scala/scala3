@@ -16,10 +16,10 @@ Here are some examples of common type classes:
 Here's the `Monoid` type class definition:
 
 ```scala
-trait SemiGroup[T]:
+trait SemiGroup[T] with
    extension (x: T) def combine (y: T): T
 
-trait Monoid[T] extends SemiGroup[T]:
+trait Monoid[T] extends SemiGroup[T] with
    def unit: T
 ```
 
@@ -49,7 +49,7 @@ def combineAll[T: Monoid](xs: List[T]): T =
 To get rid of the `summon[...]` we can define a `Monoid` object as follows:
 
 ```scala
-object Monoid:
+object Monoid with
    def apply[T](using m: Monoid[T]) = m
 ```
 
@@ -68,7 +68,7 @@ Therefore we write it `F[_]`, hinting that the type `F` takes another type as ar
 The definition of a generic `Functor` would thus be written as:
 
 ```scala
-trait Functor[F[_]]:
+trait Functor[F[_]] with
    def map[A, B](x: F[A], f: A => B): F[B]
 ```
 
@@ -100,7 +100,7 @@ That's a first step, but in practice we probably would like the `map` function t
 As in the previous example of Monoids, [`extension` methods](extension-methods.md) help achieving that. Let's re-define the `Functor` type class with extension methods.
 
 ```scala
-trait Functor[F[_]]:
+trait Functor[F[_]] with
    extension [A](x: F[A])
       def map[B](f: A => B): F[B]
 ```
@@ -138,7 +138,7 @@ That's where `Monad` comes in. A `Monad` for type `F[_]` is a `Functor[F]` with 
 Here is the translation of this definition in Scala 3:
 
 ```scala
-trait Monad[F[_]] extends Functor[F]:
+trait Monad[F[_]] extends Functor[F] with
 
    /** The unit value for a monad */
    def pure[A](x: A): F[A]

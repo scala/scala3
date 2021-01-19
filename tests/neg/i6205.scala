@@ -1,6 +1,6 @@
 class Contra[-T >: Null]
 
-object Test:
+object Test with
   def foo =   // error
     class A
     new Contra[A]

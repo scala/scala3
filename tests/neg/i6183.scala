@@ -1,4 +1,4 @@
-object Test:
+object Test with
   extension [A](a: A) def render: String = "Hi"
   extension [B](b: B) def render(using DummyImplicit): Char = 'x'
 

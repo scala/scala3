@@ -33,7 +33,7 @@ object Test {
   }
 }
 
-class TestInspector_Children() extends TastyInspector:
+class TestInspector_Children() extends TastyInspector with
 
   var kids: List[String] = Nil
 

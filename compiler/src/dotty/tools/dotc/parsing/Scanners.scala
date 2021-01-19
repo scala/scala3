@@ -1338,7 +1338,7 @@ object Scanners {
    *   InBraces    a pair of braces { ... }
    *   Indented    a pair of <indent> ... <outdent> tokens
    */
-  abstract class Region:
+  abstract class Region(val code: String):
     /** The region enclosing this one, or `null` for the outermost region */
     def outer: Region | Null
 
@@ -1367,17 +1367,17 @@ object Scanners {
       knownWidth = enclosing.knownWidth
   end Region
 
-  case class InString(multiLine: Boolean, outer: Region) extends Region
-  case class InParens(prefix: Token, outer: Region) extends Region
-  case class InBraces(outer: Region) extends Region
-  case class InCase(outer: Region) extends Region
+  case class InString(multiLine: Boolean, outer: Region) extends Region("IS")
+  case class InParens(prefix: Token, outer: Region) extends Region("IP")
+  case class InBraces(outer: Region) extends Region("IB")
+  case class InCase(outer: Region) extends Region("IC")
 
   /** A class describing an indentation region.
    *  @param width   The principal indendation width
    *  @param others  Other indendation widths > width of lines in the same region
    *  @param prefix  The token before the initial <indent> of the region
    */
-  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region:
+  case class Indented(width: IndentWidth, others: Set[IndentWidth], prefix: Token, outer: Region | Null) extends Region("II"):
     knownWidth = width
 
   def topLevelRegion(width: IndentWidth) = Indented(width, Set(), EMPTY, null)

@@ -121,7 +121,7 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class FirstChars(s: String) extends Product:
+class FirstChars(s: String) extends Product with
    def _1 = s.charAt(0)
    def _2 = s.charAt(1)
 
@@ -147,7 +147,7 @@ object FirstChars:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class Nat(val x: Int):
+class Nat(val x: Int) with
    def get: Int = x
    def isEmpty = x < 0
 

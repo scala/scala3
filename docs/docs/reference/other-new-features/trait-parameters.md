@@ -9,7 +9,7 @@ Scala 3 allows traits to have parameters, just like classes have parameters.
 trait Greeting(val name: String):
    def msg = s"How are you, $name"
 
-class C extends Greeting("Bob"):
+class C extends Greeting("Bob") with
    println(msg)
 ```
 

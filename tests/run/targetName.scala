@@ -1,23 +1,23 @@
 import annotation.targetName
 
-object A:
+object A with
   def f(x: => String): Int = x.length
   @targetName("f2") def f(x: => Int): Int = x
 
 import A._
 
-trait T:
+trait T with
   def f(x: => String): Int
   @targetName("f2") def f(x: => Int): Int
 
-class C:
+class C with
   def f(x: => String): Int = x.length
   @targetName("f2") def f(x: => Int): Int = x
 
-object B1 extends C, T:
+object B1 extends C, T with
   @targetName("f2") override def f(x: => Int): Int = x + 1
 
-object B2 extends C, T:
+object B2 extends C, T with
   override def f(x: => String): Int = x.length + 1
 
 @targetName("fooString") def foo(ps: String*) : Unit = println(s"strings: $ps")

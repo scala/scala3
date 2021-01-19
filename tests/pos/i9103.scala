@@ -1,4 +1,4 @@
-object a:
+object a with
   trait Foo[T]
   given Foo[Unit] = ???
 

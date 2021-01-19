@@ -1,9 +1,9 @@
-object A:
+object A with
   def f: String = ""
 
-trait B:
+trait B with
   def f: String = "abc"
 
-object C extends B:
+object C extends B with
   export A._            // error
 

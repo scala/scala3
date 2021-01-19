@@ -1,6 +1,6 @@
-object test:
+object test with
 
-  enum Option[+T]:
+  enum Option[+T] with
     case Some[T](x: T) extends Option[T]
     case None
 
@@ -13,7 +13,7 @@ object test:
   x = None
   xc = None
 
-  enum Nat:
+  enum Nat with
     case Z
     case S[N <: Z.type | S[_]](pred: N)
   import Nat._

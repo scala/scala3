@@ -16,15 +16,15 @@
  *  it's unclear whether this should expand to `C[T].unapply(x)`, (as it does now)
  *  or to `C.unapply[T](x)` (which is what TypeLevel Scala 4 did, I believe)
  */
-trait Typeable[T]:
+trait Typeable[T] with
   def cast(x: Any): Option[T]
   def describe: String
   override def toString = s"Typeable[$describe]"
 
-object Typeable:
+object Typeable with
   def apply[T: Typeable]: Typeable[T] = summon
 
-  class instanceOf[T: Typeable]:
+  class instanceOf[T: Typeable] with
     def unapply(x: Any): Option[T] = Typeable[T].cast(x)
 
   given int: Typeable[Int] with

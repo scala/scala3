@@ -1,6 +1,6 @@
 transparent def bar: Any = 2  // error: transparent can be used only with inline
 
-object test1:
+object test1 with
 
   def x: Int = baz(true) // error: type mismatch
   inline def baz(x: Boolean): Any =
@@ -9,7 +9,7 @@ object test1:
     if x then 1 else ""
   def y: Int = bam(true) // error: type mismatch
 
-object test2:
+object test2 with
 
   def x: 1 = baz(true) // OK
   transparent inline def baz(x: Boolean) =
@@ -18,7 +18,7 @@ object test2:
     if x then 1 else ""
   def y: 1 = bam(true) // OK
 
-object test3:
+object test3 with
 
   def x: Int = baz(true) // error: type mismatch
   inline def baz(x: Boolean) =
@@ -27,7 +27,7 @@ object test3:
     if x then 1 else ""
   def y: Int = bam(true) // error: type mismatch
 
-object test4:
+object test4 with
 
   def x: 1 = baz(true) // OK
   transparent inline def baz(x: Boolean): Any =

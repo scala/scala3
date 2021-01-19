@@ -1,6 +1,6 @@
 import scala.compiletime.erasedValue
 
-class MyRegex[Pattern <: String & Singleton/*Literal constant*/]:
+class MyRegex[Pattern <: String & Singleton/*Literal constant*/] with
   inline def unapplySeq(s: CharSequence): Option[List[String]] =
     inline erasedValue[Pattern] match
       case "foo" => if s == "foo" then Some(Nil) else None

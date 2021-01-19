@@ -42,10 +42,10 @@ enum Option[+T] derives CanEqual {
 
 object DollarNew {
 
-  enum MyEnum:
+  enum MyEnum with
     case A
 
-  object MyEnum:
+  object MyEnum with
 
     def $new: MyEnum = new MyEnum with runtime.EnumValue { // error: anonymous class in method $new extends enum MyEnum, but extending enums is prohibited.
       override def $ordinal = 1

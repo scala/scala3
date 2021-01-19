@@ -1,5 +1,5 @@
-class A(val x: Int):
-  class B extends A(2):
+class A(val x: Int) with
+  class B extends A(2) with
     println(x)
 
 @main def Test =

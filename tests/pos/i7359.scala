@@ -1,95 +1,95 @@
 package test
 
-trait ObjectInterface:
+trait ObjectInterface with
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMPlain:
+trait SAMPlain with
   def first(): String
 
-trait SAMPlainWithOverriddenObjectMethods:
+trait SAMPlainWithOverriddenObjectMethods with
   def first(): String
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMPlainWithExtends extends ObjectInterface:
+trait SAMPlainWithExtends extends ObjectInterface with
   def first(): String
 
-trait SAMPlainWithExtendsAndOverride extends ObjectInterface:
+trait SAMPlainWithExtendsAndOverride extends ObjectInterface with
   def first(): String
   override def equals(obj: Any): Boolean
   override def hashCode(): Int
   override def toString(): String
 
-trait SAMPlainCovariantOut[+O]:
+trait SAMPlainCovariantOut[+O] with
   def first(): O
 
-trait SAMCovariantOut[+O]:
+trait SAMCovariantOut[+O] with
   def first(): O
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMCovariantOutExtends[+O] extends ObjectInterface:
+trait SAMCovariantOutExtends[+O] extends ObjectInterface with
   def first(): O
 
-trait SAMCovariantOutExtendsAndOverride[+O] extends ObjectInterface:
+trait SAMCovariantOutExtendsAndOverride[+O] extends ObjectInterface with
   def first(): O
   override def equals(obj: Any): Boolean
   override def hashCode(): Int
   override def toString(): String
 
-trait SAMPlainContravariantIn[-I]:
+trait SAMPlainContravariantIn[-I] with
   def first(in: I): Unit
 
-trait SAMContravariantIn[-I]:
+trait SAMContravariantIn[-I] with
   def first(in: I): Unit
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMContravariantInExtends[-I] extends ObjectInterface:
+trait SAMContravariantInExtends[-I] extends ObjectInterface with
   def first(in: I): Unit
 
-trait SAMContravariantInExtendsAndOverride[-I] extends ObjectInterface:
+trait SAMContravariantInExtendsAndOverride[-I] extends ObjectInterface with
   def first(in: I): Unit
   override def equals(obj: Any): Boolean
   override def hashCode(): Int
   override def toString(): String
 
-trait SAMPlainInvariant[T]:
+trait SAMPlainInvariant[T] with
   def first(in: T): T
 
-trait SAMInvariant[T]:
+trait SAMInvariant[T] with
   def first(in: T): T
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMInvariantExtends[T] extends ObjectInterface:
+trait SAMInvariantExtends[T] extends ObjectInterface with
   def first(in: T): T
 
-trait SAMInvariantExtendsAndOverride[T] extends ObjectInterface:
+trait SAMInvariantExtendsAndOverride[T] extends ObjectInterface with
   def first(in: T): T
   override def equals(obj: Any): Boolean
   override def hashCode(): Int
   override def toString(): String
 
-trait SAMPlainInOut[-I, +O]:
+trait SAMPlainInOut[-I, +O] with
   def first(in: I): O
 
-trait SAMInOut[-I, +O]:
+trait SAMInOut[-I, +O] with
   def first(in: I): O
   def equals(obj: Any): Boolean
   def hashCode(): Int
   def toString(): String
 
-trait SAMInOutExtends[-I, +O] extends ObjectInterface:
+trait SAMInOutExtends[-I, +O] extends ObjectInterface with
   def first(in: I): O
 
-trait SAMInOutExtendsAndOverride[-I, +O] extends ObjectInterface:
+trait SAMInOutExtendsAndOverride[-I, +O] extends ObjectInterface with
   def first(in: I): O
   override def equals(obj: Any): Boolean
   override def hashCode(): Int
@@ -99,13 +99,13 @@ type CustomString = String
 type CustomBoolean = Boolean
 type CustomInt = Int
 
-trait SAMWithCustomAliases:
+trait SAMWithCustomAliases with
   def first(): String
   def equals(obj: Any): CustomBoolean
   def hashCode(): CustomInt
   def toString(): CustomString
 
-object Main:
+object Main with
   def main(args: Array[String]) =
     val samPlain : SAMPlain = () => "Hello, World!"
     val samPlainWithOverriddenObjectMethods: SAMPlainWithOverriddenObjectMethods = () => "Hello, World!"

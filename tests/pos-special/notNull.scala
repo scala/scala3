@@ -1,4 +1,4 @@
-object Test:
+object Test with
   def notNull[A](x: A | Null): x.type & A =
     assert(x != null)
     x.asInstanceOf  // TODO: drop the .asInstanceOf when explicit nulls are implemented

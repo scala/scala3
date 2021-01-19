@@ -25,7 +25,7 @@ object Name {
 }
 
 
-enum Term:
+enum Term with
   case Nat(n: Int)
   case Ref(name: Name)
   case Lambda(name: Name, tpe: Type, body: Term)
@@ -37,7 +37,7 @@ enum Term:
   case Fix(term: Term)
 
 
-enum Pattern:
+enum Pattern with
   case PNat(n: Int)
   case PRef(name: Name)
   case PApp(fun: Pattern, arg: Pattern)
@@ -46,7 +46,7 @@ enum Pattern:
   case PFun(name: Name)
 
 
-enum Type:
+enum Type with
   case NatType
   case LambdaType(arg: Type, res: Type)
   case BoxType(inner: Type)

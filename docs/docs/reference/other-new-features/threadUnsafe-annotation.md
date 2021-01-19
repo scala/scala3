@@ -12,6 +12,6 @@ a `lazy val`. When this annotation is used, the initialization of the
 ```scala
 import scala.annotation.threadUnsafe
 
-class Hello:
+class Hello with
    @threadUnsafe lazy val x: Int = 1
 ```

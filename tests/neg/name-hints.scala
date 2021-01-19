@@ -1,8 +1,8 @@
-object O:
+object O with
   val abcde: Int = 0
   val xy: Int = 1
 
-object Test:
+object Test with
   val x1 = Int.maxvalue  // error
   val x2 = Int.MxValue   // error
   val x3 = Int.MaxxValue // error

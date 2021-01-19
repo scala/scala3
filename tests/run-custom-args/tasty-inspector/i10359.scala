@@ -33,7 +33,7 @@ object Test {
   }
 }
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends TastyInspector with
 
   protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
     import quotes.reflect._

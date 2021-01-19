@@ -1,7 +1,7 @@
 package a
 package b
 
-object Givens/*<-a::b::Givens.*/:
+object Givens/*<-a::b::Givens.*/ with
 
   extension [A/*<-a::b::Givens.sayHello().[A]*/](any/*<-a::b::Givens.sayHello().(any)*/: A/*->a::b::Givens.sayHello().[A]*/)
     def sayHello/*<-a::b::Givens.sayHello().*/ = s"/*->scala::StringContext.apply().*/Hello, I am $any/*->a::b::Givens.sayHello().(any)*/"/*->scala::StringContext#s().*/
@@ -14,7 +14,7 @@ object Givens/*<-a::b::Givens.*/:
   val goodbye1/*<-a::b::Givens.goodbye1.*/ = /*->a::b::Givens.sayGoodbye().*/1.sayGoodbye
   val soLong1/*<-a::b::Givens.soLong1.*/ = /*->a::b::Givens.saySoLong().*/1.saySoLong
 
-  trait Monoid/*<-a::b::Givens.Monoid#*/[A/*<-a::b::Givens.Monoid#[A]*/]:
+  trait Monoid/*<-a::b::Givens.Monoid#*/[A/*<-a::b::Givens.Monoid#[A]*/] with
     def empty/*<-a::b::Givens.Monoid#empty().*/: A/*->a::b::Givens.Monoid#[A]*/
     extension (x/*<-a::b::Givens.Monoid#combine().(x)*/: A/*->a::b::Givens.Monoid#[A]*/) def combine/*<-a::b::Givens.Monoid#combine().*/(y/*<-a::b::Givens.Monoid#combine().(y)*/: A/*->a::b::Givens.Monoid#[A]*/): A/*->a::b::Givens.Monoid#[A]*/
 

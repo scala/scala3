@@ -23,7 +23,7 @@ class IsOff[S <: State]
 object IsOff:
    given isOff: IsOff[Off] = new IsOff[Off]
 
-class Machine[S <: State]:
+class Machine[S <: State] with
    def turnedOn(using IsOff[S]): Machine[On] = new Machine[On]
 
 val m = new Machine[Off]
@@ -130,7 +130,7 @@ object IsOn:
    // require that this evidence exists at compile time
    erased given IsOn[On] = new IsOn[On]
 
-class Machine[S <: State] private ():
+class Machine[S <: State] private () with
    // ev will disappear from both functions
    def turnedOn(using erased ev: IsOff[S]): Machine[On] = new Machine[On]
    def turnedOff(using erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
@@ -163,7 +163,7 @@ sealed trait State
 final class On extends State
 final class Off extends State
 
-class Machine[S <: State]:
+class Machine[S <: State] with
    transparent inline def turnOn(): Machine[On] =
       inline erasedValue[S] match
          case _: Off => new Machine[On]

@@ -1,12 +1,12 @@
 import annotation.targetName
 
-abstract class A:
+abstract class A with
   def f(x: Int) = s"dynamic $x"
   def h(x: Int): String
   @targetName("h2") def h1(x: Int): String
   inline def i(x: Int): String
 
-class B extends A:
+class B extends A with
   inline override def f(x: Int) = g(x)
   inline def g(x: Int) = s"inline $x"
   inline def h(x: Int) = g(x)
