@@ -1465,7 +1465,7 @@ object SymDenotations {
       else if myFlags.is(Trait)  then "trait"
       else if isClass            then "class"
       else if isType             then "type"
-      else if myFlags.is(Module) then "module"
+      else if myFlags.is(Module) then "object"
       else if myFlags.is(Method) then "method"
       else                            "val"
 
