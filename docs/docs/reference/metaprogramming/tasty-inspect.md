@@ -22,17 +22,17 @@ import scala.quoted._
 import scala.tasty.inspector._
 
 class MyInspector extends TastyInspector:
-  protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit =
-    import quotes.reflect._
-    // Do something with the tree
+   protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit =
+      import quotes.reflect._
+      // Do something with the tree
 ```
 
 Then the consumer can be instantiated with the following code to get the tree of the `foo/Bar.tasty` file.
 
 ```scala
 object Test:
-  def main(args: Array[String]): Unit =
-    new MyInspector().inspectTastyFiles("foo/Bar.tasty")
+   def main(args: Array[String]): Unit =
+      new MyInspector().inspectTastyFiles("foo/Bar.tasty")
 ```
 
 Note that if we need to run the main (in the example below defined in an object called `Test`) after compilation we need to make the compiler available to the runtime:

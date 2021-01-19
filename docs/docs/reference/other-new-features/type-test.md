@@ -69,12 +69,14 @@ f[AnyRef, String]("acb")(using tt)
 ```
 
 The compiler will synthesize a new instance of a type test if none is found in scope as:
+
 ```scala
 new TypeTest[A, B]:
    def unapply(s: A): Option[s.type & B] = s match
       case s: B => Some(s)
       case _ => None
 ```
+
 If the type tests cannot be done there will be an unchecked warning that will be raised on the `case s: B =>` test.
 
 The most common `TypeTest` instances are the ones that take any parameters (i.e. `TypeTest[Any, T]`).
@@ -106,11 +108,13 @@ Using `ClassTag` instances was unsound since classtags can check only the class 
 `ClassTag` type tests are still supported but a warning will be emitted after 3.0.
 
 
-## Examples
+## Example
 
-Given the following abstract definition of `Peano` numbers that provides `TypeTest[Nat, Zero]` and `TypeTest[Nat, Succ]`
+Given the following abstract definition of Peano numbers that provides two given instances of types `TypeTest[Nat, Zero]` and `TypeTest[Nat, Succ]`
 
 ```scala
+import scala.reflect._
+
 trait Peano:
    type Nat
    type Zero <: Nat
@@ -125,25 +129,52 @@ trait Peano:
       def apply(nat: Nat): Succ
       def unapply(nat: Succ): Option[Nat]
 
-   given TypeTest[Nat, Zero] = typeTestOfZero
-   protected def typeTestOfZero: TypeTest[Nat, Zero]
-   given TypeTest[Nat, Succ] = typeTestOfSucc
-   protected def typeTestOfSucc: TypeTest[Nat, Succ]
+   given typeTestOfZero: TypeTest[Nat, Zero] 
+   given typeTestOfSucc: TypeTest[Nat, Succ]
 ```
 
-it will be possible to write the following program
+together with an implementation of Peano numbers based on type `Int`
 
 ```scala
-val peano: Peano = ...
-import peano._
-def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] =
-   n match
-      case Zero => None
-      case s @ Succ(_) => Some(safeDiv(m, s))
+object PeanoInt extends Peano:
+   type Nat  = Int
+   type Zero = Int
+   type Succ = Int
 
-val two = Succ(Succ(Zero))
-val five = Succ(Succ(Succ(two)))
-println(divOpt(five, two))
+   def safeDiv(m: Nat, n: Succ): (Nat, Nat) = (m / n, m % n)
+
+   val Zero: Zero = 0
+
+   val Succ: SuccExtractor = new:
+      def apply(nat: Nat): Succ = nat + 1
+      def unapply(nat: Succ) = Some(nat - 1)
+
+   def typeTestOfZero: TypeTest[Nat, Zero] = new:
+      def unapply(x: Nat): Option[x.type & Zero] =
+         if x == 0 then Some(x) else None
+
+   def typeTestOfSucc: TypeTest[Nat, Succ] = new:
+      def unapply(x: Nat): Option[x.type & Succ] =
+         if x > 0 then Some(x) else None
+```
+
+it is possible to write the following program
+
+```scala
+@main def test =
+   import PeanoInt._
+
+   def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] =
+      n match
+         case Zero => None
+         case s @ Succ(_) => Some(safeDiv(m, s))
+
+   val two = Succ(Succ(Zero))
+   val five = Succ(Succ(Succ(two)))
+
+   println(divOpt(five, two))  // prints "Some((2,1))"
+   println(divOpt(two, five))  // prints "Some((0,2))"
+   println(divOpt(two, Zero))  // prints "None"
 ```
 
 Note that without the `TypeTest[Nat, Succ]` the pattern `Succ.unapply(nat: Succ)` would be unchecked.
