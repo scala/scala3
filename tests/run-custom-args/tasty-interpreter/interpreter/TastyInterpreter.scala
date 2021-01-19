@@ -11,7 +11,7 @@ class TastyInterpreter extends TastyInspector {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         // TODO: check the correct sig and object enclosement for main
-        case DefDef("main", _, _, _, Some(rhs)) =>
+        case DefDef("main", _, _, Some(rhs)) =>
           val interpreter = new jvm.Interpreter
 
           interpreter.eval(rhs)(using Map.empty)

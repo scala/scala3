@@ -46,9 +46,9 @@ trait SyntheticsSupport:
   def constructorWithoutParamLists(c: ClassDef): Boolean =
     !isValidPos(c.constructor.pos)  || {
       val end = c.constructor.pos.end
-      val typesEnd =  c.constructor.typeParams.lastOption.fold(end - 1)(_.pos.end)
+      val typesEnd =  c.constructor.leadingTypeParams.lastOption.fold(end - 1)(_.pos.end)
       val classDefTree = c.constructor.show
-      c.constructor.typeParams.nonEmpty && end <= typesEnd + 1
+      c.constructor.leadingTypeParams.nonEmpty && end <= typesEnd + 1
     }
 
   // TODO: #49 Remove it after TASTY-Reflect release with published flag Extension

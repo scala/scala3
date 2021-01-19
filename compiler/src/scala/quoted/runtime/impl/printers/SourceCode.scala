@@ -138,7 +138,7 @@ object SourceCode {
         this += "."
         printSelectors(selectors)
 
-      case cdef @ ClassDef(name, DefDef(_, targs, argss, _, _), parents, derived, self, stats) =>
+      case cdef @ ClassDef(name, DefDef(_, paramss, _, _), parents, derived, self, stats) =>
         printDefAnnotations(cdef)
 
         val flags = cdef.symbol.flags
@@ -155,12 +155,13 @@ object SourceCode {
         else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ") += highlightTypeDef(name)
         else this += highlightKeyword("class ") += highlightTypeDef(name)
 
-        val typeParams = stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(targs)
         if (!flags.is(Flags.Module)) {
-          printTargsDefs(typeParams)
-          val it = argss.iterator
-          while (it.hasNext)
-            printArgsDefs(it.next())
+          for paramClause <- paramss do
+            paramClause match
+              case TermParamClause(params) =>
+                printArgsDefs(params)
+              case TypeParamClause(params) =>
+                printTargsDefs(stats.collect { case targ: TypeDef => targ  }.filter(_.symbol.isTypeParam).zip(params))
         }
 
         val parents1 = parents.filter {
@@ -212,8 +213,8 @@ object SourceCode {
             // Currently the compiler does not allow overriding some of the methods generated for case classes
             d.symbol.flags.is(Flags.Synthetic) &&
             (d match {
-              case DefDef("apply" | "unapply" | "writeReplace", _, _, _, _) if d.symbol.owner.flags.is(Flags.Module) => true
-              case DefDef(n, _, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
+              case DefDef("apply" | "unapply" | "writeReplace", _, _, _) if d.symbol.owner.flags.is(Flags.Module) => true
+              case DefDef(n, _, _, _) if d.symbol.owner.flags.is(Flags.Case) =>
                 n == "copy" ||
                 n.matches("copy\\$default\\$[1-9][0-9]*") || // default parameters for the copy method
                 n.matches("_[1-9][0-9]*") || // Getters from Product
@@ -301,7 +302,7 @@ object SourceCode {
             printTree(body)
         }
 
-      case ddef @ DefDef(name, targs, argss, tpt, rhs) =>
+      case ddef @ DefDef(name, paramss, tpt, rhs) =>
         printDefAnnotations(ddef)
 
         val isConstructor = name == "<init>"
@@ -316,10 +317,10 @@ object SourceCode {
 
         val name1: String = if (isConstructor) "this" else splicedName(ddef.symbol).getOrElse(name)
         this += highlightKeyword("def ") += highlightValDef(name1)
-        printTargsDefs(targs.zip(targs))
-        val it = argss.iterator
-        while (it.hasNext)
-          printArgsDefs(it.next())
+        for clause <-  paramss do
+          clause match
+            case TermParamClause(params) => printArgsDefs(params)
+            case TypeParamClause(params) => printTargsDefs(params.zip(params))
         if (!isConstructor) {
           this += ": "
           printTypeTree(tpt)
@@ -1251,7 +1252,7 @@ object SourceCode {
 
     private def printDefinitionName(tree: Definition): this.type = tree match {
       case ValDef(name, _, _) => this += highlightValDef(name)
-      case DefDef(name, _, _, _, _) => this += highlightValDef(name)
+      case DefDef(name, _, _, _) => this += highlightValDef(name)
       case ClassDef(name, _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"))
       case TypeDef(name, _) => this += highlightTypeDef(name)
     }

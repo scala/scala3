@@ -256,21 +256,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end DefDefTypeTest
 
     object DefDef extends DefDefModule:
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss => {
-          val (tparams, vparamss) = tpd.splitArgs(prefss)
-          yCheckedOwners(rhsFn(tparams.map(_.tpe))(vparamss), symbol).getOrElse(tpd.EmptyTree)
-        }))
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, tpd.joinParams(typeParams, paramss), tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.typeParams, ddef.termParamss, ddef.tpt, optional(ddef.rhs))
+      def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
+        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
+          yCheckedOwners(rhsFn(prefss), symbol).getOrElse(tpd.EmptyTree)
+        ))
+      def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
+        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+      def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
+        (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def typeParams: List[TypeDef] = self.leadingTypeParams // TODO: adapt to multiple type parameter clauses
-        def paramss: List[List[ValDef]] = self.termParamss
+        def paramss: List[ParamClause] = self.paramss
+        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams
+        def trailingParamss: List[ParamClause] = self.trailingParamss
+        def termParamss: List[TermParamClause] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -750,7 +751,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head.map(withDefaultPos)), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -1480,6 +1481,59 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def patterns: List[Tree] = self.trees
       end extension
     end AlternativesMethods
+
+    type ParamClause = tpd.ParamClause
+
+    object ParamClause extends ParamClauseModule
+
+    given ParamClauseMethods: ParamClauseMethods with
+      extension (self: ParamClause)
+        def params: List[ValDef] | List[TypeDef] = self
+    end ParamClauseMethods
+
+    type TermParamClause = List[tpd.ValDef]
+
+    given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] with
+      def unapply(x: ParamClause): Option[TermParamClause & x.type] = x match
+        case tpd.ValDefs(_) => Some(x.asInstanceOf[TermParamClause & x.type])
+        case _ => None
+    end TermParamClauseTypeTest
+
+    object TermParamClause extends TermParamClauseModule:
+      def apply(params: List[ValDef]): TermParamClause =
+        if yCheck then
+          val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
+          assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+        params
+      def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
+    end TermParamClause
+
+    given TermParamClauseMethods: TermParamClauseMethods with
+      extension (self: TermParamClause)
+        def params: List[ValDef] = self
+        def isImplicit: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
+    end TermParamClauseMethods
+
+    type TypeParamClause = List[tpd.TypeDef]
+
+    given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] with
+      def unapply(x: ParamClause): Option[TypeParamClause & x.type] = x match
+        case tpd.TypeDefs(_) => Some(x.asInstanceOf[TypeParamClause & x.type])
+        case _ => None
+    end TypeParamClauseTypeTest
+
+    object TypeParamClause extends TypeParamClauseModule:
+      def apply(params: List[TypeDef]): TypeParamClause =
+        if params.isEmpty then throw IllegalArgumentException("Empty type parameters")
+        params
+      def unapply(x: TypeParamClause): Some[List[TypeDef]] = Some(x)
+    end TypeParamClause
+
+    given TypeParamClauseMethods: TypeParamClauseMethods with
+      extension (self: TypeParamClause)
+        def params: List[TypeDef] = self
+    end TypeParamClauseMethods
 
     type Selector = untpd.ImportSelector
 

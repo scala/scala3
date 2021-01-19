@@ -29,7 +29,7 @@ trait ExprMap:
             ValDef.copy(tree)(tree.name, tree.tpt, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            DefDef.copy(tree)(tree.name, tree.typeParams, tree.paramss, tree.returnTpt, tree.rhs.map(x => transformTerm(x, tree.returnTpt.tpe)(owner)))
+            DefDef.copy(tree)(tree.name, tree.paramss, tree.returnTpt, tree.rhs.map(x => transformTerm(x, tree.returnTpt.tpe)(owner)))
           case tree: TypeDef =>
             tree
           case tree: ClassDef =>

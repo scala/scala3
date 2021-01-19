@@ -183,15 +183,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait DefDefModule { this: DefDef.type =>
       def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef
       def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
-      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])
+      def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef = ???
+      // def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])
+      def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) = ???
     }
 
     given DefDefMethods: DefDefMethods
 
     trait DefDefMethods:
       extension (self: DefDef)
+        def paramss: List[ParamClause] = ???
         def typeParams: List[TypeDef]
-        def paramss: List[List[ValDef]]
         def returnTpt: TypeTree
         def rhs: Option[Term]
       end extension
@@ -1260,6 +1262,37 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def patterns: List[Tree]
       end extension
     end AlternativesMethods
+
+    type ParamClause <: AnyRef
+
+    given ParamClauseMethods: ParamClauseMethods = ???
+
+    trait ParamClauseMethods:
+      extension (self: ParamClause)
+        def params: List[ValDef] | List[TypeDef]
+    end ParamClauseMethods
+
+    type TermParamClause <: ParamClause
+
+    given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] = ???
+
+    val TermParamClause: TermParamClauseModule = ???
+
+    trait TermParamClauseModule { this: TermParamClause.type =>
+      def apply(params: List[ValDef]): TermParamClause
+      def unapply(x: TermParamClause): Some[List[ValDef]]
+    }
+
+    type TypeParamClause <: AnyRef
+
+    given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] = ???
+
+    val TypeParamClause: TypeParamClauseModule = ???
+
+    trait TypeParamClauseModule { this: TypeParamClause.type =>
+      def apply(params: List[TypeDef]): TypeParamClause
+      def unapply(x: TypeParamClause): Some[List[TypeDef]]
+    }
 
     type Selector <: AnyRef
 
@@ -2518,9 +2551,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case vdef @ ValDef(_, tpt, rhs) =>
             val owner = vdef.symbol
             foldTrees(foldTree(x, tpt)(owner), rhs)(owner)
-          case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
+          case ddef @ DefDef(_, paramss, tpt, rhs) =>
             val owner = ddef.symbol
-            foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
+            // foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
+            ???
           case tdef @ TypeDef(_, rhs) =>
             val owner = tdef.symbol
             foldTree(x, rhs)(owner)
@@ -2608,7 +2642,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
+            // DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
+            ???
           case tree: TypeDef =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))

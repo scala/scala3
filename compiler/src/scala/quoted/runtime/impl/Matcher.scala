@@ -206,7 +206,7 @@ object Matcher {
               }.transformTree(scrutinee)(Symbol.spliceOwner)
             }
             val names = args.map {
-              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case Block(List(DefDef("$anonfun", _, _, Some(Apply(Ident(name), _)))), _) => name
               case arg => arg.symbol.name
             }
             val argTypes = args.map(x => x.tpe.widenTermRefByName)
@@ -302,16 +302,19 @@ object Matcher {
             tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
 
           /* Match def */
-          case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
+          case (DefDef(_, paramss1, tpt1, Some(rhs1)), DefDef(_, paramss2, tpt2, Some(rhs2))) =>
             def rhsEnv =
+              val paramSyms: List[(Symbol, Symbol)] =
+                for
+                  (clause1, clause2) <- paramss1.zip(paramss2)
+                  (param1, param2) <- clause1.params.zip(clause2.params)
+                yield
+                  param1.symbol -> param2.symbol
               val oldEnv: Env = summon[Env]
-              val newEnv: List[(Symbol, Symbol)] =
-                (scrutinee.symbol -> pattern.symbol) :: typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) :::
-                paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
+              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol -> pattern.symbol) :: paramSyms
               oldEnv ++ newEnv
 
-            typeParams1 =?= typeParams2
-              &&& matchLists(paramss1, paramss2)(_ =?= _)
+            matchLists(paramss1, paramss2)(_ =?= _)
               &&& tpt1 =?= tpt2
               &&& withEnv(rhsEnv)(rhs1 =?= rhs2)
 
@@ -342,6 +345,14 @@ object Matcher {
         }
       }
     end extension
+
+    extension (scrutinee: ParamClause)
+      /** Check that all parameters in the clauses clauses match with =?= and concatenate the results with &&& */
+      private def =?= (pattern: ParamClause)(using Env)(using DummyImplicit): Matching =
+        (scrutinee, pattern) match
+          case (TermParamClause(params1), TermParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
+          case (TypeParamClause(params1), TypeParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
+          case _ => notMatched
 
     /** Does the scrutenne symbol match the pattern symbol? It matches if:
      *   - They are the same symbol
@@ -382,7 +393,7 @@ object Matcher {
       def unapply(args: List[Term]): Option[List[Ident]] =
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(List(DefDef("$anonfun", TermParamClause(params) :: Nil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None

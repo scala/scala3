@@ -18,11 +18,10 @@ object Macros {
     assert(sym1.name == "sym1")
     val sym1Statements : List[Statement] = List(
       DefDef(sym1, {
-        case List() => {
           case List(List(a, b)) =>
             Some('{ ${ a.asExpr.asInstanceOf[Expr[Int]] } - ${ b.asExpr.asInstanceOf[Expr[Int]] } }.asTerm)
         }
-      }),
+      ),
       '{ assert(${ Apply(Ref(sym1), List(Literal(IntConstant(2)), Literal(IntConstant(3)))).asExpr.asInstanceOf[Expr[Int]] } == -1) }.asTerm)
 
     // test for no argument list (no Apply node)
@@ -34,11 +33,10 @@ object Macros {
     assert(sym2.name == "sym2")
     val sym2Statements : List[Statement] = List(
       DefDef(sym2, {
-        case List() => {
           case List() =>
             Some(Literal(IntConstant(2)))
         }
-      }),
+      ),
       '{ assert(${ Ref(sym2).asExpr.asInstanceOf[Expr[Int]] } == 2) }.asTerm)
 
    // test for multiple argument lists
@@ -54,11 +52,10 @@ object Macros {
     assert(sym3.name == "sym3")
     val sym3Statements : List[Statement] = List(
       DefDef(sym3, {
-        case List() => {
-          case List(List(a), List(b)) =>
+          case List(List(a: Term), List(b)) =>
             Some(a)
         }
-      }),
+      ),
       '{ assert(${ Apply(Apply(Ref(sym3), List(Literal(IntConstant(3)))), List(Literal(IntConstant(3)))).asExpr.asInstanceOf[Expr[Int]] } == 3) }.asTerm)
 
     // test for recursive references
@@ -72,7 +69,6 @@ object Macros {
     assert(sym4.name == "sym4")
     val sym4Statements : List[Statement] = List(
       DefDef(sym4, {
-        case List() => {
           case List(List(x)) =>
             Some('{
               if ${ x.asExpr.asInstanceOf[Expr[Int]] } == 0
@@ -80,7 +76,7 @@ object Macros {
               else ${ Apply(Ref(sym4), List('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - 1 }.asTerm)).asExpr.asInstanceOf[Expr[Int]] }
             }.asTerm)
         }
-      }),
+      ),
       '{ assert(${ Apply(Ref(sym4), List(Literal(IntConstant(4)))).asExpr.asInstanceOf[Expr[Int]] } == 0) }.asTerm)
 
     // test for nested functions (one symbol is the other's parent, and we use a Closure)
@@ -94,7 +90,6 @@ object Macros {
     assert(sym5.name == "sym5")
     val sym5Statements : List[Statement] = List(
       DefDef(sym5, {
-        case List() => {
           case List(List(x)) =>
             Some {
               val sym51 : Symbol = Symbol.newMethod(
@@ -106,15 +101,14 @@ object Macros {
               Block(
                 List(
                   DefDef(sym51, {
-                    case List() => {
                       case List(List(xx)) =>
                         Some('{ ${ x.asExpr.asInstanceOf[Expr[Int]] } - ${ xx.asExpr.asInstanceOf[Expr[Int]] } }.asTerm)
                     }
-                  })),
+                  )),
                 Closure(Ref(sym51), None))
             }
         }
-      }),
+      ),
       '{ assert(${ Apply(Ref(sym5), List(Literal(IntConstant(5)))).asExpr.asInstanceOf[Expr[Int=>Int]] }(4) == 1) }.asTerm)
 
     // test mutually recursive definitions
@@ -136,7 +130,6 @@ object Macros {
     assert(sym6_2.name == "sym6_2")
     val sym6Statements : List[Statement] = List(
       DefDef(sym6_1, {
-        case List() => {
           case List(List(x)) =>
             Some {
               '{
@@ -147,9 +140,8 @@ object Macros {
               }.asTerm
             }
         }
-      }),
+      ),
       DefDef(sym6_2, {
-        case List() => {
           case List(List(x)) =>
             Some {
               '{
@@ -161,7 +153,7 @@ object Macros {
             }
         }
 
-      }),
+      ),
       '{ assert(${ Apply(Ref(sym6_2), List(Literal(IntConstant(6)))).asExpr.asInstanceOf[Expr[Int]] } == 0) }.asTerm)
 
     // test polymorphic methods by synthesizing an identity method
@@ -177,11 +169,10 @@ object Macros {
     assert(sym7.name == "sym7")
     val sym7Statements : List[Statement] = List(
       DefDef(sym7, {
-        case List(t) => {
-          case List(List(x)) =>
-            Some(Typed(x, Inferred(t)))
+          case List(List(t: TypeTree), List(x: Term)) =>
+            Some(Typed(x, t))
         }
-      }),
+      ),
       '{ assert(${ Apply(TypeApply(Ref(sym7), List(Inferred(TypeRepr.of[Int]))), List(Literal(IntConstant(7)))).asExpr.asInstanceOf[Expr[Int]] } == 7) }.asTerm)
 
     Block(

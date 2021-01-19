@@ -91,30 +91,30 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(ValDef("b", TypeIdent("Int"), Some(Literal(IntConstant(3))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f1", Nil, Nil, TypeIdent("Int"), Some(Literal(IntConstant(3))))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f1", Nil, TypeIdent("Int"), Some(Literal(IntConstant(3))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f2", Nil, Nil, TypeIdent("Int"), Some(Return(Literal(IntConstant(4)), IsDefDefSymbol(<Test$._$_$f2>))))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f2", Nil, TypeIdent("Int"), Some(Return(Literal(IntConstant(4)), IsDefDefSymbol(<Test$._$_$f2>))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f3", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f3", List(TermParamClause(List(ValDef("i", TypeIdent("Int"), None)))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f4", Nil, List(List(ValDef("i", TypeIdent("Int"), None)), List(ValDef("j", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Apply(Select(Ident("i"), "+"), List(Ident("j")))))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f4", List(TermParamClause(List(ValDef("i", TypeIdent("Int"), None))), TermParamClause(List(ValDef("j", TypeIdent("Int"), None)))), TypeIdent("Int"), Some(Apply(Select(Ident("i"), "+"), List(Ident("j")))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f5", Nil, List(List(ValDef("i", TypeIdent("Int"), None))), TypeIdent("Int"), Some(Ident("i"))), DefDef("f5$default$1", Nil, Nil, Inferred(), Some(Literal(IntConstant(9))))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f5", List(TermParamClause(List(ValDef("i", TypeIdent("Int"), None)))), TypeIdent("Int"), Some(Ident("i"))), DefDef("f5$default$1", Nil, Inferred(), Some(Literal(IntConstant(9))))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f6", List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred()))), List(List(ValDef("x", TypeIdent("T"), None))), TypeIdent("T"), Some(Ident("x")))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f6", List(TypeParamClause(List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred())))), TermParamClause(List(ValDef("x", TypeIdent("T"), None)))), TypeIdent("T"), Some(Ident("x")))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f7", List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred()))), List(List(ValDef("x", TypeIdent("T"), None))), Singleton(Ident("x")), Some(Ident("x")))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f7", List(TypeParamClause(List(TypeDef("T", TypeBoundsTree(Inferred(), Inferred())))), TermParamClause(List(ValDef("x", TypeIdent("T"), None)))), Singleton(Ident("x")), Some(Ident("x")))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Block(List(DefDef("f8", Nil, List(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None))), TypeIdent("Int"), Some(Literal(IntConstant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(IntConstant(1)), Literal(IntConstant(2)), Literal(IntConstant(3))), Inferred()), Inferred())))))
+Inlined(None, Nil, Block(List(DefDef("f8", List(TermParamClause(List(ValDef("i", Annotated(Applied(Inferred(), List(TypeIdent("Int"))), Apply(Select(New(Inferred()), "<init>"), Nil)), None)))), TypeIdent("Int"), Some(Literal(IntConstant(9))))), Apply(Ident("f8"), List(Typed(Repeated(List(Literal(IntConstant(1)), Literal(IntConstant(2)), Literal(IntConstant(3))), Inferred()), Inferred())))))
 TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
 
-Inlined(None, Nil, Block(List(DefDef("f9", Nil, List(List(ValDef("i", ByName(TypeIdent("Int")), None))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))
+Inlined(None, Nil, Block(List(DefDef("f9", List(TermParamClause(List(ValDef("i", ByName(TypeIdent("Int")), None)))), TypeIdent("Int"), Some(Ident("i")))), Literal(UnitConstant())))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 

@@ -19,7 +19,7 @@ object Macros {
       if owner.isClassDef then
         owner.tree match
           case tdef: ClassDef =>
-            tdef.constructor.paramss map { _ map {_.symbol }}
+            tdef.constructor.paramss map { _.params map {_.symbol }}
       else enclosingParamList(owner.owner)
 
     def literal(value: String): Expr[String] =
