@@ -33,7 +33,7 @@ type T >: L <: U
 A special case arises if the opaque type alias is defined in an object. Example:
 
 ```scala
-object o:
+object o with
    opaque type T = R
 ```
 
@@ -44,7 +44,7 @@ that `o.this.T` equals `R`. The two equalities compose. That is, inside `o`, it 
 also known that `o.T` is equal to `R`. This means the following code type-checks:
 
 ```scala
-object o:
+object o with
    opaque type T = Int
    val x: Int = id(2)
 def id(x: o.T): o.T = x
@@ -88,7 +88,7 @@ objects and classes and in all other source files. Example:
 opaque type A = String
 val x: A = "abc"
 
-object obj:
+object obj with
    val y: A = "abc"  // error: found: "abc", required: A
 
 // in test2.scala
@@ -100,7 +100,7 @@ object test1$package:
    opaque type A = String
    val x: A = "abc"
 
-object obj:
+object obj with
    val y: A = "abc"  // error: cannot assign "abc" to opaque type alias A
 ```
 The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.

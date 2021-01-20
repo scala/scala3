@@ -9,10 +9,10 @@ title: Inline
 definition will be inlined at the point of use. Example:
 
 ```scala
-object Config:
+object Config with
    inline val logging = false
 
-object Logger:
+object Logger with
 
    private var indent = 0
 
@@ -235,7 +235,7 @@ inline val four: 4 = 4
 It is also possible to have inline vals of types that do not have a syntax, such as `Short(4)`.
 
 ```scala
-trait InlineConstants:
+trait InlineConstants with
    inline val myShort: Short
 
 object Constants extends InlineConstants:

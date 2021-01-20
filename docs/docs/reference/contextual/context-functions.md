@@ -116,7 +116,7 @@ With that setup, the table construction code above compiles and expands to:
 As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
-object PostConditions:
+object PostConditions with
    opaque type WrappedResult[T] = T
 
    def result[T](using r: WrappedResult[T]): T = r

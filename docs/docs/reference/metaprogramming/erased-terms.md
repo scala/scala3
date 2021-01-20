@@ -20,7 +20,7 @@ final class Off extends State
 
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
-object IsOff:
+object IsOff with
    given isOff: IsOff[Off] = new IsOff[Off]
 
 class Machine[S <: State] with
@@ -118,14 +118,14 @@ final class Off extends State
 
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
-object IsOff:
+object IsOff with
    // will not be called at runtime for turnedOn, the
    // compiler will only require that this evidence exists
    given IsOff[Off] = new IsOff[Off]
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
-object IsOn:
+object IsOn with
    // will not exist at runtime, the compiler will only
    // require that this evidence exists at compile time
    erased given IsOn[On] = new IsOn[On]
@@ -135,7 +135,7 @@ class Machine[S <: State] private () with
    def turnedOn(using erased ev: IsOff[S]): Machine[On] = new Machine[On]
    def turnedOff(using erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
 
-object Machine:
+object Machine with
    def newMachine(): Machine[Off] = new Machine[Off]
 
 @main def test =
@@ -174,7 +174,7 @@ class Machine[S <: State] with
          case _: On  => new Machine[Off]
          case _: Off => error("Turning off an already turned off machine")
 
-object Machine:
+object Machine with
    def newMachine(): Machine[Off] =
       println("newMachine")
       new Machine[Off]

@@ -152,7 +152,7 @@ defines the necessary `selectDynamic` member.
 `Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
 
 ```scala
-trait Vehicle:
+trait Vehicle with
    val wheels: Int
 
 val i3 = new Vehicle: // i3: Vehicle

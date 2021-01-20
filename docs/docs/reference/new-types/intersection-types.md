@@ -10,7 +10,7 @@ Used on types, the `&` operator creates an intersection type.
 The type `S & T` represents values that are of the type `S` and `T` at the same time.
 
 ```scala
-trait Resettable:
+trait Resettable with
    def reset(): Unit
 
 trait Growable[T]:
@@ -34,10 +34,10 @@ If a member appears in both `A` and `B`, its type in `A & B` is the intersection
 of its type in `A` and its type in `B`. For instance, assume the definitions:
 
 ```scala
-trait A:
+trait A with
    def children: List[A]
 
-trait B:
+trait B with
    def children: List[B]
 
 val x: A & B = new C

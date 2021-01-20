@@ -8,7 +8,7 @@ A `@targetName` annotation on a definition defines an alternate name for the imp
 ```scala
 import scala.annotation.targetName
 
-object VecOps:
+object VecOps with
    extension [T](xs: Vec[T])
       @targetName("append")
       def ++= [T] (ys: Vec[T]): Vec[T] = ...

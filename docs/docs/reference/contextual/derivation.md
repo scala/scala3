@@ -40,7 +40,7 @@ They also provide minimal term level infrastructure to allow higher level librar
 derivation support.
 
 ```scala
-sealed trait Mirror:
+sealed trait Mirror with
 
    /** the type being mirrored */
    type MirroredType
@@ -57,7 +57,7 @@ sealed trait Mirror:
    /** The names of the elements of the type */
    type MirroredElemLabels <: Tuple
 
-object Mirror:
+object Mirror with
 
    /** The Mirror for a product type */
    trait Product extends Mirror:
@@ -242,7 +242,7 @@ inline def summonAll[T <: Tuple]: List[Eq[_]] =
 trait Eq[T]:
    def eqv(x: T, y: T): Boolean
 
-object Eq:
+object Eq with
    given Eq[Int] with
       def eqv(x: Int, y: Int) = x == y
 
