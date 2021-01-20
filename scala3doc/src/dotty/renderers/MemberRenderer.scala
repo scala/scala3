@@ -3,7 +3,6 @@ package dotty.dokka
 import dotty.dokka.model.api._
 import scala.collection.immutable.SortedMap
 import dotty.dokka.HTML._
-import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
 import org.jetbrains.dokka.pages.{DCI, ContentKind, ContentNode}
 import org.jetbrains.dokka.model.properties.PropertyContainer
 import collection.JavaConverters._
@@ -162,8 +161,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
 
   def member(member: Member) =
     val filterAttributes = FilterAttributes.attributesFor(member)
+    val anchor = if member.dri.anchor.isEmpty then Nil else Seq(id := member.dri.anchor)
     def topLevelAttr = Seq(cls := "documentableElement")
-      ++ member.dri.anchor.map(id := _)
+      ++ anchor
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
@@ -252,7 +252,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
       Tab("Grouped members", "custom_groups", content, "selected")
 
   def buildMembers(s: Member): AppliedTag =
-    val (membersInGroups, rest) = s.allMembers.partition(_.docs.exists(_.group.nonEmpty))
+    val (membersInGroups, rest) = s.members.partition(_.docs.exists(_.group.nonEmpty))
 
     val extensions =
       rest.groupBy{ _.kind match
@@ -312,8 +312,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
 
   def classLikeParts(m: Member): Seq[AppliedTag] =
     if !m.kind.isInstanceOf[Classlike] then Nil else
-      val graphHtml = MemberExtension.getFrom(m).map(_.graph) match
-        case Some(graph) if graph.edges.nonEmpty =>
+      val graphHtml = m.graph match
+        case graph if graph.edges.nonEmpty =>
           Seq(div( id := "inheritance-diagram", cls := "diagram-class showGraph")(
             input(value := "Reset zoom", `type` := "button", cls := "btn", onclick := "zoomOut()"),
             svg(id := "graph"),

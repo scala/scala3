@@ -51,8 +51,7 @@ object ScalaTagWrapper {
 }
 
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
-
-
+// TODO clear it out
 case class ContentNodeParams(
   val dci: DCI,
   val sourceSets: java.util.Set[DisplaySourceSet],

@@ -5,10 +5,6 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
-import org.jetbrains.dokka.model.Documentable
-import org.jetbrains.dokka.pages._
-import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jsoup.Jsoup
 import scala.collection.JavaConverters._
 

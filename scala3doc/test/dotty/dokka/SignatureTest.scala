@@ -5,8 +5,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import dotty.dokka.test.BuildInfo
 import java.nio.file.Path;
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.{RootPageNode, PageNode, ContentPage, ContentText, ContentNode, ContentComposite}
 import org.jsoup.Jsoup
 
 import dotty.dokka.model.api._
@@ -23,7 +21,8 @@ abstract class SignatureTest(
   ignoreMissingSignatures: Boolean = false,
   filterFunc: (Path) => Boolean = _ => true
 ) extends ScaladocTest(testName):
-  override def assertions = Assertion.AfterRendering { (root, ctx) =>
+
+  def runTest = afterRendering {
     val sources = sourceFiles match
       case Nil => testName :: Nil
       case s => s
@@ -37,10 +36,10 @@ abstract class SignatureTest(
       .groupMap(_.name)(_.signature)
     val unexpectedFromSources: Set[String] = allSignaturesFromSources.collect { case Unexpected(name) => name }.toSet
 
-    given DokkaContext = ctx
-    val actualSignatures: Map[String, Seq[String]] = signaturesFromDocumentation(root).flatMap { signature =>
-      findName(signature, signatureKinds).map(_ -> signature)
-    }.groupMap(_._1)(_._2)
+    val actualSignatures: Map[String, Seq[String]] =
+      signaturesFromDocumentation().flatMap { signature =>
+        findName(signature, signatureKinds).map(_ -> signature)
+      }.groupMap(_._1)(_._2)
 
     val unexpected = unexpectedFromSources.flatMap(actualSignatures.get).flatten
     val expectedButNotFound = expectedFromSources.flatMap {
@@ -104,9 +103,8 @@ abstract class SignatureTest(
             )
         }
 
-  private def signaturesFromDocumentation(root: PageNode)(using DocContext): Seq[String] =
+  private def signaturesFromDocumentation()(using DocContext): Seq[String] =
     val output = summon[DocContext].args.output.toPath.resolve("api")
-    println(output)
     val signatures = List.newBuilder[String]
 
     def processFile(path: Path): Unit = if filterFunc(path) then

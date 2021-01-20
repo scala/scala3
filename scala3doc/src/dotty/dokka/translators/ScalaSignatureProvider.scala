@@ -1,18 +1,6 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.base.signatures._
-import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.model.properties.{WithExtraProperties}
-import org.jetbrains.dokka.pages._
-import org.jetbrains.dokka.base.signatures.KotlinSignatureProvider
-import org.jetbrains.dokka.base.transformers.pages.comments.CommentsToContentConverter
-import org.jetbrains.dokka.utilities.DokkaLogger
-import collection.JavaConverters._
-import org.jetbrains.dokka.base.translators.documentables._
-import org.jetbrains.dokka.model.properties.PropertyContainer
-import java.util.function.Consumer
-import kotlin.jvm.functions.Function2
-import dotty.dokka.model.api.{Kind, _}
+import dotty.dokka.model.api._
 
 object ScalaSignatureProvider:
   def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =
@@ -98,7 +86,7 @@ object ScalaSignatureProvider:
   private def classSignature(clazz: Member, cls: Kind.Class, builder: SignatureBuilder): SignatureBuilder =
     val selfSignature = builder
       .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.getName, clazz.getDri)
+      .name(clazz.name, clazz.dri)
       .generics(cls.typeParams)
       .functionParameters(cls.argsLists)
 
@@ -107,14 +95,14 @@ object ScalaSignatureProvider:
   private def objectSignature(clazz: Member, builder: SignatureBuilder): SignatureBuilder =
     val selfSignature = builder
       .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.getName, clazz.getDri)
+      .name(clazz.name, clazz.dri)
 
     parentsSignature(clazz, selfSignature)
 
   private def traitSignature(clazz: Member, cls: Kind.Trait, builder: SignatureBuilder): SignatureBuilder =
     val selfSignature = builder
       .modifiersAndVisibility(clazz, clazz.kind.name)
-      .name(clazz.getName, clazz.getDri)
+      .name(clazz.name, clazz.dri)
       .generics(cls.typeParams)
       .functionParameters(cls.argsLists)
 
@@ -123,7 +111,7 @@ object ScalaSignatureProvider:
   private def extensionSignature(extension: Member, fun: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
     val withSignature = builder
       .modifiersAndVisibility(extension, "def")
-      .name(extension.getName, extension.getDri)
+      .name(extension.name, extension.dri)
       .generics(fun.typeParams)
       .functionParameters(fun.argsLists)
 
@@ -141,7 +129,7 @@ object ScalaSignatureProvider:
   private def methodSignature(method: Member, cls: Kind.Def, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder
     .modifiersAndVisibility(method, "def")
-    .name(method.getName, method.getDri)
+    .name(method.name, method.dri)
     .generics(cls.typeParams)
     .functionParameters(cls.argsLists)
     if !method.kind.isInstanceOf[Kind.Constructor] then
@@ -151,7 +139,7 @@ object ScalaSignatureProvider:
   private def typeSignature(tpe: Kind.Type, typeDef: Member, builder: SignatureBuilder): SignatureBuilder =
     val bdr = builder
       .modifiersAndVisibility(typeDef, if tpe.opaque then "opaque type" else "type")
-      .name(typeDef.getName, typeDef.getDri)
+      .name(typeDef.name, typeDef.dri)
       .generics(tpe.typeParams)
     if(!tpe.opaque){
       (if tpe.concreate then bdr.text(" = ") else bdr)

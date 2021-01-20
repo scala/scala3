@@ -16,16 +16,11 @@ import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 
-import org.jetbrains.dokka.model.doc.Text
-import org.jetbrains.dokka.model.Documentable
-import org.jetbrains.dokka.transformers.pages.PageTransformer
-import org.jetbrains.dokka.pages._
-
 import scala.collection.JavaConverters._
 
 val docsRootDRI: DRI = DRI(location = "index.md")
-val docsDRI: DRI = DRI(location = "docs.index.md")
-val apiPageDRI: DRI = DRI(location = "api", extra = "__api__")
+val docsDRI: DRI = DRI(location = "docs/index.md")
+val apiPageDRI: DRI = DRI(location = "api")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
@@ -115,51 +110,3 @@ def loadTemplateFile(file: File): TemplateFile = {
     layout = stringSetting(allSettings, "layout")
   )
 }
-
-def Text(msg: String = "") = new Text(msg, JList(), JMap())
-
-abstract class BaseStaticSiteProcessor(using ctx: DocContext)
-  extends PageTransformer:
-    final override def invoke(input: RootPageNode): RootPageNode =
-      ctx.staticSiteContext.fold(input)(transform(input, _))
-
-    protected def transform(input: RootPageNode, ctx: StaticSiteContext): RootPageNode
-
-// Needed until we will migrate away from dokka
-case class FakeContentPage(
-  dri: DRI,
-  override val getContent: ContentNode) extends ContentPage:
-  override val getName: String = ""
-  override val getChildren: JList[PageNode] = JList()
-  override val getEmbeddedResources: JList[String] = JList()
-  override def getDocumentable: Documentable = null
-  override def modified(
-    name: String,
-    content: ContentNode,
-    dri: JSet[DRI],
-    embeddedResources: JList[String],
-    children: JList[_ <: PageNode]
-  ): ContentPage = this
-  override def modified(name: String, children: JList[_ <: PageNode]): PageNode = this
-  override val getDri: JSet[DRI] = JSet(dri)
-
-case class AContentPage(
-  override val getName: String,
-  override val getChildren: JList[PageNode],
-  override val getContent: ContentNode,
-  override val getDri: JSet[DRI],
-  override val getEmbeddedResources: JList[String] = JList(),
-) extends ContentPage:
-  override def getDocumentable: Documentable = null
-
-  override def modified(
-    name: String,
-    content: ContentNode,
-    dri: JSet[DRI],
-    embeddedResources: JList[String],
-    children: JList[_ <: PageNode]
-  ): ContentPage =
-    copy(name, children.asInstanceOf[JList[PageNode]], content, dri, embeddedResources)
-
-  override def modified(name: String, children: JList[_ <: PageNode]): PageNode =
-    copy(name, getChildren = children.asInstanceOf[JList[PageNode]])

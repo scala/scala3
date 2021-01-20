@@ -1,9 +1,6 @@
 package dotty.dokka
 
 import dotty.dokka.model._
-import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.pages._
-import dotty.dokka.model.api.Kind
 import HTML._
 import dotty.dokka.model.api._
 

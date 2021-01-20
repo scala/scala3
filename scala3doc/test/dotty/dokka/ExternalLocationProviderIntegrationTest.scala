@@ -5,8 +5,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import dotty.dokka.test.BuildInfo
 import java.nio.file.Path;
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.{RootPageNode, PageNode, ContentPage, ContentText, ContentNode, ContentComposite}
 import org.jsoup.Jsoup
 
 class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
@@ -40,7 +38,12 @@ class Scala3docExternalLocationProviderIntegrationTest extends ExternalLocationP
 )
 
 
-abstract class ExternalLocationProviderIntegrationTest(name: String, mappings: Seq[String], expectedLinks: Seq[String]) extends ScaladocTest(name):
+abstract class ExternalLocationProviderIntegrationTest(
+  name: String,
+  mappings: Seq[String],
+  expectedLinks: Seq[String]
+  ) extends ScaladocTest(name):
+
   override def args = super.args.copy(
     externalMappings = mappings.flatMap( s =>
           ExternalDocLink.parse(s).fold(left => None, right => Some(right)
@@ -48,8 +51,7 @@ abstract class ExternalLocationProviderIntegrationTest(name: String, mappings: S
       ).toList
   )
 
-  def assertions = Assertion.AfterRendering { (root, ctx) =>
-    given DokkaContext = ctx
+  override def runTest = afterRendering {
     val output = summon[DocContext].args.output.toPath.resolve("api")
     val linksBuilder = List.newBuilder[String]
 

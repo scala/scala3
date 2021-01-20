@@ -2,12 +2,6 @@ package dotty.dokka
 package model
 package api
 
-import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
-import org.jetbrains.dokka.model._
-import collection.JavaConverters._
-import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.model.properties._
-import org.jetbrains.dokka.pages._
 import dotty.dokka.tasty.comments.Comment
 
 enum Visibility(val name: String):
@@ -146,49 +140,38 @@ object HierarchyGraph:
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
 
 
-type Member = Documentable
+case class Member(
+  name: String,
+  dri: DRI,
+  kind: Kind,
+  visibility: Visibility = Visibility.Unrestricted,
+  modifiers: Seq[dotty.dokka.model.api.Modifier] = Nil,
+  annotations: List[Annotation] = Nil,
+  signature: Signature = Signature(),
+  sources: Option[TastyDocumentableSource] = None,
+  origin: Origin = Origin.RegularlyDefined,
+  inheritedFrom: Option[InheritedFrom] = None,
+  graph: HierarchyGraph = HierarchyGraph.empty,
+  docs: Option[Comment] = None,
+  members : Seq[Member] = Nil,
+  directParents: Seq[LinkToType] = Nil,
+  parents: Seq[LinkToType] = Nil,
+  knownChildren: Seq[LinkToType] = Nil,
+  companion: Option[DRI] = None,
+)
 
 object Member:
-  def unapply(d: Documentable): Option[(String, DRI, Visibility, Kind, Origin)] =
-    d.memberExt.map(v => (d.getName, d.getDri, v.visibility, v.kind, v.origin))
+  def unapply(v: Member): Option[(String, DRI, Visibility, Kind, Origin)] =
+    Some((v.name, v.dri, v.visibility, v.kind, v.origin))
 
 extension[T] (member: Member)
+  def asLink: LinkToType = LinkToType(member.signature, member.dri, member.kind)
+  def deprecated: Option[Annotation] =
+    member.annotations.find(_.dri.location == "scala.deprecated")
 
-  private[api] def memberExt = MemberExtension.getFrom(member)
-
-  private[api] def compositeMemberExt = CompositeMemberExtension.getFrom(member)
-
-  def visibility: Visibility = memberExt.fold(Visibility.Unrestricted)(_.visibility)
-
-  def signature: Signature = memberExt.fold(Signature(name))(_.signature)
-  def asLink: LinkToType = LinkToType(signature, dri, kind)
-  def deprecated: Option[Annotation] = memberExt.flatMap(_.annotations.find(a => a.dri.getPackageName == "scala" && a.dri.getClassNames == "deprecated"))
-
-  def modifiers: Seq[dotty.dokka.model.api.Modifier] = memberExt.fold(Nil)(_.modifiers)
-  def kind: Kind = memberExt.fold(Kind.Unknown)(_.kind)
-  def origin: Origin =  memberExt.fold(Origin.RegularlyDefined)(_.origin)
-  def inheritedFrom: Option[InheritedFrom] = memberExt.fold(None)(_.inheritedFrom)
-  def annotations: List[Annotation] = memberExt.fold(Nil)(_.annotations)
-  def sources: Option[TastyDocumentableSource] = memberExt.fold(None)(_.sources)
-  def docs: Option[Comment] = memberExt.fold(None)(_.rawDoc)
-  def name = member.getName
-  def dri = member.getDri
-
-  // TODO rename parent and knownChildren
-  def allMembers: Seq[Member] = compositeMemberExt.fold(Nil)(_.members)
-  def parents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.parents)
-  def directParents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.directParents)
-  def knownChildren: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.knownChildren)
-  def companion: Option[DRI] = compositeMemberExt.fold(None)(_.companion)
-
-  def membersBy(op: Member => Boolean): Seq[Member] = allMembers.filter(op)
+  def membersBy(op: Member => Boolean): Seq[Member] = member.members.filter(op)
 
 extension (members: Seq[Member]) def byInheritance =
   members.partition(_.inheritedFrom.isEmpty)
 
-extension (module: DModule)
-  def driMap: Map[DRI, Member] = ModuleExtension.getFrom(module).fold(Map.empty)(_.driMap)
-
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)
-
-type DocPart = DocTag

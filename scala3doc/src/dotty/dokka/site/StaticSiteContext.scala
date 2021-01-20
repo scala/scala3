@@ -7,15 +7,6 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import org.jetbrains.dokka.base.parsers.MarkdownParser
-import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.model.doc.{DocTag, Text}
-import org.jetbrains.dokka.model.properties.PropertyContainer
-import org.jetbrains.dokka.pages.{ContentKind, ContentNode, DCI, PageNode}
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.Style
-import org.jetbrains.dokka.model.DisplaySourceSet
 import util.Try
 import collection.JavaConverters._
 
@@ -23,8 +14,8 @@ import dotty.dokka.model.api._
 
 class StaticSiteContext(
   val root: File,
-  sourceSets: Set[SourceSetWrapper],
-  val args: Scala3doc.Args, val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
+  val args: Scala3doc.Args,
+  val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
@@ -36,8 +27,6 @@ class StaticSiteContext(
       report.error(msg)
 
     files.flatMap(loadTemplate(_, isBlog = false)).take(1)
-
-  def indexPage(): Option[StaticPageNode] = indexTemplate().headOption.map(templateToPage)
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
@@ -72,32 +61,7 @@ class StaticSiteContext(
     orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
 
-  lazy val mainPages: Seq[StaticPageNode] = templates.map(templateToPage)
-
   val docsPath = root.toPath.resolve("docs")
-
-  lazy val allPages: Seq[StaticPageNode] = sideBarConfig.fold(mainPages){ sidebar =>
-    def flattenPages(p: StaticPageNode): Set[Path] =
-      Set(p.template.file.toPath) ++ p.getChildren.asScala.collect { case p: StaticPageNode => flattenPages(p) }.flatten
-
-    val mainFiles = mainPages.toSet.flatMap(flattenPages)
-
-    val allPaths =
-      if !Files.exists(docsPath) then Nil
-      else Files.walk(docsPath, FileVisitOption.FOLLOW_LINKS).iterator().asScala.toList
-
-    val orphanedFiles = allPaths.filterNot { p =>
-       def name = p.getFileName.toString
-       def isMain = name == "index.html" || name == "index.md"
-       mainFiles.contains(p) || (isMain && mainFiles.contains(p.getParent))
-    }.filter { p =>
-        val name = p.getFileName.toString
-        name.endsWith(".md") || name.endsWith(".html")
-    }
-
-    val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
-    mainPages ++ orphanedTemplates.map(templateToPage)
-  }
 
   private def isValidTemplate(file: File): Boolean =
     (file.isDirectory && !file.getName.startsWith("_")) ||
@@ -144,14 +108,6 @@ class StaticSiteContext(
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
             e.printStackTrace()
             None
-
-  def asContent(doctag: DocTag, dri: DRI) = new DocTagToContentConverter().buildContent(
-    doctag,
-    new DCI(Set(dri).asJava, ContentKind.Empty),
-    sourceSets.asJava,
-    JSet(),
-    new PropertyContainer(JMap())
-  )
 
   private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
     case Sidebar.Page(title, url) =>
@@ -212,25 +168,6 @@ class StaticSiteContext(
     DRI.forPath(relativePath)
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
-
-  def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
-    val dri = driFor(myTemplate.file.toPath)
-    val content = new PartiallyRenderedContent(
-      myTemplate,
-      this,
-      JList(),
-      new DCI(Set(dri).asJava, ContentKind.Empty),
-      sourceSets.toDisplay,
-      JSet()
-    )
-    StaticPageNode(
-      myTemplate.templateFile,
-      myTemplate.templateFile.title,
-      content,
-      JSet(dri),
-      JList(),
-      (myTemplate.children.map(templateToPage)).asJava
-    )
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++

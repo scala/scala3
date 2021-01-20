@@ -29,7 +29,7 @@ trait Locations(using ctx: DocContext):
       val loc = dri.location
       if loc == null then List("index") // Dokka leftovers
       else
-        val fqn = loc.split(Array('.')).toList ++ dri.anchor.toList match
+        val fqn = loc.split(Array('.')).toList match
           case List("<empty>") => List("index")
           case other => other
 
@@ -42,17 +42,17 @@ trait Locations(using ctx: DocContext):
 
   def pathToPage(from: DRI, to: DRI): String =
     if to.isStaticFile || members.contains(to) then
-      pathTo(rawLocation(from), rawLocation(to)) +".html"
+      val anchor = if to.anchor.isEmpty then "" else "#" + to.anchor
+      pathTo(rawLocation(from), rawLocation(to)) +".html" + anchor
     else
-      val regex = raw"\[origin:(.*)\]".r
-      val origin = regex.findFirstIn(Option(to.extra).getOrElse(""))
-      origin match
-        case Some(path) =>
+      to.origin match
+        case "" =>
+          unknownPage(to)
+        case path =>
           val external =
             ctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
           external.fold(unknownPage(to))(constructPath(to))
-        case None =>
-          unknownPage(to)
+
 
 
   def pathTo(to: Seq[String], fullFrom: Seq[String]): String =

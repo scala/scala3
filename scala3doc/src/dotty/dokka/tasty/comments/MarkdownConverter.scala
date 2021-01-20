@@ -192,7 +192,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
     withParsedQuery(queryStr) { query =>
       MemberLookup.lookup(using qctx)(query, owner) match {
         case Some((sym, targetText)) =>
-          dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
+          dkkd.DocumentationLink(sym.dri.asDokka, resolveBody(default = targetText), kt.emptyMap)
         case None =>
           // println(s"WARN: Definition lookup for following query failed: $queryStr")
           dkkd.A(resolveBody(default = query.join), Map("title" -> s"Definition was not found: $queryStr", "href" -> "#").asJava)

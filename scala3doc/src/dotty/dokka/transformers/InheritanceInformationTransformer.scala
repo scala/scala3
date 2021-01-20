@@ -1,18 +1,11 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
-import org.jetbrains.dokka.model._
-import collection.JavaConverters._
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.model.properties._
-
 import dotty.dokka.model._
 import dotty.dokka.model.api._
 
-
-class InheritanceInformationTransformer(using context: DocContext) extends ModuleTransformer:
-  override def apply(original: DModule): DModule =
-    val subtypes = getSupertypes(original.getPackages.get(0)).groupBy(_._1).transform((k, v) => v.map(_._2))
+class InheritanceInformationTransformer(using DocContext) extends (Module => Module):
+  override def apply(original: Module): Module =
+    val subtypes = getSupertypes(original.rootPackage).groupBy(_._1).transform((k, v) => v.map(_._2))
     original.updateMembers { m =>
       val edges = getEdges(m.asLink.copy(kind = bareClasslikeKind(m.kind)), subtypes)
       val st: Seq[LinkToType] = edges.map(_._1).distinct
@@ -32,4 +25,4 @@ class InheritanceInformationTransformer(using context: DocContext) extends Modul
     val selfMapping =
       if !c.kind.isInstanceOf[Classlike] then Nil
       else c.directParents.map(_._2 -> c.asLink)
-    c.allMembers.flatMap(getSupertypes) ++ selfMapping
+    c.members.flatMap(getSupertypes) ++ selfMapping

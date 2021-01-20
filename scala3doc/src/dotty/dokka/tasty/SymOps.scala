@@ -1,6 +1,5 @@
 package dotty.dokka.tasty
 
-import org.jetbrains.dokka.links._
 import org.jetbrains.dokka.model._
 import collection.JavaConverters._
 import dotty.dokka._
@@ -112,10 +111,6 @@ class SymOps[Q <: Quotes](val q: Q):
       if sym == Symbol.noSymbol then topLevelDri
       else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
-        val pointsTo =
-          if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
-          else PointingToGenericParameters(sym.owner.memberTypes.indexOf(sym))
-
         val method =
           if (sym.isDefDef) Some(sym)
           else if (sym.maybeOwner.isDefDef) Some(sym.owner)
@@ -126,16 +121,15 @@ class SymOps[Q <: Quotes](val q: Q):
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            Option(csym.associatedFile).map(_.path).fold("")(p => s"[origin:$p]")
+            Option(csym.associatedFile).fold("")(_.path)
         }
         // We want package object to point to package
         val className = sym.className.filter(_ != "package$")
 
-        new DRI(
+        DRI(
           className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
-          sym.anchor.getOrElse(""), // TODO do we need any of this fields?
-          null,
-          pointsTo,
+          anchor = sym.anchor.getOrElse(""),
+          origin = originPath,
           // sym.show returns the same signature for def << = 1 and def >> = 2.
           // For some reason it contains `$$$` instrad of symbol name
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]$originPath"

@@ -93,8 +93,22 @@ object Scala3doc:
     ctx.reporter
 
 
-  private [dokka] def run(args: Args)(using ctx: CompilerContext) =
-    val docContext = new DocContext(args, ctx)
-    new DokkaGenerator(docContext, docContext.logger).generate()
+  private [dokka] def run(args: Args)(using ctx: CompilerContext): DocContext =
 
+    given docContext: DocContext = new DocContext(args, ctx)
+
+    val module = ScalaModuleProvider.mkModule()
+    given dokkaContext: DokkaContext =
+      DokkaContext.Companion.create(docContext, docContext.logger, JList())
+    val dokkaRenderer = new DokkaScalaHtmlRenderer
+
+    val renderer = new dotty.dokka.renderers.HtmlRenderer(
+      module.rootPackage,
+      module.members,
+      dri => c => dokkaRenderer.buildWithKotlinx(c, FakeContentPage(dri.asDokka, c), null)
+    )
+    dokkaRenderer.init(renderer)
+    renderer.render()
+    report.inform("generation completed successfully")
+    docContext
 

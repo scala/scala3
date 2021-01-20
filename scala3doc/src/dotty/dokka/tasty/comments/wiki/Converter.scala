@@ -150,7 +150,7 @@ class Converter(val repr: Repr) extends BaseConverter {
     withParsedQuery(queryStr) { query =>
       MemberLookup.lookup(using qctx)(query, owner) match {
         case Some((sym, targetText)) =>
-          dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
+          dkkd.DocumentationLink(sym.dri.asDokka, resolveBody(default = targetText), kt.emptyMap)
         case None =>
           dkkd.A(resolveBody(default = query.join), Map("href" -> "#").asJava)
       }

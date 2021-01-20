@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import org.jetbrains.dokka._
-import org.jetbrains.dokka.utilities._
-import org.jetbrains.dokka.plugability._
 import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
