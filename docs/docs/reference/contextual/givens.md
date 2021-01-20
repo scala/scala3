@@ -154,8 +154,8 @@ Here is the syntax for given instances:
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
 GivenDef            ::=  [GivenSig] ConstrApps TemplateBody
-                     |   [GivenSig] Type ‘=’ Expr
-                     |   [GivenSig] Type
+                     |   [GivenSig] AnnotType ‘=’ Expr
+                     |   [GivenSig] AnnotType
 GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
 ```
 

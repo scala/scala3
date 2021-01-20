@@ -385,7 +385,7 @@ ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | ConstrApps TemplateBody)
+GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | ConstrApps TemplateBody)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause}] ExtMethods

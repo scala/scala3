@@ -3549,7 +3549,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | ConstrApps TemplateBody)
+    /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | ConstrApps TemplateBody)
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
@@ -3567,7 +3567,9 @@ object Parsers {
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then accept(COLON)
-        val parents = if isSimpleLiteral then toplevelTyp() :: Nil else constrApps()
+        val parents =
+          if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
+          else constrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         newLineOptWhenFollowedBy(LBRACE)
         if in.token == EQUALS && parentsIsType then
