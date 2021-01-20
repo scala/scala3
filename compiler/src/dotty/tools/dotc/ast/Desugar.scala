@@ -992,7 +992,9 @@ object desugar {
       if (x.isEmpty)
         tree match {
           case Select(pre, nme.CONSTRUCTOR) => foldOver(x, pre)
-          case tree: RefTree if tree.name.isTypeName => tree.name.toString
+          case tree: RefTree =>
+            if tree.name.isTypeName then tree.name.toString
+            else s"${tree.name}_type"
           case tree: TypeDef => tree.name.toString
           case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
             s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
