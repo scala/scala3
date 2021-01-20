@@ -323,6 +323,11 @@ object Scanners {
       printState()
     }
 
+    /** Like nextToken, but don't insert indent characters afterwards */
+    def nextTokenNoIndent(): Unit =
+      token = EMPTY // this will suppress newline and indent insertion
+      nextToken()
+
     final def printState() =
       if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
         print(s"[$show${if isInstanceOf[LookaheadScanner] then "(LA)" else ""}]")
@@ -493,8 +498,6 @@ object Scanners {
           if canStartIndentTokens.contains(lastToken) then
             currentRegion = Indented(nextWidth, Set(), lastToken, currentRegion)
             insert(INDENT, offset)
-          else if lastToken == SELFARROW then
-            currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
       currentRegion match {
