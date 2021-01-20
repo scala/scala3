@@ -1,7 +1,7 @@
-object Foo:
+object Foo with
   @scala.annotation.targetName("w") def \/\/ = "W"
 
-object Bar:
+object Bar with
   export Foo._
 
 @main def Test =

@@ -3,7 +3,7 @@ import scala.util.FromDigits
 import scala.quoted._
 import Even._
 
-object EvenFromDigitsImpl:
+object EvenFromDigitsImpl with
   def apply(digits: Expr[String])(using Quotes): Expr[Even] = digits.value match {
     case Some(ds) =>
       val ev =

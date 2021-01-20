@@ -1,9 +1,9 @@
 type Tr[-I, +O, +A] = I => (O, A)
 
-trait NetApi:
+trait NetApi with
   type Comp
 
-trait NetDB extends NetApi:
+trait NetDB extends NetApi with
   class Comp
 
 trait NetHelper extends NetApi

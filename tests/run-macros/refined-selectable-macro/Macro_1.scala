@@ -2,7 +2,7 @@ import scala.quoted._
 
 object Macro {
 
-  trait Selectable extends scala.Selectable:
+  trait Selectable extends scala.Selectable with
     def selectDynamic(name: String): Any
 
   trait SelectableRecord extends Selectable {

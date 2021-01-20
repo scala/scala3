@@ -1,4 +1,4 @@
-object Test:
+object Test with
 
  def main(args:Array[String]):Unit =
     val x1 = X.andThen(1){case x if (x%2 == 0) => x}

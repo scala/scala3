@@ -1,5 +1,5 @@
 trait A(a: Any, b: Int)
-trait B(a: Any, b: Int):
+trait B(a: Any, b: Int) with
   var x = 0
 class C(a: String, b: Int)
 

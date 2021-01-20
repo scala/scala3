@@ -1,15 +1,15 @@
 object Test1 {
-  trait Foo[A]:
+  trait Foo[A] with
     def foo[C]: C => A
 
   // Works with old-style conversion
-  implicit def i2f[A](a: A): Foo[A] = new Foo[A]:
+  implicit def i2f[A](a: A): Foo[A] = new Foo[A] with
     def foo[C]: C => A = _ => a
 
   // But not with newstyle
   /*
   given [A]: Conversion[A, Foo[A]] with
-    def apply(a: A) = new Foo[A]:
+    def apply(a: A) = new Foo[A] with
       def foo[C]: C => A = _ => a
   */
 

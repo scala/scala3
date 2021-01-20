@@ -196,6 +196,7 @@ object Parsers {
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
     def isStatSeqEnd = in.isNestedEnd || in.token == EOF || in.token == RPAREN
+    def isTemplateBodyStart = in.token == WITH || in.isNestedStart
     def mustStartStat = mustStartStatTokens contains in.token
 
     /** Is current token a hard or soft modifier (in modifier position or not)? */
@@ -919,6 +920,53 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
+    private def withEndMigrationWarning(): Boolean =
+      migrateTo3
+      && {
+        warning(
+          em"""In Scala 3, `with` at the end of a line will start definitions,
+              |so it cannot be used in front of a parent constructor anymore.
+              |Place the `with` at the beginning of the next line instead.""")
+        true
+      }
+
+    /** Does a template start after `with`? This is the case if either
+     *   - the next token is `{`
+     *   - the `with` is at the end of a line
+     *     (except for source = 3.0-migration, when a warning is issued)
+     *   - the next tokens is `<ident>` or `this` and the one after it is `:` or `=>`
+     *     (i.e. we see the start of a self type)
+     */
+    def followingIsTemplateStart() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      lookahead.token == LBRACE
+      || lookahead.isAfterLineEnd && !withEndMigrationWarning()
+      || (lookahead.isIdent || lookahead.token == THIS)
+          && {
+            lookahead.nextToken()
+            lookahead.token == COLON
+            && {  // needed only as long as we support significant colon at eol
+              lookahead.nextToken()
+              !lookahead.isAfterLineEnd
+            }
+            || lookahead.token == ARROW
+          }
+
+    /** Does a refinement start after `with`? This is the case if either
+     *   - the next token is `{`
+     *   - the `with` is at the end of a line and is followed by a token that starts a declaration
+     */
+    def followingIsRefinementStart() =
+      val lookahead = in.LookaheadScanner()
+      lookahead.nextToken()
+      lookahead.token == LBRACE
+      || lookahead.isAfterLineEnd
+         && {
+           if lookahead.token == INDENT then lookahead.nextToken()
+           dclIntroTokens.contains(lookahead.token)
+         }
+
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1281,14 +1329,14 @@ object Parsers {
             in.sourcePos())
           patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(isNew: Boolean = false): Unit =
+    def possibleTemplateStart(): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL || in.token == WITH then
+      if in.token == COLONEOL then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
+            syntaxErrorOrIncomplete(ExpectedTokenButFound(INDENT, in.token))
       else
         newLineOptWhenFollowedBy(LBRACE)
 
@@ -1532,33 +1580,29 @@ object Parsers {
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
-    /** RefinedType   ::=  WithType {[nl] Refinement}
+    /** RefinedType   ::=  WithType {[nl | ‘with’] Refinement}
      */
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
-    def refinedTypeRest(t: Tree): Tree = {
+    def refinedTypeRest(t: Tree): Tree =
       argumentStart()
-      if (in.isNestedStart)
+      if isTemplateBodyStart then
+        if in.token == WITH then in.nextToken()
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
       else t
-    }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
      */
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if in.token == WITH then
-        val withOffset = in.offset
-        in.nextToken()
-        if in.token == LBRACE || in.token == INDENT then
-          t
-        else
-          if sourceVersion.isAtLeast(`3.1`) then
-            deprecationWarning(DeprecatedWithOperator(), withOffset)
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+      if in.token == WITH && !followingIsRefinementStart() then
+        in.nextTokenNoIndent()
+        if sourceVersion.isAtLeast(`3.1`) then
+          deprecationWarning(DeprecatedWithOperator())
+        atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
@@ -2313,13 +2357,11 @@ object Parsers {
       val start = in.skipToken()
       def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
       possibleTemplateStart()
-      val parents =
-        if in.isNestedStart then Nil
-        else constrApps(commaOK = false)
+      val parents = if isTemplateBodyStart then Nil else constrApp() :: withConstrApps()
       colonAtEOLOpt()
-      possibleTemplateStart(isNew = true)
+      possibleTemplateStart()
       parents match {
-        case parent :: Nil if !in.isNestedStart =>
+        case parent :: Nil if !isTemplateBodyStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
         case _ =>
           New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
@@ -3494,7 +3536,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true)
+          constrApps()
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3517,7 +3559,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | StructuralInstance)
+    /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | ConstrApps TemplateBody)
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
@@ -3536,9 +3578,10 @@ object Parsers {
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then accept(COLON)
         val parents =
-          if isSimpleLiteral then toplevelTyp() :: Nil
-          else constrApp() :: withConstrApps()
+          if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
+          else constrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
+        newLineOptWhenFollowedBy(LBRACE)
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
           mods1 |= Final
@@ -3547,17 +3590,17 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
-        else if in.token != WITH && parentsIsType then
-          if name.isEmpty then
-            syntaxError(em"anonymous given cannot be abstract")
-          DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
-        else
+        else if isTemplateBodyStart then
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val templ = withTemplate(makeConstructor(tparams1, vparamss1), parents)
+          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
           if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
+        else
+          if name.isEmpty then
+            syntaxError(em"anonymous given cannot be abstract")
+          DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
       end gdef
       finalizeDef(gdef, mods1, start)
     }
@@ -3576,8 +3619,11 @@ object Parsers {
         isUsingClause(extParams)
       do ()
       leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
-      if in.token == COLON then
-        syntaxError("no `:` expected here")
+      if in.token == WITH then
+        syntaxError(
+          i"""No `with` expected here.
+             |
+             |An extension clause is simply followed by one or more method definitions.""")
         in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
@@ -3626,25 +3672,24 @@ object Parsers {
         // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 
-    /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
+    /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
-    def constrApps(commaOK: Boolean): List[Tree] =
+    def constrApps(): List[Tree] =
       val t = constrApp()
-      val ts =
-        if in.token == WITH || commaOK && in.token == COMMA then
-          in.nextToken()
-          constrApps(commaOK)
-        else Nil
+      val ts = if in.token == COMMA then commaConstrApps() else withConstrApps()
       t :: ts
 
+    /** `{`,` ConstrApp} */
+    def commaConstrApps(): List[Tree] =
+      if in.token == COMMA then
+        in.nextToken()
+        constrApp() :: commaConstrApps()
+      else Nil
 
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
     def withConstrApps(): List[Tree] =
-      def isTemplateStart =
-        val la = in.lookahead
-        la.isAfterLineEnd || la.token == LBRACE
-      if in.token == WITH && !isTemplateStart then
+      if in.token == WITH && !followingIsTemplateStart() then
         in.nextToken()
         constrApp() :: withConstrApps()
       else Nil
@@ -3662,7 +3707,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true)
+          else constrApps()
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3688,18 +3733,20 @@ object Parsers {
         template(constr)
       else
         possibleTemplateStart()
-        if in.isNestedStart then
+        if isTemplateBodyStart then
           template(constr)
         else
           checkNextNotIndented()
           Template(constr, Nil, Nil, EmptyValDef, Nil)
 
-    /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
-     *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+    /** TemplateBody ::=  [nl | ‘with’] `{' TemplateStatSeq `}'
+     *                 |  ‘with’ [SelfType] indent TemplateStats outdent
+     *  EnumBody     ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStats ‘}’
+     *                 |  ‘with’ [SelfType] indent EnumStats outdent
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
-        if in.isNestedStart then
+        if isTemplateBodyStart then
           templateBody()
         else
           checkNextNotIndented()
@@ -3707,20 +3754,44 @@ object Parsers {
       Template(constr, parents, derived, self, stats)
 
     def templateBody(): (ValDef, List[Tree]) =
-      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
+      val givenSelf =
+        if in.token == WITH then
+          in.nextToken()
+          selfDefOpt()
+        else EmptyValDef
+      val r = inDefScopeBraces(templateStatSeq(givenSelf), rewriteWithColon = true)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
       r
 
-    /** with Template, with EOL <indent> interpreted */
-    def withTemplate(constr: DefDef, parents: List[Tree]): Template =
-      if in.token != WITH then syntaxError(em"`with` expected")
-      possibleTemplateStart() // consumes a WITH token
-      val (self, stats) = templateBody()
-      Template(constr, parents, Nil, self, stats)
-        .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
+    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
+     *             |  ‘this’ ‘:’ InfixType ‘=>’
+     *  Only called immediately after a `with`, in which case it must in turn
+     *  be followed by `INDENT`.
+     */
+    def selfDefOpt(): ValDef = atSpan(in.offset) {
+      val vd =
+        if in.isIdent then
+          val selfName = ident()
+          if in.token == COLON then
+            in.nextToken()
+            makeSelfDef(selfName, infixType())
+          else
+            makeSelfDef(selfName, TypeTree())
+        else if in.token == THIS then
+          in.nextToken()
+          accept(COLON)
+          makeSelfDef(nme.WILDCARD, infixType())
+        else
+          EmptyValDef
+      if !vd.isEmpty then
+        accept(ARROW)
+        if in.token != INDENT then
+          syntaxErrorOrIncomplete(ExpectedTokenButFound(INDENT, in.token))
+      vd
+    }
 
 /* -------- STATSEQS ------------------------------------------- */
 
@@ -3787,10 +3858,10 @@ object Parsers {
      *  EnumStat         ::= TemplateStat
      *                     | Annotations Modifiers EnumCase
      */
-    def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
-      var self: ValDef = EmptyValDef
+    def templateStatSeq(givenSelf: ValDef = EmptyValDef): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
+      var self = givenSelf
       val stats = new ListBuffer[Tree]
-      if (isExprIntro && !isDefIntro(modifierTokens)) {
+      if (self.isEmpty && isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
           first match {
@@ -3801,12 +3872,20 @@ object Parsers {
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withSpan(first.span)
           }
-          in.token = SELFARROW // suppresses INDENT insertion after `=>`
-          in.nextToken()
+          in.nextTokenNoIndent()
         }
         else {
           stats += first
-          acceptStatSepUnlessAtEnd(stats)
+          if in.token == WITH then
+            syntaxError(
+              i"""end of statement expected but ${showToken(WITH)} found
+                 |
+                 |Maybe you meant to write a mixin in an extends clause?
+                 |Note that this requires the `with` to come first now.
+                 |I.e.
+                 |
+                 |    with $first""")
+          else acceptStatSepUnlessAtEnd(stats)
         }
       }
       var exitOnError = false
@@ -3934,7 +4013,7 @@ object Parsers {
             possibleTemplateStart()
             if in.token == EOF then
               ts += makePackaging(start, pkg, List())
-            else if in.isNestedStart then
+            else if isTemplateBodyStart then
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
               continue = true
             else
@@ -3972,6 +4051,7 @@ object Parsers {
     }
 
     override def templateBody(): (ValDef, List[Thicket]) = {
+      if in.token == WITH then in.nextToken()
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }

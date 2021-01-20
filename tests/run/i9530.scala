@@ -1,4 +1,4 @@
-trait Scope:
+trait Scope with
    type Expr
    type Value
    def expr(x: String): Expr

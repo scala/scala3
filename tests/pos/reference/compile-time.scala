@@ -1,6 +1,6 @@
 package compiletime
 
-class Test:
+class Test with
   import scala.compiletime.{constValue, erasedValue, S}
 
   trait Nat

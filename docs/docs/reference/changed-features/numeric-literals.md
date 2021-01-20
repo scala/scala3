@@ -86,7 +86,7 @@ whole numbers with a given radix, for numbers with a decimal point, and for
 numbers that can have both a decimal point and an exponent:
 
 ```scala
-object FromDigits:
+object FromDigits with
 
    /** A subclass of `FromDigits` that also allows to convert whole
     *  number literals with a radix other than 10
@@ -130,7 +130,7 @@ class MalformedNumber(msg: String = "malformed number literal") extends FromDigi
 As a fully worked out example, here is an implementation of a new numeric class, `BigFloat`, that accepts numeric literals. `BigFloat` is defined in terms of a `BigInt` mantissa and an `Int` exponent:
 
 ```scala
-case class BigFloat(mantissa: BigInt, exponent: Int):
+case class BigFloat(mantissa: BigInt, exponent: Int) with
    override def toString = s"${mantissa}e${exponent}"
 ```
 
@@ -145,7 +145,7 @@ The companion object of `BigFloat` defines an `apply` constructor method to cons
 from a `digits` string. Here is a possible implementation:
 
 ```scala
-object BigFloat:
+object BigFloat with
    import scala.util.FromDigits
 
    def apply(digits: String): BigFloat =
@@ -203,10 +203,10 @@ into a macro, i.e. make it an inline method with a splice as right-hand side.
 To do this, replace the `FromDigits` instance in the `BigFloat` object by the following two definitions:
 
 ```scala
-object BigFloat:
+object BigFloat with
    ...
 
-   class FromDigits extends FromDigits.Floating[BigFloat]:
+   class FromDigits extends FromDigits.Floating[BigFloat] with
       def fromDigits(digits: String) = apply(digits)
 
    given FromDigits with

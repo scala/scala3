@@ -168,7 +168,7 @@ In some cases we want to remove the lambda from the code, for this we provide th
 describing a function into a function mapping trees to trees.
 
 ```scala
-object Expr:
+object Expr with
    ...
    def betaReduce[...](...)(...): ... = ...
 ```
@@ -231,7 +231,7 @@ a compiler through staging.
 ```scala
 import scala.quoted._
 
-enum Exp:
+enum Exp with
    case Num(n: Int)
    case Plus(e1: Exp, e2: Exp)
    case Var(x: String)
@@ -284,7 +284,7 @@ The `Expr.apply` method is defined in package `quoted`:
 ```scala
 package quoted
 
-object Expr:
+object Expr with
    ...
    def apply[T: ToExpr](x: T)(using Quotes): Expr[T] =
       summon[ToExpr[T]].toExpr(x)
@@ -391,7 +391,7 @@ a macro library and a quoted program. For instance, here’s the `assert` macro
 again together with a program that calls `assert`.
 
 ```scala
-object Macros:
+object Macros with
 
    inline def assert(inline expr: Boolean): Unit =
       ${ assertImpl('expr) }
@@ -525,7 +525,7 @@ Assume we have two methods, one `map` that takes an `Expr[Array[T]]` and a
 function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
-object Macros:
+object Macros with
 
    def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])
              (using Type[T], Quotes): Expr[Unit] = '{

@@ -52,10 +52,10 @@ object BugExp4Point2D {
 
 class C
 
-object Container:
+object Container with
   given C with {}
 
-object Test:
+object Test with
   extension (x: String)(using C)
     def foo: String = x
 

@@ -8,7 +8,7 @@ types (ADTs) and their generalized version (GADTs). Here is an example
 how an `Option` type can be represented as an ADT:
 
 ```scala
-enum Option[+T]:
+enum Option[+T] with
    case Some(x: T)
    case None
 ```
@@ -23,7 +23,7 @@ The `extends` clauses that were omitted in the example above can also
 be given explicitly:
 
 ```scala
-enum Option[+T]:
+enum Option[+T] with
    case Some(x: T) extends Option[T]
    case None       extends Option[Nothing]
 ```
@@ -59,7 +59,7 @@ As all other enums, ADTs can define methods. For instance, here is `Option` agai
 `isDefined` method and an `Option(...)` constructor in its companion object.
 
 ```scala
-enum Option[+T]:
+enum Option[+T] with
    case Some(x: T)
    case None
 
@@ -67,7 +67,7 @@ enum Option[+T]:
       case None => false
       case some => true
 
-object Option:
+object Option with
 
    def apply[T >: Null](x: T): Option[T] =
       if x == null then None else Some(x)

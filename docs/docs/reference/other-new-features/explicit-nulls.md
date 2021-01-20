@@ -39,7 +39,7 @@ The new type system is unsound with respect to `null`. This means there are stil
 The unsoundness happens because uninitialized fields in a class start out as `null`:
 
 ```scala
-class C:
+class C with
    val f: String = foo(f)
    def foo(f2: String): String = f2
 
@@ -114,7 +114,7 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class C:
+    class C with
        val s: String|UncheckedNull
        val x: Int
     ```
@@ -132,7 +132,7 @@ Specifically, we patch
     Notice this is rule is sometimes too conservative, as witnessed by
 
     ```scala
-    class InScala:
+    class InScala with
        val c: C[Bool] = ???  // C as above
        val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool|Null
     ```
@@ -169,7 +169,7 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class BoxFactory[T]:
+    class BoxFactory[T] with
        def makeBox(): Box[T | UncheckedNull] | UncheckedNull
        def makeCrazyBoxes(): List[Box[List[T] | UncheckedNull]] | UncheckedNull
     ```
@@ -195,7 +195,7 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class Constants:
+    class Constants with
        val NAME: String("name") = "name"
        val AGE: Int(0) = 0
        val CHAR: Char('a') = 'a'
@@ -215,7 +215,7 @@ Specifically, we patch
     ```
     ==>
     ```scala
-    class C:
+    class C with
        val name: String
        def getNames(prefix: String | UncheckedNull): List[String] // we still need to nullify the paramter types
        def getBoxedName(): Box[String | UncheckedNull] // we don't append `UncheckedNull` to the outmost level, but we still need to nullify inside

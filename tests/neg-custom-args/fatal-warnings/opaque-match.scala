@@ -1,6 +1,6 @@
 case class C()
 
-object O:
+object O with
   opaque type T <: C = C
   val x: T = C()
   (??? : Any) match
@@ -17,7 +17,7 @@ def Test[T] =
   (??? : Any) match
     case _: List[O.T] => ???  // error
   (??? : Any) match
-    case _: List[O.T @unchecked] => ???  // OK 
+    case _: List[O.T @unchecked] => ???  // OK
   (??? : Any) match
     case _: List[T] => ???  // error
 

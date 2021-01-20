@@ -1,4 +1,4 @@
-object Bug:
+object Bug with
 
   extension [A, B, Z](ab: (A, B))
     def pipe2(f: (A, B) => Z): Z = f(ab._1, ab._2)

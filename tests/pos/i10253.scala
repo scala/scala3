@@ -1,9 +1,9 @@
-object test:
+object test with
   def foo(qc: QC): Unit =
     object treeMap extends qc.reflect.TreeMap
 
-trait QC:
+trait QC with
   val reflect: Reflection
-  trait Reflection:
-    trait TreeMap:
+  trait Reflection with
+    trait TreeMap with
       def transformTree: Unit = ???

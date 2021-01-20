@@ -1,12 +1,12 @@
 case class Person(name: String)
 case class Paper(title: String, authors: List[Person], body: String)
 
-object ConfManagement:
+object ConfManagement with
   opaque type Viewers = Set[Person]
   def viewers(using vs: Viewers) = vs
   type Viewed[T] = Viewers ?=> T
 
-  class Conference(ratings: (Paper, Int)*):
+  class Conference(ratings: (Paper, Int)*) with
     private val realScore = ratings.toMap
 
     def papers: List[Paper] = ratings.map(_._1).toList

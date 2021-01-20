@@ -2,11 +2,11 @@ package x
 
 import scala.quoted._
 
-trait CB[T]:
+trait CB[T] with
  def map[S](f: T=>S): CB[S] = ???
 
 
-class MyArr[A]:
+class MyArr[A] with
  def map[B](f: A=>B):MyArr[B] = ???
  def mapOut[B](f: A=> CB[B]): CB[MyArr[B]] = ???
  def flatMap[B](f: A=>MyArr[B]):MyArr[B] = ???
@@ -15,7 +15,7 @@ class MyArr[A]:
  def withFilterOut(p: A=>CB[Boolean]): DelayedWithFilter[A] = ???
  def map2[B](f: A=>B):MyArr[B] = ???
 
-class DelayedWithFilter[A]:
+class DelayedWithFilter[A] with
  def map[B](f: A=>B):MyArr[B] = ???
  def mapOut[B](f: A=> CB[B]): CB[MyArr[B]] = ???
  def flatMap[B](f: A=>MyArr[B]):MyArr[B] = ???
@@ -25,11 +25,11 @@ class DelayedWithFilter[A]:
 
 def await[T](x:CB[T]):T = ???
 
-object CBM:
+object CBM with
   def pure[T](t:T):CB[T] = ???
   def map[T,S](a:CB[T])(f:T=>S):CB[S] = ???
 
-object X:
+object X with
 
  inline def process[T](inline f:T) = ${
    processImpl[T]('f)

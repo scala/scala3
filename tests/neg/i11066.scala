@@ -1,12 +1,12 @@
 class PreferredPrompt(val preference: String)
-object Greeter:
+object Greeter with
   def greet(name: String)(using prompt: PreferredPrompt) =
     println(s"Welcome, $name. The system is ready.")
     println(prompt.preference)
-object JillsPrefs:
+object JillsPrefs with
   given jillsPrompt: PreferredPrompt =
     PreferredPrompt("Your wish> ")
-object JoesPrefs:
+object JoesPrefs with
   given joesPrompt: PreferredPrompt =
     PreferredPrompt("relax> ")
 

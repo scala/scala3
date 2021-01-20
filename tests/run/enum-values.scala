@@ -1,31 +1,31 @@
 import reflect.Selectable.reflectiveSelectable
 import deriving.Mirror
 
-enum Color:
+enum Color with
   case Red, Green, Blue
 
-enum Suits extends java.lang.Enum[Suits]:
+enum Suits extends java.lang.Enum[Suits] with
   case Clubs, Spades, Diamonds, Hearts
 
-enum Tag[T]:
+enum Tag[T] with
   case Int extends Tag[Int]
   case OfClass[T]()(using val tag: reflect.ClassTag[T]) extends Tag[T] // mix order of class and value
   case String extends Tag[String]
 
-enum Expr[-T >: Null]:
+enum Expr[-T >: Null] with
   case EmptyTree extends Expr[Null]
   case AnyTree
 
-enum ListLike[+T]:
+enum ListLike[+T] with
   case Cons[T](head: T, tail: ListLike[T]) extends ListLike[T]
   case EmptyListLike
 
-enum TypeCtorsK[F[_]]:
+enum TypeCtorsK[F[_]] with
   case List       extends TypeCtorsK[List]
   case Const[T]() extends TypeCtorsK[[U] =>> T] // mix order of class and value
   case Option     extends TypeCtorsK[Option]
 
-enum MixedParams[F[_], G[X,Y] <: collection.Map[X,Y], T]:
+enum MixedParams[F[_], G[X,Y] <: collection.Map[X,Y], T] with
   case Foo extends MixedParams[List, collection.mutable.LinkedHashMap, Unit]
 
 enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` companion methods

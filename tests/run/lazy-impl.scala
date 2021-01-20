@@ -46,7 +46,7 @@
 
  *  The code makes use of the following runtime class:
 
-    class Waiting:
+    class Waiting with
         private var done = false
         def release(): Unit = synchronized:
             done = true

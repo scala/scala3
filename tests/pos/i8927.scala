@@ -1,14 +1,14 @@
 import scala.language.implicitConversions
 
-trait Eq[k <: AnyKind, K[_ <: k]]:
+trait Eq[k <: AnyKind, K[_ <: k]] with
   extension [A <: k, B <: k](k: K[A]) def isEq (k2: K[B]): Eq.GEQ[k, K, A, B]
 
-object Eq:
-  enum GEQ[k <: AnyKind, K[_ <: k], A <: k, B <: k]:
+object Eq with
+  enum GEQ[k <: AnyKind, K[_ <: k], A <: k, B <: k] with
     case Y[k <: AnyKind, K[_ <: k], A <: k](res: K[A]) extends GEQ[k, K, A, A]
     case N()
 
-sealed trait DPair[k <: AnyKind, K[_ <: k], +V[_ <: k]]:
+sealed trait DPair[k <: AnyKind, K[_ <: k], +V[_ <: k]] with
   type A <: k
   val key: K[A]
   val value: V[A]
@@ -16,8 +16,8 @@ sealed trait DPair[k <: AnyKind, K[_ <: k], +V[_ <: k]]:
     case y: Eq.GEQ.Y[k, K, A] => Some(value)
     case _    => None
 
-object DPair:
+object DPair with
   given pair [k, K[_ <: k], V[_ <: k], C <: k]: Conversion[(K[C], V[C]), DPair[k, K, V]] = tup =>
-    case class dpair(key: K[C], value: V[C]) extends DPair[k, K, V]:
+    case class dpair(key: K[C], value: V[C]) extends DPair[k, K, V] with
       type A = C
     dpair(tup._1, tup._2)

@@ -34,13 +34,13 @@ configure how fields and methods should be resolved.
 Here's an example of a structural type `Person`:
 
 ```scala
-  class Record(elems: (String, Any)*) extends Selectable:
+  class Record(elems: (String, Any)*) extends Selectable with
      private val fields = elems.toMap
      def selectDynamic(name: String): Any = fields(name)
 
   type Person = Record { val name: String; val age: Int }
  ```
- 
+
 The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
 program would print  "Emma is 42 years old.":
 
@@ -82,10 +82,10 @@ Structural types can also be accessed using [Java reflection](https://www.oracle
 ```scala
   type Closeable = { def close(): Unit }
 
-  class FileInputStream:
+  class FileInputStream with
     def close(): Unit
 
-  class Channel:
+  class Channel with
     def close(): Unit
 ```
 
@@ -152,7 +152,7 @@ defines the necessary `selectDynamic` member.
 `Vehicle` could also extend some other subclass of `scala.Selectable` that implements `selectDynamic` and `applyDynamic` differently. But if it does not extend a `Selectable` at all, the code would no longer typecheck:
 
 ```scala
-trait Vehicle:
+trait Vehicle with
    val wheels: Int
 
 val i3 = new Vehicle: // i3: Vehicle

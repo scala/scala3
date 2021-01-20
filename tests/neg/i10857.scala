@@ -1,25 +1,25 @@
-object Module:
+object Module with
 
   class Bar
   class Baz
   class Qux
 
-  object Givens:
+  object Givens with
     given GivenBar: Bar = new Bar()
     def GivenBar(ignored: Int): Bar = new Bar()
     class GivenBar
 
-  object Members:
+  object Members with
     given Member: Baz = new Baz()
     private def Member(ignored1: String)(ignored2: Int): Bar = new Bar()
     def Member(ignored: Int): Baz = new Baz()
     class Member
 
-  object Combined:
+  object Combined with
     given GivenQux: Qux = new Qux()
     def GivenQux(ignored: Int): Qux = new Qux()
 
-  enum Color:
+  enum Color with
     case Red, Green, Blue
 
   export Color._ // will only export synthetic defs with same name as standard definition

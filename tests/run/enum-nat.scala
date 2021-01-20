@@ -1,11 +1,11 @@
 import Nat._
 import compiletime._
 
-enum Nat:
+enum Nat with
   case Zero
   case Succ[N <: Nat.Refract](n: N)
 
-object Nat:
+object Nat with
   type Refract = Zero.type | Succ[_]
 
 inline def toIntTypeLevel[N <: Nat]: Int = inline erasedValue[N] match

@@ -1,7 +1,7 @@
-trait Reporter:
+trait Reporter with
   def report(m: String): Unit
 
-class Dummy extends Reporter:
+class Dummy extends Reporter with
   def report(m: String) = ()
 
   object ABug {

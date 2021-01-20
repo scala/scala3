@@ -1,4 +1,4 @@
-object Kotlin:
+object Kotlin with
   def it[T](using t: T) = t
   def fun[T, U](fn: T ?=> U)(x: T): U = fn(using x)
 

@@ -1,4 +1,4 @@
-trait C:
+trait C with
   inline def x: Int
   inline val y: Int
 

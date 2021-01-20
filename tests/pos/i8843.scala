@@ -1,4 +1,4 @@
-class C:
+class C with
   type X <: Tuple
 
 inline def f(c: C): Unit = {

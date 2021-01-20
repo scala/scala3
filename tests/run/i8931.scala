@@ -1,4 +1,4 @@
-object test1:
+object test1 with
 
   trait Trait
 
@@ -18,7 +18,7 @@ object test1:
     }
   }
 
-object test2:
+object test2 with
 
   trait Trait
 
@@ -38,16 +38,16 @@ object test2:
     }
   }
 
-object test3:
+object test3 with
 
   trait Trait
 
-  trait Managed[T]:
+  trait Managed[T] with
 
     def flatMap[U](f: T => Managed[U]) =
-      class C:
+      class C with
         def make() =
-          class D:
+          class D with
             def bar(): T = ???
             val t: T = ???
             val u =

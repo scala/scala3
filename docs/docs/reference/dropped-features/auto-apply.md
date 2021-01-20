@@ -73,10 +73,10 @@ by a nullary method or _vice versa_. Instead, both methods must agree
 exactly in their parameter lists.
 
 ```scala
-class A:
+class A with
    def next(): Int
 
-class B extends A:
+class B extends A with
    def next: Int // overriding error: incompatible type
 ```
 

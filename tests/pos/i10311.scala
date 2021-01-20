@@ -7,7 +7,7 @@ object Module {
     extension (self: MyInt) def y: Int = self.y
   }
 }
-object test:
+object test with
   import Module._
 
   val a = new MyInt(42, 43)

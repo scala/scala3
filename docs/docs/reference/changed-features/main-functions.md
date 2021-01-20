@@ -61,7 +61,7 @@ The Scala compiler generates a program from a `@main` method `f` as follows:
 For instance, the `happyBirthDay` method above would generate additional code equivalent to the following class:
 
 ```scala
-final class happyBirthday:
+final class happyBirthday with
    import scala.util.{CommandLineParser => CLP}
    <static> def main(args: Array[String]): Unit =
       try

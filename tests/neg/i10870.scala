@@ -1,7 +1,7 @@
 final case class A()
 final case class B(a:A)
 
-object Test:
+object Test with
 
   extension(a:A)
     def x = 5

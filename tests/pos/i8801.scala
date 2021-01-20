@@ -1,4 +1,4 @@
-object Foo:
+object Foo with
  locally {
     case class Baz()
   }

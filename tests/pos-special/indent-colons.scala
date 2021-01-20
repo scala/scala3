@@ -1,4 +1,4 @@
-object Test:
+object Test with
 
   locally:
     var x = 0
@@ -56,26 +56,26 @@ object Test:
     x < 10
   do ()
 
-class Test2:
+class Test2 with
   self =>
   def foo = 1
 
   val x =
-    new Test2:
+    new Test2 with
       override def foo = 2
     end new
   end x
 end Test2
 
-class Test3:
+class Test3 with
  self =>
   def foo = 1
 
 import collection.mutable.HashMap
 
-class Coder(words: List[String]):
+class Coder(words: List[String]) with
 
-  class Foo:
+  class Foo with
     println()
   end Foo
 
@@ -114,5 +114,5 @@ class Coder(words: List[String]):
         case (digit, str) => str map (ltr => ltr -> digit)
 end Coder
 
-object Test22:
+object Test22 with
   def foo: Int = 22

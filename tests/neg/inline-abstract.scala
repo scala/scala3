@@ -1,7 +1,7 @@
-class A:
+class A with
   inline def f(): Int
 
-class B extends A:
+class B extends A with
   inline def f() = 1
 
 def Test =

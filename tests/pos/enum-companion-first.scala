@@ -1,7 +1,7 @@
-object Planet:
+object Planet with
   final val G = 6.67300E-11
 
-enum Planet(mass: Double, radius: Double) extends Enum[Planet]:
+enum Planet(mass: Double, radius: Double) extends Enum[Planet] with
   def surfaceGravity = Planet.G * mass / (radius * radius)
   def surfaceWeight(otherMass: Double) =  otherMass * surfaceGravity
 

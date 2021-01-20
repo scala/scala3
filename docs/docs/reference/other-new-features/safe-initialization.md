@@ -14,11 +14,11 @@ To get a feel of how it works, we first show several examples below.
 Given the following code snippet:
 
 ``` scala
-abstract class AbstractFile:
+abstract class AbstractFile with
    def name: String
    val extension: String = name.substring(4)
 
-class RemoteFile(url: String) extends AbstractFile:
+class RemoteFile(url: String) extends AbstractFile with
    val localFile: String = s"${url.##}.tmp"  // error: usage of `localFile` before it's initialized
    def name: String = localFile
 ```
@@ -39,7 +39,7 @@ The checker will report:
 Given the code below:
 
 ``` scala
-object Trees:
+object Trees with
    class ValDef { counter += 1 }
    class EmptyValDef extends ValDef
    val theEmptyValDef = new EmptyValDef
@@ -63,11 +63,11 @@ The checker will report:
 Given the code below:
 
 ``` scala
-abstract class Parent:
+abstract class Parent with
    val f: () => String = () => this.message
    def message: String
 
-class Child extends Parent:
+class Child extends Parent with
    val a = f()
    val b = "hello"           // error
    def message: String = b
@@ -122,11 +122,11 @@ following example shows:
 
 ``` scala
 class MyException(val b: B) extends Exception("")
-class A:
+class A with
    val b = try { new B } catch { case myEx: MyException => myEx.b }
    println(b.a)
 
-class B:
+class B with
    throw new MyException(this)
    val a: Int = 1
 ```
@@ -141,10 +141,10 @@ field points to an initialized object may not later point to an
 object under initialization. As an example, the following code will be rejected:
 
 ``` scala
-trait Reporter:
+trait Reporter with
    def report(msg: String): Unit
 
-class FileReporter(ctx: Context) extends Reporter:
+class FileReporter(ctx: Context) extends Reporter with
    ctx.typer.reporter = this                // ctx now reaches an uninitialized object
    val file: File = new File("report.txt")
    def report(msg: String) = file.write(msg)
@@ -214,11 +214,11 @@ project boundaries. For example, the following code passes the check when the
 two classes are defined in the same project:
 
 ```Scala
-class Base:
+class Base with
    private val map: mutable.Map[Int, String] = mutable.Map.empty
    def enter(k: Int, v: String) = map(k) = v
 
-class Child extends Base:
+class Child extends Base with
    enter(1, "one")
    enter(2, "two")
 ```

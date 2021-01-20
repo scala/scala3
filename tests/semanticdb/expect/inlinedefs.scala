@@ -1,6 +1,6 @@
 package inlinedefs
 
-object FakePredef:
+object FakePredef with
 
   /** Super long padded documentation
    *  Lorem ipsum dolor sit amet, consectetur adipiscing elit,

@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.staging._
 
-object Test:
+object Test with
 
   given Compiler = Compiler.make(getClass.getClassLoader)
 

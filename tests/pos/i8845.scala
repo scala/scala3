@@ -1,4 +1,4 @@
-trait IntToLong:
+trait IntToLong with
   def apply(v: Int) : Long
 
 inline def convert1(       f: IntToLong) = ???

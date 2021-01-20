@@ -44,7 +44,7 @@ no longer applies.
 
   given a: A = A()
 
-  object o:
+  object o with
      given b: B = B()
      type C
 ```

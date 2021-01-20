@@ -1,4 +1,4 @@
-trait T:
+trait T with
   type X
   def x: X
 

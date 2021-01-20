@@ -1,17 +1,17 @@
 
-abstract class A:
+abstract class A with
   def x: Int
   val y: Int
 
-class B extends A:
+class B extends A with
   inline def x: Int = 1
   inline val y = 2
 
-class C extends A:
+class C extends A with
   final val x: Int = 3
   final val y = 4
 
-class D:
+class D with
   inline def x: Int = 5
   inline val y = 6
 

@@ -46,7 +46,7 @@ object Test {
 
 // Inspector that performs the actual tests
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends TastyInspector with
 
   private var foundIOApp: Boolean = false
   private var foundSimple: Boolean = false

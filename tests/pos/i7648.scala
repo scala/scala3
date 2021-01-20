@@ -11,7 +11,7 @@ class Stream[+F[_], +A] {
   }
 }
 
-object Test:
+object Test with
 
   implicit val ioMonad: Monad[IO] = null
 

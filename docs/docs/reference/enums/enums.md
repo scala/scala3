@@ -6,7 +6,7 @@ title: "Enumerations"
 An enumeration is used to define a type consisting of a set of named values.
 
 ```scala
-enum Color:
+enum Color with
    case Red, Green, Blue
 ```
 
@@ -79,7 +79,7 @@ end Planet
 It is also possible to define an explicit companion object for an enum:
 
 ```scala
-object Planet:
+object Planet with
    def main(args: Array[String]) =
       val earthWeight = args(0).toDouble
       val mass = earthWeight / Earth.surfaceGravity
@@ -153,7 +153,7 @@ For a more in-depth example of using Scala 3 enums from Java, see [this test](ht
 ### Implementation
 
 Enums are represented as `sealed` classes that extend the `scala.reflect.Enum` trait.
-This trait defines a single public method, `ordinal`:
+This trait defines a single public method, `ordinal` with
 
 ```scala
 package scala.reflect

@@ -1,6 +1,6 @@
-object abc:
+object abc with
   trait Test0
-  trait Test1[T]:
+  trait Test1[T] with
     def apply(f: T => T): Unit
     def apply(s: String): Unit
 

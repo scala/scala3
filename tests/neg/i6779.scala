@@ -3,7 +3,7 @@ type G[T]
 type Stuff
 given Stuff = ???
 
-object Test:
+object Test with
   extension [T](x: T) def f(using Stuff): F[T] = ???
 
 

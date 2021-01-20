@@ -111,7 +111,7 @@ The reason for casting to `x.type & T`, as opposed to just `T`, is that it allow
 support flow typing for paths of length greater than one.
 
 ```scala
-abstract class Node:
+abstract class Node with
    val x: String
    val next: Node | Null
 

@@ -1,3 +1,2 @@
-object Test:
-
-  def test = ???
+object Test with
+  val x = 1

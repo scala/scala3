@@ -1,4 +1,4 @@
-trait S[T] extends (T => T):
+trait S[T] extends (T => T) with
   def apply(x: T) = ???
   extension (x: T) def show: String
 

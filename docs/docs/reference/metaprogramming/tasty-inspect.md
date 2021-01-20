@@ -21,7 +21,7 @@ To inspect the trees of a TASTy file a consumer can be defined in the following 
 import scala.quoted._
 import scala.tasty.inspector._
 
-class MyInspector extends TastyInspector:
+class MyInspector extends TastyInspector with
    protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit =
       import quotes.reflect._
       // Do something with the tree
@@ -30,7 +30,7 @@ class MyInspector extends TastyInspector:
 Then the consumer can be instantiated with the following code to get the tree of the `foo/Bar.tasty` file.
 
 ```scala
-object Test:
+object Test with
    def main(args: Array[String]): Unit =
       new MyInspector().inspectTastyFiles("foo/Bar.tasty")
 ```

@@ -1,6 +1,6 @@
 package example
 
-trait Show[-A]:
+trait Show[-A] with
   extension (a: A) def show: String
 
 given (using rec: Show[String]): Show[String] = ??? // must be Show[String] as the argument

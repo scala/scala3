@@ -3,7 +3,7 @@ package example {
   import compiletime.S
   import compiletime.ops.int.<<
 
-  object TastyFlags:
+  object TastyFlags with
 
     final val EmptyFlags  = baseFlags
     final val Erased      = EmptyFlags.next
@@ -40,7 +40,7 @@ package example {
         case Open        => "Open"
       }) mkString(" | ")
 
-    object opaques:
+    object opaques with
 
       opaque type FlagSet = Int
       opaque type EmptyFlagSet <: FlagSet = 0

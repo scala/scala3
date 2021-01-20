@@ -1,4 +1,0 @@
--- Error: tests/neg/extension-colon.scala:1:18 -------------------------------------------------------------------------
-1 |extension (x: Int): // error
-  |                  ^
-  |                  no `:` expected here

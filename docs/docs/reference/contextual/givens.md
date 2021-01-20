@@ -7,7 +7,7 @@ Given instances (or, simply, "givens") define "canonical" values of certain type
 that serve for synthesizing arguments to [context parameters](./using-clauses.md). Example:
 
 ```scala
-trait Ord[T]:
+trait Ord[T] with
    def compare(x: T, y: T): Int
    extension (x: T) def < (y: T) = compare(x, y) < 0
    extension (x: T) def > (y: T) = compare(x, y) > 0
@@ -130,7 +130,7 @@ import scala.util.NotGiven
 trait Tagged[A]
 
 case class Foo[A](value: Boolean)
-object Foo:
+object Foo with
    given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
    given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
 
@@ -153,11 +153,10 @@ Here is the syntax for given instances:
 ```
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
-GivenDef            ::=  [GivenSig] StructuralInstance
-                     |   [GivenSig] Type ‘=’ Expr
-                     |   [GivenSig] Type
+GivenDef            ::=  [GivenSig] ConstrApps TemplateBody
+                     |   [GivenSig] AnnotType ‘=’ Expr
+                     |   [GivenSig] AnnotType
 GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
-StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 ```
 
 A given instance starts with the reserved word `given` and an optional _signature_. The signature

@@ -1,6 +1,6 @@
 trait Evidence[X]
 
-trait Trait[X : Evidence]:
+trait Trait[X : Evidence] with
   def method(x : X) : X
 
 given ev: Evidence[Int] = new Evidence[Int]{}
