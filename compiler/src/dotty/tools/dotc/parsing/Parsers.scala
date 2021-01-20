@@ -1566,33 +1566,32 @@ object Parsers {
     def infixTypeRest(t: Tree): Tree =
       infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
 
-    /** RefinedType   ::=  WithType {[nl] Refinement}
+    /** RefinedType   ::=  WithType {[nl | ‘with’] Refinement}
      */
     val refinedType: () => Tree = () => refinedTypeRest(withType())
 
-    def refinedTypeRest(t: Tree): Tree = {
+    def refinedTypeRest(t: Tree): Tree =
       argumentStart()
-      if (in.isNestedStart)
+      if isTemplateBodyStart then
+        if in.token == WITH then in.nextToken()
         refinedTypeRest(atSpan(startOffset(t)) {
           RefinedTypeTree(rejectWildcardType(t), refinement(indentOK = true))
         })
       else t
-    }
 
     /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
      */
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if in.token == WITH then
-        val withOffset = in.offset
+      def isRefinementStart =
+        val la = in.lookahead
+        la.isAfterLineEnd || la.token == LBRACE
+      if in.token == WITH && !isRefinementStart then
         in.nextToken()
-        if in.token == LBRACE || in.token == INDENT then
-          t
-        else
-          if sourceVersion.isAtLeast(`3.1`) then
-            deprecationWarning(DeprecatedWithOperator(), withOffset)
-          atSpan(startOffset(t)) { makeAndType(t, withType()) }
+        if sourceVersion.isAtLeast(`3.1`) then
+          deprecationWarning(DeprecatedWithOperator())
+        atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
 
     /** AnnotType ::= SimpleType {Annotation}
