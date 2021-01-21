@@ -936,6 +936,7 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
+  @tu lazy val CoversAnnot: ClassSymbol = requiredClass("scala.annotation.covers")
 
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val FieldAccessorMetaAnnots: Set[Symbol] =

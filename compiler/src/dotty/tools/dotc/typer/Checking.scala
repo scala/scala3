@@ -32,7 +32,7 @@ import NameKinds.DefaultGetterName
 import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
-import transform.patmat.SpaceEngine.isIrrefutableUnapply
+import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature._
 import config.SourceVersion._
 
@@ -723,7 +723,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
+            (isIrrefutable(fn) || fail(pat, pt)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
