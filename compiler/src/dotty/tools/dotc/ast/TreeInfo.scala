@@ -251,6 +251,22 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  private val languageImportParts = List(nme.language, nme.scala, nme.ROOTPKG)
+  private val languageImportNested = Set[Name](nme.experimental)
+
+  /** Strip the name of any local object in `scala.language` from `path` */
+  def stripLanguageNested(path: Tree): Tree = path match
+    case Select(qual, name) if languageImportNested.contains(name) => qual
+    case _ => path
+
+  /** Does this `path` look like a language import? */
+  def isLanguageImport(path: Tree): Boolean =
+    def parts(tree: Tree): List[Name] = tree match
+      case tree: RefTree => tree.name :: parts(tree.qualifier)
+      case EmptyTree => Nil
+      case _ => EmptyTermName :: Nil
+    !path.isEmpty && languageImportParts.startsWith(parts(stripLanguageNested(path)))
+
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)

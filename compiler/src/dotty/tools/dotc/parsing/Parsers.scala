@@ -3068,11 +3068,7 @@ object Parsers {
 
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
-      val isLanguageImport = tree match
-        case Ident(nme.language) => true
-        case Select(Ident(nme.scala), nme.language) => true
-        case _ => false
-      if isLanguageImport then
+      if isLanguageImport(tree) then
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)
