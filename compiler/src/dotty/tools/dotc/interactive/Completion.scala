@@ -13,12 +13,12 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.Names.{Name, TermName}
 import dotty.tools.dotc.core.NameKinds.SimpleNameKind
 import dotty.tools.dotc.core.NameOps._
-import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, defn, newSymbol}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, TermSymbol, defn, newSymbol}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
 import dotty.tools.dotc.core.TypeComparer
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodType, NameFilter, NamedType, NoType, PolyType, Type}
+import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NamedType, NoType, PolyType, Type}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
@@ -216,19 +216,16 @@ object Completion {
       }
 
     def addExtensionCompletions(path: List[Tree], qual: Tree)(using Context): Unit =
-      def applyExtensionReceiver(methodSymbol: Symbol, methodName: TermName): Symbol = {
-        val newMethodType = methodSymbol.info match {
-          case mt: MethodType =>
-            mt.resultType match {
-              case resType: MethodType => resType
-              case resType => ExprType(resType)
-            }
-          case pt: PolyType =>
-            PolyType(pt.paramNames)(_ => pt.paramInfos, _ => pt.resultType.resultType)
-        }
+      def asDefLikeType(tpe: Type): Type = tpe match
+        case _: MethodOrPoly => tpe
+        case _ => ExprType(tpe)
 
-        newSymbol(owner = qual.symbol, methodName, methodSymbol.flags, newMethodType)
-      }
+      def tryApplyingReceiver(methodSym: TermSymbol): Option[TermSymbol] =
+        ctx.typer.tryApplyingReceiver(methodSym, qual)
+          .map { tree =>
+            val tpe = asDefLikeType(tree.tpe.dealias)
+            newSymbol(owner = qual.symbol, methodSym.name, methodSym.flags, tpe)
+          }
 
       val matchingNamePrefix = completionPrefix(path, pos)
 
@@ -236,8 +233,8 @@ object Completion {
         types
           .flatMap(_.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags))
           .collect{ denot =>
-            denot.name.toTermName match {
-              case name if name.startsWith(matchingNamePrefix) => (denot.symbol, name)
+            denot.name match {
+              case name: TermName if name.startsWith(matchingNamePrefix) => (denot.symbol.asTerm, name)
             }
           }
 
@@ -248,7 +245,7 @@ object Completion {
         val buf = completionBuffer(path, pos)
         buf.addScopeCompletions
         buf.completions.mappings.toList.flatMap {
-          case (termName, symbols) => symbols.map(s => (s, termName))
+          case (termName, symbols) => symbols.map(s => (s.asTerm, termName))
         }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
@@ -264,9 +261,12 @@ object Completion {
       val extMethodsFromGivensInImplicitScope = extractDefinedExtensionMethods(givensInImplicitScope)
 
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope
-      val extMethodsWithAppliedReceiver = availableExtMethods.collect {
-        case (symbol, termName) if ctx.typer.isApplicableExtensionMethod(symbol.termRef, qual.tpe) =>
-          applyExtensionReceiver(symbol, termName)
+
+      val extMethodsWithAppliedReceiver = availableExtMethods.flatMap {
+        case (symbol, termName) =>
+          if symbol.is(ExtensionMethod) && !qual.tpe.isBottomType then
+            tryApplyingReceiver(symbol).map(_.copy(name = termName))
+          else None
       }
 
       for (symbol <- extMethodsWithAppliedReceiver) do add(symbol, symbol.name)

@@ -308,38 +308,138 @@ class CompletionTest {
 
   @Test def completeExtensionMethodWithTypeParameter: Unit = {
     code"""object Foo
-          |extension [A](foo: Foo.type) def xxxx: Int = 1
+          |extension (foo: Foo.type) def xxxx[A]: Int = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "[A] => Int")))
   }
 
   @Test def completeExtensionMethodWithParameterAndTypeParameter: Unit = {
     code"""object Foo
-          |extension [A](foo: Foo.type) def xxxx(a: A) = a
+          |extension (foo: Foo.type) def xxxx[A](a: A) = a
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "[A](a: A): A")))
   }
 
-  @Test def completeExtensionMethodFromExtenionWithAUsingSection: Unit = {
+  @Test def completeExtensionMethodFromExtensionWithTypeParameter: Unit = {
+    code"""extension [A](a: A) def xxxx: A = a
+          |object Main { "abc".xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodWithResultTypeDependantOnReceiver: Unit = {
+    code"""trait Foo { type Out; def get: Out}
+          |object Bar extends Foo { type Out = String; def get: Out = "abc"}
+          |extension (foo: Foo) def xxxx: foo.Out = foo.get
+          |object Main { Bar.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithPrefixUsingSection: Unit = {
     code"""object Foo
           |trait Bar
           |trait Baz
-          |given Bar = new Bar {}
-          |given Baz = new Baz {}
+          |given Bar with {}
+          |given Baz with {}
+          |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithMultiplePrefixUsingSections: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
+          |extension (using Bar)(using Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def dontCompleteExtensionMethodFromExtenionWithMissingImplicitFromPrefixUsingSection: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Baz with {}
+          |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def completeExtensionMethodForReceiverOfTypeDependentOnLeadingImplicits: Unit = {
+    code"""
+          |trait Foo:
+          |  type Out <: Bar
+          |
+          |given Foo with
+          |  type Out = Baz
+          |
+          |trait Bar:
+          |  type Out
+          |
+          |trait Baz extends Bar
+          |
+          |given Baz with
+          |  type Out = Quux
+          |
+          |class Quux
+          |
+          |object Quux:
+          |  extension (using foo: Foo)(using fooOut: foo.Out)(fooOutOut: fooOut.Out) def xxxx = "abc"
+          |
+          |object Main { (new Quux).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodWithResultTypeDependentOnLeadingImplicit: Unit = {
+    code"""object Foo
+          |trait Bar { type Out; def get: Out }
+          |given Bar with { type Out = 123; def get: Out = 123 }
+          |extension (using bar: Bar)(foo: Foo.type) def xxxx: bar.Out = bar.get
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> (123 : Int)")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithPostfixUsingSection: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
           |extension (foo: Foo.type)(using Bar, Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int")))
   }
 
-  @Test def completeExtensionMethodFromExtenionWithMultipleUsingSections: Unit = {
+  @Test def completeExtensionMethodFromExtenionWithMultiplePostfixUsingSections: Unit = {
     code"""object Foo
           |trait Bar
           |trait Baz
-          |given Bar = new Bar {}
-          |given Baz = new Baz {}
+          |given Bar with {}
+          |given Baz with {}
           |extension (foo: Foo.type)(using Bar)(using Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int")))
+  }
+
+  @Test def completeExtensionMethodWithTypeParameterFromExtenionWithTypeParametersAndPrefixAndPostfixUsingSections: Unit = {
+    code"""trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
+          |extension [A](using bar: Bar)(a: A)(using baz: Baz) def xxxx[B]: Either[A, B] = Left(a)
+          |object Main { 123.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "(using baz: Baz): [B] => Either[Int, B]")))
+  }
+
+  @Test def completeExtensionMethodWithTypeBounds: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |given Bar with {}
+          |extension [A >: Bar](a: A) def xxxx[B <: a.type]: Either[A, B] = Left(a)
+          |val foo = new Foo {}
+          |object Main { foo.xx${m1} }""".withSource
+          .completion(m1, Set(("xxxx", Method, "[B <: (foo : Foo)] => Either[Foo, B]")))
   }
 
   @Test def completeInheritedExtensionMethod: Unit = {
@@ -442,10 +542,9 @@ class CompletionTest {
       .completion(m1, Set(("xxxx", Method, "=> Int")))
   }
 
-  @Test def dontCompleteInapplicableExtensionMethod: Unit = {
-    code"""case class Foo[A](a: A)
-          |extension (foo: Foo[Int]) def xxxx = foo.a
-          |object Main { Foo("abc").xx${m1} }""".withSource
+  @Test def dontCompleteExtensionMethodWithMismatchedReceiverType: Unit = {
+    code"""extension (i: Int) def xxxx = i
+          |object Main { "abc".xx${m1} }""".withSource
       .completion(m1, Set())
   }
 }

@@ -2133,8 +2133,34 @@ trait Applications extends Compatibility {
     }
   }
 
-  def isApplicableExtensionMethod(ref: TermRef, receiver: Type)(using Context) =
-    ref.symbol.is(ExtensionMethod)
-    && !receiver.isBottomType
-    && isApplicableMethodRef(ref, receiver :: Nil, WildcardType)
+  private def tryApplyingReceiverToTruncatedExtMethod(methodSym: TermSymbol, receiver: Tree)(using Context): scala.util.Try[Tree] =
+    // Drop all parameters sections of an extension method following the receiver to prevent them from being inferred by the typer
+    def truncateExtension(tp: Type): Type = tp match
+      case poly: PolyType => poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
+      case meth: MethodType if meth.isContextualMethod => meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
+      case meth: MethodType => meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
+
+    val truncatedSym = methodSym.copy(owner = defn.RootPackage, name = Names.termName(""), info = truncateExtension(methodSym.info))
+    val truncatedRef = ref(truncatedSym).withSpan(Span(0, 0)) // Fake span needed to make this work in REPL
+    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+    scala.util.Try {
+      inContext(newCtx) {
+        ctx.enter(truncatedSym)
+        ctx.typer.extMethodApply(truncatedRef, receiver, WildcardType)
+      }
+    }.filter(tree => tree.tpe.exists && !tree.tpe.isError)
+
+  def tryApplyingReceiver(methodSym: TermSymbol, receiver: Tree)(using Context): Option[Tree] =
+    def replaceAppliedRef(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
+      case Apply(fun, args) => Apply(replaceAppliedRef(fun, replacement), args)
+      case TypeApply(fun, args) => TypeApply(replaceAppliedRef(fun, replacement), args)
+      case _: Ident => replacement
+
+    tryApplyingReceiverToTruncatedExtMethod(methodSym, receiver)
+      .toOption
+      .map(tree => replaceAppliedRef(tree, ref(methodSym)))
+
+  def isApplicableExtensionMethod(ref: TermRef, receiverType: Type)(using Context) =
+    ref.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
+      tryApplyingReceiverToTruncatedExtMethod(ref.symbol.asTerm, Typed(EmptyTree, TypeTree(receiverType))).isSuccess
 }
