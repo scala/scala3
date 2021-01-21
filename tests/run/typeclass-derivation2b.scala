@@ -94,9 +94,9 @@ object Eq {
   import scala.compiletime.{erasedValue, summonInline}
   import TypeLevel._
 
-  transparent inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
+  inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
-  transparent inline def eqlElems[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
+  inline def eqlElems[Elems <: Tuple](x: Product, y: Product, n: Int): Boolean =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) =>
         tryEql[elem](
@@ -107,7 +107,7 @@ object Eq {
         true
     }
 
-  transparent inline def eqlCases[T, Alts <: Tuple](x: T, y: T, genSum: GenericSum[T], ord: Int, inline n: Int): Boolean =
+  inline def eqlCases[T, Alts <: Tuple](x: T, y: T, genSum: GenericSum[T], ord: Int, inline n: Int): Boolean =
     inline erasedValue[Alts] match {
       case _: (alt *: alts1) =>
         if (ord == n)
@@ -123,7 +123,7 @@ object Eq {
         false
     }
 
-  transparent inline def derived[T](implicit ev: Generic[T]): Eq[T] = new Eq[T] {
+  inline def derived[T](implicit ev: Generic[T]): Eq[T] = new Eq[T] {
     def eql(x: T, y: T): Boolean = {
       inline ev match {
         case evv: GenericSum[T] =>

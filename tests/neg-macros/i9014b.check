@@ -2,5 +2,9 @@
 -- Error: tests/neg-macros/i9014b/Test_2.scala:1:23 --------------------------------------------------------------------
 1 |val tests = summon[Bar] // error
   |                       ^
-  |                       Failed to expand!
-  | This location contains code that was inlined from Test_2.scala:1
+  |                     no implicit argument of type Bar was found for parameter x of method summon in object Predef.
+  |                     I found:
+  |
+  |                         given_Bar
+  |
+  |                     But given instance given_Bar does not match type Bar.

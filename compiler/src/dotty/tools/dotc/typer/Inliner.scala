@@ -1253,7 +1253,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
-      typed(tree.cond, defn.BooleanType) match {
+      typed(tree.cond, defn.BooleanType)(using ctx.addMode(Mode.ForceInline)) match {
         case cond1 @ ConstantValue(b: Boolean) =>
           val selected0 = if (b) tree.thenp else tree.elsep
           val selected = if (selected0.isEmpty) tpd.Literal(Constant(())) else typed(selected0, pt)
@@ -1343,9 +1343,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         !suppressInline &&
         !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] &&
         Inliner.isInlineable(tree) &&
-        StagingContext.level == 0
-      then
-        Inliner.inlineCall(tree)
+        StagingContext.level == 0 &&
+        (ctx.isAfterTyper || tree.symbol.is(Transparent) || ctx.mode.is(Mode.ForceInline) || ctx.settings.YinlineBlackboxWhileTyping.value)
+      then Inliner.inlineCall(tree)
       else tree
   }
 

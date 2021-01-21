@@ -1,6 +1,6 @@
 object Test {
 
-  transparent inline def bar() =
+  inline def bar() =
     compiletime.summonFrom {
       case _: Int =>
     }
