@@ -474,13 +474,8 @@ object Contexts {
       else fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[?], sym: Symbol): FreshContext = {
-      val impNameOpt = imp.expr match {
-        case ref: RefTree[?] => Some(ref.name.asTermName)
-        case _               => None
-      }
-      fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
-    }
+    def importContext(imp: Import[?], sym: Symbol): FreshContext =
+       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
