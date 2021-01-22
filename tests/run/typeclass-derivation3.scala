@@ -35,11 +35,11 @@ object typeclasses {
     import compiletime._
     import scala.deriving._
 
-    transparent inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
+    inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
       case eq: Eq[TT] => eq.eql(x, y)
     }
 
-    transparent inline def eqlElems[Elems <: Tuple](n: Int)(x: Product, y: Product): Boolean =
+    inline def eqlElems[Elems <: Tuple](n: Int)(x: Product, y: Product): Boolean =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           tryEql[elem](x.productElement(n).asInstanceOf[elem], y.productElement(n).asInstanceOf[elem]) &&
@@ -90,11 +90,11 @@ object typeclasses {
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
-    transparent inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
+    inline def tryPickle[T](buf: mutable.ListBuffer[Int], x: T): Unit = summonFrom {
       case pkl: Pickler[T] => pkl.pickle(buf, x)
     }
 
-    transparent inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Product): Unit =
+    inline def pickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Product): Unit =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           tryPickle[elem](buf, x.productElement(n).asInstanceOf[elem])
@@ -113,11 +113,11 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    transparent inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
+    inline def tryUnpickle[T](buf: mutable.ListBuffer[Int]): T = summonFrom {
       case pkl: Pickler[T] => pkl.unpickle(buf)
     }
 
-    transparent inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: Array[Any]): Unit =
+    inline def unpickleElems[Elems <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], elems: Array[Any]): Unit =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           elems(n) = tryUnpickle[elem](buf)
@@ -188,9 +188,9 @@ object typeclasses {
     import compiletime._
     import deriving._
 
-    transparent inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
+    inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
-    transparent inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Product): List[String] =
+    inline def showElems[Elems <: Tuple, Labels <: Tuple](n: Int)(x: Product): List[String] =
       inline erasedValue[Elems] match {
         case _: (elem *: elems1) =>
           inline erasedValue[Labels] match {
