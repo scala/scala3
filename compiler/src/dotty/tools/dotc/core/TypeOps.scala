@@ -438,6 +438,8 @@ object TypeOps:
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
+        case tp: LazyRef =>
+          TypeBounds.empty
         case _ =>
           mapOver(tp)
       }
@@ -462,34 +464,6 @@ object TypeOps:
           else
             range(defn.NothingType, defn.AnyType)
         }
-
-      /** Deviation from standard tryWiden:
-       *  - Don't widen F-bounds
-       */
-      override def tryWiden(tp: NamedType, pre: Type): Type = pre.member(tp.name) match {
-        case d: SingleDenotation =>
-          val tp1 = d.info.dealiasKeepAnnots
-          tp1.stripAnnots match {
-            case TypeAlias(alias) =>
-              // if H#T = U, then for any x in L..H, x.T =:= U,
-              // hence we can replace with U under all variances
-              reapply(alias.rewrapAnnots(tp1))
-
-            case tb: TypeBounds =>
-              // Don't widen F-bounds
-              val isFBounds = tb.existsPart(p => p.isInstanceOf[LazyRef], forceLazy = false)
-              if isFBounds then NoType
-              else expandBounds(tb)
-            case info: SingletonType =>
-              // if H#x: y.type, then for any x in L..H, x.type =:= y.type,
-              // hence we can replace with y.type under all variances
-              reapply(info)
-            case _ =>
-              NoType
-          }
-        case _ => NoType
-      }
-
     }
 
     widenMap(tp)
