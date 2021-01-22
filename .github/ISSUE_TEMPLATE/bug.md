@@ -7,6 +7,13 @@ assignees: ''
 
 ---
 
+## Compiler version
+
+``` bash
+# get compiler version via command line
+scalac -version
+```
+
 ## Minimized code
 
 ```Scala
