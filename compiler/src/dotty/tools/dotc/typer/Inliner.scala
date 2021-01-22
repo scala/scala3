@@ -303,7 +303,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          report.error("argument to compileError must be a statically known String", underlyingCodeArg.srcPos)
+          report.error(em"argument to compileError must be a statically known String but was: $tree", underlyingCodeArg.srcPos)
           Nil
       }
 
@@ -327,7 +327,7 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree, true)
-      Literal(Constant(errors.isEmpty))
+      Literal(Constant(errors.isEmpty)).withSpan(tree.span)
 
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
     def typeCheckErrors(tree: Tree)(using Context): Tree =
