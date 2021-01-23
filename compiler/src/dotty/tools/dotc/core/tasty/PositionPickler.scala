@@ -130,8 +130,8 @@ class PositionPickler(
       traverse(root, NoSource)
   }
 }
-object PositionPickler:
+object PositionPickler with
   // Note: This could be just TreeToAddr => Addr if functions are specialized to value classes.
   // We use a SAM type to avoid boxing of Addr
-  @FunctionalInterface trait TreeToAddr:
+  @FunctionalInterface trait TreeToAddr with
     def apply(x: untpd.Tree): Addr

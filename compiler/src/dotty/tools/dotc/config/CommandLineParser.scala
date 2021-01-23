@@ -6,7 +6,7 @@ import java.lang.Character.isWhitespace
 
 /** A simple enough command line parser.
  */
-object CommandLineParser:
+object CommandLineParser with
   inline private val DQ  = '"'
   inline private val SQ  = '\''
   inline private val EOF = -1

@@ -16,7 +16,7 @@ import collection.mutable, mutable.ListBuffer
 import scala.util.chaining.given
 import java.lang.System.lineSeparator
 
-object StackTraceOps:
+object StackTraceOps with
 
   extension (t: Throwable)
 

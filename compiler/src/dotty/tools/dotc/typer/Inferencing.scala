@@ -619,6 +619,6 @@ trait Inferencing { this: Typer =>
   val flipBottom: Value = new Value(_ => true, IfBottom.flip)
 }
 
-enum IfBottom:
+enum IfBottom with
   case ok, fail, flip
 

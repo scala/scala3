@@ -249,7 +249,7 @@ trait ConstraintHandling {
     /** Substitute wildcards with fresh TypeParamRefs, to be compared with
      *  other bound, so that they can be instantiated.
      */
-    object substWildcards extends TypeMap:
+    object substWildcards extends TypeMap with
       override def stopAtStatic = true
 
       var trackedPolis: List[PolyType] = Nil

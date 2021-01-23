@@ -12,7 +12,7 @@ import ast.Trees._
  *  but leave closures alone. This is necessary to be able to
  *  collapse applies of IFTs (this is done in Erasure).
  */
-class LetOverApply extends MiniPhase:
+class LetOverApply extends MiniPhase with
   import ast.tpd._
 
   override def phaseName: String = "letOverApply"

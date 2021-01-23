@@ -13,7 +13,7 @@ import core.Decorators._
 import core.TypeErasure.erasure
 import ast.tpd
 
-object UncacheGivenAliases:
+object UncacheGivenAliases with
   val name: String = "uncacheGivenAliases"
 
 /** This phase optimizes alias givens represented as lazy vals to be uncached
@@ -24,7 +24,7 @@ object UncacheGivenAliases:
  *    this.y
  *    y
  */
-class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer:
+class UncacheGivenAliases extends MiniPhase with IdentityDenotTransformer with
   thisPhase =>
   import tpd._
 

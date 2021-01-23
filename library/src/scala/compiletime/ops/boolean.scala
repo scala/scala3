@@ -1,7 +1,7 @@
 package scala.compiletime
 package ops
 
-object boolean:
+object boolean with
 
   /** Negation of a `Boolean` singleton type.
    *  ```scala

@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc.util
 
-object GenericHashMap:
+object GenericHashMap with
 
   /** The number of elements up to which dense packing is used.
    *  If the number of elements reaches `DenseLimit` a hash table is used instead
@@ -163,7 +163,7 @@ abstract class GenericHashMap[Key, Value]
     allocate(newLength)
     copyFrom(oldTable)
 
-  private abstract class EntryIterator[T] extends Iterator[T]:
+  private abstract class EntryIterator[T] extends Iterator[T] with
     def entry(idx: Int): T
     private var idx = 0
     def hasNext =

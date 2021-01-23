@@ -1,5 +1,5 @@
 package p
 export X._
 
-object X:
+object X with
   val A = 42

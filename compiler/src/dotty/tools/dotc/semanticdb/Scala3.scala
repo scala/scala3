@@ -15,7 +15,7 @@ import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
 import scala.annotation.internal.sharable
 import scala.annotation.switch
 
-object Scala3:
+object Scala3 with
   import Symbols._
   import core.NameOps._
 
@@ -25,7 +25,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  enum SymbolKind derives CanEqual:
+  enum SymbolKind derives CanEqual with
     kind =>
 
     case Val, Var, Setter, Abstract
@@ -38,13 +38,13 @@ object Scala3:
 
   end SymbolKind
 
-  object SymbolKind:
+  object SymbolKind with
     val ValSet   = Set(Val)
     val VarSet   = Set(Var)
     val emptySet = Set.empty[SymbolKind]
   end SymbolKind
 
-  object Symbols:
+  object Symbols with
 
     val RootPackage: String = "_root_/"
     val EmptyPackage: String = "_empty_/"
@@ -126,7 +126,7 @@ object Scala3:
 
   end SymbolOps
 
-  object LocalSymbol:
+  object LocalSymbol with
 
     def unapply(symbolInfo: SymbolInformation): Option[Int] = symbolInfo.symbol match
       case locals(ints) =>
@@ -234,7 +234,7 @@ object Scala3:
     *
     * taken from https://github.com/scalameta/scalameta/blob/master/semanticdb/metap/src/main/scala/scala/meta/internal/metap/IdentifierOrdering.scala
     */
-  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T]:
+  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T] with
 
     override def compare(o1: T, o2: T): Int =
       val len = math.min(o1.length(), o2.length())

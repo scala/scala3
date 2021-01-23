@@ -17,13 +17,13 @@ import ast.{tpd, untpd}
 import ast.Trees.mods
 
 /** Operations for implementing a flow analysis for nullability */
-object Nullables:
+object Nullables with
   import ast.tpd._
 
   /** A set of val or var references that are known to be not null, plus a set of
    *  variable references that are not known (anymore) to be not null
    */
-  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]):
+  case class NotNullInfo(asserted: Set[TermRef], retracted: Set[TermRef]) with
     assert((asserted & retracted).isEmpty)
 
     def isEmpty = this eq NotNullInfo.empty
@@ -44,7 +44,7 @@ object Nullables:
     def alt(that: NotNullInfo): NotNullInfo =
       NotNullInfo(this.asserted.intersect(that.asserted), this.retracted.union(that.retracted))
 
-  object NotNullInfo:
+  object NotNullInfo with
     val empty = new NotNullInfo(Set(), Set())
     def apply(asserted: Set[TermRef], retracted: Set[TermRef]): NotNullInfo =
       if asserted.isEmpty && retracted.isEmpty then empty
@@ -52,10 +52,10 @@ object Nullables:
   end NotNullInfo
 
   /** A pair of not-null sets, depending on whether a condition is `true` or `false` */
-  case class NotNullConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]):
+  case class NotNullConditional(ifTrue: Set[TermRef], ifFalse: Set[TermRef]) with
     def isEmpty = this eq NotNullConditional.empty
 
-  object NotNullConditional:
+  object NotNullConditional with
     val empty = new NotNullConditional(Set(), Set())
     def apply(ifTrue: Set[TermRef], ifFalse: Set[TermRef]): NotNullConditional =
       if ifTrue.isEmpty && ifFalse.isEmpty then empty
@@ -73,7 +73,7 @@ object Nullables:
   private[typer] val NNInfo = Property.StickyKey[NotNullInfo]
 
   /** An extractor for null comparisons */
-  object CompareNull:
+  object CompareNull with
 
     /** Matches one of
      *
@@ -98,7 +98,7 @@ object Nullables:
   end CompareNull
 
   /** An extractor for null-trackable references */
-  object TrackedRef:
+  object TrackedRef with
     def unapply(tree: Tree)(using Context): Option[TermRef] = tree.typeOpt match
       case ref: TermRef if isTracked(ref) => Some(ref)
       case _ => None
@@ -375,7 +375,7 @@ object Nullables:
   def assignmentSpans(using Context): Map[Int, List[Span]] =
     import ast.untpd._
 
-    object populate extends UntypedTreeTraverser:
+    object populate extends UntypedTreeTraverser with
 
       /** The name offsets of variables that are tracked */
       var tracked: Map[Int, List[Span]] = Map.empty
@@ -482,7 +482,7 @@ object Nullables:
       if mt.paramInfos.exists(_.isInstanceOf[ExprType]) && !fn.symbol.is(Inline) =>
         app match
           case Apply(fn, args) =>
-            object dropNotNull extends TreeMap:
+            object dropNotNull extends TreeMap with
               var dropped: Boolean = false
               override def transform(t: Tree)(using Context) = t match
                 case AssertNotNull(t0) if t0.symbol.is(Mutable) =>
@@ -497,7 +497,7 @@ object Nullables:
                   t
                 case _ => super.transform(t)
 
-            object retyper extends ReTyper:
+            object retyper extends ReTyper with
               override def typedUnadapted(t: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = t match
                 case t: untpd.ValDef if !t.symbol.is(Lazy) => super.typedUnadapted(t, pt, locked)
                 case t: untpd.MemberDef => promote(t)

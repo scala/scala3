@@ -12,7 +12,7 @@ import Types._
  *  If the underlying type of a singleton type is another singleton type,
  *  only the latter type ends up in the sets.
  */
-enum Atoms:
+enum Atoms with
   case Range(lo: Set[Type], hi: Set[Type])
   case Unknown
 

@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A common class for lightweight mutable sets.
  */
-abstract class MutableSet[T] extends ReadOnlySet[T]:
+abstract class MutableSet[T] extends ReadOnlySet[T] with
 
   /** Add element `x` to the set */
   def +=(x: T): Unit

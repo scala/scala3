@@ -26,7 +26,7 @@ import dotty.tools.dotc.util.SourceFile
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class SemanticdbTests:
+class SemanticdbTests with
   val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
   val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
@@ -124,7 +124,7 @@ class SemanticdbTests:
 
 end SemanticdbTests
 
-object SemanticdbTests:
+object SemanticdbTests with
   /** Prettyprint a text document with symbol occurrences next to each resolved identifier.
    *
    * Useful for testing purposes to ensure that SymbolOccurrence values make sense and are correct.

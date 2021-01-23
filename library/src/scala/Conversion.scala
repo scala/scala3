@@ -19,5 +19,5 @@ package scala
 *  from two to one.
 */
 @java.lang.FunctionalInterface
-abstract class Conversion[-T, +U] extends Function1[T, U]:
+abstract class Conversion[-T, +U] extends Function1[T, U] with
   def apply(x: T): U

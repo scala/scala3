@@ -6,7 +6,7 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Symbols._
 
-object QuoteUtils:
+object QuoteUtils with
   import tpd._
 
   /** Get the owner of a tree if it has one */

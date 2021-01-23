@@ -9,7 +9,7 @@ import ast.untpd
 import ast.tpd._
 import config.Config
 
-object ContextFunctionResults:
+object ContextFunctionResults with
 
   /** Annotate methods that have context function result types directly matched by context
    *  closures on their right-hand side. Parameters to such closures will be integrated

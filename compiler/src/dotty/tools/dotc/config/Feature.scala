@@ -10,7 +10,7 @@ import util.SrcPos
 import SourceVersion._
 import reporting.Message
 
-object Feature:
+object Feature with
 
   private val dependent = "dependent".toTermName
   private val namedTypeArguments = "namedTypeArguments".toTermName
