@@ -84,7 +84,7 @@ There are two rules:
     If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
     may be inserted in a row.
 
-    The folllowing two additional rules support parsing of legacy code with ad-hoc layout. They might be withdrawn in future language versions:
+    The following two additional rules support parsing of legacy code with ad-hoc layout. They might be withdrawn in future language versions:
 
      - An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
 
