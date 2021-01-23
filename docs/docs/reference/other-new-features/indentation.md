@@ -58,15 +58,12 @@ There are two rules:
 
     An indentation region can start
 
-     - after the leading parameters of an `extension`, or
-     - after a `with` in a given instance, or
-     - after a ": at end of line" token (see below)
      - after one of the following tokens:
-
        ```
-       =  =>  ?=>  <-  catch  do  else  finally  for
-       if  match  return  then  throw  try  while  yield
+       =  =>  ?=>  <-  catch  do  else  finally  for  if
+       match  return  then  throw  try  with  while  yield
        ```
+     - after the leading parameters of an `extension`.
 
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -74,7 +71,7 @@ There are two rules:
  2. An `<outdent>` is inserted at a line break, if
 
     - the first token on the next line has an indentation width strictly less
-        than the current indentation width, and
+      than the current indentation width, and
     - the last token on the previous line is not one of the following tokens
       which indicate that the previous statement continues:
       ```
@@ -87,9 +84,11 @@ There are two rules:
     If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
     may be inserted in a row.
 
-    An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
+    The folllowing two additional rules support parsing of legacy code with ad-hoc layout. They might be withdrawn in future language versions:
 
-    An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
+     - An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
+
+     - An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
 
 It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 
