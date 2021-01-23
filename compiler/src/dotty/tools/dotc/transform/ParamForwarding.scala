@@ -59,7 +59,7 @@ class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
       val alias = atPhase(thisPhase)(inheritedAccessor(sym))
       if alias.exists then
         sym.copySymDenotation(
-            name = ParamAccessorName(sym.name),
+            name = ParamAccessorName(sym.symName),
             initFlags = sym.flags | Method | StableRealizable,
             info = sym.info.ensureMethodic
           ).installAfter(thisPhase)

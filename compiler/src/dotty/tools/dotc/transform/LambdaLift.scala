@@ -298,10 +298,10 @@ object LambdaLift {
 
     private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
-        sym.name.replace {
+        sym.symName.replace {
           case name: SimpleName => ExpandPrefixName(sym.owner.name.asTermName, name)
         }.freshened
-      else sym.name.freshened
+      else sym.symName.freshened
 
     private def generateProxies()(using Context): Unit =
       for ((owner, freeValues) <- free.iterator) {

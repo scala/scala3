@@ -196,7 +196,7 @@ object Inliner {
     val meth = mdef.symbol.asTerm
 
     val retainer = meth.copy(
-      name = BodyRetainerName(meth.name),
+      name = BodyRetainerName(meth.symName),
       flags = meth.flags &~ (Inline | Macro | Override) | Private,
       coord = mdef.rhs.span.startPos).asTerm
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))

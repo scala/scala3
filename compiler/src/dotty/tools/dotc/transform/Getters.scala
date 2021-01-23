@@ -96,7 +96,7 @@ class Getters extends MiniPhase with SymTransformer { thisPhase =>
   def ensureSetter(sym: TermSymbol)(using Context) =
     if !sym.setter.exists then
       newSetters += sym.copy(
-        name = sym.name.setterName,
+        name = sym.symName.setterName,
         info = MethodType(sym.info.widenExpr :: Nil, defn.UnitType)
       ).enteredAfter(thisPhase)
 

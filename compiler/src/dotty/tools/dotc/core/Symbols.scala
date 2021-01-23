@@ -115,7 +115,7 @@ object Symbols:
 
     def isStatic(using Context): Boolean
 
-    def name(using Context): ThisName
+    def symName(using Context): ThisName
     def signature(using Context): Signature
 
     def span: Span
@@ -387,7 +387,7 @@ object Symbols:
     def filter(p: Symbol => Boolean): Symbol = if (p(this.fromSymbolImpl)) this.fromSymbolImpl else NoSymbol
 
     /** The current name of this symbol */
-    final def name(using Context): ThisName = denot.name.asInstanceOf[ThisName]
+    final def symName(using Context): ThisName = denot.name.asInstanceOf[ThisName]
 
     /** The source or class file from which this class or
      *  the class containing this symbol was generated, null if not applicable.
@@ -471,7 +471,7 @@ object Symbols:
 
     // ParamInfo types and methods
     def isTypeParam(using Context): Boolean = denot.is(TypeParam)
-    def paramName(using Context): ThisName = name.asInstanceOf[ThisName]
+    def paramName(using Context): ThisName = symName
     def paramInfo(using Context): Type = denot.info
     def paramInfoAsSeenFrom(pre: Type)(using Context): Type = pre.memberInfo(this.fromSymbolImpl)
     def paramInfoOrCompleter(using Context): Type = denot.infoOrCompleter
@@ -607,7 +607,7 @@ object Symbols:
      */
     def copy(
         owner: Symbol = sym.owner,
-        name: N = sym.name,
+        name: N = sym.symName,
         flags: FlagSet = sym.flags,
         info: Type = sym.info,
         privateWithin: Symbol = sym.privateWithin,

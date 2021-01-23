@@ -155,11 +155,11 @@ object SymUtils:
       self.info.decls.filter(_.is(CaseAccessor))
 
     def getter(using Context): Symbol =
-      if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
+      if (self.isGetter) self else accessorNamed(self.name.asTermName.getterName)
 
     def setter(using Context): Symbol =
       if (self.isSetter) self
-      else accessorNamed(self.asTerm.name.setterName)
+      else accessorNamed(self.name.asTermName.setterName)
 
     def traitSetter(using Context): Symbol =
       if (self.name.is(TraitSetterName)) self

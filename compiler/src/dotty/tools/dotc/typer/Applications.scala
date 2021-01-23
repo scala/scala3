@@ -217,7 +217,7 @@ object Applications {
         }
       }
       val getterPrefix =
-        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.name
+        if (meth.is(Synthetic) && meth.name == nme.apply) nme.CONSTRUCTOR else meth.symName
       def getterName = DefaultGetterName(getterPrefix, n + numArgs(fn))
       if !meth.hasDefaultParams then
         EmptyTree

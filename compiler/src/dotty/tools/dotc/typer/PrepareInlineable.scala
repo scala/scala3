@@ -156,7 +156,7 @@ object PrepareInlineable {
           val accessedType = refPart.tpe.widen
           val accessor = accessorSymbol(
             owner = inlineSym.owner,
-            accessorName = InlineAccessorName(UniqueInlineName.fresh(accessed.name)),
+            accessorName = InlineAccessorName(UniqueInlineName.fresh(accessed.symName)),
             accessorInfo = abstractQualType(addQualType(dealiasMap(accessedType))),
             accessed = accessed)
 

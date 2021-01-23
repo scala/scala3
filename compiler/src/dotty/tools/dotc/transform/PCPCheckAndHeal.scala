@@ -285,7 +285,7 @@ object PCPCheckAndHeal {
         info = TypeAlias(splicedTree.tpe.select(tpnme.Underlying)),
         coord = span).asType
       local.addAnnotation(Annotation(defn.QuotedRuntime_SplicedTypeAnnot))
-      ctx.typeAssigner.assignType(untpd.TypeDef(local.name, alias), local)
+      ctx.typeAssigner.assignType(untpd.TypeDef(local.symName, alias), local)
     }
 
   }

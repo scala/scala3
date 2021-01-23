@@ -359,7 +359,7 @@ class DottyLanguageServer extends LanguageServer
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         definitions.flatMap { definition =>
-          val name = definition.name(using ctx).sourceModuleName.toString
+          val name = definition.symName(using ctx).sourceModuleName.toString
           val trees = remoteDriver.sourceTreesContaining(name)(using ctx)
           val matches = Interactive.findTreesMatching(trees, includes, definition)(using ctx)
           matches.map(tree => location(tree.namePos(using ctx)))

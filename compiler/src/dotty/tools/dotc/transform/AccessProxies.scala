@@ -106,7 +106,7 @@ abstract class AccessProxies {
       case getterRef: RefTree =>
         val getter = getterRef.symbol.asTerm
         val accessed = accessedBy(getter)
-        val setterName = getter.name.setterName
+        val setterName = getter.symName.setterName
         def toSetterInfo(getterInfo: Type): Type = getterInfo match {
           case getterInfo: LambdaType =>
             getterInfo.derivedLambdaType(resType = toSetterInfo(getterInfo.resType))
@@ -134,7 +134,7 @@ abstract class AccessProxies {
       if (accessorClass.exists) {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
-        val accessorName = accessorNameKind(accessed.name)
+        val accessorName = accessorNameKind(accessed.symName)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)

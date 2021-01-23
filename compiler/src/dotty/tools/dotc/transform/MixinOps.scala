@@ -21,7 +21,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
     val res = member.copy(
       owner = cls,
-      name = member.name.stripScala2LocalSuffix,
+      name = member.symName.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
       info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
     res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))

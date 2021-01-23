@@ -736,7 +736,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   private def Modifiers(sym: Symbol): Modifiers = untpd.Modifiers(
     sym.flags & (if (sym.isType) ModifierFlags | VarianceFlags else ModifierFlags),
-    if (sym.privateWithin.exists) sym.privateWithin.asType.name else tpnme.EMPTY,
+    if (sym.privateWithin.exists) sym.privateWithin.name.asTypeName else tpnme.EMPTY,
     sym.annotations.filterNot(ann => dropAnnotForModText(ann.symbol)).map(_.tree))
 
   protected def dropAnnotForModText(sym: Symbol): Boolean = sym == defn.BodyAnnot

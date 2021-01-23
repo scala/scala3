@@ -97,7 +97,7 @@ object JSSymUtils {
     def isJSDefaultParam(using Context): Boolean = {
       sym.name.is(DefaultGetterName) && {
         val owner = sym.owner
-        val methName = sym.name.exclude(DefaultGetterName)
+        val methName = sym.symName.exclude(DefaultGetterName)
         if (methName == nme.CONSTRUCTOR) {
           owner.linkedClass.isJSType
         } else {
@@ -125,7 +125,7 @@ object JSSymUtils {
     }
 
     def defaultJSName(using Context): String =
-      if (sym.isTerm) sym.asTerm.name.unexpandedName.getterName.toString()
+      if (sym.isTerm) sym.asTerm.symName.unexpandedName.getterName.toString()
       else sym.name.unexpandedName.stripModuleClassSuffix.toString()
   }
 }

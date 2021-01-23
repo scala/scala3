@@ -236,7 +236,7 @@ final class JSDefinitions()(using Context) {
 
   /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
   private def scalajsClassName(cls: Symbol)(using Context): TypeName =
-    if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.asClass.name
+    if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.name.asTypeName
     else EmptyTypeName
 
   /** Is the given `cls` a class of the form `scala.scalajs.js.prefixN` where

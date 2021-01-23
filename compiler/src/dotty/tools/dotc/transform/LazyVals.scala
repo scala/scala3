@@ -125,7 +125,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     */
   def transformSyntheticModule(tree: ValOrDefDef)(using Context): Thicket = {
     val sym = tree.symbol
-    val holderSymbol = newSymbol(sym.owner, LazyLocalName.fresh(sym.asTerm.name),
+    val holderSymbol = newSymbol(sym.owner, LazyLocalName.fresh(sym.name.asTermName),
       Synthetic, sym.info.widen.resultType).enteredAfter(this)
     val field = ValDef(holderSymbol, tree.rhs.changeOwnerAfter(sym, holderSymbol, this))
     val getter = DefDef(sym.asTerm, ref(holderSymbol))

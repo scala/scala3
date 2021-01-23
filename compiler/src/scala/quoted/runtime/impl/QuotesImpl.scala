@@ -2476,7 +2476,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def exists: Boolean = self != Symbol.noSymbol
 
         def declaredField(name: String): Symbol =
-          val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
+          val sym = self.unforcedDecls.find(sym => sym.symName == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
 
         def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
@@ -2522,7 +2522,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }.toList
 
         def memberType(name: String): Symbol =
-          self.unforcedDecls.find(sym => sym.name == name.toTypeName)
+          self.unforcedDecls.find(sym => sym.symName == name.toTypeName)
 
         def memberTypes: List[Symbol] =
           self.unforcedDecls.filter(_.isType)

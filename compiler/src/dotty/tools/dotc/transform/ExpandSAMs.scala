@@ -56,7 +56,7 @@ class ExpandSAMs extends MiniPhase:
           val tpe1 = checkRefinements(tpe, fn)
           val Seq(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
-              AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
+              AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.name.asTermName :: Nil))
       }
     case _ =>
       tree

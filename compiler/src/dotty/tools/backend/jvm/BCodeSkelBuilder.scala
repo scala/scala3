@@ -661,7 +661,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def makeStatifiedDefDef(dd: DefDef): DefDef =
       val origSym = dd.symbol.asTerm
-      val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
+      val newSym = makeStatifiedDefSymbol(origSym, origSym.symName)
       tpd.DefDef(newSym, { paramRefss =>
         val selfParamRef :: regularParamRefs = paramRefss.head
         val enclosingClass = origSym.owner.asClass

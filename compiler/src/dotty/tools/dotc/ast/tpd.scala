@@ -201,7 +201,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   def ValDef(sym: TermSymbol, rhs: LazyTree = EmptyTree)(using Context): ValDef =
-    ta.assignType(untpd.ValDef(sym.name, TypeTree(sym.info), rhs), sym)
+    ta.assignType(untpd.ValDef(sym.symName, TypeTree(sym.info), rhs), sym)
 
   def SyntheticValDef(name: TermName, rhs: Tree)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic, rhs.tpe.widen, coord = rhs.span), rhs)
@@ -211,7 +211,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     sym.setParamss(paramss)
     ta.assignType(
       untpd.DefDef(
-        sym.name,
+        sym.symName,
         paramss.map {
           case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
           case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
@@ -284,7 +284,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   end DefDef
 
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
-    ta.assignType(untpd.TypeDef(sym.name, TypeTree(sym.info)), sym)
+    ta.assignType(untpd.TypeDef(sym.symName, TypeTree(sym.info)), sym)
 
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree], superArgs: List[Tree] = Nil)(using Context): TypeDef = {
     val firstParent :: otherParents = cls.info.parents
@@ -320,7 +320,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       .orElse(newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
       .withType(localDummy.termRef)
-    ta.assignType(untpd.TypeDef(cls.name, impl), cls)
+    ta.assignType(untpd.TypeDef(cls.symName, impl), cls)
   }
 
   /** An anonymous class

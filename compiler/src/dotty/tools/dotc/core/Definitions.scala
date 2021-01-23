@@ -1679,7 +1679,7 @@ class Definitions {
   def isValueSubType(tref1: TypeRef, tref2: TypeRef)(using Context): Boolean =
     valueTypeEnc(tref2.name) % valueTypeEnc(tref1.name) == 0
   def isValueSubClass(sym1: Symbol, sym2: Symbol): Boolean =
-    valueTypeEnc(sym2.asClass.name) % valueTypeEnc(sym1.asClass.name) == 0
+    valueTypeEnc(sym2.name.asTypeName) % valueTypeEnc(sym1.name.asTypeName) == 0
 
   @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
     SimpleIdentityMap.empty[Symbol]

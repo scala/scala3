@@ -225,7 +225,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 if sym.setter.exists then
                   sym.setter
                 else
-                  val setterName = sym.asTerm.name.setterName
+                  val setterName = sym.name.asTermName.setterName
                   sym.owner.info.decls.find(d => d.is(Accessor) && d.name == setterName)
               val setter =
                 if (symSetter.exists) symSetter

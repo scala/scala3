@@ -133,7 +133,7 @@ object desugar {
   /** A derived type definition watching `sym` */
   def derivedTypeParamWithVariance(sym: TypeSymbol)(using Context): TypeDef =
     val variance = VarianceFlags & sym.flags
-    TypeDef(sym.name, DerivedFromParamTree().watching(sym)).withFlags(TypeParam | Synthetic | variance)
+    TypeDef(sym.symName, DerivedFromParamTree().watching(sym)).withFlags(TypeParam | Synthetic | variance)
 
   /** A value definition copied from `vdef` with a tpt typetree derived from it */
   def derivedTermParam(vdef: ValDef)(using Context): ValDef =
