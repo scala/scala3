@@ -613,6 +613,7 @@ object StdNames {
     val unapplySeq: N           = "unapplySeq"
     val unbox: N                = "unbox"
     val universe: N             = "universe"
+    val unsafeNulls: N          = "unsafeNulls"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val using: N                = "using"

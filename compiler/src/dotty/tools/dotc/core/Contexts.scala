@@ -27,6 +27,7 @@ import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
+import StdNames.nme
 
 import scala.annotation.internal.sharable
 
@@ -627,7 +628,14 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
-    def setImportInfo(importInfo: ImportInfo): this.type = updateStore(importInfoLoc, importInfo)
+    def setImportInfo(importInfo: ImportInfo): this.type =
+      importInfo.mentionsFeature(nme.unsafeNulls) match
+        case Some(true) =>
+          setMode(this.mode &~ Mode.SafeNulls)
+        case Some(false) if ctx.settings.YexplicitNulls.value =>
+          setMode(this.mode | Mode.SafeNulls)
+        case _ =>
+      updateStore(importInfoLoc, importInfo)
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =
