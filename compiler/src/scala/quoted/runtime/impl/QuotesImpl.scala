@@ -2544,7 +2544,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }
 
         def isTypeParam: Boolean = self.isTypeParam
-        def signature: Signature = self.signature
+        def signature: Signature = self.denot.signature
         def moduleClass: Symbol = self.denot.moduleClass
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule

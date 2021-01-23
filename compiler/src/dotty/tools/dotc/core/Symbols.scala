@@ -108,6 +108,7 @@ object Symbols:
     def asType(using Context): TypeSymbol
 
     def isClass: Boolean
+    @targetName("Symbol_asClass")
     def asClass: ClassSymbol
 
     def isPrivate(using Context): Boolean
@@ -116,7 +117,6 @@ object Symbols:
     def isStatic(using Context): Boolean
 
     def symName(using Context): ThisName
-    def signature(using Context): Signature
 
     def span: Span
     def sourcePos(using Context): SourcePosition
@@ -179,8 +179,17 @@ object Symbols:
    *  @param coord  The coordinates of the symbol (a position or an index)
    *  @param id     A unique identifier of the symbol (unique per ContextBase)
    */
-  class SymbolImpl private[Symbols] (private var myCoord: Coord, val id: Int)
-    extends SymbolDecl {
+  class SymbolImpl private[Symbols] (
+      maybeOwner: SymbolImpl,
+      name: Name,
+      initFlags: FlagSet,
+      initInfo: Type,
+      initPrivateWithin: SymbolImpl,
+      private var myCoord: Coord,
+      val id: Int)
+  extends
+    SymDenotation(null, maybeOwner, name, initFlags, initInfo, initPrivateWithin),
+    SymbolDecl {
 
     type ThisName <: Name
 
@@ -233,6 +242,8 @@ object Symbols:
       lastDenot = d
       checkedPeriod = Nowhere
     }
+
+    denot = this
 
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
@@ -305,9 +316,8 @@ object Symbols:
       asInstanceOf[TypeSymbol]
     }
 
-    final def isClass: Boolean = isInstanceOf[ClassSymbol @unchecked]
-
-    final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
+    @targetName("Symbol_asClass")
+    override def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
     /** Test whether symbol is private. This
      *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
@@ -322,17 +332,6 @@ object Symbols:
      */
     final def isPatternBound(using Context): Boolean =
       !isClass && this.is(Case, butNot = Enum | Module)
-
-    /** The symbol's signature if it is completed or a method, NotAMethod otherwise. */
-    final def signature(using Context): Signature =
-      if (lastDenot != null && (lastDenot.isCompleted || lastDenot.is(Method)))
-        denot.signature
-      else
-        Signature.NotAMethod
-
-    /** Special cased here, because it may be used on naked symbols in substituters */
-    final def isStatic(using Context): Boolean =
-      lastDenot != null && lastDenot.initial.isStatic
 
     /** This symbol entered into owner's scope (owner must be a class). */
     final def entered(using Context): this.type = {
@@ -395,8 +394,7 @@ object Symbols:
      *  containing this symbol instead of the directly enclosing class.
      *  Overridden in ClassSymbol
      */
-    def associatedFile(using Context): AbstractFile =
-      if (lastDenot == null) null else lastDenot.topLevelClass.associatedFile
+    def associatedFile(using Context): AbstractFile = topLevelClass.associatedFile
 
     /** The class file from which this class was generated, null if not applicable. */
     final def binaryFile(using Context): AbstractFile = {
@@ -485,13 +483,13 @@ object Symbols:
 
     override def toString: String =
       if (lastDenot == null) s"Naked$prefixString#$id"
-      else lastDenot.toString// + "#" + id // !!! DEBUG
+      else lastDenot.denotString// + "#" + id // !!! DEBUG
 
-    def toText(printer: Printer): Text = printer.toText(this.fromSymbolImpl)
+    override def toText(printer: Printer): Text = printer.toText(this.fromSymbolImpl)
 
     def showLocated(using Context): String = ctx.printer.locatedText(this.fromSymbolImpl).show
     def showExtendedLocation(using Context): String = ctx.printer.extendedLocationText(this.fromSymbolImpl).show
-    def showDcl(using Context): String = ctx.printer.dclText(this.fromSymbolImpl).show
+    override def showDcl(using Context): String = ctx.printer.dclText(this.fromSymbolImpl).show
     def showKind(using Context): String = ctx.printer.kindString(this.fromSymbolImpl)
     def showName(using Context): String = ctx.printer.nameString(this.fromSymbolImpl)
     def showFullName(using Context): String = ctx.printer.fullNameString(this.fromSymbolImpl)
@@ -499,8 +497,19 @@ object Symbols:
     override def hashCode(): Int = id // for debugging.
   }
 
-  class ClassSymbolImpl private[Symbols] (coord: Coord, val assocFile: AbstractFile, id: Int)
-    extends SymbolImpl(coord, id), ClassSymbolDecl {
+  class ClassSymbolImpl private[Symbols] (
+      maybeOwner: SymbolImpl,
+      name: Name,
+      initFlags: FlagSet,
+      initInfo: Type,
+      initPrivateWithin: SymbolImpl,
+      initCoord: Coord,
+      val assocFile: AbstractFile,
+      id: Int)
+  extends SymbolImpl(
+      maybeOwner, name, initFlags, initInfo, initPrivateWithin, initCoord, id),
+      ClassSymbolDecl,
+      ClassDenotation {
 
     type ThisName = TypeName
 
@@ -591,14 +600,44 @@ object Symbols:
   }
 
   /** Kept separate since it keeps only PackageClassDenotation */
-  class PackageClassSymbolImpl(id: Int) extends ClassSymbolImpl(NoCoord, null, id)
+  class PackageClassSymbolImpl private[Symbols] (
+      maybeOwner: SymbolImpl,
+      name: Name,
+      initFlags: FlagSet,
+      initInfo: Type,
+      initPrivateWithin: SymbolImpl,
+      id: Int)
+  extends ClassSymbolImpl(
+      maybeOwner, name, initFlags, initInfo, initPrivateWithin, NoCoord, null, id),
+      PackageClassDenotation
 
   @sharable
-  val NoSymbol: Symbol = new SymbolImpl(NoCoord, 0) {
-    override def associatedFile(using Context): AbstractFile = NoSource.file
-    override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = NoDenotation
-  }.fromSymbolImpl
-  NoDenotation // force it in order to set `denot` field of NoSymbol
+  val NoSymbol: Symbol = new SymbolImpl(
+      null, "<none>".toTermName, Permanent, NoType, null, NoCoord, 0):
+
+      override def isType: Boolean = false
+      override def isTerm: Boolean = false
+      override def exists: Boolean = false
+      override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
+      override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
+      override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
+
+      override def matches(other: SingleDenotation)(using Context): Boolean = false
+      override def targetName(using Context): Name = EmptyTermName
+      override def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation = this
+      override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
+      override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this
+      override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
+
+      validFor = Period.allInRun(NoRunId)
+
+      override def associatedFile(using Context): AbstractFile = NoSource.file
+
+      override def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation =
+        NoDenotation
+    .fromSymbolImpl
+
+ // NoDenotation // force it in order to set `denot` field of NoSymbol
 
   extension [N <: Name](sym: Symbol { type ThisName = N })(using Context) {
     /** Copy a symbol, overriding selective fields.
@@ -653,12 +692,11 @@ object Symbols:
       flags: FlagSet,
       info: Type,
       privateWithin: Symbol = NoSymbol,
-      coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } = {
-    val sym = new SymbolImpl(coord, ctx.base.nextSymId).asInstanceOf[Symbol { type ThisName = N }]
-    val denot = SymDenotation(sym, owner, name, flags, info, privateWithin)
-    sym.denot = denot
-    sym
-  }
+      coord: Coord = NoCoord)(using Context): Symbol { type ThisName = N } =
+    val symi = new SymbolImpl(
+        owner.toSymbolImpl, name, flags, info, privateWithin.toSymbolImpl, coord, ctx.base.nextSymId)
+    symi.validFor = currentStablePeriod
+    symi.asInstanceOf[Symbol { type ThisName = N }]
 
   /** Create a class symbol from its non-info fields and a function
    *  producing its info (the produced info may be lazy).
@@ -670,18 +708,18 @@ object Symbols:
       infoFn: ClassSymbol => Type,
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord,
-      assocFile: AbstractFile = null)(using Context): ClassSymbol
-  = {
-    val cls = (
+      assocFile: AbstractFile = null)(using Context): ClassSymbol =
+    val clsi =
       if flags.is(Package) then
-        new PackageClassSymbolImpl(ctx.base.nextSymId)
+        new PackageClassSymbolImpl(
+          owner.toSymbolImpl, name, flags, NoCompleter, privateWithin.toSymbolImpl, ctx.base.nextSymId)
       else
-        new ClassSymbolImpl(coord, assocFile, ctx.base.nextSymId)
-    ).fromSymbolImpl.asClass
-    val denot = SymDenotation(cls, owner, name, flags, infoFn(cls), privateWithin)
-    cls.denot = denot
+        new ClassSymbolImpl(
+          owner.toSymbolImpl, name, flags, NoCompleter, privateWithin.toSymbolImpl, coord, assocFile, ctx.base.nextSymId)
+    clsi.validFor = currentStablePeriod
+    val cls = clsi.fromSymbolImpl.asClass
+    cls.info = infoFn(cls)
     cls
-  }
 
   /** Create a class symbol from its non-info fields and the fields of its info. */
   def newCompleteClassSymbol(

@@ -34,7 +34,7 @@ object SymDenotations {
    */
   class SymDenotation private[core] (
     _symbol: SymbolImpl,
-    final val _maybeOwner: SymbolImpl,
+    _maybeOwner: SymbolImpl,
     final val name: Name,
     initFlags: FlagSet,
     initInfo: Type,
@@ -42,7 +42,9 @@ object SymDenotations {
 
     //assert(symbol.id != 4940, name)
 
-    final val maybeOwner: Symbol = _maybeOwner.fromSymbolImpl
+    val maybeOwner: Symbol =
+      if _maybeOwner == null then this.asInstanceOf[Symbol]
+      else _maybeOwner.fromSymbolImpl
 
     override def hasUniqueSym: Boolean = exists
 
@@ -1471,7 +1473,8 @@ object SymDenotations {
       else if myFlags.is(Method) then "method"
       else                            "val"
 
-    override def toString: String = s"$kindString $name"
+    def denotString: String = s"$kindString $name"
+    override def toString: String = denotString
 
     // ----- Sanity checks and debugging */
 
@@ -2393,25 +2396,7 @@ object SymDenotations {
       ClassDenotationImpl(_symbol, _maybeOwner, name, initFlags, initInfo, initPrivateWithin),
       PackageClassDenotation
 
-  @sharable object NoDenotation
-  extends SymDenotation(NoSymbol.toSymbolImpl, NoSymbol.toSymbolImpl, "<none>".toTermName, Permanent, NoType) {
-    override def isType: Boolean = false
-    override def isTerm: Boolean = false
-    override def exists: Boolean = false
-    override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
-    override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
-    override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
-
-    override def matches(other: SingleDenotation)(using Context): Boolean = false
-    override def targetName(using Context): Name = EmptyTermName
-    override def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation = this
-    override def filterWithPredicate(p: SingleDenotation => Boolean): SingleDenotation = this
-    override def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation = this
-    override def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation = this
-
-    NoSymbol.denot = this
-    validFor = Period.allInRun(NoRunId)
-  }
+  @sharable val NoDenotation: SymDenotation = NoSymbol.toSymbolImpl
 
   /** Can a private symbol with given name and flags be inferred to be local,
    *  if all references to such symbols are via `this`?
