@@ -81,10 +81,10 @@ object ToExpr {
   }
 
   /** Default implemetation of `ToExpr[Class[T]]` */
-  given ClassToExpr[T]: ToExpr[Class[T]] with {
-    def apply(x: Class[T])(using Quotes) = {
+  given ClassToExpr[T <: Class[_]]: ToExpr[T] with {
+    def apply(x: T)(using Quotes) = {
       import quotes.reflect._
-      Ref(defn.Predef_classOf).appliedToType(TypeRepr.typeConstructorOf(x)).asExpr.asInstanceOf[Expr[Class[T]]]
+      Ref(defn.Predef_classOf).appliedToType(TypeRepr.typeConstructorOf(x)).asExpr.asInstanceOf[Expr[T]]
     }
   }
 
