@@ -668,12 +668,9 @@ object Parsers {
     def indentedToBraces[T](body: => T): T = {
       val enclRegion = in.currentRegion.enclosing
       def indentWidth = enclRegion.indentWidth
-      val followsColon = testChar(in.lastOffset - 1, ':')
+      val followsWith = testChars(in.lastOffset - 5, " with")
       val startOpening =
-        if (followsColon)
-          if (testChar(in.lastOffset - 2, ' ')) in.lastOffset - 2
-          else in.lastOffset - 1
-        else in.lastOffset
+        if followsWith then in.lastOffset - 5 else in.lastOffset
       val endOpening = in.lastOffset
 
       val t = enclosed(INDENT, body)
@@ -716,7 +713,7 @@ object Parsers {
         case Block(stats, expr) =>
           stats.nonEmpty || needsBraces(expr)
         case expr: Tree =>
-          followsColon ||
+          followsWith ||
           isPartialIf(expr) && in.token == ELSE ||
           isBlockFunction(expr)
         case _ => true
