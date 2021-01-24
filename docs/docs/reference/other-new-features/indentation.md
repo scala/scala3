@@ -384,7 +384,7 @@ indented regions where possible. When invoked with options `-rewrite -noindent` 
 The `-indent` option only works on [new-style syntax](./control-syntax.md). So to go from old-style syntax to new-style indented code one has to invoke the compiler twice, first with options `-rewrite -new-syntax`, then again with options
 `-rewrite -indent`. To go in the opposite direction, from indented code to old-style syntax, it's `-rewrite -noindent`, followed by `-rewrite -old-syntax`.
 
-### Variant: Indentation Marker `:`
+<!-- ### Variant: Indentation Marker `:`
 
 Generally, the possible indentation regions coincide with those regions where braces `{...}` are also legal, no matter whether the braces enclose an expression or a set of definitions. There is one exception, though: Arguments to function can be enclosed in braces but they cannot be simply indented instead. Making indentation always significant for function arguments would be too restrictive and fragile.
 
@@ -420,3 +420,4 @@ credentials ++ :
 How does this syntax variant work? Colons at the end of lines are their own token, distinct from normal `:`.
 The Scala grammar is changed so that colons at end of lines are accepted at all points
 where an opening brace enclosing an argument is legal. Special provisions are taken so that method result types can still use a colon on the end of a line, followed by the actual type on the next.
+-->

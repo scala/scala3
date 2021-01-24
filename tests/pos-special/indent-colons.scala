@@ -1,4 +1,5 @@
-object Test with
+// TODO: re-enable once another soluton is implemented
+object Test /*with
 
   locally:
     var x = 0
@@ -116,3 +117,4 @@ end Coder
 
 object Test22 with
   def foo: Int = 22
+  */

@@ -170,9 +170,6 @@ object Scanners {
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
       && !isInstanceOf[LookaheadScanner]
-    val colonSyntax =
-      ctx.settings.YindentColons.value
-      || rewriteNoIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -531,7 +528,7 @@ object Scanners {
         val nextWidth = indentWidth(next.offset)
         val lastWidth = currentRegion.indentWidth
         if lastWidth < nextWidth then
-          currentRegion = Indented(nextWidth, Set(), COLONEOL, currentRegion)
+          currentRegion = Indented(nextWidth, Set(), EMPTY, currentRegion)
           offset = next.offset
           token = INDENT
     end observeIndented
@@ -566,7 +563,7 @@ object Scanners {
       case _ =>
 
     /** - Join CASE + CLASS => CASECLASS, CASE + OBJECT => CASEOBJECT
-     *         SEMI + ELSE => ELSE, COLON + <EOL> => COLONEOL
+     *         SEMI + ELSE => ELSE
      *  - Insert missing OUTDENTs at EOF
      */
     def postProcessToken(): Unit = {
@@ -604,8 +601,6 @@ object Scanners {
                 () /* skip the trailing comma */
               else
                 reset()
-        case COLON =>
-          if colonSyntax then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>

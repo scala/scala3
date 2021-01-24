@@ -4,14 +4,14 @@ import reflect.ClassTag
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
-object opaques:
+object opaques with
   opaque type IArray[+T] = Array[_ <: T]
 
   private[scala] type Sub[A] >: Array[A] <: IArray[A]
   private[scala] type Sup[A] >: IArray[A] <: Array[_ <: A]
 
   /** Defines extension methods for immutable arrays */
-  given arrayOps: Object with {
+  given arrayOps: Object with
 
     /** The selection operation on an immutable array.
       *
@@ -272,7 +272,7 @@ object opaques:
       * If one of the two collections is longer than the other, its remaining elements are ignored. */
     extension [T](arr: IArray[T]) def zip[U: ClassTag](that: IArray[U]): IArray[(T, U)] =
       genericArrayOps(arr).zip(that)
-  }
+  end arrayOps
 end opaques
 
 type IArray[+T] = opaques.IArray[T]
