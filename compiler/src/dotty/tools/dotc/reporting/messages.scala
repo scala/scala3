@@ -38,36 +38,36 @@ import transform.SymUtils._
   *  ```
   */
 
-  abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Syntax"
 
-  abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Type Mismatch"
 
-  abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Naming"
 
-  abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Declaration"
 
   /** A simple not found message (either for idents, or member selection.
    *  Messages of this class are sometimes dropped in favor of other, more
    *  specific messages.
    */
-  abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Not Found"
     def name: Name
 
-  abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Pattern Match"
 
-  abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Cyclic"
 
-  abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId) with
     def kind = "Reference"
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
@@ -242,7 +242,7 @@ import transform.SymUtils._
     // the idea is that if the bounds are also not-subtypes of each other to report
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze.
-    object reported extends TypeMap:
+    object reported extends TypeMap with
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       def apply(tp: Type): Type = tp match
@@ -1190,7 +1190,7 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID):
+  class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID) with
     def msg = em"unreducible application of higher-kinded type $tycon to wildcard arguments"
     def explain =
       em"""|An abstract type constructor cannot be applied to wildcard arguments.
@@ -1662,7 +1662,7 @@ import transform.SymUtils._
     def explain = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
-  class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
+  class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID) with
     def msg = em"$tp is not a valid $usage, since it is not an immutable path"
     def explain =
       i"""An immutable path is
@@ -1852,7 +1852,7 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
+  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID) with
     private def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
         i" in ${conflicting.associatedFile}"

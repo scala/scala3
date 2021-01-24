@@ -3,7 +3,7 @@ package dotc.util
 
 /** A common class for lightweight mutable maps.
  */
-abstract class MutableMap[Key, Value] extends ReadOnlyMap[Key, Value]:
+abstract class MutableMap[Key, Value] extends ReadOnlyMap[Key, Value] with
 
   def update(k: Key, v: Value): Unit
 

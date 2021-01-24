@@ -864,7 +864,7 @@ object Symbols {
   /** Matches lists of term symbols, including the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
-  object TermSymbols:
+  object TermSymbols with
     def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
       case (x: Symbol) :: _ if x.isType => None
       case _ => Some(xs.asInstanceOf[List[TermSymbol]])
@@ -872,7 +872,7 @@ object Symbols {
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
-  object TypeSymbols:
+  object TypeSymbols with
     def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
       case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
       case _ => None

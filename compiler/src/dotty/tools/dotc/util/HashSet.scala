@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-object HashSet:
+object HashSet with
 
   /** The number of elements up to which dense packing is used.
    *  If the number of elements reaches `DenseLimit` a hash table is used instead
@@ -159,7 +159,7 @@ class HashSet[T](initialCapacity: Int = 8, capacityMultiple: Int = 2) extends Mu
     allocate(newLength)
     copyFrom(oldTable)
 
-  abstract class EntryIterator extends Iterator[T]:
+  abstract class EntryIterator extends Iterator[T] with
     def entry(idx: Int): T
     private var idx = 0
     def hasNext =

@@ -8,7 +8,7 @@ import core.StdNames.nme
 import core.Decorators.{_, given}
 import util.Property
 
-enum SourceVersion:
+enum SourceVersion with
   case `3.0-migration`, `3.0`, `3.1-migration`, `3.1`
 
   val isMigrating: Boolean = toString.endsWith("-migration")
@@ -18,7 +18,7 @@ enum SourceVersion:
 
   def isAtLeast(v: SourceVersion) = stable.ordinal >= v.ordinal
 
-object SourceVersion extends Property.Key[SourceVersion]:
+object SourceVersion extends Property.Key[SourceVersion] with
   def defaultSourceVersion = `3.0`
 
   val allSourceVersionNames = values.toList.map(_.toString.toTermName)

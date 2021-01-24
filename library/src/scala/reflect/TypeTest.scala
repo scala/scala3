@@ -10,7 +10,7 @@ package scala.reflect
  *  then a given instance of `TypeTest[S, T]` is summoned and used to perform the test.
  */
 @scala.annotation.implicitNotFound(msg = "No TypeTest available for [${S}, ${T}]")
-trait TypeTest[-S, T] extends Serializable:
+trait TypeTest[-S, T] extends Serializable with
 
   /** A TypeTest[S, T] can serve as an extractor that matches only S of type T.
    *
@@ -22,7 +22,7 @@ trait TypeTest[-S, T] extends Serializable:
    */
   def unapply(x: S): Option[x.type & T]
 
-object TypeTest:
+object TypeTest with
 
   /** Trivial type test that always succeeds */
   def identity[T]: TypeTest[T, T] = Some(_)

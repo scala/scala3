@@ -3,13 +3,13 @@ package scala.quoted
 import scala.annotation.compileTimeOnly
 
 /** Type (or type constructor) `T` needed contextually when using `T` in a quoted expression `'{... T ...}` */
-abstract class Type[T <: AnyKind] private[scala]:
+abstract class Type[T <: AnyKind] private[scala] with
   /** The type represented `Type` */
   type Underlying = T
 end Type
 
 /** Methods to interact with the current `Type[T]` in scope */
-object Type:
+object Type with
 
   /** Show a source code like representation of this type without syntax highlight */
   def show[T <: AnyKind](using Type[T])(using Quotes): String =

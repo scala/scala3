@@ -2,7 +2,7 @@ package scala.runtime.stdLibPatches
 
 /** Scala 3 additions and replacements to the `scala.language` object.
  */
-object language:
+object language with
 
   /** The experimental object contains features that have been recently added but have not
    *  been thoroughly tested in production yet.
@@ -16,7 +16,7 @@ object language:
    *
    *  @group experimental
    */
-  object experimental:
+  object experimental with
 
     /* Experimental support for richer dependent types (disabled for now)
      * One can still run the compiler with support for parsing singleton applications

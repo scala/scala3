@@ -112,7 +112,7 @@ object Types {
     def isProvisional(using Context): Boolean = mightBeProvisional && testProvisional
 
     private def testProvisional(using Context): Boolean =
-      class ProAcc extends TypeAccumulator[Boolean]:
+      class ProAcc extends TypeAccumulator[Boolean] with
         override def apply(x: Boolean, t: Type) = x || test(t, this)
       def test(t: Type, theAcc: TypeAccumulator[Boolean]): Boolean =
         if t.mightBeProvisional then
@@ -3413,7 +3413,7 @@ object Types {
     private var myParamDependencyStatus: DependencyStatus = Unknown
 
     private def depStatus(initial: DependencyStatus, tp: Type)(using Context): DependencyStatus =
-      class DepAcc extends TypeAccumulator[DependencyStatus]:
+      class DepAcc extends TypeAccumulator[DependencyStatus] with
         def apply(status: DependencyStatus, tp: Type) = compute(status, tp, this)
       def combine(x: DependencyStatus, y: DependencyStatus) =
         val status = (x & StatusMask) max (y & StatusMask)
@@ -4419,7 +4419,7 @@ object Types {
       s"TypeVar($origin$instStr)"
     }
   }
-  object TypeVar:
+  object TypeVar with
     def apply(initOrigin: TypeParamRef, creatorState: TyperState)(using Context) =
       new TypeVar(initOrigin, creatorState, ctx.owner.nestingLevel)
 
@@ -4841,7 +4841,7 @@ object Types {
 
   class CachedAnnotatedType(parent: Type, annot: Annotation) extends AnnotatedType(parent, annot)
 
-  object AnnotatedType:
+  object AnnotatedType with
     def make(underlying: Type, annots: List[Annotation])(using Context): Type =
       annots.foldLeft(underlying)(apply(_, _))
     def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
@@ -4889,14 +4889,14 @@ object Types {
     def msg(using Context): Message
   }
 
-  object ErrorType:
+  object ErrorType with
     def apply(m: Message)(using Context): ErrorType =
       val et = new PreviousErrorType
       ctx.base.errorTypeMsg(et) = m
       et
   end ErrorType
 
-  class PreviousErrorType extends ErrorType:
+  class PreviousErrorType extends ErrorType with
     def msg(using Context): Message =
       ctx.base.errorTypeMsg.get(this) match
         case Some(m) => m
@@ -5053,7 +5053,7 @@ object Types {
   // ----- TypeMaps --------------------------------------------------------------------
 
   /** Common base class of TypeMap and TypeAccumulator */
-  abstract class VariantTraversal:
+  abstract class VariantTraversal with
     protected[core] var variance: Int = 1
 
     inline protected def atVariance[T](v: Int)(op: => T): T = {

@@ -3,7 +3,7 @@ package scala.quoted.runtime
 import scala.quoted.{Expr, Type}
 
 /** Part of the Quotes interface that needs to be implemented by the compiler but is not visible to users */
-trait QuoteMatching:
+trait QuoteMatching with
 
   val ExprMatch: ExprMatchModule
 

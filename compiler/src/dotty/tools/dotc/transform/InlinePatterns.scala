@@ -26,7 +26,7 @@ import ast.TreeTypeMap
  *
  *  This removes placeholders added by inline `unapply`/`unapplySeq` patterns.
  */
-class InlinePatterns extends MiniPhase:
+class InlinePatterns extends MiniPhase with
   import ast.tpd._
 
   def phaseName: String = "inlinePatterns"
@@ -46,7 +46,7 @@ class InlinePatterns extends MiniPhase:
           app
     else app
 
-  private object App:
+  private object App with
     def unapply(app: Tree): (Tree, List[List[Tree]]) =
       app match
         case Apply(App(fn, argss), args) => (fn, argss :+ args)

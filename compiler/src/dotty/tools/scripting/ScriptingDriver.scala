@@ -16,7 +16,7 @@ import dotty.tools.dotc.config.Settings.Setting._
 
 import sys.process._
 
-class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
+class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver with
   def compileAndRun(): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
     val (toCompile, rootCtx) = setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh)

@@ -22,7 +22,7 @@ import ast.tpd.Literal
 import language.implicitConversions
 import scala.annotation.tailrec
 
-object SymUtils:
+object SymUtils with
 
   extension (self: Symbol)
 

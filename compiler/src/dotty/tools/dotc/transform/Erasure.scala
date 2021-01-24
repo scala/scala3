@@ -208,7 +208,7 @@ object Erasure {
         else mt
       case _ => mt
 
-  object Boxing:
+  object Boxing with
 
     def isUnbox(sym: Symbol)(using Context): Boolean =
       sym.name == nme.unbox && sym.owner.linkedClass.isPrimitiveValueClass

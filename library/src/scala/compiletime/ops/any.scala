@@ -1,7 +1,7 @@
 package scala.compiletime
 package ops
 
-object any:
+object any with
   /** Equality comparison of two singleton types.
    * ```scala
    * val eq1: 1 == 1 = true

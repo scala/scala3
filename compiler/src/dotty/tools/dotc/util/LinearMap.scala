@@ -10,7 +10,7 @@ import collection.immutable
 opaque type LinearMap[K <: AnyRef, V >: Null <: AnyRef] =
   immutable.Map[K, V] | HashMap[K, V]
 
-object LinearMap:
+object LinearMap with
 
   def empty[K <: AnyRef, V >: Null <: AnyRef]: LinearMap[K, V] =
     immutable.Map.empty[K, V]

@@ -3,7 +3,7 @@ package dotty.tools.scripting
 import java.io.File
 
 /** Main entry point to the Scripting execution engine */
-object Main:
+object Main with
   /** All arguments before -script <target_script> are compiler arguments.
       All arguments afterwards are script arguments.*/
   def distinguishArgs(args: Array[String]): (Array[String], File, Array[String]) =

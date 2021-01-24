@@ -1,6 +1,6 @@
 package dotty.tools.dotc.util
 
-object PerfectHashing:
+object PerfectHashing with
 
   /** The number of elements up to which dense packing is used.
    *  If the number of elements reaches `DenseLimit` a hash table is used instead
@@ -19,7 +19,7 @@ object PerfectHashing:
  *                           However, a table of size up to DenseLimit will be re-sized only
  *                           once the number of elements reaches the table's size.
  */
-class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2):
+class PerfectHashing[Key](initialCapacity: Int = 8, capacityMultiple: Int = 2) with
   import PerfectHashing.DenseLimit
 
   private var used: Int = _

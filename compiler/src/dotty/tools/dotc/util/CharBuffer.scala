@@ -5,7 +5,7 @@ package util
 /** A character buffer that exposes the internal array for reading.
  *  That way we can avoid copying when converting to names.
  */
-class CharBuffer(initialSize: Int = 1024):
+class CharBuffer(initialSize: Int = 1024) with
   private var cs: Array[Char] = new Array[Char](initialSize)
   private var len: Int = 0
 
