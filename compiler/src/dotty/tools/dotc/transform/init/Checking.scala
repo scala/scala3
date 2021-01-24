@@ -164,8 +164,16 @@ object Checking {
         case Promote(pot) =>
           pot match {
             case pot: ThisRef =>
-              PromoteThis(pot, eff.source, state2.path).toErrors
-
+              // If we have all fields initialized, then we can promote This to hot.
+              val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
+              val allFieldsInited = classRef.fields.forall { denot =>
+                val sym = denot.symbol
+                sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
+              }
+              if (allFieldsInited)
+                Errors.empty
+              else
+                PromoteThis(pot, eff.source, state2.path).toErrors
             case _: Cold =>
               PromoteCold(eff.source, state2.path).toErrors
 
