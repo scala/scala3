@@ -568,7 +568,7 @@ object Parsers {
     def inBraces[T](body: => T): T = enclosed(LBRACE, body)
     def inBrackets[T](body: => T): T = enclosed(LBRACKET, body)
 
-    def inBracesOrIndented[T](body: => T, rewriteWithColon: Boolean = false): T =
+    def inBracesOrIndented[T](body: => T, insertWith: Boolean = false): T =
       if (in.token == INDENT) {
         val rewriteToBraces =
           in.rewriteNoIndent &&
@@ -577,12 +577,12 @@ object Parsers {
         else enclosed(INDENT, body)
       }
       else
-        if (in.rewriteToIndent) bracesToIndented(body, rewriteWithColon)
+        if (in.rewriteToIndent) bracesToIndented(body, insertWith)
         else inBraces(body)
 
-    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T = {
+    def inDefScopeBraces[T](body: => T, insertWith: Boolean = false): T = {
       val saved = lastStatOffset
-      try inBracesOrIndented(body, rewriteWithColon)
+      try inBracesOrIndented(body, insertWith)
       finally lastStatOffset = saved
     }
 
@@ -645,11 +645,6 @@ object Parsers {
           warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
-
-    /** The last offset where a colon at the end of line would be required if a subsequent { ... }
-     *  block would be converted to an indentation region.
-     */
-    var possibleColonOffset: Int = -1
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
       val txt = source.content
@@ -736,16 +731,15 @@ object Parsers {
     /** The region to eliminate when replacing an opening `(` or `{` that ends a line.
      *  The `(` or `{` is at in.offset.
      */
-    def startingElimRegion(colonRequired: Boolean): (Offset, Offset) = {
+    def startingElimRegion(insertWith: Boolean): (Offset, Offset) =
       val skipped = skipBlanks(in.offset + 1)
-      if (in.isAfterLineEnd)
-        if (testChar(skipped, Chars.LF) && !colonRequired)
+      if in.isAfterLineEnd then
+        if testChar(skipped, Chars.LF) && !insertWith then
           (in.lineOffset, skipped + 1) // skip the whole line
         else
           (in.offset, skipped)
-      else if (testChar(in.offset - 1, ' ')) (in.offset - 1, in.offset + 1)
+      else if testChar(in.offset - 1, ' ') then (in.offset - 1, in.offset + 1)
       else (in.offset, in.offset + 1)
-    }
 
     /** The region to eliminate when replacing a closing `)` or `}` that starts a new line
      *  The `)` or `}` precedes in.lastOffset.
@@ -770,10 +764,8 @@ object Parsers {
      *      rewriting back to braces does not work after `=>` (since in most cases braces are omitted
      *      after a `=>` it would be annoying if braces were inserted).
      */
-    def bracesToIndented[T](body: => T, rewriteWithColon: Boolean): T = {
-      val underColonSyntax = possibleColonOffset == in.lastOffset
-      val colonRequired = rewriteWithColon || underColonSyntax
-      val (startOpening, endOpening) = startingElimRegion(colonRequired)
+    def bracesToIndented[T](body: => T, insertWith: Boolean): T = {
+      val (startOpening, endOpening) = startingElimRegion(insertWith)
       val isOutermost = in.currentRegion.isOutermost
       def allBraces(r: Region): Boolean = r match {
         case r: Indented => r.isOutermost || allBraces(r.enclosing)
@@ -791,15 +783,11 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && !underColonSyntax) {
-        val openingPatchStr =
-          if !colonRequired then ""
-          else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
-          else ":"
+      if canRewrite then
+        val openingPatchStr = if insertWith then " with" else ""
         val (startClosing, endClosing) = closingElimRegion()
         patch(source, Span(startOpening, endOpening), openingPatchStr)
         patch(source, Span(startClosing, endClosing), "")
-      }
       t
     }
 
@@ -1014,7 +1002,6 @@ object Parsers {
           val op = if (isType) typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
-          colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
@@ -1312,13 +1299,7 @@ object Parsers {
       // note: next is defined here because current == NEWLINE
       if (in.token == NEWLINE && p(in.next.token)) newLineOpt()
 
-    def colonAtEOLOpt(): Unit = {
-      possibleColonOffset = in.lastOffset
-      if (in.token == COLONEOL) in.nextToken()
-    }
-
     def argumentStart(): Unit =
-      colonAtEOLOpt()
       if migrateTo3 && in.token == NEWLINE && in.next.token == LBRACE then
         in.nextToken()
         if in.indentWidth(in.offset) == in.currentRegion.indentWidth then
@@ -1828,7 +1809,7 @@ object Parsers {
      */
     def refinement(indentOK: Boolean): List[Tree] =
       if indentOK then
-        inBracesOrIndented(refineStatSeq(), rewriteWithColon = true)
+        inBracesOrIndented(refineStatSeq(), insertWith = true)
       else
         inBraces(refineStatSeq())
 
@@ -2056,7 +2037,6 @@ object Parsers {
         atSpan(in.skipToken()) { Throw(expr()) }
       case RETURN =>
         atSpan(in.skipToken()) {
-          colonAtEOLOpt()
           Return(if (isExprIntro) expr() else EmptyTree, EmptyTree)
         }
       case FOR =>
@@ -2317,10 +2297,6 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr())
-        case COLONEOL =>
-          syntaxError("':' not allowed here")
-          in.nextToken()
-          simpleExpr()
         case _ =>
           if (isLiteral) literal()
           else {
@@ -2358,7 +2334,6 @@ object Parsers {
       def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
       possibleTemplateStart()
       val parents = if isTemplateBodyStart then Nil else constrApp() :: withConstrApps()
-      colonAtEOLOpt()
       possibleTemplateStart()
       parents match {
         case parent :: Nil if !isTemplateBodyStart =>
@@ -3324,15 +3299,7 @@ object Parsers {
         var name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(numLeadParams = numLeadParams)
-        var tpt = fromWithinReturnType {
-          if in.token == COLONEOL then in.token = COLON
-     	      // a hack to allow
-      	    //
-      	    //     def f():
-      	    //       T
-            //
-          typedOpt()
-        }
+        var tpt = fromWithinReturnType(typedOpt())
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if in.token == EQUALS then
@@ -3759,7 +3726,7 @@ object Parsers {
           in.nextToken()
           selfDefOpt()
         else EmptyValDef
-      val r = inDefScopeBraces(templateStatSeq(givenSelf), rewriteWithColon = true)
+      val r = inDefScopeBraces(templateStatSeq(givenSelf), insertWith = true)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
@@ -3805,7 +3772,7 @@ object Parsers {
     def packaging(start: Int): Tree =
       val pkg = qualId()
       possibleTemplateStart()
-      val stats = inDefScopeBraces(topStatSeq(), rewriteWithColon = true)
+      val stats = inDefScopeBraces(topStatSeq(), insertWith = true)
       makePackaging(start, pkg, stats)
 
     /** TopStatSeq ::= TopStat {semi TopStat}
@@ -4014,7 +3981,7 @@ object Parsers {
             if in.token == EOF then
               ts += makePackaging(start, pkg, List())
             else if isTemplateBodyStart then
-              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
+              ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), insertWith = true)
               continue = true
             else
               acceptStatSep()

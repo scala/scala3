@@ -1,9 +1,9 @@
 
-object Foo:
+object Foo with
   def bar(x: Int): Unit =
     println(x)
 
-class Baz(n: Int):
+class Baz(n: Int) with
   def printRepeat(repeat: Int) =
     for {
       x <- 1 to repeat
