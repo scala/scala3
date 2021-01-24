@@ -133,7 +133,8 @@ class CommunityBuildTestB extends CommunityBuildTest with
   // Temporarily disabled until problem discovered in comments to #9449 is fixed
   // @Test def dottyCpsAsync = projects.dottyCpsAsync.run()
   @Test def effpi = projects.effpi.run()
-  @Test def intent = projects.intent.run()
+  // Temporarily disabled until it relies no longer on -Yindent-colons
+  // @Test def intent = projects.intent.run()
   @Test def minitest = projects.minitest.run()
   @Test def munit = projects.munit.run()
   @Test def scodec = projects.scodec.run()
