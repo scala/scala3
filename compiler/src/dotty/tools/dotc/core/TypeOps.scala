@@ -438,8 +438,8 @@ object TypeOps:
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
-        case tp: LazyRef =>
-          TypeBounds.empty
+        case tp: LazyRef if isExpandingBounds =>
+          emptyRange
         case _ =>
           mapOver(tp)
       }
