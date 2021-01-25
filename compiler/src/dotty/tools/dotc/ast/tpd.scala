@@ -1230,12 +1230,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     Ident(defn.ScalaRuntimeModule.requiredMethod(name).termRef).appliedToTermArgs(args)
 
   /** An extractor that pulls out type arguments */
-  object MaybePoly with
+  object MaybePoly:
     def unapply(tree: Tree): Option[(Tree, List[Tree])] = tree match
       case TypeApply(tree, targs) => Some(tree, targs)
       case _ => Some(tree, Nil)
 
-  object TypeArgs with
+  object TypeArgs:
     def unapply(ts: List[Tree]): Option[List[Tree]] =
       if ts.nonEmpty && ts.head.isType then Some(ts) else None
 

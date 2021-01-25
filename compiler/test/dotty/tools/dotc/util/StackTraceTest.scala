@@ -7,7 +7,7 @@ import scala.util.chaining.given
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
-class StackTraceTest with
+class StackTraceTest:
   val CausedBy   = "Caused by: "
   val Suppressed = "Suppressed: "
 

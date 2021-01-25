@@ -9,7 +9,7 @@ import config.Config
 import ast.untpd
 
 /** Operations that are shared between Namer and TreeUnpickler */
-object NamerOps with
+object NamerOps:
 
   /** The given type, unless `sym` is a constructor, in which case the
    *  type of the constructed instance is returned
@@ -83,7 +83,7 @@ object NamerOps with
     && !cls.isAnonymousClass
 
   /** The completer of a constructor proxy apply method */
-  class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType with
+  class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
     def complete(denot: SymDenotation)(using Context): Unit =
       denot.info = constr.info
 

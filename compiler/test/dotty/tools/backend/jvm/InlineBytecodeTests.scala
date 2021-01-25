@@ -411,7 +411,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test def i6375 = {
-    val source = """class Test with
+    val source = """class Test:
                    |  given Int = 0
                    |  def f(): Int ?=> Boolean = true : (Int ?=> Boolean)
                    |  transparent inline def g(): Int ?=> Boolean = true
@@ -440,7 +440,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test def i6800a = {
-    val source = """class Foo with
+    val source = """class Foo:
                    |  inline def inlined(f: => Unit): Unit = f
                    |  def test: Unit = inlined { println("") }
                  """.stripMargin
@@ -459,7 +459,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test def i6800b = {
-    val source = """class Foo with
+    val source = """class Foo:
                    |  inline def printIfZero(x: Int): Unit = inline x match
                    |    case 0 => println("zero")
                    |    case _ => ()
@@ -485,7 +485,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
 
   @Test def i9246 = {
-    val source = """class Foo with
+    val source = """class Foo:
                    |  inline def check(v:Double): Unit = if(v==0) throw new Exception()
                    |  inline def divide(v: Double, d: Double): Double = { check(d); v / d }
                    |  def test =  divide(10,2)
@@ -504,7 +504,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test def finalVals = {
-    val source = """class Test with
+    val source = """class Test:
                    |  final val a = 1 // should be inlined but not erased
                    |  inline val b = 2 // should be inlined and erased
                    |  def test: Int = a + b
@@ -527,7 +527,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
 
   @Test def i9466 = {
-    val source = """class Test with
+    val source = """class Test:
                    |  inline def i(inline f: Int => Boolean): String =
                    |   if f(34) then "a"
                    |   else "b"
@@ -553,7 +553,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
   }
 
   @Test def beta_reduce_under_block = {
-    val source = """class Test with
+    val source = """class Test:
                    |  def test =
                    |    {
                    |      val a = 3

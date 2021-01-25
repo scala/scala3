@@ -18,7 +18,7 @@ import util.Property
 import annotation.{tailrec, constructorOnly}
 
 /** Synthesize terms for special classes */
-class Synthesizer(typer: Typer)(using @constructorOnly c: Context) with
+class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   import ast.tpd._
 
   /** Handlers to synthesize implicits for special types */

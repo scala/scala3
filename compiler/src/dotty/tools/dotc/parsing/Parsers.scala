@@ -45,7 +45,7 @@ object Parsers {
     def nonePositive: Boolean = parCounts forall (_ <= 0)
   }
 
-  enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean) with
+  enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean):
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
     case InPattern     extends Location(false, true, false)

@@ -11,7 +11,7 @@ import config.Feature.sourceVersion
 import java.lang.System.currentTimeMillis
 
 
-object report with
+object report:
 
   /** For sending messages that are printed only if -verbose is set */
   def inform(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =

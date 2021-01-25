@@ -7,11 +7,11 @@ import config.Config
 import config.Printers
 import core.Mode
 
-object trace extends TraceSyntax with
+object trace extends TraceSyntax:
   inline def isEnabled = Config.tracingEnabled
   protected val isForced = false
 
-  object force extends TraceSyntax with
+  object force extends TraceSyntax:
     inline def isEnabled: true = true
     protected val isForced = true
 end trace
@@ -20,7 +20,7 @@ end trace
  *  is false. The `trace` operation is called in various hotspots, so every tiny bit
  *  of overhead is unacceptable: boxing, closures, additional method calls are all out.
  */
-trait TraceSyntax with
+trait TraceSyntax:
 
   inline def isEnabled: Boolean
   protected val isForced: Boolean

@@ -535,7 +535,7 @@ object Names {
       chrs.copyToArray(newchrs)
       chrs = newchrs
 
-  private class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2) with
+  private class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
     import util.Stats
 
     override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize

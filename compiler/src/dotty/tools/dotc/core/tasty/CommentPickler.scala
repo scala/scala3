@@ -10,7 +10,7 @@ import dotty.tools.tasty.TastyFormat.CommentsSection
 
 import java.nio.charset.StandardCharsets
 
-class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docString: untpd.MemberDef => Option[Comment]) with
+class CommentPickler(pickler: TastyPickler, addrOfTree: tpd.Tree => Addr, docString: untpd.MemberDef => Option[Comment]):
   private val buf = new TastyBuffer(5000)
   pickler.newSection(CommentsSection, buf)
 

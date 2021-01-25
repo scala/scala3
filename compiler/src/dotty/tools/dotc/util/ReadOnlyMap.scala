@@ -3,7 +3,7 @@ package dotc.util
 
 /** A class for the reading part of mutable or immutable maps.
  */
-abstract class ReadOnlyMap[Key, Value] with
+abstract class ReadOnlyMap[Key, Value]:
 
   def lookup(x: Key): Value | Null
 

@@ -1172,7 +1172,7 @@ class Definitions {
 
   @tu lazy val TupleType: Array[TypeRef] = mkArityArray("scala.Tuple", MaxTupleArity, 1)
 
-  private class FunType(prefix: String) with
+  private class FunType(prefix: String):
     private var classRefs: Array[TypeRef] = new Array(22)
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
@@ -1526,7 +1526,7 @@ class Definitions {
    *  dependent refinements. Optionally returns a triple consisting of the argument
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
-  object ContextFunctionType with
+  object ContextFunctionType:
     def unapply(tp: Type)(using Context): Option[(List[Type], Type, Boolean)] =
       if ctx.erasedTypes then
         atPhase(erasurePhase)(unapply(tp))

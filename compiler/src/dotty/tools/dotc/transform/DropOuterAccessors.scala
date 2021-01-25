@@ -16,14 +16,14 @@ import CountOuterAccesses.mightBeDropped
 import collection.mutable
 import annotation.threadUnsafe
 
-object DropOuterAccessors with
+object DropOuterAccessors:
   val name: String = "dropOuterAccessors"
 
 /** Drops unused outer accessors of inner classes that are visible only in one
  *  toplevel class. For other classes, we can't tell whether an outer accessor
  *  is used or not. It could for instance be used in a type test in some other source.
  */
-class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer with
+class DropOuterAccessors extends MiniPhase with IdentityDenotTransformer:
   thisPhase =>
   import tpd._
 

@@ -1,6 +1,6 @@
 package scala.runtime
 
-object Scala3RunTime with
+object Scala3RunTime:
 
   // Called by inline def assert's. Extracted to minimize the bytecode size at call site.
 

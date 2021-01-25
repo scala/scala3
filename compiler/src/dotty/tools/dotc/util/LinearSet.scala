@@ -8,7 +8,7 @@ import collection.immutable
 opaque type LinearSet[Elem >: Null <: AnyRef] =
   immutable.Set[Elem] | HashSet[Elem]
 
-object LinearSet with
+object LinearSet:
 
   def empty[Elem >: Null <: AnyRef]: LinearSet[Elem] = immutable.Set.empty[Elem]
 

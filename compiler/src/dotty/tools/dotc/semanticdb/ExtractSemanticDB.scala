@@ -28,7 +28,7 @@ import scala.PartialFunction.condOpt
  *  for a description of the format.
  *  TODO: Also extract type information
  */
-class ExtractSemanticDB extends Phase with
+class ExtractSemanticDB extends Phase:
   import Scala3.{_, given}
   import Symbols.given
 
@@ -47,7 +47,7 @@ class ExtractSemanticDB extends Phase with
     ExtractSemanticDB.write(unit.source, extract.occurrences.toList, extract.symbolInfos.toList)
 
   /** Extractor of symbol occurrences from trees */
-  class Extractor extends TreeTraverser with
+  class Extractor extends TreeTraverser:
 
     private var nextLocalIdx: Int = 0
 
@@ -249,7 +249,7 @@ class ExtractSemanticDB extends Phase with
         name => locals.keys.find(local => local.isTerm && local.owner == funSym && local.name == name)
                       .fold("<?>")(Symbols.LocalPrefix + _)
 
-    private object PatternValDef with
+    private object PatternValDef:
 
       def unapply(tree: ValDef)(using Context): Option[(Tree, Tree)] = tree.rhs match
 
@@ -583,7 +583,7 @@ class ExtractSemanticDB extends Phase with
           registerSymbol(vparam.symbol, symbolName(vparam.symbol), symkinds)
         traverse(vparam.tpt)
 
-object ExtractSemanticDB with
+object ExtractSemanticDB:
   import java.nio.file.Path
   import scala.collection.JavaConverters._
   import java.nio.file.Files

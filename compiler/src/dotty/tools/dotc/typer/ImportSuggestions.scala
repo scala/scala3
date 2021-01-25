@@ -18,7 +18,8 @@ import scala.util.control.NonFatal
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
  *  to error messages suggesting additional imports.
  */
-trait ImportSuggestions with this: Typer =>
+trait ImportSuggestions:
+  this: Typer =>
 
   /** The maximal number of suggested imports to make */
   inline val MaxSuggestions = 10

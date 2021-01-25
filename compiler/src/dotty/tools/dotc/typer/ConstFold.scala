@@ -14,7 +14,7 @@ import StdNames._
 import Contexts._
 import transform.TypeUtils._
 
-object ConstFold with
+object ConstFold:
 
   import tpd._
 

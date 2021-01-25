@@ -10,7 +10,7 @@ import vulpix.TestConfiguration
 
 
 /** Runs all tests contained in `compiler/test-resources/repl/` */
-class ScriptingTests with
+class ScriptingTests:
   extension (str: String) def dropExtension =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
 

@@ -276,7 +276,7 @@ object Inliner {
 
   object Intrinsics {
     import dotty.tools.dotc.reporting.Diagnostic.Error
-    private enum ErrorKind with
+    private enum ErrorKind:
       case Parser, Typer
 
     private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using Context): List[(ErrorKind, Error)] =

@@ -13,7 +13,7 @@ import ExplicitOuter.isOuterParamAccessor
 
 import collection.mutable
 
-object CountOuterAccesses with
+object CountOuterAccesses:
   val name: String = "countOuterAccesses"
 
   /** Characterizes outer accessors and outer fields that can be dropped
@@ -32,7 +32,7 @@ object CountOuterAccesses with
  *  is collected in `outerAccessCount` and used in the subsequent
  *  DropOuterAccessors phase
  */
-class CountOuterAccesses extends MiniPhase with
+class CountOuterAccesses extends MiniPhase:
   thisPhase =>
   import tpd._
 

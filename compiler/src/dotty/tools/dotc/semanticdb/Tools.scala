@@ -6,7 +6,7 @@ import scala.collection.JavaConverters._
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.semanticdb.Scala3.{_, given}
 
-object Tools with
+object Tools:
 
   /** Converts a Path to a String that is URI encoded, without forcing absolute paths. */
   def mkURIstring(path: Path): String =

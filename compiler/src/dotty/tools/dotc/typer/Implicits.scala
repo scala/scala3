@@ -40,7 +40,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
 /** Implicit resolution */
-object Implicits with
+object Implicits:
   import tpd._
 
   /** An implicit definition `implicitRef` that is visible under a different name, `alias`.
@@ -517,14 +517,14 @@ object Implicits with
   }
 
   /** A search failure type for attempted ill-typed extension method calls */
-  class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType with
+  class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
 
    /** A search failure type for aborted searches of extension methods, typically
     *  because of a cyclic reference or similar.
     */
-  class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType with
+  class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType:
     def argument = EmptyTree
     override def msg(using Context) = _msg
     def explanation(using Context) = msg.toString
@@ -534,7 +534,8 @@ end Implicits
 import Implicits._
 
 /** Info relating to implicits that is kept for one run */
-trait ImplicitRunInfo with self: Run =>
+trait ImplicitRunInfo:
+  self: Run =>
 
   private val implicitScopeCache = util.EqHashMap[Type, OfTypeImplicits]()
 
@@ -553,7 +554,7 @@ trait ImplicitRunInfo with self: Run =>
 
   private def computeIScope(rootTp: Type): OfTypeImplicits =
 
-    object collectParts extends TypeTraverser with
+    object collectParts extends TypeTraverser:
 
       private var provisional: Boolean = _
       private var parts: mutable.LinkedHashSet[Type] = _
@@ -756,7 +757,7 @@ trait ImplicitRunInfo with self: Run =>
 end ImplicitRunInfo
 
 /** The implicit resolution part of type checking */
-trait Implicits with
+trait Implicits:
   self: Typer =>
 
   import tpd._
@@ -930,7 +931,7 @@ trait Implicits with
       implicits.println(i"CanEqual witness found for $ltp / $rtp: $res: ${res.tpe}")
     }
 
-  object hasSkolem extends TreeAccumulator[Boolean] with
+  object hasSkolem extends TreeAccumulator[Boolean]:
     def apply(x: Boolean, tree: Tree)(using Context): Boolean =
       x || {
         tree match
@@ -1075,7 +1076,7 @@ trait Implicits with
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
-  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context) with
+  class ImplicitSearch(protected val pt: Type, protected val argument: Tree, span: Span)(using Context):
     assert(argument.isEmpty || argument.tpe.isValueType || argument.tpe.isInstanceOf[ExprType],
         em"found: $argument: ${argument.tpe}, expected: $pt")
 
@@ -1442,7 +1443,7 @@ end Implicits
  * recursive references and emit a complete implicit dictionary when the outermost search
  * is complete.
  */
-abstract class SearchHistory with
+abstract class SearchHistory:
   val root: SearchRoot
   /** Does this search history contain any by name implicit arguments. */
   val byname: Boolean
@@ -1470,7 +1471,7 @@ abstract class SearchHistory with
   override def toString: String = s"SearchHistory(open = $openSearchPairs, byname = $byname)"
 end SearchHistory
 
-case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory with
+case class OpenSearch(cand: Candidate, pt: Type, outer: SearchHistory)(using Context) extends SearchHistory:
   val root = outer.root
   val byname = outer.byname || pt.isByName
   def openSearchPairs = (cand, pt) :: outer.openSearchPairs
@@ -1488,7 +1489,7 @@ end OpenSearch
 /**
  * The the state corresponding to the outermost context of an implicit searcch.
  */
-final class SearchRoot extends SearchHistory with
+final class SearchRoot extends SearchHistory:
   val root = this
   val byname = false
   def openSearchPairs = Nil
@@ -1656,7 +1657,7 @@ final class SearchRoot extends SearchHistory with
 end SearchRoot
 
 /** A set of term references where equality is =:= */
-sealed class TermRefSet(using Context) with
+sealed class TermRefSet(using Context):
   private val elems = new java.util.LinkedHashMap[TermSymbol, Type | List[Type]]
 
   def isEmpty = elems.size == 0
@@ -1691,7 +1692,7 @@ sealed class TermRefSet(using Context) with
 
   override def toString = showAsList.toString
 
-object TermRefSet with
+object TermRefSet:
 
   @sharable val empty = new TermRefSet(using NoContext):
     override def += (ref: TermRef): Unit = throw UnsupportedOperationException("+=")

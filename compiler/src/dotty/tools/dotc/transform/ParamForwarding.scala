@@ -31,7 +31,7 @@ import config.Printers.typr
  *
  *  The aim of this transformation is to avoid redundant parameter accessor fields.
  */
-class ParamForwarding extends MiniPhase with IdentityDenotTransformer with
+class ParamForwarding extends MiniPhase with IdentityDenotTransformer:
   import ast.tpd._
 
   private def thisPhase: ParamForwarding = this

@@ -1,6 +1,6 @@
 package hello
 
-enum Color with
+enum Color:
   case Red, Green, Blue
 
 object HelloWorld with

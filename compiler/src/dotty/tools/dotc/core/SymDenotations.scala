@@ -2556,7 +2556,7 @@ object SymDenotations {
     def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
 
-  object LazyType with
+  object LazyType:
     private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which

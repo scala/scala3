@@ -382,7 +382,7 @@ object Trees {
     def rhs(using Context): Tree[T] = forceIfLazy
   }
 
-  trait ValOrTypeDef[-T >: Untyped] extends MemberDef[T] with
+  trait ValOrTypeDef[-T >: Untyped] extends MemberDef[T]:
     type ThisTree[-T >: Untyped] <: ValOrTypeDef[T]
 
   type ParamClause[T >: Untyped] = List[ValDef[T]] | List[TypeDef[T]]
@@ -444,7 +444,7 @@ object Trees {
   }
 
   /** The kind of application */
-  enum ApplyKind with
+  enum ApplyKind:
     case Regular      // r.f(x)
     case Using        // r.f(using x)
     case InfixTuple   // r f (x1, ..., xN) where N != 1;  needs to be treated specially for an error message in typedApply
@@ -1591,12 +1591,12 @@ object Trees {
       }
     }.asInstanceOf[tree.ThisTree[T]]
 
-    object TypeDefs with
+    object TypeDefs:
       def unapply(xs: List[Tree]): Option[List[TypeDef]] = xs match
         case (x: TypeDef) :: _ => Some(xs.asInstanceOf[List[TypeDef]])
         case _ => None
 
-    object ValDefs with
+    object ValDefs:
       def unapply(xs: List[Tree]): Option[List[ValDef]] = xs match
         case Nil => Some(Nil)
         case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])

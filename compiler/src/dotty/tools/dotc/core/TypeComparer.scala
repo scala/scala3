@@ -2558,7 +2558,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
 object TypeComparer {
 
-  enum CompareResult with
+  enum CompareResult:
     case OK, Fail, OKwithGADTUsed
 
   /** Class for unification variables used in `natValue`. */
@@ -2577,7 +2577,7 @@ object TypeComparer {
    *   - `LoApprox`: The left type is approximated (i.e widened)"
    *   - `HiApprox`: The right type is approximated (i.e narrowed)"
    */
-  object ApproxState with
+  object ApproxState:
     opaque type Repr = Int
 
     val None: Repr = 0

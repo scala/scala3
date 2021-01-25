@@ -1,6 +1,6 @@
 package scala.runtime.stdLibPatches
 
-object Predef with
+object Predef:
   import compiletime.summonFrom
 
   inline def assert(inline assertion: Boolean, inline message: => Any): Unit =
