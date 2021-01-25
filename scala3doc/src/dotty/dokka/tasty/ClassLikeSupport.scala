@@ -88,16 +88,16 @@ trait ClassLikeSupport:
     val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef,
       LinkToType(selfSiangture, classDef.symbol.dri, bareClasslikeKind(classDef.symbol))))
 
+
     val compositeExt =
       if signatureOnly then CompositeMemberExtension.empty
       else CompositeMemberExtension(
           classDef.extractPatchedMembers,
-          classDef.getParents.map(_.dokkaType.asSignature),
+          classDef.getParentsAsLinkToTypes,
           supertypes,
           Nil,
           classDef.getCompanion
         )
-
     mkMember(
       classDef.symbol,
       MemberExtension(
@@ -206,7 +206,7 @@ trait ClassLikeSupport:
         Kind.Class(Nil, Nil)
 
     parsedClasslike.withKind(
-      Kind.Given(cls, givenParents, parentTpe.flatMap(extractImplicitConversion))
+      Kind.Given(cls, givenParents.map(_.signature), parentTpe.flatMap(extractImplicitConversion))
     )
   }
 
@@ -257,13 +257,20 @@ trait ClassLikeSupport:
 
     }
 
-    def getParents: List[Tree] =
+    def getTreeOfFirstParent: Option[Tree] =
+      c.getParentsAsTreeSymbolTuples.headOption.map(_._1)
+
+    def getParentsAsLinkToTypes: List[LinkToType] =
+      c.getParentsAsTreeSymbolTuples.map {
+        (tree, symbol) => LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+      }
+
+    def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
       for
         parentTree <- c.parents if isValidPos(parentTree.pos)  // We assume here that order is correct
         parentSymbol = if parentTree.symbol.isClassConstructor then parentTree.symbol.owner else parentTree.symbol
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
-      yield parentTree
-
+      yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = membersToDocument.collect {
       case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol
