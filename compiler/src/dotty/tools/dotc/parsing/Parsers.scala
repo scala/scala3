@@ -3619,11 +3619,8 @@ object Parsers {
         isUsingClause(extParams)
       do ()
       leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
-      if in.token == WITH then
-        syntaxError(
-          i"""No `with` expected here.
-             |
-             |An extension clause is simply followed by one or more method definitions.""")
+      if in.token == COLON then
+        syntaxError("no `:` expected here")
         in.nextToken()
       val methods =
         if isDefIntro(modifierTokens) then
