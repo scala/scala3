@@ -247,7 +247,9 @@ object ExplicitOuter {
 
   /** Class constructor needs an outer argument. Can be called only after phase ExplicitOuter. */
   def needsOuterParam(cls: ClassSymbol)(using Context): Boolean =
-    !cls.is(Trait) && needsOuterIfReferenced(cls) && (cls.is(JavaDefined) || outerAccessor(cls).exists)
+    !cls.is(Trait) && needsOuterIfReferenced(cls) && (
+      cls.is(JavaDefined) || // java inner class doesn't has outer accessor
+      outerAccessor(cls).exists)
 
   /** Tree references an outer class of `cls` which is not a static owner.
    */
