@@ -3,7 +3,7 @@ package org.scalajs.testsuite.compiler
 import org.junit.Assert._
 import org.junit.Test
 
-class EnumTestScala3 with
+class EnumTestScala3:
   import EnumTestScala3._
 
   @Test def testColor1(): Unit =
@@ -141,26 +141,26 @@ class EnumTestScala3 with
 
   end testOpt
 
-object EnumTestScala3 with
+object EnumTestScala3:
 
-  enum Color1 derives CanEqual with
+  enum Color1 derives CanEqual:
     case Red, Green, Blue
 
-  enum Color2 extends java.lang.Enum[Color2] derives CanEqual with
+  enum Color2 extends java.lang.Enum[Color2] derives CanEqual:
     case Red, Green, Blue
 
   // test "non-simple" cases with anonymous subclasses
-  enum Currency1(val dollarValue: Double) derives CanEqual with
+  enum Currency1(val dollarValue: Double) derives CanEqual:
     case Dollar    extends Currency1(1.0)
     case SwissFanc extends Currency1(1.09)
     case Euro      extends Currency1(1.18)
 
-  enum Currency2(val dollarValue: Double) extends java.lang.Enum[Currency2] derives CanEqual with
+  enum Currency2(val dollarValue: Double) extends java.lang.Enum[Currency2] derives CanEqual:
     case Dollar    extends Currency2(1.0)
     case SwissFanc extends Currency2(1.09)
     case Euro      extends Currency2(1.18)
 
-  enum Opt[+T] with
+  enum Opt[+T]:
     case Sm[+T1](value: T1) extends Opt[T1]
     case Nn                 extends Opt[Nothing]
 

@@ -1,8 +1,8 @@
-class Pouring(capacity: Vector[Int]) with
+class Pouring(capacity: Vector[Int]):
   type Glass = Int
   type Content = Vector[Int]
 
-  enum Move with
+  enum Move:
     def apply(content: Content): Content = this match
       case Empty(g) => content.updated(g, 0)
       case Fill(g) => content.updated(g, capacity(g))
@@ -23,7 +23,7 @@ class Pouring(capacity: Vector[Int]) with
     ++ (for g <- glasses yield Move.Fill(g))
     ++ (for g1 <- glasses; g2 <- glasses if g1 != g2 yield Move.Pour(g1, g2))
 
-  class Path(history: List[Move], val endContent: Content) with
+  class Path(history: List[Move], val endContent: Content):
     def extend(move: Move) = Path(move :: history, move(endContent))
     override def toString = s"${history.reverse.mkString(" ")} --> $endContent"
   end Path

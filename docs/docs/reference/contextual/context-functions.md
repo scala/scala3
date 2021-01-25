@@ -67,12 +67,12 @@ the aim is to construct tables like this:
 The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
-  class Table with
+  class Table:
      val rows = new ArrayBuffer[Row]
      def add(r: Row): Unit = rows += r
      override def toString = rows.mkString("Table(", ", ", ")")
 
-  class Row with
+  class Row:
      val cells = new ArrayBuffer[Cell]
      def add(c: Cell): Unit = cells += c
      override def toString = cells.mkString("Row(", ", ", ")")

@@ -3,7 +3,7 @@ import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 import scala.quoted._
 
-object BigFloatFromDigitsImpl with
+object BigFloatFromDigitsImpl:
   def apply(digits: Expr[String])(using Quotes): Expr[BigFloat] =
     digits.value match
       case Some(ds) =>

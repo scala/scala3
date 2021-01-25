@@ -1,6 +1,6 @@
 abstract class Foo[B] extends Bar[B]
 
-trait Bar[A] with
+trait Bar[A]:
   self: Foo[A] =>
 
   def foo       : Unit   = bar(???)

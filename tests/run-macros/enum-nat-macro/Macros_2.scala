@@ -4,7 +4,7 @@ import Nat._
  inline def ZeroMacro: Zero.type = ${ Macros.natZero }
  transparent inline def toNatMacro(inline int: Int): Nat = ${ Macros.toNatImpl('int) }
 
- object Macros with
+ object Macros:
    import quoted._
 
    def toIntImpl(nat: Expr[Nat])(using Quotes): Expr[Int] =

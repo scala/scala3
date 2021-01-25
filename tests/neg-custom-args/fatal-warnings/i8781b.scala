@@ -1,4 +1,4 @@
-object Test with
+object Test:
 
   println((3: Boolean | Int).isInstanceOf[Boolean])
 

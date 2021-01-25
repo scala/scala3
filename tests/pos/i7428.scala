@@ -1,5 +1,5 @@
-class ABug with
-  enum Tag with
+class ABug:
+  enum Tag:
     case first
   import Tag.first
   val xx = first

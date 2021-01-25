@@ -1,4 +1,4 @@
-trait Abc with
+trait Abc:
   opaque type Log = Double
 
 class AbcClass extends Abc

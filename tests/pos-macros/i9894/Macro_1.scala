@@ -2,19 +2,19 @@ package x
 
 import scala.quoted._
 
-trait CB[T] with
+trait CB[T]:
  def map[S](f: T=>S): CB[S] = ???
 
-class MyArr[A] with
+class MyArr[A]:
  def map1[B](f: A=>B):MyArr[B] = ???
  def map1Out[B](f: A=> CB[B]): CB[MyArr[B]] = ???
 
 def await[T](x:CB[T]):T = ???
 
-object CBM with
+object CBM:
   def pure[T](t:T):CB[T] = ???
 
-object X with
+object X:
 
  inline def process[T](inline f:T) = ${
    processImpl[T]('f)

@@ -48,8 +48,8 @@ final class Foo {
   export foo._ // nothing is exported
 }
 
-class A with
+class A:
   val x: Int = 1
-class B(a: A) with
+class B(a: A):
   export a.x
 object B extends B(A())

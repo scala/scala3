@@ -1,4 +1,4 @@
-object Kotlin with
+object Kotlin:
   class Ctx[T](val x: T) extends AnyVal
 
   def fun[T, U](fn: Ctx[T] ?=> U): T => U = (x: T) => fn(using Ctx(x))

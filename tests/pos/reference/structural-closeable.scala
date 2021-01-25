@@ -2,10 +2,10 @@ type Closeable = {
   def close(): Unit
 }
 
-class FileInputStream with
+class FileInputStream:
   def close(): Unit = ()
 
-class Channel with
+class Channel:
   def close(): Unit = ()
 
 import scala.reflect.Selectable.reflectiveSelectable

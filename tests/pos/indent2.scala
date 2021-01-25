@@ -1,6 +1,6 @@
-object testindent with
+object testindent:
 
-  class C with
+  class C:
     val x = 0
 
   val c = new C

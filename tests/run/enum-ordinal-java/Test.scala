@@ -1,7 +1,7 @@
-enum Color1 extends Lib1.MyJavaEnum[Color1] with
+enum Color1 extends Lib1.MyJavaEnum[Color1]:
   case Red, Green, Blue
 
-enum Color2 extends Lib2.JavaEnumAlias[Color2] with
+enum Color2 extends Lib2.JavaEnumAlias[Color2]:
     case Red, Green, Blue
 
 @main def Test =

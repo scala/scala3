@@ -45,7 +45,7 @@ object Test {
 
   class Str(val s: String) extends Monoid
     def combine(that: Str): Str = new Str(this.s + that.s)
-  object Str with
+  object Str:
     def unit = ""
 
   extension for String : Monoid

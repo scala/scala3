@@ -1,4 +1,4 @@
-class Foo with
+class Foo:
   private var foo1: Int = _
   private var foo2: Array[Int] = _
   private[this] var foo3: Array[Int] = _

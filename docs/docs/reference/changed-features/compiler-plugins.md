@@ -62,14 +62,14 @@ import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.plugins.{PluginPhase, StandardPlugin}
 import dotty.tools.dotc.transform.{Pickler, Staging}
 
-class DivideZero extends StandardPlugin with
+class DivideZero extends StandardPlugin:
    val name: String = "divideZero"
    override val description: String = "divide zero check"
 
    def init(options: List[String]): List[PluginPhase] =
       (new DivideZeroPhase) :: Nil
 
-class DivideZeroPhase extends PluginPhase with
+class DivideZeroPhase extends PluginPhase:
    import tpd._
 
    val phaseName = "divideZero"
@@ -108,7 +108,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.plugins.ResearchPlugin
 
-class DummyResearchPlugin extends ResearchPlugin with
+class DummyResearchPlugin extends ResearchPlugin:
    val name: String = "dummy"
    override val description: String = "dummy research plugin"
 

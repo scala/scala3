@@ -174,7 +174,7 @@ There are four possible ways for an extension method to be applicable:
 Here is an example for the first rule:
 
 ```scala
-trait IntOps with
+trait IntOps:
    extension (i: Int) def isZero: Boolean = i == 0
 
    extension (i: Int) def safeMod(x: Int): Option[Int] =
@@ -182,13 +182,13 @@ trait IntOps with
       if x.isZero then None
       else Some(i % x)
 
-object IntOpsEx extends IntOps with
+object IntOpsEx extends IntOps:
    extension (i: Int) def safeDiv(x: Int): Option[Int] =
       // extension method brought into scope via inheritance from IntOps
       if x.isZero then None
       else Some(i / x)
 
-trait SafeDiv with
+trait SafeDiv:
    import IntOpsEx._ // brings safeDiv and safeMod into scope
 
    extension (i: Int) def divide(d: Int): Option[(Int, Int)] =
@@ -209,9 +209,9 @@ given ops1: IntOps with {}  // brings safeMod into scope
 By the third and fourth rule, an extension method is available if it is in the implicit scope of the receiver type or in a given instance in that scope. Example:
 
 ```scala
-class List[T] with
+class List[T]:
    ...
-object List with
+object List:
    ...
    extension [T](xs: List[List[T]])
       def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)

@@ -1,7 +1,7 @@
-enum Color with
+enum Color:
   case Red, Green, Blue
 
-enum Option[+T] with
+enum Option[+T]:
   case None extends Option[Nothing]
 
 import scala.runtime.EnumValue

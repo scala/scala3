@@ -12,7 +12,7 @@ import scala.quoted._
 import java.io.File.pathSeparator
 import java.io.File.separator
 
-class BootstrappedStdLibTASYyTest with
+class BootstrappedStdLibTASYyTest:
 
   import BootstrappedStdLibTASYyTest._
 
@@ -88,7 +88,7 @@ class BootstrappedStdLibTASYyTest with
 
 end BootstrappedStdLibTASYyTest
 
-object BootstrappedStdLibTASYyTest with
+object BootstrappedStdLibTASYyTest:
 
   def scalaLibJarPath = System.getProperty("dotty.scala.library")
   def scalaLibClassesPath =

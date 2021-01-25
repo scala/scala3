@@ -1,4 +1,4 @@
-trait Foo with
+trait Foo:
 end Foo
 
 trait Bar

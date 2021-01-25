@@ -1,8 +1,8 @@
-class A with
+class A:
   extension (s: String)
     def len: Int = s.length
 
-object B extends A with
+object B extends A:
   extension (s: String)
     override def len: Int = s.length + 1
 

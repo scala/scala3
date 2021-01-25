@@ -1,5 +1,5 @@
 
-enum Option[+A] with
+enum Option[+A]:
   case Some(x: A)
   case None
 

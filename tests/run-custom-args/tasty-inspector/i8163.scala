@@ -20,7 +20,7 @@ object Test {
   }
 }
 
-class TestInspector() extends TastyInspector with
+class TestInspector() extends TastyInspector:
 
   protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
     inspectClass(root)

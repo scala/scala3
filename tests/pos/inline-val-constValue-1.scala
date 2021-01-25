@@ -1,6 +1,6 @@
 import compiletime._
 
-class C with
+class C:
   type X <: Tuple
 
 def test: Unit =

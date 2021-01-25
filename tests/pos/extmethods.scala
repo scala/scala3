@@ -32,7 +32,7 @@ val y1: List[Int] = y
 val z = (1 :: Nil).concat(Nil)
 val z1: List[Int] = z
 
-trait TT with
+trait TT:
   type A
   val m: A
   def f[B <: A](x: B): A = if ??? then m else x
@@ -40,7 +40,7 @@ trait TT with
 extension (x: TT)
   def foo[B <: x.A](y: B) = x.f(y)
 
-object CC extends TT with
+object CC extends TT:
   type A = Seq[Int]
   val m = Nil
 

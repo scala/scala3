@@ -5,9 +5,9 @@ enum LatinAlphabet2 extends java.lang.Enum[LatinAlphabet2] { case A, B, C, D, E,
 
 enum LatinAlphabet3[+T] extends java.lang.Enum[LatinAlphabet3[_]] { case A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z }
 
-object Color with
+object Color:
   trait Pretty
-enum Color extends java.lang.Enum[Color] with
+enum Color extends java.lang.Enum[Color]:
   case Red, Green, Blue
   case Aqua extends Color with Color.Pretty
   case Grey, Black, White

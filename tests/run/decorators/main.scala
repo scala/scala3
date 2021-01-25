@@ -3,7 +3,7 @@ import collection.mutable
 /** A sample @main entry point annotation.
  *  Generates a main function.
  */
-class main extends EntryPoint.Annotation with
+class main extends EntryPoint.Annotation:
 
   type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   type EntryPointResult  = Unit
@@ -13,11 +13,11 @@ class main extends EntryPoint.Annotation with
 
   def wrapper(name: String, doc: String): MainWrapper = new MainWrapper(name, doc)
 
-  class MainWrapper(val entryPointName: String, val docComment: String) extends Wrapper with
+  class MainWrapper(val entryPointName: String, val docComment: String) extends Wrapper:
     type Argument = Array[String]
     type Result = Unit
 
-    def call(args: Array[String]) = new Call with
+    def call(args: Array[String]) = new Call:
 
       /** A buffer of demanded argument names, plus
       *   "?"  if it has a default

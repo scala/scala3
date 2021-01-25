@@ -1,4 +1,4 @@
-trait A with
+trait A:
 
   type Ctx[T]
   type Mega[T]
@@ -14,7 +14,7 @@ trait A with
   def trans(x: Ctx[Int]): Ctx[Int] = x
 end A
 
-object m extends A with
+object m extends A:
 
   type Ctx[T] = String ?=> T
   type Mega[T] = (Int, Int, Int, Int, Int,
@@ -36,7 +36,7 @@ object m extends A with
   def mega: Mega[Int] = summon[String].length
 end m
 
-trait B with
+trait B:
 
   type Ctx[T]
 
@@ -45,7 +45,7 @@ trait B with
   def id[T](x: T): T = drop(wrap(x))
 
 end B
-object n extends B with
+object n extends B:
   type Ctx[T] = String ?=> Int ?=> T
 
   def wrap[T](x: T): Ctx[T] = x

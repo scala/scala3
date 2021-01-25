@@ -2315,7 +2315,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApp() :: withConstrApps()
+        else constrApps(commaOK = false)
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -3494,7 +3494,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps()
+          constrApps(commaOK = true)
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3628,35 +3628,22 @@ object Parsers {
 
     /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
-    def constrApps(): List[Tree] =
+    def constrApps(commaOK: Boolean): List[Tree] =
       val t = constrApp()
-      val ts = if in.token == COMMA then commaConstrApps() else withConstrApps()
+      val ts =
+        if in.token == WITH || commaOK && in.token == COMMA then
+          in.nextToken()
+          constrApps(commaOK)
+        else Nil
       t :: ts
 
-    /** `{`,` ConstrApp} */
-    def commaConstrApps(): List[Tree] =
-      if in.token == COMMA then
-        in.nextToken()
-        constrApp() :: commaConstrApps()
-      else Nil
 
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
     def withConstrApps(): List[Tree] =
       def isTemplateStart =
         val la = in.lookahead
-        la.token == LBRACE
-        || la.isAfterLineEnd
-           && {
-             if migrateTo3 then
-                warning(
-                  em"""In Scala 3, `with` at the end of a line will start definitions,
-                      |so it cannot be used in front of a parent constructor anymore.
-                      |Place the `with` at the beginning of the next line instead.""")
-                false
-              else
-                true
-           }
+        la.isAfterLineEnd || la.token == LBRACE
       if in.token == WITH && !isTemplateStart then
         in.nextToken()
         constrApp() :: withConstrApps()
@@ -3675,7 +3662,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps()
+          else constrApps(commaOK = true)
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3819,16 +3806,7 @@ object Parsers {
         }
         else {
           stats += first
-          if in.token == WITH then
-            syntaxError(
-              i"""end of statement expected but ${showToken(WITH)} found
-                 |
-                 |Maybe you meant to write a mixin in an extends clause?
-                 |Note that this requires the `with` to come first now.
-                 |I.e.
-                 |
-                 |    with $first""")
-          else acceptStatSepUnlessAtEnd(stats)
+          acceptStatSepUnlessAtEnd(stats)
         }
       }
       var exitOnError = false

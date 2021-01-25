@@ -130,7 +130,7 @@ class MalformedNumber(msg: String = "malformed number literal") extends FromDigi
 As a fully worked out example, here is an implementation of a new numeric class, `BigFloat`, that accepts numeric literals. `BigFloat` is defined in terms of a `BigInt` mantissa and an `Int` exponent:
 
 ```scala
-case class BigFloat(mantissa: BigInt, exponent: Int) with
+case class BigFloat(mantissa: BigInt, exponent: Int):
    override def toString = s"${mantissa}e${exponent}"
 ```
 
@@ -145,7 +145,7 @@ The companion object of `BigFloat` defines an `apply` constructor method to cons
 from a `digits` string. Here is a possible implementation:
 
 ```scala
-object BigFloat with
+object BigFloat:
    import scala.util.FromDigits
 
    def apply(digits: String): BigFloat =
@@ -206,7 +206,7 @@ To do this, replace the `FromDigits` instance in the `BigFloat` object by the fo
 object BigFloat:
    ...
 
-   class FromDigits extends FromDigits.Floating[BigFloat] with
+   class FromDigits extends FromDigits.Floating[BigFloat]:
       def fromDigits(digits: String) = apply(digits)
 
    given FromDigits with

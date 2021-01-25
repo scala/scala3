@@ -3,13 +3,13 @@ given foo(using x: Int): AnyRef with
 
 // #7859
 
-trait Lub2[A, B] with
+trait Lub2[A, B]:
   type Output
 
 given [A <: C, B <: C, C]: Lub2[A, B] with
   type Output = C
 
-trait Lub[Union] with
+trait Lub[Union]:
   type Output
 
 given [A]: Lub[A] with

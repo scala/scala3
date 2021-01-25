@@ -1,6 +1,6 @@
 import annotation.targetName
 
-class Alpha[T] with
+class Alpha[T]:
 
   def foo() = 1
 

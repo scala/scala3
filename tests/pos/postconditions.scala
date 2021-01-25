@@ -1,4 +1,4 @@
-object PostConditions with
+object PostConditions:
   opaque type WrappedResult[T] = T
 
   def result[T](using r: WrappedResult[T]): T = r
@@ -8,6 +8,6 @@ object PostConditions with
     assert(condition)
     x
 
-object Test with
+object Test:
   import PostConditions.{ensuring, result}
   val s = List(1, 2, 3).sum.ensuring(result == 6)

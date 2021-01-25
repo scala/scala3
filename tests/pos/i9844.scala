@@ -1,4 +1,4 @@
-object test1 with
+object test1:
   trait Foo[A]
 
   trait Baz[A]  {
@@ -8,13 +8,13 @@ object test1 with
     }
   }
 
-object test2 with
+object test2:
 
-  trait Foo with
+  trait Foo:
     private var f = "abc"
 
   trait Baz  {
-    trait Bam with
+    trait Bam:
       val f = 0
     trait Bar extends Bam {
       this: Foo =>
@@ -23,7 +23,7 @@ object test2 with
     }
   }
 
-object test3 with
+object test3:
   object DetSkipOctree {
     sealed trait Leaf  [PL]
     sealed trait Branch[PL]

@@ -1,6 +1,6 @@
 class C(val x: Int)
 
-trait D with
+trait D:
    type T
    def trans(other: T): T
 

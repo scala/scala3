@@ -8,7 +8,7 @@ An `open` modifier on a class signals that the class is planned for extensions. 
 // File Writer.scala
 package p
 
-open class Writer[T] with
+open class Writer[T]:
 
    /** Sends to stdout, can be overridden */
    def send(x: T) = println(x)
@@ -20,7 +20,7 @@ end Writer
 // File EncryptedWriter.scala
 package p
 
-class EncryptedWriter[T: Encryptable] extends Writer[T] with
+class EncryptedWriter[T: Encryptable] extends Writer[T]:
    override def send(x: T) = super.send(encrypt(x))
 ```
 An open class typically comes with some documentation that describes

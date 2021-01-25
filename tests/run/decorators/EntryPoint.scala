@@ -1,7 +1,7 @@
 import collection.mutable
 
 /** A framework for defining stackable entry point wrappers */
-object EntryPoint with
+object EntryPoint:
 
   /** A base trait for wrappers of entry points.
   *  Sub-traits: Annotation#Wrapper
@@ -26,14 +26,14 @@ object EntryPoint with
   *
   *  The wrapper class has this outline:
   *
-  *     object <wrapperClass> with
+  *     object <wrapperClass>:
   *       @WrapperAnnotation def <wrapperMethod>(args: <Argument>) =
   *         ...
   *
   *  Here `<wrapperClass>` and `<wrapperMethod>` are obtained from an
   *  inline call to the `wrapperName` method.
   */
-  trait Annotation extends annotation.StaticAnnotation with
+  trait Annotation extends annotation.StaticAnnotation:
 
     /** The class used for argument parsing. E.g. `scala.util.FromString`, if
     *  arguments are strings, but it could be something else.
@@ -56,7 +56,7 @@ object EntryPoint with
     def wrapper(entryPointName: String, docComment: String): Wrapper
 
     /** Base class for descriptions of an entry point wrappers */
-    abstract class Wrapper extends EntryPoint.Wrapper with
+    abstract class Wrapper extends EntryPoint.Wrapper:
 
       /** The type of the wrapper argument. E.g., for Java main methods: `Array[String]` */
       type Argument
@@ -80,7 +80,7 @@ object EntryPoint with
       def call(arg: Argument): Call
 
       /** A class representing a wrapper call */
-      abstract class Call with
+      abstract class Call:
 
         /** The getter for the next argument of type `T` */
         def nextArgGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
@@ -124,7 +124,7 @@ object EntryPoint with
   *      created from @logged, @transactional, and @main, respectively.
   *    - `x` is the argument of the outer $logged$wrapper.
   */
-  trait Adapter extends annotation.StaticAnnotation with
+  trait Adapter extends annotation.StaticAnnotation:
 
     /** Creates a new wrapper around `wrapped` */
     def wrapper(wrapped: EntryPoint.Wrapper): Wrapper
@@ -169,7 +169,7 @@ object EntryPoint with
     *  keep the `adapt` type contract implicit (types are still checked when adapts
     *  are generated, of course).
     */
-    abstract class Wrapper extends EntryPoint.Wrapper with
+    abstract class Wrapper extends EntryPoint.Wrapper:
       /** The wrapper that this wrapped in turn by this wrapper */
       val wrapped: EntryPoint.Wrapper
 

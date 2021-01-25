@@ -5,7 +5,7 @@
  *  `body` what comes before the first tagged line
  */
 case class DocComment(body: String, tags: Map[String, List[String]])
-object DocComment with
+object DocComment:
   def fromString(str: String): DocComment =
     val lines = str.linesIterator.toList
     def tagged(line: String): Option[(String, String)] =

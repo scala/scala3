@@ -1,4 +1,4 @@
-object test with
+object test:
 
   3 match
   case 3 => ???

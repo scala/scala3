@@ -1,6 +1,6 @@
 import scala.quoted._
 
-object X with
+object X:
 
   def andThen[A,B](a:A)(f: A => B): B =
      println("totalFunction")
@@ -11,7 +11,7 @@ object X with
      f.lift.apply(a)
 
 
-object Macro with
+object Macro:
 
     inline def mThen[A,B](inline x:A=>B):B = ${
        mThenImpl[A,B,A=>B,B]('x)

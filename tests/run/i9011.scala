@@ -1,4 +1,4 @@
-enum Opt[+T] derives Eq with
+enum Opt[+T] derives Eq:
   case Sm[T](t: T) extends Opt[T]
   case Nn
 

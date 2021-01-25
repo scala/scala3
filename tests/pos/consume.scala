@@ -1,4 +1,4 @@
-object Test1 with
+object Test1:
   def consume(xs: List[Int], limit: Int): List[Int] = xs match
     case x :: xs1 if limit > 0 => consume(xs1, limit - x)
     case _ => xs
@@ -16,18 +16,18 @@ object Test2 {
     }
 }
 
-object math3 with
-  trait Ord[T] with
+object math3:
+  trait Ord[T]:
     extension (x: T) def > (t: T): Boolean = ???
     extension (x: T) def <= (t: T): Boolean = ???
 
-  trait Numeric[T] extends Ord[T] with
+  trait Numeric[T] extends Ord[T]:
     extension (x: T) def + (y: T): T = ???
     extension (x: T) def - (y: T): T = ???
     extension (x: Int) def numeric: T = ???
 end math3
 
-object Test3 with
+object Test3:
   import math3.Numeric
   import collection.immutable.Seq
 

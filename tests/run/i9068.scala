@@ -1,4 +1,4 @@
-case class MyClass(v1: Int, v2: Int, v3: Int, v4: Int) extends Product3[Int, Int, Int] with
+case class MyClass(v1: Int, v2: Int, v3: Int, v4: Int) extends Product3[Int, Int, Int]:
   val _1: Int = v2
   def _2: Int = v3
   var _3: Int = v4

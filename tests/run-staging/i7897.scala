@@ -1,6 +1,6 @@
 import scala.quoted._, staging._
 
-object Test with
+object Test:
   given Compiler = Compiler.make(getClass.getClassLoader)
 
   val f: Array[Int] => Int = run {
