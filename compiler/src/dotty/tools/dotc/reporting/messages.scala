@@ -1126,7 +1126,6 @@ import transform.SymUtils._
     def msg =
       val expectedText =
         if (Tokens.isIdentifier(expected)) "an identifier"
-        else if expected == Tokens.INDENT then "indented definitions"
         else Tokens.showToken(expected)
       em"""${expectedText} expected, but ${foundText} found"""
 

@@ -196,7 +196,6 @@ object Parsers {
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
     def isStatSeqEnd = in.isNestedEnd || in.token == EOF || in.token == RPAREN
-    def isTemplateBodyStart = in.token == WITH || in.isNestedStart
     def mustStartStat = mustStartStatTokens contains in.token
 
     /** Is current token a hard or soft modifier (in modifier position or not)? */
@@ -920,39 +919,6 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-    /** Does a template start after `with`? This is the case if either
-     *   - the next token is `{`
-     *   - the `with` is at the end of a line
-     *     (except for source = 3.0-migration, when a warning is issued)
-     *   - the next tokens is `<ident>` or `this` and the one after it is `:` or `=>`
-     *     (i.e. we see the start of a self type)
-     */
-    def followingIsTemplateStart() =
-      val lookahead = in.LookaheadScanner()
-      lookahead.nextToken()
-      lookahead.token == LBRACE
-      || lookahead.isAfterLineEnd
-          && {
-            if migrateTo3 then
-              warning(
-                em"""In Scala 3, `with` at the end of a line will start definitions,
-                    |so it cannot be used in front of a parent constructor anymore.
-                    |Place the `with` at the beginning of the next line instead.""")
-              false
-            else
-              true
-          }
-      || (lookahead.isIdent || lookahead.token == THIS)
-          && {
-            lookahead.nextToken()
-            lookahead.token == COLON
-            && {  // needed only as long as we support significant colon at eol
-              lookahead.nextToken()
-              !lookahead.isAfterLineEnd
-            }
-            || lookahead.token == ARROW
-          }
-
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
@@ -1315,14 +1281,14 @@ object Parsers {
             in.sourcePos())
           patch(source, Span(in.offset), "  ")
 
-    def possibleTemplateStart(): Unit =
+    def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL then
+      if in.token == COLONEOL || in.token == WITH then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(ExpectedTokenButFound(INDENT, in.token))
+            syntaxErrorOrIncomplete(i"indented definitions expected, ${in} found")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
@@ -2347,11 +2313,13 @@ object Parsers {
       val start = in.skipToken()
       def reposition(t: Tree) = t.withSpan(Span(start, in.lastOffset))
       possibleTemplateStart()
-      val parents = if isTemplateBodyStart then Nil else constrApp() :: withConstrApps()
+      val parents =
+        if in.isNestedStart then Nil
+        else constrApp() :: withConstrApps()
       colonAtEOLOpt()
-      possibleTemplateStart()
+      possibleTemplateStart(isNew = true)
       parents match {
-        case parent :: Nil if !isTemplateBodyStart =>
+        case parent :: Nil if !in.isNestedStart =>
           reposition(if (parent.isType) ensureApplied(wrapNew(parent)) else parent)
         case _ =>
           New(reposition(templateBodyOpt(emptyConstructor, parents, Nil)))
@@ -3675,7 +3643,21 @@ object Parsers {
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
     def withConstrApps(): List[Tree] =
-      if in.token == WITH && !followingIsTemplateStart() then
+      def isTemplateStart =
+        val la = in.lookahead
+        la.token == LBRACE
+        || la.isAfterLineEnd
+           && {
+             if migrateTo3 then
+                warning(
+                  em"""In Scala 3, `with` at the end of a line will start definitions,
+                      |so it cannot be used in front of a parent constructor anymore.
+                      |Place the `with` at the beginning of the next line instead.""")
+                false
+              else
+                true
+           }
+      if in.token == WITH && !isTemplateStart then
         in.nextToken()
         constrApp() :: withConstrApps()
       else Nil
@@ -3719,20 +3701,18 @@ object Parsers {
         template(constr)
       else
         possibleTemplateStart()
-        if isTemplateBodyStart then
+        if in.isNestedStart then
           template(constr)
         else
           checkNextNotIndented()
           Template(constr, Nil, Nil, EmptyValDef, Nil)
 
-    /** TemplateBody ::=  [nl | ‘with’] `{' TemplateStatSeq `}'
-     *                 |  ‘with’ [SelfType] indent TemplateStats outdent
-     *  EnumBody     ::=  [nl | ‘with’] ‘{’ [SelfType] EnumStats ‘}’
-     *                 |  ‘with’ [SelfType] indent EnumStats outdent
+    /** TemplateBody ::=  [nl] `{' TemplateStatSeq `}'
+     *  EnumBody     ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
      */
     def templateBodyOpt(constr: DefDef, parents: List[Tree], derived: List[Tree]): Template =
       val (self, stats) =
-        if isTemplateBodyStart then
+        if in.isNestedStart then
           templateBody()
         else
           checkNextNotIndented()
@@ -3740,44 +3720,12 @@ object Parsers {
       Template(constr, parents, derived, self, stats)
 
     def templateBody(): (ValDef, List[Tree]) =
-      val givenSelf =
-        if in.token == WITH then
-          in.nextToken()
-          selfDefOpt()
-        else EmptyValDef
-      val r = inDefScopeBraces(templateStatSeq(givenSelf), rewriteWithColon = true)
+      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
         template(emptyConstructor)
       r
-
-    /** SelfType ::=  id [‘:’ InfixType] ‘=>’
-     *             |  ‘this’ ‘:’ InfixType ‘=>’
-     *  Only called immediately after a `with`, in which case it must in turn
-     *  be followed by `INDENT`.
-     */
-    def selfDefOpt(): ValDef = atSpan(in.offset) {
-      val vd =
-        if in.isIdent then
-          val selfName = ident()
-          if in.token == COLON then
-            in.nextToken()
-            makeSelfDef(selfName, infixType())
-          else
-            makeSelfDef(selfName, TypeTree())
-        else if in.token == THIS then
-          in.nextToken()
-          accept(COLON)
-          makeSelfDef(nme.WILDCARD, infixType())
-        else
-          EmptyValDef
-      if !vd.isEmpty then
-        accept(ARROW)
-        if in.token != INDENT then
-          syntaxErrorOrIncomplete(ExpectedTokenButFound(INDENT, in.token))
-      vd
-    }
 
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
@@ -3852,10 +3800,10 @@ object Parsers {
      *  EnumStat         ::= TemplateStat
      *                     | Annotations Modifiers EnumCase
      */
-    def templateStatSeq(givenSelf: ValDef = EmptyValDef): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
-      var self = givenSelf
+    def templateStatSeq(): (ValDef, List[Tree]) = checkNoEscapingPlaceholders {
+      var self: ValDef = EmptyValDef
       val stats = new ListBuffer[Tree]
-      if (self.isEmpty && isExprIntro && !isDefIntro(modifierTokens)) {
+      if (isExprIntro && !isDefIntro(modifierTokens)) {
         val first = expr1()
         if (in.token == ARROW) {
           first match {
@@ -4008,7 +3956,7 @@ object Parsers {
             possibleTemplateStart()
             if in.token == EOF then
               ts += makePackaging(start, pkg, List())
-            else if isTemplateBodyStart then
+            else if in.isNestedStart then
               ts += inDefScopeBraces(makePackaging(start, pkg, topStatSeq()), rewriteWithColon = true)
               continue = true
             else
@@ -4046,7 +3994,6 @@ object Parsers {
     }
 
     override def templateBody(): (ValDef, List[Thicket]) = {
-      if in.token == WITH then in.nextToken()
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }
