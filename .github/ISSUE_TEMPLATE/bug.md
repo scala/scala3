@@ -9,10 +9,8 @@ assignees: ''
 
 ## Compiler version
 
-``` bash
-# get compiler version via command line
-scalac -version
-```
+If you're not sure what version you're using, run `print scalaVersion` from sbt
+(if you're running scalac manually, use `scalac -version` instead).
 
 ## Minimized code
 
