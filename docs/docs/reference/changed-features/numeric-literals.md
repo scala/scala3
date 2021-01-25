@@ -86,7 +86,7 @@ whole numbers with a given radix, for numbers with a decimal point, and for
 numbers that can have both a decimal point and an exponent:
 
 ```scala
-object FromDigits with
+object FromDigits:
 
    /** A subclass of `FromDigits` that also allows to convert whole
     *  number literals with a radix other than 10
@@ -203,7 +203,7 @@ into a macro, i.e. make it an inline method with a splice as right-hand side.
 To do this, replace the `FromDigits` instance in the `BigFloat` object by the following two definitions:
 
 ```scala
-object BigFloat with
+object BigFloat:
    ...
 
    class FromDigits extends FromDigits.Floating[BigFloat] with

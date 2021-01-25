@@ -54,7 +54,7 @@ import annotation.implicitNotFound
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait CanEqual[-L, -R]
 
-object CanEqual with
+object CanEqual:
    object derived extends CanEqual[Any, Any]
 ```
 

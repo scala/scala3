@@ -67,7 +67,7 @@ enum Option[+T] with
       case None => false
       case some => true
 
-object Option with
+object Option:
 
    def apply[T >: Null](x: T): Option[T] =
       if x == null then None else Some(x)

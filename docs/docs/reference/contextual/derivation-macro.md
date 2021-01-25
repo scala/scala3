@@ -142,7 +142,7 @@ import scala.quoted._
 trait Eq[T]:
    def eqv(x: T, y: T): Boolean
 
-object Eq with
+object Eq:
    given Eq[String] with
       def eqv(x: String, y: String) = x == y
 
@@ -195,7 +195,7 @@ object Eq with
    end derived
 end Eq
 
-object Macro3 with
+object Macro3:
    extension [T](inline x: T)
       inline def === (inline y: T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 

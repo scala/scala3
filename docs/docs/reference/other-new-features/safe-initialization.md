@@ -39,7 +39,7 @@ The checker will report:
 Given the code below:
 
 ``` scala
-object Trees with
+object Trees:
    class ValDef { counter += 1 }
    class EmptyValDef extends ValDef
    val theEmptyValDef = new EmptyValDef

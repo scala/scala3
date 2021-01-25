@@ -20,7 +20,7 @@ This works since a companion object with two `apply` methods
 is generated together with the class. The object looks like this:
 
 ```scala
-object StringBuilder with
+object StringBuilder:
    inline def apply(s: String): StringBuilder = new StringBuilder(s)
    inline def apply(): StringBuilder = new StringBuilder()
 ```

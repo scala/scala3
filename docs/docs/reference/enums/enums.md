@@ -6,7 +6,7 @@ title: "Enumerations"
 An enumeration is used to define a type consisting of a set of named values.
 
 ```scala
-enum Color with
+enum Color:
    case Red, Green, Blue
 ```
 
@@ -79,7 +79,7 @@ end Planet
 It is also possible to define an explicit companion object for an enum:
 
 ```scala
-object Planet with
+object Planet:
    def main(args: Array[String]) =
       val earthWeight = args(0).toDouble
       val mass = earthWeight / Earth.surfaceGravity
