@@ -3697,7 +3697,7 @@ class Typer extends Namer
             case pt: FunProto =>
               if tree.symbol.isAllOf(ApplyProxyFlags) then newExpr
               else adaptToArgs(wtp, pt)
-            case pt: PolyProto =>
+            case pt: PolyProto if !wtp.isImplicitMethod =>
               tryInsertApplyOrImplicit(tree, pt, locked)(tree) // error will be reported in typedTypeApply
             case _ =>
               if (ctx.mode is Mode.Type) adaptType(tree.tpe)
