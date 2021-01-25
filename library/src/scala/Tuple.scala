@@ -7,32 +7,32 @@ sealed trait Tuple extends Product {
   import Tuple._
 
   /** Create a copy this tuple as an Array */
-  transparent inline def toArray: Array[Object] =
+  inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
   /** Create a copy this tuple as a List */
-  transparent inline def toList: List[Union[this.type]] =
+  inline def toList: List[Union[this.type]] =
     this.productIterator.toList
       .asInstanceOf[List[Union[this.type]]]
 
   /** Create a copy this tuple as an IArray */
-  transparent inline def toIArray: IArray[Object] =
+  inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 
   /** Return a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
    */
-  transparent inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
+  inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
     runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
 
   /** Return a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
    */
-  transparent inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
+  inline def ++ [This >: this.type <: Tuple](that: Tuple): Concat[This, that.type] =
     runtime.Tuples.concat(this, that).asInstanceOf[Concat[This, that.type]]
 
   /** Return the size (or arity) of the tuple */
-  transparent inline def size[This >: this.type <: Tuple]: Size[This] =
+  inline def size[This >: this.type <: Tuple]: Size[This] =
     runtime.Tuples.size(this).asInstanceOf[Size[This]]
 
   /** Given two tuples, `(a1, ..., an)` and `(a1, ..., an)`, returns a tuple
@@ -42,7 +42,7 @@ sealed trait Tuple extends Product {
    *  tuple types has a `EmptyTuple` tail. Otherwise the result type is
    *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
    */
-  transparent inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
+  inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
     runtime.Tuples.zip(this, t2).asInstanceOf[Zip[This, T2]]
 
   /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
@@ -50,27 +50,27 @@ sealed trait Tuple extends Product {
    *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
    *  to be the cons type.
    */
-  transparent inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
+  inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
    */
-  transparent inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
+  inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
     runtime.Tuples.take(this, n).asInstanceOf[Take[This, n.type]]
 
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
    */
-  transparent inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
+  inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
     runtime.Tuples.drop(this, n).asInstanceOf[Drop[This, n.type]]
 
   /** Given a tuple `(a1, ..., am)`, returns a pair of the tuple `(a1, ..., an)`
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
    */
-  transparent inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
+  inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
 }
 
@@ -259,12 +259,14 @@ sealed trait NonEmptyTuple extends Tuple {
     runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
 
   /** Get the head of this tuple */
+  // FIXME: remove transparent
   transparent inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the tail of this tuple.
    *  This operation is O(this.size)
    */
+  // FIXME: remove transparent
   transparent inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 
