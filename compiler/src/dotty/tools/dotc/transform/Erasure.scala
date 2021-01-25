@@ -931,7 +931,7 @@ object Erasure {
 
     /** The outer parameter definition of a constructor if it needs one */
     private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
-      if constr.isConstructor && hasOuterParam(constr.owner.asClass) then
+      if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
           case MethodTpe(outerName :: _, outerType :: _, _) =>
             val outerSym = newSymbol(constr, outerName, Flags.Param, outerType)
