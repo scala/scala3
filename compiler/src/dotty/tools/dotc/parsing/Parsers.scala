@@ -3549,7 +3549,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | ConstrApps TemplateBody)
+    /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
@@ -3569,9 +3569,8 @@ object Parsers {
         if !(name.isEmpty && noParams) then accept(COLON)
         val parents =
           if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
-          else constrApps()
+          else constrApp() :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
-        newLineOptWhenFollowedBy(LBRACE)
         if in.token == EQUALS && parentsIsType then
           accept(EQUALS)
           mods1 |= Final
@@ -3580,17 +3579,17 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
-        else if isTemplateBodyStart then
-          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
-          val vparamss1 = vparamss.map(_.map(vparam =>
-            vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val templ = templateBodyOpt(makeConstructor(tparams1, vparamss1), parents, Nil)
-          if noParams then ModuleDef(name, templ)
-          else TypeDef(name.toTypeName, templ)
-        else
+        else if in.token != WITH && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
+        else
+          val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
+          val vparamss1 = vparamss.map(_.map(vparam =>
+            vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
+          val templ = withTemplate(makeConstructor(tparams1, vparamss1), parents)
+          if noParams then ModuleDef(name, templ)
+          else TypeDef(name.toTypeName, templ)
       end gdef
       finalizeDef(gdef, mods1, start)
     }
@@ -3779,6 +3778,14 @@ object Parsers {
           syntaxErrorOrIncomplete(ExpectedTokenButFound(INDENT, in.token))
       vd
     }
+
+    /** with Template, with EOL <indent> interpreted */
+    def withTemplate(constr: DefDef, parents: List[Tree]): Template =
+      if in.token != WITH then syntaxError(em"`with` expected")
+      possibleTemplateStart() // consumes a WITH token
+      val (self, stats) = templateBody()
+      Template(constr, parents, Nil, self, stats)
+        .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
 /* -------- STATSEQS ------------------------------------------- */
 

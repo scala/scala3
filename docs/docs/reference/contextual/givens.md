@@ -153,10 +153,11 @@ Here is the syntax for given instances:
 ```
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
-GivenDef            ::=  [GivenSig] ConstrApps TemplateBody
+GivenDef            ::=  [GivenSig] StructuralInstance
                      |   [GivenSig] AnnotType ‘=’ Expr
                      |   [GivenSig] AnnotType
 GivenSig            ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’
+StructuralInstance  ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 ```
 
 A given instance starts with the reserved word `given` and an optional _signature_. The signature
