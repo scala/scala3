@@ -920,16 +920,6 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-    private def withEndMigrationWarning(): Boolean =
-      migrateTo3
-      && {
-        warning(
-          em"""In Scala 3, `with` at the end of a line will start definitions,
-              |so it cannot be used in front of a parent constructor anymore.
-              |Place the `with` at the beginning of the next line instead.""")
-        true
-      }
-
     /** Does a template start after `with`? This is the case if either
      *   - the next token is `{`
      *   - the `with` is at the end of a line
@@ -941,7 +931,17 @@ object Parsers {
       val lookahead = in.LookaheadScanner()
       lookahead.nextToken()
       lookahead.token == LBRACE
-      || lookahead.isAfterLineEnd && !withEndMigrationWarning()
+      || lookahead.isAfterLineEnd
+          && {
+            if migrateTo3 then
+              warning(
+                em"""In Scala 3, `with` at the end of a line will start definitions,
+                    |so it cannot be used in front of a parent constructor anymore.
+                    |Place the `with` at the beginning of the next line instead.""")
+              false
+            else
+              true
+          }
       || (lookahead.isIdent || lookahead.token == THIS)
           && {
             lookahead.nextToken()
@@ -952,20 +952,6 @@ object Parsers {
             }
             || lookahead.token == ARROW
           }
-
-    /** Does a refinement start after `with`? This is the case if either
-     *   - the next token is `{`
-     *   - the `with` is at the end of a line and is followed by a token that starts a declaration
-     */
-    def followingIsRefinementStart() =
-      val lookahead = in.LookaheadScanner()
-      lookahead.nextToken()
-      lookahead.token == LBRACE
-      || lookahead.isAfterLineEnd
-         && {
-           if lookahead.token == INDENT then lookahead.nextToken()
-           dclIntroTokens.contains(lookahead.token)
-         }
 
 /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
@@ -1598,8 +1584,11 @@ object Parsers {
     def withType(): Tree = withTypeRest(annotType())
 
     def withTypeRest(t: Tree): Tree =
-      if in.token == WITH && !followingIsRefinementStart() then
-        in.nextTokenNoIndent()
+      def isRefinementStart =
+        val la = in.lookahead
+        la.isAfterLineEnd || la.token == LBRACE
+      if in.token == WITH && !isRefinementStart then
+        in.nextToken()
         if sourceVersion.isAtLeast(`3.1`) then
           deprecationWarning(DeprecatedWithOperator())
         atSpan(startOffset(t)) { makeAndType(t, withType()) }
@@ -3869,7 +3858,8 @@ object Parsers {
               if (name != nme.ERROR)
                 self = makeSelfDef(name, tpt).withSpan(first.span)
           }
-          in.nextTokenNoIndent()
+          in.token = SELFARROW // suppresses INDENT insertion after `=>`
+          in.nextToken()
         }
         else {
           stats += first

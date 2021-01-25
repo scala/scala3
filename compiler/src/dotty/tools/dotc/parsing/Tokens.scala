@@ -204,6 +204,7 @@ object Tokens extends TokensCommon {
   final val QUOTE = 87;            enter(QUOTE, "'")
 
   final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
+  final val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
   final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate

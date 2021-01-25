@@ -11,10 +11,4 @@ object Test2 extends A with
     println("foo")
   }
 
-def foo: A with
-  B with
-  C = ???
-
-
-
 
