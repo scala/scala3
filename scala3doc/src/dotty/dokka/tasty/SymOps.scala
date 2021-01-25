@@ -1,7 +1,5 @@
 package dotty.dokka.tasty
 
-import org.jetbrains.dokka.model._
-import collection.JavaConverters._
 import dotty.dokka._
 import dotty.dokka.model.api.Visibility
 import dotty.dokka.model.api.VisibilityScope

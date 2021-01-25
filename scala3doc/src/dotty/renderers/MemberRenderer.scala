@@ -3,26 +3,14 @@ package dotty.dokka
 import dotty.dokka.model.api._
 import scala.collection.immutable.SortedMap
 import dotty.dokka.HTML._
-import org.jetbrains.dokka.pages.{DCI, ContentKind, ContentNode}
-import org.jetbrains.dokka.model.properties.PropertyContainer
 import collection.JavaConverters._
 import dotty.dokka.translators.FilterAttributes
+import dotty.dokka.tasty.comments.markdown.DocFlexmarkRenderer
+import com.vladsch.flexmark.util.ast.{Node => MdNode}
+import dotty.dokka.tasty.comments.wiki.WikiDocElement
 
-class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNode => String)(using DocContext):
-
+class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
-  private val converter = ScalaCommentToContentConverter
-
-  def renderDocPart(d: DocPart): AppliedTag =
-    val sb  = StringBuilder()
-    converter.buildContent(
-      d,
-      DCI(JSet(), ContentKind.Comment),
-      JSet(),
-      JSet(),
-      PropertyContainer.Companion.empty()
-    ).forEach(c => sb.append(buildNode(c)))
-    raw(sb)
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
@@ -61,7 +49,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
       nested("Type Params", d.typeParams) ++
       nested("Value Params", d.valueParams) ++
       opt("Returns", d.result) ++
-      nested("Throws", d.throws.transform((_, v) => v._1)) ++
+      nested("Throws", d.throws) ++
       opt("Constructor", d.constructor) ++
       list("Authors", d.authors) ++
       list("See also", d.see) ++
@@ -104,9 +92,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, buildNode: ContentNod
   }
 
   def memberInfo(m: Member): Seq[AppliedTag] =
-    val bodyContents = m.docs.fold(Nil)(d =>
-      if d.body.getChildren.isEmpty then Seq(d.body) else d.body.getChildren.asScala.toList
-    ).map(renderDocPart)
+    val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     Seq(
       div(cls := "documentableBrief doc")(bodyContents.take(1)),

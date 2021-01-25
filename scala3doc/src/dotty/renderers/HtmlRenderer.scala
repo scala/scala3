@@ -14,7 +14,6 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.nio.file.FileVisitOption
 import java.io.File
-import org.jetbrains.dokka.pages.ContentNode
 
 case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page]):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)
@@ -25,7 +24,7 @@ case class Page(link: Link, content: Member | ResolvedTemplate | String, childre
     case t: ResolvedTemplate => t.hasFrame
     case _ => true
 
-class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member], buildNode: DRI => ContentNode => String)(using ctx: DocContext)
+class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx: DocContext)
   extends SiteRenderer, Resources, Locations, Writter:
   private val args = summon[DocContext].args
   val staticSite = summon[DocContext].staticSiteContext
@@ -67,9 +66,9 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member], buildNode
     case m: Member =>
       val signatureRenderer = new SignatureRenderer:
         def currentDri: DRI = page.link.dri
-        def link(dri: DRI): Option[String] = Some(pathToPage(page.link.dri, dri))
+        def link(dri: DRI): Option[String] = Some(pathToPage(dri, page.link.dri))
 
-      MemberRenderer(signatureRenderer, buildNode(page.link.dri)).fullMember(m)
+      MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)
     case a: String =>  raw(a)
 

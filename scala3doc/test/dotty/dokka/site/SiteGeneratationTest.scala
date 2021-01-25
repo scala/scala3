@@ -11,49 +11,7 @@ import org.jsoup.nodes.Document
 import java.nio.charset.Charset
 import dotty.dokka.test.BuildInfo
 
-class SiteGeneratationTest:
-  val projectName = "Test Project Name"
-  val projectVersion = "1.0.1-M1"
-
-  case class ProjectContext(path: Path)
-
-  private def withGeneratedSite(base: Path)(op: ProjectContext ?=> Unit) =
-    val dest = Files.createTempDirectory("test-doc")
-    try
-      val args = Scala3doc.Args(
-          name = projectName,
-          tastyFiles = tastyFiles("links"),
-          output = dest.toFile,
-          docsRoot = Some(base.toAbsolutePath.toString),
-          projectVersion = Some(projectVersion),
-        )
-      Scala3doc.run(args)(using testContext)
-      op(using ProjectContext(dest))
-
-    finally IO.delete(dest.toFile)
-
-  val testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
-
-  class DocumentContext(d: Document, path: Path):
-    import collection.JavaConverters._
-
-    def niceMsg(msg: String) = s"$msg in $path (body):\n ${d.html()}:\n"
-
-    def assertTextsIn(selector: String, expected: String*) =
-      assertFalse(niceMsg("Selector not found"), d.select(selector).isEmpty)
-      val found = d.select(selector).eachText.asScala
-      assertEquals(niceMsg(s"Context does not match for '$selector'"), expected.toList, found.toList)
-
-    def assertAttr(selector: String, attr: String, expected: String*) =
-      assertFalse(niceMsg("Selector not found"), d.select(selector).isEmpty)
-      val found = d.select(selector).eachAttr(attr).asScala
-      assertEquals(niceMsg(s"Attribute $attr does not match for '$selector'"), expected.toList, found.toList)
-
-  def withHtmlFile(path: Path)(op: DocumentContext => Unit) = {
-    assertTrue(s"File at $path does not exisits!", Files.exists(path))
-    val document = Jsoup.parse(IO.read(path))
-    op(DocumentContext(document, path))
-  }
+class SiteGeneratationTest extends BaseHtmlTest:
 
   def indexLinks(content: DocumentContext) =
     content.assertAttr("p a","href", "docs/index.html")
@@ -64,7 +22,7 @@ class SiteGeneratationTest:
     header: String,
     parents: Seq[String] = Nil,
     checks: DocumentContext => Unit = _ => ())(using ProjectContext) =
-      withHtmlFile(summon[ProjectContext].path.resolve(path)){ content  =>
+      withHtmlFile(path){ content  =>
         content.assertTextsIn(".projectName", projectName)
         content.assertTextsIn(".projectVersion", projectVersion)
         content.assertTextsIn("h1", header)
@@ -94,17 +52,16 @@ class SiteGeneratationTest:
         header = projectName,
         parents = parents
       )
-      checkFile("api/tests/links.html")(
-        title = "tests.links",
-        header = "tests.links",
+      checkFile("api/tests/site.html")(
+        title = "tests.site",
+        header = "tests.site",
         parents = parents :+ mainTitle
       )
-      checkFile("api/tests/links/LinksTest.html")(
-        title = "LinksTest",
-        header = "LinksTest",
-        parents = parents ++ Seq(mainTitle, "tests.links")
+      checkFile("api/tests/site/SomeClass.html")(
+        title = "SomeClass",
+        header = "SomeClass",
+        parents = parents ++ Seq(mainTitle, "tests.site")
       )
-
 
   @Test
   def basicTest() = withGeneratedSite(testDocPath.resolve("basic")){

@@ -68,9 +68,3 @@ object dbg:
 
   def see(n: mdu.Node): See =
     See(n, n.getChildIterator.asScala.map(see).toList)
-
-  def parseRaw(str: String) =
-    MarkdownCommentParser(null).stringToMarkup(str)
-
-  def parse(str: String) =
-    parseRaw( Preparser.preparse( Cleaner.clean(str) ).body )

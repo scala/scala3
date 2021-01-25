@@ -1,8 +1,6 @@
 package dotty.dokka
 package tasty
 
-import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.base.parsers._
 
 import java.util.regex.Pattern
 
@@ -24,7 +22,7 @@ import java.nio.file.Files
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
+case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None

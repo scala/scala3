@@ -60,6 +60,8 @@ object HTML:
   val h2 = Tag("h2")
   val h3 = Tag("h3")
   val h4 = Tag("h4")
+  val h5 = Tag("h4")
+  val h6 = Tag("h4")
   val dl = Tag("dl")
   val dd = Tag("dd")
   val dt = Tag("dt")
@@ -78,6 +80,7 @@ object HTML:
   val nav = Tag("nav")
   val img = Tag("img")
   val ul = Tag("ul")
+  val ol = Tag("ol")
   val li = Tag("li")
   val code = Tag("code")
 
@@ -98,6 +101,11 @@ object HTML:
   val alt = Attr("alt")
   val value = Attr("value")
   val onclick=Attr("onclick")
+  val titleAttr =Attr("title")
 
   def raw(content: String): AppliedTag = new AppliedTag(content)
   def raw(content: StringBuilder): AppliedTag = content
+
+  def text(content: String) = content.escapeReservedTokens
+
+  val hr = raw("<hr/>")
