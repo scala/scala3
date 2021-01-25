@@ -10,10 +10,6 @@ trait UU {
   type UX
   val u: UX
   val x: this.type & { type UX = Int }
-  val x1: this.type { type UX = Int }
-  val x2: this.type with { type UX = Int }
-  val x3: this.type with
-    type UX = Int
   val y: Int = x.u
   val z: x.UX = y
 }
