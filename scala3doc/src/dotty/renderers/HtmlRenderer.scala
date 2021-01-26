@@ -139,7 +139,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       val isSelected = nav.link.dri == pageLink.dri
       def linkHtml(exapnded: Boolean = false) =
         val attrs = if (isSelected) Seq(cls := "selected expanded") else Nil
-        a(href := pathToPage(nav.link.dri, pageLink.dri), attrs)(nav.link.name)
+        a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(nav.link.name)
 
       nav.children match
         case Nil => isSelected -> div(linkHtml())
