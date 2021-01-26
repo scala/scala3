@@ -269,9 +269,9 @@ ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerat
                     |  ‘for’ Enumerators (‘do’ Expr | ‘yield’ Expr)             ForDo(enums, expr)
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
-                    |  Guard
+                    |  Guard {Guard}
                     |  Pattern1 ‘=’ Expr                                        GenAlias(pat, expr)
-Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
+Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                              GenFrom(pat, expr)
 Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }                                Match(EmptyTree, cases)
