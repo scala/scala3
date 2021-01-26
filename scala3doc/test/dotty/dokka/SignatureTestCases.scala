@@ -8,7 +8,6 @@ class ObjectSignatures extends SignatureTest("objectSignatures", Seq("object"))
 
 class TraitSignatures extends SignatureTest("traitSignatures", Seq("trait"))
 
-
 // We do not support companion objects properly in tests
 class ClassSignatureTestSourceTest extends SignatureTest("classSignatureTestSource",
   SignatureTest.all diff Seq("val", "var", "object"))
