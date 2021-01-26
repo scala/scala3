@@ -153,8 +153,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Import extends ImportModule:
       def apply(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         withDefaultPos(tpd.Import(expr, selectors))
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         tpd.cpy.Import(original)(expr, selectors)
       def unapply(tree: Import): (Term, List[Selector]) =
         (tree.expr, tree.selectors)
