@@ -408,8 +408,8 @@ object ToExpr {
   /** Default implemetation of `ToExpr[H *: T]` */
   given TupleConsToExpr [H: Type: ToExpr, T <: Tuple: Type: ToExpr]: ToExpr[H *: T] with {
     def apply(tup: H *: T)(using Quotes): Expr[H *: T] =
-      val head = Expr(tup.head)
-      val tail = Expr(tup.tail)
+      val head = Expr[H](tup.head)
+      val tail = Expr[T](tup.tail)
       '{ $head *: $tail }
   }
 
