@@ -2030,6 +2030,15 @@ class Typer extends Namer
     val tparamss = paramss1.collect {
       case untpd.TypeDefs(tparams) => tparams
     }
+
+    // Register GADT constraint for class type parameters from outer to inner class definition. (Useful when nested classes exist.) But do not cross a function definition.
+    if sym.flags.is(Method) then
+      rhsCtx.setFreshGADTBounds
+      ctx.outer.outersIterator.takeWhile(!_.owner.is(Method))
+        .filter(ctx => ctx.owner.isClass && ctx.owner.typeParams.nonEmpty)
+        .toList.reverse
+        .map(ctx => rhsCtx.gadt.addToConstraint(ctx.owner.typeParams))
+
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
       val tparamSyms = tparamss.flatten.map(_.symbol)

@@ -235,8 +235,7 @@ object Inferencing {
       *     approx, see gadt-approximation-interaction.scala).
       */
     def apply(tp: Type): Type = tp.dealias match {
-      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)
-                                   && variance != 0
+      case tp @ TypeRef(qual, nme) if variance != 0
                                    && ctx.gadt.contains(tp.symbol)
                                    =>
         val sym = tp.symbol
