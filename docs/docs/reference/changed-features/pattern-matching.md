@@ -100,7 +100,7 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-object Even with
+object Even:
    def unapply(s: String): Boolean = s.size % 2 == 0
 
 "even" match
@@ -121,7 +121,7 @@ For example:
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class FirstChars(s: String) extends Product with
+class FirstChars(s: String) extends Product:
    def _1 = s.charAt(0)
    def _2 = s.charAt(1)
 
@@ -130,7 +130,7 @@ class FirstChars(s: String) extends Product with
    def productArity: Int = ???
    def productElement(n: Int): Any = ???
 
-object FirstChars with
+object FirstChars:
    def unapply(s: String): FirstChars = new FirstChars(s)
 
 "Hi!" match
@@ -147,11 +147,11 @@ object FirstChars with
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-class Nat(val x: Int) with
+class Nat(val x: Int):
    def get: Int = x
    def isEmpty = x < 0
 
-object Nat with
+object Nat:
    def unapply(x: Int): Nat = new Nat(x)
 
 5 match
@@ -167,7 +167,7 @@ object Nat with
 - Pattern-matching on exactly `N` patterns with types `P1, P2, ..., PN`
 
 ```Scala
-object ProdEmpty with
+object ProdEmpty:
    def _1: Int = ???
    def _2: String = ???
    def isEmpty = true
@@ -199,7 +199,7 @@ type X = {
 <!-- To be kept in sync with tests/new/patmat-spec.scala -->
 
 ```scala
-object CharList with
+object CharList:
    def unapplySeq(s: String): Option[Seq[Char]] = Some(s.toList)
 
 "example" match
@@ -221,7 +221,7 @@ object CharList with
 
 ```Scala
 class Foo(val name: String, val children: Int *)
-object Foo with
+object Foo:
    def unapplySeq(f: Foo): Option[(String, Seq[Int])] =
       Some((f.name, f.children))
 

@@ -1,7 +1,7 @@
-trait A with
+trait A:
   val x: Int
 
-trait Ctx with
+trait Ctx:
   type T
   val x: T
   val y: T

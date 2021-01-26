@@ -1,6 +1,6 @@
-enum Outer with
+enum Outer:
   case Foo
-object Outer with
+object Outer:
   trait Bar
   case class Baz(bar: Bar)
   case class Bam(bar: Bar = new Bar() {})

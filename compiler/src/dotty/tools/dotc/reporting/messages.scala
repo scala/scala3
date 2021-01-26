@@ -38,36 +38,36 @@ import transform.SymUtils._
   *  ```
   */
 
-  abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class SyntaxMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Syntax"
 
-  abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type Mismatch"
 
-  abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Naming"
 
-  abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class DeclarationMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Declaration"
 
   /** A simple not found message (either for idents, or member selection.
    *  Messages of this class are sometimes dropped in favor of other, more
    *  specific messages.
    */
-  abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class NotFoundMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Not Found"
     def name: Name
 
-  abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class PatternMatchMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Pattern Match"
 
-  abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class CyclicMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Cyclic"
 
-  abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId) with
+  abstract class ReferenceMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Reference"
 
   abstract class EmptyCatchOrFinallyBlock(tryBody: untpd.Tree, errNo: ErrorMessageID)(using Context)
@@ -242,7 +242,7 @@ import transform.SymUtils._
     // the idea is that if the bounds are also not-subtypes of each other to report
     // the type mismatch on the bounds instead of the original TypeParamRefs, since
     // these are usually easier to analyze.
-    object reported extends TypeMap with
+    object reported extends TypeMap:
       def setVariance(v: Int) = variance = v
       val constraint = mapCtx.typerState.constraint
       def apply(tp: Type): Type = tp match
@@ -1126,7 +1126,6 @@ import transform.SymUtils._
     def msg =
       val expectedText =
         if (Tokens.isIdentifier(expected)) "an identifier"
-        else if expected == Tokens.INDENT then "indented definitions"
         else Tokens.showToken(expected)
       em"""${expectedText} expected, but ${foundText} found"""
 
@@ -1190,7 +1189,7 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID) with
+  class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(UnreducibleApplicationID):
     def msg = em"unreducible application of higher-kinded type $tycon to wildcard arguments"
     def explain =
       em"""|An abstract type constructor cannot be applied to wildcard arguments.
@@ -1662,7 +1661,7 @@ import transform.SymUtils._
     def explain = "Method inlining prohibits calling superclass methods, as it may lead to confusion about which super is being called."
   }
 
-  class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID) with
+  class NotAPath(tp: Type, usage: String)(using Context) extends TypeMsg(NotAPathID):
     def msg = em"$tp is not a valid $usage, since it is not an immutable path"
     def explain =
       i"""An immutable path is
@@ -1852,7 +1851,7 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID) with
+  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
     private def where: String =
       if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
         i" in ${conflicting.associatedFile}"

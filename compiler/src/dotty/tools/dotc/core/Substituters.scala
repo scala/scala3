@@ -5,7 +5,7 @@ import Types._, Symbols._, Contexts._, Decorators._
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
  */
-object Substituters with
+object Substituters:
 
   final def subst(tp: Type, from: BindingType, to: BindingType, theMap: SubstBindingMap)(using Context): Type =
     tp match {

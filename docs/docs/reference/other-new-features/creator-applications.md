@@ -9,7 +9,7 @@ function application, without needing to write `new`.
 Scala 3 generalizes this scheme to all concrete classes. Example:
 
 ```scala
-class StringBuilder(s: String) with
+class StringBuilder(s: String):
    def this() = this("")
 
 StringBuilder("abc")  // same as new StringBuilder("abc")
@@ -20,7 +20,7 @@ This works since a companion object with two `apply` methods
 is generated together with the class. The object looks like this:
 
 ```scala
-object StringBuilder with
+object StringBuilder:
    inline def apply(s: String): StringBuilder = new StringBuilder(s)
    inline def apply(): StringBuilder = new StringBuilder()
 ```

@@ -78,5 +78,5 @@ class LiftTry extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     }
     else tree
 }
-object LiftTry with
+object LiftTry:
   val name = "liftTry"

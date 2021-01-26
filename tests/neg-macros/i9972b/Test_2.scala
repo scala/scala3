@@ -1,5 +1,5 @@
 
 class T[A]
 
-object T with
+object T:
   implicit inline def derived[A]: T[A] = new T[A]

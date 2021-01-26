@@ -1,6 +1,6 @@
 import scala.reflect._
 
-object Test with
+object Test:
   def main(args: Array[String]): Unit =
     assert(f[String])
     assert(!f[Int])

@@ -7,7 +7,7 @@ import SymDenotations.LazyType, Names.Name, StdNames.nme
 import ast.untpd
 
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
-object ContextOps with
+object ContextOps:
 
   extension (ctx: Context)
 

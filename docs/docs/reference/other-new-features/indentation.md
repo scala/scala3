@@ -58,12 +58,15 @@ There are two rules:
 
     An indentation region can start
 
+     - after the leading parameters of an `extension`, or
+     - after a `with` in a given instance, or
+     - after a ": at end of line" token (see below)
      - after one of the following tokens:
+
        ```
-       =  =>  ?=>  <-  catch  do  else  finally  for  if
-       match  return  then  throw  try  with  while  yield
+       =  =>  ?=>  <-  catch  do  else  finally  for
+       if  match  return  then  throw  try  while  yield
        ```
-     - after the leading parameters of an `extension`.
 
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
@@ -71,7 +74,7 @@ There are two rules:
  2. An `<outdent>` is inserted at a line break, if
 
     - the first token on the next line has an indentation width strictly less
-      than the current indentation width, and
+        than the current indentation width, and
     - the last token on the previous line is not one of the following tokens
       which indicate that the previous statement continues:
       ```
@@ -88,7 +91,7 @@ There are two rules:
 
      - An `<outdent>` is also inserted if the next token following a statement sequence starting with an `<indent>` closes an indentation region, i.e. is one of `then`, `else`, `do`, `catch`, `finally`, `yield`, `}`, `)`, `]` or `case`.
 
-     - An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
+    An `<outdent>` is finally inserted in front of a comma that follows a statement sequence starting with an `<indent>` if the indented region is itself enclosed in parentheses
 
 It is an error if the indentation width of the token following an `<outdent>` does not match the indentation of some previous line in the enclosing indentation region. For instance, the following would be rejected.
 
@@ -116,16 +119,16 @@ Analogous rules apply for enum bodies and local packages containing nested defin
 With these new rules, the following constructs are all valid:
 
 ```scala
-trait A with
+trait A:
    def f: Int
 
-class C(x: Int) extends A with
+class C(x: Int) extends A:
    def f = x
 
-object O with
+object O:
    def f = 3
 
-enum Color with
+enum Color:
    case Red, Green, Blue
 
 new A:
@@ -255,7 +258,7 @@ For instance, the following end markers are all legal:
 ```scala
 package p1.p2:
 
-   abstract class C() with
+   abstract class C():
 
       def this(x: Int) =
          this()
@@ -284,7 +287,7 @@ package p1.p2:
       def f: String
    end C
 
-   object C with
+   object C:
       given C =
          new C:
             def f = "!"
@@ -326,7 +329,7 @@ TopStat           ::=  ... | EndMarker
 Here is a (somewhat meta-circular) example of code using indentation. It provides a concrete representation of indentation widths as defined above together with efficient operations for constructing and comparing indentation widths.
 
 ```scala
-enum IndentWidth with
+enum IndentWidth:
    case Run(ch: Char, n: Int)
    case Conc(l: IndentWidth, r: Run)
 
@@ -355,7 +358,7 @@ enum IndentWidth with
       case Conc(l, r) =>
          s"$l, $r"
 
-object IndentWidth with
+object IndentWidth:
    private inline val MaxCached = 40
 
    private val spaces = IArray.tabulate(MaxCached + 1)(new Run(' ', _))

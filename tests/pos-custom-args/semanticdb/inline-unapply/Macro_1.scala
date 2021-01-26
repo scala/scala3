@@ -1,6 +1,6 @@
 import scala.quoted._
 
-object Succ with
+object Succ:
 
   inline def unapply(n: Int): Option[Int] = ${ impl('n) }
 

@@ -6,7 +6,7 @@ import config.Config
 import Decorators._
 import util.{HashSet, Stats}
 
-class Uniques extends HashSet[Type](Config.initialUniquesCapacity) with
+class Uniques extends HashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
   override def isEqual(x: Type, y: Type) = x.eql(y)
 
@@ -15,7 +15,7 @@ class Uniques extends HashSet[Type](Config.initialUniquesCapacity) with
  *  All sets offer a `enterIfNew` method which checks whether a type
  *  with the given parts exists already and creates a new one if not.
  */
-object Uniques with
+object Uniques:
 
   private inline def recordCaching(tp: Type): Unit = recordCaching(tp.hash, tp.getClass)
   private inline def recordCaching(h: Int, clazz: Class[?]): Unit =
@@ -32,7 +32,7 @@ object Uniques with
     if tp.hash == NotCached then tp
     else ctx.uniques.put(tp).asInstanceOf[T]
 
-  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity * 4) with Hashable with
+  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity * 4) with Hashable:
     override def hash(x: NamedType): Int = x.hash
 
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(using Context): NamedType =
@@ -53,7 +53,7 @@ object Uniques with
         addEntryAt(idx, newType)
   end NamedTypeUniques
 
-  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable with
+  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
     override def hash(x: AppliedType): Int = x.hash
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType =

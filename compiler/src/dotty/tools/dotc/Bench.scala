@@ -11,7 +11,7 @@ import scala.annotation.internal.sharable
  *  number of compilers and run each (sequentially) a given number of times
  *  on the same sources.
  */
-object Bench extends Driver with
+object Bench extends Driver:
 
   @sharable private var numRuns = 1
 

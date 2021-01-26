@@ -67,12 +67,12 @@ the aim is to construct tables like this:
 The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
-  class Table with
+  class Table:
      val rows = new ArrayBuffer[Row]
      def add(r: Row): Unit = rows += r
      override def toString = rows.mkString("Table(", ", ", ")")
 
-  class Row with
+  class Row:
      val cells = new ArrayBuffer[Cell]
      def add(c: Cell): Unit = cells += c
      override def toString = cells.mkString("Row(", ", ", ")")
@@ -116,7 +116,7 @@ With that setup, the table construction code above compiles and expands to:
 As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
-object PostConditions with
+object PostConditions:
    opaque type WrappedResult[T] = T
 
    def result[T](using r: WrappedResult[T]): T = r

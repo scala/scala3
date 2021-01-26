@@ -6,7 +6,7 @@ title: "Implicit Conversions"
 Implicit conversions are defined by given instances of the `scala.Conversion` class.
 This class is defined in package `scala` as follows:
 ```scala
-abstract class Conversion[-T, +U] extends (T => U) with
+abstract class Conversion[-T, +U] extends (T => U):
    def apply (x: T): U
 ```
 For example, here is an implicit conversion from `String` to `Token`:
@@ -43,15 +43,15 @@ conversion from `Int` to `java.lang.Integer` can be defined as follows:
 
 2. The "magnet" pattern is sometimes used to express many variants of a method. Instead of defining overloaded versions of the method, one can also let the method take one or more arguments of specially defined "magnet" types, into which various argument types can be converted. Example:
    ```scala
-   object Completions with
+   object Completions:
 
       // The argument "magnet" type
-      enum CompletionArg with
+      enum CompletionArg:
          case Error(s: String)
          case Response(f: Future[HttpResponse])
          case Status(code: Future[StatusCode])
 
-      object CompletionArg with
+      object CompletionArg:
 
        // conversions defining the possible arguments to pass to `complete`
        // these always come with CompletionArg

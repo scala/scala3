@@ -2,5 +2,5 @@ package inlineconsume
 
 import inlinedefs.FakePredef.assert
 
-class Foo with
+class Foo:
   def test = assert(3 > 2)

@@ -28,7 +28,7 @@
         }
       }
  */
-class Test with
+class Test:
   given Int = 0
 
   def f(): Int ?=> Boolean = true : (Int ?=> Boolean)

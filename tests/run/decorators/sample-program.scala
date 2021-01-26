@@ -1,4 +1,4 @@
-object myProgram with
+object myProgram:
 
   /** Adds two numbers
    *  @param  num   the first number
@@ -15,7 +15,7 @@ end myProgram
 
 //  Compiler generated code:
 
-object add with
+object add:
   private val $main = new main()
   private val $main$wrapper = $main.wrapper(
     "MyProgram.add",
@@ -29,7 +29,7 @@ object add with
     cll.run(myProgram.add(arg1(), arg2()))
 end add
 
-object addAll with
+object addAll:
   private val $main = new main()
   private val $split = new split()
   private val $logged = new logged()

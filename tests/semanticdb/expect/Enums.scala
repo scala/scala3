@@ -1,17 +1,17 @@
-object Enums with
+object Enums:
   import <:<._
 
-  enum Colour with
+  enum Colour:
     import Colour.Red
     case Red, Green, Blue
 
-  enum Directions with
+  enum Directions:
     case North, East, South, West
 
-  enum Suits derives CanEqual with
+  enum Suits derives CanEqual:
     case Hearts, Spades, Clubs, Diamonds
 
-  object Suits with
+  object Suits:
     extension (suit: Suits) def isRed: Boolean =
       suit == Hearts || suit == Diamonds
 
@@ -19,7 +19,7 @@ object Enums with
       case Spades | Clubs => true
       case _              => false
 
-  enum WeekDays with
+  enum WeekDays:
     case Monday
     case Tuesday
     case Wednesday
@@ -28,25 +28,25 @@ object Enums with
     case Saturday
     case Sunday
 
-  enum Coin(value: Int) with
+  enum Coin(value: Int):
     case Penny    extends Coin(1)
     case Nickel   extends Coin(5)
     case Dime     extends Coin(10)
     case Quarter  extends Coin(25)
     case Dollar   extends Coin(100)
 
-  enum Maybe[+A] with
+  enum Maybe[+A]:
     case Just(value: A)
     case None
 
-  enum Tag[A] with
+  enum Tag[A]:
     case IntTag extends Tag[Int]
     case BooleanTag extends Tag[Boolean]
 
-  enum <:<[-A, B] with
+  enum <:<[-A, B]:
     case Refl[C]() extends (C <:< C)
 
-  object <:<  with
+  object <:< :
     given [T]: (T <:< T) = Refl()
 
   extension [A, B](opt: Option[A]) def unwrap(using ev: A <:< Option[B]): Option[B] = ev match
@@ -54,7 +54,7 @@ object Enums with
 
   val some1 = Some(Some(1)).unwrap
 
-  enum Planet(mass: Double, radius: Double) extends Enum[Planet] with
+  enum Planet(mass: Double, radius: Double) extends Enum[Planet]:
     private final val G = 6.67300E-11
     def surfaceGravity = G * mass / (radius * radius)
     def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity

@@ -4,7 +4,7 @@ trait S
 case object a extends S, TA, TB
 case object b extends S, TA, TB
 
-object Test with
+object Test:
 
   def choose0[X](x: X, y: X): X = x
   def choose1[X <: TA](x: X, y: X): X = x

@@ -1023,7 +1023,7 @@ object RefChecks {
   /** Verify that references in the user-defined `@implicitNotFound` message are valid.
    *  (i.e. they refer to a type variable that really occurs in the signature of the annotated symbol.)
    */
-  private object checkImplicitNotFoundAnnotation with
+  private object checkImplicitNotFoundAnnotation:
     /** Warns if the class or trait has an @implicitNotFound annotation
      *  with invalid type variable references.
      */
@@ -1040,7 +1040,7 @@ object RefChecks {
         if param.isTerm
       do checkReferences(param.denot)
 
-    private object PositionedStringLiteralArgument with
+    private object PositionedStringLiteralArgument:
       def unapply(tree: Tree): Option[(String, Span)] = tree match {
         case l@Literal(Constant(s: String)) => Some((s, l.span))
         case NamedArg(_, l@Literal(Constant(s: String))) => Some((s, l.span))

@@ -1,7 +1,7 @@
 package scala.compiletime
 package ops
 
-object int with
+object int:
   /** Addition of two `Int` singleton types.
    *  ```scala
    *  val sum: 2 + 2 = 4

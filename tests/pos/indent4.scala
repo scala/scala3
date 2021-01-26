@@ -1,4 +1,4 @@
-object testindent with
+object testindent:
 
   if (true)
     val x = 1

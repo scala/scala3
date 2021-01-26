@@ -54,7 +54,7 @@ import annotation.implicitNotFound
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait CanEqual[-L, -R]
 
-object CanEqual with
+object CanEqual:
    object derived extends CanEqual[Any, Any]
 ```
 
@@ -172,7 +172,7 @@ we are dealing with a refinement of pre-existing, universal equality. It is best
 
 Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
-class List[+T] with
+class List[+T]:
    ...
    def contains(x: Any): Boolean
 ```

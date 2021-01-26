@@ -16,5 +16,5 @@ object Test {
     println(showParamSyms(new Test(1, 2)))
 }
 
-class Test[T](a: T) with
+class Test[T](a: T):
     def this(a: Int, b: T) = this(b)

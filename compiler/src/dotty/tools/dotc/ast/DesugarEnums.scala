@@ -20,7 +20,7 @@ object DesugarEnums {
     val Simple, Object, Class: Value = Value
   }
 
-  final case class EnumConstraints(minKind: CaseKind.Value, maxKind: CaseKind.Value, enumCases: List[(Int, RefTree)]) with
+  final case class EnumConstraints(minKind: CaseKind.Value, maxKind: CaseKind.Value, enumCases: List[(Int, RefTree)]):
     require(minKind <= maxKind && !(cached && enumCases.isEmpty))
     def requiresCreator = minKind == CaseKind.Simple
     def isEnumeration   = maxKind < CaseKind.Class

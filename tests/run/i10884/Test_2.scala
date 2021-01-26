@@ -1,4 +1,4 @@
-object Exporter with
+object Exporter:
   export JavaExporter_1._
 
 import Exporter._

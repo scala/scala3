@@ -12,7 +12,7 @@ import util.Spans.offsetToInt
 import printing.Highlighting._
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 
-object TastyPrinter with
+object TastyPrinter:
   def show(bytes: Array[Byte])(using Context): String =
     val printer =
       if ctx.settings.color.value == "never" then new TastyPrinter(bytes)

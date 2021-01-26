@@ -71,7 +71,7 @@ object Formatting {
    *  like concatenation, stripMargin etc on the values returned by em"...", and in the current error
    *  message composition methods, this is crucial.
    */
-  class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc) with
+  class ErrorMessageFormatter(sc: StringContext) extends StringFormatter(sc):
     override protected def showArg(arg: Any)(using Context): String =
       wrapNonSensical(arg, super.showArg(arg)(using errorMessageCtx))
 

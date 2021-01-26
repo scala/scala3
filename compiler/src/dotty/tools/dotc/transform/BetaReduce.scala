@@ -30,7 +30,7 @@ import ast.TreeTypeMap
  *  A typical use case is eliminating redundant closures for blackbox macros that
  *  return context functions. See i6375.scala.
  */
-class BetaReduce extends MiniPhase with
+class BetaReduce extends MiniPhase:
   import ast.tpd._
 
   def phaseName: String = "betaReduce"
@@ -44,7 +44,7 @@ class BetaReduce extends MiniPhase with
       app
 
 
-object BetaReduce with
+object BetaReduce:
   import ast.tpd._
 
   /** Beta-reduces a call to `fn` with arguments `argSyms` or returns `tree` */

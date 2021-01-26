@@ -6,11 +6,11 @@ title: "Opaque Type Aliases"
 Opaque types aliases provide type abstraction without any overhead. Example:
 
 ```scala
-object Logarithms with
+object Logarithms:
 
    opaque type Logarithm = Double
 
-   object Logarithm with
+   object Logarithm:
 
       // These are the two ways to lift to the Logarithm type
 
@@ -63,7 +63,7 @@ l / l2                  // error: `/` is not a member of Logarithm
 Opaque type aliases can also come with bounds. Example:
 
 ```scala
-object Access with
+object Access:
 
    opaque type Permissions = Int
    opaque type PermissionChoice = Int
@@ -110,7 +110,7 @@ it known outside the `Access` object that `Permission` is a subtype of the other
 two types.  Hence, the following usage scenario type-checks.
 
 ```scala
-object User with
+object User:
    import Access._
 
    case class Item(rights: Permissions)

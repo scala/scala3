@@ -1,9 +1,9 @@
-trait T with
+trait T:
   given x: Int
   given y(using Int): String
   given z[T](using T): Seq[T]
 
-object Test extends T, App with
+object Test extends T, App:
   given x: Int = 22
   override given y(using Int): String = summon[Int].toString
   given z[T](using T): Seq[T] with

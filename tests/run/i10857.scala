@@ -1,6 +1,6 @@
-object Module with
+object Module:
 
-  enum Foo with
+  enum Foo:
     case Value
     case Parameterised(i: Int)
 

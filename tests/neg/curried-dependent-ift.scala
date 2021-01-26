@@ -1,9 +1,9 @@
-trait Ctx1 with
+trait Ctx1:
   type T
   val x: T
   val y: T
 
-trait Ctx2 with
+trait Ctx2:
   type T
   val x: T
   val y: T

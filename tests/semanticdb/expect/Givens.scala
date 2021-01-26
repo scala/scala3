@@ -1,7 +1,7 @@
 package a
 package b
 
-object Givens with
+object Givens:
 
   extension [A](any: A)
     def sayHello = s"Hello, I am $any"
@@ -14,7 +14,7 @@ object Givens with
   val goodbye1 = 1.sayGoodbye
   val soLong1 = 1.saySoLong
 
-  trait Monoid[A] with
+  trait Monoid[A]:
     def empty: A
     extension (x: A) def combine(y: A): A
 

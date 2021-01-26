@@ -24,7 +24,7 @@ import reporting.TestingReporter
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
 
-object TypeOps with
+object TypeOps:
 
   @sharable var track: Boolean = false // for debugging
 

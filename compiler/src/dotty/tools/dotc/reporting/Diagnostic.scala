@@ -9,7 +9,7 @@ import interfaces.Diagnostic.{ERROR, INFO, WARNING}
 
 import java.util.Optional
 
-object Diagnostic with
+object Diagnostic:
 
   def shouldExplain(dia: Diagnostic)(using Context): Boolean =
     dia.msg.explanation.nonEmpty && ctx.settings.explain.value

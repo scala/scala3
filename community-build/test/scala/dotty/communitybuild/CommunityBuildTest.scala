@@ -7,7 +7,7 @@ import org.junit.{Ignore, Test}
 import org.junit.Assert.{assertEquals, fail}
 import org.junit.experimental.categories.Category
 
-abstract class CommunityBuildTest with
+abstract class CommunityBuildTest:
   given CommunityBuildTest = this
 
   /** Depending on the mode of operation, either
@@ -81,7 +81,7 @@ abstract class CommunityBuildTest with
 end CommunityBuildTest
 
 @Category(Array(classOf[TestCategory]))
-class CommunityBuildTestA extends CommunityBuildTest with
+class CommunityBuildTestA extends CommunityBuildTest:
   @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
@@ -119,7 +119,7 @@ class CommunityBuildTestA extends CommunityBuildTest with
 end CommunityBuildTestA
 
 @Category(Array(classOf[TestCategory]))
-class CommunityBuildTestB extends CommunityBuildTest with
+class CommunityBuildTestB extends CommunityBuildTest:
   @Test def algebra = projects.algebra.run()
   @Test def betterfiles = projects.betterfiles.run()
   @Test def cats = projects.cats.run()

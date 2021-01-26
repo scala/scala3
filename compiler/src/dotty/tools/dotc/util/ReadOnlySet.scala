@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 /** A class for the readonly part of mutable sets.
  */
-abstract class ReadOnlySet[T] with
+abstract class ReadOnlySet[T]:
 
   /** The entry in the set such that `isEqual(x, entry)`, or else `null`. */
   def lookup(x: T): T | Null
@@ -19,6 +19,6 @@ abstract class ReadOnlySet[T] with
 
   def isEmpty = size == 0
 
-object ReadOnlySet with
+object ReadOnlySet:
   def empty[T]: ReadOnlySet[T] = HashSet[T](4)
 

@@ -1,4 +1,4 @@
-object Foo with
+object Foo:
   def unapply(n: Int)(using x: DummyImplicit)(using y: Int): Option[Int] = ???
 
 def test =

@@ -1,6 +1,6 @@
 package scala.quoted
 
-trait ExprMap with
+trait ExprMap:
 
   /** Map an expression `e` with a type `T` */
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]

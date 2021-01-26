@@ -6,12 +6,12 @@ title: "Importing Givens"
 A special form of import wildcard selector is used to import given instances. Example:
 
 ```scala
-object A with
+object A:
    class TC
    given tc: TC = ???
    def f(using TC) = ???
 
-object B with
+object B:
    import A._
    import A.given
    ...
@@ -22,7 +22,7 @@ of `A` _except_ the given instance `tc`. Conversely, the second import `import A
 The two import clauses can also be merged into one:
 
 ```scala
-object B with
+object B:
    import A.{given, _}
    ...
 ```
@@ -58,7 +58,7 @@ Importing all given instances of a parameterized type is expressed by wildcard a
 For instance, assuming the object
 
 ```scala
-object Instances with
+object Instances:
    given intOrd: Ordering[Int] = ...
    given listOrd[T: Ordering]: Ordering[List[T]] = ...
    given ec: ExecutionContext = ...

@@ -1,14 +1,14 @@
-trait Magic[F] with
+trait Magic[F]:
   extension (x: Int) def read: F
 
-object Magic with
+object Magic:
   given Magic[String] with
     extension(x: Int) def read: String =
       println("In string")
       s"$x"
 
 opaque type Foo = String
-object Foo with
+object Foo:
   import Magic.given
   def apply(s: String): Foo = s
 

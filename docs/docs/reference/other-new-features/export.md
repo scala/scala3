@@ -9,16 +9,16 @@ An export clause defines aliases for selected members of an object. Example:
 class BitMap
 class InkJet
 
-class Printer with
+class Printer:
    type PrinterType
    def print(bits: BitMap): Unit = ???
    def status: List[String] = ???
 
-class Scanner with
+class Scanner:
    def scan(): BitMap = ???
    def status: List[String] = ???
 
-class Copier with
+class Copier:
    private val printUnit = new Printer { type PrinterType = InkJet }
    private val scanUnit = new Scanner
 

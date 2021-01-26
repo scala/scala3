@@ -1,6 +1,6 @@
 
-trait QC with
-  object tasty with
+trait QC:
+  object tasty:
     type Tree
     extension (tree: Tree)
       def pos: Tree = ???

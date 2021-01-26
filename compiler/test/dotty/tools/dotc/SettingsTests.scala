@@ -41,7 +41,7 @@ class SettingsTests {
     assertEquals(1, reporter.errorCount)
 
   @Test def acceptUnconstrained: Unit =
-    object Settings extends SettingGroup with
+    object Settings extends SettingGroup:
       val foo = StringSetting("-foo", "foo", "Foo", "a")
       val bar = IntSetting("-bar", "Bar", 0)
 
@@ -54,7 +54,7 @@ class SettingsTests {
     }
 
   @Test def validateChoices: Unit =
-    object Settings extends SettingGroup with
+    object Settings extends SettingGroup:
       val foo = ChoiceSetting("-foo", "foo", "Foo", List("a", "b"), "a")
       val bar = IntChoiceSetting("-bar", "Bar", List(0, 1, 2), 0)
       val baz = IntChoiceSetting("-baz", "Baz", 0 to 10, 10)

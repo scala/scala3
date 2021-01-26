@@ -4,7 +4,7 @@ package runtime
 import scala.annotation.{Annotation, compileTimeOnly}
 
 @compileTimeOnly("Illegal reference to `scala.quoted.runtime.Expr`")
-object Expr with
+object Expr:
 
   /** A term quote is desugared by the compiler into a call to this method
    *

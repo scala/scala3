@@ -155,7 +155,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   def WildcardTypeBoundsTree()(using src: SourceFile): TypeBoundsTree = TypeBoundsTree(EmptyTree, EmptyTree, EmptyTree)
-  object WildcardTypeBoundsTree with
+  object WildcardTypeBoundsTree:
     def unapply(tree: untpd.Tree): Boolean = tree match
       case TypeBoundsTree(EmptyTree, EmptyTree, _) => true
       case _ => false

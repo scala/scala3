@@ -1,4 +1,4 @@
-object Test with
+object Test:
   val x: Int = 0
   val y: Int | Null = x // during erasure, x is boxed here, and Int | Null becomes Object
   val z0: Int = identity(y) // error
@@ -8,5 +8,5 @@ object Test with
   class StrWrapper(x: String) extends AnyVal
   val z3: StrWrapper = null  // error
   val z4: O.T = null // error
-object O with
+object O:
   opaque type T = String

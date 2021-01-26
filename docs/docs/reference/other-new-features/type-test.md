@@ -19,7 +19,7 @@ The second case is when an extractor takes an argument that is not a subtype of 
 (x: X) match
    case y @ Y(n) =>
 
-object Y with
+object Y:
    def unapply(x: Y): Some[Int] = ...
 ```
 
@@ -115,7 +115,7 @@ Given the following abstract definition of Peano numbers that provides two given
 ```scala
 import scala.reflect._
 
-trait Peano with
+trait Peano:
    type Nat
    type Zero <: Nat
    type Succ <: Nat
@@ -125,11 +125,11 @@ trait Peano with
    val Zero: Zero
 
    val Succ: SuccExtractor
-   trait SuccExtractor with
+   trait SuccExtractor:
       def apply(nat: Nat): Succ
       def unapply(nat: Succ): Option[Nat]
 
-   given typeTestOfZero: TypeTest[Nat, Zero]
+   given typeTestOfZero: TypeTest[Nat, Zero] 
    given typeTestOfSucc: TypeTest[Nat, Succ]
 ```
 

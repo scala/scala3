@@ -1,4 +1,4 @@
-object ExtMethods with
+object ExtMethods:
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -44,7 +44,7 @@ object ExtMethods with
       val limit = smallest(n).max
       xs.zipWithIndex.collect { case (x, i) if x <= limit => i }
 
-  trait IntOps with
+  trait IntOps:
     extension (i: Int) def isZero: Boolean = i == 0
 
     extension (i: Int) def safeMod(x: Int): Option[Int] =
@@ -53,13 +53,13 @@ object ExtMethods with
       else Some(i % x)
   end IntOps
 
-  object IntOpsEx extends IntOps with
+  object IntOpsEx extends IntOps:
     extension (i: Int) def safeDiv(x: Int): Option[Int] =
       // extension method brought into scope via inheritance from IntOps
       if x.isZero then None
       else Some(i / x)
 
-  trait SafeDiv with
+  trait SafeDiv:
     import IntOpsEx._ // brings safeDiv and safeMod into scope
 
     extension (i: Int) def divide(d: Int) : Option[(Int, Int)] =
@@ -73,19 +73,19 @@ object ExtMethods with
     given ops1: IntOps with {} // brings safeMod into scope
     1.safeMod(2)
 
-  class Lst[T](xs: T*) with
+  class Lst[T](xs: T*):
     private val elems = xs.toList
     def foldLeft[U](x: U)(op: (U, T) => U): U = elems.foldLeft(x)(op)
     def ++ (other: Lst[T]): Lst[T] = Lst(elems ++ other.elems: _*)
 
-  trait Ord[T] with
+  trait Ord[T]:
     extension (x: T) def less (y: T): Boolean
-  object Ord with
+  object Ord:
     given Ord[Int] with
       extension (x: Int) def less (y: Int): Boolean = x < y
   end Ord
 
-  object Lst with
+  object Lst:
 
     extension [T](xs: Lst[Lst[T]])
       def flatten: Lst[T] = xs.foldLeft(Lst())(_ ++ _)
@@ -110,7 +110,7 @@ object ExtMethods with
       if n < s.length && s(n) != ch then position(ch, n + 1)
       else n
 
-  object DoubleOps with
+  object DoubleOps:
     extension (x: Double) def ** (exponent: Int): Double =
       require(exponent > 0)
       if exponent == 0 then 1 else x * (x ** (exponent - 1))

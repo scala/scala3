@@ -1,7 +1,7 @@
 import annotation.StaticAnnotation
 import collection.mutable
 
-trait MainAnnotation extends StaticAnnotation with
+trait MainAnnotation extends StaticAnnotation:
 
   type ArgumentParser[T]
 
@@ -18,7 +18,7 @@ end MainAnnotation
 
 //Sample main class, can be freely implemented:
 
-class main(progName: String, args: Array[String], docComment: String) extends MainAnnotation with
+class main(progName: String, args: Array[String], docComment: String) extends MainAnnotation:
 
   def this() = this("", Array(), "")
 
@@ -106,7 +106,7 @@ end main
 
 // Sample main method
 
-object myProgram with
+object myProgram:
 
   /** Adds two numbers */
   @main def add(num: Int, inc: Int = 1) =
@@ -116,7 +116,7 @@ end myProgram
 
 //  Compiler generated code:
 
-object add with
+object add:
   def main(args: Array[String]) =
     val cmd = new main("add", args, "Adds two numbers")
     val arg1 = cmd.getArg[Int]("num", summon[cmd.ArgumentParser[Int]])

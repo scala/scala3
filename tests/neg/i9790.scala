@@ -1,4 +1,4 @@
-object A with
+object A:
    def fn: Unit =
     if true then
   println(1)

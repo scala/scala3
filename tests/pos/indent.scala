@@ -1,4 +1,4 @@
-object Test with
+object Test:
 
   locally {
     var x = 0
@@ -82,7 +82,8 @@ object Test with
     x < 10
   do ()
 
-class Test2 with self: Test2 =>
+class Test2:
+  self =>
   def foo(x: Int) =
     if x < 0 then throw
       val ex = new AssertionError()
@@ -96,17 +97,15 @@ class Test2 with self: Test2 =>
   end x
 end Test2
 
-class Test3 with
-  self =>
+class Test3:
+ self =>
   def foo = 1
-
-class Test4 with { val x = 5 }
 
 import collection.mutable.HashMap
 
-class Coder(words: List[String]) with
+class Coder(words: List[String]):
 
-  class Foo with
+  class Foo:
     println()
   end Foo
 
@@ -147,5 +146,5 @@ class Coder(words: List[String]) with
       }
 end Coder
 
-object Test22 with
+object Test22:
   def foo: Int = 22

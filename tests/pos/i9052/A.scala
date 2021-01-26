@@ -1,4 +1,4 @@
-object impl with
+object impl:
   case object UNone
 
 import impl._

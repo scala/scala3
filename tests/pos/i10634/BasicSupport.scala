@@ -1,5 +1,5 @@
 // BasicSupport.scala
-trait BasicSupport with
+trait BasicSupport:
   self: Parser =>
 
   object SymOps extends SymOps[ctx.type](ctx)

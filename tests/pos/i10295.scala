@@ -1,6 +1,6 @@
-trait M with
+trait M:
   type X
-  object X with
+  object X:
     def foo(): X = ???
 
 inline def m(using m: M): m.type = m

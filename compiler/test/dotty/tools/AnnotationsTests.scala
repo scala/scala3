@@ -14,7 +14,7 @@ import dotc.core.Symbols._
 import java.io.File
 import java.nio.file._
 
-class AnnotationsTest with
+class AnnotationsTest:
 
   @Test def annotTreeNotErased: Unit =
     withJavaCompiled(

@@ -1,7 +1,7 @@
-trait Show[A] with
+trait Show[A]:
   def show(a: A): String = a.toString
 
-object Prefix with
+object Prefix:
   type AbstractType
   type UpperBoundedType <: String
   type FullyBoundedType >: String <: String

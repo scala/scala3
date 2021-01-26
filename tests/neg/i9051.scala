@@ -1,11 +1,11 @@
 package zio:
 
   class ZRef
-  object ZRef with
+  object ZRef:
 
-    private[zio] implicit class ZRefSyntax(private val self: ZRef) with
+    private[zio] implicit class ZRefSyntax(private val self: ZRef):
       def unsafeUpdate: Boolean = true
 
-object Main with
+object Main:
   val ref = new zio.ZRef
   println(ref.unsafeUpdate)  // error

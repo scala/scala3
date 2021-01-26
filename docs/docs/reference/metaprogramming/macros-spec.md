@@ -211,7 +211,7 @@ given AsFunction1[T, U]: Conversion[Expr[T => U], Expr[T] => Expr[U]] with
 ```
 This assumes an extractor
 ```scala
-object Lambda with
+object Lambda:
    def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
 ```
 Once we allow inspection of code via extractors, it’s tempting to also

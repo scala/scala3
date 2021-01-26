@@ -1,6 +1,6 @@
 package x
 
-trait Printer[T] with
+trait Printer[T]:
   def print(t:T):String
 
 extension[T](t:T)(using Printer[T])

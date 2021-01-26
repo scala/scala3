@@ -9,10 +9,10 @@ title: Inline
 definition will be inlined at the point of use. Example:
 
 ```scala
-object Config with
+object Config:
    inline val logging = false
 
-object Logger with
+object Logger:
 
    private var indent = 0
 
@@ -143,11 +143,11 @@ Inline methods can override other non-inline methods. The rules are as follows:
 1. If an inline method `f` implements or overrides another, non-inline method, the inline method can also be invoked at runtime. For instance, consider the scenario:
 
     ```scala
-    abstract class A with
+    abstract class A:
        def f: Int
        def g: Int = f
 
-    class B extends A with
+    class B extends A:
        inline def f = 22
        override inline def g = f + 11
 
@@ -168,7 +168,7 @@ Inline methods can override other non-inline methods. The rules are as follows:
 3. Inline methods can also be abstract. An abstract inline method can be implemented only by other inline methods. It cannot be invoked directly:
 
     ```scala
-    abstract class A with
+    abstract class A:
        inline def f: Int
 
     object B extends A:
@@ -235,7 +235,7 @@ inline val four: 4 = 4
 It is also possible to have inline vals of types that do not have a syntax, such as `Short(4)`.
 
 ```scala
-trait InlineConstants with
+trait InlineConstants:
    inline val myShort: Short
 
 object Constants extends InlineConstants:
@@ -250,7 +250,7 @@ specialized to a more precise type upon expansion. Example:
 
 ```scala
 class A
-class B extends A with
+class B extends A:
    def m = true
 
 transparent inline def choose(b: Boolean): A =
@@ -535,7 +535,7 @@ not. We can create a set of implicit definitions like this:
 ```scala
 trait SetFor[T, S <: Set[T]]
 
-class LowPriority with
+class LowPriority:
    implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
 
 object SetsFor extends LowPriority:

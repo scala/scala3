@@ -7,7 +7,7 @@ import Contexts._
 import util.Property
 import Texts.Text
 
-abstract class MessageLimiter with
+abstract class MessageLimiter:
 
   protected def recurseLimit = 100
   protected var recurseCount: Int = 0
@@ -29,17 +29,17 @@ abstract class MessageLimiter with
 
 object MessageLimiter extends Property.Key[MessageLimiter]
 
-class DefaultMessageLimiter extends MessageLimiter with
+class DefaultMessageLimiter extends MessageLimiter:
   override def recursionLimitExceeded()(using Context): Unit =
     if ctx.debug then
       report.warning("Exceeded recursion depth attempting to print.")
       Thread.dumpStack()
 
-class SummarizeMessageLimiter(depth: Int) extends MessageLimiter with
+class SummarizeMessageLimiter(depth: Int) extends MessageLimiter:
   override val recurseLimit = recurseCount + depth
   override def recursionLimitExceeded()(using Context): Unit = ()
 
-class ErrorMessageLimiter extends MessageLimiter with
+class ErrorMessageLimiter extends MessageLimiter:
   private val initialRecurseLimit = 50
   private val sizeLimit = 10000
 

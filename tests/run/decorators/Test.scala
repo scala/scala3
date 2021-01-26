@@ -1,4 +1,4 @@
-object Test with
+object Test:
   def main(args: Array[String]) =
     def testAdd(args: String) =
       println(s"> java add $args")

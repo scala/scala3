@@ -3,10 +3,10 @@ layout: doc-page
 title: "Scala 3 Syntax Summary"
 ---
 
-The following description of Scala tokens uses literal characters `‘c’` when
+The following descriptions of Scala tokens uses literal characters `‘c’` when
 referring to the ASCII fragment `\u0000` – `\u007F`.
 
-_Unicode escapes_ are used to represent the [Unicode character](https://www.w3.org/International/articles/definitions-characters/) with the given
+_Unicode escapes_ are used to represent the Unicode character with the given
 hexadecimal code:
 
 ```ebnf
@@ -17,7 +17,6 @@ hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | 
 Informal descriptions are typeset as `“some comment”`.
 
 ### Lexical Syntax
-
 The lexical syntax of Scala is given by the following grammar in EBNF
 form.
 
@@ -29,9 +28,9 @@ letter           ::=  upper | lower “… and Unicode categories Lo, Lt, Nl”
 digit            ::=  ‘0’ | … | ‘9’
 paren            ::=  ‘(’ | ‘)’ | ‘[’ | ‘]’ | ‘{’ | ‘}’ | ‘'(’ | ‘'[’ | ‘'{’
 delim            ::=  ‘`’ | ‘'’ | ‘"’ | ‘.’ | ‘;’ | ‘,’
-opchar           ::=  “printableChar not matched by (whiteSpace | upper |
-                       lower | letter | digit | paren | delim | opchar |
-                       Unicode_Sm | Unicode_So)”
+opchar           ::=  “printableChar not matched by (whiteSpace | upper | lower |
+                       letter | digit | paren | delim | opchar | Unicode_Sm |
+                       Unicode_So)”
 printableChar    ::=  “all characters in [\u0020, \u007F] inclusive”
 charEscapeSeq    ::=  ‘\’ (‘b’ | ‘t’ | ‘n’ | ‘f’ | ‘r’ | ‘"’ | ‘'’ | ‘\’)
 
@@ -43,6 +42,7 @@ plainid          ::=  alphaid
                    |  op
 id               ::=  plainid
                    |  ‘`’ { charNoBackQuoteOrNewline | UnicodeEscape | charEscapeSeq } ‘`’
+                   |  INT                           // interpolation id, only for quasi-quotes
 idrest           ::=  {letter | digit} [‘_’ op]
 quoteId          ::=  ‘'’ alphaid
 
@@ -83,38 +83,29 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
 
 nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
+colonEol         ::=  ": at end of line that can start a template body"
 ```
-
-The lexical analyzer also inserts `indent` and `outdent` tokensthat represent regions of indented code [at certain points](../reference/other-new-features-indentation.html)
-
-In the context-free productions below we use the notation `<<< ts >>>`
-to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`.
-
 
 ## Keywords
 
 ### Regular keywords
 
 ```
-abstract  case      catch     class     def       do        else
-enum      export    extends   false     final     finally   for
-given     if        implicit  import    lazy      match     new
-null      object    override  package   private   protected return
-sealed    super     then      throw     trait     true      try
-type      val       var       while     with      yield
-:         =         <-        =>        <:        :>        #
-@         =>>       ?=>
+abstract  case      catch     class     def       do        else      enum
+export    extends   false     final     finally   for       given     if
+implicit  import    lazy      match     new       null      object    package
+private   protected override  return    super     sealed    then      throw
+trait     true      try       type      val       var       while     with
+yield
+:         =         <-        =>        <:        :>        #         @
+=>>       ?=>
 ```
 
 ### Soft keywords
 
 ```
-derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+derives  end  extension  inline  infix  opaque  open  transparent  using  |  *  +  -
 ```
-
-See the [separate section on soft keywords](./soft-modifier.md) for additional
-details on where a soft keyword is recognized.
-
 ## Context-free Syntax
 
 The context-free syntax of Scala is given by the following EBNF
@@ -156,9 +147,9 @@ FunArgTypes       ::=  InfixType
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
-MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
+MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
 InfixType         ::=  RefinedType {id [nl] RefinedType}                        InfixOp(t1, op, t2)
-RefinedType       ::=  WithType {[nl | ‘with’] Refinement}                      RefinedTypeTree(t, ds)
+RefinedType       ::=  WithType {[nl] Refinement}                               RefinedTypeTree(t, ds)
 WithType          ::=  AnnotType {‘with’ AnnotType}                             (deprecated)
 AnnotType         ::=  SimpleType {Annotation}                                  Annotated(t, annot)
 
@@ -182,7 +173,7 @@ FunArgType        ::=  Type
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]                                               PostfixOp(t, "*")
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
-Refinement        ::=  <<< [RefineDcl] {semi [RefineDcl]} >>>                   ds
+Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
 TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
@@ -218,7 +209,7 @@ PostfixExpr       ::=  InfixExpr [id]                                           
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
                     |  InfixExpr MatchClause
-MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
+MatchClause       ::=  ‘match’ ‘{’ CaseClauses ‘}’                              Match(expr, cases)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
 SimpleExpr        ::=  SimpleRef
                     |  Literal
@@ -227,8 +218,9 @@ SimpleExpr        ::=  SimpleRef
                     |  ‘$’ ‘{’ Block ‘}’
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
-                    |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]        New(constr | templ)
-                    |  ‘new’ TemplateBody
+                    |  ‘new’ ConstrApp {‘with’ ConstrApp}                       New(constr | templ)
+                       [[colonEol] TemplateBody
+                    |  ‘new’ [colonEol] TemplateBody
                     |  ‘(’ ExprsInParens ‘)’                                    Parens(exprs)
                     |  SimpleExpr ‘.’ id                                        Select(expr, id)
                     |  SimpleExpr ‘.’ MatchClause
@@ -245,7 +237,7 @@ ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’              
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’      exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
-BlockExpr         ::=  <<< (CaseClauses | Block) >>>
+BlockExpr         ::=  ‘{’ (CaseClauses | Block) ‘}’
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
@@ -364,6 +356,7 @@ EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | �
 RefineDcl         ::=  ‘val’ ValDcl
                     |  ‘def’ DefDcl
                     |  ‘type’ {nl} TypeDcl
+                    |  INT
 Dcl               ::=  RefineDcl
                     |  ‘var’ VarDcl
 ValDcl            ::=  ids ‘:’ Type                                             PatDef(_, ids, tpe, EmptyTree)
@@ -379,7 +372,7 @@ Def               ::=  ‘val’ PatDef
                     |  ‘type’ {nl} TypeDcl
                     |  TmplDef
 PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
-                    |  Pattern2 [‘:’ Type] ‘=’ Expr                             PatDef(_, pats, tpe?, expr)
+                    |  Pattern2 [‘:’ Type] ‘=’ Expr                PatDef(_, pats, tpe?, expr)
 VarDef            ::=  PatDef
                     |  ids ‘:’ Type ‘=’ ‘_’
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
@@ -393,24 +386,23 @@ ClassDef          ::=  id ClassConstr [Template]                                
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses        with DefDef(_, <init>, Nil, vparamss, EmptyTree, EmptyTree) as first stat
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]                                            ModuleDef(mods, name, template)  // no constructor
-EnumDef           ::=  id ClassConstr InheritClauses EnumBody
-GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | ConstrApps TemplateBody)
+EnumDef           ::=  id ClassConstr InheritClauses [colonEol] EnumBody
+GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause}] ExtMethods
-ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod >>>
+ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
-Template          ::=  InheritClauses [TemplateBody]                           Template(constr, parents, self, stats)
+Template          ::=  InheritClauses [colonEol] [TemplateBody]                 Template(constr, parents, self, stats)
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}              Apply(tp, args)
 ConstrExpr        ::=  SelfInvocation
-                    |  <<< SelfInvocation {semi BlockStat} >>>
+                    |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
-TemplateBody      ::=  [nl | ‘with’] <<< [SelfType] TemplateStats >>>
-                    |  ‘with’ SelfType indent TemplateStats outdent
-TemplateStats     ::=  TemplateStat {semi TemplateStat}
+TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -422,14 +414,12 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’                                  ValDef(_, name, tpt, _)
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl | ‘with’] <<< [SelfType] EnumStats >>>
-                    |  ‘with’ [SelfType] indent EnumStats outdent
-EnumStats         ::=  EnumStat {semi EnumStat}
+EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
 
-TopStats          ::=  TopStat {semi TopStat}
+TopStatSeq        ::=  TopStat {semi TopStat}
 TopStat           ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -438,8 +428,8 @@ TopStat           ::=  Import
                     |  PackageObject
                     |  EndMarker
                     |
-Packaging         ::=  ‘package’ QualId [nl| ‘with’] <<< TopStats >>>           Package(qid, stats)
+Packaging         ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’      Package(qid, stats)
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef                             object with package in mods.
 
-CompilationUnit   ::=  {‘package’ QualId semi} TopStats                       Package(qid, stats)
+CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq                       Package(qid, stats)
 ```

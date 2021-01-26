@@ -1,5 +1,5 @@
 object MemberHealing {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
   def foo[T](t: T, ev: T SUB Int) =
@@ -9,7 +9,7 @@ object MemberHealing {
 }
 
 object ImplicitLookup {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
   class Tag[T]
@@ -23,7 +23,7 @@ object ImplicitLookup {
 }
 
 object GivenLookup {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
   class Tag[T]
@@ -37,10 +37,10 @@ object GivenLookup {
 }
 
 object ImplicitConversion {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
-  class Pow(self: Int) with
+  class Pow(self: Int):
     def **(other: Int): Int = math.pow(self, other).toInt
 
   implicit def pow(i: Int): Pow = Pow(i)
@@ -57,10 +57,10 @@ object ImplicitConversion {
 }
 
 object GivenConversion {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
-  class Pow(self: Int) with
+  class Pow(self: Int):
     def **(other: Int): Int = math.pow(self, other).toInt
 
   given Conversion[Int, Pow] = (i: Int) => Pow(i)
@@ -77,7 +77,7 @@ object GivenConversion {
 }
 
 object ExtensionMethod {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
   extension (x: Int)
@@ -90,10 +90,10 @@ object ExtensionMethod {
 }
 
 object HKFun {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
-  enum HKSUB[-F[_], +G[_]] with
+  enum HKSUB[-F[_], +G[_]]:
     case Refl[H[_]]() extends HKSUB[H, H]
 
   def foo[F[_], T](ft: F[T], hkev: F HKSUB Option, ev: T SUB Int) =
@@ -107,7 +107,7 @@ object HKFun {
       }
     }
 
-  enum COVHKSUB[-F[+_], +G[+_]] with
+  enum COVHKSUB[-F[+_], +G[+_]]:
     case Refl[H[_]]() extends COVHKSUB[H, H]
 
   def bar[F[+_], T](ft: F[T], hkev: F COVHKSUB Option, ev: T SUB Int) =
@@ -123,7 +123,7 @@ object HKFun {
 }
 
 object NestedConstrained {
-  enum SUB[-A, +B] with
+  enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
   def foo[A, B](a: A, ev1: A SUB Option[B], ev2: B SUB Int) =

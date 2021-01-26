@@ -94,7 +94,7 @@ class Str(str: String) extends Text:
 class Append(txt1: Text, txt2: Text) extends Text:
   def toString = txt1 ++ txt2
 
-object Empty extends Text with
+object Empty extends Text:
   def toString = ""
 
 extension on (t: Text):

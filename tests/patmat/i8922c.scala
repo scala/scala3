@@ -1,6 +1,6 @@
 case class Token(tokenType: TokenType, lexeme: String, line: Int)
 
-enum TokenType with
+enum TokenType:
   // Single-character tokens.
   case MINUS, PLUS, SLASH, STAR,
 
@@ -14,7 +14,7 @@ enum Expr {
     case Binary(left: Expr, operator: Token, right: Expr)
 }
 
-object Interpreter with
+object Interpreter:
     import Expr._
     import TokenType._
 

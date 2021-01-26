@@ -8,7 +8,7 @@ package scala.reflect
  *  In Scala.js, it is implemented using a separate Scala.js-specific
  *  mechanism, since Java reflection is not available.
  */
-trait Selectable extends scala.Selectable with
+trait Selectable extends scala.Selectable:
 
   /** The value from which structural members are selected.
    *  By default this is the Selectable instance itself, but it can
@@ -39,7 +39,7 @@ trait Selectable extends scala.Selectable with
     ensureAccessible(mth)
     mth.invoke(selectedValue, args.asInstanceOf[Seq[AnyRef]]: _*)
 
-object Selectable with
+object Selectable:
 
   /** An implicit conversion that turns a value into a Selectable
    *  such that structural selections are performed on that value.

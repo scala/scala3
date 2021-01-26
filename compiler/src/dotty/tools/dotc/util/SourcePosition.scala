@@ -91,7 +91,7 @@ extends SrcPos, interfaces.SourcePosition, Showable {
 }
 
 /** Things that can produce a source position and a span */
-trait SrcPos with
+trait SrcPos:
   def sourcePos(using ctx: Context): SourcePosition
   def span: Span
   def startPos(using ctx: Context): SourcePosition = sourcePos.startPos

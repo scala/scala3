@@ -1,5 +1,5 @@
 class C(val x: Int) extends TypeHelpers
-abstract class TypeHelpers with
+abstract class TypeHelpers:
   self: C =>
   def f = x
 @main def Test =

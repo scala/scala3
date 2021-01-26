@@ -1,12 +1,12 @@
 
-trait Show[O] with
+trait Show[O]:
   extension (o: O)
     def show: String
 
 class Box[A]
 class Foo
 
-object test with
+object test:
 
   given box[A](using Show[A]): Show[Box[A]] = _.toString
   given foo: Show[Foo] = _.toString

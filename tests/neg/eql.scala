@@ -1,6 +1,6 @@
-object lst with
+object lst:
   opaque type Lst[+T] = Any
-  object Lst with
+  object Lst:
     given lstCanEqual[T, U]: CanEqual[Lst[T], Lst[U]] = CanEqual.derived
     val Empty: Lst[Nothing] = ???
 end lst

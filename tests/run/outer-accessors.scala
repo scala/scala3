@@ -1,15 +1,15 @@
-class A with
+class A:
   val a = 2
 
-  class B with
+  class B:
     val b = 3
 
-    trait T with
+    trait T:
       def t = a + b
 
   val bb = B()
 
-  class C extends bb.T with
+  class C extends bb.T:
     def result = a + t
 
 @main def Test =

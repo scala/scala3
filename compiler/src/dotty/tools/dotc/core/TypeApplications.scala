@@ -32,7 +32,7 @@ object TypeApplications {
    *
    *  @param tycon     C
    */
-  object EtaExpansion with
+  object EtaExpansion:
 
     def apply(tycon: Type)(using Context): Type =
       assert(tycon.typeParams.nonEmpty, tycon)

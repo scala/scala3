@@ -1,6 +1,0 @@
--- Error: tests/neg/extension-with.scala:1:19 --------------------------------------------------------------------------
-1 |extension (x: Int) with // error
-  |                   ^^^^
-  |                   No `with` expected here.
-  |
-  |                   An extension clause is simply followed by one or more method definitions.

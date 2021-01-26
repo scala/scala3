@@ -1,5 +1,5 @@
-trait T with
-  object O with
+trait T:
+  object O:
     def foo =
       1
     end foo
@@ -13,7 +13,7 @@ end T
 
 package p1.p2:
 
-  abstract class C() with
+  abstract class C():
 
     def this(x: Int) =
       this()
@@ -42,9 +42,9 @@ package p1.p2:
     def f: String
   end C
 
-  object C with
+  object C:
     given C =
-      new C with
+      new C:
         def f = "!"
         end f
       end new

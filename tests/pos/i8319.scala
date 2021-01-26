@@ -5,7 +5,7 @@ case class Lam[T,U]() extends Tree[Any]
 case class App[T,U]() extends Tree[Any]
 case class Var()      extends Tree[Any]
 
-object Branch with
+object Branch:
   def unapply(branch: Lam[?,?] | App[?,?]): true = true
 
 private def foo(s: Option[Tree[?]]) = s match // seems to only occur in a nested pattern

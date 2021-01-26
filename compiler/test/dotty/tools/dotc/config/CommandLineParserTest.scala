@@ -4,7 +4,7 @@ package dotty.tools.dotc.config
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
 
-class CommandLineParserTest with
+class CommandLineParserTest:
   import CommandLineParser.{tokenize, ParseException}
 
   private def check(tokens: String*)(input: String): Unit = assertEquals(tokens, tokenize(input))

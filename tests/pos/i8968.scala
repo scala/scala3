@@ -1,7 +1,7 @@
-object Foo with
+object Foo:
   inline def get = 0
 
-object Bar with
+object Bar:
   export Foo._
 
 val v = Bar.get

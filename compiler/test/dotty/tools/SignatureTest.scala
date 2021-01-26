@@ -14,7 +14,7 @@ import dotc.core.Symbols._
 import java.io.File
 import java.nio.file._
 
-class SignatureTest with
+class SignatureTest:
   @Test def signatureCaching: Unit =
     inCompilerContext(TestConfiguration.basicClasspath, separateRun = true, "case class Foo(value: Unit)") {
       val (ref, refSig) = atPhase(erasurePhase.next) {

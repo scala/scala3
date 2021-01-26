@@ -1,12 +1,12 @@
-trait Generator[+T] with
+trait Generator[+T]:
   self =>
   def generate: T
-  def map[S](f: T => S) = new Generator[S] with
+  def map[S](f: T => S) = new Generator[S]:
     def generate: S = f(self.generate)
-  def flatMap[S](f: T => Generator[S]) = new Generator[S] with
+  def flatMap[S](f: T => Generator[S]) = new Generator[S]:
     def generate: S = f(self.generate).generate
 
-object Generator with
+object Generator:
   val NumLimit = 300
   val Iterations = 10000
 
@@ -20,7 +20,7 @@ object Generator with
   def range(end: Int): Generator[Int] =
     integers.map(x => (x % end).abs)
 
-  enum Op with
+  enum Op:
     case Lookup, Update, Remove
   export Op._
 

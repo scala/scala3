@@ -1,11 +1,11 @@
 // Compile with -strict -Xfatal-warnings -deprecation
-class C with
+class C:
   infix def op(x: Int): Int = ???
   def meth(x: Int): Int = ???
   def matching(x: Int => Int) = ???
   def +(x: Int): Int = ???
 
-object C with
+object C:
   given AnyRef with
     extension (x: C)
       infix def iop (y: Int) = ???

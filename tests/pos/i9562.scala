@@ -1,7 +1,7 @@
-class Foo with
+class Foo:
   def foo = 23
 
-object Unrelated with
+object Unrelated:
   extension (f: Foo)
     def g = f.foo // OK
 

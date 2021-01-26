@@ -11,7 +11,7 @@ import collection.mutable
  *      or `command.argsGetter` if is a final varargs parameter,
  *    - a call to `command.run` with the closure of user-main applied to all arguments.
  */
-trait MainAnnotation extends StaticAnnotation with
+trait MainAnnotation extends StaticAnnotation:
 
   /** The class used for argument string parsing. E.g. `scala.util.CommandLineParser.FromString`,
    *  but could be something else
@@ -25,7 +25,7 @@ trait MainAnnotation extends StaticAnnotation with
   def command(args: Array[String]): Command
 
   /** A class representing a command to run */
-  abstract class Command with
+  abstract class Command:
 
     /** The getter for the next argument of type `T` */
     def argGetter[T](argName: String, fromString: ArgumentParser[T], defaultValue: Option[T] = None): () => T
@@ -42,12 +42,12 @@ end MainAnnotation
 
 //Sample main class, can be freely implemented:
 
-class main extends MainAnnotation with
+class main extends MainAnnotation:
 
   type ArgumentParser[T] = util.CommandLineParser.FromString[T]
   type MainResultType = Any
 
-  def command(args: Array[String]): Command = new Command with
+  def command(args: Array[String]): Command = new Command:
 
     /** A buffer of demanded argument names, plus
      *   "?"  if it has a default
@@ -135,7 +135,7 @@ end main
 
 // Sample main method
 
-object myProgram with
+object myProgram:
 
   /** Adds two numbers */
   @main def add(num: Int, inc: Int = 1): Unit =
@@ -145,7 +145,7 @@ end myProgram
 
 //  Compiler generated code:
 
-object add extends main with
+object add extends main:
   def main(args: Array[String]) =
     val cmd = command(args)
     val arg1 = cmd.argGetter[Int]("num", summon[ArgumentParser[Int]])
