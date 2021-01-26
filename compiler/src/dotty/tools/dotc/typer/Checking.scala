@@ -901,15 +901,11 @@ trait Checking {
 
   /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
   def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
-    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor)
-       && !ctx.erasedTypes
-       && !Inliner.inInlineMethod
-       // && !(ctx.phase <= Phases.inliningPhase)
-    then
+    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
       tpt.tpe.widenTermRefExpr.dealias.normalized match
         case tp: ConstantType =>
           if !(exprPurity(tree) >= Pure) then
-            report.error(em"inline value must be pure: $tree", tree.srcPos)
+            report.error(em"inline value must be pure but was: $tree", tree.srcPos)
         case _ =>
           val pos = if tpt.span.isZeroExtent then tree.srcPos else tpt.srcPos
           report.error(em"inline value must have a literal constant type", pos)

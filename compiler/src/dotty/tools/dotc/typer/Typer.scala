@@ -3736,7 +3736,7 @@ class Typer extends Namer
   }
 
   // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = ctx.isAfterTyper && ctx.phase.phaseName != "inlining"
+  def suppressInline(using Context): Boolean = ctx.isAfterTyper && ctx.phase != Phases.inliningPhase
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

@@ -100,9 +100,3 @@ class Inlining extends MacroTransform {
 object Inlining {
   val name: String = "inlining"
 }
-
-////// FIXME
-
-////// Issue: dotty.tools.dotc.transform.YCheckPositions$$anon$1.traverse(YCheckPositions.scala:33)
-// tests/run/summonAll.scala
-// tests/run/lst
