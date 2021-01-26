@@ -273,9 +273,9 @@ ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | �
 Enumerators0      ::=  {nl} Enumerators [semi]
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
-                    |  Guard
-                    |  Pattern1 ‘=’ Expr
-Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr
+                    |  Guard {Guard}
+                    |  Pattern1 ‘=’ Expr                                        GenAlias(pat, expr)
+Generator         ::=  [‘case’] Pattern1 ‘<-’ Expr                                       GenFrom(pat, expr)
 Guard             ::=  ‘if’ PostfixExpr
 
 CaseClauses       ::=  CaseClause { CaseClause }
