@@ -22,7 +22,7 @@ enum Resource(val path: String):
   case File(override val path: String, file: Path) extends Resource(path)
   case URL(url: String) extends Resource(url)
 
-trait Resources(using ctx: DocContext) extends Locations, Writter:
+trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
     // If data at any point will become more complex we should use a proper mapping
     val data: Map[String, Map[String, String]] =
@@ -109,7 +109,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writter:
     def processPage(page: Page): Seq[PageEntry] =
       val res =  page.content match
         case m: Member =>
-          val descr = m.dri.location.replace("/", ".")
+          val descr = m.dri.asFileLocation
           def processMember(member: Member): Seq[PageEntry] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse

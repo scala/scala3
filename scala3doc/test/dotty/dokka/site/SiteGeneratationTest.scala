@@ -33,7 +33,6 @@ class SiteGeneratationTest extends BaseHtmlTest:
 
   def testDocPages()(using ProjectContext) =
     checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
-    checkFile("docs/Adoc.html")(title = "Adoc", header = "Header in Adoc", parents = Seq(projectName))
     checkFile("docs/dir/index.html")(title = "A directory", header = "A directory", parents = Seq(projectName))
     checkFile("docs/dir/nested.html")(
       title = "Nested in a directory", header = "Nested in a directory", parents = Seq(projectName, "A directory"))
@@ -69,6 +68,10 @@ class SiteGeneratationTest extends BaseHtmlTest:
     testDocIndexPage()
     testMainIndexPage()
     testApiPages()
+
+    withHtmlFile("docs/Adoc.html"){ content  =>
+        content.assertAttr("p a","href", "../api/tests/site/SomeClass.html")
+      }
   }
 
   @Test

@@ -9,7 +9,7 @@ import java.io.File
 import HTML._
 
 // TODO be more clever about writting - make it much faster!
-trait Writter(using ctx: DocContext) extends Locations:
+trait Writer(using ctx: DocContext) extends Locations:
   private val args = summon[DocContext].args
 
   private def dest(path: String) =

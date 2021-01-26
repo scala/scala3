@@ -83,7 +83,8 @@ case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspecto
       import symOps._
       Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
-    )
+      )
+
     ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
 
     var alreadyProcessed = false

@@ -143,7 +143,7 @@ class StaticSiteContext(
       val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
 
       (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
-    }.toOption
+    }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
   def driFor(dest: Path): DRI =

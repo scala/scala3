@@ -17,5 +17,8 @@ final case class DRI(
 
   def isStaticFile = symbolUUID == staticFileSymbolUUID
 
+  def asFileLocation: String = location.replace(".","/")
+
 object DRI:
-  def forPath(path: Path) = DRI(location = path.toString, symbolUUID = staticFileSymbolUUID)
+  def forPath(path: Path) =
+    DRI(location = path.toString, symbolUUID = staticFileSymbolUUID)

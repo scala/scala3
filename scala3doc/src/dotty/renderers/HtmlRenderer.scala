@@ -25,7 +25,7 @@ case class Page(link: Link, content: Member | ResolvedTemplate | String, childre
     case _ => true
 
 class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx: DocContext)
-  extends SiteRenderer, Resources, Locations, Writter:
+  extends SiteRenderer, Resources, Locations, Writer:
   private val args = summon[DocContext].args
   val staticSite = summon[DocContext].staticSiteContext
 

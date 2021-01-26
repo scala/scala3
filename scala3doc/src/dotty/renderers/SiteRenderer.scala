@@ -29,7 +29,7 @@ trait SiteRenderer(using DocContext) extends Locations:
 
   def siteContent(pageDri: DRI, content: ResolvedTemplate): AppliedTag =
     import content.ctx
-    def tryAsDri(str: String) = // TODO Does not seem to work with links to API :(
+    def tryAsDri(str: String) =
       val (path, prefix) = str match
         case HashRegex(path, prefix) => (path, prefix)
         case _ => (str, "")
@@ -51,5 +51,5 @@ trait SiteRenderer(using DocContext) extends Locations:
       Try(new URL(link)).getOrElse {
         if(link.startsWith("/")) element.attr("src", resolveLink(pageDri, link.drop(1)))
       }
-    }// forrach does not work here
+    }// foreach does not work here
     raw(document.outerHtml())

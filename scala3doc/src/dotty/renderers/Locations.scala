@@ -20,21 +20,28 @@ val UnresolvedLocationLink = "#"
 trait Locations(using ctx: DocContext):
   def members: Map[DRI, Member]
 
+  var cache = new JHashMap[DRI, Seq[String]]()
+
   // TODO verify if location exisits
   def rawLocation(dri: DRI): Seq[String] =
-    dri match
-      case `docsDRI` => List("docs", "index")
-      case `docsRootDRI` => List("index")
-      case `apiPageDRI` => List("api", "index")
-      case dri if dri.isStaticFile =>
-        Paths.get(dri.location).iterator.asScala.map(_.toString).toList
-      case dri =>
-        val loc = dri.location
-        val fqn = loc.split(Array('.')).toList match
-          case List("<empty>") => List("index")
-          case other => other
+    cache.get(dri) match
+      case null =>
+        val path = dri match
+          case `docsDRI` => List("docs", "index")
+          case `docsRootDRI` => List("index")
+          case `apiPageDRI` => List("api", "index")
+          case dri if dri.isStaticFile =>
+            Paths.get(dri.location).iterator.asScala.map(_.toString).toList
+          case dri =>
+            val loc = dri.location
+            val fqn = loc.split(Array('.')).toList match
+              case List("<empty>") => List("index")
+              case other => other
 
-        Seq("api") ++ fqn
+            Seq("api") ++ fqn
+        cache.put(dri, path)
+        path
+      case cached => cached
 
   private def unknownPage(dri: DRI): String =
     // TODO we should switch that to warning probably or has dedicated setting
@@ -93,17 +100,12 @@ trait Locations(using ctx: DocContext):
     }
 
     //TODO #263: Add anchor support
-    def constructPathForScaladoc(dri: DRI): String = {
-      val location = dri.location.replace(".","/")
-      val anchor = dri.anchor
-      docURL + location + extension
-    }
+    def constructPathForScaladoc(dri: DRI): String =
+      docURL + dri.asFileLocation + extension
 
-    def constructPathForScala3doc(dri: DRI): String = {
-      val location = dri.location.replace(".","/")
-      val anchor = dri.anchor
-      docURL + location + extension
-    }
+    // TODO Add tests for it!
+    def constructPathForScala3doc(dri: DRI): String =
+      docURL + dri.asFileLocation + extension + "#" + dri.anchor
 
     link.kind match {
       case DocumentationKind.Javadoc => constructPathForJavadoc(dri)
