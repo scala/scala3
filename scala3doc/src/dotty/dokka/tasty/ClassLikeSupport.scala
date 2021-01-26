@@ -82,7 +82,8 @@ trait ClassLikeSupport:
 
     val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSiangture)(
         modifiers = modifiers,
-        graph = graph
+        graph = graph,
+        deprecated = classDef.symbol.isDeprecated()
       )
 
     if signatureOnly then baseMember else baseMember.copy(
@@ -355,7 +356,7 @@ trait ClassLikeSupport:
       val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
 
-    mkMember(method.symbol, methodKind, memberInfo.res.asSignature)(origin = origin)
+    mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 
   def mkParameter(
     argument: ValDef,
@@ -402,7 +403,7 @@ trait ClassLikeSupport:
       case tpe => (Nil, tpe)
 
     val kind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics)
-    mkMember(typeDef.symbol, kind, tpeTree.asSignature)()
+    mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
@@ -411,13 +412,14 @@ trait ClassLikeSupport:
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
         else defaultKind
 
-    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)()
+    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(deprecated = valDef.symbol.isDeprecated())
 
   def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
     modifiers: Seq[dotty.dokka.model.api.Modifier] = symbol.getExtraModifiers(),
     origin: Origin = Origin.RegularlyDefined,
     inheritedFrom: Option[InheritedFrom] = None,
     graph: HierarchyGraph = HierarchyGraph.empty,
+    deprecated: Option[Annotation] = None,
   ) = Member(
       name = symbol.normalizedName,
       dri = symbol.dri,
@@ -430,7 +432,8 @@ trait ClassLikeSupport:
       origin = origin,
       inheritedFrom = inheritedFrom,
       graph = graph,
-      docs = symbol.documentation
+      docs = symbol.documentation,
+      deprecated = deprecated
     )
 
   case class MemberInfo(genericTypes: Map[String, TypeBounds], paramLists: List[Map[String, TypeRepr]], res: TypeRepr)

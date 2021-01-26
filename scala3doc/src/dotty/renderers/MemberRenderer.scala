@@ -79,15 +79,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       case Annotation.UnresolvedParameter(_, value) => stripQuotes(value)
 
     val (named, unnamed) = a.params.partition(_.name.nonEmpty)
-    val message = named.find(_.name.get == "message").orElse(unnamed.headOption)
-    val since = named.find(_.name.get == "since").orElse(unnamed.drop(1).headOption)
+    val message = named.find(_.name.get == "message")
+    val since = named.find(_.name.get == "since")
 
-    val content =
-      since.fold(Nil)(since =>
-        Seq(code("[Since version ", parameter(since), "] ")) ++
-          message.fold(Nil)(m => Seq(parameter(m))) ++
-          m.docs.fold(Nil)(_.deprecated.toSeq.map(renderDocPart))
-      )
+    val content = Seq(
+      since.map(s => code("[Since version ", parameter(s), "] ")),
+      message.map(m => parameter(m)),
+      m.docs.map(_.deprecated.toSeq.map(renderDocPart)):_*
+    ).flatten
     Seq(dt("Deprecated"), dd(content:_*))
   }
 

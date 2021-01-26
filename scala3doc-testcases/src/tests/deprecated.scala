@@ -1,5 +1,5 @@
 package tests
-package deprecated 
+package deprecated
 
 class A:
   def defInt: Int = 1
@@ -17,3 +17,7 @@ class B extends A:
   @deprecated(since = "1", message = "some reason")
   def x: Int = 1
   val y: Int = 1
+
+
+@java.lang.Deprecated(since = "1.1")
+class JavaDeprecated
