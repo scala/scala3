@@ -12,7 +12,7 @@ import scala.reflect.TypeTest
  *  }
  *  ```
  */
-inline def quotes(using q: Quotes): q.type = q
+transparent inline def quotes(using inline q: Quotes): q.type = q
 
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.staging.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
