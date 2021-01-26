@@ -2478,7 +2478,7 @@ object Parsers {
       else Nil
 
     /** Enumerator  ::=  Generator
-     *                |  Guard
+     *                |  Guard {Guard}
      *                |  Pattern1 `=' Expr
      */
     def enumerator(): Tree =
