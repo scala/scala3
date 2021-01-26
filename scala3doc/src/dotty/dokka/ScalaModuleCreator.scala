@@ -10,7 +10,8 @@ object ScalaModuleProvider:
   def mkModule()(using ctx: DocContext): Module =
     val (result, rootDoc) = DokkaTastyInspector().result()
     val (rootPck, rest) = result.partition(_.name == "API")
-    val packageMembers = (rest ++ rootPck.flatMap(_.members)).sortBy(_.name)
+    val packageMembers = (rest ++ rootPck.flatMap(_.members))
+      .filter(p => p.members.nonEmpty || p.docs.nonEmpty).sortBy(_.name)
 
     def flattenMember(m: Member): Seq[(DRI, Member)] = (m.dri -> m) +: m.members.flatMap(flattenMember)
 

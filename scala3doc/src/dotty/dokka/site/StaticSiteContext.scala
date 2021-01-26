@@ -128,7 +128,7 @@ class StaticSiteContext(
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
-      ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
+      ++ dir("blog").flatMap(loadTemplate(_, isBlog = true)).sortBy(_.templateFile.title)
 
   def driForLink(template: TemplateFile, link: String): Seq[DRI] =
     val pathsDri: Option[Seq[DRI]] = Try {
