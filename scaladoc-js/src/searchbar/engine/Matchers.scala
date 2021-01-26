@@ -2,10 +2,10 @@ package dotty.tools.scaladoc
 
 sealed trait Matchers extends Function1[PageEntry, Int]
 
-class ByName(query: String) extends Matchers:
+case class ByName(query: String) extends Matchers:
   val tokens = StringUtils.createCamelCaseTokens(query)
   def apply(p: PageEntry): Int = {
-    val nameOption = Option(p.shortName)
+    val nameOption = Option(p.shortName.toLowerCase)
     //Edge case for empty query string
     if query == "" then 1
     else {
@@ -20,5 +20,5 @@ class ByName(query: String) extends Matchers:
     }
   }
 
-class ByKind(kind: String) extends Matchers:
+case class ByKind(kind: String) extends Matchers:
   def apply(p: PageEntry): Int = p.fullName.split(" ").headOption.filter(_.equalsIgnoreCase(kind)).fold(-1)(_ => 1)
