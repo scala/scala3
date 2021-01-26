@@ -12,10 +12,6 @@ object Test {
     inline def bar: Int
   }
 
-  inline val M = X  // error: rhs must be constant expression
-
-  inline val xs = List(1, 2, 3) // error: must be a constant expression
-
   inline def foo(x: Int) = {
 
     def f(inline xs: List[Int]) = xs // error: inline modifier can only be used for parameters of inline methods
