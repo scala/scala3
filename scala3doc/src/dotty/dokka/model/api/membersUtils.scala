@@ -20,7 +20,7 @@ extension (s: Signature)
 
 extension (m: Member)
   def getDirectParentsAsStrings: Seq[String] =
-    m.directParents.map(_.getName).sorted
+    m.directParents.map(_.signature.getName).sorted
   def getParentsAsStrings: Seq[String] =
     m.parents.map(_.signature.getName).sorted
   def getKnownChildrenAsStrings: Seq[String] =

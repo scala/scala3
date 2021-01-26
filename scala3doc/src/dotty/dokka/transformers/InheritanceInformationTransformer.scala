@@ -14,10 +14,14 @@ class InheritanceInformationTransformer(using context: DocContext) extends Modul
   override def apply(original: DModule): DModule =
     val subtypes = getSupertypes(original.getPackages.get(0)).groupBy(_._1).transform((k, v) => v.map(_._2))
     original.updateMembers { m =>
-      val st: Seq[LinkToType] = subtypes.getOrElse(m.dri, Nil)
-      val rootMemberWithBareClasslikeKind = m.asLink.copy(kind = bareClasslikeKind(m.kind))
-      m.withKnownChildren(st).withNewGraphEdges(st.map(_ -> rootMemberWithBareClasslikeKind))
+      val edges = getEdges(m.asLink.copy(kind = bareClasslikeKind(m.kind)), subtypes)
+      val st: Seq[LinkToType] = edges.map(_._1).distinct
+      m.withKnownChildren(st).withNewGraphEdges(edges)
     }
+
+  private def getEdges(ltt: LinkToType, subtypes: Map[DRI, Seq[LinkToType]]): Seq[(LinkToType, LinkToType)] =
+    val st: Seq[LinkToType] = subtypes.getOrElse(ltt.dri, Nil)
+    st.flatMap(s => Seq(s -> ltt) ++ getEdges(s, subtypes))
 
   private def bareClasslikeKind(kind: Kind): Kind = kind match
     case _: Kind.Trait => Kind.Trait(Nil, Nil)
@@ -27,5 +31,5 @@ class InheritanceInformationTransformer(using context: DocContext) extends Modul
   private def getSupertypes(c: Member): Seq[(DRI, LinkToType)] =
     val selfMapping =
       if !c.kind.isInstanceOf[Classlike] then Nil
-      else c.parents.map(_._2 -> c.asLink)
+      else c.directParents.map(_._2 -> c.asLink)
     c.allMembers.flatMap(getSupertypes) ++ selfMapping

@@ -40,7 +40,7 @@ object MemberExtension extends BaseKey[Documentable, MemberExtension]:
 
 case class CompositeMemberExtension(
   members : Seq[Member] = Nil,
-  directParents: Seq[Signature] = Nil,
+  directParents: Seq[LinkToType] = Nil,
   parents: Seq[LinkToType] = Nil,
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,

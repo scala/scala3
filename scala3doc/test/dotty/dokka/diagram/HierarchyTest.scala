@@ -44,7 +44,7 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
           )
         }
         if (x.getName == "E2") {
-          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "Any", "B1", "B2", "B3", "C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3", "Matchable", "Object"), x.getParentsAsStrings)
+          assertEquals(List("A1", "A2[Int]", "A3[Int, String]", "A4", "Any", "B1", "B2", "B3", "C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3", "Matchable", "Object"), x.getParentsAsStrings)
           assertEquals(List("C1[Int, Boolean, Any]", "D2[Int, Boolean]", "D3"), x.getDirectParentsAsStrings)
           assertEquals(List.empty, x.getKnownChildrenAsStrings)
           val graph = MemberExtension.getFrom(x).map(_.graph)
@@ -55,6 +55,7 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
               "A1" -> "Object",
               "A2[Int]" -> "Object",
               "A3[Int, String]" -> "Object",
+              "A4" -> "Object",
               "B1" -> "Object",
               "B1" -> "A1",
               "B2" -> "Object",
@@ -72,6 +73,7 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
               "E2" -> "D2[Int, Boolean]",
               "E2" -> "D3",
               "D2[Int, Boolean]" -> "Object",
+              "D3" -> "A4",
               "D3" -> "Object",
               "E2" -> "C1[Int, Boolean, Any]"
             ),
@@ -90,11 +92,12 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
               "Matchable" -> "Any",
               "Object" -> "Any",
               "A2[T]" -> "Object",
-              "B2" -> "A2[T]", // These are not actually true, becuase we lose information about hierarchy in subtypes and their possible mapping to supertypes other that that type itself, e. g. linking to `Object`
+              "B2" -> "A2[T]",
               "B3" -> "A2[T]",
-              "C1[A, B, C]" -> "A2[T]",
-              "E1" -> "A2[T]",
-              "E2" -> "A2[T]"
+              "C1[A, B, C]" -> "B2",
+              "C1[A, B, C]" -> "B3",
+              "E1" -> "C1[A, B, C]",
+              "E2" -> "C1[A, B, C]"
             ),
             graph.get.edges.map((a, b) => (a.signature.getName, b.signature.getName)).toSet
           )

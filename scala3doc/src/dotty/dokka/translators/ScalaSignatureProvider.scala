@@ -79,8 +79,8 @@ object ScalaSignatureProvider:
     member.directParents match
       case Nil => builder
       case extendType :: withTypes =>
-        val extendPart = builder.text(" extends ").signature(extendType)
-        withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe))
+        val extendPart = builder.text(" extends ").signature(extendType.signature)
+        withTypes.foldLeft(extendPart)((bdr, tpe) => bdr.text(" with ").signature(tpe.signature))
 
   private def givenClassSignature(member: Member, cls: Kind.Class, builder: SignatureBuilder): SignatureBuilder =
     val prefixes = builder

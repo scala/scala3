@@ -177,7 +177,7 @@ extension[T] (member: Member)
   // TODO rename parent and knownChildren
   def allMembers: Seq[Member] = compositeMemberExt.fold(Nil)(_.members)
   def parents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.parents)
-  def directParents: Seq[Signature] = compositeMemberExt.fold(Nil)(_.directParents)
+  def directParents: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.directParents)
   def knownChildren: Seq[LinkToType] = compositeMemberExt.fold(Nil)(_.knownChildren)
   def companion: Option[DRI] = compositeMemberExt.fold(None)(_.companion)
 
