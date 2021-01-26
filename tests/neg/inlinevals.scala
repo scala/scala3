@@ -2,9 +2,6 @@ object Test {
 
   def power0(x: Double, inline n: Int): Double = ???  // error: inline modifier can only be used for parameters of inline methods
 
-  inline def power(x: Double, inline n: Int): Double = // ok
-    inline if n == 0 then ??? else ???
-
   inline val N = 10
   def X = 20
 
@@ -14,9 +11,6 @@ object Test {
     inline val foo: Int
     inline def bar: Int
   }
-
-  power(2.0, N) // ok, since it's an inline parameter
-  power(2.0, X) // error: cannot reduce inline if
 
   inline val M = X  // error: rhs must be constant expression
 
