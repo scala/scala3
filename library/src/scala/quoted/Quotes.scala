@@ -1,3 +1,5 @@
+package scala.quoted
+
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
