@@ -38,7 +38,8 @@ class StaticSiteContext(
     if (!Files.exists(sidebarFile)) None
     else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
 
-  lazy val templates: Seq[LoadedTemplate] = sideBarConfig.fold(loadAllFiles())(_.map(loadSidebarContent))
+  lazy val templates: Seq[LoadedTemplate] =
+    sideBarConfig.fold(loadAllFiles().sortBy(_.templateFile.title))(_.map(loadSidebarContent))
 
   lazy val orphanedTemplates: Seq[LoadedTemplate] = {
     def doFlatten(t: LoadedTemplate): Seq[Path] =
@@ -88,7 +89,7 @@ class StaticSiteContext(
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        val processedChildren = if !isBlog then children else
+        val processedChildren = if !isBlog then children.sortBy(_.templateFile.title) else
           def dateFrom(p: LoadedTemplate): String =
             val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
             pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
@@ -128,7 +129,7 @@ class StaticSiteContext(
   private def loadAllFiles() =
     def dir(name: String)= List(new File(root, name)).filter(_.isDirectory)
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
-      ++ dir("blog").flatMap(loadTemplate(_, isBlog = true)).sortBy(_.templateFile.title)
+      ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
   def driForLink(template: TemplateFile, link: String): Seq[DRI] =
     val pathsDri: Option[Seq[DRI]] = Try {

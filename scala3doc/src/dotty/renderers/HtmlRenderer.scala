@@ -163,7 +163,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     val parentsHtml =
       val innerTags = parents.flatMap[TagArg](b => Seq(
-          a(href := pathToPage(b.dri, link.dri))(b.name),
+          a(href := pathToPage(link.dri, b.dri))(b.name),
           "/"
         )).dropRight(1)
       div(cls := "breadcrumbs")(innerTags:_*)

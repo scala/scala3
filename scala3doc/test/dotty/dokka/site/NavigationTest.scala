@@ -3,7 +3,7 @@ package site
 
 import org.junit.Test
 
-class NavitationTest extends BaseHtmlTest:
+class NavigationTest extends BaseHtmlTest:
 
   case class NavMenuTestEntry( name: String, link: String, nested: Seq[NavMenuTestEntry])
 
@@ -25,10 +25,10 @@ class NavitationTest extends BaseHtmlTest:
   @Test
   def testBasicNavigation() = withGeneratedSite(testDocPath.resolve("basic")){
     val topLevelNav = NavMenuTestEntry(projectName, "index.html", Seq(
-      NavMenuTestEntry("Adoc", "Adoc.html", Seq()),
       NavMenuTestEntry("A directory", "dir/index.html", Seq(
         NavMenuTestEntry("Nested in a directory", "dir/nested.html", Nil)
       )),
+      NavMenuTestEntry("Adoc", "Adoc.html", Seq()),
       NavMenuTestEntry("Basic test", "../index.html", Seq()),
       NavMenuTestEntry("API", "../api/index.html", Seq(
         NavMenuTestEntry("tests.site", "../api/tests/site.html", Seq(

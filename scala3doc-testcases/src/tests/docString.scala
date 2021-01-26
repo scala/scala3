@@ -31,7 +31,6 @@ package wikilinks:
 
   /**
    * [[tests.commonlinks.SomeOtherPackage!method]]
-   * [[tests.commonlinks.SomeOtherPackage#]]
    * [[tests.commonlinks.SomeOtherEnum!A]]
    * @syntax wiki
    */
@@ -66,7 +65,6 @@ package mdlinks:
 
   /**
    * [[tests.commonlinks.SomeOtherPackage!method]]
-   * [[tests.commonlinks.SomeOtherPackage#]]
    * [[tests.commonlinks.SomeOtherEnum!A]]
    * @syntax wiki
    */

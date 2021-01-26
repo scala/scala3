@@ -72,6 +72,12 @@ class SiteGeneratationTest extends BaseHtmlTest:
     withHtmlFile("docs/Adoc.html"){ content  =>
         content.assertAttr("p a","href", "../api/tests/site/SomeClass.html")
     }
+
+    withHtmlFile("api/tests/site/SomeClass.html"){ content  =>
+      content.assertAttr(".breadcrumbs a","href",
+        "../../../docs/index.html", "../../index.html", "../site.html", "SomeClass.html"
+      )
+    }
   }
 
   @Test
