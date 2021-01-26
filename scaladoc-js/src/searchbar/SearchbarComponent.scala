@@ -22,6 +22,9 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
 
       wrapper.appendChild(resultA)
       wrapper.appendChild(location)
+      wrapper.addEventListener("mouseover", {
+        case e: MouseEvent => handleHover(wrapper)
+      })
       wrapper
 
   def handleNewQuery(query: String) =
@@ -52,7 +55,10 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       if (document.body.contains(rootDiv)) {
         document.body.removeChild(rootDiv)
       }
-      else document.body.appendChild(rootDiv)
+      else {
+        document.body.appendChild(rootDiv)
+        input.focus()
+      }
 
     val element = createNestingDiv("search-content")(
       createNestingDiv("search-container")(
@@ -69,6 +75,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     val element = document.createElement("input").asInstanceOf[html.Input]
     element.id = "scaladoc-searchbar-input"
     element.addEventListener("input", (e) => handleNewQuery(e.target.asInstanceOf[html.Input].value))
+    element.autocomplete = "off"
     element
 
   private val resultsDiv: html.Div =
@@ -94,9 +101,58 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         document.body.removeChild(element)
       }
     )
-    element.id = "scaladoc-searchbar"
+    element.addEventListener("keydown", {
+      case e: KeyboardEvent =>
+        if e.keyCode == 40 then handleArrowDown()
+        else if e.keyCode == 38 then handleArrowUp()
+        else if e.keyCode == 13 then handleEnter()
+    })
+    element.id = "scala3doc-searchbar"
     element.appendChild(input)
     element.appendChild(resultsDiv)
     element
+
+  private def handleArrowUp() = {
+    val selectedElement = resultsDiv.querySelector("[selected]")
+    if selectedElement != null then {
+      selectedElement.removeAttribute("selected")
+      val sibling = selectedElement.previousElementSibling
+      if sibling != null then {
+        sibling.setAttribute("selected", "")
+        resultsDiv.scrollTop = sibling.asInstanceOf[html.Element].offsetTop - (2 * sibling.asInstanceOf[html.Element].clientHeight)
+      }
+    }
+  }
+  private def handleArrowDown() = {
+    val selectedElement = resultsDiv.querySelector("[selected]")
+    if selectedElement != null then {
+      val sibling = selectedElement.nextElementSibling
+      if sibling != null then {
+        selectedElement.removeAttribute("selected")
+        sibling.setAttribute("selected", "")
+        resultsDiv.scrollTop = sibling.asInstanceOf[html.Element].offsetTop - (2 * sibling.asInstanceOf[html.Element].clientHeight)
+      }
+    } else {
+      val firstResult = resultsDiv.firstElementChild
+      if firstResult != null then {
+        firstResult.setAttribute("selected", "")
+        resultsDiv.scrollTop = firstResult.asInstanceOf[html.Element].offsetTop - (2 * firstResult.asInstanceOf[html.Element].clientHeight)
+      }
+    }
+  }
+  private def handleEnter() = {
+    val selectedElement = resultsDiv.querySelector("[selected] a").asInstanceOf[html.Element]
+    if selectedElement != null then {
+      selectedElement.click()
+    }
+  }
+
+  private def handleHover(elem: html.Element) = {
+    val selectedElement = resultsDiv.querySelector("[selected]")
+    if selectedElement != null then {
+      selectedElement.removeAttribute("selected")
+    }
+    elem.setAttribute("selected","")
+  }
 
   handleNewQuery("")

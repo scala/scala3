@@ -40,10 +40,11 @@
     display: none;
 }
 
-#scaladoc-searchbar {
-    position: absolute;
+#scala3doc-searchbar {
+    position: fixed;
     top: 50px;
     right: 40px;
+    z-index: 5;
     width: calc(100% - 360px);
     box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
     font-size: 13px;
@@ -70,7 +71,8 @@
     overflow: auto;
 }
 
-.scaladoc-searchbar-result {
+.scala3doc-searchbar-result {
+    background: white;
     line-height: 32px;
     padding-left: 10px;
     padding-right: 10px;
@@ -80,7 +82,7 @@
     margin-top: 10px;
 }
 
-.scaladoc-searchbar-result:hover {
+.scala3doc-searchbar-result[selected] {
     background-color: #d4edff;
 }
 
