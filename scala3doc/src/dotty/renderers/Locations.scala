@@ -105,7 +105,8 @@ trait Locations(using ctx: DocContext):
 
     // TODO Add tests for it!
     def constructPathForScala3doc(dri: DRI): String =
-      docURL + dri.asFileLocation + extension + "#" + dri.anchor
+      val base = docURL + dri.asFileLocation + extension
+      if dri.anchor.isEmpty then base else base + "#" + dri.anchor
 
     link.kind match {
       case DocumentationKind.Javadoc => constructPathForJavadoc(dri)

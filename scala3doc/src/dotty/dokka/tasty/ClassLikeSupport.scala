@@ -244,7 +244,7 @@ trait ClassLikeSupport:
 
     def getParentsAsLinkToTypes: List[LinkToType] =
       c.getParentsAsTreeSymbolTuples.map {
-        (tree, symbol) => LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        (tree, symbol) => LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
       }
 
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
