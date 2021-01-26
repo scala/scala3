@@ -36,7 +36,7 @@ trait SiteRenderer(using DocContext) extends Locations:
 
       val res = ctx.driForLink(content.template.templateFile, path).filter(driExisits)
       if res.isEmpty then report.warn(s"Unable to resolve link '$str'", content.template.file)
-      res.headOption.fold(str)(pathToPage(_, pageDri) + prefix)
+      res.headOption.fold(str)(pathToPage(pageDri, _) + prefix)
 
     def processLocalLink(str: String): String =
       if str.startsWith("#") || str.isEmpty then str

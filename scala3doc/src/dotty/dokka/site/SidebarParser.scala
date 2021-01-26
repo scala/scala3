@@ -20,7 +20,8 @@ object Sidebar:
     def setUrl(u: String) = this.url = u
     def setSubsection(l: JList[RawInput]) = this.subsection = l
 
-  private object RawTypeRef extends TypeReference[JMap[String, JList[RawInput]]]
+  type RawInnerTpe = JMap[String, JList[RawInput]]
+  private object RawTypeRef extends TypeReference[RawInnerTpe]
 
   private def toSidebar(r: RawInput): Sidebar = r match
     case RawInput(title, url, list) if title.nonEmpty && url.nonEmpty && list.isEmpty() =>
@@ -30,6 +31,6 @@ object Sidebar:
 
   def load(content: String): Seq[Sidebar] =
     val mapper = ObjectMapper(YAMLFactory())
-    val raw = mapper.readValue(content, RawTypeRef)
+    val raw: RawInnerTpe = mapper.readValue(content, RawTypeRef)
 
     raw.get("sidebar").asScala.toList.map(toSidebar)

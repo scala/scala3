@@ -15,20 +15,21 @@ import java.nio.file.Files
 import java.io.File
 import scala.util.matching._
 
+val UnresolvedLocationLink = "#"
+
 trait Locations(using ctx: DocContext):
   def members: Map[DRI, Member]
 
   // TODO verify if location exisits
-  def rawLocation(dri: DRI): Seq[String] = dri match
-    case `docsDRI` => List("docs", "index")
-    case `docsRootDRI` => List("index")
-    case `apiPageDRI` => List("api", "index")
-    case dri if dri.isStaticFile =>
-      Paths.get(dri.location).iterator.asScala.map(_.toString).toList
-    case dri =>
-      val loc = dri.location
-      if loc == null then List("index") // Dokka leftovers
-      else
+  def rawLocation(dri: DRI): Seq[String] =
+    dri match
+      case `docsDRI` => List("docs", "index")
+      case `docsRootDRI` => List("index")
+      case `apiPageDRI` => List("api", "index")
+      case dri if dri.isStaticFile =>
+        Paths.get(dri.location).iterator.asScala.map(_.toString).toList
+      case dri =>
+        val loc = dri.location
         val fqn = loc.split(Array('.')).toList match
           case List("<empty>") => List("index")
           case other => other
@@ -38,12 +39,12 @@ trait Locations(using ctx: DocContext):
   private def unknownPage(dri: DRI): String =
     // TODO we should switch that to warning probably or has dedicated setting
     report.inform(s"Unrecognized page for ${dri.location} ($dri)")
-    "#"
+    UnresolvedLocationLink
 
   def pathToPage(from: DRI, to: DRI): String =
     if to.isStaticFile || members.contains(to) then
       val anchor = if to.anchor.isEmpty then "" else "#" + to.anchor
-      pathTo(rawLocation(from), rawLocation(to)) +".html" + anchor
+      pathToRaw(rawLocation(from), rawLocation(to)) +".html" + anchor
     else
       to.origin match
         case "" =>
@@ -55,11 +56,11 @@ trait Locations(using ctx: DocContext):
 
 
 
-  def pathTo(to: Seq[String], fullFrom: Seq[String]): String =
-    val from = fullFrom.dropRight(1)
-    val commonPaths = to.zip(from).takeWhile{ case (a, b) => a == b }.size
+  def pathToRaw(from: Seq[String], to: Seq[String]): String =
+    val fromDir = from.dropRight(1)
+    val commonPaths = to.zip(fromDir).takeWhile{ case (a, b) => a == b }.size
 
-    val contextPath = from.drop(commonPaths).map(_ => "..")
+    val contextPath = fromDir.drop(commonPaths).map(_ => "..")
     val nodePath = to.drop(commonPaths) match
         case Nil if contextPath.isEmpty && to.nonEmpty=> Seq("..", to.last)
         case Nil => to.lastOption.fold(Seq("index"))(".." :: _ :: Nil)
@@ -68,7 +69,7 @@ trait Locations(using ctx: DocContext):
     (contextPath ++ nodePath).mkString("/")
 
   def resolveRoot(from: Seq[String], to: String): String =
-    pathTo(to.split("/").toList, from)
+    pathToRaw(from, to.split("/").toList)
 
   def resolveRoot(dri: DRI, path: String): String = resolveRoot(rawLocation(dri), path)
   def absolutePath(dri: DRI): String = rawLocation(dri).mkString("", "/", ".html")

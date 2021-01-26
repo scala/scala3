@@ -19,9 +19,9 @@ class LocationTests:
   @Test
   def testLinks() =
     def path(from: String, to: String) =
-      locations.pathTo(to.split('/').toList, from.split('/').toList)
+      locations.pathToRaw(from.split('/').toList, to.split('/').toList)
 
-    assertEquals("a/b", locations.pathTo(Seq("a", "b"), Nil))
+    assertEquals("a/b", locations.pathToRaw(Nil, Seq("a", "b")))
 
     assertEquals(
       "../comments",

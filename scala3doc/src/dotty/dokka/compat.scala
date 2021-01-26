@@ -3,7 +3,6 @@ package dotty.dokka
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
 import java.util.Collections
-import kotlin.jvm.JvmClassMappingKt.getKotlinClass
 import java.nio.file.Path
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.dokka.tasty.comments.wiki.WikiDocElement

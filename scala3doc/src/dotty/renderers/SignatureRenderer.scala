@@ -5,12 +5,6 @@ import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
 import java.util.{List => JList, Set => JSet}
-import kotlinx.html.FlowContent
-import kotlinx.html.stream.StreamKt
-import kotlinx.html.Gen_consumer_tagsKt
-import kotlinx.html.ApiKt
-import kotlinx.html.HTMLTag
-import kotlinx.html.DIV
 import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
 import scala.util.Try
