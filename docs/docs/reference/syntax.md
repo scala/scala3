@@ -87,19 +87,19 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features-indentation.html)
+The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../other-new-features/indentation.md).
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
 notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows
 a `:` at the end of a line.
 
-
 ```
  <<< ts >>>   ::=  ‘{’ ts ‘}’
                 |  indent ts outdent
 :<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
                 |  `:` indent ts outdent
+```
 
 ## Keywords
 

@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Optional Braces
+title: "Optional Braces"
 ---
 
 Scala 3 enforces some rules on indentation and allows some occurrences of braces `{...}` to be optional:
@@ -9,7 +9,8 @@ Scala 3 enforces some rules on indentation and allows some occurrences of braces
 - Second, some occurrences of braces `{...}` are made optional. Generally, the rule
   is that adding a pair of optional braces will not change the meaning of a well-indented program.
 
-These changescan can be turned off with the compiler flag `-noindent`.
+These changes can be turned off with the compiler flag `-noindent`.
+
 ### Indentation Rules
 
 The compiler enforces two rules for well-indented programs, flagging violations as warnings.
