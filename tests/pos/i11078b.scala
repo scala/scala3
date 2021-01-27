@@ -1,7 +1,8 @@
 class Test {
   trait Foo[A <: Foo[A]]
 
-  trait FooWrapper with self =>
+  trait FooWrapper:
+    self =>
     type A <: Foo[A]
     def doThing(foo: FooWrapper): FooWrapper { type A = self.A } = ???
   end FooWrapper
