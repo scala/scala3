@@ -74,7 +74,7 @@ object DesugarEnums {
         tparam.info.bounds.hi
       else {
         def problem =
-          if (!tparam.isOneOf(VarianceFlags)) "is non variant"
+          if (!tparam.isOneOf(VarianceFlags)) "is invariant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(i"""cannot determine type argument for enum parent $enumClass,
                      |type parameter $tparam $problem""", ctx.source.atSpan(span))
