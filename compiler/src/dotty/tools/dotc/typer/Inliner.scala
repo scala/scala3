@@ -283,11 +283,16 @@ object Inliner {
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
+        case Inlined(_, Nil, t2) => stripTyped(t2)
         case _ => t
       }
 
       val Apply(_, codeArg :: Nil) = tree
-      val underlyingCodeArg = stripTyped(codeArg.underlying)
+      val underlyingCodeArg =
+        val codeArg1 = stripTyped(codeArg.underlying)
+        if Inliner.isInlineable(codeArg1) then stripTyped(Inliner.inlineCall(codeArg1))
+        else codeArg1
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
@@ -303,7 +308,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          report.error(em"argument to compileError must be a statically known String but was: $tree", underlyingCodeArg.srcPos)
+          report.error(em"argument to ${tree.symbol} must be a statically known String but was: $codeArg", codeArg.srcPos)
           Nil
       }
 
