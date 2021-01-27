@@ -1,4 +1,4 @@
-import compiletime.notInitialized
+import compiletime.uninitialized
 
 class Memo[A](x: => A):
   private var cached: A = _ // error

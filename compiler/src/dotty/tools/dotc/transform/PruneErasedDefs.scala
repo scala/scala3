@@ -19,7 +19,7 @@ import ast.tpd
  *  The phase also replaces all expressions that appear in an erased context by
  *  default values. This is necessary so that subsequent checking phases such
  *  as IsInstanceOfChecker don't give false negatives.
- *  Finally, the phase replaces `compiletime.notInitialized` on the right hand side
+ *  Finally, the phase replaces `compiletime.uninitialized` on the right hand side
  *  of a mutable field definition by `_`. This avoids a "is declared erased, but is
  *  in fact used" error in Erasure and communicates to Constructors that the
  *  variable does not have an initializer.
@@ -49,7 +49,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
       cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
     else tree.rhs match
       case rhs: TypeApply
-      if rhs.symbol == defn.Compiletime_notInitialized
+      if rhs.symbol == defn.Compiletime_uninitialized
          && sym.is(Mutable) && sym.owner.isClass =>
         cpy.ValDef(tree)(rhs = cpy.Ident(rhs)(nme.WILDCARD))
       case _ =>
