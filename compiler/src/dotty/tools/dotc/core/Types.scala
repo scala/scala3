@@ -5328,8 +5328,23 @@ object Types {
       case _ => tp
     }
 
+    private var expandingBounds: Boolean = false
+
+    /** Whether it is currently expanding bounds
+     *
+     *  It is used to avoid following LazyRef in F-Bounds
+     */
+    def isExpandingBounds: Boolean = expandingBounds
+
     protected def expandBounds(tp: TypeBounds): Type =
-      range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      if expandingBounds then tp
+      else {
+        val saved = expandingBounds
+        expandingBounds = true
+        val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+        expandingBounds = saved
+        res
+      }
 
     /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
      *  The possible cases are listed inline in the code.

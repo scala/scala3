@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
-import SymDenotations._
+import Denotations._, SymDenotations._
 import util.Spans._
 import util.Stats
 import NameKinds.DepParamName
@@ -438,6 +438,8 @@ object TypeOps:
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
+        case tp: LazyRef if isExpandingBounds =>
+          emptyRange
         case _ =>
           mapOver(tp)
       }
