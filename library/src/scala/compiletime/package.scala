@@ -1,7 +1,5 @@
 package scala
 
-import scala.quoted._
-
 package object compiletime {
 
   /** Use this method when you have a type, do not have a value for it but want to
@@ -17,6 +15,15 @@ package object compiletime {
    *  the branches.
    */
   erased def erasedValue[T]: T = ???
+
+  /** Used as the initializer of a class or object field, like this:
+   *
+   *    val x: T = notInitialized
+   *
+   *  This signifies that the field is not initialized by its own (On the JVM
+   *  it is still bulk-initialized to a zero bitfield).
+   */
+  erased def notInitialized[T]: T = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
    *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
