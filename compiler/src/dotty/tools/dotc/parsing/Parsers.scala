@@ -3201,7 +3201,8 @@ object Parsers {
 
     /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
      *            |  Pattern2 [‘:’ Type] ‘=’ Expr
-     *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
+     *  VarDef  ::=  PatDef
+     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.1)
      *  ValDcl  ::=  id {`,' id} `:' Type
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
