@@ -384,14 +384,12 @@ TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         
                        [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
-                    |  ‘var’ VarDef
+                    |  ‘var’ PatDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDcl
                     |  TmplDef
 PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
-                    |  Pattern2 [‘:’ Type] ‘=’ Expr                            PatDef(_, pats, tpe?, expr)
-VarDef            ::=  PatDef
-                    |  ids ‘:’ Type ‘=’ ‘_’
+                    |  Pattern2 [‘:’ Type] ‘=’ Expr                             PatDef(_, pats, tpe?, expr)
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr     DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
 
