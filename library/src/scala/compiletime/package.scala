@@ -141,7 +141,7 @@ package object compiletime {
    *  @tparam T the tuple containing the types of the values to be summoned
    *  @return the given values typed as elements of the tuple
    */
-  transparent inline def summonAll[T <: Tuple]: Widen[T] =
+  inline def summonAll[T <: Tuple]: Widen[T] =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
