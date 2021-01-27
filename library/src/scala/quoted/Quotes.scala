@@ -344,7 +344,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Import)
         /** Qualifier of the import */
         def expr: Term
-        /** List Selectors of the import
+        /** List selectors of the import
          *
          *  See documentation on `Selector`
          */
@@ -377,7 +377,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Export)
         /** Qualifier of the export */
         def expr: Term
-        /** List Selectors of the export
+        /** List selectors of the export
          *
          *  See documentation on `Selector`
          */
@@ -4453,4 +4453,3 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
   type Nested = Quotes
 
 }
-
