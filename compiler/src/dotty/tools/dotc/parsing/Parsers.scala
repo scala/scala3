@@ -3224,9 +3224,14 @@ object Parsers {
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
+          val rhsOffset = in.offset
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
+              if sourceVersion.isAtLeast(`3.1`) then
+                deprecationWarning(
+                  em"""`= _` has been deprecated; use `= notInitialized` instead.
+                      |`notInitialized` needs to be imported from scala.compiletime.""", rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

@@ -29,8 +29,8 @@ object bar {
       type U = UU
     }
     final lazy val nothing: Nothing = nothing
-    final lazy val sub: S2 with Sub = nothing
-    final lazy val box : Box[S2 with Sub] = new Box(nothing)
+    final lazy val sub: S2 & Sub = nothing
+    final lazy val box : Box[S2 & Sub] = new Box(nothing)
     def upcast(t: box.v.M2): box.v.M2 = t // error // error under -strict
   }
   def main(args : Array[String]) : Unit = {
