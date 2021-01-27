@@ -6,7 +6,7 @@ import org.junit.Assert.{assertSame, assertTrue, assertEquals}
 import dotty.tools.scaladoc.util.HTML._
 
 class LocationTests:
-  given DocContext = testDocContext
+  given DocContext = testDocContext()
   object locations extends Locations:
     val members = Map.empty
 

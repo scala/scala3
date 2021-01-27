@@ -58,7 +58,7 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
 
 def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
 
-def testDocContext = DocContext(testArgs(), testContext)
+def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)
 
 def tastyFiles(name: String) =
   def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {

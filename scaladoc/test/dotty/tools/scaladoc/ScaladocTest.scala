@@ -13,7 +13,7 @@ abstract class ScaladocTest(val name: String):
 
 
   def withModule(op: DocContext ?=> Module => Unit) =
-    given DocContext = testDocContext
+    given DocContext = testDocContext(tastyFiles(name))
     op(ScalaModuleProvider.mkModule())
 
   private def getTempDir() : TemporaryFolder =
