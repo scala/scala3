@@ -1,10 +1,10 @@
 import scala.quoted._
 
-inline def wildcard: Map[String, Class[_]] = ${ wildcardMacro }
+inline def wildcard: Map[String, Class[?]] = ${ wildcardMacro }
 inline def noWildcard: Map[String, Class[Int]] = ${ noWildcardMacro }
 
-def wildcardMacro(using Quotes): Expr[Map[String, Class[_]]] = {
-  val result: Map[String, Class[_]] = Map(
+def wildcardMacro(using Quotes): Expr[Map[String, Class[?]]] = {
+  val result: Map[String, Class[?]] = Map(
     "foo" -> classOf[Long],
     "bar" -> classOf[Int]
   )
