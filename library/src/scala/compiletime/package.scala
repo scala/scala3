@@ -16,14 +16,14 @@ package object compiletime {
    */
   erased def erasedValue[T]: T = ???
 
-  /** Used as the initializer of a class or object field, like this:
+  /** Used as the initializer of a mutable class or object field, like this:
    *
-   *    val x: T = notInitialized
+   *    var x: T = uninitialized
    *
-   *  This signifies that the field is not initialized by its own (On the JVM
+   *  This signifies that the field is not initialized on its own (On the JVM
    *  it is still bulk-initialized to a zero bitfield).
    */
-  erased def notInitialized[T]: T = ???
+  erased def uninitialized[T]: T = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
    *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
