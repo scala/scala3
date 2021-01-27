@@ -116,7 +116,8 @@ object Inlining {
       vdef.tpt.tpe.widenTermRefExpr.dealias.normalized match
         case tp: ConstantType =>
           if !tpd.isPureExpr(rhs) then
-            report.error(em"inline value must be pure but was: $rhs", rhs.srcPos)
+            val details = if tpd.enclosingInlineds.isEmpty then "" else em"but was: $rhs"
+            report.error(s"inline value must be pure$details", rhs.srcPos)
         case _ =>
           val pos = if vdef.tpt.span.isZeroExtent then rhs.srcPos else vdef.tpt.srcPos
           report.error(em"inline value must have a literal constant type", pos)

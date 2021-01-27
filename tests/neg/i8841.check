@@ -9,7 +9,4 @@
 -- Error: tests/neg/i8841.scala:4:28 -----------------------------------------------------------------------------------
 4 |  inline val log3: false  = { println(); false } // error
   |                            ^^^^^^^^^^^^^^^^^^^^
-  |                            inline value must be pure: {
-  |                              println()
-  |                              false
-  |                            }
+  |                            inline value must be pure
