@@ -1294,7 +1294,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           inlineIfIsNestedInlineCall(res)
       }
       if res.symbol == defn.QuotedRuntime_exprQuote then
-        ctx.compilationUnit.needsStaging = true
         ctx.compilationUnit.needsQuotePickling = true
       res
 
