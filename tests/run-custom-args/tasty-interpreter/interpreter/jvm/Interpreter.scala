@@ -37,7 +37,7 @@ class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[
                 }
                 else {
                   assert(method.getClass == classOf[Object])
-                  method.invoke(this, args: _*)
+                  method.invoke(this, args*)
                 }
               }
             }

@@ -7,7 +7,7 @@ object Test extends App {
 
   implicit object IArray {
     def initialize[A](body: => Array[A]): IArray[A] = body
-    def apply[A: ClassTag](xs: A*): IArray[A] = initialize(Array(xs: _*))
+    def apply[A: ClassTag](xs: A*): IArray[A] = initialize(Array(xs*))
 
     // These should be inline but that does not work currently. Try again
     // once inliner is moved to PickleQuotes

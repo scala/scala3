@@ -76,7 +76,7 @@ object ExtMethods:
   class Lst[T](xs: T*):
     private val elems = xs.toList
     def foldLeft[U](x: U)(op: (U, T) => U): U = elems.foldLeft(x)(op)
-    def ++ (other: Lst[T]): Lst[T] = Lst(elems ++ other.elems: _*)
+    def ++ (other: Lst[T]): Lst[T] = Lst((elems ++ other.elems)*)
 
   trait Ord[T]:
     extension (x: T) def less (y: T): Boolean

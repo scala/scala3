@@ -15,24 +15,24 @@ object Extractor4 { def unapplySeq(x: ProdCaseClass with SeqCaseClass): Option[(
 class A {
   def f1(x: Any) = x match {
     case CaseClass1()           => -1
-    case CaseClass2(xs : _*)    => xs.sum
+    case CaseClass2(xs *)    => xs.sum
     case CaseClass3(x)          => x
-    case CaseClass4(x, xs : _*) => x + xs.sum
-    case Extractor4(x, xs : _*) => 1000 + x + xs.sum
+    case CaseClass4(x, xs *) => x + xs.sum
+    case Extractor4(x, xs *) => 1000 + x + xs.sum
     case Extractor3(x)          => 1000 + x
-    case Extractor2(xs : _*)    => 1000 + xs.sum
+    case Extractor2(xs *)    => 1000 + xs.sum
     case Extractor1()           => -3
     case _                      => -2
   }
   def f2(x: Any) = x match {
-    case Extractor4(x, xs : _*) => 1000 + x + xs.sum
+    case Extractor4(x, xs *) => 1000 + x + xs.sum
     case Extractor3(x)          => 1000 + x
-    case Extractor2(xs : _*)    => 1000 + xs.sum
+    case Extractor2(xs *)    => 1000 + xs.sum
     case Extractor1()           => -3
     case CaseClass1()           => -1
-    case CaseClass2(xs : _*)    => xs.sum
+    case CaseClass2(xs *)    => xs.sum
     case CaseClass3(x)          => x
-    case CaseClass4(x, xs : _*) => x + xs.sum
+    case CaseClass4(x, xs *) => x + xs.sum
     case _                      => -2
   }
   def run(): Unit = {
@@ -75,11 +75,11 @@ class B {
   }
   def f4(x: CaseSeq) = x match {
     case CaseSeq(x, y, z)      => z :: Nil
-    case CaseSeq(x, y, z : _*) => z
+    case CaseSeq(x, y, z *) => z
   }
 
   def f5(x: Any) = x match { case ExtractorSeq(x, y, z) => z }
-  def f6(x: Any) = x match { case ExtractorSeq(x, y, z : _*) => z }
+  def f6(x: Any) = x match { case ExtractorSeq(x, y, z *) => z }
 
   def g1(x: CaseClass0) = x match {
     case CaseClass0() => true
@@ -88,7 +88,7 @@ class B {
     case CaseClass0v()        => true
     case CaseClass0v(5)       => true
     case CaseClass0v(x)       => true
-    case CaseClass0v(xs : _*) => false
+    case CaseClass0v(xs *) => false
   }
 }
 

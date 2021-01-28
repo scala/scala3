@@ -1,7 +1,7 @@
 object Test extends App{
   def foo(a: => Any*) = ()
-  def bar(a: => Any*) = foo(a : _*)
-  def baz(a: => Seq[Any]) = foo(a : _*)
+  def bar(a: => Any*) = foo(a *)
+  def baz(a: => Seq[Any]) = foo(a *)
   bar(???, ???)
   baz(Seq(???, ???))
 
@@ -10,7 +10,7 @@ object Test extends App{
   foo1(???, ???, ???)
 
   def assertFails(a: => Any) = {
-   var failed = false 
+   var failed = false
    try {
      a
    } catch {

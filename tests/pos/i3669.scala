@@ -5,6 +5,6 @@ class Test {
     val p1 = Paths.get("Hello")
     val p2 = Paths.get("Hello", "World")
     val p3 = Paths.get("Hello", "World", "!")
-    val p4 = Paths.get("Hello", xs: _*)
+    val p4 = Paths.get("Hello", xs*)
   }
 }

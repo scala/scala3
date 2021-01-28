@@ -13,8 +13,8 @@ object Test {
   }
 
   case class CS1(xs: Any*)
-  class CS2(xs: Seq[_]*) extends CS1(xs: _*)
-  class CS3(xs: IndexedSeq[Int]*) extends CS2(xs: _*)
+  class CS2(xs: Seq[_]*) extends CS1(xs*)
+  class CS3(xs: IndexedSeq[Int]*) extends CS2(xs*)
 
   case class H1(x: Int, y: Double)
   class H2(x: Double, y: Int) extends H1(y, x)

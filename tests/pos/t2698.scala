@@ -10,5 +10,5 @@ abstract class S2 {
   type __labelT = lang._labelT
 
   var deltaq: Array[__labelT] = _
-  def delta1  = immutable.Map(deltaq.zipWithIndex: _*)
+  def delta1  = immutable.Map(deltaq.zipWithIndex*)
 }
