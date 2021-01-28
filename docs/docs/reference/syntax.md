@@ -248,7 +248,7 @@ ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
 ExprInParens      ::=  PostfixExpr ‘:’ Type
                     |  Expr
 ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
-                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’
+                    |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
 BlockExpr         ::=  <<< (CaseClauses | Block) >>>
@@ -277,7 +277,7 @@ TypeCaseClause    ::=  ‘case’ InfixType ‘=>’ Type [nl]
 
 Pattern           ::=  Pattern1 { ‘|’ Pattern1 }
 Pattern1          ::=  Pattern2 [‘:’ RefinedType]
-Pattern2          ::=  [id ‘@’] InfixPattern
+Pattern2          ::=  [id ‘@’] InfixPattern [‘*’]
 InfixPattern      ::=  SimplePattern { id [nl] SimplePattern }
 SimplePattern     ::=  PatVar
                     |  Literal
@@ -291,7 +291,7 @@ PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
 ```
 
 ### Type and Value Parameters

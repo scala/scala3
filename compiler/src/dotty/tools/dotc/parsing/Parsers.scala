@@ -1524,7 +1524,7 @@ object Parsers {
 
     /** Is current ident a `*`, and is it followed by a `)` or `,`? */
     def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && {
+      in.isIdent(nme.raw.STAR) && {
         val nxt = in.lookahead.token
         nxt == RPAREN || nxt == COMMA
       }
@@ -2610,37 +2610,43 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern2    ::=  [id `as'] InfixPattern
+    /**  Pattern2    ::=  InfixPattern [‘*’]
      */
-    val pattern2: () => Tree = () => infixPattern() match {
+    def pattern3(): Tree =
+      val p = infixPattern()
+      if isPostfixStar then
+        atSpan(in.skipToken()) {
+          Typed(p, Ident(tpnme.WILDCARD_STAR))
+        }
+      else p
+
+    /**  Pattern2    ::=  [id `@'] Pattern3
+     */
+    val pattern2: () => Tree = () => pattern3() match
       case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
-        infixPattern() match {
-          case pt @ Ident(tpnme.WILDCARD_STAR) =>  // compatibility for Scala2 `x @ _*` syntax
-            warnMigration(p)
-            atSpan(startOffset(p), offset) { Typed(p, pt) }
+        pattern3() match {
           case pt @ Bind(nme.WILDCARD, pt1: Typed) if pt.mods.is(Given) =>
             atSpan(startOffset(p), 0) { Bind(name, pt1).withMods(pt.mods) }
+          case Typed(Ident(nme.WILDCARD), pt @ Ident(tpnme.WILDCARD_STAR)) =>
+            atSpan(startOffset(p), 0) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
         }
-      case p @ Ident(tpnme.WILDCARD_STAR) =>
-        warnMigration(p)
-        atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
-    }
 
-    private def warnMigration(p: Tree) =
+    private def warnStarMigration(p: Tree) =
       if sourceVersion.isAtLeast(`3.1`) then
         report.errorOrMigrationWarning(
-          "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
+          em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
           in.sourcePos(startOffset(p)))
 
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
+      infixOps(simplePattern(), in.canStartExprTokens, simplePattern,
+          isOperator = in.name != nme.raw.BAR && !isPostfixStar)
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
@@ -2659,16 +2665,7 @@ object Parsers {
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
       case USCORE =>
-        val wildIdent = wildcardIdent()
-
-        // compatibility for Scala2 `x @ _*` and `_*` syntax
-        // `x: _*' is parsed in `ascription'
-        if (isIdent(nme.raw.STAR)) {
-          in.nextToken()
-          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
-          atSpan(wildIdent.span) { Ident(tpnme.WILDCARD_STAR) }
-        }
-        else wildIdent
+        wildcardIdent()
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
@@ -2710,7 +2707,7 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
       inParens(patternsOpt(Location.InPatternArgs))
