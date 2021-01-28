@@ -35,7 +35,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     IllegalVariableInPatternAlternativeID,
     IdentifierExpectedID,
     AuxConstructorNeedsNonImplicitParameterID,
-    IncorrectRepeatedParameterSyntaxID,
+    VarArgsParamMustComeLastID,
     IllegalLiteralID,
     PatternMatchExhaustivityID,
     MatchCaseUnreachableID,
