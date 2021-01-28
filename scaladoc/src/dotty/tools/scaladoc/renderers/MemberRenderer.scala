@@ -140,6 +140,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       span(cls := "signature")(signature.map(renderElement)),
     )
 
+  def memberIcon(member: Member) = member.kind match {
+    case Kind.Package => Nil
+    case _ =>
+      val withCompanion = member.companion.fold("")(_ => "-with-companion")
+      val iconSpan = span(cls := s"member-icon ${member.kind.name}$withCompanion")()
+      Seq(member.companion.flatMap(link(_)).fold(iconSpan)(link => a(href := link)(iconSpan)))
+  }
+
   def annotations(member: Member) =
    val rawBuilder = InlineSignatureBuilder().annotationsBlock(member)
    val signatures = rawBuilder.asInstanceOf[InlineSignatureBuilder].names.reverse
@@ -345,8 +353,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
       case _ =>
         Seq(
-          h1(m.name),
-          div(cls:= "header monospace")(annotations(m), memberSingnature(m))
+          div(cls := "header")(
+            memberIcon(m),
+            h1(m.name)
+          ),
+          div(cls := "signature monospace")(
+            annotations(m),
+            memberSingnature(m)
+          )
         )
 
     div(

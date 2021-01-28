@@ -129,6 +129,15 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("fonts/dotty-icons.woff"),
     dottyRes("fonts/dotty-icons.ttf"),
     dottyRes("images/scaladoc_logo.svg"),
+    dottyRes("images/class.svg"),
+    dottyRes("images/class_comp.svg"),
+    dottyRes("images/object.svg"),
+    dottyRes("images/object_comp.svg"),
+    dottyRes("images/trait.svg"),
+    dottyRes("images/trait_comp.svg"),
+    dottyRes("images/enum.svg"),
+    dottyRes("images/enum_comp.svg"),
+    dottyRes("images/given.svg"),
     searchData(pages)
   )
 

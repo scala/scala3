@@ -613,6 +613,55 @@ footer .pull-right {
   position: relative;
 }
 
+.header {
+  display: flex;
+  flex-direction: row;
+  padding-top: 1em;
+}
+
+.member-icon {
+  box-sizing: content-box;
+  height: 5.7em;
+  width: 5.7em;
+  color:transparent;
+}
+
+.member-icon.class::before {
+  content: url("../images/class.svg")
+}
+
+.member-icon.class-with-companion::before {
+  content: url("../images/class_comp.svg")
+}
+
+.member-icon.object::before {
+  content: url("../images/object.svg")
+}
+
+.member-icon.object-with-companion::before {
+  content: url("../images/object_comp.svg")
+}
+
+.member-icon.trait::before {
+  content: url("../images/trait.svg")
+}
+
+.member-icon.trait-with-companion::before {
+  content: url("../images/trait_comp.svg")
+}
+
+.member-icon.enum::before {
+  content: url("../images/enum.svg")
+}
+
+.member-icon.enum-with-companion::before {
+  content: url("../images/enum_comp.svg")
+}
+
+.member-icon.given::before {
+  content: url("../images/given.svg")
+}
+
 /* Large Screens */
 @media(min-width: 1100px) {
   :root {
