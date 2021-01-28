@@ -141,8 +141,8 @@ sidebar:
               url: docs/reference/changed-features/overload-resolution.html
             - title: Match Expressions
               url: docs/reference/changed-features/match-syntax.html
-            - title: Vararg Patterns
-              url: docs/reference/changed-features/vararg-patterns.html
+            - title: Vararg Splices
+              url: docs/reference/changed-features/vararg-splices.html
             - title: Pattern Bindings
               url: docs/reference/changed-features/pattern-bindings.html
             - title: Pattern Matching
