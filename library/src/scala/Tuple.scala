@@ -255,17 +255,20 @@ sealed trait NonEmptyTuple extends Tuple {
   /** Get the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.
    */
-  inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
+  // FIXME remove transparent
+  transparent inline def apply[This >: this.type <: NonEmptyTuple](n: Int): Elem[This, n.type] =
     runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
 
   /** Get the head of this tuple */
-  inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
+  // FIXME remove transparent
+  transparent inline def head[This >: this.type <: NonEmptyTuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
   /** Get the tail of this tuple.
    *  This operation is O(this.size)
    */
-  inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
+  // FIXME remove transparent
+  transparent inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 
 }
