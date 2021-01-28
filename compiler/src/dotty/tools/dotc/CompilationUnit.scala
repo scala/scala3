@@ -47,6 +47,7 @@ class CompilationUnit protected (val source: SourceFile) {
   val inlineAccessors: InlineAccessors = new InlineAccessors
 
   var suspended: Boolean = false
+  var suspendedAtInliningPhase: Boolean = false
 
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
@@ -61,6 +62,8 @@ class CompilationUnit protected (val source: SourceFile) {
         report.echo(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
+      if ctx.phase == Phases.inliningPhase then
+        suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] = null

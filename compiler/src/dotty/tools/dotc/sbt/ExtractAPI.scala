@@ -77,10 +77,11 @@ class ExtractAPI extends Phase {
       } finally pw.close()
     }
 
-    if (ctx.sbtCallback != null) {
+    if ctx.sbtCallback != null &&
+      !ctx.compilationUnit.suspendedAtInliningPhase // already registered before this unit was suspended
+    then
       classes.foreach(ctx.sbtCallback.api(sourceFile.file, _))
       mainClasses.foreach(ctx.sbtCallback.mainClass(sourceFile.file, _))
-    }
   }
 }
 

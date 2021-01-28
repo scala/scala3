@@ -11,7 +11,7 @@ $ copy-file changes/MacroRuntime.scala MacroRuntime.scala
 > clean
 > run
 
-# use an implemntation of the macro that emits a compile time error
+# use an implemntation of the macro that emits a compile-time error
 $ copy-file changes/MacroRuntimeCompileError.scala MacroRuntime.scala
 -> compile
 
