@@ -2037,7 +2037,7 @@ class Typer extends Namer
       ctx.outer.outersIterator.takeWhile(!_.owner.is(Method))
         .filter(ctx => ctx.owner.isClass && ctx.owner.typeParams.nonEmpty)
         .toList.reverse
-        .map(ctx => rhsCtx.gadt.addToConstraint(ctx.owner.typeParams))
+        .foreach(ctx => rhsCtx.gadt.addToConstraint(ctx.owner.typeParams))
 
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
