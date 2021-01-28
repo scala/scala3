@@ -7,13 +7,13 @@ object Test {
     val is = List(1,2,3)
 
     is match {
-      case List(1, _*,) => // error // error // error: bad use of _* (a sequence pattern must be the last pattern)
+      case List(1, _*,) => // error // // error: bad use of _* (a sequence pattern must be the last pattern)
                            // illegal start of simple pattern
-      case List(1, _*3,) => // error // error: illegal start of simple pattern
+      case List(1, _*3,) => // error // error // error: illegal start of simple pattern
       //case List(1, _*3:) =>  // poor recovery by parens
-      case List(1, x*) => // error: use _* to match a sequence
-      case List(x*, 1) => // error: trailing * is not a valid pattern
-      case (1, x*) => // error: trailing * is not a valid pattern
+      case List(1, x*) => // ok
+      case List(x*, 1) => //ok
+      case (1, x*) => //ok
       case (1, x: _*) => // error: bad use of _* (sequence pattern not allowed)
     }
 
