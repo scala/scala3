@@ -376,13 +376,13 @@ object Parsers {
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
 
-    def rewriteNotice(additionalOption: String = "") = {
+    def rewriteNotice(version: String = "3.0", additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
-      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source 3.0-migration."
+      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source $version-migration."
     }
 
     def syntaxVersionError(option: String, span: Span) =
-      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(option)}""", span)
+      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice("3.0", option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
       if (in.newSyntax) {
@@ -2082,8 +2082,10 @@ object Parsers {
           if isVarargSplice then
             if sourceVersion.isAtLeast(`3.1`) then
               report.errorOrMigrationWarning(
-                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
+                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("3.1")}",
                 in.sourcePos(uscoreStart))
+            if sourceVersion == `3.1-migration` then
+              patch(source, Span(t.span.end, in.lastOffset), " *")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
               em"""`_*` can be used only for last argument of method application.
@@ -2160,7 +2162,7 @@ object Parsers {
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice()}",
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("3.1")}",
                 source.atSpan(Span(start, in.lastOffset)))
             in.nextToken()
             val t = infixType()
