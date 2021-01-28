@@ -1284,7 +1284,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       super.typedValDef(vdef1, sym)
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
-      constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
+      val res = constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.QuotedRuntime_exprSplice
                         && level == 0
                         && !suppressInline =>
@@ -1293,6 +1293,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         case res =>
           inlineIfIsNestedInlineCall(res)
       }
+      if res.symbol == defn.QuotedRuntime_exprQuote then
+        ctx.compilationUnit.needsStaging = true
+      res
+
+    override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
+      inlineIfIsNestedInlineCall(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet

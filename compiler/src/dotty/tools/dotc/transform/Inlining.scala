@@ -89,10 +89,7 @@ class Inlining extends MacroTransform {
         case _ if Inliner.isInlineable(tree) && !tree.tpe.widen.isInstanceOf[MethodOrPoly] && StagingContext.level == 0 =>
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
-          else
-            val inlined = Inliner.inlineCall(tree1)
-            if tree1 eq inlined then inlined
-            else transform(inlined) // TODO can this be removed if `needsStaging` is set in `Inliner`?
+          else Inliner.inlineCall(tree1)
         case _: GenericApply if tree.symbol.isQuote =>
           ctx.compilationUnit.needsStaging = true
           super.transform(tree)(using StagingContext.quoteContext)
