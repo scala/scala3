@@ -10,7 +10,7 @@ libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersi
 TASTy files contain the full typed tree of a class including source positions
 and documentation. This is ideal for tools that analyze or extract semantic
 information from the code. To avoid the hassle of working directly with the TASTy
-file we provide the `TastyInspector` which loads the contents and exposes it
+file we provide the `Inspector` which loads the contents and exposes it
 through the TASTy reflect API.
 
 ## Inspecting TASTy files
@@ -21,10 +21,12 @@ To inspect the trees of a TASTy file a consumer can be defined in the following 
 import scala.quoted._
 import scala.tasty.inspector._
 
-class MyInspector extends TastyInspector:
-   protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit =
+class MyInspector extends Inspector:
+    def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
       import quotes.reflect._
-      // Do something with the tree
+      for tasty <- tastys do
+        val tree = tasty.ast
+        // Do something with the tree
 ```
 
 Then the consumer can be instantiated with the following code to get the tree of the `foo/Bar.tasty` file.
@@ -32,7 +34,9 @@ Then the consumer can be instantiated with the following code to get the tree of
 ```scala
 object Test:
    def main(args: Array[String]): Unit =
-      new MyInspector().inspectTastyFiles("foo/Bar.tasty")
+      val tastyFiles = List("foo/Bar.tasty")
+      TastyInspector.inspectTastyFiles(tastyFiles)(new MyInspector)
+
 ```
 
 Note that if we need to run the main (in the example below defined in an object called `Test`) after compilation we need to make the compiler available to the runtime:

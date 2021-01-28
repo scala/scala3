@@ -16,14 +16,15 @@ object Test {
     val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.extension == "tasty").map(_.toString).toList
     val tastyFiles = allTastyFiles.filter(_.contains("I8163"))
 
-    new TestInspector().inspectTastyFiles(tastyFiles)
+    TastyInspector.inspectTastyFiles(tastyFiles)(new TestInspector())
   }
 }
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends Inspector:
 
-  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
-    inspectClass(root)
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
+    for tasty <- tastys do
+      inspectClass(tasty.ast)
 
   private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
     import quotes.reflect._
