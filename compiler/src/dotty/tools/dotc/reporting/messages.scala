@@ -779,32 +779,6 @@ import transform.SymUtils._
            |"""
   }
 
-  class IncorrectRepeatedParameterSyntax()(using Context)
-  extends SyntaxMsg(IncorrectRepeatedParameterSyntaxID) {
-    def msg = "'*' expected"
-    def explain =
-      em"""|Expected * in ${hl("_*")} operator.
-           |
-           |The ${hl("_*")} operator can be used to supply a sequence-based argument
-           |to a method with a variable-length or repeated parameter. It is used
-           |to expand the sequence to a variable number of arguments, such that:
-           |${hl("func(args: _*)")} would expand to ${hl("func(arg1, arg2 ... argN)")}.
-           |
-           |Below is an example of how a method with a variable-length
-           |parameter can be declared and used.
-           |
-           |Squares the arguments of a variable-length parameter:
-           |${hl("def square(args: Int*) = args.map(a => a * a)")}
-           |
-           |Usage:
-           |${hl("square(1, 2, 3) // res0: List[Int] = List(1, 4, 9)")}
-           |
-           |Secondary Usage with ${hl("_*")}:
-           |${hl("val ints = List(2, 3, 4)  // ints: List[Int] = List(2, 3, 4)")}
-           |${hl("square(ints: _*)          // res1: List[Int] = List(4, 9, 16)")}
-           |""".stripMargin
-  }
-
   class IllegalLiteral()(using Context)
   extends SyntaxMsg(IllegalLiteralID) {
     def msg = "Illegal literal"
@@ -865,11 +839,11 @@ import transform.SymUtils._
 
   class SeqWildcardPatternPos()(using Context)
   extends SyntaxMsg(SeqWildcardPatternPosID) {
-    def msg = em"""${hl("_*")} can be used only for last argument"""
+    def msg = em"""${hl("*")} can be used only for last argument"""
     def explain = {
       val code =
         """def sumOfTheFirstTwo(list: List[Int]): Int = list match {
-          |  case List(first, second, x:_*) => first + second
+          |  case List(first, second, x*) => first + second
           |  case _ => 0
           |}"""
       em"""|Sequence wildcard pattern is expected at the end of an argument list.
@@ -1274,7 +1248,7 @@ import transform.SymUtils._
   }
 
   class VarArgsParamMustComeLast()(using Context)
-  extends SyntaxMsg(IncorrectRepeatedParameterSyntaxID) {
+  extends SyntaxMsg(VarArgsParamMustComeLastID) {
     def msg = em"""${hl("varargs")} parameter must come last"""
     def explain =
       em"""|The ${hl("varargs")} field must be the last field in the method signature.

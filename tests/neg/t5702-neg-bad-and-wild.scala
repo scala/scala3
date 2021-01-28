@@ -12,7 +12,7 @@ object Test {
       case List(1, _*3,) => // error // error // error: illegal start of simple pattern
       //case List(1, _*3:) =>  // poor recovery by parens
       case List(1, x*) => // ok
-      case List(x*, 1) => //ok
+      case List(x*, 1) => // error: pattern expected
       case (1, x*) => //ok
       case (1, x: _*) => // error: bad use of _* (sequence pattern not allowed)
     }
