@@ -16,9 +16,9 @@ private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using 
               report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
       }
       val newArgsExpr = Varargs(argShowedExprs)
-      '{ $sc.s($newArgsExpr: _*) }
+      '{ $sc.s($newArgsExpr*) }
     case _ =>
-      // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
+      // `new StringContext(...).showMeExpr(args*)` not an explicit `showMeExpr"..."`
       report.error(s"Args must be explicit", argsExpr)
       '{ ??? }
 

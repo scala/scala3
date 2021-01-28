@@ -110,7 +110,7 @@ object CollectionStrawMan6 extends LowPriority {
   /** Base trait for companion objects of collections */
   trait IterableFactory[+C[X] <: Iterable[X]] extends FromIterable[C] {
     def empty[X]: C[X] = fromIterable(View.Empty)
-    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
+    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs*))
   }
 
   /** Base trait for generic collections */
@@ -804,7 +804,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     /** A view with given elements */
     case class Elems[A](xs: A*) extends View[A] {
-      def iterator = Iterator(xs: _*)
+      def iterator = Iterator(xs*)
       override def knownSize = xs.length // should be: xs.knownSize, but A*'s are not sequences in this strawman.
     }
 

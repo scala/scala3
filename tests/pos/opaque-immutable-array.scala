@@ -5,7 +5,7 @@ object ia {
   opaque type IArray[A1] = Array[A1]
 
   object IArray {
-    def apply[A: ClassTag](xs: A*) = initialize(Array(xs: _*))
+    def apply[A: ClassTag](xs: A*) = initialize(Array(xs*))
 
     def initialize[A](body: => Array[A]): IArray[A] = body
     def size[A](ia: IArray[A]): Int = ia.length

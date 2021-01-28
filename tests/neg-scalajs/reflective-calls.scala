@@ -28,12 +28,12 @@ object Test {
   def classOfVarArgs(): Unit = {
     val receiver: ReflectSel = ???
     val classOfs: List[Class[_]] = List(classOf[String], classOf[List[_]])
-    receiver.applyDynamic("foo", classOfs: _*)("bar", Nil) // error
+    receiver.applyDynamic("foo", classOfs*)("bar", Nil) // error
   }
 
   def argsVarArgs(): Unit = {
     val receiver: ReflectSel = ???
     val args: List[Any] = List("bar", Nil)
-    receiver.applyDynamic("foo", classOf[String], classOf[List[_]])(args: _*) // error
+    receiver.applyDynamic("foo", classOf[String], classOf[List[_]])(args*) // error
   }
 }

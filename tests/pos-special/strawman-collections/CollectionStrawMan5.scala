@@ -39,7 +39,7 @@ object CollectionStrawMan5 {
   /** Base trait for companion objects of collections */
   trait IterableFactory[+C[X] <: Iterable[X]] extends FromIterable[C] {
     def empty[X]: C[X] = fromIterable(View.Empty)
-    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
+    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs*))
   }
 
   /** Base trait for generic collections */
@@ -378,7 +378,7 @@ object CollectionStrawMan5 {
       override def knownLength = 0
     }
     case class Elems[A](xs: A*) extends View[A] {
-      def iterator = Iterator(xs: _*)
+      def iterator = Iterator(xs*)
       override def knownLength = xs.length
     }
     case class Filter[A](val underlying: Iterable[A], p: A => Boolean) extends View[A] {

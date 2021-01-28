@@ -75,7 +75,7 @@ object desugar {
     type ~[X, Y] = Tuple2[X, Y]
     val pair: Int ~ String = 1 -> "abc"
     def foo(xs: Int*) = xs.length
-    foo(list: _*)
+    foo(list*)
     (list length)
     - desugar.x
     def bar(x: => Int) = x

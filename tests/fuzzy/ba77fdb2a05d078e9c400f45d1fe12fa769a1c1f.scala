@@ -2,7 +2,7 @@ import language.List
 class i0 {
 def main(i1: Array[String]): Unit =
 try {
-case List(_, _: _*) => 0 case List(1, 2) => i2 :: i1 - 1 }
+case List(_, _*) => 0 case List(1, 2) => i2 :: i1 - 1 }
 println()
 case _
 (1

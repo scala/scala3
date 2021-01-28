@@ -14,7 +14,7 @@ trait ArgumentExprs1 {
   def g(x: Int, y: Int*) = 1
   g(1,2,
   )
-  g(1,List(2, 3): _*,
+  g(1,List(2, 3)*,
   )
 }
 
@@ -118,14 +118,14 @@ trait SimplePattern {
     ) => x
   }
 
-  // test ': _*' syntax in patterns
+  // test '*' syntax in patterns
   List(1, 2, 3) match {
-    case List(1, 2, x : _*,
+    case List(1, 2, x *,
     ) => 1
   }
 
   // test varargs in patterns
-  val List(x, y, z: _*,
+  val List(x, y, z*,
   ) = 42 :: 17 :: Nil
 }
 

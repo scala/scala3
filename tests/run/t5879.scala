@@ -46,8 +46,8 @@ object Test {
   }
 
   def resolveMany(): Unit = {
-    val a = HashMap((0 until 100) zip (0 until 100): _*)
-    val b = HashMap((0 until 100) zip (100 until 200): _*)
+    val a = HashMap((0 until 100) zip (0 until 100)*)
+    val b = HashMap((0 until 100) zip (100 until 200)*)
     def collision(a: (Int, Int), b: (Int, Int)) = {
       (a._1, a._2 + b._2)
     }

@@ -14,17 +14,17 @@ object Macro {
 
 object SIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).s(${Expr.ofList(args)}: _*)}
+    '{(${Expr(strCtx)}).s(${Expr.ofList(args)}*)}
 }
 
 object RawIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}: _*)}
+    '{(${Expr(strCtx)}).raw(${Expr.ofList(args)}*)}
 }
 
 object FooIntepolator extends MacroStringInterpolator[String] {
   protected def interpolate(strCtx: StringContext, args: List[Expr[Any]]) (using Quotes): Expr[String] =
-    '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}: _*)}
+    '{(${Expr(strCtx)}).s(${Expr.ofList(args.map(_ => '{"foo"}))}*)}
 }
 
 // TODO put this class in the stdlib or separate project?
@@ -62,7 +62,7 @@ abstract class MacroStringInterpolator[T] {
           case Literal(StringConstant(str)) => str
           case tree => throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
         }
-        StringContext(strCtxArgs: _*)
+        StringContext(strCtxArgs*)
       case tree =>
         throw new NotStaticlyKnownError("Expected statically known StringContext", tree.asExpr)
     }
@@ -77,7 +77,7 @@ abstract class MacroStringInterpolator[T] {
   }
 
   protected implicit def StringContextIsToExpr: ToExpr[StringContext] = new ToExpr[StringContext] {
-    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Expr(strCtx.parts.toSeq)}: _*)}
+    def apply(strCtx: StringContext)(using Quotes) = '{StringContext(${Expr(strCtx.parts.toSeq)}*)}
   }
 
   protected class NotStaticlyKnownError(msg: String, expr: Expr[Any]) extends Exception(msg)

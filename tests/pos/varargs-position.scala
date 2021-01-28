@@ -4,9 +4,9 @@ object varargspos {
   val xs = 1 :: 2 :: Nil
   val a = 8
   val b = 7
-  g(5, xs: _*)
-  g(3, Nil: _*)
-  g(a, xs: _*)
+  g(5, xs*)
+  g(3, Nil*)
+  g(a, xs*)
   g(a, b, 2, 3)
   g(1)
 }
