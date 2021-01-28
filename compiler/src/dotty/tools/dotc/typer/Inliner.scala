@@ -1295,6 +1295,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       }
       if res.symbol == defn.QuotedRuntime_exprQuote then
         ctx.compilationUnit.needsStaging = true
+        ctx.compilationUnit.needsQuotePickling = true
       res
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =

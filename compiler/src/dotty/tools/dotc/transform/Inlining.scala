@@ -92,6 +92,7 @@ class Inlining extends MacroTransform {
           else Inliner.inlineCall(tree1)
         case _: GenericApply if tree.symbol.isQuote =>
           ctx.compilationUnit.needsStaging = true
+          ctx.compilationUnit.needsQuotePickling = true
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)

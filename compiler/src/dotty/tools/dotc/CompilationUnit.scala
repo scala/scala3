@@ -43,6 +43,11 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   var needsStaging: Boolean = false
 
+  /** Will be set to `true` if contains `Quote` that needs to be pickled
+   *  The information is used in phase `PickleQuotes` in order to avoid traversing trees that need no transformations.
+   */
+  var needsQuotePickling: Boolean = false
+
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
 
@@ -93,7 +98,8 @@ object CompilationUnit {
     if (forceTrees) {
       val force = new Force
       force.traverse(unit1.tpdTree)
-      unit1.needsStaging = force.needsStaging
+      unit1.needsStaging = force.containsQuote
+      unit1.needsQuotePickling = force.containsQuote
     }
     unit1
   }
@@ -119,10 +125,10 @@ object CompilationUnit {
 
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
-    var needsStaging = false
+    var containsQuote = false
     def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
-        needsStaging = true
+        containsQuote = true
       traverseChildren(tree)
     }
   }
