@@ -40,7 +40,6 @@ class Inlining extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def run(using Context): Unit =
-    // if (!ctx.settings.YinlineBlackboxWhileTyping.value) // phase not needed?
     try super.run
     catch case _: CompilationUnit.SuspendException => ()
 

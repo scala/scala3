@@ -1349,7 +1349,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
         !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly] &&
         Inliner.isInlineable(tree) &&
         StagingContext.level == 0 &&
-        (ctx.isAfterTyper || tree.symbol.is(Transparent) || ctx.mode.is(Mode.ForceInline) || ctx.settings.YinlineBlackboxWhileTyping.value)
+        (ctx.isAfterTyper || tree.symbol.is(Transparent) || ctx.mode.is(Mode.ForceInline) || ctx.settings.YforceInlineWhileTyping.value)
       then Inliner.inlineCall(tree)
       else tree
   }

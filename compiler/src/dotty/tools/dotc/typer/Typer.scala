@@ -3410,7 +3410,7 @@ class Typer extends Namer
           Inliner.isInlineable(tree) &&
           !suppressInline &&
           StagingContext.level == 0 &&
-          (tree.symbol.is(Transparent) || ctx.settings.YinlineBlackboxWhileTyping.value)
+          (tree.symbol.is(Transparent) || ctx.settings.YforceInlineWhileTyping.value)
         then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
