@@ -14,7 +14,6 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
 import dotty.dokka.translators.FilterAttributes
-import com.fasterxml.jackson.databind.ObjectMapper
 
 enum Resource(val path: String):
   case Text(override val path: String, content: String) extends Resource(path)
@@ -24,10 +23,9 @@ enum Resource(val path: String):
 
 trait Resources(using ctx: DocContext) extends Locations, Writer:
   private def dynamicJsData =
-    // If data at any point will become more complex we should use a proper mapping
-    val data: Map[String, Map[String, String]] =
-      Map("filterDefaults" -> FilterAttributes.defaultValues)
-    val str = new ObjectMapper().writeValueAsString(data.transform((_, v) => v.asJava).asJava)
+    val str = jsonObject("filterDefaults" -> jsonObject(
+      FilterAttributes.defaultValues.toSeq.map { case  (n, v) => n -> jsonString(v) }:_*
+    ))
     Resource.Text("scripts/data.js", s"var scala3DocData = $str")
 
   private def scala3docVersionFile = Resource.Text("scala3doc.version", BuildInfo.version)
@@ -87,17 +85,6 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
 
-  case class PageEntry(
-    dri: DRI,
-    name: String,
-    text: String,
-    descr: String,
-  ):
-    // for jackson
-    def getL: String = absolutePath(dri)
-    def getN: String = name
-    def getT: String = text
-    def getD: String = descr
 
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
@@ -106,14 +93,21 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
         case s: String => s
       }.mkString
 
-    def processPage(page: Page): Seq[PageEntry] =
+    def mkEntry(dri: DRI, name: String, text: String, descr: String) = jsonObject(
+        "l" -> jsonString(absolutePath(dri)),
+        "n" -> jsonString(name),
+        "t" -> jsonString(text),
+        "d" -> jsonString(descr)
+      )
+
+    def processPage(page: Page): Seq[JSON] =
       val res =  page.content match
         case m: Member =>
           val descr = m.dri.asFileLocation
-          def processMember(member: Member): Seq[PageEntry] =
+          def processMember(member: Member): Seq[JSON] =
             val signatureBuilder = ScalaSignatureProvider.rawSignature(member, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder]
             val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
-            val entry = PageEntry(member.dri, member.name, flattenToText(sig), descr)
+            val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr)
             val children = member
                 .membersBy(m => m.kind != dotty.dokka.model.api.Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
@@ -121,13 +115,12 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
           processMember(m)
         case _ =>
-          Seq(PageEntry(page.link.dri, page.link.name, page.link.name, ""))
+          Seq(mkEntry(page.link.dri, page.link.name, page.link.name, ""))
 
       res ++ page.children.flatMap(processPage)
 
-    val entries = pages.flatMap(processPage).toArray
-    val entriesText = new ObjectMapper().writeValueAsString(entries)
-    Resource.Text(searchDataPath, s"pages = $entriesText;")
+    val entries = pages.flatMap(processPage)
+    Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
 
 
   def allResources(pages: Seq[Page]): Seq[Resource] = memberResources ++ Seq(

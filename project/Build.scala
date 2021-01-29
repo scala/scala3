@@ -1563,7 +1563,6 @@ object Build {
             "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
             "nl.big-o" % "liqp" % "0.6.7",
             "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
-            "args4j" % "args4j" % "2.33",
             Dependencies.`jackson-dataformat-yaml`,
 
             "com.novocode" % "junit-interface" % "0.11" % "test",
