@@ -4,9 +4,11 @@ package core
 import Types._, Contexts._, util.Stats._, Hashable._, Names._
 import config.Config
 import Decorators._
-import util.{HashSet, Stats}
+import util.{WeakHashSet, Stats}
+import WeakHashSet.Entry
+import scala.annotation.tailrec
 
-class Uniques extends HashSet[Type](Config.initialUniquesCapacity):
+class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
   override def isEqual(x: Type, y: Type) = x.eql(y)
 
@@ -32,7 +34,7 @@ object Uniques:
     if tp.hash == NotCached then tp
     else ctx.uniques.put(tp).asInstanceOf[T]
 
-  final class NamedTypeUniques extends HashSet[NamedType](Config.initialUniquesCapacity * 4) with Hashable:
+  final class NamedTypeUniques extends WeakHashSet[NamedType](Config.initialUniquesCapacity * 4) with Hashable:
     override def hash(x: NamedType): Int = x.hash
 
     def enterIfNew(prefix: Type, designator: Designator, isTerm: Boolean)(using Context): NamedType =
@@ -43,17 +45,25 @@ object Uniques:
         else new CachedTypeRef(prefix, designator, h)
       if h == NotCached then newType
       else
+        // Inlined from WeakHashSet#put
         Stats.record(statsItem("put"))
-        var idx = index(h)
-        var e = entryAt(idx)
-        while e != null do
-          if (e.prefix eq prefix) && (e.designator eq designator) && (e.isTerm == isTerm) then return e
-          idx = nextIndex(idx)
-          e = entryAt(idx)
-        addEntryAt(idx, newType)
+        removeStaleEntries()
+        val bucket = index(h)
+        val oldHead = table(bucket)
+
+        @tailrec
+        def linkedListLoop(entry: Entry[NamedType]): NamedType = entry match
+          case null                    => addEntryAt(bucket, newType, h, oldHead)
+          case _                       =>
+            val e = entry.get
+            if e != null && (e.prefix eq prefix) && (e.designator eq designator) && (e.isTerm == isTerm) then e
+            else linkedListLoop(entry.tail)
+
+        linkedListLoop(oldHead)
+      end if
   end NamedTypeUniques
 
-  final class AppliedUniques extends HashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
+  final class AppliedUniques extends WeakHashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
     override def hash(x: AppliedType): Int = x.hash
 
     def enterIfNew(tycon: Type, args: List[Type]): AppliedType =
@@ -62,13 +72,21 @@ object Uniques:
       if monitored then recordCaching(h, classOf[CachedAppliedType])
       if h == NotCached then newType
       else
+        // Inlined from WeakHashSet#put
         Stats.record(statsItem("put"))
-        var idx = index(h)
-        var e = entryAt(idx)
-        while e != null do
-          if (e.tycon eq tycon) && e.args.eqElements(args) then return e
-          idx = nextIndex(idx)
-          e = entryAt(idx)
-        addEntryAt(idx, newType)
+        removeStaleEntries()
+        val bucket = index(h)
+        val oldHead = table(bucket)
+
+        @tailrec
+        def linkedListLoop(entry: Entry[AppliedType]): AppliedType = entry match
+          case null                    => addEntryAt(bucket, newType, h, oldHead)
+          case _                       =>
+            val e = entry.get
+            if e != null && (e.tycon eq tycon) && e.args.eqElements(args) then e
+            else linkedListLoop(entry.tail)
+
+        linkedListLoop(oldHead)
+      end if
   end AppliedUniques
 end Uniques
