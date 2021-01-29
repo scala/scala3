@@ -70,9 +70,7 @@ sealed trait Tuple extends Product {
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
    */
-  // FIXME remove transparent
-  //       failure in bench-run/src/main/scala/dotty/tools/benchmarks/tuples/TupleOps.scala
-  transparent inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
+  inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
 }
 
