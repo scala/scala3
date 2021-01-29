@@ -70,7 +70,9 @@ sealed trait Tuple extends Product {
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
    */
-  inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
+  // FIXME remove transparent
+  //       failure in bench-run/src/main/scala/dotty/tools/benchmarks/tuples/TupleOps.scala
+  transparent inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
 }
 
@@ -268,6 +270,8 @@ sealed trait NonEmptyTuple extends Tuple {
    *  This operation is O(this.size)
    */
   // FIXME remove transparent
+  //       fails in tests/run/tuples1a.scala
+  //       https://github.com/lampepfl/dotty/issues/11236
   transparent inline def tail[This >: this.type <: NonEmptyTuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 

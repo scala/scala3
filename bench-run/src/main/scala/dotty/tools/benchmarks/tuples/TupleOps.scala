@@ -50,7 +50,7 @@ class TupleOps {
   def tupleMergeSort(tuple: Tuple): Tuple =
     if (tuple.size <= 1) tuple
     else {
-      val (tuple1, tuple2) = tuple.splitAt(tuple.size / 2): (Tuple, Tuple) // FIXME remove ascription
+      val (tuple1, tuple2) = tuple.splitAt(tuple.size / 2)
       val (sorted1, sorted2) = (tupleMergeSort(tuple1), tupleMergeSort(tuple2))
       tupleMerge(sorted1, sorted2)
     }
