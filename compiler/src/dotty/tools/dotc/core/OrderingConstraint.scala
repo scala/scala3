@@ -350,8 +350,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       assert(contains(param2), i"$param2")
       val newUpper = param2 :: exclusiveUpper(param2, param1)
       val newLower = param1 :: exclusiveLower(param1, param2)
-      val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, newUpper ::: _))
-      val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, newLower ::: _))
+      val current1 = newLower.foldLeft(current)(upperLens.map(this, _, _, param2 :: _))
+      val current2 = newUpper.foldLeft(current1)(lowerLens.map(this, _, _, param1 :: _))
       current2
     }
 
