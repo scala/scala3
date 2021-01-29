@@ -120,7 +120,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](./soft-modifier.md) for additional
@@ -258,8 +258,7 @@ ArgumentExprs     ::=  ParArgumentExprs
 BlockExpr         ::=  <<< (CaseClauses | Block) >>>
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
-                    |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
-                    |  {Annotation {nl}} {LocalModifier} TmplDef
+                    |  {Annotation {nl}} {LocalModifier} Def
                     |  Extension
                     |  Expr1
                     |  EndMarker
@@ -353,16 +352,16 @@ AccessQualifier   ::=  ‘[’ id ‘]’
 Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}                         Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
-ImportSpec        ::=  id
-                    | ‘_’
-                    | ‘given’
-                    | ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ [InfixType]
-                    |  ‘_'
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
+                    |  SimpleRef ‘as’ id                                          Import(EmptyTree, ImportSelector(ref, id))
+ImportSpec        ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
 
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
