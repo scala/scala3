@@ -1,0 +1,210 @@
+#!/usr/bin/env bash
+
+## Created by mics (https://github.com/michelou/) on December 2020.
+
+##############################################################################
+## Subroutines
+
+getHome() {
+    local source="${BASH_SOURCE[0]}"
+    while [ -h "$source" ] ; do
+        local linked="$(readlink "$source")"
+        local dir="$( cd -P $(dirname "$source") && cd -P $(dirname "$linked") && pwd )"
+        source="$dir/$(basename "$linked")"
+    done
+    ( cd -P "$(dirname "$source")/.." && pwd )
+}
+
+getOS() {
+    local os
+    case "$(uname -s)" in
+        Linux*)  os=Linux;;
+        Darwin*) os=Mac;;
+        CYGWIN*) os=Win;; # os=Cygwin;;
+        MINGW*)  os=Win;; # os=MinGw;;
+        *)       os=Unknown
+    esac
+    echo $os
+}
+
+# use variables EXITCODE, TIMER_START
+cleanup() {
+    [[ $1 =~ ^[0-1]$ ]] && EXITCODE=$1
+
+    if $TIMER; then
+        local timer_end=$(date +'%s')
+        local duration=$((timer_end - TIMER_START))
+        echo "Total elapsed time: $(date -d @$duration +'%H:%M:%S')" 1>&2
+    fi
+    debug "EXITCODE=$EXITCODE"
+    exit $EXITCODE
+}
+
+verbose() {
+    $VEBOSE && echo "$1" 1>&2
+}
+
+debug() {
+    local debug_label="[46m[DEBUG][0m"
+    $DEBUG && echo "$debug_label $1" 1>&2
+}
+
+error() {
+    local error_label="[91mError:[0m"
+    echo "$error_label $1" 1>&2
+}
+
+args() {
+    [[ $# -eq 0 ]] && HELP=true && return 1
+
+    for arg in "$@"; do
+        case "$arg" in
+        ## options
+        -debug)   DEBUG=true ;;
+        -help)    HELP=true ;;
+        -timer)   TIMER=true ;;
+		-verbose) VERBOSE=true ;;
+        -*)
+            error "Unknown option $arg"
+            EXITCODE=1 && return 0
+            ;;
+        ## subcommands
+        help)     HELP=true ;;
+        run)      RUN=true ;;
+        save)     SAVE=true ;;
+        *)
+           error "Error: Unknown subcommand $arg"
+           EXITCODE=1 && return 0
+           ;;
+        esac
+    done
+	$HELP || $RUN || $SAVE || HELP=true
+    debug "Options    : DEBUG=$DEBUG TIMER=$TIMER VERBOSE=$VERBOSE"
+	debug "Subcommands: HELP=$HELP RUN=$RUN SAVE=$SAVE"
+    # See http://www.cyberciti.biz/faq/linux-unix-formatting-dates-for-display/
+    $TIMER && TIMER_START=$(date +"%s")
+}
+
+help() {
+    cat << EOS
+Usage: $BASENAME { <option> | <subcommand> }
+
+  Options:
+    -debug      show commands executed by this script
+    -timer      display total elapsed time
+	-verbose    display progress messages
+
+  Subcommands:
+    help        display this help message
+    run         create image "$IMAGE_NAME:$TAG_NAME"
+    save        save image as a tar archive file
+EOS
+}
+run() {
+    local container="$($DOCKER_CMD container ps --all --format "{{.Names}}" | grep $CONTAINER_NAME)"
+    if [ $container ]; then
+        debug "$DOCKER_CMD container rm $CONTAINER_NAME"
+		verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+        $DOCKER_CMD container rm $CONTAINER_NAME
+        [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+    fi
+    local image="$($DOCKER_CMD image ls --format "{{.Repository}}" | grep ${IMAGE_NAME}:$TAG_NAME)"
+    if [ $image ]; then
+        debug "docker image rm ${IMAGE_NAME}:$TAG_NAME"
+		verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+        $DOCKER_CMD image rm ${IMAGE_NAME}:$TAG_NAME
+        [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+    fi
+    local build_opts="--tag ${IMAGE_NAME}:$TAG_NAME --build-arg BUILD_DATE=$(date +%FT%T%z)"
+    [ $DEBUG ] || build_opts="--quiet $build_opts"
+
+    debug "$DOCKER_CMD build $build_opts ."
+	verbose "Build docker image ${IMAGE_NAME}:$TAG_NAME"
+    $DOCKER_CMD build $build_opts .
+    [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+
+    local run_opts="--name $CONTAINER_NAME --env GIT_HASH=$(git_hash)"
+    [ $DEBUG ] && run_opts="$run_opts --env DEBUG=1"
+
+    debug "$DOCKER_CMD container run $run_opts ${IMAGE_NAME}:$TAG_NAME"
+	verbose "Start container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+    $DOCKER_CMD container run $run_opts ${IMAGE_NAME}:$TAG_NAME
+    [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+
+    debug "$DOCKER_CMD cp ${CONTAINER_NAME}:/app/target/$FILE_NAME $OUTPUT_FILE"
+	verbose "Copy file $FILE_NAME to directory ${TARGET_DIR/$PROG_HOME\//}/"
+    $DOCKER_CMD cp ${CONTAINER_NAME}:/app/target/$FILE_NAME $OUTPUT_FILE
+    [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+}
+
+git_hash() {
+    local git_url="https://github.com/lampepfl/dotty.git"
+    local hash="$(git ls-remote $git_url master)"
+    ${hash:0:10}
+}
+
+save() {
+    debug "$DOCKER_CMD save -o $TAR_FILE ${IMAGE_NAME}:$TAG_NAME"
+	verbose "Save image ${IMAGE_NAME}:$TAG_NAME to archive file ${TAR_FILE/$PROG_HOME\//}"
+    $DOCKER_CMD save -o $TAR_FILE ${IMAGE_NAME}:$TAG_NAME
+    [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+
+    debug "$GZIP_CMD --force --keep $TAR_FILE"
+	verbose "Compress archive file ${TAR_FILE/$PROG_HOME\//}"
+    $GZIP_CMD --force --keep $TAR_FILE
+    [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
+}
+
+##############################################################################
+## Environment setup
+
+BASENAME=$(basename "${BASH_SOURCE[0]}")
+
+EXITCODE=0
+
+PROG_HOME="$(getHome)"
+
+OS="$(getOS)"
+[ $OS == "Unknown" ] && error "Unsuppored OS"
+[ $OS == "Win" ] && EXT=".exe" || EXT=""
+
+DOCKER_CMD="$(which docker)$EXT"
+GIT_CMD="$(which git)$EXT"
+GZIP_CMD="$(which gzip)$EXT"
+
+## see https://frightanic.com/computers/docker-default-container-names/
+CONTAINER_NAME="scala3_docs"
+IMAGE_NAME="scala3/md2pdf"
+TAG_NAME="1.0"
+
+DEBUG=false
+HELP=false
+RUN=false
+SAVE=false
+TIMER=false
+VERBOSE=false
+
+FILE_NAME="scala3_reference.pdf"
+TARGET_DIR="$PROG_HOME/target"
+OUTPUT_FILE="$TARGET_DIR/$FILE_NAME"
+TAR_FILE="$TARGET_DIR/${IMAGE_NAME/\//_}-$TAG_NAME.tar"
+
+args "$@"
+[[ $EXITCODE -eq 0 ]] || cleanup 1
+
+##############################################################################
+## Main
+
+$HELP && help && cleanup
+
+if $RUN; then
+    run || cleanup 1
+fi
+if $SAVE; then
+    save || cleanup 1
+fi
+
+##############################################################################
+## Cleanups
+
+cleanup

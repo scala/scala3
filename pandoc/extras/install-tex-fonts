@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+## DEBUG=1
+
+##############################################################################
+## Subroutines
+
+getHome() {
+    local source="${BASH_SOURCE[0]}"
+    while [ -h "$source" ] ; do
+        local linked="$(readlink "$source")"
+        local dir="$( cd -P $(dirname "$source") && cd -P $(dirname "$linked") && pwd )"
+        source="$dir/$(basename "$linked")"
+    done
+    ( cd -P "$(dirname "$source")" && pwd )
+}
+
+getOS() {
+    local os
+    case "$(uname -s)" in
+        Linux*)  os=Linux;;
+        Darwin*) os=Mac;;
+        CYGWIN*) os=Win;; # os=Cygwin;;
+        MINGW*)  os=Win;; # os=MinGw;;
+        *)       os=Unknown
+    esac
+    echo $os
+}
+
+download() {
+    local status=0
+    ## Update path part '2021/01/20' to retrieve newer archive files
+    local archive_url=https://texlive.info/tlnet-archive/2021/01/20/tlnet/archive
+    local archive_files="dejavu environ fancyvrb fontspec gnu-freefont"
+    archive_files="$archive_files l3backend l3kernel l3packages pgf"
+    archive_files="$archive_files tcolorbox trimspaces unicode-math xcolor"
+    local wget_opts="--tries=3 --no-verbose"
+    #[ $DEBUG ] && wget_opts="$wget_opts --show-progress"
+
+    for i in $archive_files; do
+        local xz_name=${i}.tar.xz
+        local xz_file=$DOWNLOADS_DIR/$xz_name
+        local xz_url=$archive_url/$xz_name
+        [ $DEBUG ] && echo "Download file $xz_name to directory $DOWNLOADS_DIR" >>$LOG_FILE
+        wget $wget_opts -O $xz_file $xz_url
+        [ $? -eq 0 ] || { echo "Error: Failed to download $xz_name" >>$LOG_FILE; status=1; }
+    done
+    echo $status
+}
+
+install() {
+    local status=0
+    for f in $(ls $DOWNLOADS_DIR/*.tar.xz); do
+        local xz_file=$f
+        [ $DEBUG ] && echo "Extract TeX fonts from archive file $xz_file" >>$LOG_FILE
+        $TAR_CMD -C $TEXMF_LOCAL_DIR/ -xf $xz_file
+        [ $? -eq 0 ] || { status=1; break; }
+    done
+    echo $status
+}
+
+##############################################################################
+## Environment setup
+
+PROG_HOME="$(getHome)"
+
+OS="$(getOS)"
+[ $OS == "Unknown" ] && { echo "Error: Unsuppored OS" >>$LOG_FILE; exit 1; }
+[ $OS == "Win" ] && EXT=".exe" || EXT=""
+
+if [ $OS == "Win" ]; then
+    CYGPATH=cygpath.exe
+    CYGPATH_CMD="$(command -v $CYGPATH)"
+    if ! [ -x "$CYGPATH_CMD" ]; then
+        CYGPATH_CMD="$MSYS2_HOME/usr/bin/$CYGPATH"
+        [ -x "$CYGPATH_CMD" ] || { echo "$CYGPATH executable not found" >>$LOG_FILE; exit 1; }
+    fi
+    TAR=tar.exe
+    TAR_CMD="$(command -v $TAR)"
+    if ! [ -x "$TAR_CMD" ]; then
+        TAR_CMD="$MSYS2_HOME/usr/bin/$TAR"
+        [ -x "$TAR_CMD" ] || { echo "$TAR executable not found" >>$LOG_FILE; exit 1; }
+    fi
+    XZ=xz.exe
+    XZ_CMD="$(command -v $XZ)"
+    if ! [ -x "$XZ_CMD" ]; then
+        XZ_CMD="$MSYS2_HOME/mingw64/bin/$XZ"
+        [ -x "$XZ_CMD" ] || { echo "$XZ executable not found" >>$LOG_FILE; exit 1; }
+    fi
+else
+    TAR_CMD=tar
+    XZ_CMD=xz
+fi
+TEXHASH=texhash$EXT
+## We only consider commands from the installation directory defined by TEXLIVE_HOME
+## TEXHASH_CMD="$(command -v $TEXHASH)"
+## if ! [ -x "$TEXHASH_CMD" ]; then
+    case $OS in
+        Win) TEXHASH_CMD=$TEXLIVE_HOME/bin/win32/$TEXHASH ;;
+        Mac) TEXHASH_CMD=$TEXLIVE_HOME/bin/x86_64-darwin/$TEXHASH ;;
+        *)   TEXHASH_CMD=$TEXLIVE_HOME/bin/x86_64-linux/$TEXHASH
+    esac
+    [ -x "$TEXHASH_CMD" ] || { echo "Error: $TEXHASH executable not found (check variable TEXLIVE_HOME)" >>$LOG_FILE; exit 1; }
+## fi
+
+BASENAME="$(basename "$0")"
+DOWNLOADS_DIR=$PROG_HOME/downloads
+TEXMF_LOCAL_DIR=$PROG_HOME/texmf-local
+
+LOG_FILE=$PROG_HOME/log.txt
+
+##############################################################################
+## Main
+
+[ -d "$DOWNLOADS_DIR" ] || mkdir -p "$DOWNLOADS_DIR"
+
+STATUS="$(download)"
+[ $STATUS -eq 0 ] || { echo "Error: Download failed ($STATUS)" >>$LOG_FILE; exit 1; }
+
+STATUS="$(install)"
+[ $STATUS -eq 0 ] || { echo "Error: Installation failed $STATUS" >>$LOG_FILE; exit 1; }
+
+TEXHASH_OPTS=--quiet
+[ $DEBUG ] && TEXHASH_OPTS=--verbose
+
+[ $DEBUG ] && echo "Rebuild database indices" >>$LOG_FILE
+$TEXHASH_CMD $TEXHASH_OPTS
+[ $? -eq 0 ] || exit 1
+
+exit 0

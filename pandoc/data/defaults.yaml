@@ -1,0 +1,24 @@
+# See page 29 in https://pandoc.org/MANUAL.pdf
+
+to: pdf
+# output-file: target/scala3_reference.pdf
+
+filters:
+- include-files.lua
+
+dpi: 300
+
+table-of-contents: true
+toc-depth: 2
+number-sections: true
+
+
+# input-files:
+# - src/scala3_reference.md
+
+standalone: true
+self-contained: false
+
+# pdf-engine: pdflatex
+pdf-engine: lualatex
+# pdf-engine: xelatex

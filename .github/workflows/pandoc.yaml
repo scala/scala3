@@ -1,0 +1,23 @@
+name: Pandoc
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'pandoc')
+         || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Generate PDF reference documentation
+        uses: docker://pandoc/latex:2.11.4
+        run: ./pandoc/md2pdf reference

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+## Created by mics (https://github.com/michelou/) on December 2020.
+
+##############################################################################
+## Subroutines
+
+getHome() {
+    local source="${BASH_SOURCE[0]}"
+    while [ -h "$source" ] ; do
+        local linked="$(readlink "$source")"
+        local dir="$( cd -P $(dirname "$source") && cd -P $(dirname "$linked") && pwd )"
+        source="$dir/$(basename "$linked")"
+    done
+    ( cd -P "$(dirname "$source")" && pwd )
+}
+
+##############################################################################
+## Environment setup
+
+PROG_HOME="$(getHome)"
+
+TARGET_DIR=$(dirname "$PROG_HOME")/out/pandoc
+
+MD2PDF_CMD=$PROG_HOME/md2pdf
+[ -x "$MD2PDF_CMD" ] || { echo "md2pdf script not found"; exit 1; }
+
+##############################################################################
+## Main
+
+[ -d "$TARGET_DIR" ] && rm -rf "$TARGET_DIR"
+START=$(date +%s)
+$MD2PDF_CMD reference
+STATUS=$?
+DIFF=$(expr $(date +%s) - $START)
+echo "Elapsed time: $DIFF seconds"
+
+exit $STATUS
