@@ -2,8 +2,8 @@ package dotty.dokka
 
 import math.Ordering.Implicits.seqOrdering
 
-class SearchbarEngine(pages: List[PageEntry]) {
-  def query(query: List[Matchers]): List[PageEntry] = {
+class SearchbarEngine(pages: List[PageEntry]):
+  def query(query: List[Matchers]): List[PageEntry] =
     pages
       .map( page =>
         page -> query.map(matcher => matcher(page))
@@ -17,5 +17,3 @@ class SearchbarEngine(pages: List[PageEntry]) {
       .map {
         case (page, matchResults) => page
       }
-  }
-}

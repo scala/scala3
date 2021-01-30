@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import org.jetbrains.dokka._
-import org.jetbrains.dokka.utilities._
-import org.jetbrains.dokka.plugability._
 import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
@@ -14,31 +11,6 @@ import java.nio.file.Files
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
 import dotty.tools.dotc.reporting.Reporter
-
-
-class Scala3DocDokkaLogger(using CompilerContext) extends DokkaLogger:
-  def debug(msg: String): Unit = report.debuglog(msg)
-
-  // We do not want errors from dokka (that are) not critical to fail our runs
-  def error(msg: String): Unit =
-    errors += 1
-    report.warning(msg)
-
-  def info(msg: String): Unit = report.inform(msg)
-  def progress(msg: String): Unit = report.informProgress(msg)
-
-  private val dokkaAlphaWarning = "Dokka 1.4.* is an alpha project"
-  def warn(msg: String): Unit =
-    if msg != dokkaAlphaWarning then
-      warnings += 1
-      report.warning(msg)
-
-  private var errors = 0
-  private var warnings = 0
-  def getErrorsCount(): Int = errors
-  def getWarningsCount(): Int = warnings
-  def setErrorsCount(count: Int): Unit = errors = count
-  def setWarningsCount(count: Int): Unit = warnings = count
 
 object Scala3doc:
   enum CommentSyntax:
@@ -93,8 +65,11 @@ object Scala3doc:
     ctx.reporter
 
 
-  private [dokka] def run(args: Args)(using ctx: CompilerContext) =
-    val docContext = new DocContext(args, ctx)
-    new DokkaGenerator(docContext, docContext.logger).generate()
+  private [dokka] def run(args: Args)(using ctx: CompilerContext): DocContext =
+    given docContext: DocContext = new DocContext(args, ctx)
+    val module = ScalaModuleProvider.mkModule()
 
+    new dotty.dokka.renderers.HtmlRenderer(module.rootPackage, module.members).render()
+    report.inform("generation completed successfully")
+    docContext
 

@@ -1,16 +1,5 @@
 package dotty.dokka.model.api
 
-import org.jetbrains.dokka.model.DModule
-import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
-import dotty.dokka.model.api._
-
-extension (m: DModule)
-  def visitMembers(callback: Member => Unit): Unit =
-    def visitClasslike(c: Member): Unit =
-      callback(c)
-      c.allMembers.foreach(visitClasslike(_))
-    m.getPackages.asScala.foreach(_.allMembers.foreach(visitClasslike(_)))
-
 extension (s: Signature)
   def getName: String =
     s.map {

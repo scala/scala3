@@ -2,11 +2,7 @@ package dotty.dokka.tasty
 
 import scala.jdk.CollectionConverters._
 
-import org.jetbrains.dokka.model.{doc => dkkd}
-
 import dotty.dokka.Scala3doc.CommentSyntax
-import dotty.dokka.ScalaTagWrapper
-import comments.{kt, dkk}
 import dotty.dokka.tasty.comments.Comment
 
 trait ScaladocSupport { self: TastyParser =>

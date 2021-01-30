@@ -1,19 +1,11 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.transformers.documentation.DocumentableTransformer
-import org.jetbrains.dokka.model._
-import collection.JavaConverters
-import collection.JavaConverters._
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.model.properties._
-
 import dotty.dokka.model._
 import dotty.dokka.model.api._
 
-class ImplicitMembersExtensionTransformer(using context: DocContext) extends ModuleTransformer:
-  override def apply(original: DModule): DModule =
-    val classlikeMap = original.driMap
-    val logger = context.logger
+class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Module):
+  override def apply(original: Module): Module =
+    val classlikeMap = original.members
 
     def retrieveCompanion(m: Member) = m.companion.flatMap { dri =>
      val res = classlikeMap.get(dri)
@@ -34,8 +26,8 @@ class ImplicitMembersExtensionTransformer(using context: DocContext) extends Mod
 
       val applicableDRIs = c.parents.map(_.dri).toSet + c.dri
 
-      val MyDri = c.getDri
-      def collectApplicableMembers(source: Member): Seq[Member] = source.allMembers.flatMap {
+      val MyDri = c.dri
+      def collectApplicableMembers(source: Member): Seq[Member] = source.members.flatMap {
         case m @ Member(_, _, _, Kind.Extension(ExtensionTarget(_, _, MyDri, _), _), Origin.RegularlyDefined) =>
           val kind = m.kind match
             case d: Kind.Def => d
@@ -46,7 +38,7 @@ class ImplicitMembersExtensionTransformer(using context: DocContext) extends Mod
           conversionProvider.conversion match
             case Some(ImplicitConversion(MyDri, to)) =>
               classlikeMap.get(to).toSeq.flatMap { owner =>
-                val newMembers = owner.allMembers.filter(_.origin match
+                val newMembers = owner.members.filter(_.origin match
                   case Origin.RegularlyDefined => true
                   case _ => false
                 )
@@ -59,7 +51,7 @@ class ImplicitMembersExtensionTransformer(using context: DocContext) extends Mod
       }
 
       val newImplicitMembers = implictSources.flatMap(collectApplicableMembers).distinct
-      val expandedMembers = c.allMembers.map(expandMember(newImplicitMembers ++ Seq(c)))
+      val expandedMembers = c.members.map(expandMember(newImplicitMembers ++ Seq(c)))
       c.withMembers(newImplicitMembers ++ expandedMembers)
 
     original.updatePackages(_.map(expandMember(Nil)(_)))

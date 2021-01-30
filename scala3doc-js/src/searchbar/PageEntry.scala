@@ -4,10 +4,10 @@ import scala.scalajs.js
 
 @js.native
 trait PageEntryJS extends js.Object {
-  val name: String = js.native
-  val description: String = js.native
-  val location: String = js.native
-  val searchKeys: js.Array[String] = js.native
+  val n: String = js.native
+  val t: String = js.native
+  val d: String = js.native
+  val l: String = js.native
 }
 
 case class PageEntry(
@@ -23,10 +23,10 @@ object PageEntry {
     s.headOption.map(firstLetter => firstLetter.toString ++ s.tail.filter(_.isUpper))
 
   def apply(jsObj: PageEntryJS): PageEntry = PageEntry(
-    jsObj.name,
-    jsObj.description,
-    jsObj.location,
-    jsObj.searchKeys.head.toLowerCase,
-    createAcronym(jsObj.searchKeys.head)
+    jsObj.t,
+    jsObj.d,
+    jsObj.l,
+    jsObj.n.toLowerCase,
+    createAcronym(jsObj.n)
   )
 }

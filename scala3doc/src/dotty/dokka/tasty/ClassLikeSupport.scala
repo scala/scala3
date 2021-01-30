@@ -1,12 +1,7 @@
 package dotty.dokka.tasty
 
-import org.jetbrains.dokka.model.{TypeConstructor => DTypeConstructor, TypeParameter => _, _}
-import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
 import collection.JavaConverters._
-import org.jetbrains.dokka.model.properties._
 import dotty.dokka._
-import org.jetbrains.dokka.base.transformers.documentables.CallableExtensions
 import dotty.dokka.model.api._
 import dotty.dokka.model.api.Modifier
 import dotty.dokka.model.api.Kind
@@ -16,9 +11,6 @@ import dotty.dokka.model.api.{Signature => DSignature, Link => DLink}
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
-
-  private val placeholderVisibility = JMap(ctx.sourceSet -> KotlinVisibility.Public.INSTANCE)
-  private val placeholderModifier = JMap(ctx.sourceSet -> KotlinModifier.Empty.INSTANCE)
 
   private def bareClasslikeKind(symbol: Symbol): Kind =
      if symbol.flags.is(Flags.Module) then Kind.Object
@@ -54,7 +46,7 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum
     else Kind.Class(typeArgs, args)
 
-  def mkClass[T >: DClass](classDef: ClassDef)(
+  def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
     name: String = classDef.symbol.normalizedName,
     signatureOnly: Boolean = false,
@@ -75,41 +67,29 @@ trait ClassLikeSupport:
       val parents = unpackTreeToClassDef(classDef).parents
       parents.flatMap { case tree =>
         val symbol = if tree.symbol.isClassConstructor then tree.symbol.owner else tree.symbol
-        val superLink = LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        val superLink = LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
         Seq(link -> superLink) ++ getSupertypesGraph(tree, superLink)
       }
 
     val supertypes = getSupertypes(using qctx)(classDef).map {
       case (symbol, tpe) =>
-        LinkToType(tpe.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        LinkToType(tpe.asSignature, symbol.dri, bareClasslikeKind(symbol))
     }
-    val selfSiangture: DSignature = typeForClass(classDef).dokkaType.asSignature
+    val selfSiangture: DSignature = typeForClass(classDef).asSignature
 
     val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef,
       LinkToType(selfSiangture, classDef.symbol.dri, bareClasslikeKind(classDef.symbol))))
 
+    val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSiangture)(
+        modifiers = modifiers,
+        graph = graph
+      )
 
-    val compositeExt =
-      if signatureOnly then CompositeMemberExtension.empty
-      else CompositeMemberExtension(
-          classDef.extractPatchedMembers,
-          classDef.getParentsAsLinkToTypes,
-          supertypes,
-          Nil,
-          classDef.getCompanion
-        )
-    mkMember(
-      classDef.symbol,
-      MemberExtension(
-          classDef.symbol.getVisibility(),
-          modifiers,
-          kindForClasslike(classDef),
-          classDef.symbol.getAnnotations(),
-          selfSiangture,
-          classDef.symbol.source(using qctx),
-          graph = graph
-        ),
-        compositeExt
+    if signatureOnly then baseMember else baseMember.copy(
+        members = classDef.extractPatchedMembers,
+        directParents = classDef.getParentsAsLinkToTypes,
+        parents = supertypes,
+        companion = classDef.getCompanion
     )
 
   private val conversionSymbol = Symbol.requiredClass("scala.Conversion")
@@ -130,7 +110,7 @@ trait ClassLikeSupport:
         dd.symbol.extendedSymbol.map { extSym =>
           val target = ExtensionTarget(
             extSym.symbol.normalizedName,
-            extSym.tpt.dokkaType.asSignature,
+            extSym.tpt.asSignature,
             extSym.tpt.symbol.dri,
             extSym.symbol.pos.get.start
           )
@@ -142,7 +122,7 @@ trait ClassLikeSupport:
           .filterNot(_.exists)
           .map { _ =>
             parseMethod(c, dd.symbol, specificKind =
-              Kind.Given(_, getGivenInstance(dd).map(_.asSignature), None)
+              Kind.Given(_, getGivenInstance(dd), None)
             )
           }
 
@@ -210,16 +190,18 @@ trait ClassLikeSupport:
     )
   }
 
-  private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] = processTreeOpt(s)(s match
-    case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-    case other => parseMember(c)(other)
-  ).map(_.withInheritedFrom(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri)))
+  private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] =
+    def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri))
+    processTreeOpt(s)(s match
+      case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
+      case other => parseMember(c)(other)
+    ).map(_.copy(inheritedFrom = inheritance))
 
   extension (c: ClassDef)
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
-      c.symbol.getAllMembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
+      c.symbol.getmembers.filterNot(s => s.isHiddenByVisibility || s.maybeOwner == c.symbol)
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
@@ -262,7 +244,7 @@ trait ClassLikeSupport:
 
     def getParentsAsLinkToTypes: List[LinkToType] =
       c.getParentsAsTreeSymbolTuples.map {
-        (tree, symbol) => LinkToType(tree.dokkaType.asSignature, symbol.dri, bareClasslikeKind(symbol))
+        (tree, symbol) => LinkToType(tree.asSignature, symbol.dri, bareClasslikeKind(symbol))
       }
 
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
@@ -325,7 +307,7 @@ trait ClassLikeSupport:
       enumTypes.map(et => et.withKind(Kind.EnumCase(et.kind.asInstanceOf[Kind.Type]))) ++
       enumVals.map(_.withKind(Kind.EnumCase(Kind.Val)))
 
-    classlikie.withNewMembers(cases).asInstanceOf[DClass]
+    classlikie.withNewMembers(cases)
 
   def parseMethod(
       c: ClassDef,
@@ -373,20 +355,10 @@ trait ClassLikeSupport:
       val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
       Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
 
-    mkMember(
-      method.symbol,
-      MemberExtension(
-        methodSymbol.getVisibility(),
-        methodSymbol.getExtraModifiers(),
-        methodKind,
-        methodSymbol.getAnnotations(),
-        memberInfo.res.dokkaType.asSignature,
-        methodSymbol.source(using qctx),
-        origin
-      )
-    )
+    mkMember(method.symbol, methodKind, memberInfo.res.asSignature)(origin = origin)
 
-  def mkParameter(argument: ValDef,
+  def mkParameter(
+    argument: ValDef,
     prefix: Symbol => String = _ => "",
     isExtendedSymbol: Boolean = false,
     isGrouped: Boolean = false,
@@ -399,7 +371,7 @@ trait ClassLikeSupport:
         inlinePrefix + prefix(argument.symbol),
         nameIfNotSynthetic,
         argument.symbol.dri,
-        memberInfo.get(name).fold(argument.tpt.dokkaType.asSignature)(_.dokkaType.asSignature),
+        memberInfo.get(name).fold(argument.tpt.asSignature)(_.asSignature),
         isExtendedSymbol,
         isGrouped
       )
@@ -415,7 +387,7 @@ trait ClassLikeSupport:
       variancePrefix,
       name,
       argument.symbol.dri,
-      memberInfo.get(name).fold(argument.rhs.dokkaType.asSignature)(_.dokkaType.asSignature)
+      memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
     )
 
   def parseTypeDef(typeDef: TypeDef): Member =
@@ -429,17 +401,8 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
       case tpe => (Nil, tpe)
 
-    mkMember(
-      typeDef.symbol,
-      MemberExtension(
-        typeDef.symbol.getVisibility(),
-        typeDef.symbol.getExtraModifiers(),
-        Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics),
-        typeDef.symbol.getAnnotations(),
-        tpeTree.dokkaType.asSignature,
-        typeDef.symbol.source(using qctx)
-        )
-    )
+    val kind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics)
+    mkMember(typeDef.symbol, kind, tpeTree.asSignature)()
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     def defaultKind = if valDef.symbol.flags.is(Flags.Mutable) then Kind.Var else Kind.Val
@@ -448,42 +411,26 @@ trait ClassLikeSupport:
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
         else defaultKind
 
-    mkMember(
-      valDef.symbol,
-      MemberExtension(
-          valDef.symbol.getVisibility(),
-          valDef.symbol.getExtraModifiers(),
-          kind,
-          valDef.symbol.getAnnotations(),
-          memberInfo.res.dokkaType.asSignature,
-          valDef.symbol.source(using qctx)
-      )
-    )
+    mkMember(valDef.symbol, kind, memberInfo.res.asSignature)()
 
-  def mkMember[T <: Kind](
-    symbol: Symbol,
-    member: MemberExtension,
-    compositeExt: CompositeMemberExtension = CompositeMemberExtension.empty,
-    nameOverride: Symbol => String = _.normalizedName
-    ): Member =
-      new DClass(
-        symbol.dri,
-        nameOverride(symbol),
-        JNil,
-        JNil,
-        JNil,
-        JNil,
-        emptyJMap,
-        placeholderVisibility,
-        null,
-        JNil,
-        emptyJMap,
-        emptyJMap,
-        null,
-        placeholderModifier,
-        ctx.sourceSet.toSet,
-        /*isExpectActual =*/ false,
-        PropertyContainer.Companion.empty().plus(member.copy(rawDoc = symbol.documentation)).plus(compositeExt)
+  def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
+    modifiers: Seq[dotty.dokka.model.api.Modifier] = symbol.getExtraModifiers(),
+    origin: Origin = Origin.RegularlyDefined,
+    inheritedFrom: Option[InheritedFrom] = None,
+    graph: HierarchyGraph = HierarchyGraph.empty,
+  ) = Member(
+      name = symbol.normalizedName,
+      dri = symbol.dri,
+      kind = kind,
+      visibility = symbol.getVisibility(),
+      modifiers = modifiers,
+      annotations = symbol.getAnnotations(),
+      signature = signature,
+      sources = symbol.source(using qctx),
+      origin = origin,
+      inheritedFrom = inheritedFrom,
+      graph = graph,
+      docs = symbol.documentation
     )
 
   case class MemberInfo(genericTypes: Map[String, TypeBounds], paramLists: List[Map[String, TypeRepr]], res: TypeRepr)

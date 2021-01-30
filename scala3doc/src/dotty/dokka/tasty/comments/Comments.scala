@@ -1,44 +1,48 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import scala.collection.immutable.SortedMap
-
-import org.jetbrains.dokka.model.{doc => dkkd}
+import scala.util.Try
 
 import com.vladsch.flexmark.util.{ast => mdu}
+import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
 import scala.quoted._
 import dotty.dokka.tasty.comments.wiki.Paragraph
+import dotty.dokka.DocPart
+import dotty.dokka.tasty.SymOps
+import collection.JavaConverters._
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
 
 case class Comment (
-  body:                    dkkd.DocTag,
-  short:                   Option[dkkd.DocTag],
-  authors:                 List[dkkd.DocTag],
-  see:                     List[dkkd.DocTag],
-  result:                  Option[dkkd.DocTag],
-  throws:                  SortedMap[String, (dkkd.DocTag, dkkd.DocTag)],
-  valueParams:             SortedMap[String, dkkd.DocTag],
-  typeParams:              SortedMap[String, dkkd.DocTag],
-  version:                 Option[dkkd.DocTag],
-  since:                   Option[dkkd.DocTag],
-  todo:                    List[dkkd.DocTag],
-  deprecated:              Option[dkkd.DocTag],
-  note:                    List[dkkd.DocTag],
-  example:                 List[dkkd.DocTag],
-  constructor:             Option[dkkd.DocTag],
+  body:                    DocPart,
+  short:                   Option[DocPart],
+  authors:                 List[DocPart],
+  see:                     List[DocPart],
+  result:                  Option[DocPart],
+  throws:                  SortedMap[String, DocPart],
+  valueParams:             SortedMap[String, DocPart],
+  typeParams:              SortedMap[String, DocPart],
+  version:                 Option[DocPart],
+  since:                   Option[DocPart],
+  todo:                    List[DocPart],
+  deprecated:              Option[DocPart],
+  note:                    List[DocPart],
+  example:                 List[DocPart],
+  constructor:             Option[DocPart],
   group:                   Option[String],
   // see comment in PreparsedComment below regarding these
-  groupDesc:               SortedMap[String, dkkd.DocTag],
-  groupNames:              SortedMap[String, dkkd.DocTag],
+  groupDesc:               SortedMap[String, DocPart],
+  groupNames:              SortedMap[String, DocPart],
   groupPrio:               SortedMap[String, Int],
   /** List of conversions to hide - containing e.g: `scala.Predef.FloatArrayOps` */
-  hideImplicitConversions: List[dkkd.DocTag]
+  hideImplicitConversions: List[DocPart]
 )
 
-case class PreparsedComment (
+case class PreparsedComment(
   body:                    String,
   authors:                 List[String],
   see:                     List[String],
@@ -63,16 +67,42 @@ case class PreparsedComment (
   syntax:                  List[String],
 )
 
-case class DokkaCommentBody(summary: Option[dkkd.DocTag], body: dkkd.DocTag)
+case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
 
-trait MarkupConversion[T] {
-  protected def linkedExceptions(m: SortedMap[String, String]): SortedMap[String, (dkkd.DocTag, dkkd.DocTag)]
+abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
   protected def stringToMarkup(str: String): T
-  protected def markupToDokka(t: T): dkkd.DocTag
+  protected def markupToDokka(t: T): DocPart
   protected def markupToString(t: T): String
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
+
+  val qctx: repr.qctx.type = if repr == null then null else repr.qctx // TODO why we do need null?
+  val owner: qctx.reflect.Symbol =
+    if repr == null then null.asInstanceOf[qctx.reflect.Symbol] else repr.sym
+
+  object SymOps extends SymOps[qctx.type](qctx)
+  export SymOps.dri
+
+  def resolveLink(queryStr: String): DocLink =
+    if SchemeUri.matches(queryStr) then DocLink.ToURL(queryStr)
+    else QueryParser(queryStr).tryReadQuery() match
+      case Left(err) =>
+        // TODO convert owner.pos to get to the comment, add stack trace
+        report.warning(s"Unable to parse query `$queryStr`: ${err.getMessage}")
+        val msg = s"Unable to parse query: ${err.getMessage}"
+        DocLink.UnresolvedDRI(queryStr, msg)
+      case Right(query) =>
+        MemberLookup.lookup(using qctx)(query, owner) match
+          case Some((sym, targetText)) =>
+            DocLink.ToDRI(sym.dri, targetText)
+          case None =>
+            val msg = s"Not found any dri for query"
+            // TODO convert owner.pos to get to the comment, change to warning
+            report.inform(s"$msg: $queryStr")
+            DocLink.UnresolvedDRI(queryStr, msg)
+
+  private val SchemeUri = """[a-z]+:.*""".r
 
   private def single(annot: String, xs: List[String], filter: Boolean = true): Option[T] =
     (if (filter) filterEmpty(xs) else xs.map(stringToMarkup)) match {
@@ -89,7 +119,7 @@ trait MarkupConversion[T] {
       authors                 = filterEmpty(preparsed.authors).map(markupToDokka),
       see                     = filterEmpty(preparsed.see).map(markupToDokka),
       result                  = single("@result", preparsed.result).map(markupToDokka),
-      throws                  = linkedExceptions(preparsed.throws),
+      throws                  = filterEmpty(preparsed.throws).view.mapValues(markupToDokka).to(SortedMap),
       valueParams             = filterEmpty(preparsed.valueParams).view.mapValues(markupToDokka).to(SortedMap),
       typeParams              = filterEmpty(preparsed.typeParams).view.mapValues(markupToDokka).to(SortedMap),
       version                 = single("@version", preparsed.version).map(markupToDokka),
@@ -107,30 +137,21 @@ trait MarkupConversion[T] {
     )
 }
 
-class MarkdownCommentParser(repr: Repr)
-    extends MarkupConversion[mdu.Document] {
+class MarkdownCommentParser(repr: Repr)(using DocContext)
+    extends MarkupConversion[mdu.Node](repr) {
 
   def stringToMarkup(str: String) =
-    MarkdownParser.parseToMarkdown(str)
+    MarkdownParser.parseToMarkdown(str, markdown.DocFlexmarkParser(resolveLink))
 
-  def markupToString(t: mdu.Document): String = t.toString() // ??
+  def markupToString(t: mdu.Node): String = t.toString()
 
-  def markupToDokka(md: mdu.Document) =
-    MarkdownConverter(repr).convertDocument(md)
+  def markupToDokka(md: mdu.Node): DocPart = md
 
-  def markupToDokkaCommentBody(md: mdu.Document) =
-    val converter = MarkdownConverter(repr)
-    DokkaCommentBody(
-      summary = converter.extractAndConvertSummary(md),
-      body = converter.convertDocument(md),
-    )
+  def markupToDokkaCommentBody(md: mdu.Node) =
+    val summary =
+      md.getChildIterator.asScala.collectFirst { case p: mda.Paragraph => p }
 
-  def linkedExceptions(m: SortedMap[String, String]) = {
-    val c = MarkdownConverter(repr)
-    m.map { case (targetStr, body) =>
-      targetStr -> (c.resolveLinkQuery(targetStr, ""), dkk.text(body))
-    }
-  }
+    DokkaCommentBody(summary, md)
 
   def filterEmpty(xs: List[String]) = {
     xs.map(_.trim)
@@ -144,12 +165,16 @@ class MarkdownCommentParser(repr: Repr)
       .mapValues(stringToMarkup).to(SortedMap)
 }
 
-case class WikiCommentParser(repr: Repr)
-    extends MarkupConversion[wiki.Body] {
+class WikiCommentParser(repr: Repr)(using DocContext)
+    extends MarkupConversion[wiki.Body](repr):
 
-  def stringToMarkup(str: String) =
-    wiki.Parser(str).document()
+  def stringToMarkup(str: String) = wiki.Parser(str, resolverLink).document()
 
+  def resolverLink(queryStr: String, bodyOpt: Option[wiki.Inline]): wiki.Inline =
+    val link = resolveLink(queryStr)
+    wiki.Link(link, bodyOpt)
+
+  // Do we need those?
   private def flatten(b: wiki.Inline): String = b match
     case wiki.Text(t) => t
     case wiki.Italic(t) => flatten(t)
@@ -157,7 +182,7 @@ case class WikiCommentParser(repr: Repr)
     case wiki.Underline(t) => flatten(t)
     case wiki.Superscript(t) => flatten(t)
     case wiki.Subscript(t) => flatten(t)
-    case wiki.Link(_, t) => flatten(t)
+    case wiki.Link(_, t) => t.fold("")(flatten)
     case wiki.Monospace(t) => flatten(t)
     case wiki.RepresentationLink(t, _) => flatten(t)
     case wiki.Chain(elems) => elems.headOption.fold("")(flatten)
@@ -171,26 +196,19 @@ case class WikiCommentParser(repr: Repr)
     case wiki.UnorderedList(elems) => elems.headOption.fold("")(flatten)
     case wiki.OrderedList(elems, _) => elems.headOption.fold("")(flatten)
     case wiki.DefinitionList(items) => items.headOption.fold("")(e => flatten(e._1))
-    case wiki.HorizontalRule() => ""
+    case wiki.HorizontalRule => ""
 
   def markupToString(str: wiki.Body) = str.blocks.headOption.fold("")(flatten)
 
-  def markupToDokka(body: wiki.Body) =
-    wiki.Converter(repr).convertBody(body)
+  def markupToDokka(body: wiki.Body) = parseBlocks(body.blocks) // TODO
+
+  def parseBlocks(blocks: Seq[wiki.WikiDocElement]) = blocks
 
   def markupToDokkaCommentBody(body: wiki.Body) =
-    val converter = wiki.Converter(repr)
-    DokkaCommentBody(
-      summary = body.summary.map(converter.convertBody),
-      body = converter.convertBody(body),
+     DokkaCommentBody(
+      summary = body.summary.map(s => parseBlocks(s.blocks)),
+      body = parseBlocks(body.blocks),
     )
-
-  def linkedExceptions(m: SortedMap[String, String]) = {
-    m.map { case (targetStr, body) =>
-      val c = wiki.Converter(repr)
-      targetStr -> (c.resolveLinkQuery(targetStr, None), c.convertBody(stringToMarkup(body)))
-    }
-  }
 
   def filterEmpty(xs: List[String]) =
     xs.map(stringToMarkup)
@@ -198,5 +216,3 @@ case class WikiCommentParser(repr: Repr)
   def filterEmpty(xs: SortedMap[String,String]) =
     xs.view.mapValues(stringToMarkup).to(SortedMap)
       .filterNot { case (_, v) => v.blocks.isEmpty }
-
-}

@@ -35,7 +35,7 @@ trait SyntheticsSupport:
 
     def isInfix: Boolean = hackIsInfix(using qctx)(s)
 
-    def getAllMembers: List[Symbol] = hackGetAllMembers(using qctx)(s)
+    def getmembers: List[Symbol] = hackGetmembers(using qctx)(s)
 
   def isValidPos(pos: Position) =
     if hackExists(using qctx)(pos) then pos.start != pos.end else false
@@ -63,7 +63,7 @@ trait SyntheticsSupport:
   They are valdefs that describe case companion objects and cases from enum.
   TASTY crashed when calling _.tree on them.
   */
-  def hackGetAllMembers(using Quotes)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
+  def hackGetmembers(using Quotes)(rsym: qctx.reflect.Symbol): List[qctx.reflect.Symbol] = {
     import qctx.reflect._
     import dotty.tools.dotc
     given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx

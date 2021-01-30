@@ -5,8 +5,6 @@ import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 import dotty.dokka.test.BuildInfo
 import java.nio.file.Path;
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.{RootPageNode, PageNode, ContentPage, ContentText, ContentNode, ContentComposite}
 import org.jsoup.Jsoup
 
 class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
@@ -34,13 +32,18 @@ class Scala3docExternalLocationProviderIntegrationTest extends ExternalLocationP
   List(".*scala.*::scala3doc::https://dotty.epfl.ch/api/"),
   List(
     "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
-    "https://dotty.epfl.ch/api/scala/Predef$.html",
+    "https://dotty.epfl.ch/api/scala/Predef$.html#String",
     "https://dotty.epfl.ch/api/scala/util/matching/Regex$$Match.html"
   )
 )
 
 
-abstract class ExternalLocationProviderIntegrationTest(name: String, mappings: Seq[String], expectedLinks: Seq[String]) extends ScaladocTest(name):
+abstract class ExternalLocationProviderIntegrationTest(
+  name: String,
+  mappings: Seq[String],
+  expectedLinks: Seq[String]
+  ) extends ScaladocTest(name):
+
   override def args = super.args.copy(
     externalMappings = mappings.flatMap( s =>
           ExternalDocLink.parse(s).fold(left => None, right => Some(right)
@@ -48,8 +51,7 @@ abstract class ExternalLocationProviderIntegrationTest(name: String, mappings: S
       ).toList
   )
 
-  def assertions = Assertion.AfterRendering { (root, ctx) =>
-    given DokkaContext = ctx
+  override def runTest = afterRendering {
     val output = summon[DocContext].args.output.toPath.resolve("api")
     val linksBuilder = List.newBuilder[String]
 
@@ -62,7 +64,7 @@ abstract class ExternalLocationProviderIntegrationTest(name: String, mappings: S
         linksBuilder ++= hrefValues
       }
 
-
+    println(output)
     IO.foreachFileIn(output, processFile)
     val links = linksBuilder.result
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
