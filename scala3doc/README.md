@@ -2,8 +2,7 @@
 
 Scala3doc (name subject to change) is the documentation tool for
 [Dotty](https://github.com/lampepfl/dotty), which is scheduled to become
-Scala 3. It's based on [Dokka](https://github.com/Kotlin/dokka), the
-documentation tool for Kotlin. It uses the TastyInspector to access definitions,
+Scala 3.  It uses the TastyInspector to access definitions,
 which is an officially supported way to access Dotty's perspective of a
 codebase.
 
@@ -48,9 +47,7 @@ CLI command for running our tool is in form: `sbt main -n <name> -o <output> -t 
 - `<classpath>`: classpath that was used to generate tasty files
 - `<sources>`: links to source files of module that are used to link symbols on pages to their source file. They need to be supplied in form:
   `local_dir=remote_dir#line_suffix` e.g. `src/main/scala=https://github.com/lampepfl/scala3doc/tree/master/src/main/scala#L`
-- `<documentation>`: directory of static documentation that you would like to render with API documentation. This feature is provided by dokka-site plugin:
-  - [GitHub](https://github.com/VirtusLab/dokka-site)
-  - [Documentation](https://virtuslab.github.io/dokka-site/index.html)
+- `<documentation>`: directory of static documentation that you would like to render with API documentation.
 
 ## Developing
 
@@ -164,16 +161,6 @@ Make sure all the tests pass (simply run `sbt test` to verify that).
 
 ## FAQ
 
-### Why depend on Dokka?
-
-We have two primary reasons for depending on Dokka. One of them is division of
-labour - Dokka already has a team of maintainers, and it supports an excellent
-API which already allowed us to quite easily generate documentation with it. By
-depending on Dokka, we will be able to share a large portion of the maintenance
-burden. The second reason is very pragmatic - on our own, it'd be difficult for
-us to reach even feature parity with Scaladoc, simply because of workforce
-constraints. Meanwhile, Dokka maintainers from VirtusLab reached out to us with
-an offer of help, which we were happy to take.
 
 ### Why use TASTy?
 

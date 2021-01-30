@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import org.jetbrains.dokka._
-import org.jetbrains.dokka.utilities._
-import org.jetbrains.dokka.plugability._
 import java.util.ServiceLoader
 import java.io.File
 import java.util.jar._
@@ -15,17 +12,7 @@ import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.CommonScalaSettings
 import dotty.tools.dotc.core.Contexts._
 
-/** Main class for the doctool.
-  *
-  * The `main` method is mostly responsible just for parsing arguments and
-  * configuring Dokka. After that, we hand control to Dokka.
-  *
-  * Other important classes:
-  *
-  * - [](package.DottyDokkaPlugin) is our class that Dokka calls back and which
-  *   actually generates the documentation.
-  * - [](package.DocContext) is our config for Dokka
-  */
+/** Main class for the doctool when used from cli. */
 object Main:
   def main(args: Array[String]): Unit =
     try

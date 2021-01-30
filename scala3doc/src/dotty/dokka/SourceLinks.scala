@@ -156,7 +156,6 @@ object SourceLinks:
       revision: Option[String],
       projectRoot: Path)(
       using Context): SourceLinks =
-    // TODO ...
     val mappings = configs.map(str => str -> SourceLink.parse(str, revision))
 
     val errors = mappings.collect {

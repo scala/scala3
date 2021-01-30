@@ -1,11 +1,7 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.base.signatures._
-import org.jetbrains.dokka.model.{ TypeParameter => _, _ }
-import org.jetbrains.dokka.model.properties.WithExtraProperties
-import org.jetbrains.dokka.pages._
-import collection.JavaConverters._
-import dotty.dokka.model.api.{Kind, _}
+
+import dotty.dokka.model.api._
 
 case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = Nil) extends SignatureBuilder:
   override def text(str: String): SignatureBuilder = copy(names = str +: names)
@@ -14,7 +10,7 @@ case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = N
   override def signature(s: Signature): SignatureBuilder = copy(names = s.reverse ++ names)
 
 object InlineSignatureBuilder:
-  def typeSignatureFor(d: Documentable): Signature =
+  def typeSignatureFor(d: Member): Signature =
       ScalaSignatureProvider.rawSignature(d, InlineSignatureBuilder()).asInstanceOf[InlineSignatureBuilder].names.reverse
 
 trait SignatureBuilder extends ScalaSignatureUtils {

@@ -40,50 +40,52 @@ object Test {
     val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.extension == "tasty").map(_.toString).toList
     val tastyFiles = allTastyFiles.filter(_.contains("I9970"))
 
-    new TestInspector().inspectTastyFiles(tastyFiles)
+    TastyInspector.inspectTastyFiles(tastyFiles)(new TestInspector())
   }
 }
 
 // Inspector that performs the actual tests
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends Inspector:
 
-  private var foundIOApp: Boolean = false
-  private var foundSimple: Boolean = false
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
+    var foundIOApp: Boolean = false
+    var foundSimple: Boolean = false
 
-  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
-    foundIOApp = false
-    foundSimple = false
-    inspectClass(root)
-    // Sanity check to make sure that our pattern matches are not simply glossing over the things we want to test
-    assert(foundIOApp, "the inspector did not encounter IOApp")
-    assert(foundSimple, "the inspect did not encounter IOApp.Simple")
+    def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
+      import quotes.reflect._
+      tree match
+        case t: PackageClause =>
+          t.stats.foreach(inspectClass(_))
 
-  private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
-    import quotes.reflect._
-    tree match
-      case t: PackageClause =>
-        t.stats.foreach(inspectClass(_))
+        case t: ClassDef if t.name.endsWith("$") =>
+          t.body.foreach(inspectClass(_))
 
-      case t: ClassDef if t.name.endsWith("$") =>
-        t.body.foreach(inspectClass(_))
+        case t: ClassDef =>
+          t.name match
+            case "I9970IOApp" =>
+              foundIOApp = true
+              // Cannot test the following because NoInits is not part of the quotes API
+              //assert(!t.symbol.flags.is(Flags.NoInits))
+              assert(!t.constructor.symbol.flags.is(Flags.StableRealizable))
 
-      case t: ClassDef =>
-        t.name match
-          case "I9970IOApp" =>
-            foundIOApp = true
-            // Cannot test the following because NoInits is not part of the quotes API
-            //assert(!t.symbol.flags.is(Flags.NoInits))
-            assert(!t.constructor.symbol.flags.is(Flags.StableRealizable))
+            case "Simple" =>
+              foundSimple = true
+              // Cannot test the following because NoInits is not part of the quotes API
+              //assert(t.symbol.flags.is(Flags.NoInits))
+              assert(t.constructor.symbol.flags.is(Flags.StableRealizable))
 
-          case "Simple" =>
-            foundSimple = true
-            // Cannot test the following because NoInits is not part of the quotes API
-            //assert(t.symbol.flags.is(Flags.NoInits))
-            assert(t.constructor.symbol.flags.is(Flags.StableRealizable))
+            case _ =>
+              assert(false, s"unexpected ClassDef '${t.name}'")
 
-          case _ =>
-            assert(false, s"unexpected ClassDef '${t.name}'")
+        case _ =>
 
-      case _ =>
-  end inspectClass
+    for tasty <- tastys do
+      foundIOApp = false
+      foundSimple = false
+      inspectClass(tasty.ast)
+      // Sanity check to make sure that our pattern matches are not simply glossing over the things we want to test
+      assert(foundIOApp, "the inspector did not encounter IOApp")
+      assert(foundSimple, "the inspect did not encounter IOApp.Simple")
+
+  end inspect

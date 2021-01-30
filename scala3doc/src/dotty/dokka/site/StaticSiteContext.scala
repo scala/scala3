@@ -7,15 +7,6 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import org.jetbrains.dokka.base.parsers.MarkdownParser
-import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.model.doc.{DocTag, Text}
-import org.jetbrains.dokka.model.properties.PropertyContainer
-import org.jetbrains.dokka.pages.{ContentKind, ContentNode, DCI, PageNode}
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.Style
-import org.jetbrains.dokka.model.DisplaySourceSet
 import util.Try
 import collection.JavaConverters._
 
@@ -23,19 +14,19 @@ import dotty.dokka.model.api._
 
 class StaticSiteContext(
   val root: File,
-  sourceSets: Set[SourceSetWrapper],
-  val args: Scala3doc.Args, val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
+  val args: Scala3doc.Args,
+  val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexPage(): Option[StaticPageNode] =
+  def indexTemplate(): Seq[LoadedTemplate] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
 
     if files.size > 1 then
       val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
       report.error(msg)
 
-    files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
+    files.flatMap(loadTemplate(_, isBlog = false)).take(1)
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
@@ -47,17 +38,13 @@ class StaticSiteContext(
     if (!Files.exists(sidebarFile)) None
     else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
 
-  lazy val templates: Seq[LoadedTemplate] = sideBarConfig.fold(loadAllFiles())(_.map(loadSidebarContent))
+  lazy val templates: Seq[LoadedTemplate] =
+    sideBarConfig.fold(loadAllFiles().sortBy(_.templateFile.title))(_.map(loadSidebarContent))
 
-  lazy val mainPages: Seq[StaticPageNode] = templates.map(templateToPage)
-
-  val docsPath = root.toPath.resolve("docs")
-
-  lazy val allPages: Seq[StaticPageNode] = sideBarConfig.fold(mainPages){ sidebar =>
-    def flattenPages(p: StaticPageNode): Set[Path] =
-      Set(p.template.file.toPath) ++ p.getChildren.asScala.collect { case p: StaticPageNode => flattenPages(p) }.flatten
-
-    val mainFiles = mainPages.toSet.flatMap(flattenPages)
+  lazy val orphanedTemplates: Seq[LoadedTemplate] = {
+    def doFlatten(t: LoadedTemplate): Seq[Path] =
+      t.file.toPath +: t.children.flatMap(doFlatten)
+    val mainFiles = templates.flatMap(doFlatten)
 
     val allPaths =
       if !Files.exists(docsPath) then Nil
@@ -72,9 +59,10 @@ class StaticSiteContext(
         name.endsWith(".md") || name.endsWith(".html")
     }
 
-    val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
-    mainPages ++ orphanedTemplates.map(templateToPage)
+    orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
+
+  val docsPath = root.toPath.resolve("docs")
 
   private def isValidTemplate(file: File): Boolean =
     (file.isDirectory && !file.getName.startsWith("_")) ||
@@ -101,7 +89,7 @@ class StaticSiteContext(
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        val processedChildren = if !isBlog then children else
+        val processedChildren = if !isBlog then children.sortBy(_.templateFile.title) else
           def dateFrom(p: LoadedTemplate): String =
             val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
             pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
@@ -121,14 +109,6 @@ class StaticSiteContext(
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
             e.printStackTrace()
             None
-
-  def asContent(doctag: DocTag, dri: DRI) = new DocTagToContentConverter().buildContent(
-    doctag,
-    new DCI(Set(dri).asJava, ContentKind.Empty),
-    sourceSets.asJava,
-    JSet(),
-    new PropertyContainer(JMap())
-  )
 
   private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
     case Sidebar.Page(title, url) =>
@@ -164,32 +144,31 @@ class StaticSiteContext(
       val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
 
       (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
-    }.toOption
+    }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
   def driFor(dest: Path): DRI =
-    DRI(location = root.toPath.relativize(dest).iterator.asScala.mkString("."))
+    val rawFilePath = root.toPath.relativize(dest)
+    val pageName = dest.getFileName.toString
+    val dotIndex = pageName.lastIndexOf('.')
+
+    val relativePath =
+      if rawFilePath.startsWith(Paths.get("blog","_posts")) then
+        val regex = raw"(\d*)-(\d*)-(\d*)-(.*)\..*".r
+        pageName.toString match
+          case regex(year, month, day, name) =>
+            rawFilePath.getParent.resolveSibling(Paths.get(year, month, day, name))
+          case _ =>
+            val msg = s"Relative path for blog: $rawFilePath doesn't match `yyy-mm-dd-name.md` format."
+            report.warn(msg, dest.toFile)
+            rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+      else
+        if (dotIndex < 0) rawFilePath.resolve("index")
+        else rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+
+    DRI.forPath(relativePath)
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
-
-  def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
-    val dri = driFor(myTemplate.file.toPath)
-    val content = new PartiallyRenderedContent(
-      myTemplate,
-      this,
-      JList(),
-      new DCI(Set(dri).asJava, ContentKind.Empty),
-      sourceSets.toDisplay,
-      JSet()
-    )
-    StaticPageNode(
-      myTemplate.templateFile,
-      myTemplate.templateFile.title,
-      content,
-      JSet(dri),
-      JList(),
-      (myTemplate.children.map(templateToPage)).asJava
-    )
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++

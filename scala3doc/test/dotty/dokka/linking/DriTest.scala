@@ -3,16 +3,15 @@ package linking
 
 import scala.jdk.CollectionConverters._
 import scala.Function.const
-import org.jetbrains.dokka.model.DModule
 import dotty.dokka.model.api._
-import dotty.dokka.{ScaladocTest, Assertion}
+import dotty.dokka.ScaladocTest
 
 abstract class DriTest(testName: String) extends ScaladocTest(testName):
   // override for additional assertions
   def assertOnDRIs(dris: Seq[DRI]): Unit = ()
 
-  override def assertions = Assertion.AfterDocumentablesTransformation { root =>
-    val dris = root.collectMembers.map(_.dri)
+  override def runTest = withModule { module =>
+    val dris = module.members.keys.toSeq
 
     val grouping = dris.groupMapReduce(identity)(const(1))(_+_)
     val duplicates = grouping.filter { (_, v )=> v > 1 }
@@ -26,7 +25,6 @@ abstract class DriTest(testName: String) extends ScaladocTest(testName):
     assertOnDRIs(dris)
   } :: Nil
 
-extension (m: DModule) private def collectMembers = m.getPackages.asScala.toList.flatMap(collectFrom)
 
 private def collectFrom(m: Member): Seq[Member] =
-  m +: m.allMembers.filter(_.origin == Origin.RegularlyDefined).flatMap(collectFrom)
+  m +: m.members.filter(_.origin == Origin.RegularlyDefined).flatMap(collectFrom)

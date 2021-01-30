@@ -93,7 +93,9 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkAnnotations(tree)
         healInfo(tree, tree.srcPos)
         super.transform(tree)
-
+      case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
+        report.error(reporting.CaseClassInInlinedCode(tree), tree)
+        super.transform(tree)
       case _ =>
         super.transform(tree)
     }

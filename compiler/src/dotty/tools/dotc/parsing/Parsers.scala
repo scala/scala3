@@ -1288,7 +1288,7 @@ object Parsers {
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
-            syntaxErrorOrIncomplete(i"indented definitions expected, ${in}")
+            syntaxErrorOrIncomplete(i"indented definitions expected, ${in} found")
       else
         newLineOptWhenFollowedBy(LBRACE)
 
@@ -3517,7 +3517,7 @@ object Parsers {
         syntaxError(i"extension clause can only define methods", stat.span)
     }
 
-    /** GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | StructuralInstance)
+    /** GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
      *  GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClauses} ‘:’
      */
     def givenDef(start: Offset, mods: Modifiers, givenMod: Mod) = atSpan(start, nameStart) {
@@ -3536,7 +3536,7 @@ object Parsers {
         val noParams = tparams.isEmpty && vparamss.isEmpty
         if !(name.isEmpty && noParams) then accept(COLON)
         val parents =
-          if isSimpleLiteral then toplevelTyp() :: Nil
+          if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
           else constrApp() :: withConstrApps()
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then
@@ -3626,7 +3626,7 @@ object Parsers {
         // Using Ident(tpnme.ERROR) to avoid causing cascade errors on non-user-written code
       if in.token == LPAREN then parArgumentExprss(wrapNew(t)) else t
 
-    /** ConstrApps  ::=  ConstrApp {(‘,’ | ‘with’) ConstrApp}
+    /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
     def constrApps(commaOK: Boolean): List[Tree] =
       val t = constrApp()

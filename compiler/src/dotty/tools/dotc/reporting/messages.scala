@@ -2500,3 +2500,14 @@ import transform.SymUtils._
                    |""".stripMargin
     def explain = ""
   }
+
+  class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
+    extends SyntaxMsg(CaseClassInInlinedCodeID) {
+
+    def defKind = if tree.symbol.is(Module) then "object" else "class"
+    def msg = s"Case $defKind definitions are not allowed in inline methods or quoted code. Use a normal $defKind instead."
+    def explain =
+      em"""Case class/object definitions generate a considerable fooprint in code size.
+          |Inlining such definition would multiply this footprint for each call site.
+          |""".stripMargin
+  }

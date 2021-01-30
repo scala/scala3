@@ -99,8 +99,23 @@ object Inferencing {
        && tvar.hasLowerBound =>
       tvar.instantiate(fromBelow = true)
       true
-    case AppliedType(tycon, _) =>
+    case AppliedType(tycon, args) =>
+      // The argument in `args` that may potentially appear directly as result
+      // and thereby influence the members of this type
+      def argsInResult: List[Type] = tycon match
+        case tycon: TypeRef =>
+          tycon.info match
+            case MatchAlias(_) => args
+            case TypeBounds(_, upper: TypeLambda) =>
+              upper.resultType match
+                case ref: TypeParamRef if ref.binder == upper =>
+                  args.lazyZip(upper.paramRefs).collect {
+                    case (arg, pref) if pref eq ref => arg
+                  }.toList
+                case _ => Nil
+            case _ => Nil
       couldInstantiateTypeVar(tycon)
+      || argsInResult.exists(couldInstantiateTypeVar)
     case RefinedType(parent, _, _) =>
       couldInstantiateTypeVar(parent)
     case tp: AndOrType =>

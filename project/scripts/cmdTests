@@ -18,21 +18,10 @@ clear_out "$OUT"
 "$SBT" ";scalac -d $OUT/out.jar $SOURCE ;scalac -from-tasty -d $OUT1 $OUT/out.jar ;scala -classpath $OUT1 $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
-# check that `sbt scalac -decompile` runs
-echo "testing sbt scalac -decompile from file"
-"$SBT" ";scalac -decompile -color:never $OUT/$TASTY" > "$tmp"
-grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
-
 echo "testing sbt scala with no -classpath"
 clear_out "$OUT"
 "$SBT" ";scalac $SOURCE ; scala $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
-
-echo "testing loading tasty from .tasty file in jar"
-clear_out "$OUT"
-"$SBT" ";scalac -d $OUT/out.jar $SOURCE; scalac -decompile -color:never $OUT/out.jar" > "$tmp"
-grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
-
 
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"

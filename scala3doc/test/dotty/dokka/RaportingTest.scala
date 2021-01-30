@@ -55,5 +55,5 @@ class ReportingTest:
       assertNoWarning(diag)
       assertNoErrors(diag)
 
-      assertMessagesAbout(diag.infoMsgs)("dotty.dokka.DottyDokkaPlugin", "generation completed successfully")
+      assertMessagesAbout(diag.infoMsgs)("generation completed successfully")
     }

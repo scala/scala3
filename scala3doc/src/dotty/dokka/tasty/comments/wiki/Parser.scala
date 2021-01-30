@@ -11,6 +11,7 @@ import dotty.dokka.tasty.comments.Regexes._
   */
 final class Parser(
   val buffer: String,
+  linkResolver: (String, Option[Inline]) => Inline
 ) extends CharReader(buffer) { wiki =>
   var summaryParsed = false
 
@@ -122,7 +123,7 @@ final class Parser(
     jumpWhitespace()
     repeatJump('-')
     blockEnded("horizontal rule")
-    HorizontalRule()
+    HorizontalRule
   }
 
   /** {{{ para ::= inline '\n' }}} */
@@ -320,7 +321,7 @@ final class Parser(
       else None
     jump(stop)
 
-    Link(target, title getOrElse Chain.Empty)
+    linkResolver(target, title)
   }
 
   /* UTILITY */

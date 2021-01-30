@@ -55,17 +55,17 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-M3"
+  val referenceVersion = "3.0.0-RC1-bin-20210122-6947b0f-NIGHTLY"
 
   val baseVersion = "3.0.0-RC1"
-  val baseSbtDottyVersion = "0.5.1"
+  val baseSbtDottyVersion = "0.5.3"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.4.6"
+  val publishedSbtDottyVersion = "0.5.2"
 
   /** scala-library version required to compile Dotty.
    *
@@ -1544,19 +1544,13 @@ object Build {
       def joinProducts(products: Seq[java.io.File]): String =
         products.iterator.map(_.getAbsolutePath.toString).mkString(" ")
 
-      val dokkaVersion = "1.4.10.2"
       val flexmarkVersion = "0.42.12"
 
       project.settings(commonBootstrappedSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
         dependsOn(`scala3-tasty-inspector`).
         settings(
-          // Needed to download dokka and its dependencies
-          resolvers += Resolver.jcenterRepo,
           libraryDependencies ++= Seq(
-            "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
-            "org.jetbrains.dokka" % "dokka-base" % dokkaVersion,
-            "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % "0.7.2", // Needs update when dokka version changes
             "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
             "com.vladsch.flexmark" % "flexmark-html-parser" % flexmarkVersion,
             "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
@@ -1569,18 +1563,14 @@ object Build {
             "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
             "nl.big-o" % "liqp" % "0.6.7",
             "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
-            "args4j" % "args4j" % "2.33",
             Dependencies.`jackson-dataformat-yaml`,
 
-            "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test",
             "com.novocode" % "junit-interface" % "0.11" % "test",
           ),
           Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scala3doc-testcases`)).value,
           testcasesOutputDir.in(Test) := joinProducts((`scala3doc-testcases`/Compile/products).value),
           testcasesSourceRoot.in(Test) := (baseDirectory.in(`scala3doc-testcases`).value / "src").getAbsolutePath.toString,
           Compile / mainClass := Some("dotty.dokka.Main"),
-          // There is a bug in dokka that prevents parallel tests withing the same jvm
-          fork.in(test) := true,
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
             generateDocumentation(
@@ -1665,8 +1655,6 @@ object Build {
           BuildInfoPlugin.buildInfoScopedSettings(Test),
           BuildInfoPlugin.buildInfoScopedSettings(Compile),
           BuildInfoPlugin.buildInfoDefaultSettings,
-          // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
-          // javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
         )
     }
 

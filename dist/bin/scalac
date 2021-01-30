@@ -73,7 +73,8 @@ classpathArgs () {
   # jine
   toolchain+="$JLINE_READER$PSEP"
   toolchain+="$JLINE_TERMINAL$PSEP"
-  toolchain+="$JLINE_TERMINAL_JNA"
+  toolchain+="$JLINE_TERMINAL_JNA$PSEP"
+  toolchain+="$JNA"
 
   jvm_cp_args="-classpath \"$toolchain\""
 }

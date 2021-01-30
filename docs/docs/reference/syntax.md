@@ -17,6 +17,7 @@ hexDigit      ::= ‘0’ | … | ‘9’ | ‘A’ | … | ‘F’ | ‘a’ | 
 Informal descriptions are typeset as `“some comment”`.
 
 ### Lexical Syntax
+
 The lexical syntax of Scala is given by the following grammar in EBNF
 form.
 
@@ -82,7 +83,22 @@ comment          ::=  ‘/*’ “any sequence of characters; nested comments ar
 
 nl               ::=  “new line character”
 semi             ::=  ‘;’ |  nl {nl}
-colonEol         ::=  ": at end of line that can start a template body"
+```
+
+## Optional Braces
+
+The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../other-new-features/indentation.md).
+
+In the context-free productions below we use the notation `<<< ts >>>`
+to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
+notation `:<<< ts >>>` indicates a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent` that follows
+a `:` at the end of a line.
+
+```
+ <<< ts >>>   ::=  ‘{’ ts ‘}’
+                |  indent ts outdent
+:<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
+                |  `:` indent ts outdent
 ```
 
 ## Keywords
@@ -150,7 +166,7 @@ FunArgTypes       ::=  InfixType
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
-MatchType         ::=  InfixType `match` ‘{’ TypeCaseClauses ‘}’
+MatchType         ::=  InfixType `match` <<< TypeCaseClauses >>>
 InfixType         ::=  RefinedType {id [nl] RefinedType}
 RefinedType       ::=  AnnotType {[nl] Refinement}
 AnnotType         ::=  SimpleType {Annotation}
@@ -210,7 +226,7 @@ PostfixExpr       ::=  InfixExpr [id]
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr
                     |  InfixExpr MatchClause
-MatchClause       ::=  ‘match’ ‘{’ CaseClauses ‘}’
+MatchClause       ::=  ‘match’ <<< CaseClauses >>>
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr
 SimpleExpr        ::=  SimpleRef
                     |  Literal
@@ -219,8 +235,8 @@ SimpleExpr        ::=  SimpleRef
                     |  ‘$’ ‘{’ Block ‘}’
                     |  Quoted
                     |  quoteId                                                  -- only inside splices
-                    |  ‘new’ ConstrApp {‘with’ ConstrApp} [[colonEol] TemplateBody
-                    |  ‘new’ [colonEol] TemplateBody
+                    |  ‘new’ ConstrApp {‘with’ ConstrApp} [TemplateBody]
+                    |  ‘new’ TemplateBody
                     |  ‘(’ ExprsInParens ‘)’
                     |  SimpleExpr ‘.’ id
                     |  SimpleExpr ‘.’ MatchClause
@@ -235,7 +251,7 @@ ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘:’ ‘_’ ‘*’ ‘)’
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
-BlockExpr         ::=  ‘{’ (CaseClauses | Block) ‘}’
+BlockExpr         ::=  <<< (CaseClauses | Block) >>>
 Block             ::=  {BlockStat semi} [BlockResult]
 BlockStat         ::=  Import
                     |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
@@ -377,23 +393,23 @@ ClassDef          ::=  id ClassConstr [Template]
 ClassConstr       ::=  [ClsTypeParamClause] [ConstrMods] ClsParamClauses
 ConstrMods        ::=  {Annotation} [AccessModifier]
 ObjectDef         ::=  id [Template]
-EnumDef           ::=  id ClassConstr InheritClauses [colonEol] EnumBody
-GivenDef          ::=  [GivenSig] (Type [‘=’ Expr] | StructuralInstance)
+EnumDef           ::=  id ClassConstr InheritClauses EnumBody
+GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
 StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause}] ExtMethods
-ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
+ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
-Template          ::=  InheritClauses [colonEol] [TemplateBody]
+Template          ::=  InheritClauses [TemplateBody]
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
-                    |  ‘{’ SelfInvocation {semi BlockStat} ‘}’
+                    |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
 
-TemplateBody      ::=  [nl] ‘{’ [SelfType] TemplateStat {semi TemplateStat} ‘}’
+TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateStat      ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -405,12 +421,12 @@ TemplateStat      ::=  Import
 SelfType          ::=  id [‘:’ InfixType] ‘=>’
                     |  ‘this’ ‘:’ InfixType ‘=>’
 
-EnumBody          ::=  [nl] ‘{’ [SelfType] EnumStat {semi EnumStat} ‘}’
+EnumBody          ::=  :<<< [SelfType] EnumStat {semi EnumStat} >>>
 EnumStat          ::=  TemplateStat
                     |  {Annotation [nl]} {Modifier} EnumCase
 EnumCase          ::=  ‘case’ (id ClassConstr [‘extends’ ConstrApps]] | ids)
 
-TopStatSeq        ::=  TopStat {semi TopStat}
+TopStats          ::=  TopStat {semi TopStat}
 TopStat           ::=  Import
                     |  Export
                     |  {Annotation [nl]} {Modifier} Def
@@ -419,8 +435,8 @@ TopStat           ::=  Import
                     |  PackageObject
                     |  EndMarker
                     |
-Packaging         ::=  ‘package’ QualId [nl | colonEol] ‘{’ TopStatSeq ‘}’
+Packaging         ::=  ‘package’ QualId :<<< TopStats >>>
 PackageObject     ::=  ‘package’ ‘object’ ObjectDef
 
-CompilationUnit   ::=  {‘package’ QualId semi} TopStatSeq
+CompilationUnit   ::=  {‘package’ QualId semi} TopStats
 ```

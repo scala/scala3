@@ -177,7 +177,11 @@ object PrepareInlineable {
             //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
             //  ref(accessor).withSpan(tree.span)
             //
-        case _ => tree
+        case _: TypeDef if tree.symbol.is(Case) =>
+          report.error(reporting.CaseClassInInlinedCode(tree), tree)
+          tree
+        case _ =>
+          tree
       }
     }
 
@@ -251,7 +255,7 @@ object PrepareInlineable {
         }
     }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
+  private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.srcPos)
     if Inliner.inInlineMethod(using ctx.outer) then

@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments.wiki
+package dotty.dokka
+package tasty.comments.wiki
 
 import scala.collection.{Seq => _, _}
 // import representations._
@@ -26,7 +27,7 @@ final case class Body(blocks: Seq[Block]) {
       case Underline(text)   => summaryInInline(text)
       case Superscript(text) => summaryInInline(text)
       case Subscript(text)   => summaryInInline(text)
-      case Link(_, title)    => summaryInInline(title)
+      case Link(_, title)    => title.fold(Nil)(summaryInInline)
       case _                 => Nil
     }
     (blocks flatMap summaryInBlock).toList match {
@@ -37,8 +38,10 @@ final case class Body(blocks: Seq[Block]) {
   }
 }
 
+sealed abstract class WikiDocElement
+
 /** A block-level element of text, such as a paragraph or code block. */
-sealed abstract class Block
+sealed abstract class Block extends WikiDocElement
 
 final case class Title(text: Inline, level: Int) extends Block
 final case class Paragraph(text: Inline) extends Block
@@ -46,15 +49,13 @@ final case class Code(data: String) extends Block
 final case class UnorderedList(items: Seq[Block]) extends Block
 final case class OrderedList(items: Seq[Block], style: String) extends Block
 final case class DefinitionList(items: SortedMap[Inline, Block]) extends Block
-final case class HorizontalRule() extends Block
+object HorizontalRule extends Block
 
 /** An section of text inside a block, possibly with formatting. */
-sealed abstract class Inline {
-  def isEmpty = this match {
+sealed abstract class Inline extends WikiDocElement:
+  def isEmpty = this match
     case Chain(items) if items.isEmpty => true
     case _ => false
-  }
-}
 
 final case class Chain(items: Seq[Inline]) extends Inline
 object Chain {
@@ -65,7 +66,7 @@ final case class Bold(text: Inline) extends Inline
 final case class Underline(text: Inline) extends Inline
 final case class Superscript(text: Inline) extends Inline
 final case class Subscript(text: Inline) extends Inline
-final case class Link(target: String, title: Inline) extends Inline
+final case class Link(link: DocLink, title: Option[Inline]) extends Inline
 final case class Monospace(text: Inline) extends Inline
 final case class Text(text: String) extends Inline
 abstract class RepresentationLink(val title: Inline) extends Inline { def link: LinkTo }

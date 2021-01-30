@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import org.jetbrains.dokka._
-import org.jetbrains.dokka.DokkaSourceSetImpl
-import org.jetbrains.dokka.plugability.DokkaContext
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -25,9 +22,6 @@ type CompilerContext = dotty.tools.dotc.core.Contexts.Context
 
 given compilerContext(using docContext: DocContext): CompilerContext =
   docContext.compilerContext
-
-given docContextFromDokka(using dokkaContext: DokkaContext): DocContext =
-  dokkaContext.getConfiguration.asInstanceOf[DocContext]
 
 val report = dotty.tools.dotc.report
 
@@ -74,64 +68,16 @@ extension (r: report.type)
 
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
-case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext)
-  extends DokkaConfiguration:
-    override def getOutputDir: File = args.output
-    override def getCacheRoot: File = null
-    override def getOfflineMode: Boolean = false
-    override def getFailOnWarning: Boolean = false
-    override def getSourceSets: JList[DokkaSourceSet] = JList(mkSourceSet)
-    override def getModules: JList[DokkaConfiguration.DokkaModuleDescription] = JNil
-    override def getPluginsClasspath: JList[File] = JNil
-    override def getModuleName(): String = "ModuleName"
-    override def getModuleVersion(): String = ""
+case class DocContext(args: Scala3doc.Args, compilerContext: CompilerContext):
+  lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
 
-    lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
+  // Nasty hack but will get rid of it once we migrate away from dokka renderer
+  var navigationNode: Option[NavigationNode] = None
 
-    lazy val displaySourceSets = getSourceSets.toDisplaySourceSet
+  lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
+      File(path).getAbsoluteFile(),
+      args,
+      sourceLinks
+    )(using compilerContext))
 
-    // Nasty hack but will get rid of it once we migrate away from dokka renderer
-    var navigationNode: Option[NavigationNode] = None
-
-    val logger = new Scala3DocDokkaLogger(using compilerContext)
-
-    lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
-        File(path).getAbsoluteFile(),
-        Set(mkSourceSet.asInstanceOf[SourceSetWrapper]),
-        args,
-        sourceLinks
-      )(using compilerContext))
-
-    val externalDocumentationLinks = args.externalMappings
-
-    override def getPluginsConfiguration: JList[DokkaConfiguration.PluginConfiguration] =
-      JNil
-
-    val mkSourceSet: DokkaSourceSet =
-      new DokkaSourceSetImpl(
-        /*displayName=*/ args.name,
-        /*sourceSetID=*/ new DokkaSourceSetID(args.name, "main"),
-        /*classpath=*/ JNil,
-        /*sourceRoots=*/ JSet(),
-        /*dependentSourceSets=*/ JSet(),
-        /*samples=*/ JSet(),
-        /*includes=*/ JSet(),
-        /*includeNonPublic=*/ true,
-        /* changed because of exception in reportUndocumentedTransformer - there's 'when' which doesnt match because it contains only KotlinVisbility cases */
-        /*reportUndocumented=*/ false,
-        // Now all our packages are empty from dokka perspective
-        /*skipEmptyPackages=*/ false,
-        /*skipDeprecated=*/ true,
-        /*jdkVersion=*/ 8,
-        /*sourceLinks=*/ JSet(),
-        /*perPackageOptions=*/ JList(),
-        /*externalDocumentationLinks=*/ JSet(),
-        /*languageVersion=*/ null,
-        /*apiVersion=*/ null,
-        /*noStdlibLink=*/ true,
-        /*noJdkLink=*/  true,
-        /*suppressedFiles=*/  JSet(),
-        /*suppressedFiles=*/  Platform.jvm
-      ).asInstanceOf[DokkaSourceSet] // Why I do need to cast here? Kotlin magic?
-
-    val sourceSet = mkSourceSet.asInstanceOf[SourceSetWrapper]
+  val externalDocumentationLinks = args.externalMappings

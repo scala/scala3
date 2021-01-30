@@ -1,18 +1,6 @@
 package dotty.dokka
 package tasty
 
-import org.jetbrains.dokka.plugability._
-import org.jetbrains.dokka.transformers.sources._
-
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.model.doc._
-import org.jetbrains.dokka.base.parsers._
-import org.jetbrains.dokka.plugability.DokkaContext
-import collection.JavaConverters._
-import org.jetbrains.dokka.model.properties.PropertyContainer
-import org.jetbrains.dokka.model.properties.PropertyContainerKt._
-import org.jetbrains.dokka.model.properties.{WithExtraProperties}
 
 import java.util.regex.Pattern
 
@@ -34,7 +22,7 @@ import java.nio.file.Files
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.dokka.tasty.TastyParser]].
   */
-case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends DocTastyInspector:
+case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None
@@ -95,7 +83,8 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
       import symOps._
       Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
         MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
-    )
+      )
+
     ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)
 
     var alreadyProcessed = false
@@ -141,9 +130,9 @@ case class DokkaTastyInspector(parser: Parser)(using ctx: DocContext) extends Do
     all.groupBy(_._1).map { case (pckName, members) =>
       val (pcks, rest) = members.map(_._2).partition(_.kind == Kind.Package)
       val basePck = pcks.reduce( (p1, p2) =>
-        p1.withNewMembers(p2.allMembers) // TODO add doc
+        p1.withNewMembers(p2.members) // TODO add doc
       )
-      basePck.withMembers((basePck.allMembers ++ rest).sortBy(_.name))
+      basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
     }.toList -> rootDoc
 
 /** Parses a single Tasty compilation unit. */
