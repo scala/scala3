@@ -1,7 +1,7 @@
 # <span id="top">Creating PDF files for the Scala 3 documentation</span>
 <!-- created by mics (https://github.com/michelou/) on December 2020 -->
 
-This project aims to generate a *single* PDF file from a collection of [Markdown](https://commonmark.org/) documents, for instance for the [*Scala 3 reference*][scala3_reference] documentation.
+This project aims to generate a *single* PDF file from a collection of [Markdown] documents, for instance for the [*Scala 3 reference*][scala3_reference] documentation.
 
 Our solution is built on [Pandoc]; it gets its inputs from two directories and generates a PDF file into the output directory:
 
@@ -80,6 +80,7 @@ Note that WSL 2 is required to interact with Docker on Windows from <a href="htt
 *[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
+[markdown]: https://commonmark.org/
 [pandoc]: https://pandoc.org/ "A universal document converter"
 [scala3_reference]: https://dotty.epfl.ch/docs/reference/overview.html
 [tex_live]: https://tug.org/texlive/

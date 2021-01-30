@@ -183,7 +183,7 @@ echo     %__BEG_O%-project:^<name^>%__END%  project name ^(default: %__BEG_O%ref
 echo     %__BEG_O%-verbose%__END%         display progress messages
 echo.
 echo   %__BEG_P%Subcommands:%__END%
-echo     %__BEG_O%clean%__END%            delete generated class files
+echo     %__BEG_O%clean%__END%            delete generated files
 echo     %__BEG_O%compile%__END%          compile source files
 echo     %__BEG_O%run%__END%              open generated PDF file in default application
 echo     %__BEG_O%view%__END%             alias for %__BEG_O%run%__END%

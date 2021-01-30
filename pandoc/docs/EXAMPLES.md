@@ -43,7 +43,7 @@ Preprocess file "/tmp/dotty/docs/docs/reference/syntax.md"
 images  scala3_reference.pdf  src_managed
 </pre>
 
-> **:mag_right:** The preprocessing step converts cross reference between Markdown documents into URL anchors. The transformed files are stored into the output directory `../out/pandoc/src_managed/` and are then passed to <a href="https://pandoc.org/"><code>pandoc</code></a>.
+> **:mag_right:** The preprocessing step converts cross-reference between [Markdown] documents into [named anchors][named_anchor]. The transformed files are stored into the output directory `../out/pandoc/src_managed/` and are then passed to [`pandoc`][pandoc_cmd].
 
 ### <span id="windows">Windows Command Prompt</span>  <sup style="font-size:60%;">[**&#9650;**](#top "Back to top")</sup>
 
@@ -70,24 +70,27 @@ scala3_reference.pdf
 src_managed
 </pre>
 
-Currently the batch file [`build.bat`](../build.bat) offers more functionality than the bash script [`build`](../build); for instance :
-- option `-project:<name>` allows us to generate a PDF file for other projects, e.g. [`internals`](https://github.com/lampepfl/dotty/tree/master/docs/docs/internals).
-- subcommand `view` displays the generated PDF file using the default PDF viewer.
+> **:mag_right:** Use the command [`build help`](../build) (resp. [`build.bat help`](../build.bat)) to display the available options/subcommands.
 
-<pre style="max-width:600px;">
-<b>pandoc&gt; <a href="../build.bat">build</a></b>
-Usage: build { &lt;option&gt; | &lt;subcommand&gt; }
+We can specify option `-project:internals` to produce the output file `scala3_internals.pdf` :
+
+<pre style="max-width:640px;">
+<b>pandoc&gt; <a href="../build.bat">build</a> -timer -debug -project:internals clean compile</b>
+[build] Options    : _TIMER=1 _VERBOSE=0
+[build] Subcommands: _CLEAN=1 _COMPILE=1 _RUN=0
+[build] Variables  : <b style="color:darkred;">PANDOC_HOME</b>=c:\opt\pandoc-2.11.4
+[build] Variables  : <b style="color:darkred;">TEXLIVE_HOME</b>=c:\opt\texlive\2020
+[build] Variables  : _PROJECT_NAME=internals
+[build] rmdir /s /q "W:\scala3-pandoc\out\pandoc"
+[build] "W:\scala3-pandoc\pandoc\md2pdf.bat" "internals"
+Total elapsed time: 00:00:38
+[build] _EXITCODE=0
 &nbsp;
-  Options:
-    -debug           show commands executed by this script
-    -project:&lt;name&gt;  project name (default: <a href="https://github.com/lampepfl/dotty/tree/master/docs/docs/reference">reference</a>)
-    -verbose         display progress messages
-&nbsp;
-  Subcommands:
-    clean            delete generated class files
-    compile          compile source files
-    run              open generated PDF file in default application
-    view             alias for run
+<b>pandoc&gt; ls -l ..\out\pandoc | sed "s/%USERNAME%//"</b>
+total 188
+drwxr-xr-x 1  197121      0 Jan 30 19:29 images
+-rw-r--r-- 1  197121 185157 Jan 30 19:30 scala3_internals.pdf
+drwxr-xr-x 1  197121      0 Jan 30 19:29 src_managed
 </pre>
 
 ***
@@ -95,6 +98,9 @@ Usage: build { &lt;option&gt; | &lt;subcommand&gt; }
 *[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
+[markdown]: https://commonmark.org/
 [msys2]: https://www.msys2.org/
+[named_anchor]: https://stackoverflow.com/questions/5319754/cross-reference-named-anchor-in-markdown
+[pandoc_cmd]: https://pandoc.org/MANUAL.html
 [ubuntu]: https://ubuntu.com/desktop
 [win_10_pro]: https://www.microsoft.com/en-us/windows/compare-windows-10-home-vs-pro

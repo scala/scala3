@@ -41,7 +41,7 @@ cleanup() {
 }
 
 verbose() {
-    $VEBOSE && echo "$1" 1>&2
+    $VERBOSE && echo "$1" 1>&2
 }
 
 debug() {
@@ -63,7 +63,7 @@ args() {
         -debug)   DEBUG=true ;;
         -help)    HELP=true ;;
         -timer)   TIMER=true ;;
-		-verbose) VERBOSE=true ;;
+        -verbose) VERBOSE=true ;;
         -*)
             error "Unknown option $arg"
             EXITCODE=1 && return 0
@@ -78,9 +78,9 @@ args() {
            ;;
         esac
     done
-	$HELP || $RUN || $SAVE || HELP=true
+    $HELP || $RUN || $SAVE || HELP=true
     debug "Options    : DEBUG=$DEBUG TIMER=$TIMER VERBOSE=$VERBOSE"
-	debug "Subcommands: HELP=$HELP RUN=$RUN SAVE=$SAVE"
+    debug "Subcommands: HELP=$HELP RUN=$RUN SAVE=$SAVE"
     # See http://www.cyberciti.biz/faq/linux-unix-formatting-dates-for-display/
     $TIMER && TIMER_START=$(date +"%s")
 }
@@ -92,7 +92,7 @@ Usage: $BASENAME { <option> | <subcommand> }
   Options:
     -debug      show commands executed by this script
     -timer      display total elapsed time
-	-verbose    display progress messages
+    -verbose    display progress messages
 
   Subcommands:
     help        display this help message
@@ -100,18 +100,19 @@ Usage: $BASENAME { <option> | <subcommand> }
     save        save image as a tar archive file
 EOS
 }
+
 run() {
     local container="$($DOCKER_CMD container ps --all --format "{{.Names}}" | grep $CONTAINER_NAME)"
     if [ $container ]; then
         debug "$DOCKER_CMD container rm $CONTAINER_NAME"
-		verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+        verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
         $DOCKER_CMD container rm $CONTAINER_NAME
         [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
     fi
     local image="$($DOCKER_CMD image ls --format "{{.Repository}}" | grep ${IMAGE_NAME}:$TAG_NAME)"
     if [ $image ]; then
         debug "docker image rm ${IMAGE_NAME}:$TAG_NAME"
-		verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+        verbose "Remove container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
         $DOCKER_CMD image rm ${IMAGE_NAME}:$TAG_NAME
         [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
     fi
@@ -119,7 +120,7 @@ run() {
     [ $DEBUG ] || build_opts="--quiet $build_opts"
 
     debug "$DOCKER_CMD build $build_opts ."
-	verbose "Build docker image ${IMAGE_NAME}:$TAG_NAME"
+    verbose "Build docker image ${IMAGE_NAME}:$TAG_NAME"
     $DOCKER_CMD build $build_opts .
     [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
 
@@ -127,12 +128,12 @@ run() {
     [ $DEBUG ] && run_opts="$run_opts --env DEBUG=1"
 
     debug "$DOCKER_CMD container run $run_opts ${IMAGE_NAME}:$TAG_NAME"
-	verbose "Start container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
+    verbose "Start container $CONTAINER_NAME based on image ${IMAGE_NAME}:$TAG_NAME"
     $DOCKER_CMD container run $run_opts ${IMAGE_NAME}:$TAG_NAME
     [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
 
     debug "$DOCKER_CMD cp ${CONTAINER_NAME}:/app/target/$FILE_NAME $OUTPUT_FILE"
-	verbose "Copy file $FILE_NAME to directory ${TARGET_DIR/$PROG_HOME\//}/"
+    verbose "Copy file $FILE_NAME to directory ${TARGET_DIR/$PROG_HOME\//}/"
     $DOCKER_CMD cp ${CONTAINER_NAME}:/app/target/$FILE_NAME $OUTPUT_FILE
     [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
 }
@@ -145,12 +146,12 @@ git_hash() {
 
 save() {
     debug "$DOCKER_CMD save -o $TAR_FILE ${IMAGE_NAME}:$TAG_NAME"
-	verbose "Save image ${IMAGE_NAME}:$TAG_NAME to archive file ${TAR_FILE/$PROG_HOME\//}"
+    verbose "Save image ${IMAGE_NAME}:$TAG_NAME to archive file ${TAR_FILE/$PROG_HOME\//}"
     $DOCKER_CMD save -o $TAR_FILE ${IMAGE_NAME}:$TAG_NAME
     [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
 
     debug "$GZIP_CMD --force --keep $TAR_FILE"
-	verbose "Compress archive file ${TAR_FILE/$PROG_HOME\//}"
+    verbose "Compress archive file ${TAR_FILE/$PROG_HOME\//}"
     $GZIP_CMD --force --keep $TAR_FILE
     [[ $? -eq 0 ]] || ( EXITCODE=1 & return 0 )
 }
@@ -203,8 +204,5 @@ fi
 if $SAVE; then
     save || cleanup 1
 fi
-
-##############################################################################
-## Cleanups
 
 cleanup
