@@ -340,7 +340,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
       def selectorText(sel: untpd.ImportSelector): Text =
         val id: Text =
-          if sel.isGiven then keywordText("given") else toText(sel.imported)
+          if sel.isGiven then keywordText("given") else toText(sel.imported.name)
         val rename: Text =
           if sel.renamed.isEmpty then "" else Str(" => ") ~ toText(sel.renamed)
         val bound: Text =

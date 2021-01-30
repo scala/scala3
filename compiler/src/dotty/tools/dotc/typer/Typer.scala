@@ -2339,8 +2339,22 @@ class Typer extends Namer
         .asInstanceOf[untpd.ImportSelector]
     }
 
+  def typedImportQualifier(imp: untpd.Import, typd: (untpd.Tree, Type) => Tree)(using Context): Tree =
+    if imp.expr == untpd.EmptyTree then
+      assert(imp.selectors.length == 1, imp)
+      val from = imp.selectors.head.imported
+      val sel = typd(from, WildcardType)
+      sel.tpe.dealias match
+        case TermRef(prefix: SingletonType, _) =>
+          singleton(prefix).withSpan(from.span)
+        case _ =>
+          errorTree(from,
+            em"""Illegal import selector: $from
+                |The selector is not a member of an object or package.""")
+    else typd(imp.expr, AnySelectionProto)
+
   def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
-    val expr1 = typedExpr(imp.expr, AnySelectionProto)
+    val expr1 = typedImportQualifier(imp, typedExpr)
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)

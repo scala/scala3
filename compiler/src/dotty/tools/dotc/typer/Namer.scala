@@ -693,7 +693,7 @@ class Namer { typer: Typer =>
     // make sure testing contexts are not captured by completers
     assert(!ictx.reporter.isInstanceOf[ExploringReporter])
 
-    protected def typeSig(sym: Symbol): Type = original match {
+    protected def typeSig(sym: Symbol): Type = original match
       case original: ValDef =>
         if (sym.is(Module)) moduleValSig(sym)
         else valOrDefDefSig(original, sym, Nil, identity)(using localContext(sym).setNewScope)
@@ -702,16 +702,12 @@ class Namer { typer: Typer =>
         nestedTyper(sym) = typer1
         typer1.defDefSig(original, sym)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
-        try {
-          val expr1 = typedAheadExpr(imp.expr, AnySelectionProto)
+        try
+          val expr1 = typedImportQualifier(imp, typedAheadExpr)
           ImportType(expr1)
-        }
-        catch {
-          case ex: CyclicReference =>
-            typr.println(s"error while completing ${imp.expr}")
-            throw ex
-        }
-    }
+        catch case ex: CyclicReference =>
+          typr.println(s"error while completing ${imp.expr}")
+          throw ex
 
     final override def complete(denot: SymDenotation)(using Context): Unit = {
       if (Config.showCompletions && ctx.typerState != creationContext.typerState) {
