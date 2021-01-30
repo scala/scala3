@@ -1,3 +1,4 @@
+> recordPreviousIterations
 > run
 
 # Recompile B (no meaningful change, this is just so that the dependencies on A.InnerClass are

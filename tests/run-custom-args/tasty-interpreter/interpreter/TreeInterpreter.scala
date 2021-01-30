@@ -3,8 +3,8 @@ package scala.tasty.interpreter
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
-abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx) {
-  import qctx.reflect._
+abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
+  import quotes.reflect._
 
   final val LOG = false
 
@@ -28,7 +28,7 @@ abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx)
     // withLocalValue(`this`, inst) {
       sym.tree match
         case ddef: DefDef =>
-          val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+          val syms = ddef.termParamss.headOption.map(_.params).getOrElse(Nil).map(_.symbol)
           withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
             eval(ddef.rhs.get)
           }
@@ -45,7 +45,7 @@ abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx)
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
     fn.symbol.tree match
       case ddef: DefDef =>
-        val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        val syms = ddef.termParamss.headOption.map(_.params).getOrElse(Nil).map(_.symbol)
         withLocalValues(syms, evaluatedArgs) {
           eval(ddef.rhs.get)
         }
@@ -75,7 +75,7 @@ abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx)
           else LocalValue.valFrom(evalRhs)
 
         accEnv.updated(stat.symbol, evalRef)
-      case DefDef(_, _, _, _, _) =>
+      case DefDef(_, _, _, _) =>
         // TODO: record the environment for closure purposes
         accEnv
       case stat =>
@@ -155,7 +155,7 @@ abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx)
       case Typed(expr, _)         => log("<interpretTyped>", tree)(eval(expr))
       case Repeated(elems, _)     => log("<interpretRepeated>", tree)(interpretRepeated(elems.map(elem => eval(elem))))
 
-      case _ => throw new MatchError(tree.showExtractors)
+      case _ => throw new MatchError(tree.show(using Printer.TreeStructure))
     }
   }
 
@@ -164,7 +164,7 @@ abstract class TreeInterpreter[QCtx <: Quotes & Singleton](using val qctx: QCtx)
       println(
         s"""#> $tag:
            |${tree.show}
-           |${tree.showExtractors}
+           |${tree.show(using Printer.TreeStructure)}
            |
            |""".stripMargin)
     thunk

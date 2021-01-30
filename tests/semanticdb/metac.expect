@@ -91,11 +91,11 @@ local10 => val local e3x
 Occurrences:
 [0:8..0:16): advanced <- advanced/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:33): higherKinds -> scalaShadowing/language.higherKinds.
+[2:13..2:21): language -> scala/language.
+[2:22..2:33): higherKinds -> scala/language.higherKinds.
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:37): reflectiveCalls -> scalaShadowing/language.reflectiveCalls.
+[3:13..3:21): language -> scala/language.
+[3:22..3:37): reflectiveCalls -> scala/language.reflectiveCalls.
 [5:7..5:12): scala -> scala/
 [5:13..5:20): reflect -> scala/reflect/
 [5:21..5:31): Selectable -> scala/reflect/Selectable.
@@ -224,9 +224,9 @@ Occurrences:
 [3:13..3:23): annotation -> scala/annotation/
 [3:24..3:28): meta -> scala/annotation/meta/
 [4:7..4:12): scala -> scala/
-[4:13..4:21): language -> scalaShadowing/language.
-[4:22..4:34): experimental -> scalaShadowing/language.experimental.
-[4:35..4:41): macros -> scalaShadowing/language.experimental.macros.
+[4:13..4:21): language -> scala/language.
+[4:22..4:34): experimental -> scala/language.experimental.
+[4:35..4:41): macros -> scala/language.experimental.macros.
 [6:1..6:16): ClassAnnotation -> com/javacp/annot/ClassAnnotation#
 [7:6..7:17): Annotations <- annot/Annotations#
 [7:17..7:17): <- annot/Annotations#`<init>`().
@@ -298,8 +298,8 @@ local1 => final class $anon
 Occurrences:
 [0:8..0:15): example <- example/
 [1:7..1:12): scala -> scala/
-[1:13..1:21): language -> scalaShadowing/language.
-[1:22..1:33): higherKinds -> scalaShadowing/language.higherKinds.
+[1:13..1:21): language -> scala/language.
+[1:22..1:33): higherKinds -> scala/language.higherKinds.
 [3:6..3:15): Anonymous <- example/Anonymous#
 [4:2..4:2): <- example/Anonymous#`<init>`().
 [4:8..4:17): Anonymous -> example/Anonymous#
@@ -454,9 +454,9 @@ local3 => val local local
 Occurrences:
 [0:8..0:15): classes <- classes/
 [1:7..1:12): scala -> scala/
-[1:13..1:21): language -> scalaShadowing/language.
-[1:22..1:34): experimental -> scalaShadowing/language.experimental.
-[1:35..1:41): macros -> scalaShadowing/language.experimental.macros.
+[1:13..1:21): language -> scala/language.
+[1:22..1:34): experimental -> scala/language.experimental.
+[1:35..1:41): macros -> scala/language.experimental.macros.
 [2:6..2:8): C1 <- classes/C1#
 [2:8..2:8): <- classes/C1#`<init>`().
 [2:13..2:15): x1 <- classes/C1#x1.
@@ -755,7 +755,7 @@ _empty_/Enums.Suits.Clubs. => case val static enum method Clubs
 _empty_/Enums.Suits.Diamonds. => case val static enum method Diamonds
 _empty_/Enums.Suits.Hearts. => case val static enum method Hearts
 _empty_/Enums.Suits.Spades. => case val static enum method Spades
-_empty_/Enums.Suits.derived$Eql(). => implicit method derived$Eql
+_empty_/Enums.Suits.derived$CanEqual. => implicit lazy val method derived$CanEqual
 _empty_/Enums.Suits.fromOrdinal(). => method fromOrdinal
 _empty_/Enums.Suits.fromOrdinal().(ordinal) => param ordinal
 _empty_/Enums.Suits.isBlack(). => method isBlack
@@ -844,7 +844,7 @@ Occurrences:
 [8:29..8:33): West <- _empty_/Enums.Directions.West.
 [10:7..10:12): Suits <- _empty_/Enums.Suits#
 [10:21..10:21): <- _empty_/Enums.Suits#`<init>`().
-[10:21..10:21): -> scala/Eql.derived.
+[10:21..10:21): -> scala/CanEqual.derived.
 [11:9..11:15): Hearts <- _empty_/Enums.Suits.Hearts.
 [11:17..11:23): Spades <- _empty_/Enums.Suits.Spades.
 [11:25..11:30): Clubs <- _empty_/Enums.Suits.Clubs.
@@ -936,13 +936,13 @@ Occurrences:
 [46:34..46:35): C -> _empty_/Enums.`<:<`.Refl#[C]
 [46:35..46:35): -> _empty_/Enums.`<:<`#`<init>`().
 [48:9..48:12): <:< <- _empty_/Enums.`<:<`.
-[49:10..49:17): [T] as  <- _empty_/Enums.`<:<`.given_T().
+[49:10..49:17): [T]: (T <- _empty_/Enums.`<:<`.given_T().
 [49:11..49:12): T <- _empty_/Enums.`<:<`.given_T().[T]
-[49:18..49:19): T -> _empty_/Enums.`<:<`.given_T().[T]
-[49:20..49:23): <:< -> _empty_/Enums.`<:<`#
-[49:24..49:25): T -> _empty_/Enums.`<:<`.given_T().[T]
-[49:29..49:33): Refl -> _empty_/Enums.`<:<`.Refl.
-[49:33..49:33): -> _empty_/Enums.`<:<`.Refl.apply().
+[49:16..49:17): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:18..49:21): <:< -> _empty_/Enums.`<:<`#
+[49:22..49:23): T -> _empty_/Enums.`<:<`.given_T().[T]
+[49:27..49:31): Refl -> _empty_/Enums.`<:<`.Refl.
+[49:31..49:31): -> _empty_/Enums.`<:<`.Refl.apply().
 [51:13..51:14): A <- _empty_/Enums.unwrap().[A]
 [51:16..51:17): B <- _empty_/Enums.unwrap().[B]
 [51:19..51:22): opt <- _empty_/Enums.unwrap().(opt)
@@ -971,7 +971,7 @@ Occurrences:
 [54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
 [54:23..54:23): -> scala/Some.apply().
-[54:27..54:27): -> _empty_/Enums.`<:<`.given_T().
+[54:34..54:34): -> _empty_/Enums.`<:<`.given_T().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
 [56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
 [56:14..56:18): mass <- _empty_/Enums.Planet#mass.
@@ -1304,7 +1304,7 @@ Occurrences:
 [18:33..18:34): y <- a/b/Givens.Monoid#combine().(y)
 [18:36..18:37): A -> a/b/Givens.Monoid#[A]
 [18:40..18:41): A -> a/b/Givens.Monoid#[A]
-[20:8..21:3): <- a/b/Givens.given_Monoid_String.
+[20:8..20:27): Monoid[String] with <- a/b/Givens.given_Monoid_String.
 [20:8..20:14): Monoid -> a/b/Givens.Monoid#
 [20:15..20:21): String -> scala/Predef.String#
 [21:8..21:13): empty <- a/b/Givens.given_Monoid_String.empty().
@@ -1317,10 +1317,10 @@ Occurrences:
 [22:53..22:54): + -> java/lang/String#`+`().
 [22:55..22:56): y -> a/b/Givens.given_Monoid_String.combine().(y)
 [24:15..24:25): int2String <- a/b/Givens.int2String().
-[24:29..24:39): Conversion -> scala/Conversion#
-[24:40..24:43): Int -> scala/Int#
-[24:45..24:51): String -> scala/Predef.String#
-[24:57..24:65): toString -> scala/Any#toString().
+[24:27..24:37): Conversion -> scala/Conversion#
+[24:38..24:41): Int -> scala/Int#
+[24:43..24:49): String -> scala/Predef.String#
+[24:55..24:63): toString -> scala/Any#toString().
 [26:6..26:9): foo <- a/b/Givens.foo().
 [26:10..26:11): A <- a/b/Givens.foo().[A]
 [26:19..26:20): A <- a/b/Givens.foo().(A)
@@ -1373,8 +1373,8 @@ example/ImplicitConversion.newAny2stringadd. => final object newAny2stringadd
 Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[2:13..2:21): language -> scala/language.
+[2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:24): ImplicitConversion <- example/ImplicitConversion#
 [5:2..5:2): <- example/ImplicitConversion#`<init>`().
 [5:9..5:27): ImplicitConversion -> example/ImplicitConversion.
@@ -1479,13 +1479,13 @@ Occurrences:
 [2:7..2:12): scala -> scala/
 [2:13..2:23): annotation -> scala/annotation/
 [2:24..2:28): meta -> scala/annotation/meta/
-[2:29..2:34): param -> scala/annotation/meta/param.
+[2:29..2:34): param -> scala/annotation/meta/param#
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[3:13..3:21): language -> scala/language.
+[3:22..3:34): existentials -> scala/language.existentials.
 [4:7..4:12): scala -> scala/
-[4:13..4:21): language -> scalaShadowing/language.
-[4:22..4:33): higherKinds -> scalaShadowing/language.higherKinds.
+[4:13..4:21): language -> scala/language.
+[4:22..4:33): higherKinds -> scala/language.higherKinds.
 [5:7..5:12): types -> types/
 [5:13..5:17): Test -> types/Test.
 [7:6..7:21): InstrumentTyper <- example/InstrumentTyper#
@@ -1937,8 +1937,8 @@ Occurrences:
 [2:18..2:26): Ordering -> scala/math/Ordering.
 [2:18..2:26): Ordering -> scala/math/Ordering#
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:34): existentials -> scalaShadowing/language.existentials.
+[3:13..3:21): language -> scala/language.
+[3:22..3:34): existentials -> scala/language.existentials.
 [5:6..5:13): Methods <- example/Methods#
 [5:13..5:13): <- example/Methods#`<init>`().
 [5:14..5:15): T <- example/Methods#[T]
@@ -2496,8 +2496,8 @@ local9 => param b
 Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:41): implicitConversions -> scalaShadowing/language.implicitConversions.
+[2:13..2:21): language -> scala/language.
+[2:22..2:41): implicitConversions -> scala/language.implicitConversions.
 [4:6..4:15): Synthetic <- example/Synthetic#
 [5:2..5:2): <- example/Synthetic#`<init>`().
 [5:2..5:6): List -> scala/package.List.
@@ -3019,6 +3019,106 @@ Occurrences:
 [4:18..4:21): Int -> scala/Int#
 [4:26..4:30): Unit -> scala/Unit#
 
+expect/exports-example-Codec.scala
+----------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => exports-example-Codec.scala
+Text => empty
+Language => Scala
+Symbols => 21 entries
+Occurrences => 39 entries
+
+Symbols:
+exports/example/Codec# => trait Codec
+exports/example/Codec#[T] => typeparam T
+exports/example/Codec#`<init>`(). => primary ctor <init>
+exports/example/Codec#`<init>`().(decode) => param decode
+exports/example/Codec#`<init>`().(encode) => param encode
+exports/example/Codec#decode(). => final method decode
+exports/example/Codec#decode().(a) => param a
+exports/example/Codec#decode. => val method decode
+exports/example/Codec#encode(). => final method encode
+exports/example/Codec#encode().(t) => param t
+exports/example/Codec#encode. => val method encode
+exports/example/Decoder# => trait Decoder
+exports/example/Decoder#[T] => covariant typeparam T
+exports/example/Decoder#`<init>`(). => primary ctor <init>
+exports/example/Decoder#decode(). => abstract method decode
+exports/example/Decoder#decode().(a) => param a
+exports/example/Encoder# => trait Encoder
+exports/example/Encoder#[T] => contravariant typeparam T
+exports/example/Encoder#`<init>`(). => primary ctor <init>
+exports/example/Encoder#encode(). => abstract method encode
+exports/example/Encoder#encode().(t) => param t
+
+Occurrences:
+[0:8..0:15): exports -> exports/
+[0:16..0:23): example <- exports/example/
+[2:6..2:13): Decoder <- exports/example/Decoder#
+[2:13..2:13): <- exports/example/Decoder#`<init>`().
+[2:15..2:16): T <- exports/example/Decoder#[T]
+[3:6..3:12): decode <- exports/example/Decoder#decode().
+[3:13..3:14): a <- exports/example/Decoder#decode().(a)
+[3:16..3:21): Array -> scala/Array#
+[3:22..3:26): Byte -> scala/Byte#
+[3:30..3:31): T -> exports/example/Decoder#[T]
+[6:6..6:13): Encoder <- exports/example/Encoder#
+[6:13..6:13): <- exports/example/Encoder#`<init>`().
+[6:15..6:16): T <- exports/example/Encoder#[T]
+[7:6..7:12): encode <- exports/example/Encoder#encode().
+[7:13..7:14): t <- exports/example/Encoder#encode().(t)
+[7:16..7:17): T -> exports/example/Encoder#[T]
+[7:20..7:25): Array -> scala/Array#
+[7:26..7:30): Byte -> scala/Byte#
+[10:6..10:11): Codec <- exports/example/Codec#
+[10:11..10:11): <- exports/example/Codec#`<init>`().
+[10:12..10:13): T <- exports/example/Codec#[T]
+[10:15..10:21): decode <- exports/example/Codec#decode.
+[10:23..10:30): Decoder -> exports/example/Decoder#
+[10:31..10:32): T -> exports/example/Codec#[T]
+[10:35..10:41): encode <- exports/example/Codec#encode.
+[10:43..10:50): Encoder -> exports/example/Encoder#
+[10:51..10:52): T -> exports/example/Codec#[T]
+[11:10..11:17): Decoder -> exports/example/Decoder#
+[11:18..11:19): T -> exports/example/Codec#[T]
+[11:26..11:33): Encoder -> exports/example/Encoder#
+[11:34..11:35): T -> exports/example/Codec#[T]
+[12:9..12:15): decode -> exports/example/Codec#decode.
+[12:15..12:15): -> exports/example/Decoder#decode().
+[12:15..12:15): -> exports/example/Codec#decode().(a)
+[12:16..12:16): <- exports/example/Codec#decode().
+[13:9..13:15): encode -> exports/example/Codec#encode.
+[13:15..13:15): -> exports/example/Encoder#encode().
+[13:15..13:15): -> exports/example/Codec#encode().(t)
+[13:16..13:16): <- exports/example/Codec#encode().
+
+expect/exports-package.scala
+----------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => exports-package.scala
+Text => empty
+Language => Scala
+Symbols => 4 entries
+Occurrences => 6 entries
+
+Symbols:
+exports/`exports-package$package`. => final package object exports
+exports/`exports-package$package`.Codec# => final type Codec
+exports/`exports-package$package`.Decoder# => final type Decoder
+exports/`exports-package$package`.Encoder# => final type Encoder
+
+Occurrences:
+[0:8..0:15): exports <- exports/
+[2:0..2:0): <- exports/`exports-package$package`.
+[2:7..2:14): example -> exports/example/
+[2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
+[2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
+[2:34..2:39): Codec <- exports/`exports-package$package`.Codec#
+
 expect/filename with spaces.scala
 ---------------------------------
 
@@ -3362,9 +3462,9 @@ local1 => case val method t
 Occurrences:
 [0:8..0:13): flags <- flags/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:34): experimental -> scalaShadowing/language.experimental.
-[2:35..2:41): macros -> scalaShadowing/language.experimental.macros.
+[2:13..2:21): language -> scala/language.
+[2:22..2:34): experimental -> scala/language.experimental.
+[2:35..2:41): macros -> scala/language.experimental.macros.
 [4:15..5:3): <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
@@ -3601,11 +3701,11 @@ types/ann2#`<init>`(). => primary ctor <init>
 Occurrences:
 [0:8..0:13): types <- types/
 [2:7..2:12): scala -> scala/
-[2:13..2:21): language -> scalaShadowing/language.
-[2:22..2:34): existentials -> scalaShadowing/language.existentials.
+[2:13..2:21): language -> scala/language.
+[2:22..2:34): existentials -> scala/language.existentials.
 [3:7..3:12): scala -> scala/
-[3:13..3:21): language -> scalaShadowing/language.
-[3:22..3:33): higherKinds -> scalaShadowing/language.higherKinds.
+[3:13..3:21): language -> scala/language.
+[3:22..3:33): higherKinds -> scala/language.higherKinds.
 [5:6..5:9): ann <- types/ann#
 [5:9..5:9): <- types/ann#`<init>`().
 [5:10..5:11): T <- types/ann#[T]

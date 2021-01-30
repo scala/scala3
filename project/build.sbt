@@ -10,7 +10,7 @@ unmanagedSourceDirectories in Compile += baseDirectory.value / "../sbt-dotty/src
 // Keep in sync with `sbt-dotty` config in Build.scala
 libraryDependencies ++= Seq(
   Dependencies.`jackson-databind`,
-  Dependencies.`compiler-interface`
+  Dependencies.newCompilerInterface
 )
 unmanagedSourceDirectories in Compile +=
   baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config"

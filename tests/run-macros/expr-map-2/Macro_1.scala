@@ -8,7 +8,7 @@ private def stringRewriter(e: Expr[Any])(using Quotes): Expr[Any] =
 
 private object StringRewriter extends ExprMap {
 
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = e match
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = e match
     case '{ ($x: Foo).x } =>
       '{ new Foo(4).x } match
         case '{ $e: T } => e

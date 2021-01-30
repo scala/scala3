@@ -28,7 +28,7 @@ object GivenLookup {
 
   class Tag[T]
 
-  given ti as Tag[Int]
+  given ti: Tag[Int] with {}
 
   def foo[T](t: T, ev: T SUB Int) =
     ev match { case SUB.Refl() =>
@@ -80,7 +80,7 @@ object ExtensionMethod {
   enum SUB[-A, +B]:
     case Refl[S]() extends SUB[S, S]
 
-  extension (x: Int):
+  extension (x: Int)
     def **(y: Int) = math.pow(x, y).toInt
 
   def foo[T](t: T, ev: T SUB Int) =

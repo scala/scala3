@@ -15,13 +15,13 @@ object Test {
 
 class DBInspector extends TastyInspector {
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit = {
-    import qctx.reflect._
+  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit = {
+    import quotes.reflect._
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: Definition =>
-          println(tree.showExtractors)
+          println(tree.show(using Printer.TreeStructure))
           super.traverseTree(tree)(owner)
         case tree =>
           super.traverseTree(tree)(owner)

@@ -1,8 +1,12 @@
 package scala.quoted
 
-/** Quoted expression of type `T` */
+/** Quoted expression of type `T`.
+ *
+ *  `Expr` has extension methods that are defined in `scala.quoted.Quotes`.
+ */
 abstract class Expr[+T] private[scala]
 
+/** Constructors for expressions */
 object Expr {
 
   /** `e.betaReduce` returns an expression that is functionally equivalent to `e`,
@@ -14,8 +18,8 @@ object Expr {
    *   Some bindings may be elided as an early optimization.
    */
   def betaReduce[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import qctx.reflect._
-    Term.betaReduce(Term.of(expr)) match
+    import quotes.reflect._
+    Term.betaReduce(expr.asTerm) match
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
@@ -24,15 +28,30 @@ object Expr {
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
-    import qctx.reflect._
-    Block(statements.map(Term.of), Term.of(expr)).asExpr.asInstanceOf[Expr[T]]
+    import quotes.reflect._
+    Block(statements.map(asTerm), expr.asTerm).asExpr.asInstanceOf[Expr[T]]
   }
 
-  /** Lift a value into an expression containing the construction of that value */
-  def apply[T](x: T)(using lift: Liftable[T])(using Quotes): Expr[T] =
-    lift.toExpr(x)
+  /** Creates an expression that will construct the value `x` */
+  def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
+    scala.Predef.summon[ToExpr[T]].apply(x)
 
-  /** Lifts this sequence of expressions into an expression of a sequence
+  /** Get `Some` of a copy of the value if the expression contains a literal constant or constructor of `T`.
+   *  Otherwise returns `None`.
+   *
+   *  Usage:
+   *  ```
+   *  case '{ ... ${expr @ Expr(value)}: T ...} =>
+   *    // expr: Expr[T]
+   *    // value: T
+   *  ```
+   *
+   *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
+   */
+  def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =
+    scala.Predef.summon[FromExpr[T]].unapply(x)
+
+  /** Creates an expression that will construct a copy of this sequence
    *
    *  Transforms a sequence of expression
    *    `Seq(e1, e2, ...)` where `ei: Expr[T]`
@@ -40,10 +59,10 @@ object Expr {
    *    `'{ Seq($e1, $e2, ...) }` typed as an `Expr[Seq[T]]`
    *  ```
    */
-  def ofSeq[T](xs: Seq[Expr[T]])(using tp: Type[T], qctx: Quotes): Expr[Seq[T]] =
+  def ofSeq[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] =
     Varargs(xs)
 
-  /** Lifts this list of expressions into an expression of a list
+  /** Creates an expression that will construct a copy of this list
    *
    *  Transforms a list of expression
    *    `List(e1, e2, ...)` where `ei: Expr[T]`
@@ -53,7 +72,7 @@ object Expr {
   def  ofList[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[List[T]] =
     if (xs.isEmpty) Expr(Nil) else '{ List(${Varargs(xs)}: _*) }
 
-  /** Lifts this sequence of expressions into an expression of a tuple
+  /** Creates an expression that will construct a copy of this tuple
    *
    *  Transforms a sequence of expression
    *    `Seq(e1, e2, ...)` where `ei: Expr[Any]`
@@ -208,26 +227,13 @@ object Expr {
    * `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
-   *  @param tpe quoted type of the implicit parameter
-   *  @param qctx current context
    */
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Implicits.search(TypeRepr.of[T]) match {
       case iss: ImplicitSearchSuccess => Some(iss.tree.asExpr.asInstanceOf[Expr[T]])
       case isf: ImplicitSearchFailure => None
     }
-  }
-
-  object StringContext {
-    /** Matches a `StringContext(part0, part1, ...)` and extracts the parts of a call to if the
-     *  parts are passed explicitly. Returns the equvalent to `Seq('{part0}, '{part1}, ...)`.
-     */
-    def unapply(sc: Expr[StringContext])(using Quotes): Option[Seq[Expr[String]]] =
-      sc match
-        case '{ scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)
-        case '{ new scala.StringContext(${Varargs(parts)}: _*) } => Some(parts)
-        case _ => None
   }
 
 }

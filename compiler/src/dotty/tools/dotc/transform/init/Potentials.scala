@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 package init
 
@@ -101,7 +102,7 @@ object Potentials {
         case Some((parentCls, pots)) =>
           val rebased: Potentials = outerPots.flatMap { Potentials.asSeenFrom(pots, _) }
           resolveOuter(parentCls, rebased, cls)
-        case None => ??? // impossible
+        case None => unreachable()
       }
     }
   }

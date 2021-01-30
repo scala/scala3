@@ -9,7 +9,7 @@ import core.Decorators._
 import printing.Highlighting.{Blue, Red, Yellow}
 import printing.SyntaxHighlighting
 import Diagnostic._
-import util.SourcePosition
+import util.{ SourcePosition, NoSourcePosition }
 import util.Chars.{ LF, CR, FF, SU }
 import scala.annotation.switch
 
@@ -112,9 +112,9 @@ trait MessageRendering {
     * @return separator containing error location and kind
     */
   def posStr(pos: SourcePosition, diagnosticLevel: String, message: Message)(using Context): String =
-    if (pos.exists) hl(diagnosticLevel)({
+    if (pos.source != NoSourcePosition.source) hl(diagnosticLevel)({
       val pos1 = pos.nonInlined
-      val file =
+      val file = if !pos.exists then pos1.source.file.toString else
         s"${pos1.source.file.toString}:${pos1.line + 1}:${pos1.column}"
       val errId =
         if (message.errorId ne ErrorMessageID.NoExplanationID) {
@@ -147,7 +147,7 @@ trait MessageRendering {
     val sb = mutable.StringBuilder()
     val posString = posStr(pos, diagnosticLevel, msg)
     if (posString.nonEmpty) sb.append(posString).append(EOL)
-    if (pos.exists && pos.source.file.exists) {
+    if (pos.exists) {
       val pos1 = pos.nonInlined
       val (srcBefore, srcAfter, offset) = sourceLines(pos1, diagnosticLevel)
       val marker = columnMarker(pos1, offset, diagnosticLevel)

@@ -16,7 +16,7 @@
 
 #graph {
   width: 100%;
-  height: 80%;
+  height: 400px;
 }
 
 .diagram-class a {
@@ -28,4 +28,27 @@
 }
 .diagram-class span[data-unresolved-link] {
   color: #FFF;
+}
+
+.btn {
+  padding: 8px 16px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  transition-duration: 0.4s;
+  cursor: pointer;
+  background-color: white;
+  color: black;
+  border: 2px solid #003048;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index:2;
+}
+
+.btn:hover {
+  background-color: #003048;
+  color: white;
 }

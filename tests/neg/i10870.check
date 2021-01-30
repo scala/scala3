@@ -1,0 +1,7 @@
+-- [E008] Not Found Error: tests/neg/i10870.scala:10:16 ----------------------------------------------------------------
+10 |    def x = b.a.x  // error
+   |            ^^^^^
+   |            value x is not a member of A.
+   |            Extension methods were tried, but the search failed with:
+   |
+   |                Overloaded or recursive method x needs return type

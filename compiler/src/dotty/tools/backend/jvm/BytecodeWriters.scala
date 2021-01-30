@@ -81,7 +81,8 @@ trait BytecodeWriters {
   trait AsmpBytecodeWriter extends BytecodeWriter {
     import scala.tools.asm
 
-    private val baseDir = Directory(None.get).createDirectory() // FIXME missing directoy
+    private val baseDir = new Directory(None.get).createDirectory() // FIXME missing directoy
+      // new needed here since resolution of user-defined `apply` methods is ambiguous, and we want the constructor.
 
     private def emitAsmp(jclassBytes: Array[Byte], asmpFile: dotty.tools.io.File): Unit = {
       val pw = asmpFile.printWriter()

@@ -1,15 +1,25 @@
 ---
 layout: doc-page
-title: Soft Modifiers
+title: Soft Keywords
 ---
 
-A soft modifier is one of the identifiers `opaque` and `inline`.
-<!-- 
-TODO this is most likely outdated should at least contain `extension` in addition. 
-Worth maintaining? or maybe better refer to internal/syntax.md ? 
--->
+A soft modifier is one of the identifiers `opaque`, `inline`, `open`, `transparent`, and `infix`.
 
-It is treated as a potential modifier of a definition, if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `class`, `case class`, `trait`, `object`, `case object`, `enum`). Between the two words there may be a sequence of newline tokens and soft modifiers.
+A soft keyword is a soft modifier, or one of `derives`, `end`, `extension`, `using`, `|`, `+`, `-`, `*`
 
-It is treated as a potential modifier of a parameter binding unless it is followed by `:`.
+A soft modifier is treated as potential modifier of a definition if it is followed by a hard modifier or a keyword combination starting a definition (`def`, `val`, `var`, `type`, `given`, `class`, `trait`, `object`, `enum`, `case class`, `case object`). Between the two words there may be a sequence of newline tokens and soft modifiers.
 
+Otherwise, soft keywords are treated specially in the following situations:
+
+ - `inline`, if it is followed by `if`, `match`, or a parameter definition.
+ - `derives`, if it appears after an extension clause or after
+   the name and possibly parameters of a class, trait, object, or enum definition.
+ - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression)
+ - `extension`, if it appears at the start of a statement and is followed by `(` or `[`.
+ - `using`, if it appears at the start of a parameter or argument list.
+ - `|`, if it separates two patterns in an alternative.
+ - `+`, `-`, if they appear in front of a type parameter.
+ - `*`, if it follows the type of a parameter or if it appears in
+   a vararg type ascription `x: _*`.
+
+Everywhere else a soft keyword is treated as a normal identifier.

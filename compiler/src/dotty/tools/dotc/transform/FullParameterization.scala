@@ -136,8 +136,9 @@ trait FullParameterization {
    */
   private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): List[Symbol] =
     if (abstractOverClass)
-      originalDef.tparams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
-    else originalDef.tparams.map(_.symbol)
+      originalDef.leadingTypeParams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
+    else
+      originalDef.leadingTypeParams.map(_.symbol)
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
@@ -147,11 +148,12 @@ trait FullParameterization {
    *  of class that contained original defDef
    */
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(using Context): Tree =
-    polyDefDef(derived, trefs => vrefss => {
+    DefDef(derived, prefss => {
+      val (trefs, vrefss) = splitArgs(prefss)
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
-      val origTParams = allInstanceTypeParams(originalDef, abstractOverClass)
-      val origVParams = originalDef.vparamss.flatten map (_.symbol)
+      val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
+      val origOtherParamSyms = originalDef.trailingParamss.flatten.map(_.symbol)
       val thisRef :: argRefs = vrefss.flatten
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
@@ -204,7 +206,7 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origTParams ++ origVParams, trefs ++ argRefs.map(_.tpe))
+          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).tpes)
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef
@@ -221,25 +223,25 @@ trait FullParameterization {
    *  - the value parameters of the original method `originalDef`.
    */
   def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(using Context): Tree = {
-    val fun =
+    val fun: Tree =
       ref(derived.termRef)
         .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
-
-    (if (!liftThisType)
-      fun.appliedToArgss(originalDef.vparamss.nestedMap(vparam => ref(vparam.symbol)))
-    else {
-      // this type could have changed on forwarding. Need to insert a cast.
-      originalDef.vparamss.foldLeft(fun)((acc, vparams) => {
+    val fwd =
+      if !liftThisType then
+        fun.appliedToArgss(originalDef.trailingParamss.nestedMap(param => ref(param.symbol)))
+      else
+        // this type could have changed on forwarding. Need to insert a cast.
+        originalDef.trailingParamss.foldLeft(fun)((acc, params) => {
         val meth = acc.tpe.asInstanceOf[MethodType]
-        val paramTypes = meth.instantiateParamInfos(vparams.map(_.tpe))
+        val paramTypes = meth.instantiateParamInfos(params.tpes)
         acc.appliedToArgs(
-          vparams.lazyZip(paramTypes).map((vparam, paramType) => {
-            assert(vparam.tpe <:< paramType.widen) // type should still conform to widened type
-            ref(vparam.symbol).ensureConforms(paramType)
+          params.lazyZip(paramTypes).map((param, paramType) => {
+            assert(param.tpe <:< paramType.widen) // type should still conform to widened type
+            ref(param.symbol).ensureConforms(paramType)
           }))
-      })
-    }).withSpan(originalDef.rhs.span)
+       })
+    fwd.withSpan(originalDef.rhs.span)
   }
 }
 

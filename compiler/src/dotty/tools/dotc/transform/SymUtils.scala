@@ -16,6 +16,7 @@ import ValueClasses.isDerivedValueClass
 import Decorators._
 import Constants.Constant
 import Annotations.Annotation
+import Phases._
 import ast.tpd.Literal
 
 import language.implicitConversions
@@ -86,23 +87,28 @@ object SymUtils:
 
     def isGenericProduct(using Context): Boolean = whyNotGenericProduct.isEmpty
 
+    def useCompanionAsMirror(using Context): Boolean = self.linkedClass.exists && !self.is(Scala2x)
+
     /** Is this a sealed class or trait for which a sum mirror is generated?
     *  It must satisfy the following conditions:
     *   - it has at least one child class or object
     *   - none of its children are anonymous classes
-    *   - all of its children are addressable through a path from its companion object
+    *   - all of its children are addressable through a path from the parent class
+    *     and also the location of the generated mirror.
     *   - all of its children are generic products or singletons
     */
-    def whyNotGenericSum(using Context): String =
+    def whyNotGenericSum(declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
         s"it is not a sealed ${self.kindString}"
       else {
         val children = self.children
-        val companion = self.linkedClass
+        val companionMirror = self.useCompanionAsMirror
+        assert(!(companionMirror && (declScope ne self.linkedClass)))
         def problem(child: Symbol) = {
 
           def isAccessible(sym: Symbol): Boolean =
-            companion.isContainedIn(sym) || sym.is(Module) && isAccessible(sym.owner)
+            (self.isContainedIn(sym) && (companionMirror || declScope.isContainedIn(sym)))
+            || sym.is(Module) && isAccessible(sym.owner)
 
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!isAccessible(child.owner)) i"its child $child is not accessible"
@@ -117,7 +123,7 @@ object SymUtils:
         else children.map(problem).find(!_.isEmpty).getOrElse("")
       }
 
-    def isGenericSum(using Context): Boolean = whyNotGenericSum.isEmpty
+    def isGenericSum(declScope: Symbol)(using Context): Boolean = whyNotGenericSum(declScope).isEmpty
 
     /** If this is a constructor, its owner: otherwise this. */
     final def skipConstructor(using Context): Symbol =
@@ -166,6 +172,11 @@ object SymUtils:
         else thisName.fieldName
       self.owner.info.decl(fieldName).suchThat(!_.is(Method)).symbol
     }
+
+    def isConstExprFinalVal(using Context): Boolean =
+      atPhaseNoLater(erasurePhase) {
+        self.is(Final) && self.info.resultType.isInstanceOf[ConstantType]
+      }
 
     def isField(using Context): Boolean =
       self.isTerm && !self.is(Method)
@@ -217,9 +228,9 @@ object SymUtils:
       else owner.isLocal
     }
 
-    /** The typeRef with wildcard arguments for each type parameter */
-    def rawTypeRef(using Context) =
-      self.typeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
+    /** The reachable typeRef with wildcard arguments for each type parameter */
+    def reachableRawTypeRef(using Context) =
+      self.reachableTypeRef.appliedTo(self.typeParams.map(_ => TypeBounds.emptyPolyKind))
 
     /** Is symbol a quote operation? */
     def isQuote(using Context): Boolean =
@@ -241,7 +252,7 @@ object SymUtils:
 
     /** Is symbol assumed or declared as an infix symbol? */
     def isDeclaredInfix(using Context): Boolean =
-      self.hasAnnotation(defn.InfixAnnot)
+      self.is(Infix)
       || defn.isInfix(self)
       || self.name.isUnapplyName
         && self.owner.is(Module)

@@ -77,11 +77,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
   def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
   def nonJavaEnumValueSymbols(using Context): List[Symbol] = { initSymbols; myNonJavaEnumValueSymbols }
 
-  private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = {
+  private def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol =
     val existing = sym.matchingMember(clazz.thisType)
-    if (existing != sym && !existing.is(Deferred)) existing
-    else NoSymbol
-  }
+    if existing != sym && !existing.is(Deferred) then existing else NoSymbol
 
   private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
@@ -119,7 +117,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) :: vrefs)
 
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -236,12 +234,13 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def equals(that: Any): Boolean =
      *    (this eq that) || {
      *      that match {
-     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y
+     *        case x$0 @ (_: C @unchecked) => this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
      *        case _ => false
      *     }
      *  ```
      *
-     *  If `C` is a value class the initial `eq` test is omitted.
+     *  If `C` is a value class, the initial `eq` test is omitted.
+     *  The `canEqual` test can be omitted if it is known that `canEqual` return always true.
      *
      *  `@unchecked` is needed for parametric case classes.
      *
@@ -254,8 +253,14 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val sortedAccessors = accessors.sortBy(accessor => if (accessor.info.typeSymbol.isPrimitiveValueClass) 0 else 1)
       val comparisons = sortedAccessors.map { accessor =>
         This(clazz).select(accessor).equal(ref(thatAsClazz).select(accessor)) }
-      val rhs = // this.x == this$0.x && this.y == x$0.y
-        if (comparisons.isEmpty) Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+      var rhs = // this.x == this$0.x && this.y == x$0.y && that.canEqual(this)
+        if comparisons.isEmpty then Literal(Constant(true)) else comparisons.reduceLeft(_ and _)
+      val canEqualMeth = existingDef(defn.Product_canEqual, clazz)
+      if !clazz.is(Final) || canEqualMeth.exists && !canEqualMeth.is(Synthetic) then
+        rhs = rhs.and(
+            ref(thatAsClazz)
+            .select(canEqualMeth.orElse(defn.Product_canEqual))
+            .appliedTo(This(clazz)))
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
@@ -516,7 +521,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.termRef else child.rawTypeRef
+          val patType = if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
@@ -558,7 +563,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
@@ -579,9 +584,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
-      else if (linked.isGenericSum) makeSumMirror(linked)
+      else if (linked.isGenericSum(clazz)) makeSumMirror(linked)
       else if (linked.is(Sealed))
-        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
+        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(clazz)}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()

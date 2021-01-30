@@ -24,12 +24,30 @@ trait BCodeIdiomatic {
   import bTypes._
   import coreBTypes._
 
-  lazy val classfileVersion: Int = ctx.settings.target.value match {
-    case "jvm-1.5"     => asm.Opcodes.V1_5
-    case "jvm-1.6"     => asm.Opcodes.V1_6
-    case "jvm-1.7"     => asm.Opcodes.V1_7
-    case "jvm-1.8"     => asm.Opcodes.V1_8
-    case "jvm-9"       => asm.Opcodes.V9
+
+
+  lazy val target =
+    val releaseValue = Option(ctx.settings.release.value).filter(_.nonEmpty)
+    val targetValue = Option(ctx.settings.Xtarget.value).filter(_.nonEmpty)
+    val defaultTarget = "8"
+    (releaseValue, targetValue) match
+      case (Some(release), None) => release
+      case (None, Some(target)) => target
+      case (Some(release), Some(_)) =>
+        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overriden by ${ctx.settings.release.name}")
+        release
+      case (None, None) => "8" // least supported version by default
+
+
+  lazy val classfileVersion: Int = target match {
+    case "8"  => asm.Opcodes.V1_8
+    case "9"  => asm.Opcodes.V9
+    case "10" => asm.Opcodes.V10
+    case "11" => asm.Opcodes.V11
+    case "12" => asm.Opcodes.V12
+    case "13" => asm.Opcodes.V13
+    case "14" => asm.Opcodes.V14
+    case "15" => asm.Opcodes.V15
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)

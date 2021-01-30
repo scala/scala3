@@ -3,15 +3,15 @@ object Test {
 
     implicit val world: String = "world!"
 
-    val i1 = ((using s: String) => s.length > 2)
-    val i2 = {(using s: String) => s.length > 2}
+    val i1 = ((s: String) ?=> s.length > 2)
+    val i2 = {(s: String) ?=> s.length > 2}
 
     assert(i1)
     assert(i2)
 
-    val x: String ?=> Boolean = { (using s: String) => s.length > 2 }
+    val x: String ?=> Boolean = { (s: String) ?=> s.length > 2 }
 
-    val xx: (String, Int) ?=> Int = (using x: String, y: Int) => x.length + y
+    val xx: (String, Int) ?=> Int = (x: String, y: Int) ?=> x.length + y
 
     val y: String => Boolean = x(using _)
 

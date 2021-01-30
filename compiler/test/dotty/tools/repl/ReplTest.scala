@@ -47,14 +47,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def fromInitialState[A](op: State => A): A =
     op(initialState)
 
-  extension [A](state: State):
+  extension [A](state: State)
     def andThen(op: State => A): A = op(state)
-
-  def scripts(path: String): Array[JFile] = {
-    val dir = new JFile(getClass.getResource(path).getPath)
-    assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
-    dir.listFiles
-  }
 
   def testFile(f: JFile): Unit = {
     val prompt = "scala>"
@@ -77,12 +71,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
         case nonEmptyLine => nonEmptyLine :: Nil
       }
 
-    val expectedOutput =
-      Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines().flatMap(filterEmpties).toList).get
+    val expectedOutput = readLines(f).flatMap(filterEmpties)
     val actualOutput = {
       resetToInitial()
 
-      val lines = Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines.toList).get
+      val lines = readLines(f)
       assert(lines.head.startsWith(prompt),
         s"""Each file has to start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))

@@ -6,6 +6,7 @@ package xsbt;
 import xsbti.Logger;
 import xsbti.Severity;
 
+
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.util.ArrayList;
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.core.Contexts.ContextBase;
 import dotty.tools.dotc.reporting.Reporter;
+import dotty.tools.xsbt.InterfaceCompileFailed;
+import dotty.tools.xsbt.DelegatingReporter;
 
 public class DottydocRunner {
   private final String[] args0;
@@ -80,7 +83,7 @@ public class DottydocRunner {
       Method processMethod = dottydocMainClass.getMethod("process", args.getClass(), Context.class); // args.getClass() is String[]
       Reporter reporter = (Reporter) processMethod.invoke(null, args, ctx);
       if (reporter.hasErrors())
-        throw new InterfaceCompileFailed(args, new xsbti.Problem[0]);
+        throw new InterfaceCompileFailed(args, new xsbti.Problem[0], "DottyDoc Compilation Failed");
     } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException(e);
     }

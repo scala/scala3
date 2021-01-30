@@ -82,7 +82,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  def length: Int = content().length
+  def length: Int =
+    if lineIndicesCache ne null then lineIndicesCache.last
+    else content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -105,7 +107,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def calculateLineIndices(cs: Array[Char]) = {
+  private def calculateLineIndicesFromContents() = {
+    val cs = content()
     val buf = new ArrayBuffer[Int]
     buf += 0
     var i = 0
@@ -120,7 +123,22 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content())
+
+  private var lineIndicesCache: Array[Int] = _
+  private def lineIndices: Array[Int] =
+    if lineIndicesCache eq null then
+      lineIndicesCache = calculateLineIndicesFromContents()
+    lineIndicesCache
+  def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
+    val lines = sizes.length
+    val indices = new Array[Int](lines + 1)
+    var i = 0
+    val penultimate = lines - 1
+    while i < penultimate do
+      indices(i + 1) = indices(i) + sizes(i) + 1 // `+1` for the '\n' at the end of the line
+      i += 1
+    indices(lines) = indices(penultimate) + sizes(penultimate) // last line does not end with '\n'
+    lineIndicesCache = indices
 
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)
@@ -183,7 +201,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   override def toString: String = file.toString
 }
 object SourceFile {
-  implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
+  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
@@ -191,6 +209,42 @@ object SourceFile {
     val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
+
+  /** Returns the relative path of `source` within the `reference` path
+   *
+   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   */
+  def relativePath(source: SourceFile, reference: String): String = {
+    val file = source.file
+    val jpath = file.jpath
+    if jpath eq null then
+      file.path // repl and other custom tests use abstract files with no path
+    else
+      val sourcePath = jpath.toAbsolutePath.normalize
+      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
+
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches
+        // (see implementation of sun.nio.fs.WindowsPath#relativize)
+        //
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        //
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+
+        // We also consistently use forward slashes as path element separators
+        // for relative paths. If we didn't do that, it'd be impossible to parse
+        // them back, as one would need to know whether they were created on Windows
+        // and use both slashes as separators, or on other OS and use forward slash
+        // as separator, backslash as file name character.
+
+        import scala.jdk.CollectionConverters._
+        val path = refPath.relativize(sourcePath)
+        path.iterator.asScala.mkString("/")
+      else
+        sourcePath.toString
+  }
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

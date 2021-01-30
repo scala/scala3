@@ -46,7 +46,7 @@ object Test extends App {
   trait Monoid[T] extends SemiGroup[T]:
     def unit: T
 
-  given StringMonoid as Monoid[String]:
+  given StringMonoid: Monoid[String] with
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
 
@@ -63,12 +63,12 @@ object Test extends App {
     val minimum: T
   end Ord
 
-  given Ord[Int]:
+  given Ord[Int] with
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
 
-  given listOrd[T: Ord] as Ord[List[T]]:
+  given listOrd[T: Ord]: Ord[List[T]] with
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -89,24 +89,24 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]]:
-    extension [A, B](x: F[A]) def map (f: A => B): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B): F[B]
   end Functor
 
   trait Monad[F[_]] extends Functor[F]:
-    extension [A, B](x: F[A]) def flatMap (f: A => F[B]): F[B]
-    extension [A, B](x: F[A]) def map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   end Monad
 
-  given listMonad as Monad[List]:
-    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
+  given listMonad: Monad[List] with
+    extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
-  given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
-    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
+  given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
+    extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -115,6 +115,6 @@ object Test extends App {
     fs.foldLeft(summon[Monad[F]].pure(x))((x: F[T], f: T => T) =>
       if true then summon[Monad[F]].map(x)(f)
       else if true then x.map(f)
-      else x.map[T, T](f)
+      else x.map[T](f)
     )
 }

@@ -36,7 +36,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
   import tpd._
 
-
   /** Some parts of trees will get a new owner in subsequent phases.
     *  These are value class methods, which will become extension methods.
     *  (By-name arguments used to be included also, but these
@@ -51,9 +50,9 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     */
   private var invalidEnclClass: Symbol = NoSymbol
 
-  private def withInvalidCurrentClass[A](trans: => A)(using Context): A = {
+  def withInvalidCurrentClass[A](trans: => A)(using Context): A = {
     val saved = invalidEnclClass
-    invalidEnclClass = ctx.owner
+    invalidEnclClass = ctx.owner.enclosingClass
     try trans
     finally invalidEnclClass = saved
   }
@@ -156,12 +155,8 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         }
     }
 
-    val needAccessor = name.isTermName && {
-      mix.name.isEmpty && (clazz.is(Trait) || clazz != currentClass || !validCurrentClass) ||
-      // SI-8803. If we access super[A] from an inner class (!= currentClass) or closure (validCurrentClass),
-      // where A is the superclass we need an accessor.
-      !mix.name.isEmpty && (clazz != currentClass || !validCurrentClass)
-    }
+    val needAccessor = name.isTermName && (
+      clazz != currentClass || !validCurrentClass || mix.name.isEmpty && clazz.is(Trait))
 
     if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))
     else sel

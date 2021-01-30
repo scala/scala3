@@ -7,8 +7,8 @@ title: "Overview"
 
 Scala's implicits are its most distinguished feature. They are _the_ fundamental way to abstract over context. They represent a unified paradigm with a great variety of use cases, among them: implementing type classes, establishing context, dependency injection, expressing capabilities, computing new types and proving relationships between them.
 
-Following Haskell, Scala was the second popular language to have some form of implicits. Other languages have followed suit. E.g Rust's traits or Swift's protocol extensions. Design proposals are also on the table for Kotlin as [compile time dependency resolution](https://github.com/Kotlin/KEEP/blob/e863b25f8b3f2e9b9aaac361c6ee52be31453ee0/proposals/compile-time-dependency-resolution.md), for C# as [Shapes and Extensions](https://github.com/dotnet/csharplang/issues/164)
-or for F# as [Traits](https://github.com/MattWindsor91/visualfsharp/blob/hackathon-vs/examples/fsconcepts.md). Implicits are also a common feature of theorem provers such as Coq or Agda.
+Following Haskell, Scala was the second popular language to have some form of implicits. Other languages have followed suit. E.g [Rust's traits](https://doc.rust-lang.org/rust-by-example/trait.html) or [Swift's protocol extensions](https://docs.swift.org/swift-book/LanguageGuide/Protocols.html#ID521). Design proposals are also on the table for Kotlin as [compile time dependency resolution](https://github.com/Kotlin/KEEP/blob/e863b25f8b3f2e9b9aaac361c6ee52be31453ee0/proposals/compile-time-dependency-resolution.md), for C# as [Shapes and Extensions](https://github.com/dotnet/csharplang/issues/164)
+or for F# as [Traits](https://github.com/MattWindsor91/visualfsharp/blob/hackathon-vs/examples/fsconcepts.md). Implicits are also a common feature of theorem provers such as [Coq](https://coq.inria.fr/refman/language/extensions/implicit-arguments.html) or [Agda](https://agda.readthedocs.io/en/latest/language/implicit-arguments.html).
 
 Even though these designs use widely different terminology, they are all variants of the core idea of _term inference_. Given a type, the compiler synthesizes a "canonical" term that has that type. Scala embodies the idea in a purer form than most other languages: An implicit parameter directly leads to an inferred argument term that could also be written down explicitly. By contrast, type class based designs are less direct since they hide term inference behind some form of type classification and do not offer the option of writing the inferred quantities (typically, dictionaries) explicitly.
 
@@ -30,12 +30,14 @@ Particular criticisms are:
  3. The syntax of implicit definitions is too minimal. It consists of a single modifier, `implicit`, that can be attached to a large number of language constructs. A problem with this for newcomers is that it conveys mechanism instead of intent. For instance, a type class instance is an implicit object or val if unconditional and an implicit def with implicit parameters referring to some class if conditional. This describes precisely what the implicit definitions translate to -- just drop the `implicit` modifier, and that's it! But the cues that define intent are rather indirect and can be easily misread, as demonstrated by the definitions of `i1` and `i2` above.
 
  4. The syntax of implicit parameters also has shortcomings. While implicit _parameters_ are designated specifically, arguments are not. Passing an argument to an implicit parameter looks like a regular application `f(arg)`. This is problematic because it means there can be confusion regarding what parameter gets instantiated in a call. For instance, in
+
     ```scala
     def currentMap(implicit ctx: Context): Map[String, Int]
     ```
-    one cannot write `currentMap("abc")` since the string "abc" is taken as explicit argument to the implicit `ctx` parameter. One has to write `currentMap.apply("abc")` instead, which is awkward and irregular. For the same reason, a method definition can only have one implicit parameter section and it must always come last. This restriction not only reduces orthogonality, but also prevents some useful program constructs, such as a method with a regular parameter whose type depends on an implicit value. Finally, it's also a bit annoying that implicit parameters must have a name, even though in many cases that name is never referenced.
 
- 5. Implicits pose challenges for tooling. The set of available implicits depends on context, so command completion has to take context into account. This is feasible in an IDE but docs like ScalaDoc that are based static web pages can only provide an approximation. Another problem is that failed implicit searches often give very unspecific error messages, in particular if some deeply recursive implicit search has failed. Note that the Dotty compiler has already made a lot of progress in the error diagnostics area. If a recursive search fails some levels down, it shows what was constructed and what is missing. Also, it suggests imports that can bring missing implicits in scope.
+    one cannot write `currentMap("abc")` since the string `"abc"` is taken as explicit argument to the implicit `ctx` parameter. One has to write `currentMap.apply("abc")` instead, which is awkward and irregular. For the same reason, a method definition can only have one implicit parameter section and it must always come last. This restriction not only reduces orthogonality, but also prevents some useful program constructs, such as a method with a regular parameter whose type depends on an implicit value. Finally, it's also a bit annoying that implicit parameters must have a name, even though in many cases that name is never referenced.
+
+ 5. Implicits pose challenges for tooling. The set of available implicits depends on context, so command completion has to take context into account. This is feasible in an IDE but tools like [Scaladoc](https://docs.scala-lang.org/overviews/scaladoc/overview.html) that are based on static web pages can only provide an approximation. Another problem is that failed implicit searches often give very unspecific error messages, in particular if some deeply recursive implicit search has failed. Note that the Scala 3 compiler has already made a lot of progress in the error diagnostics area. If a recursive search fails some levels down, it shows what was constructed and what is missing. Also, it suggests imports that can bring missing implicits in scope.
 
 None of the shortcomings is fatal, after all implicits are very widely used, and many libraries and applications rely on them. But together, they make code using implicits a lot more cumbersome and less clear than it could be.
 
@@ -60,8 +62,8 @@ This section also contains pages describing other language features that are rel
 
  - [Context Bounds](./context-bounds.md), which carry over unchanged.
  - [Extension Methods](./extension-methods.md) replace implicit classes in a way that integrates better with type classes.
- - [Implementing Type classes](type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
- - [Type class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
+ - [Implementing Type Classes](type-classes.md) demonstrates how some common type classes can be implemented using the new constructs.
+ - [Type Class Derivation](./derivation.md) introduces constructs to automatically derive type class instances for ADTs.
  - [Multiversal Equality](./multiversal-equality.md) introduces a special type class to support type safe equality.
  - [Context Functions](./context-functions.md) provide a way to abstract over context parameters.
  - [By-Name Context Parameters](./by-name-context-parameters.md) are an essential tool to define recursive synthesized values without looping.
@@ -78,4 +80,3 @@ Could we achieve the same goals by tweaking existing implicits? After having tri
  - Third, even if we would somehow succeed with migration, we still have the problem
  how to teach this. We cannot make existing tutorials go away. Almost all existing tutorials start with implicit conversions, which will go away; they use normal imports, which will go away, and they explain calls to methods with implicit parameters by expanding them to plain applications, which will also go away. This means that we'd have
  to add modifications and qualifications to all existing literature and courseware, likely causing more confusion with beginners instead of less. By contrast, with a new syntax there is a clear criterion: Any book or courseware that mentions `implicit` is outdated and should be updated.
-

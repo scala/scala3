@@ -4,18 +4,18 @@ import scala.quoted._
 inline def f: Any = ${ fImpl }
 
 private def fImpl(using Quotes): Expr[Unit] = {
-  import qctx.reflect._
+  import quotes.reflect._
   Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>
       '{}
     case x: DivergingImplicit => '{}
-      Reporting.error("DivergingImplicit\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("DivergingImplicit\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: NoMatchingImplicits =>
-      Reporting.error("NoMatchingImplicits\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("NoMatchingImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
     case x: AmbiguousImplicits =>
-      Reporting.error("AmbiguousImplicits\n" + x.explanation, Position.ofMacroExpansion)
+      report.error("AmbiguousImplicits\n" + x.explanation, Position.ofMacroExpansion)
       '{}
   }
 }

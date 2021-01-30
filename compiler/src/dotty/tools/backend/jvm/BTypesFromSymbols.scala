@@ -275,7 +275,7 @@ class BTypesFromSymbols[I <: DottyBackendInterface](val int: I) extends BTypes {
    *   object T { def f { object U } }
    * the owner of U is T, so UModuleClass.isStatic is true. Phase travel does not help here.
    */
-  extension (sym: Symbol):
+  extension (sym: Symbol)
     private def isOriginallyStaticOwner: Boolean =
       sym.is(PackageClass) || sym.is(ModuleClass) && sym.originalOwner.originalLexicallyEnclosingClass.isOriginallyStaticOwner
 

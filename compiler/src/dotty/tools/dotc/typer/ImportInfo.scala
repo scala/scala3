@@ -35,7 +35,7 @@ object ImportInfo {
 
     ImportInfo(sym, selectors, None, isRootImport = true)
 
-  extension (c: Context):
+  extension (c: Context)
     def withRootImports(rootRefs: List[RootRef])(using Context): Context =
       rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
 
@@ -51,7 +51,7 @@ object ImportInfo {
  *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
- *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
+ *                         scala.Predef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context ?=> Symbol,
                  val selectors: List[untpd.ImportSelector],

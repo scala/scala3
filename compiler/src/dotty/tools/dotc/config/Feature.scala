@@ -82,8 +82,7 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean =
-    sourceVersion == `3.0-migration` || enabledBySetting(nme.Scala2Compat)
+  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.

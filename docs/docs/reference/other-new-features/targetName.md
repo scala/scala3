@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: The @targetName annotation
+title: "The @targetName annotation"
 ---
 
 A `@targetName` annotation on a definition defines an alternate name for the implementation of that definition. Example:
@@ -8,9 +8,10 @@ A `@targetName` annotation on a definition defines an alternate name for the imp
 ```scala
 import scala.annotation.targetName
 
-object VecOps {
-  @targetName("append") def (xs: Vec[T]) ++= [T] (ys: Vec[T]): Vec[T] = ...
-}
+object VecOps:
+   extension [T](xs: Vec[T])
+      @targetName("append")
+      def ++= [T] (ys: Vec[T]): Vec[T] = ...
 ```
 
 Here, the `++=` operation is implemented (in Byte code or native code) under the name `append`. The implementation name affects the code that is generated, and is the name under which code from other languages can call the method. For instance, `++=` could be invoked from Java like this:
@@ -54,7 +55,7 @@ def f(x: => Int): Int = x + 1  // error: double definition
 ```
 
 The two definitions above clash since their erased parameter types are both `Function0`, which is the type of the translation of a by-name-parameter. Hence
-they have the same names and signatures. But we can avoid the clash by adding  a `@targetName` annotation to either method or to both of them. E.g.
+they have the same names and signatures. But we can avoid the clash by adding a `@targetName` annotation to either method or to both of them. Example:
 
 ```scala
 @targetName("f_string")
@@ -70,9 +71,9 @@ between two definitions that have otherwise the same names and types. So the fol
 ```scala
 import annotation.targetName
 class A:
-  def f(): Int = 1
+   def f(): Int = 1
 class B extends A:
-  @targetName("g") def f(): Int = 2
+   @targetName("g") def f(): Int = 2
 ```
 
 The compiler reports here:
@@ -82,7 +83,8 @@ The compiler reports here:
 6 |  @targetName("g") def f(): Int = 2
   |                       ^
   |error overriding method f in class A of type (): Int;
-  |  method f of type (): Int should not have a @targetName annotation since the overridden member hasn't one either
+  |  method f of type (): Int should not have a @targetName
+  |  annotation since the overridden member hasn't one either
 ```
 
 The relevant overriding rules can be summarized as follows:
@@ -97,9 +99,9 @@ be present in the original code. So the following example would also be in error
 ```scala
 import annotation.targetName
 class A:
-  def f(): Int = 1
+   def f(): Int = 1
 class B extends A:
-  @targetName("f") def g(): Int = 2
+   @targetName("f") def g(): Int = 2
 ```
 
 Here, the original methods `g` and `f` do not override each other since they have

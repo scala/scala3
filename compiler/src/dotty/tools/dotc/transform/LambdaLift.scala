@@ -236,7 +236,7 @@ object LambdaLift {
                 // the free variables of the class.
                 symSet(called, sym) += sym.owner
 
-              tree.vparamss.head.find(_.name == nme.OUTER) match {
+              tree.termParamss.head.find(_.name == nme.OUTER) match {
                 case Some(vdef) => outerParam(sym) = vdef.symbol
                 case _ =>
               }
@@ -454,7 +454,7 @@ object LambdaLift {
         tree match {
           case tree: DefDef =>
             cpy.DefDef(tree)(
-                vparamss = tree.vparamss.map(freeParamDefs ++ _),
+                paramss = tree.termParamss.map(freeParamDefs ++ _),
                 rhs =
                   if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
                   else tree.rhs)

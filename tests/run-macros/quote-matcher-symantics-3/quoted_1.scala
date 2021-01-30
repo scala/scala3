@@ -10,7 +10,7 @@ object Macros {
 
     type Env = Map[Int, Any]
 
-    given ev0 as Env = Map.empty
+    given ev0: Env = Map.empty
 
     def envWith[T](id: Int, ref: Expr[R[T]])(using env: Env): Env =
       env.updated(id, ref)
@@ -18,7 +18,7 @@ object Macros {
     object FromEnv {
       def unapply[T](e: Expr[Any])(using env: Env): Option[Expr[R[T]]] =
         e match
-          case '{envVar[t](${Const(id)})} =>
+          case '{envVar[t](${Expr(id)})} =>
             env.get(id).asInstanceOf[Option[Expr[R[T]]]] // We can only add binds that have the same type as the refs
           case _ =>
             None
@@ -64,6 +64,7 @@ object Macros {
       case FromEnv(expr) => expr.asInstanceOf[Expr[R[T]]]
 
       case _ =>
+        import quotes.reflect.report
         report.error("Expected explicit value but got: " + e.show, e)
         '{ ??? }
 
@@ -76,18 +77,18 @@ object Macros {
 
 object UnsafeExpr {
   def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(using Quotes): X = {
-    import qctx.reflect._
+    import quotes.reflect._
     val (params, bodyExpr) = paramsAndBody[R](f)
-    content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](Term.of(e), params, List(Term.of(v))).asExpr.asInstanceOf[Expr[t]])
+    content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.asTerm, params, List(v.asTerm)).asExpr.asInstanceOf[Expr[t]])
   }
-  private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[qctx.reflect.ValDef], Expr[R]) = {
-    import qctx.reflect._
-    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = Term.of(f).etaExpand(Symbol.spliceOwner)
+  private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[quotes.reflect.ValDef], Expr[R]) = {
+    import quotes.reflect._
+    val Block(List(DefDef("$anonfun", List(TermParamClause(params)), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
-  private def bodyFn[t](using Quotes)(e: qctx.reflect.Term, params: List[qctx.reflect.ValDef], args: List[qctx.reflect.Term]): qctx.reflect.Term = {
-    import qctx.reflect._
+  private def bodyFn[t](using Quotes)(e: quotes.reflect.Term, params: List[quotes.reflect.ValDef], args: List[quotes.reflect.Term]): quotes.reflect.Term = {
+    import quotes.reflect._
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
       override def transformTerm(tree: Term)(owner: Symbol): Term =
@@ -120,4 +121,21 @@ trait Symantics {
 
 object Symantics {
   def fix[A, B](f: (A => B) => (A => B)): A => B = throw new Exception("Must be used inside of `lift`")
+}
+
+object Const {
+  def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
+    import quotes.reflect._
+    def rec(tree: Term): Option[T] = tree match {
+      case Literal(c) =>
+        c match
+          case NullConstant() | UnitConstant() | ClassOfConstant(_) => None
+          case _ => Some(c.value.asInstanceOf[T])
+      case Block(Nil, e) => rec(e)
+      case Typed(e, _) => rec(e)
+      case Inlined(_, Nil, e) => rec(e)
+      case _  => None
+    }
+    rec(expr.asTerm)
+  }
 }

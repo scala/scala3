@@ -211,9 +211,13 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(using Context): List[TypeSymbol] = typeParams match {
-    case (_: Symbol) :: _ =>
-      assert(typeParams.forall(_.isInstanceOf[Symbol]))
-      typeParams.asInstanceOf[List[TypeSymbol]]
+    case tparams @ (_: Symbol) :: _ =>
+      assert(tparams.forall(_.isInstanceOf[Symbol]))
+      tparams.asInstanceOf[List[TypeSymbol]]
+        // Note: Two successive calls to typeParams can yield different results here because
+        // of different completion status. I.e. the first call might produce some symbols,
+        // whereas the second call gives some LambdaParams. This was observed
+        // for ticket0137.scala
     case _ => Nil
   }
 

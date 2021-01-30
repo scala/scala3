@@ -264,7 +264,7 @@ We are making steady progress with the language metaprogramming features. The me
 - Runtime staging `run` moved to `scala.quoted.staging` in [#7077](https://github.com/lampepfl/dotty/pull/7077).
 - Runtime staging factored out to a separate library in [#7080](https://github.com/lampepfl/dotty/pull/7080).
 
-## Type class Derivation
+## Type Class Derivation
 Type class derivation has received a major rework and an [updated documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html). We have dropped the usage of the `Shape` type to describe the shape of a type. Instead, all the relevant information is now encoded in the `Mirror` type and its subtypes as tuples.
 
 For more information, see the [documentation](https://dotty.epfl.ch/docs/reference/contextual/derivation.html).

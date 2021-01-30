@@ -9,7 +9,7 @@ import ast.untpd
 /** Extension methods for contexts where we want to keep the ctx.<methodName> syntax */
 object ContextOps:
 
-  extension (ctx: Context):
+  extension (ctx: Context)
 
     /** Enter symbol into current class, if current class is owner of current context,
     *  or into current scope, if not. Should always be called instead of scope.enter
@@ -25,21 +25,22 @@ object ContextOps:
 
     /** The denotation with the given `name` and all `required` flags in current context
      */
-    def denotNamed(name: Name, required: FlagSet = EmptyFlags): Denotation = inContext(ctx) {
-      if (ctx.owner.isClass)
-        if (ctx.outer.owner == ctx.owner) { // inner class scope; check whether we are referring to self
-          if (ctx.scope.size == 1) {
-            val elem = ctx.scope.lastEntry
-            if (elem.name == name) return elem.sym.denot // return self
+    def denotNamed(name: Name, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags): Denotation =
+      inContext(ctx) {
+        if (ctx.owner.isClass)
+          if (ctx.outer.owner == ctx.owner) { // inner class scope; check whether we are referring to self
+            if (ctx.scope.size == 1) {
+              val elem = ctx.scope.lastEntry
+              if (elem.name == name) return elem.sym.denot // return self
+            }
+            val pre = ctx.owner.thisType
+            pre.findMember(name, pre, required, excluded)
           }
-          val pre = ctx.owner.thisType
-          pre.findMember(name, pre, required, EmptyFlags)
-        }
-        else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
-          ctx.owner.findMember(name, ctx.owner.thisType, required, EmptyFlags)
-      else
-        ctx.scope.denotsNamed(name).filterWithFlags(required, EmptyFlags).toDenot(NoPrefix)
-    }
+          else // we are in the outermost context belonging to a class; self is invisible here. See inClassContext.
+            ctx.owner.findMember(name, ctx.owner.thisType, required, excluded)
+        else
+          ctx.scope.denotsNamed(name).filterWithFlags(required, excluded).toDenot(NoPrefix)
+      }
 
     /** A fresh local context with given tree and owner.
     *  Owner might not exist (can happen for self valdefs), in which case

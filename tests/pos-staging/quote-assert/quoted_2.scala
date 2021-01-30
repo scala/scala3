@@ -17,6 +17,6 @@ object Test {
     ${ assertImpl('{x != 0}) }
   }
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   run(program)
 }

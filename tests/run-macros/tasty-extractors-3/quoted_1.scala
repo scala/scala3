@@ -7,17 +7,17 @@ object Macros {
     ${impl('x)}
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val buff = new StringBuilder
     val traverser = new TreeTraverser {
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: TypeBoundsTree =>
-          buff.append(tree.tpe.showExtractors)
+          buff.append(tree.tpe.show(using Printer.TypeReprStructure))
           buff.append("\n\n")
           traverseTreeChildren(tree)(owner)
         case tree: TypeTree =>
-          buff.append(tree.tpe.showExtractors)
+          buff.append(tree.tpe.show(using Printer.TypeReprStructure))
           buff.append("\n\n")
           traverseTreeChildren(tree)(owner)
         case _ =>
@@ -25,7 +25,7 @@ object Macros {
       }
     }
 
-    val tree = Term.of(x)
+    val tree = x.asTerm
     traverser.traverseTree(tree)(Symbol.spliceOwner)
     '{print(${Expr(buff.result())})}
   }

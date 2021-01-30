@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 object Test {
   def main(args: Array[String]): Unit = {
-    implicit def toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    implicit def toolbox: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(getClass.getClassLoader)
 
     def x(using Quotes): Expr[Int] = '{3}
 

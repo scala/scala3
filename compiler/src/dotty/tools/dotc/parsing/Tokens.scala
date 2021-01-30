@@ -121,14 +121,14 @@ abstract class TokensCommon {
   def isKeyword(token: Token): Boolean = keywords contains token
 
   /** parentheses */
-  final val LPAREN = 90;           enter(LPAREN, "'('")
-  final val RPAREN = 91;           enter(RPAREN, "')'")
-  final val LBRACKET = 92;         enter(LBRACKET, "'['")
-  final val RBRACKET = 93;         enter(RBRACKET, "']'")
-  final val LBRACE = 94;           enter(LBRACE, "'{'")
-  final val RBRACE = 95;           enter(RBRACE, "'}'")
-  final val INDENT = 96;           enter(INDENT, "indent")
-  final val OUTDENT = 97;          enter(OUTDENT, "unindent")
+  final val LPAREN = 91;           enter(LPAREN, "'('")
+  final val RPAREN = 92;           enter(RPAREN, "')'")
+  final val LBRACKET = 93;         enter(LBRACKET, "'['")
+  final val RBRACKET = 94;         enter(RBRACKET, "']'")
+  final val LBRACE = 95;           enter(LBRACE, "'{'")
+  final val RBRACE = 96;           enter(RBRACE, "'}'")
+  final val INDENT = 97;           enter(INDENT, "indent")
+  final val OUTDENT = 98;          enter(OUTDENT, "unindent")
 
   final val firstParen = LPAREN
   final val lastParen = OUTDENT
@@ -207,7 +207,7 @@ object Tokens extends TokensCommon {
   final val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
-  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -276,8 +276,7 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
-      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
+    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW)
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
@@ -286,7 +285,7 @@ object Tokens extends TokensCommon {
 
   final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
 
-  final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, GIVEN, VAL, THIS)
+  final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }

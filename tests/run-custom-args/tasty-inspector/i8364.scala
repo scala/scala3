@@ -3,8 +3,8 @@ import scala.tasty.inspector._
 
 @main def Test = {
   val inspector = new TastyInspector {
-    protected def processCompilationUnit(using Quotes)(tree: qctx.reflect.Tree): Unit = {
-      tree.showExtractors // Make sure that tree is loaded and can be traveresed
+    protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit = {
+      tree.show(using quotes.reflect.Printer.TreeStructure) // Make sure that tree is loaded and can be traveresed
     }
   }
 

@@ -16,7 +16,7 @@ object Test extends App {
 
   println(circle.circumference)
 
-  given AnyRef {
+  given AnyRef with {
     extension (xs: Seq[String]) def longestStrings: Seq[String] = {
       val maxLength = xs.map(_.length).max
       xs.filter(_.length == maxLength)
@@ -45,7 +45,7 @@ object Test extends App {
     def unit: T
   }
 
-  given Monoid[String] {
+  given Monoid[String] with {
     extension (x: String) def combine(y: String): String = x.concat(y)
     def unit: String = ""
   }
@@ -63,13 +63,13 @@ object Test extends App {
     val minimum: T
   }
 
-  given Ord[Int] {
+  given Ord[Int] with {
     extension (x: Int) def compareTo(y: Int) =
       if (x < y) -1 else if (x > y) +1 else 0
     val minimum = Int.MinValue
   }
 
-  given [T: Ord] as Ord[List[T]] {
+  given [T: Ord]: Ord[List[T]] with {
     extension (xs: List[T]) def compareTo(ys: List[T]): Int = (xs, ys).match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
@@ -91,25 +91,25 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]] {
-    extension [A, B](x: F[A]) def map (f: A => B): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    extension [A, B](x: F[A]) def flatMap (f: A => F[B]): F[B]
-    extension [A, B](x: F[A]) def map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
-  given Monad[List] {
-    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
+  given Monad[List] with {
+    extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
-  given [Ctx] as Monad[[X] =>> Ctx => X] {
-    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
+  given [Ctx]: Monad[[X] =>> Ctx => X] with {
+    extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -119,6 +119,6 @@ object Test extends App {
     fs.foldLeft(implicitly[Monad[F]].pure(x))((x: F[T], f: T => T) =>
       if (true) implicitly[Monad[F]].map(x)(f)
       else if (true) x.map(f)
-      else x.map[T, T](f)
+      else x.map[T](f)
     )
 }

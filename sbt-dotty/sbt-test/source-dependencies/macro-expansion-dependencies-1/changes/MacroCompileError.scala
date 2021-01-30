@@ -5,8 +5,8 @@ object Macro {
    inline def f(): Unit = ${ macroImplementation }
 
    def macroImplementation(using Quotes): Expr[Unit] = {
-      import qctx.reflect._
-      error("some error", rootPosition)
+      import quotes.reflect._
+      report.error("some error", Position.ofMacroExpansion)
       '{ println("Implementation in MacroCompileError") }
    }
 

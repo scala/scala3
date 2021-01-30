@@ -161,6 +161,19 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
 
     case _: mda.SoftLineBreak => emit(dkkd.Br.INSTANCE)
 
+    case inline: mda.HtmlInline =>
+      emit(dkkd.Html(List(dkk.text(inline.getSegments.mkString)).asJava, kt.emptyMap))
+
+    case entity: mda.HtmlEntity =>
+      emit(dkkd.Html(List(dkk.text(entity.getSegments.mkString)).asJava, kt.emptyMap))
+
+    case block: mda.HtmlBlock =>
+      emit(dkkd.Html(List(dkk.text(block.getContentChars.toString)).asJava, kt.emptyMap))
+
+    // TODO (https://github.com/lampepfl/scala3doc/issues/205): for now just silent the warnigs
+    case _: mda.LinkRef | _: com.vladsch.flexmark.ext.emoji.Emoji =>
+      emit(dkk.text(MarkdownParser.renderToText(n)))
+
     case _ =>
       println(s"WARN: Encountered unrecognised Markdown node `${n.getNodeName}`, please open an issue.")
       emit(dkk.text(MarkdownParser.renderToText(n)))
@@ -181,7 +194,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
         case Some((sym, targetText)) =>
           dkkd.DocumentationLink(sym.dri, resolveBody(default = targetText), kt.emptyMap)
         case None =>
-          println(s"WARN: Definition lookup for following query failed: $queryStr")
+          // println(s"WARN: Definition lookup for following query failed: $queryStr")
           dkkd.A(resolveBody(default = query.join), Map("title" -> s"Definition was not found: $queryStr", "href" -> "#").asJava)
       }
     }
@@ -191,7 +204,7 @@ class MarkdownConverter(val repr: Repr) extends BaseConverter {
 object MarkdownConverter {
   def splitWikiLink(chars: String): (String, String) =
     // split on a space which is not backslash escaped (regex uses "zero-width negative lookbehind")
-    chars.split("(?<!\\\\) ", /*max*/ 2) match {
+    chars.split("(?<!(?<!\\\\)\\\\) ", /*max*/ 2) match {
       case Array(target) => (target, "")
       case Array(target, userText) => (target, userText)
     }

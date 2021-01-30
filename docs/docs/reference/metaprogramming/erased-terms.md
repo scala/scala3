@@ -3,12 +3,12 @@ layout: doc-page
 title: "Erased Terms"
 ---
 
-# Why erased terms?
+## Why erased terms?
 
 Let's describe the motivation behind erased terms with an example. In the
 following we show a simple state machine which can be in a state `On` or `Off`.
 The machine can change state from `Off` to `On` with `turnedOn` only if it is
-currently `Off`. This last constraint is captured with the `IsOff[S]` implicit
+currently `Off`. This last constraint is captured with the `IsOff[S]` contextual
 evidence which only exists for `IsOff[Off]`. For example, not allowing calling
 `turnedOn` on in an `On` state as we would require an evidence of type
 `IsOff[On]` that will not be found.
@@ -20,13 +20,11 @@ final class Off extends State
 
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
-object IsOff {
-  implicit def isOff: IsOff[Off] = new IsOff[Off]
-}
+object IsOff:
+   given isOff: IsOff[Off] = new IsOff[Off]
 
-class Machine[S <: State] {
-  def turnedOn(implicit ev: IsOff[S]): Machine[On] = new Machine[On]
-}
+class Machine[S <: State]:
+   def turnedOn(using IsOff[S]): Machine[On] = new Machine[On]
 
 val m = new Machine[Off]
 m.turnedOn
@@ -44,7 +42,7 @@ introduce _erased terms_ to overcome this limitation: we are able to enforce the
 right constrains on terms at compile time. These terms have no run time
 semantics and they are completely erased.
 
-# How to define erased terms?
+## How to define erased terms?
 
 Parameters of methods and functions can be declared as erased, placing `erased`
 in front of a parameter list (like `given`).
@@ -53,7 +51,7 @@ in front of a parameter list (like `given`).
 def methodWithErasedEv(erased ev: Ev): Int = 42
 
 val lambdaWithErasedEv: erased Ev => Int =
- (erased ev: Ev) => 42
+   (erased ev: Ev) => 42
 ```
 
 `erased` parameters will not be usable for computations, though they can be used
@@ -61,10 +59,10 @@ as arguments to other `erased` parameters.
 
 ```scala
 def methodWithErasedInt1(erased i: Int): Int =
-  i + 42 // ERROR: can not use i
+   i + 42 // ERROR: can not use i
 
 def methodWithErasedInt2(erased i: Int): Int =
-  methodWithErasedInt1(i) // OK
+   methodWithErasedInt1(i) // OK
 ```
 
 Not only parameters can be marked as erased, `val` and `def` can also be marked
@@ -76,7 +74,7 @@ erased val erasedEvidence: Ev = ...
 methodWithErasedEv(erasedEvidence)
 ```
 
-# What happens with erased values at runtime?
+## What happens with erased values at runtime?
 
 As `erased` are guaranteed not to be used in computations, they can and will be
 erased.
@@ -93,7 +91,7 @@ erased val erasedEvidence3: Ev = ... // does not exist at runtime
 methodWithErasedEv(evidence1)
 ```
 
-# State machine with erased evidence example
+## State machine with erased evidence example
 
 The following example is an extended implementation of a simple state machine
 which can be in a state `On` or `Off`. The machine can change state from `Off`
@@ -120,43 +118,38 @@ final class Off extends State
 
 @implicitNotFound("State must be Off")
 class IsOff[S <: State]
-object IsOff {
-  // will not be called at runtime for turnedOn, the compiler will only require that this evidence exists
-  given IsOff[Off] = new IsOff[Off]
-}
+object IsOff:
+   // will not be called at runtime for turnedOn, the
+   // compiler will only require that this evidence exists
+   given IsOff[Off] = new IsOff[Off]
 
 @implicitNotFound("State must be On")
 class IsOn[S <: State]
-object IsOn {
-  // will not exist at runtime, the compiler will only require that this evidence exists at compile time
-  erased given IsOn[On] = new IsOn[On]
-}
+object IsOn:
+   // will not exist at runtime, the compiler will only
+   // require that this evidence exists at compile time
+   erased given IsOn[On] = new IsOn[On]
 
-class Machine[S <: State] private {
-  // ev will disappear from both functions
-  def turnedOn(using erased ev: IsOff[S]): Machine[On] = new Machine[On]
-  def turnedOff(using erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
-}
+class Machine[S <: State] private ():
+   // ev will disappear from both functions
+   def turnedOn(using erased ev: IsOff[S]): Machine[On] = new Machine[On]
+   def turnedOff(using erased ev: IsOn[S]): Machine[Off] = new Machine[Off]
 
-object Machine {
-  def newMachine(): Machine[Off] = new Machine[Off]
-}
+object Machine:
+   def newMachine(): Machine[Off] = new Machine[Off]
 
-object Test {
-  def main(args: Array[String]): Unit = {
-    val m = Machine.newMachine()
-    m.turnedOn
-    m.turnedOn.turnedOff
+@main def test =
+   val m = Machine.newMachine()
+   m.turnedOn
+   m.turnedOn.turnedOff
 
-    // m.turnedOff
-    //            ^
-    //            State must be On
+   // m.turnedOff
+   //            ^
+   //            State must be On
 
-    // m.turnedOn.turnedOn
-    //                    ^
-    //                    State must be Off
-  }
-}
+   // m.turnedOn.turnedOn
+   //                    ^
+   //                    State must be Off
 ```
 
 Note that in [Inline](./inline.md) we discussed `erasedValue` and inline
@@ -170,30 +163,28 @@ sealed trait State
 final class On extends State
 final class Off extends State
 
-class Machine[S <: State] {
-  transparent inline def turnOn(): Machine[On] = inline erasedValue[S] match {
-    case _: Off  => new Machine[On]
-    case _: On   => error("Turning on an already turned on machine")
-  }
-  transparent inline def turnOff(): Machine[Off] = inline erasedValue[S] match {
-    case _: On  => new Machine[Off]
-    case _: Off   => error("Turning off an already turned off machine")
-  }
-}
+class Machine[S <: State]:
+   transparent inline def turnOn(): Machine[On] =
+      inline erasedValue[S] match
+         case _: Off => new Machine[On]
+         case _: On  => error("Turning on an already turned on machine")
 
-object Machine {
-  def newMachine(): Machine[Off] = {
-    println("newMachine")
-    new Machine[Off]
-  }
-}
+   transparent inline def turnOff(): Machine[Off] =
+      inline erasedValue[S] match
+         case _: On  => new Machine[Off]
+         case _: Off => error("Turning off an already turned off machine")
 
-object Test {
-  val m = Machine.newMachine()
-  m.turnOn()
-  m.turnOn().turnOff()
-  m.turnOn().turnOn() // error: Turning on an already turned on machine
-}
+object Machine:
+   def newMachine(): Machine[Off] =
+      println("newMachine")
+      new Machine[Off]
+end Machine
+
+@main def test =
+   val m = Machine.newMachine()
+   m.turnOn()
+   m.turnOn().turnOff()
+   m.turnOn().turnOn() // error: Turning on an already turned on machine
 ```
 
 [More Details](./erased-terms-spec.md)

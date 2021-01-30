@@ -222,9 +222,7 @@ trait ImportSuggestions:
       site.member(name)
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
-        .filter(ref =>
-          ref.symbol.is(ExtensionMethod)
-          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+        .filter(ref => ctx.typer.isApplicableExtensionMethod(ref, argType))
         .headOption
 
     try

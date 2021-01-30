@@ -17,17 +17,17 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(using Quotes) : Option[Int] = {
-      import qctx.reflect._
+      import quotes.reflect._
 
-      Term.of(e).tpe match {
+      e.asTerm.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>
           pre.termSymbol.tree match
             case t: ValDef =>
               t.tpt.tpe match {
-                case ConstantType(Constant.Int(i)) => Some(i)
+                case ConstantType(IntConstant(i)) => Some(i)
                 case _ => None
               }
-        case ConstantType(Constant.Int(i)) => Some(i)
+        case ConstantType(IntConstant(i)) => Some(i)
         case _ => None
       }
     }

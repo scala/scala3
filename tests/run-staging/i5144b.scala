@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def eval1(ff: Expr[Int => Int])(using Quotes): Expr[Int] =
     Expr.betaReduce('{ $ff(42) })
 

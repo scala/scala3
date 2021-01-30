@@ -9,6 +9,7 @@ import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.options.MutableDataSet
 
 import scala.quoted._
+import dotty.dokka.tasty.comments.wiki.Paragraph
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
 
@@ -28,11 +29,11 @@ case class Comment (
   note:                    List[dkkd.DocTag],
   example:                 List[dkkd.DocTag],
   constructor:             Option[dkkd.DocTag],
-  group:                   Option[dkkd.DocTag],
+  group:                   Option[String],
   // see comment in PreparsedComment below regarding these
   groupDesc:               SortedMap[String, dkkd.DocTag],
   groupNames:              SortedMap[String, dkkd.DocTag],
-  groupPrio:               SortedMap[String, dkkd.DocTag],
+  groupPrio:               SortedMap[String, Int],
   /** List of conversions to hide - containing e.g: `scala.Predef.FloatArrayOps` */
   hideImplicitConversions: List[dkkd.DocTag]
 )
@@ -56,7 +57,7 @@ case class PreparsedComment (
   // NOTE these don't need to be sorted in principle, but code is nicer if they are
   groupDesc:               SortedMap[String, String],
   groupNames:              SortedMap[String, String],
-  groupPrio:               SortedMap[String, String],
+  groupPrio:               SortedMap[String, Int],
   hideImplicitConversions: List[String],
   shortDescription:        List[String],
   syntax:                  List[String],
@@ -68,6 +69,7 @@ trait MarkupConversion[T] {
   protected def linkedExceptions(m: SortedMap[String, String]): SortedMap[String, (dkkd.DocTag, dkkd.DocTag)]
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): dkkd.DocTag
+  protected def markupToString(t: T): String
   protected def markupToDokkaCommentBody(t: T): DokkaCommentBody
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
@@ -97,10 +99,10 @@ trait MarkupConversion[T] {
       note                    = filterEmpty(preparsed.note).map(markupToDokka),
       example                 = filterEmpty(preparsed.example).map(markupToDokka),
       constructor             = single("@constructor", preparsed.constructor).map(markupToDokka),
-      group                   = single("@group", preparsed.group).map(markupToDokka),
+      group                   = single("@group", preparsed.group).map(markupToString),
       groupDesc               = filterEmpty(preparsed.groupDesc).view.mapValues(markupToDokka).to(SortedMap),
       groupNames              = filterEmpty(preparsed.groupNames).view.mapValues(markupToDokka).to(SortedMap),
-      groupPrio               = filterEmpty(preparsed.groupPrio).view.mapValues(markupToDokka).to(SortedMap),
+      groupPrio               = preparsed.groupPrio,
       hideImplicitConversions = filterEmpty(preparsed.hideImplicitConversions).map(markupToDokka)
     )
 }
@@ -110,6 +112,8 @@ class MarkdownCommentParser(repr: Repr)
 
   def stringToMarkup(str: String) =
     MarkdownParser.parseToMarkdown(str)
+
+  def markupToString(t: mdu.Document): String = t.toString() // ??
 
   def markupToDokka(md: mdu.Document) =
     MarkdownConverter(repr).convertDocument(md)
@@ -145,6 +149,31 @@ case class WikiCommentParser(repr: Repr)
 
   def stringToMarkup(str: String) =
     wiki.Parser(str).document()
+
+  private def flatten(b: wiki.Inline): String = b match
+    case wiki.Text(t) => t
+    case wiki.Italic(t) => flatten(t)
+    case wiki.Bold(t) =>flatten(t)
+    case wiki.Underline(t) => flatten(t)
+    case wiki.Superscript(t) => flatten(t)
+    case wiki.Subscript(t) => flatten(t)
+    case wiki.Link(_, t) => flatten(t)
+    case wiki.Monospace(t) => flatten(t)
+    case wiki.RepresentationLink(t, _) => flatten(t)
+    case wiki.Chain(elems) => elems.headOption.fold("")(flatten)
+    case wiki.HtmlTag(t) => t
+    case wiki.Summary(t) => flatten(t)
+
+  private def flatten(b: wiki.Block): String = b match
+    case wiki.Paragraph(text) => flatten(text)
+    case wiki.Title(text, _) => flatten(text)
+    case wiki.Code(text) => text
+    case wiki.UnorderedList(elems) => elems.headOption.fold("")(flatten)
+    case wiki.OrderedList(elems, _) => elems.headOption.fold("")(flatten)
+    case wiki.DefinitionList(items) => items.headOption.fold("")(e => flatten(e._1))
+    case wiki.HorizontalRule() => ""
+
+  def markupToString(str: wiki.Body) = str.blocks.headOption.fold("")(flatten)
 
   def markupToDokka(body: wiki.Body) =
     wiki.Converter(repr).convertBody(body)

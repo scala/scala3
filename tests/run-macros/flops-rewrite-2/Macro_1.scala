@@ -12,23 +12,23 @@ private def rewriteMacro[T: Type](x: Expr[T])(using Quotes): Expr[T] = {
     postTransform = List(
       Transformation[Int] {
         case '{ plus($x, $y) } =>
-          (x, y) match {
-            case (Const(0), _) => y
-            case (Const(a), Const(b)) => Expr(a + b)
-            case (_, Const(_)) =>  '{ $y + $x }
+          (x.value, y.value) match {
+            case (Some(0), _) => y
+            case (Some(a), Some(b)) => Expr(a + b)
+            case (_, Some(_)) =>  '{ $y + $x }
             case _ => '{ $x + $y }
           }
         case '{ times($x, $y) } =>
-          (x, y) match {
-            case (Const(0), _) => '{0}
-            case (Const(1), _) => y
-            case (Const(a), Const(b)) => Expr(a * b)
-            case (_, Const(_)) => '{ $y * $x }
+          (x.value, y.value) match {
+            case (Some(0), _) => '{0}
+            case (Some(1), _) => y
+            case (Some(a), Some(b)) => Expr(a * b)
+            case (_, Some(_)) => '{ $y * $x }
             case _ => '{ $x * $y }
           }
-        case '{ power(${Const(x)}, ${Const(y)}) } =>
+        case '{ power(${Expr(x)}, ${Expr(y)}) } =>
           Expr(power(x, y))
-        case '{ power($x, ${Const(y)}) } =>
+        case '{ power($x, ${Expr(y)}) } =>
           if y == 0 then '{1}
           else '{ times($x, power($x, ${Expr(y-1)})) }
       }),
@@ -64,7 +64,7 @@ private object Rewriter {
 }
 
 private class Rewriter(preTransform: List[Transformation[_]] = Nil, postTransform: List[Transformation[_]] = Nil, fixPoint: Boolean) extends ExprMap {
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     val e2 = preTransform.foldLeft(e)((ei, transform) => transform(ei))
     val e3 = transformChildren(e2)
     val e4 = postTransform.foldLeft(e3)((ei, transform) => transform(ei))

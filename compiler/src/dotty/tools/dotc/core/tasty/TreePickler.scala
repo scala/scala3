@@ -550,16 +550,20 @@ class TreePickler(pickler: TastyPickler) {
         case tree: ValDef =>
           pickleDef(VALDEF, tree, tree.tpt, tree.rhs)
         case tree: DefDef =>
-          def pickleParamss(paramss: List[List[ValDef]]): Unit = paramss match
+          def pickleParamss(paramss: List[ParamClause]): Unit = paramss match
             case Nil =>
-            case params :: rest =>
-              pickleParams(params)
-              if params.isEmpty || rest.nonEmpty then writeByte(PARAMEND)
+            case Nil :: rest =>
+              writeByte(EMPTYCLAUSE)
               pickleParamss(rest)
-          def pickleAllParams =
-            pickleParams(tree.tparams)
-            pickleParamss(tree.vparamss)
-          pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleAllParams)
+            case (params @ (param1 :: _)) :: rest =>
+              pickleParams(params)
+              rest match
+                case (param2 :: _) :: _
+                if param1.isInstanceOf[untpd.TypeDef] == param2.isInstanceOf[untpd.TypeDef] =>
+                  writeByte(SPLITCLAUSE)
+                case _ =>
+              pickleParamss(rest)
+          pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleParamss(tree.paramss))
         case tree: TypeDef =>
           pickleDef(TYPEDEF, tree, tree.rhs)
         case tree: Template =>
@@ -589,6 +593,12 @@ class TreePickler(pickler: TastyPickler) {
           }
         case Import(expr, selectors) =>
           writeByte(IMPORT)
+          withLength {
+            pickleTree(expr)
+            pickleSelectors(selectors)
+          }
+        case Export(expr, selectors) =>
+          writeByte(EXPORT)
           withLength {
             pickleTree(expr)
             pickleSelectors(selectors)
@@ -712,6 +722,8 @@ class TreePickler(pickler: TastyPickler) {
     if (flags.is(Local)) writeModTag(LOCAL)
     if (flags.is(Synthetic)) writeModTag(SYNTHETIC)
     if (flags.is(Artifact)) writeModTag(ARTIFACT)
+    if flags.is(Transparent) then writeModTag(TRANSPARENT)
+    if flags.is(Infix) then writeModTag(INFIX)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Given)) writeModTag(GIVEN)
@@ -764,7 +776,9 @@ class TreePickler(pickler: TastyPickler) {
 
   def pickle(trees: List[Tree])(using Context): Unit = {
     trees.foreach(tree => if (!tree.isEmpty) pickleTree(tree))
-    def missing = forwardSymRefs.keysIterator.map(sym => sym.showLocated + "(line " + sym.srcPos.line + ")").toList
+    def missing = forwardSymRefs.keysIterator
+      .map(sym => i"${sym.showLocated} (line ${sym.srcPos.line}) #${sym.id}")
+      .toList
     assert(forwardSymRefs.isEmpty, i"unresolved symbols: $missing%, % when pickling ${ctx.source}")
   }
 

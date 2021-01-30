@@ -3,20 +3,19 @@ import scala.quoted.staging._
 
 object Test {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = withQuotes {
-    println(('{}).unlift)
-    println(('{true}).unlift)
-    println(('{1}).unlift)
-    println(('{2: Byte}).unlift)
-    println(('{3: Short}).unlift)
-    println(('{4}).unlift)
-    println(('{5L}).unlift)
-    println(('{true}).unlift)
-    println(('{3.56f}).unlift)
-    println(('{34.5d}).unlift)
-    println(('{ 'a' }).unlift)
-    println(('{"abc"}).unlift)
+    println(('{true}).value)
+    println(('{1}).value)
+    println(('{2: Byte}).value)
+    println(('{3: Short}).value)
+    println(('{4}).value)
+    println(('{5L}).value)
+    println(('{true}).value)
+    println(('{3.56f}).value)
+    println(('{34.5d}).value)
+    println(('{ 'a' }).value)
+    println(('{"abc"}).value)
   }
 }

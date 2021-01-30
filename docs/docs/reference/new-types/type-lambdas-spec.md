@@ -9,7 +9,7 @@ title: "Type Lambdas - More Details"
 Type            ::=  ... |  TypeParamClause ‘=>>’ Type
 TypeParamClause ::=  ‘[’ TypeParam {‘,’ TypeParam} ‘]’
 TypeParam       ::=  {Annotation} (id [HkTypeParamClause] | ‘_’) TypeBounds
-TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]
+TypeBounds      ::=  [‘>:’ Type] [‘<:’ Type]
 ```
 
 ### Type Checking
@@ -31,7 +31,7 @@ Then `TL1 <: TL2`, if
 `L1 <: L2` and `U2 <: U1`),
  - `R1 <: R2`
 
-Here we have relied on alpha renaming to match the two bound types `X`.
+Here we have relied on [alpha renaming](https://en.wikipedia.org/wiki/Lambda_calculus#%CE%B1-conversion) to match the two bound types `X`.
 
 A partially applied type constructor such as `List` is assumed to be equivalent to
 its eta expansion. I.e, `List = [X] =>> List[X]`. This allows type constructors to be compared with type lambdas.
@@ -79,7 +79,7 @@ instead of
 type T >: ([X] =>> Nothing) <: ([X] =>> X => X)
 ```
 
-The same expansions apply to type parameters. E.g.
+The same expansions apply to type parameters. For instance,
 ```scala
 [F[X] <: Coll[X]]
 ```
@@ -89,14 +89,14 @@ is treated as a shorthand for
 ```
 Abstract types and opaque type aliases remember the variances they were created with. So the type
 ```scala
-def F2[-A, +B]
+type F2[-A, +B]
 ```
 is known to be contravariant in `A` and covariant in `B` and can be instantiated only
 with types that satisfy these constraints. Likewise
 ```scala
 opaque type O[X] = List[X]
 ```
-`O` is known to be invariant (and not covariant, as its right hand side would suggest). On the other hand, a transparent alias
+`O` is known to be invariant (and not covariant, as its right-hand side would suggest). On the other hand, a transparent alias
 ```scala
 type O2[X] = List[X]
 ```

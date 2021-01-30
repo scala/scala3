@@ -5,8 +5,8 @@ object Macros {
   inline def fun(x: Any): Unit = ${ impl('x) }
 
   def impl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
-    Reporting.error("here is the the argument is " + Term.of(x).underlyingArgument.show, Term.of(x).underlyingArgument.pos)
+    import quotes.reflect._
+    report.error("here is the the argument is " + x.asTerm.underlyingArgument.show, x.asTerm.underlyingArgument.pos)
     '{}
   }
 

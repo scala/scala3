@@ -25,7 +25,7 @@ some terminology and notational conventions:
 
 The desugaring rules imply that class cases are mapped to case classes, and singleton cases are mapped to `val` definitions.
 
-There are nine desugaring rules. Rule (1) desugar enum definitions. Rules
+There are nine desugaring rules. Rule (1) desugars enum definitions. Rules
 (2) and (3) desugar simple cases. Rules (4) to (6) define `extends` clauses for cases that
 are missing them. Rules (7) to (9) define how such cases with `extends` clauses
 map into `case class`es or `val`s.
@@ -155,7 +155,7 @@ map into `case class`es or `val`s.
    case C(ps) extends P1, ..., Pn
    ```
    are treated specially. A call `C(ts)` of the apply method is ascribed the underlying type
-   `P1 & ... & Pn` (dropping any [super traits](../other-new-features/super-traits.html))
+   `P1 & ... & Pn` (dropping any [transparent traits](../other-new-features/transparent-traits.md))
    as long as that type is still compatible with the expected type at the point of application.
    A call `t.copy(ts)` of `C`'s `copy` method is treated in the same way.
 
@@ -174,12 +174,13 @@ If `E` contains at least one simple case, its companion object will define in ad
    - A private method `$new` which defines a new simple case value with given
      ordinal number and name. This method can be thought as being defined as
      follows.
+
      ```scala
-     private def $new(_$ordinal: Int, $name: String) = new E with runtime.EnumValue {
-       def ordinal = _$ordinal
-       override def productPrefix = $name // if not overridden in `E`
-       override def toString = $name      // if not overridden in `E`
-     }
+     private def $new(_$ordinal: Int, $name: String) =
+        new E with runtime.EnumValue:
+           def ordinal = _$ordinal
+           override def productPrefix = $name // if not overridden in `E`
+           override def toString = $name      // if not overridden in `E`
      ```
 
 The anonymous class also implements the abstract `Product` methods that it inherits from `Enum`.
@@ -209,5 +210,5 @@ Cases such as `case C` expand to a `@static val` as opposed to a `val`. This all
 `scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
 explicitly declared in it.
 
- - If an enum case has an extends clause, the enum class must be one of the
+ - If an enum case has an `extends` clause, the enum class must be one of the
    classes that's extended.

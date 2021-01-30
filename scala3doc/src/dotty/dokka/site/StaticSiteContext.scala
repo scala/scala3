@@ -17,17 +17,24 @@ import org.jetbrains.dokka.plugability.DokkaContext
 import org.jetbrains.dokka.pages.Style
 import org.jetbrains.dokka.model.DisplaySourceSet
 import util.Try
+import collection.JavaConverters._
 
-import scala.collection.JavaConverters._
+import dotty.dokka.model.api._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args, val sourceLinks: SourceLinks):
+class StaticSiteContext(
+  val root: File,
+  sourceSets: Set[SourceSetWrapper],
+  val args: Scala3doc.Args, val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexPage():Option[StaticPageNode] =
+  def indexPage(): Option[StaticPageNode] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
-    // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-    if (files.size > 1) println(s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}")
+
+    if files.size > 1 then
+      val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
+      report.error(msg)
+
     files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
 
   lazy val layouts: Map[String, TemplateFile] =
@@ -81,16 +88,15 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
         val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
-        if (indexes.size > 1)
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-          println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}")
+
         def loadIndexPage(): TemplateFile =
-          val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
-          indexFiles.size match
-            case 0 => emptyTemplate(from, from.getName)
-            case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
+          val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
+          indexes match
+            case Nil => emptyTemplate(from, from.getName)
+            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
             case _ =>
-              val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
+              // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+              val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
               throw new java.lang.RuntimeException(msg)
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
@@ -101,7 +107,15 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
             pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
           children.sortBy(dateFrom).reverse
 
-        Some(LoadedTemplate(templateFile, processedChildren.toList, from))
+        val processedTemplate = // Set provided name as arg in page for `docs`
+          if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
+            if templateFile.title != "index" then
+              report.warn("Property `title` will be overriden by project name", from)
+
+            templateFile.copy(title = args.name)
+          else templateFile
+
+        Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
       catch
           case e: RuntimeException =>
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
@@ -137,16 +151,24 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Option[DRI] =
-    val pathDri = Try {
-      val path =
+  def driForLink(template: TemplateFile, link: String): Seq[DRI] =
+    val pathsDri: Option[Seq[DRI]] = Try {
+      val baseFile =
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
-        else template.file.toPath.getParent().resolve(link)
-      if Files.exists(path) then Some(driFor(path)) else None
-    }.toOption.flatten
-    pathDri.orElse(memberLinkResolver(link))
+        else template.file.toPath.getParent().resolve(link).normalize()
 
-  def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+      val baseFileName = baseFile.getFileName.toString
+      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
+      def trySuffix(pref: String) =
+       if baseFileName == pref then Seq(baseFile.getParent) else Nil
+      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
+
+      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+    }.toOption
+    pathsDri.getOrElse(memberLinkResolver(link).toList)
+
+  def driFor(dest: Path): DRI =
+    DRI(location = root.toPath.relativize(dest).iterator.asScala.mkString("."))
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 
@@ -171,5 +193,4 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
 
   val projectWideProperties =
     Seq("projectName" -> args.name) ++
-      args.projectVersion.map("projectVersion" -> _) ++
-      args.projectTitle.map("projectTitle" -> _)
+      args.projectVersion.map("projectVersion" -> _)

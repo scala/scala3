@@ -73,7 +73,7 @@ class InterceptedMethods extends MiniPhase {
     }
 
     if tree.fun.symbol == defn.Any_!= then
-      qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
+      qual.select(defn.Any_==).appliedToTermArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
     else
       tree
   }

@@ -18,7 +18,9 @@ import kotlinx.html.HTMLTag
 import kotlinx.html.DIV
 import dotty.dokka.model.api.Link
 import dotty.dokka.model.api.HierarchyGraph
+import dotty.dokka.model.api.DocPart
 import org.jetbrains.dokka.base.resolvers.local.LocationProvider
+import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
 import dotty.dokka.site.StaticPageNode
 import dotty.dokka.site.PartiallyRenderedContent
 import scala.util.Try
@@ -27,12 +29,14 @@ import org.jsoup.Jsoup
 import java.nio.file.Paths
 
 class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet], locationProvider: LocationProvider):
+  val currentDri = pageContext.getDri.asScala.head
+
   def link(dri: DRI): Option[String] = Option(locationProvider.resolve(dri, sourceSetRestriciton, pageContext))
 
   def renderLink(name: String, dri: DRI, modifiers: AppliedAttr*) =
     link(dri) match
       case Some(link) => a(href := link, modifiers)(name)
-      case _ => span(Attr("data-unresolved-link") := dri.toString, modifiers)(name)
+      case _ => span(Attr("data-unresolved-link") := "", modifiers)(name)
 
   def renderElementWith(e: String | (String, DRI) | Link, modifiers: AppliedAttr*) = e match
     case (name, dri) => renderLink(name, dri, modifiers:_*)
@@ -42,7 +46,8 @@ class SignatureRenderer(pageContext: ContentPage, sourceSetRestriciton: JSet[Dis
 
   def renderElement(e: String | (String, DRI) | Link) = renderElementWith(e)
 
-class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx) {
+class ScalaHtmlRenderer(using ctx: DokkaContext) extends HtmlRenderer(ctx) {
+  val args = summon[DocContext].args
 
   // TODO #239
   val hackScalaSearchbarDataInstaller: SearchbarDataInstaller = {
@@ -85,7 +90,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
   }
 
   override def wrapGroup(f: FlowContent, node: ContentGroup, pageContext: ContentPage, childrenCallback: FlowContentConsumer) = {
-    val additionalClasses = node.getStyle.asScala.map(_.toString.toLowerCase).mkString("", ",", "")
+    val additionalClasses = node.getStyle.asScala.map(_.toString.toLowerCase).mkString("", " ", "")
     def buildSymbol: String = div(cls := s"symbol $additionalClasses")(
       raw(
         buildWithKotlinx(childrenCallback).toString
@@ -96,80 +101,41 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
 
   override def buildContentNode(f: FlowContent, node: ContentNode, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
     node match {
-      case n: HtmlContentNode => withHtml(f, raw(n.body).toString)
-      case n: HierarchyGraphContentNode => buildDiagram(f, n.diagram, pageContext)
-      case n: DocumentableList =>
-        val ss = if sourceSetRestriciton == null then Set.empty.asJava else sourceSetRestriciton
-        withHtml(f, buildDocumentableList(n, pageContext, ss).toString())
-      case n: DocumentableFilter => withHtml(f, buildDocumentableFilter.toString)
+      case n: HtmlContentNode =>
+        withHtml(f, raw(n.body).toString)
+      case mi: MemberInfo =>
+        val memberHtml = div(renderers(pageContext)._2.fullMember(mi.member))
+        withHtml(f, memberHtml.toString)
       case other => super.buildContentNode(f, node, pageContext, sourceSetRestriciton)
     }
   }
 
-  private val anchor = raw("""
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg">
-      <path d="M21.2496 5.3C20.3496 4.5 19.2496 4 18.0496 4C16.8496 4 15.6496 4.5 14.8496 5.3L10.3496 9.8L11.7496 11.2L16.2496 6.7C17.2496 5.7 18.8496 5.7 19.8496 6.7C20.8496 7.7 20.8496 9.3 19.8496 10.3L15.3496 14.8L16.7496 16.2L21.2496 11.7C22.1496 10.8 22.5496 9.7 22.5496 8.5C22.5496 7.3 22.1496 6.2 21.2496 5.3Z"></path>
-      <path d="M8.35 16.7998C7.35 17.7998 5.75 17.7998 4.75 16.7998C3.75 15.7998 3.75 14.1998 4.75 13.1998L9.25 8.6998L7.85 7.2998L3.35 11.7998C1.55 13.5998 1.55 16.3998 3.35 18.1998C4.25 19.0998 5.35 19.4998 6.55 19.4998C7.75 19.4998 8.85 19.0998 9.75 18.1998L14.25 13.6998L12.85 12.2998L8.35 16.7998Z"></path>
-    </svg>
-  """)
-
-
-
-  private def buildDocumentableList(n: DocumentableList, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) =
-    def render(n: ContentNode) = raw(buildWithKotlinx(n, pageContext, null))
-
+  private def renderers(pageContext: ContentPage): (SignatureRenderer, MemberRenderer) =
     val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-    import renderer._
+    (renderer, new MemberRenderer(renderer, buildWithKotlinx(_, pageContext, null)))
 
-    def buildDocumentable(element: DocumentableElement) =
-      def topLevelAttr = Seq(cls := "documentableElement") ++ element.attributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
-      val kind = element.modifiers.takeRight(1)
-      val otherModifiers = element.modifiers.dropRight(1)
+  private def buildNavigation(r: SignatureRenderer)(rootNav: NavigationNode): AppliedTag =
+    val currentPageDri = r.currentDri
 
-      div(topLevelAttr:_*)(
-        div(cls := "annotations monospace")(element.annotations.map(renderElement)),
-        div(
-          a(href:=link(element.params.dri).getOrElse("#"), cls := "documentableAnchor")(anchor),
-          span(cls := "modifiers monospace")(
-            span(cls := "other-modifiers")(otherModifiers.map(renderElement)),
-            span(cls := "kind")(kind.map(renderElement)),
-          ),
-          renderLink(element.name, element.params.dri, cls := "documentableName monospace"),
-          span(cls := "signature monospace")(element.signature.map(renderElement)),
-          div(
-            div(cls := "originInfo")(element.originInfo.map(renderElement)),
-            div(cls := "documentableBrief")(element.brief.map(render)),
+    def renderNested(nav: NavigationNode): (Boolean, AppliedTag) =
+      val isSelected = nav.dri == currentPageDri
+      def linkHtml(exapnded: Boolean = false) =
+        val attrs = if (isSelected) Seq(cls := "selected expanded") else Nil
+        a(href := r.link(nav.dri).getOrElse("#"), attrs)(nav.name)
+
+      nav.nested match
+        case Nil => isSelected -> div(linkHtml())
+        case children =>
+          val nested = children.map(renderNested)
+          val expanded = nested.exists(_._1) | nav == rootNav
+          val attr = if expanded || isSelected then Seq(cls := "expanded") else Nil
+          (isSelected || expanded) -> div(attr)(
+            linkHtml(expanded),
+            span(),
+            nested.map(_._2)
           )
-        ),
 
-      )
-
-    div(cls := "documentableList", testId := "definitionList")(
-      if(n.groupName.isEmpty) raw("") else h3(cls := "documentableHeader")(n.groupName.map(renderElement)),
-      n.elements.flatMap {
-        case element: DocumentableElement =>
-          Seq(buildDocumentable(element))
-        case group: DocumentableElementGroup =>
-          h4(cls := "documentable-extension-target")(
-            group.header.map(renderElement)
-          ) +: group.elements.map(buildDocumentable)
-    }
-    )
-
-  private def buildDocumentableFilter = div(cls := "documentableFilter")(
-    div(cls := "filterUpperContainer")(
-      button(cls := "filterToggleButton", testId := "filterToggleButton")(
-        raw("""
-          <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-          </svg>
-        """)
-      ),
-      input(cls := "filterableInput", placeholder := "Filter all members", testId := "filterBarInput")
-    ),
-    div(cls := "filterLowerContainer")()
-  )
+    renderNested(rootNav)._2
 
   def buildDescriptionList(node: ContentTable, pageContext: ContentPage, sourceSetRestriciton: JSet[DisplaySourceSet]) = {
     val children = node.getChildren.asScala.toList.zipWithIndex
@@ -237,13 +203,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
     })
   }
 
-  def buildDiagram(f: FlowContent, diagram: HierarchyGraph, pageContext: ContentPage) =
-    val renderer = SignatureRenderer(pageContext, sourceSets, getLocationProvider)
-    withHtml(f, div( id := "inheritance-diagram", cls := "diagram-class")(
-        svg(id := "graph"),
-        script(`type` := "text/dot", id := "dot")(raw(DotDiagramBuilder.build(diagram, renderer))),
-      ).toString()
-    )
+  private val HashRegex = "([^#]+)(#.+)".r
 
   override def buildPageContent(context: FlowContent, page: ContentPage): Unit =
     page match
@@ -252,13 +212,20 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
 
     page.getContent match
       case prc: PartiallyRenderedContent =>
+        def tryAsDri(str: String) =
+          val (path, prefix) = str match
+            case HashRegex(path, prefix) => (path, prefix)
+            case _ => (str, "")
+
+          val dri = prc.context.driForLink(prc.template.templateFile, path)
+          val res = dri.flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
+          if res.isEmpty then
+            report.warn(s"Unable to resolve link '$str'", prc.template.file)
+          res.headOption.fold(str)(_ + prefix)
+
         def processLocalLink(str: String): String =
-          Try(URL(str)).map(_ => str).getOrElse{
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238) error handling
-            prc.context.driForLink(prc.template.templateFile, str)
-              .flatMap(dri => Option(getLocationProvider.resolve(dri, sourceSets, page)))
-              .getOrElse(str)
-          }
+          if str.startsWith("#") || str.isEmpty then str
+          else Try(URL(str)).map(_ => str).getOrElse(tryAsDri(str))
 
         val html = prc.procsesHtml(processLocalLink, resolveLink(page))
         withHtml(context, html)
@@ -279,6 +246,8 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
         span(img(src := resolveRoot(page, s"project-logo/$fileName")))
       }.toSeq
 
+    val renderer = SignatureRenderer(page.asInstanceOf[ContentPage], sourceSets, getLocationProvider)
+
     html(
       head(
         meta(charset := "utf-8"),
@@ -295,18 +264,22 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
               div(id := "logo")(
                 projectLogo,
                 span(
-                  div(cls:="projectName")(args.name),
+                  div(cls:="projectName")(args.name)
+                ),
+                span(
                   args.projectVersion.map(v => div(cls:="projectVersion")(v)).toList
                 )
               ),
               div(id := "paneSearch"),
-              nav(id := "sideMenu"),
+              nav(id := "sideMenu2")(
+                summon[DocContext ].navigationNode.fold("No Navigation")(buildNavigation(renderer))
+              ),
             ),
             div(id := "main")(
               div (id := "leftToggler")(
                 span(cls := "icon-toggler")
               ),
-              div(id := "searchBar"),
+              div(id := "scala3doc-searchBar"),
               main(
                 raw(buildWithKotlinx(kotlinxContent))
               ),
@@ -324,8 +297,7 @@ class ScalaHtmlRenderer(ctx: DokkaContext, args: Args) extends HtmlRenderer(ctx)
               )
             )
           ),
-          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/pages.js")),
-          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/main.js"))
+          script(`type` := "text/javascript", src := resolveRoot(page, "scripts/pages.js"))
       )
     ).toString
 

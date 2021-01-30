@@ -18,6 +18,7 @@ import NameOps._
 import NameKinds.OuterSelectName
 import StdNames._
 import NullOpsDecorator._
+import TypeUtils.isErasedValueType
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -67,7 +68,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
           qual.tpe
         }
         assert(
-          qualTpe.derivesFrom(tree.symbol.owner) ||
+          qualTpe.isErasedValueType || qualTpe.derivesFrom(tree.symbol.owner) ||
             tree.symbol.is(JavaStatic) && qualTpe.derivesFrom(tree.symbol.enclosingClass),
           i"non member selection of ${tree.symbol.showLocated} from ${qualTpe} in $tree")
       case _: TypeTree =>
@@ -116,17 +117,14 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   override def transformTemplate(impl: Template)(using Context): Tree =
     cpy.Template(impl)(self = EmptyValDef)
 
-  override def transformDefDef(ddef: DefDef)(using Context): Tree = {
+  override def transformDefDef(ddef: DefDef)(using Context): Tree =
     val meth = ddef.symbol.asTerm
-    if (meth.hasAnnotation(defn.NativeAnnot)) {
+    if meth.hasAnnotation(defn.NativeAnnot) then
       meth.resetFlag(Deferred)
-      polyDefDef(meth,
-        _ => _ => ref(defn.Sys_error.termRef).withSpan(ddef.span)
+      DefDef(meth, _ =>
+        ref(defn.Sys_error.termRef).withSpan(ddef.span)
           .appliedTo(Literal(Constant(s"native method stub"))))
-    }
-
     else ddef
-  }
 
   override def transformStats(trees: List[Tree])(using Context): List[Tree] =
     ast.Trees.flatten(atPhase(thisPhase.next)(reorderAndComplete(trees)))
@@ -152,7 +150,7 @@ class FirstTransform extends MiniPhase with InfoTransformer { thisPhase =>
   }
 
   override def transformOther(tree: Tree)(using Context): Tree = tree match {
-    case tree: Import => EmptyTree
+    case tree: ImportOrExport[_] => EmptyTree
     case tree: NamedArg => transformAllDeep(tree.arg)
     case tree => if (tree.isType) toTypeTree(tree) else tree
   }

@@ -4,4 +4,4 @@
   |  This opening brace will start a new statement in Scala 3.
   |  It needs to be indented to the right to keep being treated as
   |  an argument to the previous expression.
-  |  This construct can be rewritten automatically under -rewrite.
+  |  This construct can be rewritten automatically under -rewrite -source 3.0-migration.

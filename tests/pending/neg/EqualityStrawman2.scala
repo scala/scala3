@@ -1,32 +1,32 @@
 object equality {
 
-  trait Eql[T, U]
-  def Eql[T, U]: Eql[T, U] = new Eql[T, U]{}
+  trait CanEqual[T, U]
+  def CanEqual[T, U]: CanEqual[T, U] = new CanEqual[T, U]{}
 
   implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U)(implicit ce: Eql[T, U]) = x.equals(y)
+    def ===[U] (y: U)(implicit ce: CanEqual[T, U]) = x.equals(y)
   }
 
-  type EqEq[T] = Eql.derived[T, T]
+  type EqEq[T] = CanEqual.derived[T, T]
 
   trait EqClass[T]
 
-  implicit def eqAny[T, U]: Eql[T, U] = Eql.derived
+  implicit def eqAny[T, U]: CanEqual[T, U] = CanEqual.derived
 /*
-  implicit def mixedEq1[T, U](implicit ce: Eql[T, U]): Eql[T, Any] = Eql.derived
-  implicit def mixedEq2[T, U](implicit ce: Eql[T, U]): Eql[Any, T] = Eql.derived
-  implicit def mixedEq1alt : Eql[Any, EqClass] = Eql.derived
-  implicit def mixedEq2    : Eql[EqClass, Any] = Eql.derived
-  implicit def mixedEq2alt : Eql[EqClass, Any] = Eql.derived
-  implicit def mixedNull1[T]: Eql[T, Null]     = Eql
-  implicit def mixedNull2[T]: Eql[Null, T]     = Eql
+  implicit def mixedEq1[T, U](implicit ce: CanEqual[T, U]): CanEqual[T, Any] = CanEqual.derived
+  implicit def mixedEq2[T, U](implicit ce: CanEqual[T, U]): CanEqual[Any, T] = CanEqual.derived
+  implicit def mixedEq1alt : CanEqual[Any, EqClass] = CanEqual.derived
+  implicit def mixedEq2    : CanEqual[EqClass, Any] = CanEqual.derived
+  implicit def mixedEq2alt : CanEqual[EqClass, Any] = CanEqual.derived
+  implicit def mixedNull1[T]: CanEqual[T, Null]     = CanEqual
+  implicit def mixedNull2[T]: CanEqual[Null, T]     = CanEqual
 */
-  implicit def eqString: Eql[String, String] = Eql
-  implicit def eqInt: Eql[Int, Int] = Eql.derived
-  implicit def eqOption[T, U](implicit ce: Eql[T, U]): Eql[Option[T], Option[U]] = Eql.derived
+  implicit def eqString: CanEqual[String, String] = CanEqual
+  implicit def eqInt: CanEqual[Int, Int] = CanEqual.derived
+  implicit def eqOption[T, U](implicit ce: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = CanEqual.derived
 
 /*
-  implicit def eqEq[UE, TE <: UE with EqClass[UE]]: Eql[TE, TE] = Eql
+  implicit def eqEq[UE, TE <: UE with EqClass[UE]]: CanEqual[TE, TE] = CanEqual
 
   case class Str(str: String) extends EqClass[Str]
   case class Num(x: Int) extends EqClass[Num]
@@ -37,10 +37,10 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  //implicit def eqStr: Eql[Str, Str] = Eql.derived
-   //implicit def eqNum: Eql[Num, Num] = Eql.derived
+  //implicit def eqStr: CanEqual[Str, Str] = CanEqual.derived
+   //implicit def eqNum: CanEqual[Num, Num] = CanEqual.derived
 
-  implicit def eqOption[T, U](implicit ce: Eql[T, U]): Eql[Option[T], Option[U]] = Eql
+  implicit def eqOption[T, U](implicit ce: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = CanEqual
 */
   def some[T](x: T): Option[T] = Some(x)
 
@@ -91,7 +91,7 @@ object equality {
     class Fruit extends EqClass
     class Apple extends Fruit
     class Pear extends Fruit
-    implicit def eqFruit: Eql[Fruit, Fruit] = Eql
+    implicit def eqFruit: CanEqual[Fruit, Fruit] = CanEqual
 
     Some(new Apple) === Some(new Pear)
 

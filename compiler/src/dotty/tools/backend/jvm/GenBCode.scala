@@ -234,33 +234,27 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
         for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
           val store = if (mirrorC ne null) mirrorC else plainC
           val tasty =
-            if (!ctx.settings.YemitTastyInClass.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-              try outstream.write(binary())
-              catch case ex: ClosedByInterruptException =>
-                try
-                  outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-                catch case _: Throwable =>
-                throw ex
-              finally outstream.close()
+            val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
+            val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
+            try outstream.write(binary())
+            catch case ex: ClosedByInterruptException =>
+              try
+                outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
+              catch case _: Throwable =>
+              throw ex
+            finally outstream.close()
 
-              val uuid = new TastyHeaderUnpickler(binary()).readHeader()
-              val lo = uuid.getMostSignificantBits
-              val hi = uuid.getLeastSignificantBits
+            val uuid = new TastyHeaderUnpickler(binary()).readHeader()
+            val lo = uuid.getMostSignificantBits
+            val hi = uuid.getLeastSignificantBits
 
-              // TASTY attribute is created but only the UUID bytes are stored in it.
-              // A TASTY attribute has length 16 if and only if the .tasty file exists.
-              val buffer = new TastyBuffer(16)
-              buffer.writeUncompressedLong(lo)
-              buffer.writeUncompressedLong(hi)
-              buffer.bytes
-            } else {
-              // Create an empty file to signal that a tasty section exist in the corresponding .class
-              // This is much cheaper and simpler to check than doing classfile parsing
-              getFileForClassfile(outF, store.name, ".hasTasty")
-              binary()
-            }
+            // TASTY attribute is created but only the UUID bytes are stored in it.
+            // A TASTY attribute has length 16 if and only if the .tasty file exists.
+            val buffer = new TastyBuffer(16)
+            buffer.writeUncompressedLong(lo)
+            buffer.writeUncompressedLong(hi)
+            buffer.bytes
+
           val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
           store.visitAttribute(dataAttr)
         }

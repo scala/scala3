@@ -13,20 +13,11 @@ import vulpix._
 import java.nio.file._
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class BootstrappedOnlyCompilationTests extends ParallelTesting {
+class BootstrappedOnlyCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import BootstrappedOnlyCompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 60.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -35,7 +26,8 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/bench", defaultOptions),
       compileFilesInDir("tests/pos-macros", defaultOptions),
-      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Ysemanticdb")),
+      compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
+      compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
     ).checkCompile()
   }
 
@@ -137,8 +129,9 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
-      if (scala.util.Properties.isWin) basicTests
+      if scala.util.Properties.isWin then basicTests
       else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+
     aggregateTests(tests: _*).checkRuns()
   }
 
@@ -156,11 +149,13 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
 
   @Test def picklingWithCompiler: Unit = {
     val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
+    val runtimeFilter = FileFilter.exclude(List("Tuple.scala")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
-      compileDir("library/src/dotty/runtime", picklingWithCompilerOptions),
+      compileDir("library/src/scala/runtime/function", picklingWithCompilerOptions),
+      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions, runtimeFilter),
       compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions, jvmBackendFilter),
       compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false),
@@ -207,7 +202,19 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   }
 }
 
-object BootstrappedOnlyCompilationTests {
+object BootstrappedOnlyCompilationTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 60.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

@@ -1,3 +1,4 @@
+> recordPreviousIterations
 # Test for separate compilation and proper value of
 # the OVERRIDE flag when abstract types, type alias
 # and structural type are involved
@@ -11,4 +12,4 @@ $ copy-file changes/Bar1.scala src/main/scala/Bar.scala
 # second iteration
 #> compile
 # check if there are only two compile iterations performed
-> checkNumberOfCompilerIterations 2
+> checkIterations 2

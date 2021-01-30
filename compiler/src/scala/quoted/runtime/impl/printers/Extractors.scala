@@ -5,20 +5,20 @@ import scala.quoted._
 
 object Extractors {
 
-  def showTree(using Quotes)(tree: qctx.reflect.Tree): String =
-    new ExtractorsPrinter[qctx.type]().visitTree(tree).result()
+  def showTree(using Quotes)(tree: quotes.reflect.Tree): String =
+    new ExtractorsPrinter[quotes.type]().visitTree(tree).result()
 
-  def showType(using Quotes)(tpe: qctx.reflect.TypeRepr): String =
-    new ExtractorsPrinter[qctx.type]().visitType(tpe).result()
+  def showType(using Quotes)(tpe: quotes.reflect.TypeRepr): String =
+    new ExtractorsPrinter[quotes.type]().visitType(tpe).result()
 
-  def showConstant(using Quotes)(const: qctx.reflect.Constant): String =
-    new ExtractorsPrinter[qctx.type]().visitConstant(const).result()
+  def showConstant(using Quotes)(const: quotes.reflect.Constant): String =
+    new ExtractorsPrinter[quotes.type]().visitConstant(const).result()
 
-  def showSymbol(using Quotes)(symbol: qctx.reflect.Symbol): String =
-    new ExtractorsPrinter[qctx.type]().visitSymbol(symbol).result()
+  def showSymbol(using Quotes)(symbol: quotes.reflect.Symbol): String =
+    new ExtractorsPrinter[quotes.type]().visitSymbol(symbol).result()
 
-  def showFlags(using Quotes)(flags: qctx.reflect.Flags): String = {
-    import qctx.reflect._
+  def showFlags(using Quotes)(flags: quotes.reflect.Flags): String = {
+    import quotes.reflect._
     val flagList = List.newBuilder[String]
     if (flags.is(Flags.Abstract)) flagList += "Flags.Abstract"
     if (flags.is(Flags.Artifact)) flagList += "Flags.Artifact"
@@ -26,21 +26,26 @@ object Extractors {
     if (flags.is(Flags.CaseAccessor)) flagList += "Flags.CaseAccessor"
     if (flags.is(Flags.Contravariant)) flagList += "Flags.Contravariant"
     if (flags.is(Flags.Covariant)) flagList += "Flags.Covariant"
+    if (flags.is(Flags.Deferred)) flagList += "Flags.Deferred"
     if (flags.is(Flags.Enum)) flagList += "Flags.Enum"
     if (flags.is(Flags.Erased)) flagList += "Flags.Erased"
+    if (flags.is(Flags.Exported)) flagList += "Flags.Exported"
     if (flags.is(Flags.ExtensionMethod)) flagList += "Flags.ExtensionMethod"
     if (flags.is(Flags.FieldAccessor)) flagList += "Flags.FieldAccessor"
     if (flags.is(Flags.Final)) flagList += "Flags.Final"
     if (flags.is(Flags.HasDefault)) flagList += "Flags.HasDefault"
     if (flags.is(Flags.Implicit)) flagList += "Flags.Implicit"
+    if (flags.is(Flags.Infix)) flagList += "Flags.Infix"
     if (flags.is(Flags.Inline)) flagList += "Flags.Inline"
     if (flags.is(Flags.JavaDefined)) flagList += "Flags.JavaDefined"
+    if (flags.is(Flags.JavaStatic)) flagList += "Flags.JavaStatic"
     if (flags.is(Flags.Lazy)) flagList += "Flags.Lazy"
     if (flags.is(Flags.Local)) flagList += "Flags.Local"
     if (flags.is(Flags.Macro)) flagList += "Flags.Macro"
-    if (flags.is(Flags.ModuleClass)) flagList += "Flags.ModuleClass"
+    if (flags.is(Flags.Method)) flagList += "Flags.Method"
+    if (flags.is(Flags.Module)) flagList += "Flags.Module"
     if (flags.is(Flags.Mutable)) flagList += "Flags.Mutable"
-    if (flags.is(Flags.Object)) flagList += "Flags.Object"
+    if (flags.is(Flags.NoInits)) flagList += "Flags.NoInits"
     if (flags.is(Flags.Override)) flagList += "Flags.Override"
     if (flags.is(Flags.Package)) flagList += "Flags.Package"
     if (flags.is(Flags.Param)) flagList += "Flags.Param"
@@ -54,11 +59,12 @@ object Extractors {
     if (flags.is(Flags.Static)) flagList += "Flags.javaStatic"
     if (flags.is(Flags.Synthetic)) flagList += "Flags.Synthetic"
     if (flags.is(Flags.Trait)) flagList += "Flags.Trait"
+    if (flags.is(Flags.Transparent)) flagList += "Flags.Transparent"
     flagList.result().mkString(" | ")
   }
 
-  private class ExtractorsPrinter[QCtx <: Quotes & Singleton](using val qctx: QCtx) { self =>
-    import qctx.reflect._
+  private class ExtractorsPrinter[Q <: Quotes & Singleton](using val quotes: Q) { self =>
+    import quotes.reflect._
 
     private val sb: StringBuilder = new StringBuilder
 
@@ -111,8 +117,8 @@ object Extractors {
         this += ", " ++= bindings += ", " += expansion += ")"
       case ValDef(name, tpt, rhs) =>
         this += "ValDef(\"" += name += "\", " += tpt += ", " += rhs += ")"
-      case DefDef(name, typeParams, paramss, returnTpt, rhs) =>
-        this += "DefDef(\"" += name += "\", " ++= typeParams += ", " +++= paramss += ", " += returnTpt += ", " += rhs += ")"
+      case DefDef(name, paramsClauses, returnTpt, rhs) =>
+        this += "DefDef(\"" += name += "\", " ++= paramsClauses += ", " += returnTpt += ", " += rhs += ")"
       case TypeDef(name, rhs) =>
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
       case ClassDef(name, constr, parents, derived, self, body) =>
@@ -123,6 +129,8 @@ object Extractors {
         this += ", " += self += ", " ++= body += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"
+      case Export(expr, selectors) =>
+        this += "Export(" += expr += ", " ++= selectors += ")"
       case PackageClause(pid, stats) =>
         this += "PackageClause(" += pid += ", " ++= stats += ")"
       case Inferred() =>
@@ -168,19 +176,19 @@ object Extractors {
     }
 
     def visitConstant(x: Constant): this.type = x match {
-      case Constant.Unit() => this += "Constant.Unit()"
-      case Constant.Null() => this += "Constant.Null()"
-      case Constant.Boolean(value) => this += "Constant.Boolean(" += value += ")"
-      case Constant.Byte(value) => this += "Constant.Byte(" += value += ")"
-      case Constant.Short(value) => this += "Constant.Short(" += value += ")"
-      case Constant.Int(value) => this += "Constant.Int(" += value += ")"
-      case Constant.Long(value) => this += "Constant.Long(" += value += "L)"
-      case Constant.Float(value) => this += "Constant.Float(" += value += "f)"
-      case Constant.Double(value) => this += "Constant.Double(" += value += "d)"
-      case Constant.Char(value) => this += "Constant.Char('" += value += "')"
-      case Constant.String(value) => this += "Constant.String(\"" += value += "\")"
-      case Constant.ClassOf(value) =>
-        this += "Constant.ClassOf("
+      case UnitConstant() => this += "UnitConstant()"
+      case NullConstant() => this += "NullConstant()"
+      case BooleanConstant(value) => this += "BooleanConstant(" += value += ")"
+      case ByteConstant(value) => this += "ByteConstant(" += value += ")"
+      case ShortConstant(value) => this += "ShortConstant(" += value += ")"
+      case IntConstant(value) => this += "IntConstant(" += value += ")"
+      case LongConstant(value) => this += "LongConstant(" += value += "L)"
+      case FloatConstant(value) => this += "FloatConstant(" += value += "f)"
+      case DoubleConstant(value) => this += "DoubleConstant(" += value += "d)"
+      case CharConstant(value) => this += "CharConstant('" += value += "')"
+      case StringConstant(value) => this += "StringConstant(\"" += value += "\")"
+      case ClassOfConstant(value) =>
+        this += "ClassOfConstant("
         visitType(value) += ")"
     }
 
@@ -233,10 +241,11 @@ object Extractors {
       this += "Signature(" ++= params.map(_.toString) += ", " += res += ")"
     }
 
-    def visitImportSelector(sel: ImportSelector): this.type = sel match {
+    def visitSelector(sel: Selector): this.type = sel match {
       case SimpleSelector(id) => this += "SimpleSelector(" += id += ")"
       case RenameSelector(id1, id2) => this += "RenameSelector(" += id1 += ", " += id2 += ")"
       case OmitSelector(id) => this += "OmitSelector(" += id += ")"
+      case GivenSelector(bound) => this += "GivenSelector(" += bound += ")"
     }
 
     def visitSymbol(x: Symbol): this.type =
@@ -246,6 +255,11 @@ object Extractors {
       else if x.isValDef then this += "IsValDefSymbol(<" += x.fullName += ">)"
       else if x.isTypeDef then this += "IsTypeDefSymbol(<" += x.fullName += ">)"
       else { assert(x.isNoSymbol); this += "NoSymbol()" }
+
+    def visitParamClause(x: ParamClause): this.type =
+      x match
+        case TermParamClause(params) => this += "TermParamClause(" ++= params += ")"
+        case TypeParamClause(params) => this += "TypeParamClause(" ++= params += ")"
 
     def +=(x: Boolean): this.type = { sb.append(x); this }
     def +=(x: Byte): this.type = { sb.append(x); this }
@@ -284,12 +298,16 @@ object Extractors {
       def +=(x: Option[Signature]): self.type = { visitOption(x, visitSignature); buff }
     }
 
-    private implicit class ImportSelectorOps(buff: self.type) {
-      def ++=(x: List[ImportSelector]): self.type = { visitList(x, visitImportSelector); buff }
+    private implicit class SelectorOps(buff: self.type) {
+      def ++=(x: List[Selector]): self.type = { visitList(x, visitSelector); buff }
     }
 
     private implicit class SymbolOps(buff: self.type) {
       def +=(x: Symbol): self.type = { visitSymbol(x); buff }
+    }
+
+    private implicit class ParamClauseOps(buff: self.type) {
+      def ++=(x: List[ParamClause]): self.type = { visitList(x, visitParamClause); buff }
     }
 
     private def visitOption[U](opt: Option[U], visit: U => this.type): this.type = opt match {

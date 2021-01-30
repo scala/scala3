@@ -61,14 +61,15 @@ class Compiler {
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
+         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
-         new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
+         new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
+         new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
@@ -76,6 +77,7 @@ class Compiler {
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
+         new ElimByName,             // Expand by-name parameter references
          new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatentations
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
          new InlinePatterns,         // Remove placeholders of inlined patterns
@@ -83,7 +85,7 @@ class Compiler {
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
-         new ElimByName,             // Expand by-name parameter references
+         new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
@@ -109,7 +111,6 @@ class Compiler {
          new CapturedVars) ::        // Represent vars captured by closures as heap objects
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-         new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation) ::     // Count calls and allocations under -Yinstrument
     List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
@@ -146,7 +147,7 @@ class Compiler {
   def newRun(using Context): Run = {
     reset()
     val rctx =
-      if ctx.settings.Ysemanticdb.value then
+      if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
       else
         ctx

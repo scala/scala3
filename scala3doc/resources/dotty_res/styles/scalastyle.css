@@ -12,6 +12,9 @@
   --inactive-fg: #777;
   --title-fg: #00485E;
 
+  --link-sig-fd: #7c99a5;
+  --link-sig-hover-fd: #7c99a5;
+
   --leftbar-bg: #003048;
   --leftbar-fg: #fff;
   --leftbar-current-bg: #0090BB;
@@ -120,12 +123,6 @@ th {
 }
 
 /* Left bar */
-#sideMenu {
-  overflow-y: auto;
-  scrollbar-width: thin;
-  height: 100%;
-  font-size: var(--leftbar-font-size);
-}
 #paneSearch {
   display: none;
 }
@@ -156,78 +153,102 @@ th {
   width: 116px;
 }
 
-.sideMenuPart {
-  padding-left: 1em;
+/* Navigation */
+#sideMenu2 {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  height: 100%;
+  font-size: var(--leftbar-font-size);
 }
-.sideMenuPart a {
+
+/* divs in sidebar represent entry and its children */
+#sideMenu2 div {
+  padding-left: 0.7em;
+  position: relative;
+  display: none;
+}
+
+#sideMenu2 div.expanded {
+  display: block;
+}
+
+/* hide children of hidden entries even if are expanded */
+#sideMenu2 div>div.expanded {
+  display: none;
+}
+
+/* show direct children of currently exmanded node*/
+#sideMenu2 div.expanded>div {
+  display: block;
+}
+
+/* always show top level entry*/
+#sideMenu2>div{
+  display: block;
+}
+
+/* 'a's in side menu represent text of entry with link */
+#sideMenu2 a {
   align-items: center;
   flex: 1;
   overflow-x: hidden;
   overflow-wrap: anywhere;
   color: var(--leftbar-fg);
   margin-right: .5rem;
-  padding: 7px 0;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  margin-top: 1px;
+  margin-bottom: 1px;
+  width: 100%;
+  display: block;
+  /* This trick adds selected bachground stratching to the lef side of screen */
+  margin-left: calc(0px - var(--side-width));
+  padding-left: var(--side-width);
+  width: calc(2 * var(--side-width));
 }
-.sideMenuPart > .overview {
-  display: flex;
-  align-items: center;
-  position: relative;
-  user-select: none;
+
+#sideMenu2 a::before {
+  margin-left: -12em;
+  width: 12em;
+  background: red;
 }
-.sideMenuPart > .overview::before {
-  width: var(--side-width);
-  box-sizing: border-box;
-  content: '';
-  top: 0;
-  right: 0;
-  bottom: 0;
-  position: absolute;
-  z-index: 1;
+
+#sideMenu2 a.selected {
+  background: var(--leftbar-current-bg);
+  font-weight: bold;
 }
-.sideMenuPart > .overview:hover::before {
+
+#sideMenu2 a:hover {
+  color: var(--leftbar-hover-fg);
   background: var(--leftbar-hover-bg);
 }
-.sideMenuPart > .overview:hover > a {
-  color: var(--leftbar-hover-fg);
-}
-.sideMenuPart[data-active] > .overview::before {
-  background: var(--leftbar-current-bg);
-}
-.sideMenuPart[data-active] > .overview > a  {
-  font-weight: bold;
-  color: var(--leftbar-current-fg);
-}
-.sideMenuPart.hidden > .sideMenuPart {
-  height: 0;
-  visibility: hidden;
-}
-.overview a, .overview .navButton {
-  z-index: 3;
-}
-.sideMenuPart .navButton {
-  height: 100%;
+
+/* spans represent a expand button */
+#sideMenu2 span {
   align-items: center;
-  display: flex;
-  justify-content: flex-end;
-  padding: 7px 10px;
   cursor: pointer;
+  position: absolute;
+  right: 1em;
+  top: 0px;
+  padding: 4px;
 }
-.sideMenuPart .navButtonContent::before {
-  content: "\e905"; /* arrow up */
+
+#sideMenu2 span::before {
+  content: "\e903"; /* arrow down */
   font-family: "dotty-icons" !important;
   font-size: 20px;
   line-height: var(--leftbar-font-size);
   color: var(--leftbar-fg);
-  height: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
 }
-.sideMenuPart.hidden .navButtonContent::before {
-  content: "\e903"; /* arrow down */
+#sideMenu2 .expanded>span::before {
+  content: "\e905"; /* arrow up */
 }
-.sideMenuPart .navButton:hover .navButtonContent::before {
+
+#sideMenu2 .div:hover>span::before {
   color: var(--leftbar-current-bg);
 }
 
@@ -294,6 +315,9 @@ th {
   padding-top: 0;
 }
 
+span[data-unresolved-link].deprecated, a.deprecated, div.deprecated {
+  text-decoration: line-through;
+}
 .brief {
   white-space: pre-wrap;
   overflow: hidden;
@@ -363,7 +387,7 @@ dl.attributes > dt.implicit {
 }
 dl.attributes > dd {
   display: block;
-  padding-left: 10em;
+  padding-left: 6em;
   margin-bottom: 5px;
   min-height: 15px;
 }
@@ -436,11 +460,47 @@ footer .pull-right {
   margin-left: auto;
 }
 
-.modifiers {
-  width: 12em;
+
+.documentableElement .modifiers {
   display: table-cell;
-  text-align: right;
   padding-right: 0.5em;
+  min-width: 10em;
+  max-width: 10em;
+  overflow: hidden;
+  direction: rtl;
+  white-space: nowrap;
+  text-indent: 0em;
+}
+
+.documentableElement .modifiers .other-modifiers {
+  color: gray;
+}
+
+.kind {
+  margin-left: 0.5em;
+}
+
+.other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.documentableElement.expand .modifiers {
+  display: inline-table;
+  min-width: 7em;
+}
+
+.documentableElement .signature {
+  color: gray;
+  display: table-cell;
+  white-space: pre-wrap;
+}
+
+.signature a, .signature a:visited, .signature span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.expand .signature {
+  display: inline;
 }
 
 .documentableElement {
@@ -453,17 +513,62 @@ footer .pull-right {
   font-weight: 500;
   font-size: 12px;
   background: var(--code-bg);
+  border: 0.25em solid white;
 }
 
 .documentableElement>div {
   display: table;
 }
 
-.annotations {
-  margin-left: 9em;
+.expand.documentableElement>div {
+  display: block;
+  padding-left: 3em;
 }
+
+.expand.documentableElement>div.header {
+  display: block;
+  padding-left: 7.5em;
+  text-indent: -4.5em;
+}
+
+.documentableElement>div .cover {
+  display: none;
+}
+
+.documentableElement.expand>div .cover {
+  display: block;
+}
+
+.expand .doc {
+  margin-left: 6.5em;
+}
+
+.doc code {
+  padding: 0;
+}
+
+.documentableElement:hover {
+  cursor: pointer;
+  border-left: 0.25em solid var(--leftbar-bg);
+}
+
+.expand.documentableElement {
+  border-left: 0.25em solid var(--leftbar-bg);
+}
+.documentableElement .annotations {
+  color: gray;
+  display: none;
+}
+
+.documentableElement.expand .annotations {
+  display: inline-block;
+}
+
 .documentableAnchor {
   position: absolute;
+  width: 24px;
+  height: 24px;
+  background: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg"><path d="M21.2496 5.3C20.3496 4.5 19.2496 4 18.0496 4C16.8496 4 15.6496 4.5 14.8496 5.3L10.3496 9.8L11.7496 11.2L16.2496 6.7C17.2496 5.7 18.8496 5.7 19.8496 6.7C20.8496 7.7 20.8496 9.3 19.8496 10.3L15.3496 14.8L16.7496 16.2L21.2496 11.7C22.1496 10.8 22.5496 9.7 22.5496 8.5C22.5496 7.3 22.1496 6.2 21.2496 5.3Z"></path><path d="M8.35 16.7998C7.35 17.7998 5.75 17.7998 4.75 16.7998C3.75 15.7998 3.75 14.1998 4.75 13.1998L9.25 8.6998L7.85 7.2998L3.35 11.7998C1.55 13.5998 1.55 16.3998 3.35 18.1998C4.25 19.0998 5.35 19.4998 6.55 19.4998C7.75 19.4998 8.85 19.0998 9.75 18.1998L14.25 13.6998L12.85 12.2998L8.35 16.7998Z"></path></svg> ');
 }
 
 .documentableBrief {
@@ -472,6 +577,40 @@ footer .pull-right {
 
 .documentableBrief>p{
   margin: .5em 0 0 0;
+}
+
+.tabs .names .tab {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 6px 4px 6px;
+  margin: 1rem 1rem 0 0;
+  border-bottom: 1px solid grey;
+  cursor: pointer;
+}
+
+.tabs .names .tab.selected {
+  color: unset;
+  font-weight: bold;
+  border-bottom: 2px solid var(--active-tab-color);
+}
+
+.tabs .names {
+  margin-bottom: 20px;
+}
+
+.tabs .contents .tab{
+  display: none;
+}
+
+.tabs .contents .tab.selected {
+  display: block;
+}
+
+.diagram-class {
+  width: 100%;
+  max-height: 400px;
+  position: relative;
 }
 
 /* Large Screens */

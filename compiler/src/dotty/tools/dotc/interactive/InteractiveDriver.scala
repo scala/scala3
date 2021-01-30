@@ -57,7 +57,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   // Presence of a file with one of these suffixes indicates that the
   // corresponding class has been pickled with TASTY.
-  private val tastySuffixes = List(".hasTasty", ".tasty")
+  private val tastySuffix = ".tasty"
 
   // FIXME: All the code doing classpath handling is very fragile and ugly,
   // improving this requires changing the dotty classpath APIs to handle our usecases.
@@ -220,11 +220,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       while (entries.hasMoreElements) {
         val entry = entries.nextElement()
         val name = entry.getName
-        tastySuffixes.find(name.endsWith) match {
-          case Some(tastySuffix) =>
-            buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-          case _ =>
-        }
+        if name.endsWith(tastySuffix) then
+          buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
       }
     }
     finally zipFile.close()
@@ -237,13 +234,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
           if (!attrs.isDirectory) {
             val name = path.getFileName.toString
-            for {
-              tastySuffix <- tastySuffixes
-              if name.endsWith(tastySuffix)
-            }
-            {
+            if name.endsWith(tastySuffix) then
               buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-            }
           }
           FileVisitResult.CONTINUE
         }

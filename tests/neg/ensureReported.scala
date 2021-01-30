@@ -1,6 +1,6 @@
 object AnonymousF {
   val f = {
-    case l as List(1) => // error: missing parameter type
+    case l @ List(1) => // error: missing parameter type
       Some(l)
   }
 }

@@ -16,6 +16,6 @@ object Test {
     case _ => println("nope")
   }
   def test(x: Any) = x match {
-    case _: String | _ as A() => 1
+    case _: String | _ @ A() => 1
   }
 }

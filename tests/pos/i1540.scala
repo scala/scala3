@@ -8,7 +8,7 @@ object Casey1 { def unapply(a: Casey1) = a }
 
 object Test {
   def main(args: Array[String]): Unit = {
-    val c as Casey1(x) = new Casey1(0)
+    val c @ Casey1(x) = new Casey1(0)
     assert(x == c.get)
   }
 }

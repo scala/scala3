@@ -71,22 +71,22 @@ After the release is done, we document it as follows:
 ## Ecosystem
 After releasing a new version of Dotty, we need to make sure to update the following related projects:
 
-- [Example Project](https://github.com/lampepfl/dotty-example-project)
-  - To deploy locally: `git clone https://github.com/lampepfl/dotty-example-project.git && cd dotty-example-project/`
+- [Example Project](https://github.com/scala/scala3-example-project)
+  - To deploy locally: `git clone https://github.com/scala/scala3-example-project.git && cd dotty-example-project/`
   - To test locally: `sbt run`
-  - [Commit](https://github.com/lampepfl/dotty-example-project/commit/76bf0b4d708206b1901fa7f291f07cd470506e79) updating the Dotty version (only `README` and `build.sbt` files)
-- [Example Project with Mill](https://github.com/lampepfl/dotty-example-project/tree/mill)
-  - Deploy: `git clone https://github.com/lampepfl/dotty-example-project && cd dotty-example-project && git checkout mill`
+  - [Commit](https://github.com/scala/scala3-example-project/commit/76bf0b4d708206b1901fa7f291f07cd470506e79) updating the Dotty version (only `README` and `build.sbt` files)
+- [Example Project with Mill](https://github.com/scala/scala3-example-project/tree/mill)
+  - Deploy: `git clone https://github.com/scala/scala3-example-project && cd dotty-example-project && git checkout mill`
   - Test: `mill root.run`
-  - [Commit 1](https://github.com/lampepfl/dotty-example-project/commit/e1ad1905ef38d07943e0c176333ba24e306a2078) – `build.sc` only; [Commit 2](https://github.com/lampepfl/dotty-example-project/commit/23bc5df89e72b782ab8e19157d6bbcb67eef30cd)
-- [Dotty G8 template](https://github.com/lampepfl/dotty.g8)
-  - Deploy: `git clone https://github.com/lampepfl/dotty.g8.git`
+  - [Commit 1](https://github.com/scala/scala3-example-project/commit/e1ad1905ef38d07943e0c176333ba24e306a2078) – `build.sc` only; [Commit 2](https://github.com/scala/scala3-example-project/commit/23bc5df89e72b782ab8e19157d6bbcb67eef30cd)
+- [Dotty G8 template](https://github.com/scala/scala3.g8)
+  - Deploy: `git clone https://github.com/scala/scala3.g8.git`
   - Test (note the relative path as argument to `sbt new`, hence this command should be run after Deploy in the same directory as Deploy): `sbt new file://./dotty.g8 --name=foo --description=bar && cd foo && sbt run`
-  - [Commit](https://github.com/lampepfl/dotty.g8/commit/0cde8fa843e15e916f07f22a196f35a5988b26af)
-- [Dotty G8 template with cross build support](https://github.com/lampepfl/dotty-cross.g8)
-  - Deploy: `git clone https://github.com/lampepfl/dotty-cross.g8.git`
+  - [Commit](https://github.com/scala/scala3.g8/commit/0cde8fa843e15e916f07f22a196f35a5988b26af)
+- [Dotty G8 template with cross build support](https://github.com/scala/scala3-cross.g8)
+  - Deploy: `git clone https://github.com/scala/scala3-cross.g8.git`
   - Test: `sbt new file://./dotty-cross.g8 --name=foo --description=bar && cd foo && sbt run`
-  - [Commit](https://github.com/lampepfl/dotty-cross.g8/commit/0e3ea2ae8ba8d001e63e5098ff60d728036d358f)
+  - [Commit](https://github.com/scala/scala3-cross.g8/commit/0e3ea2ae8ba8d001e63e5098ff60d728036d358f)
 - [Dotty Homebrew Formula](https://github.com/lampepfl/homebrew-brew)
   - Deploy: `git clone https://github.com/lampepfl/homebrew-brew.git && cd homebrew-brew`
   - [Commit](https://github.com/lampepfl/homebrew-brew/commit/04f7284564387754a360a354159f2f8d6156a6c7). SHA256 sum comes from the issue checklist computed for the release as specified above. The file with checksums is available at [GitHub Releases](https://github.com/lampepfl/dotty/releases) -> release in question -> assets -> `sha256sum.txt` -> `*.tar.gz` file sum.

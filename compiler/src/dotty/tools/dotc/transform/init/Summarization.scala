@@ -292,16 +292,16 @@ object Summarization {
       val effsAll = tpl.parents.foldLeft(effs) { (effs, parent) =>
         effs ++ (parent match {
           case tree @ Block(stats, parent) =>
-            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: stats ++ argss.flatten, ctor.symbol, tree)
+            val ctor @ Select(qual, _) = funPart(parent)
+            parentArgEffsWithInit(qual :: stats ++ termArgss(parent).flatten, ctor.symbol, tree)
 
           case tree @ Apply(Block(stats, parent), args) =>
-            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: stats ++ args ++ argss.flatten, ctor.symbol, tree)
+            val ctor @ Select(qual, _) = funPart(parent)
+            parentArgEffsWithInit(qual :: stats ++ args ++ termArgss(parent).flatten, ctor.symbol, tree)
 
           case parent : Apply =>
-            val (ctor @ Select(qual, _), _, argss) = decomposeCall(parent)
-            parentArgEffsWithInit(qual :: argss.flatten, ctor.symbol, parent)
+            val ctor @ Select(qual, _) = funPart(parent)
+            parentArgEffsWithInit(qual :: termArgss(parent).flatten, ctor.symbol, parent)
 
           case ref =>
             val tref: TypeRef = ref.tpe.typeConstructor.asInstanceOf

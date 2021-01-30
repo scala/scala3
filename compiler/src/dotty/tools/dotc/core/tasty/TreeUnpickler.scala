@@ -116,7 +116,7 @@ class TreeUnpickler(reader: TastyReader,
     val owner = ctx.owner
     val source = ctx.source
     def complete(denot: SymDenotation)(using Context): Unit =
-      treeAtAddr(currentAddr) = atPhaseNoLater(picklerPhase) {
+      treeAtAddr(currentAddr) = atPhaseBeforeTransforms {
         new TreeReader(reader).readIndexedDef()(
           using ctx.withOwner(owner).withSource(source))
       }
@@ -139,7 +139,7 @@ class TreeUnpickler(reader: TastyReader,
     def skipParams(): Unit =
       while
         val tag = nextByte
-        tag == PARAM || tag == TYPEPARAM || tag == PARAMEND
+        tag == PARAM || tag == TYPEPARAM || tag == EMPTYCLAUSE || tag == SPLITCLAUSE
       do skipTree()
 
     /** Record all directly nested definitions and templates in current tree
@@ -602,8 +602,8 @@ class TreeUnpickler(reader: TastyReader,
         sym.completer.withDecls(newScope)
         forkAt(templateStart).indexTemplateParams()(using localContext(sym))
       }
-      else if (sym.isInlineMethod)
-        sym.addAnnotation(LazyBodyAnnotation { (using ctx0: Context) =>
+      else if (sym.isInlineMethod && !sym.is(Deferred))
+        sym.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
           val ctx1 = localContext(sym)(using ctx0).addMode(Mode.ReadPositions)
           inContext(sourceChangeContext(Addr(0))(using ctx1)) {
             // avoids space leaks by not capturing the current context
@@ -667,15 +667,14 @@ class TreeUnpickler(reader: TastyReader,
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
+          case TRANSPARENT => addFlag(Transparent)
+          case INFIX => addFlag(Infix)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
           case PROTECTEDqualified =>
             addFlag(Protected)
             privateWithin = readWithin
-          case SUPERTRAIT =>
-            readByte()
-            annotFns = (_ => Annotation(defn.MixinAnnot)) :: annotFns
           case ANNOTATION =>
             annotFns = readAnnot :: annotFns
           case tag =>
@@ -712,7 +711,7 @@ class TreeUnpickler(reader: TastyReader,
             else if (sym.isClass ||
               sym.is(Method, butNot = Deferred) && !sym.isConstructor)
               initsFlags &= NoInits
-          case IMPORT =>
+          case IMPORT | EXPORT =>
             skipTree()
           case PACKAGE =>
             processPackage { (pid, end) => indexStats(end) }
@@ -781,12 +780,15 @@ class TreeUnpickler(reader: TastyReader,
       val tag = readByte()
       val end = readEnd()
 
-      def readParamss(using Context): List[List[ValDef]] = nextByte match
-        case PARAM | PARAMEND =>
-          readParams[ValDef](PARAM) ::
-            (if nextByte == PARAMEND then { readByte(); readParamss } else Nil)
-        case _ =>
-          Nil
+      def readParamss()(using Context): List[ParamClause] =
+        def readRest() =
+          if nextByte == SPLITCLAUSE then readByte()
+          readParamss()
+        nextByte match
+          case PARAM => readParams[ValDef](PARAM) :: readRest()
+          case TYPEPARAM => readParams[TypeDef](TYPEPARAM) :: readRest()
+          case EMPTYCLAUSE => readByte(); Nil :: readRest()
+          case _ => Nil
 
       val localCtx = localContext(sym)
 
@@ -804,10 +806,10 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree) =
-        sym.setParamssFromDefs(tparams, vparamss)
+      def DefDef(paramss: List[ParamClause], tpt: Tree) =
+        sym.setParamssFromDefs(paramss)
         ta.assignType(
-          untpd.DefDef(sym.name.asTermName, tparams, vparamss, tpt, readRhs(using localCtx)),
+          untpd.DefDef(sym.name.asTermName, paramss, tpt, readRhs(using localCtx)),
           sym)
 
       def TypeDef(rhs: Tree) =
@@ -819,15 +821,13 @@ class TreeUnpickler(reader: TastyReader,
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
         case DEFDEF =>
-          val tparams = readParams[TypeDef](TYPEPARAM)(using localCtx)
-          val vparamss = readParamss(using localCtx)
+          val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
-          val typeParams = tparams.map(_.symbol)
-          val valueParamss = normalizeIfConstructor(
-              vparamss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
-          val resType = effectiveResultType(sym, typeParams, tpt.tpe)
-          sym.info = methodType(typeParams, valueParamss, resType)
-          DefDef(tparams, vparamss, tpt)
+          val paramss = normalizeIfConstructor(
+              paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+          val resType = effectiveResultType(sym, paramss, tpt.tpe)
+          sym.info = methodType(paramss, resType)
+          DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe
@@ -873,7 +873,7 @@ class TreeUnpickler(reader: TastyReader,
           else {
             sym.info = ExprType(tpt.tpe)
             pickling.println(i"reading param alias $name -> $currentAddr")
-            DefDef(Nil, Nil, tpt)
+            DefDef(Nil, tpt)
           }
       }
       goto(end)
@@ -940,6 +940,8 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
+      defn.patchStdLibClass(cls)
+      NamerOps.addConstructorProxies(cls)
       setSpan(start,
         untpd.Template(constr, mappedParents, Nil, self, lazyStats)
           .withType(localDummy.termRef))
@@ -970,7 +972,9 @@ class TreeUnpickler(reader: TastyReader,
       case TYPEDEF | VALDEF | DEFDEF =>
         readIndexedDef()
       case IMPORT =>
-        readImport()
+        readImportOrExport(Import(_, _))()
+      case EXPORT =>
+        readImportOrExport(Export(_, _))()
       case PACKAGE =>
         val start = currentAddr
         processPackage { (pid, end) =>
@@ -980,14 +984,16 @@ class TreeUnpickler(reader: TastyReader,
         readTerm()(using ctx.withOwner(exprOwner))
     }
 
-    def readImport()(using Context): Tree = {
+    inline def readImportOrExport(inline mkTree:
+        (Tree, List[untpd.ImportSelector]) => Tree)()(using Context): Tree = {
       val start = currentAddr
       assert(sourcePathAt(start).isEmpty)
       readByte()
       readEnd()
       val expr = readTerm()
-      setSpan(start, Import(expr, readSelectors()))
+      setSpan(start, mkTree(expr, readSelectors()))
     }
+
     def readSelectors()(using Context): List[untpd.ImportSelector] =
       if nextByte == IMPORTED then
         val start = currentAddr
@@ -1363,8 +1369,13 @@ class TreeUnpickler(reader: TastyReader,
     def sourceChangeContext(addr: Addr = currentAddr)(using Context): Context = {
       val path = sourcePathAt(addr)
       if (path.nonEmpty) {
+        val sourceFile = ctx.getSource(path)
+        posUnpicklerOpt match
+          case Some(posUnpickler) =>
+            sourceFile.setLineIndicesFromLineSizes(posUnpickler.lineSizes)
+          case _ =>
         pickling.println(i"source change at $addr: $path")
-        ctx.withSource(ctx.getSource(path))
+        ctx.withSource(sourceFile)
       }
       else ctx
     }
@@ -1382,7 +1393,7 @@ class TreeUnpickler(reader: TastyReader,
       op: TreeReader => Context ?=> T) extends Trees.Lazy[T] {
     def complete(using Context): T = {
       pickling.println(i"starting to read at ${reader.reader.currentAddr} with owner $owner")
-      atPhaseNoLater(picklerPhase) {
+      atPhaseBeforeTransforms {
         op(reader)(using ctx
           .withOwner(owner)
           .withModeBits(mode)

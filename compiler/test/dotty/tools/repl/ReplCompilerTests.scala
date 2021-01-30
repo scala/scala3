@@ -155,7 +155,7 @@ class ReplCompilerTests extends ReplTest {
     fromInitialState { implicit state => run("given Int = 10") }
     .andThen         { implicit state =>
       assertEquals(
-        "def given_Int: Int",
+        "lazy val given_Int: Int",
         storedOutput().trim
       )
       run("implicitly[Int]")
@@ -174,7 +174,7 @@ class ReplCompilerTests extends ReplTest {
         |  extension (x: T) def > (y: T) = compare(x, y) > 0
         |}
         |
-        |given IntOrd as Ord[Int] {
+        |given IntOrd: Ord[Int] with {
         |  def compare(x: Int, y: Int) =
         |  if (x < y) -1 else if (x > y) +1 else 0
         |}
@@ -202,6 +202,22 @@ class ReplCompilerTests extends ReplTest {
   @Test def i6574 = fromInitialState { implicit state =>
     run("val a: 1 | 0 = 1")
     assertEquals("val a: 1 | 0 = 1", storedOutput().trim)
+  }
+
+  @Test def `i10214 must show classic MatchError` = fromInitialState { implicit state =>
+    run("val 1 = 2")
+    assertEquals("scala.MatchError: 2 (of class java.lang.Integer)", storedOutput().linesIterator.next())
+  }
+  @Test def `i10214 must show useful regex MatchError` =
+    fromInitialState { implicit state =>
+      run("""val r = raw"\d+".r""")
+    } andThen { implicit state =>
+      run("""val r() = "abc"""")
+      assertEquals("scala.MatchError: abc (of class java.lang.String)", storedOutput().linesIterator.drop(2).next())
+    }
+  @Test def `i10214 must show MatchError on literal type` = fromInitialState { implicit state =>
+    run("val (x: 1) = 2")
+    assertEquals("scala.MatchError: 2 (of class java.lang.Integer)", storedOutput().linesIterator.next())
   }
 }
 

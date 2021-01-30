@@ -1,7 +1,7 @@
 -- Error: tests/neg/i2033.scala:7:30 -----------------------------------------------------------------------------------
 7 |    val arr = bos toByteArray ()  // error
   |                              ^^
-  |can't supply unit value with infix notation because nullary method toByteArray: (): Array[Byte] takes no arguments; use dotted invocation instead: (...).toByteArray()
+  |can't supply unit value with infix notation because nullary method toByteArray in class ByteArrayOutputStream: (): Array[Byte] takes no arguments; use dotted invocation instead: (...).toByteArray()
 -- [E007] Type Mismatch Error: tests/neg/i2033.scala:20:35 -------------------------------------------------------------
 20 |  val out = new ObjectOutputStream(println) // error
    |                                   ^^^^^^^

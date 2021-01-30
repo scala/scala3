@@ -177,7 +177,6 @@ class PathResolver(using c: Context) {
     case "extdirs"            => settings.extdirs.value
     case "classpath" | "cp"   => settings.classpath.value
     case "sourcepath"         => settings.sourcepath.value
-    case "priorityclasspath"  => settings.priorityclasspath.value
   }
 
   /** Calculated values based on any given command line options, falling back on
@@ -191,7 +190,6 @@ class PathResolver(using c: Context) {
     def javaUserClassPath: String   = if (useJavaClassPath) Defaults.javaUserClassPath else ""
     def scalaBootClassPath: String  = cmdLineOrElse("bootclasspath", Defaults.scalaBootClassPath)
     def scalaExtDirs: String        = cmdLineOrElse("extdirs", Defaults.scalaExtDirs)
-    def priorityClassPath: String   = cmdLineOrElse("priorityclasspath", "")
     /** Scaladoc doesn't need any bootstrapping, otherwise will create errors such as:
      * [scaladoc] ../scala-trunk/src/reflect/scala/reflect/macros/Reifiers.scala:89: error: object api is not a member of package reflect
      * [scaladoc] case class ReificationException(val pos: reflect.api.PositionApi, val msg: String) extends Throwable(msg)
@@ -208,25 +206,25 @@ class PathResolver(using c: Context) {
     import classPathFactory._
 
     // Assemble the elements!
-    // priority class path takes precedence
-    def basis: List[Traversable[ClassPath]] = List(
-      classesInExpandedPath(priorityClassPath),     // 0. The priority class path (for testing).
-      JrtClassPath.apply(),                         // 1. The Java 9 classpath (backed by the jrt:/ virtual system, if available)
-      classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
-      contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
-      classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
-      classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
-      contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
-      classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
-      sourcesInPath(sourcePath)                     // 8. The Scala source path.
-    )
+    def basis: List[Traversable[ClassPath]] =
+      val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+
+      List(
+        JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
+        classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
+        contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
+        classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
+        classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
+        contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
+        classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
+        sourcesInPath(sourcePath)                     // 8. The Scala source path.
+      )
 
     lazy val containers: List[ClassPath] = basis.flatten.distinct
 
     override def toString: String = """
       |object Calculated {
       |  scalaHome            = %s
-      |  priorityClassPath    = %s
       |  javaBootClassPath    = %s
       |  javaExtDirs          = %s
       |  javaUserClassPath    = %s
@@ -236,7 +234,7 @@ class PathResolver(using c: Context) {
       |  userClassPath        = %s
       |  sourcePath           = %s
       |}""".trim.stripMargin.format(
-        scalaHome, ppcp(priorityClassPath),
+        scalaHome,
         ppcp(javaBootClassPath), ppcp(javaExtDirs), ppcp(javaUserClassPath),
         useJavaClassPath,
         ppcp(scalaBootClassPath), ppcp(scalaExtDirs), ppcp(userClassPath),
@@ -263,4 +261,3 @@ class PathResolver(using c: Context) {
 
   def asURLs: Seq[java.net.URL] = result.asURLs
 }
-

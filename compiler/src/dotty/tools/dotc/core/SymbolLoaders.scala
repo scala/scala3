@@ -173,7 +173,7 @@ object SymbolLoaders {
           Nil)
       }
 
-      val unit = CompilationUnit(ctx.getSource(src.path))
+      val unit = CompilationUnit(ctx.getSource(src))
       enterScanned(unit)(using ctx.fresh.setCompilationUnit(unit))
 
   /** The package objects of scala and scala.reflect should always
@@ -326,7 +326,7 @@ abstract class SymbolLoader extends LazyType { self =>
    */
   def proxy: SymbolLoader = new SymbolLoader {
     export self.{doComplete, sourceFileOrNull}
-    def description(using Context): String = "proxy to ${self.description}"
+    def description(using Context): String = s"proxy to ${self.description}"
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = {
@@ -359,13 +359,19 @@ abstract class SymbolLoader extends LazyType { self =>
         throw ex
     }
     finally {
-      def postProcess(denot: SymDenotation) =
-        if (!denot.isCompleted &&
-            !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter])
-          denot.markAbsent()
-      postProcess(root)
+      def postProcess(denot: SymDenotation, other: Symbol) =
+        if !denot.isCompleted &&
+           !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter] then
+          if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
+            NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
+            denot.resetFlag(Touched)
+          else
+            denot.markAbsent()
+
+      val other = if root.isRoot then NoSymbol else root.scalacLinkedClass
+      postProcess(root, other)
       if (!root.isRoot)
-        postProcess(root.scalacLinkedClass.denot)
+        postProcess(other, root.symbol)
     }
   }
 

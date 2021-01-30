@@ -8,6 +8,7 @@ import org.jetbrains.dokka.model.properties._
 import org.jetbrains.dokka.pages._
 import dotty.dokka.model.api.Signature
 import dotty.dokka.model.api.HierarchyGraph
+import dotty.dokka.model.api.Member
 
 enum TableStyle extends org.jetbrains.dokka.pages.Style:
   case Borderless
@@ -30,15 +31,15 @@ case class HtmlContentNode(
   override def getExtra = extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
-class ScalaTagWrapper(root: DocTag) extends TagWrapper(null):
+class ScalaTagWrapper(root: DocTag, val name: String) extends TagWrapper(null):
   override def getRoot = root
 
 object ScalaTagWrapper {
 
-  case class See(root: DocTag) extends ScalaTagWrapper(root)
-  case class Todo(root: DocTag) extends ScalaTagWrapper(root)
-  case class Note(root: DocTag) extends ScalaTagWrapper(root)
-  case class Example(root: DocTag) extends ScalaTagWrapper(root)
+  case class See(root: DocTag) extends ScalaTagWrapper(root, "See")
+  case class Todo(root: DocTag) extends ScalaTagWrapper(root, "Todo")
+  case class Note(root: DocTag) extends ScalaTagWrapper(root, "Note")
+  case class Example(root: DocTag) extends ScalaTagWrapper(root, "Example")
   case class NestedNamedTag(
     name: String,
     subname: String,
@@ -51,21 +52,6 @@ object ScalaTagWrapper {
 
 case class ImplicitConversion(conversion: Documentable, from: DRI, to: DRI)
 
-case class HierarchyGraphContentNode(
-  val diagram: HierarchyGraph,
-  val dci: DCI,
-  val sourceSets: Set[DisplaySourceSet],
-  val style: Set[Style],
-  val extra: PropertyContainer[ContentNode] = PropertyContainer.Companion.empty
-) extends ContentNode:
-  override def getDci = dci
-  override def getSourceSets = sourceSets.asJava
-  override def getStyle = style.asJava
-  override def hasAnyContent = !diagram.edges.isEmpty
-  def withSourceSets(sourceSets: JSet[DisplaySourceSet]) = copy(sourceSets = sourceSets.asScala.toSet)
-  override def getChildren: JList[ContentNode] = JList()
-  override def getExtra = extra
-  override def withNewExtras(p: PropertyContainer[ContentNode]) = copy(extra = p)
 
 case class ContentNodeParams(
   val dci: DCI,
@@ -88,15 +74,21 @@ abstract class ScalaContentNode(params: ContentNodeParams) extends ContentNode:
   override def getExtra = params.extra
   override def withNewExtras(p: PropertyContainer[ContentNode]) = newInstance(params.copy(extra = p))
 
+case class DocumentableNameWithStyles(
+  name: String,
+  styles: Set[Style] = Set.empty,
+)
+
 case class DocumentableElement(
   annotations: Signature,
   modifiers: Signature,
-  name: String,
+  nameWithStyles: DocumentableNameWithStyles,
   signature: Signature,
   brief: Seq[ContentNode],
   originInfo: Signature,
   attributes: Map[String, String],
-  params: ContentNodeParams
+  params: ContentNodeParams,
+  member: Member
 ) extends ScalaContentNode(params):
   override def newInstance(params: ContentNodeParams) = copy(params = params)
 
@@ -120,3 +112,7 @@ case class DocumentableList(
 
 case class DocumentableFilter(params: ContentNodeParams) extends ScalaContentNode(params):
   override def newInstance(params: ContentNodeParams) = copy(params = params)
+
+case class MemberInfo(member: Member, params: ContentNodeParams)
+  extends ScalaContentNode(params):
+    override def newInstance(params: ContentNodeParams) = copy(params = params)

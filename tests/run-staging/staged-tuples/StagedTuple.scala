@@ -4,7 +4,7 @@ import scala.quoted._
 
 import scala.runtime.TupleXXL
 
-import scala.runtime.Tuple.MaxSpecialized
+import scala.runtime.Tuples.MaxSpecialized
 
 object StagedTuple {
   import Tuple.Concat
@@ -16,7 +16,7 @@ object StagedTuple {
   private final val specialize = true
 
   def toArrayStaged(tup: Expr[Tuple], size: Option[Int])(using Quotes): Expr[Array[Object]] = {
-    if (!specialize) '{scala.runtime.Tuple.toArray($tup)}
+    if (!specialize) '{scala.runtime.Tuples.toArray($tup)}
     else size match {
       case Some(0) =>
         '{Array.emptyObjectArray}
@@ -31,12 +31,12 @@ object StagedTuple {
       case Some(n) =>
         '{ ${tup.as[TupleXXL]}.toArray }
       case None =>
-        '{scala.runtime.Tuple.toArray($tup)}
+        '{scala.runtime.Tuples.toArray($tup)}
     }
   }
 
   def fromArrayStaged[T <: Tuple : Type](xs: Expr[Array[Object]], size: Option[Int])(using Quotes): Expr[T] = {
-    if (!specialize) '{scala.runtime.Tuple.fromArray($xs)}.as[T]
+    if (!specialize) '{scala.runtime.Tuples.fromArray($xs)}.as[T]
     else xs.bind { xs =>
       val tup: Expr[Any] = size match {
         case Some(0)  => '{Tuple()}
@@ -63,7 +63,7 @@ object StagedTuple {
         case Some(21) => '{Tuple21($xs(0), $xs(1), $xs(2), $xs(3), $xs(4), $xs(5), $xs(6), $xs(7), $xs(8), $xs(9), $xs(10), $xs(11), $xs(12), $xs(13), $xs(14), $xs(15), $xs(16), $xs(17), $xs(18), $xs(19), $xs(20))}
         case Some(22) => '{Tuple22($xs(0), $xs(1), $xs(2), $xs(3), $xs(4), $xs(5), $xs(6), $xs(7), $xs(8), $xs(9), $xs(10), $xs(11), $xs(12), $xs(13), $xs(14), $xs(15), $xs(16), $xs(17), $xs(18), $xs(19), $xs(20), $xs(21))}
         case Some(_)  => '{TupleXXL($xs)}
-        case None     => '{scala.runtime.Tuple.fromArray($xs)}
+        case None     => '{scala.runtime.Tuples.fromArray($xs)}
       }
       tup.as[T]
     }
@@ -71,16 +71,16 @@ object StagedTuple {
 
   def sizeStaged[Res <: Int : Type](tup: Expr[Tuple], size: Option[Int])(using Quotes): Expr[Res] = {
     val res =
-      if (!specialize) '{scala.runtime.Tuple.size($tup)}
+      if (!specialize) '{scala.runtime.Tuples.size($tup)}
       else size match {
         case Some(n) => Expr(n)
-        case None => '{scala.runtime.Tuple.size($tup)}
+        case None => '{scala.runtime.Tuples.size($tup)}
       }
     res.as[Res]
   }
 
   def headStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using Quotes): Expr[Head[Tup]] = {
-    if (!specialize) '{scala.runtime.Tuple.apply($tup, 0)}.as[Head[Tup]]
+    if (!specialize) '{scala.runtime.Tuples.apply($tup, 0)}.as[Head[Tup]]
     else {
       val resVal = size match {
         case Some(1) =>
@@ -96,14 +96,14 @@ object StagedTuple {
         case Some(n) if n > MaxSpecialized =>
           '{${tup.as[TupleXXL] }.elems(0)}
         case None =>
-          '{scala.runtime.Tuple.apply($tup, 0)}
+          '{scala.runtime.Tuples.apply($tup, 0)}
       }
       resVal.as[Head[Tup]]
     }
   }
 
   def tailStaged[Tup <: NonEmptyTuple : Type](tup: Expr[Tup], size: Option[Int])(using Quotes): Expr[Tail[Tup]] = {
-    if (!specialize) '{scala.runtime.Tuple.tail($tup)}.as[Tail[Tup]]
+    if (!specialize) '{scala.runtime.Tuples.tail($tup)}.as[Tail[Tup]]
     else {
       val res = size match {
         case Some(1) =>
@@ -120,7 +120,7 @@ object StagedTuple {
           val arr = toArrayStaged(tup, size)
           fromArrayStaged[Tail[Tup]]('{ $arr.tail }, Some(n - 1))
         case None =>
-          '{scala.runtime.Tuple.tail($tup)}
+          '{scala.runtime.Tuples.tail($tup)}
       }
       res.as[Tail[Tup]]
     }
@@ -128,13 +128,13 @@ object StagedTuple {
 
   def applyStaged[Tup <: NonEmptyTuple : Type, N <: Int : Type](tup: Expr[Tup], size: Option[Int], n: Expr[N], nValue: Option[Int])(using Quotes): Expr[Elem[Tup, N]] = {
 
-    if (!specialize) '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
+    if (!specialize) '{scala.runtime.Tuples.apply($tup, $n)}.as[Elem[Tup, N]]
     else {
       def fallbackApply(): Expr[Elem[Tup, N]] = nValue match {
         case Some(n) =>
-          report.error("index out of bounds: " + n, tup)
+          quotes.reflect.report.error("index out of bounds: " + n, tup)
           '{ throw new IndexOutOfBoundsException(${Expr(n.toString)}) }
-        case None => '{scala.runtime.Tuple.apply($tup, $n)}.as[Elem[Tup, N]]
+        case None => '{scala.runtime.Tuples.apply($tup, $n)}.as[Elem[Tup, N]]
       }
       val res = size match {
         case Some(1) =>
@@ -186,7 +186,7 @@ object StagedTuple {
   }
 
   def consStaged[T <: Tuple & Singleton : Type, H : Type](self: Expr[T], x: Expr[H], tailSize: Option[Int])(using Quotes): Expr[H *: T] =
-  if (!specialize) '{scala.runtime.Tuple.cons($x, $self)}.as[H *: T]
+  if (!specialize) '{scala.runtime.Tuples.cons($x, $self)}.as[H *: T]
   else {
     val res = tailSize match {
       case Some(0) =>
@@ -200,13 +200,13 @@ object StagedTuple {
       case Some(4) =>
         self.as[Tuple4[_, _, _, _]].bind(t => '{Tuple5($x, $t._1, $t._2, $t._3, $t._4)})
       case _ =>
-        '{scala.runtime.Tuple.cons($x, $self)}
+        '{scala.runtime.Tuples.cons($x, $self)}
     }
     res.as[H *: T]
   }
 
   def concatStaged[Self <: Tuple & Singleton : Type, That <: Tuple & Singleton : Type](self: Expr[Self], selfSize: Option[Int], that: Expr[That], thatSize: Option[Int])(using Quotes): Expr[Concat[Self, That]] = {
-    if (!specialize) '{scala.runtime.Tuple.concat($self, $that)}.as[Concat[Self, That]]
+    if (!specialize) '{scala.runtime.Tuples.concat($self, $that)}.as[Concat[Self, That]]
     else {
       def genericConcat(xs: Expr[Tuple], ys: Expr[Tuple]): Expr[Tuple] =
         // TODO remove ascriptions when #6126 is fixed
@@ -248,7 +248,7 @@ object StagedTuple {
           if (thatSize.contains(0)) self
           else genericConcat(self, that)
         case None =>
-          '{scala.runtime.Tuple.concat($self, $that)}
+          '{scala.runtime.Tuples.concat($self, $that)}
       }
       res.as[Concat[Self, That]]
     }

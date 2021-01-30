@@ -51,12 +51,7 @@ class CollectNullableFields extends MiniPhase {
   private case class Nullable(by: Symbol) extends FieldInfo
 
   /** Whether or not a field is nullable */
-  private var nullability: IdentityHashMap[Symbol, FieldInfo] = _
-
-  override def prepareForUnit(tree: Tree)(using Context): Context = {
-    if (nullability == null) nullability = new IdentityHashMap
-    ctx
-  }
+  private val nullability = new mutable.LinkedHashMap[Symbol, FieldInfo]
 
   private def recordUse(tree: Tree)(using Context): Tree = {
     val sym = tree.symbol
@@ -71,9 +66,9 @@ class CollectNullableFields extends MiniPhase {
 
     if (isNullablePrivateField)
       nullability.get(sym) match {
-        case Nullable(from) if from != ctx.owner => // used in multiple lazy val initializers
+        case Some(Nullable(from)) if from != ctx.owner => // used in multiple lazy val initializers
           nullability.put(sym, NotNullable)
-        case null => // not in the map
+        case None => // not in the map
           val from = ctx.owner
           val isNullable =
             from.is(Lazy, butNot = Module) && // is lazy val
@@ -100,7 +95,7 @@ class CollectNullableFields extends MiniPhase {
   def lazyValNullables(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
     val result = new IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]]
 
-    nullability.forEach {
+    nullability.foreach {
       case (sym, Nullable(from)) =>
         val bldr = result.computeIfAbsent(from, _ => new mutable.ListBuffer)
         bldr += sym

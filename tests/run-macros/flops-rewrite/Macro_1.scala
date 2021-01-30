@@ -29,7 +29,7 @@ private object Rewriter {
 }
 
 private class Rewriter(preTransform: Expr[Any] => Expr[Any], postTransform: Expr[Any] => Expr[Any], fixPoint: Boolean) extends ExprMap {
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     val e2 = checkedTransform(e, preTransform)
     val e3 = transformChildren(e2)
     val e4 = checkedTransform(e3, postTransform)

@@ -6,26 +6,25 @@ title: "Importing Givens"
 A special form of import wildcard selector is used to import given instances. Example:
 
 ```scala
-object A {
-  class TC
-  given tc as TC
-  def f(using TC) = ???
-}
+object A:
+   class TC
+   given tc: TC = ???
+   def f(using TC) = ???
 
-object B {
-  import A._
-  import A.given
-}
+object B:
+   import A._
+   import A.given
+   ...
 ```
 
-In the code above, the `import A._` clause of object `B` will import all members
+In the code above, the `import A._` clause in object `B` imports all members
 of `A` _except_ the given instance `tc`. Conversely, the second import `import A.given` will import _only_ that given instance.
 The two import clauses can also be merged into one:
 
 ```scala
-object B {
-  import A.{given, _}
-}
+object B:
+   import A.{given, _}
+   ...
 ```
 
 Generally, a normal wildcard selector `_` brings all definitions other than givens or extensions into scope
@@ -59,15 +58,14 @@ Importing all given instances of a parameterized type is expressed by wildcard a
 For instance, assuming the object
 
 ```scala
-object Instances {
-  given intOrd as Ordering[Int]
-  given listOrd[T: Ordering] as Ordering[List[T]]
-  given ec as ExecutionContext = ...
-  given im as Monoid[Int]
-}
+object Instances:
+   given intOrd: Ordering[Int] = ...
+   given listOrd[T: Ordering]: Ordering[List[T]] = ...
+   given ec: ExecutionContext = ...
+   given im: Monoid[Int] = ...
 ```
 
-the import
+the import clause
 
 ```scala
 import Instances.{given Ordering[?], given ExecutionContext}
@@ -82,20 +80,6 @@ import Instances.{im, given Ordering[?]}
 ```
 
 would import `im`, `intOrd`, and `listOrd` but leave out `ec`.
-
-<!--
-Bounded wildcard selectors also work for normal imports and exports. For instance, consider the following `enum` definition:
-```scala
-enum Color {
-  case Red, Green, Blue, Magenta
-
-  def isPrimary(c: Color): Boolean = ...
-}
-export Color.{_: Color}
-```
-The export clause makes all four `Color` values available as unqualified constants, but
-leaves the `isPrimary` method alone.
--->
 
 ### Migration
 

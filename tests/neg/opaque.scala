@@ -43,7 +43,7 @@ object logs {
       // This is the second way to unlift the logarithm type
       def toDouble: Double = math.exp(`this`)
       def +(that: Logarithm): Logarithm = Logarithm(math.exp(`this`) + math.exp(that))
-      def *(that: Logarithm): Logarithm = Logarithm(`this` + that)
+      def *(that: Logarithm): Logarithm = `this` + that
     }
   }
 }

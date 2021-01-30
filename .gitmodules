@@ -13,12 +13,6 @@
 [submodule "community-build/community-projects/scalatest"]
 	path = community-build/community-projects/scalatest
 	url = https://github.com/dotty-staging/scalatest
-[submodule "community-build/community-projects/scopt"]
-	path = community-build/community-projects/scopt
-	url = https://github.com/dotty-staging/scopt
-[submodule "community-build/community-projects/squants"]
-	path = community-build/community-projects/squants
-	url = https://github.com/dotty-staging/squants
 [submodule "community-build/community-projects/scalap"]
 	path = community-build/community-projects/scalap
 	url = https://github.com/dotty-staging/scala
@@ -120,3 +114,66 @@
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
+[submodule "community-build/community-projects/scala-collection-compat"]
+	path = community-build/community-projects/scala-collection-compat
+	url = https://github.com/dotty-staging/scala-collection-compat.git
+[submodule "community-build/community-projects/verify"]
+	path = community-build/community-projects/verify
+	url = https://github.com/dotty-staging/nanotest-strawman.git
+[submodule "community-build/community-projects/discipline"]
+	path = community-build/community-projects/discipline
+	url = https://github.com/dotty-staging/discipline.git
+[submodule "community-build/community-projects/discipline-munit"]
+	path = community-build/community-projects/discipline-munit
+	url = https://github.com/dotty-staging/discipline-munit.git
+[submodule "community-build/community-projects/discipline-specs2"]
+	path = community-build/community-projects/discipline-specs2
+	url = https://github.com/dotty-staging/discipline-specs2.git
+[submodule "community-build/community-projects/simulacrum-scalafix"]
+	path = community-build/community-projects/simulacrum-scalafix
+	url = https://github.com/dotty-staging/simulacrum-scalafix.git
+[submodule "community-build/community-projects/cats"]
+	path = community-build/community-projects/cats
+	url = https://github.com/dotty-staging/cats.git
+[submodule "community-build/community-projects/cats-mtl"]
+	path = community-build/community-projects/cats-mtl
+	url = https://github.com/dotty-staging/cats-mtl.git
+[submodule "community-build/community-projects/coop"]
+	path = community-build/community-projects/coop
+	url = https://github.com/dotty-staging/coop.git
+[submodule "community-build/community-projects/AsyncFile"]
+	path = community-build/community-projects/AsyncFile
+	url = https://github.com/dotty-staging/AsyncFile.git
+[submodule "community-build/community-projects/Equal"]
+	path = community-build/community-projects/Equal
+	url = https://github.com/dotty-staging/Equal.git
+[submodule "community-build/community-projects/FingerTree"]
+	path = community-build/community-projects/FingerTree
+	url = https://github.com/dotty-staging/FingerTree.git
+[submodule "community-build/community-projects/Log"]
+	path = community-build/community-projects/Log
+	url = https://github.com/dotty-staging/Log.git
+[submodule "community-build/community-projects/Model"]
+	path = community-build/community-projects/Model
+	url = https://github.com/dotty-staging/Model.git
+[submodule "community-build/community-projects/Numbers"]
+	path = community-build/community-projects/Numbers
+	url = https://github.com/dotty-staging/Numbers.git
+[submodule "community-build/community-projects/Serial"]
+	path = community-build/community-projects/Serial
+	url = https://github.com/dotty-staging/Serial.git
+[submodule "community-build/community-projects/Span"]
+	path = community-build/community-projects/Span
+	url = https://github.com/dotty-staging/Span.git
+[submodule "community-build/community-projects/Lucre"]
+	path = community-build/community-projects/Lucre
+	url = https://github.com/dotty-staging/Lucre.git
+[submodule "community-build/community-projects/scala-stm"]
+	path = community-build/community-projects/scala-stm
+	url = https://github.com/dotty-staging/scala-stm.git
+[submodule "community-build/community-projects/scalatestplus-junit"]
+	path = community-build/community-projects/scalatestplus-junit
+	url = https://github.com/dotty-staging/scalatestplus-junit.git
+[submodule "community-build/community-projects/izumi-reflect"]
+	path = community-build/community-projects/izumi-reflect
+	url = https://github.com/dotty-staging/izumi-reflect.git

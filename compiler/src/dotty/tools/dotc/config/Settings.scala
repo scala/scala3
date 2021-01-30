@@ -59,19 +59,13 @@ object Settings {
     description: String,
     default: T,
     helpArg: String = "",
-    choices: Seq[T] = Nil,
+    choices: Option[Seq[T]] = None,
     prefix: String = "",
     aliases: List[String] = Nil,
     depends: List[(Setting[?], Any)] = Nil,
     propertyClass: Option[Class[?]] = None)(private[Settings] val idx: Int) {
 
     private var changed: Boolean = false
-
-    def withAbbreviation(abbrv: String): Setting[T] =
-      copy(aliases = aliases :+ abbrv)(idx)
-
-    def dependsOn[U](setting: Setting[U], value: U): Setting[T] =
-      copy(depends = depends :+ (setting, value))(idx)
 
     def valueIn(state: SettingsState): T =
       state.value(idx).asInstanceOf[T]
@@ -92,25 +86,10 @@ object Settings {
 
     def legalChoices: String =
       choices match {
-        case xs if xs.isEmpty => ""
-        case r: Range         => s"${r.head}..${r.last}"
-        case xs: List[?]      => xs.toString
-      }
-
-    def isLegal(arg: Any): Boolean =
-      choices match {
-        case xs if xs.isEmpty =>
-          arg match {
-            case _: T => true
-            case _ => false
-          }
-        case r: Range =>
-          arg match {
-            case x: Int => r.head <= x && x <= r.last
-            case _ => false
-          }
-        case xs: List[?] =>
-          xs.contains(arg)
+        case Some(xs) if xs.isEmpty => ""
+        case Some(r: Range)         => s"${r.head}..${r.last}"
+        case Some(xs)               => xs.mkString(", ")
+        case None                   => ""
       }
 
     def tryToSet(state: ArgsSummary): ArgsSummary = {
@@ -132,6 +111,12 @@ object Settings {
         ArgsSummary(sstate, args, errors :+ msg, warnings)
       def missingArg =
         fail(s"missing argument for option $name", args)
+      def setString(argValue: String, args: List[String]) =
+        choices match
+          case Some(xs) if !xs.contains(argValue) =>
+            fail(s"$argValue is not a valid choice for $name", args)
+          case _ =>
+            update(argValue, args)
       def doSet(argRest: String) = ((implicitly[ClassTag[T]], args): @unchecked) match {
         case (BooleanTag, _) =>
           update(true, args)
@@ -140,13 +125,11 @@ object Settings {
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
-        case (StringTag, _) if choices.nonEmpty && argRest.nonEmpty =>
-          if (!choices.contains(argRest))
-            fail(s"$arg is not a valid choice for $name", args)
-          else update(argRest, args)
+        case (StringTag, _) if argRest.nonEmpty =>
+          setString(argRest, args)
         case (StringTag, arg2 :: args2) =>
           if (arg2 startsWith "-") missingArg
-          else update(arg2, args2)
+          else setString(arg2, args2)
         case (OutputTag, arg :: args) =>
           val path = Directory(arg)
           val isJar = path.extension == "jar"
@@ -160,8 +143,10 @@ object Settings {
           try {
             val x = arg2.toInt
             choices match {
-              case r: Range if x < r.head || r.last < x =>
-                fail(s"$arg2 is out of legal range $legalChoices for $name", args2)
+              case Some(r: Range) if x < r.head || r.last < x =>
+                fail(s"$arg2 is out of legal range ${r.head}..${r.last} for $name", args2)
+              case Some(xs) if !xs.contains(x) =>
+                fail(s"$arg2 is not a valid choice for $name", args)
               case _ =>
                 update(x, args2)
             }
@@ -179,9 +164,11 @@ object Settings {
           missingArg
       }
 
+      def matches(argName: String) = (name :: aliases).exists(_ == argName)
+
       if (prefix != "" && arg.startsWith(prefix))
         doSet(arg drop prefix.length)
-      else if (prefix == "" && name == arg.takeWhile(_ != ':'))
+      else if (prefix == "" && matches(arg.takeWhile(_ != ':')))
         doSet(arg.dropWhile(_ != ':').drop(1))
       else
         state
@@ -234,7 +221,7 @@ object Settings {
      *
      *  to get their arguments.
      */
-    protected[config] def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
+    def processArguments(state: ArgsSummary, processAll: Boolean, skipped: List[String]): ArgsSummary = {
       def stateWithArgs(args: List[String]) = ArgsSummary(state.sstate, args, state.errors, state.warnings)
       state.arguments match {
         case Nil =>
@@ -266,32 +253,32 @@ object Settings {
       setting
     }
 
-    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false): Setting[Boolean] =
-      publish(Setting(name, descr, initialValue))
+    def BooleanSetting(name: String, descr: String, initialValue: Boolean = false, aliases: List[String] = Nil): Setting[Boolean] =
+      publish(Setting(name, descr, initialValue, aliases = aliases))
 
-    def StringSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg))
+    def StringSetting(name: String, helpArg: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, aliases = aliases))
 
-    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg, choices))
+    def ChoiceSetting(name: String, helpArg: String, descr: String, choices: List[String], default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, helpArg, Some(choices), aliases = aliases))
 
-    def IntSetting(name: String, descr: String, default: Int, range: Seq[Int] = Nil): Setting[Int] =
-      publish(Setting(name, descr, default, choices = range))
+    def IntSetting(name: String, descr: String, default: Int, aliases: List[String] = Nil): Setting[Int] =
+      publish(Setting(name, descr, default, aliases = aliases))
 
-    def MultiStringSetting(name: String, helpArg: String, descr: String): Setting[List[String]] =
-      publish(Setting(name, descr, Nil, helpArg))
+    def IntChoiceSetting(name: String, descr: String, choices: Seq[Int], default: Int): Setting[Int] =
+      publish(Setting(name, descr, default, choices = Some(choices)))
+
+    def MultiStringSetting(name: String, helpArg: String, descr: String, aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, Nil, helpArg, aliases = aliases))
 
     def OutputSetting(name: String, helpArg: String, descr: String, default: AbstractFile): Setting[AbstractFile] =
       publish(Setting(name, descr, default, helpArg))
 
-    def PathSetting(name: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default))
+    def PathSetting(name: String, descr: String, default: String, aliases: List[String] = Nil): Setting[String] =
+      publish(Setting(name, descr, default, aliases = aliases))
 
-    def PathSetting(name: String, helpArg: String, descr: String, default: String): Setting[String] =
-      publish(Setting(name, descr, default, helpArg))
-
-    def PhasesSetting(name: String, descr: String, default: String = ""): Setting[List[String]] =
-      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default)))
+    def PhasesSetting(name: String, descr: String, default: String = "", aliases: List[String] = Nil): Setting[List[String]] =
+      publish(Setting(name, descr, if (default.isEmpty) Nil else List(default), aliases = aliases))
 
     def PrefixSetting(name: String, pre: String, descr: String): Setting[List[String]] =
       publish(Setting(name, descr, Nil, prefix = pre))
@@ -299,7 +286,7 @@ object Settings {
     def VersionSetting(name: String, descr: String, default: ScalaVersion = NoScalaVersion): Setting[ScalaVersion] =
       publish(Setting(name, descr, default))
 
-    def OptionSetting[T: ClassTag](name: String, descr: String): Setting[Option[T]] =
-      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass)))
+    def OptionSetting[T: ClassTag](name: String, descr: String, aliases: List[String] = Nil): Setting[Option[T]] =
+      publish(Setting(name, descr, None, propertyClass = Some(implicitly[ClassTag[T]].runtimeClass), aliases = aliases))
   }
 }

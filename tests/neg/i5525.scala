@@ -30,5 +30,5 @@ enum Foo11 {
 }
 
 enum Foo12 {  // error: enums must contain at least one case
-  inline    case C10() // error // error // error (inline treated as ident here)
+  inline    case C10() // error // error (inline treated as ident here)
 }

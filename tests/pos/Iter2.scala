@@ -193,7 +193,7 @@ object Iter2 {
       flatten(map(f(_).buildIterator))
 
     override def ++[B >: A](that: IterableOnce[B]): ArrayIterator[B] = {
-      val thatIterator as ArrayIterator(elems2, len2) = fromIterator(that.iterator)
+      val thatIterator @ ArrayIterator(elems2, len2) = fromIterator(that.iterator)
       if (len == 0) thatIterator
       else if (len2 == 0) this
       else {

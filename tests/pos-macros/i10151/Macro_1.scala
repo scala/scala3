@@ -22,7 +22,7 @@ object X:
  }
 
  def processImpl[T:Type](f:Expr[T])(using Quotes):Expr[CB[T]] =
-   import qctx.reflect._
+   import quotes.reflect._
 
    def transform(term:Term):Term =
      term match
@@ -60,7 +60,7 @@ object X:
         case l@Literal(x) =>
            l.asExpr match
              case '{ $l: lit } =>
-                Term.of('{ CBM.pure(${term.asExprOf[lit]}) })
+                '{ CBM.pure(${term.asExprOf[lit]}) }.asTerm
         case other =>
              throw RuntimeException(s"Not supported $other")
 
@@ -89,5 +89,5 @@ object X:
          }
          changes.transformTerm(body)(Symbol.spliceOwner)
 
-   val r = transform(Term.of(f)).asExprOf[CB[T]]
+   val r = transform(f.asTerm).asExprOf[CB[T]]
    r

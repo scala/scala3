@@ -114,11 +114,11 @@ class DocASTPhase extends Phase {
       case c @ TypeDef(n, rhs) if c.symbol.isClass =>
         //TODO: should not `collectMember` from `rhs` - instead: get from symbol, will get inherited members as well
         val parameters = (c.symbol, annotations(c.symbol), n.show, collectMembers(rhs), flags(c), path(c.symbol), typeParams(c.symbol), constructors(c.symbol), superTypes(c), None, Nil, None)
-        if (c.symbol.is(Flags.CaseClass)) {
-          CaseClassImpl.tupled(parameters) :: Nil
-        } else {
-          ClassImpl.tupled(parameters) :: Nil
-        }
+        val constr =
+          if (c.symbol.is(Flags.CaseClass)) CaseClassImpl.apply
+          else ClassImpl.apply
+
+        constr.tupled(parameters) :: Nil
 
       /** def */
       case d: DefDef =>

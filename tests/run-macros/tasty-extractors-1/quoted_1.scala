@@ -6,11 +6,11 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val tree = Term.of(x)
-    val treeStr = Expr(tree.showExtractors)
-    val treeTpeStr = Expr(tree.tpe.showExtractors)
+    val tree = x.asTerm
+    val treeStr = Expr(tree.show(using Printer.TreeStructure))
+    val treeTpeStr = Expr(tree.tpe.show(using Printer.TypeReprStructure))
 
     '{
       println(${treeStr})

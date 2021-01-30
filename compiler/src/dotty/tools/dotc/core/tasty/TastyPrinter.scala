@@ -139,14 +139,29 @@ class TastyPrinter(bytes: Array[Byte]) {
     private val sb: StringBuilder = new StringBuilder
 
     def unpickle(reader: TastyReader, tastyName: NameTable): String = {
+      val posUnpickler = new PositionUnpickler(reader, tastyName)
       sb.append(s" ${reader.endAddr.index - reader.currentAddr.index}")
-      val spans = new PositionUnpickler(reader, tastyName).spans
-      sb.append(s" position bytes:\n")
+      sb.append(" position bytes:\n")
+      val lineSizes = posUnpickler.lineSizes
+      sb.append(s"   lines: ${lineSizes.length}\n")
+      sb.append(posUnpickler.lineSizes.mkString("   line sizes: ", ", ", "\n"))
+      sb.append("   positions:\n")
+      val spans = posUnpickler.spans
       val sorted = spans.toSeq.sortBy(_._1.index)
       for ((addr, pos) <- sorted) {
         sb.append(treeStr("%10d".format(addr.index)))
         sb.append(s": ${offsetToInt(pos.start)} .. ${pos.end}\n")
       }
+
+      val sources = posUnpickler.sourcePaths
+      sb.append(s"\n source paths:\n")
+      val sortedPath = sources.toSeq.sortBy(_._1.index)
+      for ((addr, path) <- sortedPath) {
+        sb.append(treeStr("%10d: ".format(addr.index)))
+        sb.append(path)
+        sb.append("\n")
+      }
+
       sb.result
     }
   }

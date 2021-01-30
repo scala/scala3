@@ -1,8 +1,8 @@
 package example
 
-import scala.annotation.meta.param/*->scala::annotation::meta::param.*/
-import scala.language/*->scalaShadowing::language.*/.existentials/*->scalaShadowing::language.existentials.*/
-import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
+import scala.annotation.meta.param/*->scala::annotation::meta::param#*/
+import scala.language/*->scala::language.*/.existentials/*->scala::language.existentials.*/
+import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
 import types.Test/*->types::Test.*/._
 
 class InstrumentTyper/*<-example::InstrumentTyper#*/ { self/*<-local0*/: AnyRef/*->scala::AnyRef#*/ =>

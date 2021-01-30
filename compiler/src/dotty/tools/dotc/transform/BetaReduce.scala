@@ -69,7 +69,7 @@ object BetaReduce:
   /** Beta-reduces a call to `ddef` with arguments `argSyms` */
   def apply(ddef: DefDef, args: List[Tree])(using Context) =
     val bindings = List.newBuilder[ValDef]
-    val vparams = ddef.vparamss.iterator.flatten.toList
+    val vparams = ddef.termParamss.iterator.flatten.toList
     assert(args.hasSameLengthAs(vparams))
     val argSyms =
       for (arg, param) <- args.zip(vparams) yield

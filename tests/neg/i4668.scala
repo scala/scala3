@@ -8,4 +8,4 @@ trait Functor[F[_]] { def map[A,B](x: F[A])(f: A => B): F[B] }
 object Functor { implicit object listFun extends Functor[List] { def map[A,B](ls: List[A])(f: A => B) = ls.map(f) } }
 
 val map: (A:Type,B:Type,F:Type1) ?=>  (Functor[F.T]) ?=> (F.T[A.T]) => (A.T => B.T) => F.T[B.T] =
-  (using fun) => (using x) => f => fun.map(x)(f) // error
+  fun ?=> x => f => fun.map(x)(f) // error

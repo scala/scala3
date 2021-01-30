@@ -7,6 +7,6 @@ object macros {
 
   def mcrImpl(body: Expr[Any])(using ctx: Quotes) : Expr[Any] = {
     import ctx.reflect._
-    Term.of(body) match { case Block(_, _) => '{2} }
+    body.asTerm match { case Block(_, _) => '{2} }
   }
 }

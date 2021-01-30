@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.NameKinds._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
+import dotty.tools.dotc.typer.ConstFold
 
 /**
   * MiniPhase to transform s and raw string interpolators from using StringContext to string
@@ -152,16 +153,28 @@ class StringInterpolatorOpt extends MiniPhase {
           val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
 
           val process = tpd.Lambda(stringToString, args =>
-            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToArgs(args))
+            if (isRaw) args.head else ref(defn.StringContextModule_processEscapes).appliedToTermArgs(args))
 
           evalOnce(pre) { sc =>
             val parts = sc.select(defn.StringContext_parts)
 
             ref(defn.StringContextModule_standardInterpolator)
-              .appliedToArgs(List(process, args, parts))
+              .appliedToTermArgs(List(process, args, parts))
           }
       }
     else
-      tree
+      tree.tpe match
+        case _: ConstantType => tree
+        case _ =>
+          ConstFold.Apply(tree).tpe match
+            case ConstantType(x) => Literal(x).withSpan(tree.span).ensureConforms(tree.tpe)
+            case _ => tree
   }
+
+  override def transformSelect(tree: Select)(using Context): Tree = {
+    ConstFold.Select(tree).tpe match
+      case ConstantType(x) => Literal(x).withSpan(tree.span).ensureConforms(tree.tpe)
+      case _ => tree
+  }
+
 }

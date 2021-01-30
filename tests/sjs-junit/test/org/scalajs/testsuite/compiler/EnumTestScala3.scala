@@ -143,19 +143,19 @@ class EnumTestScala3:
 
 object EnumTestScala3:
 
-  enum Color1 derives Eql:
+  enum Color1 derives CanEqual:
     case Red, Green, Blue
 
-  enum Color2 extends java.lang.Enum[Color2] derives Eql:
+  enum Color2 extends java.lang.Enum[Color2] derives CanEqual:
     case Red, Green, Blue
 
   // test "non-simple" cases with anonymous subclasses
-  enum Currency1(val dollarValue: Double) derives Eql:
+  enum Currency1(val dollarValue: Double) derives CanEqual:
     case Dollar    extends Currency1(1.0)
     case SwissFanc extends Currency1(1.09)
     case Euro      extends Currency1(1.18)
 
-  enum Currency2(val dollarValue: Double) extends java.lang.Enum[Currency2] derives Eql:
+  enum Currency2(val dollarValue: Double) extends java.lang.Enum[Currency2] derives CanEqual:
     case Dollar    extends Currency2(1.0)
     case SwissFanc extends Currency2(1.09)
     case Euro      extends Currency2(1.18)

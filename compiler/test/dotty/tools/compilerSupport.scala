@@ -18,7 +18,7 @@ import dotc.core.Comments.{ContextDoc, ContextDocstrings}
  *  issues involving retrieving symbols defined in a previous run.
  */
 def inCompilerContext[T](classpath: String, separateRun: Boolean = true, scalaSources: String*)(op: Context ?=> T): T =
-  val compiler = Compiler()
+  val compiler = new Compiler()
   val rootCtx = initCtx(classpath)
   val firstRun = compiler.newRun(using rootCtx)
   firstRun.compileFromStrings(scalaSources.toList)

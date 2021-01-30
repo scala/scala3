@@ -24,13 +24,13 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   def phaseName: String = "genericTuples"
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree =
-    if (!tree.symbol.exists || tree.symbol.owner != defn.RuntimeTupleModuleClass) tree
-    else if (tree.symbol == defn.RuntimeTuple_cons) transformTupleCons(tree)
-    else if (tree.symbol == defn.RuntimeTuple_tail) transformTupleTail(tree)
-    else if (tree.symbol == defn.RuntimeTuple_size) transformTupleSize(tree)
-    else if (tree.symbol == defn.RuntimeTuple_concat) transformTupleConcat(tree)
-    else if (tree.symbol == defn.RuntimeTuple_apply) transformTupleApply(tree)
-    else if (tree.symbol == defn.RuntimeTuple_toArray) transformTupleToArray(tree)
+    if (!tree.symbol.exists || tree.symbol.owner != defn.RuntimeTuplesModuleClass) tree
+    else if (tree.symbol == defn.RuntimeTuples_cons) transformTupleCons(tree)
+    else if (tree.symbol == defn.RuntimeTuples_tail) transformTupleTail(tree)
+    else if (tree.symbol == defn.RuntimeTuples_size) transformTupleSize(tree)
+    else if (tree.symbol == defn.RuntimeTuples_concat) transformTupleConcat(tree)
+    else if (tree.symbol == defn.RuntimeTuples_apply) transformTupleApply(tree)
+    else if (tree.symbol == defn.RuntimeTuples_toArray) transformTupleToArray(tree)
     else tree
 
   private def transformTupleCons(tree: tpd.Apply)(using Context): Tree = {
@@ -49,14 +49,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         else {
           // val it = Iterator.single(head) ++ tail.asInstanceOf[Product].productIterator
           // TupleN+1(it.next(), ..., it.next())
-          val fullIterator = ref(defn.RuntimeTuple_consIterator).appliedToArgs(head :: tail :: Nil)
+          val fullIterator = ref(defn.RuntimeTuples_consIterator).appliedToTermArgs(head :: tail :: Nil)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(tpes.length, it).asInstance(tree.tpe)
           }
         }
       case _ =>
         // No optimization, keep:
-        // scala.runtime.Tuple.cons(tail, head)
+        // scala.runtime.Tuples.cons(tail, head)
         tree
     }
   }
@@ -93,7 +93,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           tup.asInstance(defn.TupleXXLClass.typeRef).select("tailXXL".toTermName)
       case None =>
         // No optimization, keep:
-        // scala.runtime.Tuple.tail(tup)
+        // scala.runtime.Tuples.tail(tup)
         tree
     }
   }
@@ -127,14 +127,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         else {
           // val it = self.asInstanceOf[Product].productIterator ++ that.asInstanceOf[Product].productIterator
           // TupleN+M(it.next(), ..., it.next())
-          val fullIterator = ref(defn.RuntimeTuple_concatIterator).appliedToArgs(tree.args)
+          val fullIterator = ref(defn.RuntimeTuples_concatIterator).appliedToTermArgs(tree.args)
           evalOnce(fullIterator) { it =>
             knownTupleFromIterator(n + m, it).asInstance(tree.tpe)
           }
         }
       case _ =>
         // No optimization, keep:
-        // scala.runtime.Tuple.cons(self, that)
+        // scala.runtime.Tuples.cons(self, that)
         tree
     }
   }
@@ -161,7 +161,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         tree
       case _ =>
         // No optimization, keep:
-        // scala.runtime.Tuple.apply(tup, n)
+        // scala.runtime.Tuples.apply(tup, n)
         tree
     }
   }
@@ -175,14 +175,14 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // Array.emptyObjectArray
           ref(defn.ArrayModule).select("emptyObjectArray".toTermName).ensureApplied
         else if (size <= MaxTupleArity)
-          // scala.runtime.Tuple.productToArray(tup.asInstanceOf[Product])
-          ref(defn.RuntimeTuple_productToArray).appliedTo(tup.asInstance(defn.ProductClass.typeRef))
+          // scala.runtime.Tuples.productToArray(tup.asInstanceOf[Product])
+          ref(defn.RuntimeTuples_productToArray).appliedTo(tup.asInstance(defn.ProductClass.typeRef))
         else
           // tup.asInstanceOf[TupleXXL].elems.clone()
           tup.asInstance(defn.TupleXXLClass.typeRef).select(nme.toArray)
       case None =>
         // No optimization, keep:
-        // scala.runtime.Tuple.toArray(tup)
+        // scala.runtime.Tuples.toArray(tup)
         tree
     }
   }
@@ -192,7 +192,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).classSymbol.companionModule
-    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToArgs(elements)
+    ref(tupleModule).select(nme.apply).appliedToTypes(tpes).appliedToTermArgs(elements)
   }
 
   private def knownTupleFromIterator(size: Int, it: Tree)(using Context): Tree =

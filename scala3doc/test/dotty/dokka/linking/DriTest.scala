@@ -1,8 +1,8 @@
-package dotty.dokka.linking
+package dotty.dokka
+package linking
 
 import scala.jdk.CollectionConverters._
 import scala.Function.const
-import org.jetbrains.dokka.links.DRI
 import org.jetbrains.dokka.model.DModule
 import dotty.dokka.model.api._
 import dotty.dokka.{ScaladocTest, Assertion}
@@ -29,4 +29,4 @@ abstract class DriTest(testName: String) extends ScaladocTest(testName):
 extension (m: DModule) private def collectMembers = m.getPackages.asScala.toList.flatMap(collectFrom)
 
 private def collectFrom(m: Member): Seq[Member] =
-  m +: m.allMembers.filter(_.origin == Origin.DefinedWithin).flatMap(collectFrom)
+  m +: m.allMembers.filter(_.origin == Origin.RegularlyDefined).flatMap(collectFrom)

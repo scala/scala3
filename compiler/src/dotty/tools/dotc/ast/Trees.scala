@@ -382,6 +382,11 @@ object Trees {
     def rhs(using Context): Tree[T] = forceIfLazy
   }
 
+  trait ValOrTypeDef[-T >: Untyped] extends MemberDef[T]:
+    type ThisTree[-T >: Untyped] <: ValOrTypeDef[T]
+
+  type ParamClause[T >: Untyped] = List[ValDef[T]] | List[TypeDef[T]]
+
   // ----------- Tree case classes ------------------------------------
 
   /** name */
@@ -743,7 +748,7 @@ object Trees {
 
   /** mods val name: tpt = rhs */
   case class ValDef[-T >: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
-    extends ValOrDefDef[T] {
+    extends ValOrDefDef[T], ValOrTypeDef[T] {
     type ThisTree[-T >: Untyped] = ValDef[T]
     assert(isEmpty || tpt != genericEmptyTree)
     def unforced: LazyTree[T] = preRhs
@@ -751,13 +756,25 @@ object Trees {
   }
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
-  case class DefDef[-T >: Untyped] private[ast] (name: TermName, tparams: List[TypeDef[T]],
-      vparamss: List[List[ValDef[T]]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
+  case class DefDef[-T >: Untyped] private[ast] (name: TermName,
+      paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T @uncheckedVariance])(implicit @constructorOnly src: SourceFile)
     extends ValOrDefDef[T] {
     type ThisTree[-T >: Untyped] = DefDef[T]
     assert(tpt != genericEmptyTree)
     def unforced: LazyTree[T] = preRhs
     protected def force(x: Tree[T @uncheckedVariance]): Unit = preRhs = x
+
+    def leadingTypeParams(using Context): List[TypeDef[T]] = paramss match
+      case (tparams @ (tparam: TypeDef[_]) :: _) :: _ => tparams.asInstanceOf[List[TypeDef[T]]]
+      case _ => Nil
+
+    def trailingParamss(using Context): List[ParamClause[T]] = paramss match
+      case ((tparam: TypeDef[_]) :: _) :: paramss1 => paramss1
+      case _ => paramss
+
+    def termParamss(using Context): List[List[ValDef[T]]] =
+      (if ctx.erasedTypes then paramss else untpd.termParamssIn(paramss))
+        .asInstanceOf[List[List[ValDef[T]]]]
   }
 
   /** mods class name template     or
@@ -767,7 +784,7 @@ object Trees {
    *  mods type name >: lo <: hi = rhs     if rhs = TypeBoundsTree(lo, hi, alias) and opaque in mods
    */
   case class TypeDef[-T >: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends MemberDef[T] {
+    extends MemberDef[T], ValOrTypeDef[T] {
     type ThisTree[-T >: Untyped] = TypeDef[T]
 
     /** Is this a definition of a class? */
@@ -794,13 +811,29 @@ object Trees {
   }
 
 
+  abstract class ImportOrExport[-T >: Untyped](implicit @constructorOnly src: SourceFile)
+    extends DenotingTree[T] {
+    type ThisTree[-T >: Untyped] <: ImportOrExport[T]
+    val expr: Tree[T]
+    val selectors: List[untpd.ImportSelector]
+  }
+
   /** import expr.selectors
    *  where a selector is either an untyped `Ident`, `name` or
    *  an untyped thicket consisting of `name` and `rename`.
    */
   case class Import[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
-    extends DenotingTree[T] {
+    extends ImportOrExport[T] {
     type ThisTree[-T >: Untyped] = Import[T]
+  }
+
+  /** export expr.selectors
+   *  where a selector is either an untyped `Ident`, `name` or
+   *  an untyped thicket consisting of `name` and `rename`.
+   */
+  case class Export[-T >: Untyped] private[ast] (expr: Tree[T], selectors: List[untpd.ImportSelector])(implicit @constructorOnly src: SourceFile)
+    extends ImportOrExport[T] {
+      type ThisTree[-T >: Untyped] = Export[T]
   }
 
   /** package pid { stats } */
@@ -943,8 +976,10 @@ object Trees {
     type NamedDefTree = Trees.NamedDefTree[T]
     type MemberDef = Trees.MemberDef[T]
     type ValOrDefDef = Trees.ValOrDefDef[T]
+    type ValOrTypeDef = Trees.ValOrTypeDef[T]
     type LazyTree = Trees.LazyTree[T]
     type LazyTreeList = Trees.LazyTreeList[T]
+    type ParamClause = Trees.ParamClause[T]
 
     type Ident = Trees.Ident[T]
     type SearchFailureIdent = Trees.SearchFailureIdent[T]
@@ -954,6 +989,7 @@ object Trees {
     type Super = Trees.Super[T]
     type Apply = Trees.Apply[T]
     type TypeApply = Trees.TypeApply[T]
+    type GenericApply = Trees.GenericApply[T]
     type Literal = Trees.Literal[T]
     type New = Trees.New[T]
     type Typed = Trees.Typed[T]
@@ -990,19 +1026,22 @@ object Trees {
     type TypeDef = Trees.TypeDef[T]
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
+    type Export = Trees.Export[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
     type Thicket = Trees.Thicket[T]
 
     @sharable val EmptyTree: Thicket = genericEmptyTree
     @sharable val EmptyValDef: ValDef = genericEmptyValDef
-    @sharable val ContextualEmptyTree: Thicket = EmptyTree() // an empty tree marking a contextual closure
+    @sharable val ContextualEmptyTree: Thicket = new EmptyTree() // an empty tree marking a contextual closure
 
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: Nil)
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 :: x2 :: Nil)
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 :: x2 :: x3 :: Nil)
+    def Thicket(xs: List[Tree])(implicit src: SourceFile) = new Thicket(xs)
+
     def flatTree(xs: List[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
       case x :: Nil => x
       case ys => Thicket(ys)
@@ -1184,9 +1223,9 @@ object Trees {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
         case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(sourceFile(tree)))
       }
-      def DefDef(tree: Tree)(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
-        case tree: DefDef if (name == tree.name) && (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
-        case _ => finalize(tree, untpd.DefDef(name, tparams, vparamss, tpt, rhs)(sourceFile(tree)))
+      def DefDef(tree: Tree)(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
+        case tree: DefDef if (name == tree.name) && (paramss eq tree.paramss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
+        case _ => finalize(tree, untpd.DefDef(name, paramss, tpt, rhs)(sourceFile(tree)))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(using Context): TypeDef = tree match {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
@@ -1199,6 +1238,10 @@ object Trees {
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import = tree match {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
         case _ => finalize(tree, untpd.Import(expr, selectors)(sourceFile(tree)))
+      }
+      def Export(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Export = tree match {
+        case tree: Export if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
+        case _ => finalize(tree, untpd.Export(expr, selectors)(sourceFile(tree)))
       }
       def PackageDef(tree: Tree)(pid: RefTree, stats: List[Tree])(using Context): PackageDef = tree match {
         case tree: PackageDef if (pid eq tree.pid) && (stats eq tree.stats) => tree
@@ -1227,8 +1270,8 @@ object Trees {
         UnApply(tree: Tree)(fun, implicits, patterns)
       def ValDef(tree: ValDef)(name: TermName = tree.name, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): ValDef =
         ValDef(tree: Tree)(name, tpt, rhs)
-      def DefDef(tree: DefDef)(name: TermName = tree.name, tparams: List[TypeDef] = tree.tparams, vparamss: List[List[ValDef]] = tree.vparamss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
-        DefDef(tree: Tree)(name, tparams, vparamss, tpt, rhs)
+      def DefDef(tree: DefDef)(name: TermName = tree.name, paramss: List[ParamClause] = tree.paramss, tpt: Tree = tree.tpt, rhs: LazyTree = tree.unforcedRhs)(using Context): DefDef =
+        DefDef(tree: Tree)(name, paramss, tpt, rhs)
       def TypeDef(tree: TypeDef)(name: TypeName = tree.name, rhs: Tree = tree.rhs)(using Context): TypeDef =
         TypeDef(tree: Tree)(name, rhs)
       def Template(tree: Template)(constr: DefDef = tree.constr, parents: List[Tree] = tree.parents, derived: List[untpd.Tree] = tree.derived, self: ValDef = tree.self, body: LazyTreeList = tree.unforcedBody)(using Context): Template =
@@ -1338,9 +1381,9 @@ object Trees {
                 val rhs1 = transform(tree.rhs)
                 cpy.ValDef(tree)(name, tpt1, rhs1)
               }
-            case tree @ DefDef(name, tparams, vparamss, tpt, _) =>
+            case tree @ DefDef(name, paramss, tpt, _) =>
               inContext(localCtx) {
-                cpy.DefDef(tree)(name, transformSub(tparams), vparamss mapConserve (transformSub(_)), transform(tpt), transform(tree.rhs))
+                cpy.DefDef(tree)(name, transformParamss(paramss), transform(tpt), transform(tree.rhs))
               }
             case tree @ TypeDef(name, rhs) =>
               inContext(localCtx) {
@@ -1350,6 +1393,8 @@ object Trees {
               cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
+            case Export(expr, selectors) =>
+              cpy.Export(tree)(transform(expr), selectors)
             case PackageDef(pid, stats) =>
               cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(using localCtx))
             case Annotated(arg, annot) =>
@@ -1371,6 +1416,10 @@ object Trees {
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
+      def transformParams(params: ParamClause)(using Context): ParamClause =
+        transform(params).asInstanceOf[ParamClause]
+      def transformParamss(paramss: List[ParamClause])(using Context): List[ParamClause] =
+        paramss.mapConserve(transformParams)
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
         assert(ctx.reporter.errorsReported)
@@ -1472,9 +1521,9 @@ object Trees {
               inContext(localCtx) {
                 this(this(x, tpt), tree.rhs)
               }
-            case tree @ DefDef(_, tparams, vparamss, tpt, _) =>
+            case tree @ DefDef(_, paramss, tpt, _) =>
               inContext(localCtx) {
-                this(this(vparamss.foldLeft(this(x, tparams))(apply), tpt), tree.rhs)
+                this(this(paramss.foldLeft(x)(apply), tpt), tree.rhs)
               }
             case TypeDef(_, rhs) =>
               inContext(localCtx) {
@@ -1483,6 +1532,8 @@ object Trees {
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
               this(this(this(this(x, constr), parents), self), tree.body)
             case Import(expr, _) =>
+              this(x, expr)
+            case Export(expr, _) =>
               this(x, expr)
             case PackageDef(pid, stats) =>
               this(this(x, pid), stats)(using localCtx)
@@ -1540,6 +1591,47 @@ object Trees {
       }
     }.asInstanceOf[tree.ThisTree[T]]
 
+    object TypeDefs:
+      def unapply(xs: List[Tree]): Option[List[TypeDef]] = xs match
+        case (x: TypeDef) :: _ => Some(xs.asInstanceOf[List[TypeDef]])
+        case _ => None
+
+    object ValDefs:
+      def unapply(xs: List[Tree]): Option[List[ValDef]] = xs match
+        case Nil => Some(Nil)
+        case (x: ValDef) :: _ => Some(xs.asInstanceOf[List[ValDef]])
+        case _ => None
+
+    def termParamssIn(paramss: List[ParamClause]): List[List[ValDef]] = paramss match
+      case ValDefs(vparams) :: paramss1 =>
+        val paramss2 = termParamssIn(paramss1)
+        if paramss2 eq paramss1 then paramss.asInstanceOf[List[List[ValDef]]]
+        else vparams :: paramss2
+      case _ :: paramss1 =>
+        termParamssIn(paramss1)
+      case nil =>
+        Nil
+
+    /** If `tparams` is non-empty, add it to the left `paramss`, merging
+     *  it with a leading type parameter list of `paramss`, if one exists.
+     */
+    def joinParams(tparams: List[TypeDef], paramss: List[ParamClause]): List[ParamClause] =
+      if tparams.isEmpty then paramss
+      else paramss match
+        case TypeDefs(tparams1) :: paramss1 => (tparams ++ tparams1) :: paramss1
+        case _ => tparams :: paramss
+
+    def isTermOnly(paramss: List[ParamClause]): Boolean = paramss match
+      case Nil => true
+      case params :: paramss1 =>
+        params match
+          case (param: untpd.TypeDef) :: _ => false
+          case _ => isTermOnly(paramss1)
+
+    def asTermOnly(paramss: List[ParamClause]): List[List[ValDef]] =
+      assert(isTermOnly(paramss))
+      paramss.asInstanceOf[List[List[ValDef]]]
+
     /** Delegate to FunProto or FunProtoTyped depending on whether the prefix is `untpd` or `tpd`. */
     protected def FunProto(args: List[Tree], resType: Type)(using Context): ProtoTypes.FunProto
 
@@ -1553,7 +1645,7 @@ object Trees {
     def applyOverloaded(
         receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
-      given ctx as Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
+      given ctx: Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
       import dotty.tools.dotc.ast.tpd.TreeOps
 
       val typer = ctx.typer

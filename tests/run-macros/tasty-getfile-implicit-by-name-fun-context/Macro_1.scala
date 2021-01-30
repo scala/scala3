@@ -8,6 +8,7 @@ object SourceFiles {
     ${getThisFileImpl}
 
   def getThisFileImpl: Macro[String] =
-    Expr(qctx.reflect.Source.path.getFileName.toString)
+    val q = quotes // Quotes is ByName and hence not stable (q stabilizes it)
+    Expr(q.reflect.SourceFile.current.jpath.getFileName.toString)
 
 }

@@ -1,0 +1,41 @@
+-- [E008] Not Found Error: tests/neg/i10901.scala:45:38 ----------------------------------------------------------------
+45 |    val pos1: Point2D[Int,Double] = x º y       // error
+   |                                    ^^^
+   |       value º is not a member of object BugExp4Point2D.IntT.
+   |       An extension method was tried, but could not be fully constructed:
+   |
+   |           º(x)    failed with
+   |
+   |               Ambiguous overload. The overloaded alternatives of method º in object dsl with types
+   |                [T1, T2]
+   |                 (x: BugExp4Point2D.ColumnType[T1])
+   |                   (y: BugExp4Point2D.ColumnType[T2])
+   |                     (implicit evidence$7: Numeric[T1], evidence$8: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |                [T1, T2]
+   |                 (x: T1)
+   |                   (y: BugExp4Point2D.ColumnType[T2])
+   |                     (implicit evidence$5: Numeric[T1], evidence$6: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |               both match arguments ((x : BugExp4Point2D.IntT.type))
+-- [E008] Not Found Error: tests/neg/i10901.scala:48:38 ----------------------------------------------------------------
+48 |    val pos4: Point2D[Int,Double] = x º 201.1   // error
+   |                                    ^^^
+   |value º is not a member of object BugExp4Point2D.IntT.
+   |An extension method was tried, but could not be fully constructed:
+   |
+   |    º(x)    failed with
+   |
+   |        Ambiguous overload. The overloaded alternatives of method º in object dsl with types
+   |         [T1, T2]
+   |          (x: BugExp4Point2D.ColumnType[T1])
+   |            (y: T2)(implicit evidence$9: Numeric[T1], evidence$10: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |         [T1, T2](x: T1)(y: T2)(implicit evidence$3: Numeric[T1], evidence$4: Numeric[T2]): BugExp4Point2D.Point2D[T1, T2]
+   |        both match arguments ((x : BugExp4Point2D.IntT.type))
+-- [E008] Not Found Error: tests/neg/i10901.scala:62:16 ----------------------------------------------------------------
+62 |  val y = "abc".foo  // error
+   |          ^^^^^^^^^
+   |          value foo is not a member of String.
+   |          An extension method was tried, but could not be fully constructed:
+   |
+   |              Test.foo("abc")(/* missing */summon[C])    failed with
+   |
+   |                  no implicit argument of type C was found for parameter x$2 of method foo in object Test

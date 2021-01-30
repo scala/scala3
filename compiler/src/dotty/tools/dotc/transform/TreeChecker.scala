@@ -63,7 +63,7 @@ class TreeChecker extends Phase with SymTransformer {
     }
 
     if (prev.exists)
-      assert(cur.exists, i"companion disappeared from $symd")
+      assert(cur.exists || prev.is(ConstructorProxy), i"companion disappeared from $symd")
   }
 
   def transformSym(symd: SymDenotation)(using Context): SymDenotation = {
@@ -443,41 +443,41 @@ class TreeChecker extends Phase with SymTransformer {
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      val symbolsNotDefined = decls -- defined - constr.symbol
+      def isAllowed(sym: Symbol): Boolean =
+        sym.is(ConstructorProxy) && !ctx.phase.erasedTypes
+
+      val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
 
       assert(symbolsNotDefined.isEmpty,
-          i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
-          i"expected: ${decls.toList}%, %\n" +
-          i"defined: ${defined}%, %")
+        i" $cls tree does not define members: ${symbolsNotDefined.toList}%, %\n" +
+        i"expected: ${decls.toList}%, %\n" +
+        i"defined: ${defined}%, %")
 
       super.typedClassDef(cdef, cls)
     }
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
-      def defParamss =
-        (ddef.tparams :: ddef.vparamss).filter(!_.isEmpty).map(_.map(_.symbol))
+      def defParamss = ddef.paramss.filter(!_.isEmpty).nestedMap(_.symbol)
       def layout(symss: List[List[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
       assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")
-      withDefinedSyms(ddef.tparams) {
-        withDefinedSyms(ddef.vparamss.flatten) {
-          if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
-            assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
+      withDefinedSyms(ddef.paramss.flatten) {
+        if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
+          assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
-          ddef.vparamss.foreach(_.foreach { vparam =>
-            assert(vparam.symbol.is(Param),
-              s"Parameter ${vparam.symbol} of ${sym.fullName} does not have flag `Param` set")
-            assert(!vparam.symbol.isOneOf(AccessFlags),
-              s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${(vparam.symbol.flags & AccessFlags).flagsString}")
-          })
+        ddef.termParamss.foreach(_.foreach { vparam =>
+          assert(vparam.symbol.is(Param),
+            s"Parameter ${vparam.symbol} of ${sym.fullName} does not have flag `Param` set")
+          assert(!vparam.symbol.isOneOf(AccessFlags),
+            s"Parameter ${vparam.symbol} of ${sym.fullName} has invalid flag(s): ${(vparam.symbol.flags & AccessFlags).flagsString}")
+        })
 
-          val tpdTree = super.typedDefDef(ddef, sym)
-          assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
-          tpdTree
-        }
+        val tpdTree = super.typedDefDef(ddef, sym)
+        assert(isMethodType(sym.info), i"wrong type, expect a method type for ${sym.fullName}, but found: ${sym.info}")
+        tpdTree
       }
 
     override def typedCase(tree: untpd.CaseDef, sel: Tree, selType: Type, pt: Type)(using Context): CaseDef =
@@ -539,6 +539,12 @@ class TreeChecker extends Phase with SymTransformer {
       assert((tree.cond ne EmptyTree) || ctx.phase.refChecked, i"invalid empty condition in while at $tree")
       super.typedWhileDo(tree)
     }
+
+    override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
+      if tree.symbol == defn.StdLibPatchesPackage then
+        promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
+      else
+        super.typedPackageDef(tree)
 
     override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
       tree

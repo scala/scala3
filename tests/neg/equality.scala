@@ -10,16 +10,16 @@ object equality {
   case class Some[+T](x: T) extends Option[T]
   case object None extends Option[Nothing]
 
-  implicit def eqStr: Eql[Str, Str] = Eql.derived
-  implicit def eqNum: Eql[Num, Num] = Eql.derived
-  implicit def eqOption[T, U](implicit e: Eql[T, U]): Eql[Option[T], Option[U]] = Eql.derived
+  implicit def eqStr: CanEqual[Str, Str] = CanEqual.derived
+  implicit def eqNum: CanEqual[Num, Num] = CanEqual.derived
+  implicit def eqOption[T, U](implicit e: CanEqual[T, U]): CanEqual[Option[T], Option[U]] = CanEqual.derived
 
 /*
-  implicit def eqString: Eql[String, String] = Eql.derived
-  implicit def eqInt: Eql[Int, Int] = Eql.derived
-  implicit def eqNumber: Eql[Number, Number] = Eql.derived
-  implicit def eqIntNumber: Eql[Int, Number] = Eql.derived
-  implicit def eqNumberInt: Eql[Number, Int] = Eql.derived
+  implicit def eqString: CanEqual[String, String] = CanEqual.derived
+  implicit def eqInt: CanEqual[Int, Int] = CanEqual.derived
+  implicit def eqNumber: CanEqual[Number, Number] = CanEqual.derived
+  implicit def eqIntNumber: CanEqual[Int, Number] = CanEqual.derived
+  implicit def eqNumberInt: CanEqual[Number, Int] = CanEqual.derived
 */
   def main(args: Array[String]): Unit = {
     Some(Other(3)) == None
@@ -60,7 +60,7 @@ object equality {
     1 == null    // error
 
 
-    class Fruit derives Eql
+    class Fruit derives CanEqual
 
     class Apple extends Fruit
     class Pear extends Fruit

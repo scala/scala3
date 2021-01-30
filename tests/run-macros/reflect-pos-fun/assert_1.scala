@@ -5,16 +5,16 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
   def assertImpl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
-    Term.of(cond).underlyingArgument match {
+    cond.asTerm.underlyingArgument match {
       case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>
         ValDef.let(Symbol.spliceOwner, lhs) { left =>
           ValDef.let(Symbol.spliceOwner, rhs) { rs =>
             val app = Select.overloaded(left, op, targs.map(_.tpe), rs)
             val b = app.asExprOf[Boolean]
-            Term.of('{ scala.Predef.assert($b) })
+            '{ scala.Predef.assert($b) }.asTerm
           }
         }.asExprOf[Unit]
     }

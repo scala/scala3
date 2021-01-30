@@ -2,11 +2,11 @@ package hello
 
 // Import `Expr` and some extension methods
 import scala.quoted._
-import scala.quoted.staging.{run, Toolbox}
+import scala.quoted.staging.{run, Compiler}
 
 object Main {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
 

@@ -7,7 +7,7 @@ title: "Macros Spec"
 
 ### Syntax
 
-Compared to the [Dotty reference grammar](../../internals/syntax.md)
+Compared to the [Scala 3 reference grammar](../syntax.md)
 there are the following syntax changes:
 ```
 SimpleExpr      ::=  ...
@@ -41,7 +41,7 @@ are, after splices nested in the quotes are expanded.
 
 If the outermost scope is a quote, we need to generate code that
 constructs the quoted tree at run-time. We implement this by
-serializing the tree as a Tasty structure, which is stored
+serializing the tree as a TASTy structure, which is stored
 in a string literal. At runtime, an unpickler method is called to
 deserialize the string into a tree.
 
@@ -156,7 +156,7 @@ environments and terms.
                        ----------------
                        Es |- 't: expr T
 ```
-The meta theory of a slightly simplified variant 2-stage variant of this calculus
+The meta theory of a slightly simplified 2-stage variant of this calculus
 is studied [separately](./simple-smp.md).
 
 ## Going Further
@@ -166,44 +166,53 @@ in that it does not allow for the inspection of quoted expressions and
 types. It’s possible to work around this by providing all necessary
 information as normal, unquoted inline parameters. But we would gain
 more flexibility by allowing for the inspection of quoted code with
-pattern matching. This opens new possibilities. For instance, here is a
-version of `power` that generates the multiplications directly if the
-exponent is statically known and falls back to the dynamic
-implementation of power otherwise.
-```scala
-inline def power(n: Int, x: Double): Double = ${
-  'n match {
-    case Constant(n1) => powerCode(n1, 'x)
-    case _ => '{ dynamicPower(n, x) }
-  }
-}
+pattern matching. This opens new possibilities.
 
-private def dynamicPower(n: Int, x: Double): Double =
-  if (n == 0) 1.0
-  else if (n % 2 == 0) dynamicPower(n / 2, x * x)
-  else x * dynamicPower(n - 1, x)
+For instance, here is a version of `power` that generates the multiplications
+directly if the exponent is statically known and falls back to the dynamic
+implementation of `power` otherwise.
+```scala
+import scala.quoted._
+
+inline def power(x: Double, n: Int): Double =
+   ${ powerExpr('x, 'n) }
+
+private def powerExpr(x: Expr[Double], n: Expr[Int])
+                     (using Quotes): Expr[Double] =
+   n.value match
+      case Some(m) => powerExpr(x, m)
+      case _ => '{ dynamicPower($x, $n) }
+
+private def powerExpr(x: Expr[Double], n: Int)
+                     (using Quotes): Expr[Double] =
+   if n == 0 then '{ 1.0 }
+   else if n == 1 then x
+   else if n % 2 == 0 then '{ val y = $x * $x; ${ powerExpr('y, n / 2) } }
+   else '{ $x * ${ powerExpr(x, n - 1) } }
+
+private def dynamicPower(x: Double, n: Int): Double =
+   if n == 0 then 1.0
+   else if n % 2 == 0 then dynamicPower(x * x, n / 2)
+   else x * dynamicPower(x, n - 1)
 ```
----
-This assumes a `Constant` extractor that maps tree nodes representing
-constants to their values.
+
+In the above, the method `.value` maps a constant expression of the type
+`Expr[T]` to its value of the type `T`.
 
 With the right extractors, the "AsFunction" conversion
 that maps expressions over functions to functions over expressions can
 be implemented in user code:
 ```scala
-given AsFunction1[T, U] as Conversion[Expr[T => U], Expr[T] => Expr[U]] {
-  def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
-   (x: Expr[T]) => f match {
-     case Lambda(g) => g(x)
-     case _ => '{ ($f)($x) }
-   }
-}
+given AsFunction1[T, U]: Conversion[Expr[T => U], Expr[T] => Expr[U]] with
+   def apply(f: Expr[T => U]): Expr[T] => Expr[U] =
+      (x: Expr[T]) => f match
+         case Lambda(g) => g(x)
+         case _ => '{ ($f)($x) }
 ```
 This assumes an extractor
 ```scala
-object Lambda {
-  def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
-}
+object Lambda:
+   def unapply[T, U](x: Expr[T => U]): Option[Expr[T] => Expr[U]]
 ```
 Once we allow inspection of code via extractors, it’s tempting to also
 add constructors that create typed trees directly without going
@@ -217,7 +226,7 @@ This would allow constructing applications from lists of arguments
 without having to match the arguments one-by-one with the
 corresponding formal parameter types of the function. We then need "at
 the end" a method to convert an `Expr[Any]` to an `Expr[T]` where `T` is
-given from the outside. E.g. if `code` yields a `Expr[Any]`, then
+given from the outside. For instance, if `code` yields a `Expr[Any]`, then
 `code.atType[T]` yields an `Expr[T]`. The `atType` method has to be
 implemented as a primitive; it would check that the computed type
 structure of `Expr` is a subtype of the type structure representing

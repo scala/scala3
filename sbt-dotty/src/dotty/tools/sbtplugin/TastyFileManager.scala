@@ -9,15 +9,18 @@ import xsbti.compile.ClassFileManager
 import scala.collection.mutable
 
 
-/** A class file manger that prunes .tasty and .hasTasty as needed.
+/** A class file manger that prunes .tasty as needed.
  *
  *  This makes sure that, when a .class file must be deleted, the
- *  corresponding .tasty or .hasTasty file is also deleted.
+ *  corresponding .tasty file is also deleted.
  *
  *  This code is adapted from Zinc `TransactionalClassFileManager`.
  *  We need to duplicate the logic since forwarding to the default class
  *  file manager doesn't work: we need to backup tasty files in a different
  *  temporary directory as class files.
+ *
+ *  To support older versions of dotty, this also takes care of .hasTasty
+ *  files, although they are not used anymore.
  */
 final class TastyFileManager extends ClassFileManager {
   private[this] var _tempDir: File = null

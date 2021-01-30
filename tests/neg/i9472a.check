@@ -1,0 +1,4 @@
+-- [E161] Naming Error: tests/neg/i9472a/B.scala:3:0 -------------------------------------------------------------------
+3 |object Reproduction // error
+  |^
+  |Reproduction clashes with class Reproduction in tests/neg/i9472a/A.scala; the two must be defined together

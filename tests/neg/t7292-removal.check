@@ -1,0 +1,12 @@
+-- Error: tests/neg/t7292-removal.scala:2:14 ---------------------------------------------------------------------------
+2 |  val chr1 = '\0' // error
+  |              ^
+  |              octal escape literals are unsupported: use \u0000 instead
+-- Error: tests/neg/t7292-removal.scala:3:17 ---------------------------------------------------------------------------
+3 |  val str1 = "abc\123456" // error
+  |                 ^
+  |                 octal escape literals are unsupported: use \u0053 instead
+-- Error: tests/neg/t7292-removal.scala:4:12 ---------------------------------------------------------------------------
+4 |  val lf = '\012' // error
+  |            ^
+  |            octal escape literals are unsupported: use \n instead

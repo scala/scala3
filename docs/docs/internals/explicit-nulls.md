@@ -76,10 +76,9 @@ Within `Types.scala`, we defined some extractors to work with nullable unions:
 `OrNull` and `OrUncheckedNull`.
 
 ```scala
-(tp: Type) match {
-  case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
-  case _ => // otherwise
-}
+(tp: Type) match
+   case OrNull(tp1) => // if tp is a nullable union: tp1 | Null
+   case _ => // otherwise
 ```
 
 This extractor will call utility methods in `NullOpsDecorator.scala`. All of these
@@ -112,30 +111,25 @@ The reason for casting to `x.type & T`, as opposed to just `T`, is that it allow
 support flow typing for paths of length greater than one.
 
 ```scala
-abstract class Node {
-  val x: String
-  val next: Node | Null
-}
+abstract class Node:
+   val x: String
+   val next: Node | Null
 
-def f = {
-  val l: Node|Null = ???
-  if (l != null && l.next != null) {
-    val third: l.next.next.type = l.next.next
-  }
-}
+def f =
+   val l: Node|Null = ???
+   if l != null && l.next != null then
+      val third: l.next.next.type = l.next.next
 ```
 
 After typing, `f` becomes:
 
 ```scala
-def f = {
-  val l: Node|Null = ???
-  if (l != null && l.$asInstanceOf$[l.type & Node].next != null) {
-    val third:
-      l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next.type =
-      l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next
-  }
-}
+def f =
+   val l: Node|Null = ???
+   if l != null && l.$asInstanceOf$[l.type & Node].next != null then
+      val third:
+         l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next.type =
+         l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next
 ```
 Notice that in the example above `(l.type & Node).next.type & Node` is still a stable path, so
 we can use it in the type and track it for flow typing.

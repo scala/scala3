@@ -32,7 +32,7 @@ object Test {
     }
 
     def divOpt(a: Nat, b: Nat): Option[(Nat, Nat)] = b match {
-      case s as Succ(p) =>
+      case s @ Succ(p) =>
         Some(safeDiv(a, s.asInstanceOf[b.type & SuccOpt#Refined])) // safe unchecked cast inserted by the language extension
       case _ => None
     }

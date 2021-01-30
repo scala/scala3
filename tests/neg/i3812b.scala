@@ -19,9 +19,9 @@ object Test {
     Some(x) match { case Some(Z2.v)  => () } // ok
 
     Some(x) match { case Some(4) | Some(Z1.v) => () } // error
-    Some(x) match { case a as Some(Z1.v)       => () } // error
+    Some(x) match { case a @ Some(Z1.v)       => () } // error
 
     Some(x) match { case Some(4) | Some(Z2.v) => () } // ok
-    Some(x) match { case a as Some(Z2.v)       => () } // ok
+    Some(x) match { case a @ Some(Z2.v)       => () } // ok
   }
 }

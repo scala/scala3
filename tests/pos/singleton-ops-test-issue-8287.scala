@@ -1,9 +1,8 @@
 import scala.compiletime.ops.int._
-import scala.annotation.infix
 
 object Test {
   class Vec[S <: Int] {
-    @infix def concat [RS <: Int](that : Vec[RS]) : Vec[S + RS] = new Vec[S + RS]
+    infix def concat [RS <: Int](that : Vec[RS]) : Vec[S + RS] = new Vec[S + RS]
   }
 
   val v1 = new Vec[1]

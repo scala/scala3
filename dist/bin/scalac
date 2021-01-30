@@ -33,6 +33,7 @@ withCompiler=true
 CompilerMain=dotty.tools.dotc.Main
 DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
+ScriptingMain=dotty.tools.scripting.Main
 
 PROG_NAME=$CompilerMain
 
@@ -44,6 +45,9 @@ addScala () {
 }
 addResidual () {
   residual_args+=("'$1'")
+}
+addScripting () {
+  scripting_args+=("'$1'")
 }
 
 classpathArgs () {
@@ -74,6 +78,7 @@ classpathArgs () {
   jvm_cp_args="-classpath \"$toolchain\""
 }
 
+in_scripting_args=false
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
@@ -85,6 +90,7 @@ case "$1" in
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
         -repl) PROG_NAME="$ReplMain" && shift ;;
+      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && in_scripting_args=true && shift && shift ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
  -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
@@ -98,11 +104,21 @@ case "$1" in
           # will be available as system properties.
           -D*) addJava "$1" && shift ;;
           -J*) addJava "${1:2}" && shift ;;
-            *) addResidual "$1" && shift ;;
+            *) if [ $in_scripting_args == false ]; then
+                addResidual "$1"
+               else
+                addScripting "$1"
+               fi
+               shift
+               ;;
   esac
 done
 
 classpathArgs
+
+if [ "$PROG_NAME" == "$ScriptingMain" ]; then
+  scripting_string="-script $target_script ${scripting_args[@]}"
+fi
 
 eval exec "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
@@ -112,5 +128,6 @@ eval exec "\"$JAVACMD\"" \
      -Dscala.usejavacp=true \
      "$PROG_NAME"  \
      "${scala_args[@]}" \
-     "${residual_args[@]}"
+     "${residual_args[@]}" \
+     "$scripting_string"
 exit $?

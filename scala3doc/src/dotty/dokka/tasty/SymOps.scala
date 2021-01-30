@@ -14,13 +14,23 @@ class SymOps[Q <: Quotes](val q: Q):
   import q.reflect._
 
   given Q = q
-  extension (sym: Symbol):
-    def packageName: String =
+  extension (sym: Symbol)
+    def packageName: String = (
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
+    )
 
-    def topLevelEntryName: Option[String] = if (sym.isPackageDef) None else
-      if (sym.owner.isPackageDef) Some(sym.name) else sym.owner.topLevelEntryName
+    def className: Option[String] =
+      if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
+        Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
+      )
+      else if (sym.isPackageDef) None
+      else sym.maybeOwner.className
+
+    def anchor: Option[String] =
+      if (!sym.isClassDef && !sym.isPackageDef) Some(sym.name)
+      else None
+    //TODO: Retrieve string that will match scaladoc anchors
 
     def getVisibility(): Visibility =
       import VisibilityScope._
@@ -78,38 +88,55 @@ class SymOps[Q <: Quotes](val q: Q):
 
     def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
 
-    def isCompanionObject: Boolean = sym.flags.is(Flags.Object) && sym.companionClass.exists
+    def isCompanionObject: Boolean = sym.flags.is(Flags.Module) && sym.companionClass.exists
 
     def isGiven: Boolean = sym.flags.is(Flags.Given)
+
+    def isExported: Boolean = sym.flags.is(Flags.Exported)
+
+    def isOverriden: Boolean = sym.flags.is(Flags.Override)
 
     def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
 
     def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
     def extendedSymbol: Option[ValDef] =
-      Option.when(sym.isExtensionMethod)(
-        if(isLeftAssoc(sym)) sym.tree.asInstanceOf[DefDef].paramss(0)(0)
-        else sym.tree.asInstanceOf[DefDef].paramss(1)(0)
-      )
+      Option.when(sym.isExtensionMethod){
+        val termParamss = sym.tree.asInstanceOf[DefDef].termParamss
+        if isLeftAssoc(sym) || termParamss.size == 1 then termParamss(0).params(0)
+        else termParamss(1).params(0)
+      }
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri: DRI =
-      if sym == Symbol.noSymbol then emptyDRI else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri else
+      if sym == Symbol.noSymbol then topLevelDri
+      else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
+      else
         val pointsTo =
           if (!sym.isTypeDef) PointingToDeclaration.INSTANCE
-          else PointingToGenericParameters(sym.owner.typeMembers.indexOf(sym))
+          else PointingToGenericParameters(sym.owner.memberTypes.indexOf(sym))
 
         val method =
           if (sym.isDefDef) Some(sym)
           else if (sym.maybeOwner.isDefDef) Some(sym.owner)
           else None
 
-        new DRI(
-          sym.packageName,
-          sym.topLevelEntryName.orNull, // TODO do we need any of this fields?
-          method.map(s => new org.jetbrains.dokka.links.Callable(s.name, null, JList())).orNull,
-          pointsTo, // TODO different targets?
-          s"${sym.show}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
-        )
+        val originPath = {
+            import q.reflect._
+            import dotty.tools.dotc
+            given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+            val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+            Option(csym.associatedFile).map(_.path).fold("")(p => s"[origin:$p]")
+        }
+        // We want package object to point to package
+        val className = sym.className.filter(_ != "package$")
 
-  private val emptyDRI =  DRI.Companion.getTopLevel
+        new DRI(
+          className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
+          sym.anchor.getOrElse(""), // TODO do we need any of this fields?
+          null,
+          pointsTo,
+          // sym.show returns the same signature for def << = 1 and def >> = 2.
+          // For some reason it contains `$$$` instrad of symbol name
+          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]$originPath"
+        )

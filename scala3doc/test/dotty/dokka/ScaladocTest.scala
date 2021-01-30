@@ -20,30 +20,12 @@ abstract class ScaladocTest(val name: String):
     folder.create()
     folder
 
-  private def args = Args(
+  def args = Scala3doc.Args(
       name = "test",
-      tastyRoots = Nil ,
-      classpath =  System.getProperty("java.class.path"),
-      None,
+      tastyFiles = tastyFiles(name),
       output = getTempDir().getRoot,
-      projectVersion = Some("1.0"),
-      projectTitle = None,
-      projectLogo = None,
-      defaultSyntax = None,
-      sourceLinks = Nil,
-      revision = None
+      projectVersion = Some("1.0")
     )
-
-  private def tastyFiles =
-    def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
-      throw AssertionError(s"$dir not found. The test name is incorrect or scala3doc-testcases were not recompiled.")
-    }
-    def collectFiles(dir: File): List[String] = listFilesSafe(dir).toList.flatMap {
-        case f if f.isDirectory => collectFiles(f)
-        case f if f.getName endsWith ".tasty" => f.getAbsolutePath :: Nil
-        case _ => Nil
-      }
-    collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
 
   @Rule
   def collector = _collector
@@ -53,8 +35,8 @@ abstract class ScaladocTest(val name: String):
   @Test
   def executeTest =
     DokkaTestGenerator(
-      DottyDokkaConfig(DocConfiguration.Standalone(args, tastyFiles, Nil)),
-      TestLogger(DokkaConsoleLogger.INSTANCE),
+      DocContext(args, testContext),
+      TestLogger(new Scala3DocDokkaLogger(using testContext)),
       assertions.asTestMethods,
       Nil.asJava
     ).generate()
@@ -77,7 +59,7 @@ enum Assertion:
   case AfterPagesTransformation(fn: RootPageNode => Unit)
   case AfterRendering(fn: (RootPageNode, DokkaContext) => Unit)
 
-extension (s: Seq[Assertion]):
+extension (s: Seq[Assertion])
   def asTestMethods: TestMethods =
     import Assertion._
     TestMethods(
@@ -92,5 +74,5 @@ extension (s: Seq[Assertion]):
       ((root, context) => s.collect { case AfterRendering(fn) => fn(root, context)}.kUnit)
     )
 
-extension [T] (s: T):
+extension [T] (s: T)
   private def kUnit = kotlin.Unit.INSTANCE

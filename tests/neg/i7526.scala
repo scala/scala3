@@ -13,6 +13,6 @@ def compQ(name: => String)
 
 object net extends NetDB with NetHelper
 import net._
-given n as NetApi = net
+given n: NetApi = net
 
 val q: Tr[Nothing, Comp, Comp] = compQ("???") // error Found: Tr[Nothing, ?1.Comp, ?1.Comp] Required: Tr[Nothing, net.Comp, net.Comp]

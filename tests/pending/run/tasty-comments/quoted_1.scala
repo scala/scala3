@@ -7,9 +7,9 @@ object Macros {
     ${ impl('t) }
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val tree = Term.of(x)
+    val tree = x.asTerm
     tree.symbol.comment.map(_.raw) match {
       case Some(str) => '{ println(${str}) }
       case None => '{ println() }

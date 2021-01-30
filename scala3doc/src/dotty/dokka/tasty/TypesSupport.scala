@@ -35,8 +35,8 @@ trait TypesSupport:
     }.flatten.map(_.dokkaType)
   }
 
-  given TreeSyntax as AnyRef:
-    extension (tpeTree: Tree):
+  given TreeSyntax: AnyRef with
+    extension (tpeTree: Tree)
       def dokkaType: Bound =
         val data = tpeTree match
           case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
@@ -45,8 +45,8 @@ trait TypesSupport:
 
         new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
 
-  given TypeSyntax as AnyRef:
-    extension (tpe: TypeRepr):
+  given TypeSyntax: AnyRef with
+    extension (tpe: TypeRepr)
       def dokkaType: Bound =
         val data = inner(tpe)
         val dri = data.collect{
@@ -68,10 +68,19 @@ trait TypesSupport:
     case List(single) => single
     case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
 
-  private def isRepeated(tpeAnnotation: Term) =
-    // For some reason annotation.tpe.typeSymbol != defn.RepeatedParamClass
-    // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
-    tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
+  private def isRepeatedAnnotation(term: Term) =
+    term.tpe match
+      case t: TypeRef => t.name == "Repeated" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "internal" => true
+        case _ => false
+      case _ => false
+
+  private def isRepeated(typeRepr: TypeRepr) =
+    typeRepr match
+      case t: TypeRef => t.name == "<repeated>" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "scala" => true
+        case _ => false
+      case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
   private def inner(tp: TypeRepr): List[JProjection] =
@@ -84,12 +93,11 @@ trait TypesSupport:
       case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)
       case ByNameType(tpe) => text("=> ") :: inner(tpe)
       case ConstantType(constant) =>
-        texts(constant.value match
-          case c: Char => s"'$c'"
-          case other => other.toString
-        )
+        texts(constant.show)
       case ThisType(tpe) => inner(tpe)
-      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
+      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
+        inner(tpe) :+ text("*")
+      case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe) :+ text("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
@@ -171,7 +179,10 @@ trait TypesSupport:
             case Seq(rtpe) =>
               text("() => ") :: inner(rtpe)
             case Seq(arg, rtpe) =>
-              inner(arg) ++ texts(" => ") ++ inner(rtpe)
+              val partOfSignature = arg match
+                case byName: ByNameType => texts("(") ++ inner(byName) ++ texts(")")
+                case _ => inner(arg)
+              partOfSignature ++ texts(" => ") ++ inner(rtpe)
             case args =>
               texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
         else if t.isTupleType then
@@ -215,9 +226,12 @@ trait TypesSupport:
         //     case _ =>
         //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         // }
-      case tr @ TermRef(qual, typeName) => qual match {
-        case _ => link(tr.termSymbol)
-      }
+      case tr @ TermRef(qual, typeName) =>
+        tr.termSymbol.tree match
+          case vd: ValDef => inner(vd.tpt.tpe)
+          case _          => link(tr.termSymbol)
+
+
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
         //     case EmptyReference => TypeReference(typeName, "", Nil)
@@ -237,12 +251,16 @@ trait TypesSupport:
 
       case MatchType(bond, sc, cases) =>
         val casesTexts = cases.flatMap {
-          case MatchTypeCase(from, to) =>
+          case MatchCase(from, to) =>
+            texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
+          case TypeLambda(_, _, MatchCase(from, to)) =>
             texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
         }
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
 
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
+
+      case ParamRef(m: MethodType, i) => texts(m.paramNames(i))
 
       case RecursiveType(tp) => inner(tp)
 

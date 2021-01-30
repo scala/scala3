@@ -150,7 +150,7 @@ object TypeOps:
         tp.derivedAlias(simplify(tp.alias, theMap))
       case AndType(l, r) if !ctx.mode.is(Mode.Type) =>
         simplify(l, theMap) & simplify(r, theMap)
-      case tp as OrType(l, r)
+      case tp @ OrType(l, r)
       if !ctx.mode.is(Mode.Type)
          && (tp.isSoft || l.isBottomType || r.isBottomType) =>
         // Normalize A | Null and Null | A to A even if the union is hard (i.e.

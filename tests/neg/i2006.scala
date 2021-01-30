@@ -4,7 +4,7 @@ object Test {
   inline def bar(f: Int ?=> Int) = f // error
 
   def main(args: Array[String]) = {
-    foo((using thisTransaction) => 43)
-    bar((using thisTransaction) => 44)
+    foo(thisTransaction ?=> 43)
+    bar(thisTransaction ?=> 44)
   }
 }

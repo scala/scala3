@@ -18,8 +18,7 @@ class SourceLinkTest:
     testFailure("ala://ma/kota", "known provider")
     testFailure("ala=ala=ala://ma/kota", "known provider")
     testFailure("ala=ala=ala", "subpath")
-    testFailure("""{{ ala "ala"}}""", "parse")
-    testFailure("""€{TPL_NAME}""", "scaladoc")
+    testFailure("""€{TPL_OWNER}""", "scaladoc")
 
 
   @Test
@@ -31,7 +30,6 @@ class SourceLinkTest:
 
 
     Seq(
-      """https://github.com/organization/repo/{{ operation | replace: "view", "blob" }}/$revision/{{ path }}{{ line | prepend: "L#"}}""",
       "github://lampepfl/dotty",
       "gitlab://lampepfl/dotty",
       "https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#€{FILE_LINE}"
@@ -48,7 +46,7 @@ class SourceLinkTest:
       val res = SourceLink.parse(template, None)
       assertTrue(s"Expected failure containing missing revision: $res", res.left.exists(_.contains("revision")))
 
-      Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop").foreach { template =>
+      Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop/on/master").foreach { template =>
         val res = SourceLink.parse(template, Some("develop"))
         assertTrue(s"Expected failure syntax info: $res", res.left.exists(_.contains("syntax")))
       }
@@ -64,14 +62,13 @@ class SourceLinksTest:
   type Args = String | (String, Operation) | (String, Int) | (String, Int, Operation)
 
   private def testLink(config: Seq[String], revision: Option[String])(cases: (Args, String | None.type)*): Unit =
-    val links = SourceLinks.load(config, revision, projectRoot)
+    val links = SourceLinks.load(config, revision, projectRoot)(using testContext)
     cases.foreach { case (args, expected) =>
       val res = args match
         case path: String => links.pathTo(projectRoot.resolve(path))
         case (path: String, line: Int) => links.pathTo(projectRoot.resolve(path), line = Some(line))
         case (path: String, operation: Operation) => links.pathTo(projectRoot.resolve(path), operation = operation)
         case (path: String, line: Int, operation: Operation) => links.pathTo(projectRoot.resolve(path), operation = operation, line = Some(line))
-        case _ => ??? // needed due to handling of singleton types inside union types
 
       val expectedRes = expected match
         case s: String => Some(s)
@@ -83,27 +80,55 @@ class SourceLinksTest:
   @Test
   def testBasicPaths =
     testLink(Seq("github://lampepfl/dotty"), Some("develop"))(
-      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala#L",
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala",
       ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/develop/project/Build.scala#L54",
-      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala",
       ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L54",
     )
 
+    testLink(Seq("github://lampepfl/dotty/dev"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty/dev#src/lib"), None)(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty/dev#src/lib"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/dev/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/dev/src/lib/project/Build.scala#L54",
+    )
+
+    testLink(Seq("github://lampepfl/dotty#src/lib"), Some("develop"))(
+      "project/Build.scala" -> "https://github.com/lampepfl/dotty/blob/develop/src/lib/project/Build.scala",
+      ("project/Build.scala", 54) -> "https://github.com/lampepfl/dotty/blob/develop/src/lib/project/Build.scala#L54",
+      ("project/Build.scala", edit) -> "https://github.com/lampepfl/dotty/edit/develop/src/lib/project/Build.scala",
+      ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/src/lib/project/Build.scala#L54",
+    )
+
     testLink(Seq("gitlab://lampepfl/dotty"), Some("develop"))(
-      "project/Build.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala#L",
+      "project/Build.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala",
       ("project/Build.scala", 54) -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/project/Build.scala#L54",
-      ("project/Build.scala", edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala#L",
+      ("project/Build.scala", edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala",
       ("project/Build.scala", 54, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/project/Build.scala#L54",
     )
 
-    testLink(Seq("/{{operation}}/{{path}}#{{line}}"), Some("develop"))(
-      "project/Build.scala" -> "/view/project/Build.scala#",
-      ("project/Build.scala", 54) -> "/view/project/Build.scala#54",
-      ("project/Build.scala", edit) -> "/edit/project/Build.scala#",
-      ("project/Build.scala", 54, edit) -> "/edit/project/Build.scala#54",
+    testLink(Seq("€{FILE_PATH}#€{FILE_LINE}"), Some("develop"))(
+      "project/Build.scala" -> "/project/Build.scala#",
+      ("project/Build.scala", 54) -> "/project/Build.scala#54",
+      ("project/Build.scala", edit) -> "/project/Build.scala#",
+      ("project/Build.scala", 54, edit) -> "/project/Build.scala#54",
     )
 
-    testLink(Seq("https://github.com/scala/scala/blob/2.13.x/€{FILE_PATH_EXT}#L€{FILE_LINE}"), Some("develop"))(
+    testLink(Seq("https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#L€{FILE_LINE}"), Some("develop"))(
       "project/Build.scala" -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
       ("project/Build.scala", 54) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L54",
       ("project/Build.scala", edit) -> "https://github.com/scala/scala/blob/2.13.x/project/Build.scala#L",
@@ -113,9 +138,9 @@ class SourceLinksTest:
   @Test
   def testBasicPrefixedPaths =
     testLink(Seq("src=gitlab://lampepfl/dotty"), Some("develop"))(
-      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/src/lib/core.scala#L",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
+      "src/lib/core.scala" -> "https://gitlab.com/lampepfl/dotty/-/blob/develop/lib/core.scala",
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
       "build.sbt" -> None
     )
 
@@ -123,12 +148,12 @@ class SourceLinksTest:
   @Test
   def prefixedPaths =
     testLink(Seq(
-     "src/generated=/{{operation}}/{{path}}#{{line}}",
+     "src/generated=€{FILE_PATH}#€{FILE_LINE}",
       "src=gitlab://lampepfl/dotty",
       "github://lampepfl/dotty"
       ), Some("develop"))(
       ("project/Build.scala", 54, edit) -> "https://github.com/lampepfl/dotty/edit/develop/project/Build.scala#L54",
-      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/lib/core.scala#L33",
-      ("src/generated.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/src/generated.scala#L33",
-      ("src/generated/template.scala", 1, edit) -> "/edit/src/generated/template.scala#1"
+      ("src/lib/core.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/lib/core.scala#L33",
+      ("src/generated.scala", 33, edit) -> "https://gitlab.com/lampepfl/dotty/-/edit/develop/generated.scala#L33",
+      ("src/generated/template.scala", 1, edit) -> "/template.scala#1"
     )

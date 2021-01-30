@@ -10,16 +10,22 @@ import dotty.dokka.model._
 import dotty.dokka.model.api._
 
 
-class InheritanceInformationTransformer(val ctx: DokkaContext) extends DocumentableTransformer:
-  override def invoke(original: DModule, context: DokkaContext): DModule =
-    val subtypes = getSupertypes(original).groupBy(_._1).transform((k, v) => v.map(_._2))
+class InheritanceInformationTransformer(using context: DocContext) extends ModuleTransformer:
+  override def apply(original: DModule): DModule =
+    val subtypes = getSupertypes(original.getPackages.get(0)).groupBy(_._1).transform((k, v) => v.map(_._2))
     original.updateMembers { m =>
       val st: Seq[LinkToType] = subtypes.getOrElse(m.dri, Nil)
-      m.withKnownChildren(st).withNewGraphEdges(st.map(_ -> m.asLink))
+      val rootMemberWithBareClasslikeKind = m.asLink.copy(kind = bareClasslikeKind(m.kind))
+      m.withKnownChildren(st).withNewGraphEdges(st.map(_ -> rootMemberWithBareClasslikeKind))
     }
 
-  private def getSupertypes(d: Documentable): Seq[(DRI, LinkToType)] = d match
-    case m: DModule => m.getPackages.asScala.toList.flatMap(p => getSupertypes(p))
-    case c: Member  =>
-      val selfMapping = if !c.kind.isInstanceOf[Classlike] then Nil else c.parents.map(_._2 -> c.asLink)
-      c.allMembers.flatMap(getSupertypes) ++ selfMapping
+  private def bareClasslikeKind(kind: Kind): Kind = kind match
+    case _: Kind.Trait => Kind.Trait(Nil, Nil)
+    case _: Kind.Class => Kind.Class(Nil, Nil)
+    case o => o
+
+  private def getSupertypes(c: Member): Seq[(DRI, LinkToType)] =
+    val selfMapping =
+      if !c.kind.isInstanceOf[Classlike] then Nil
+      else c.parents.map(_._2 -> c.asLink)
+    c.allMembers.flatMap(getSupertypes) ++ selfMapping

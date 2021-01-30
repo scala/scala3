@@ -3,13 +3,13 @@ object Macros {
 
   inline def go[T](inline t: T) = ${ impl('t) }
   def impl[T](expr: Expr[T])(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val tree = Term.of(expr)
+    val tree = expr.asTerm
 
     val methods =
-      tree.tpe.classSymbol.get.classMethods.map { m =>
-        val name = m.show
+      tree.tpe.classSymbol.get.declaredMethods.map { m =>
+        val name = m.fullName
         m.tree match
           case ddef: DefDef =>
             val returnType = ddef.returnTpt.tpe.show
