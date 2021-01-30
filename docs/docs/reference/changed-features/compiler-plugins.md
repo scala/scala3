@@ -52,13 +52,13 @@ zero as errors.
 ```scala
 package dividezero
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Decorators._
-import dotty.tools.dotc.core.StdNames._
-import dotty.tools.dotc.core.Symbols._
+import dotty.tools.dotc.core.Decorators.*
+import dotty.tools.dotc.core.StdNames.*
+import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.plugins.{PluginPhase, StandardPlugin}
 import dotty.tools.dotc.transform.{Pickler, Staging}
 
@@ -70,7 +70,7 @@ class DivideZero extends StandardPlugin:
       (new DivideZeroPhase) :: Nil
 
 class DivideZeroPhase extends PluginPhase:
-   import tpd._
+   import tpd.*
 
    val phaseName = "divideZero"
 

@@ -111,7 +111,7 @@ two types.  Hence, the following usage scenario type-checks.
 
 ```scala
 object User:
-   import Access._
+   import Access.*
 
    case class Item(rights: Permissions)
 

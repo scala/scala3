@@ -486,8 +486,8 @@ primitive operations on singleton types. For example,
 singleton types, the compiler can evaluate the result of the operation.
 
 ```scala
-import scala.compiletime.ops.int._
-import scala.compiletime.ops.boolean._
+import scala.compiletime.ops.int.*
+import scala.compiletime.ops.boolean.*
 
 val conjunction: true && true = true
 val multiplication: 3 * 5 = 15
@@ -499,7 +499,7 @@ Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:
 
 ```scala
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 val x: 1 + 2 * 3 = 7
 ```
 
@@ -510,7 +510,7 @@ concatenation. To use both and distinguish the two types from each other, a
 match type can dispatch to the correct implementation:
 
 ```scala
-import scala.compiletime.ops._
+import scala.compiletime.ops.*
 
 import scala.annotation.infix
 
