@@ -1,4 +1,4 @@
-import scala.Stream._
+import scala.Stream.*
 
 object consistencyError {
   /* this gives an error:

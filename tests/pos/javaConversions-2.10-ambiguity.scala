@@ -1,6 +1,6 @@
 import collection.{mutable, concurrent}
-import collection.JavaConverters._
-import java.util.concurrent.{ConcurrentHashMap => CHM}
+import collection.JavaConverters.*
+import java.util.concurrent.ConcurrentHashMap as CHM
 
 object Bar {
   def assertType[T](t: T) = t

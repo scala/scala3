@@ -3,7 +3,7 @@ enum Bool {
   case False
 }
 
-import Bool._
+import Bool.*
 
 type Not[B <: Bool] = B match {
   case True.type => False.type

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 class Foo {
   def foo(using Quotes): Unit = {
     val expr ='{

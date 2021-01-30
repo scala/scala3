@@ -1,9 +1,9 @@
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 
 object Test {
-  import colltest4.strawman.collections._
-  import CollectionStrawMan4._
+  import colltest4.strawman.collections.*
+  import CollectionStrawMan4.*
 
   def seqOps(xs: Seq[Int]) = {
     val x1 = xs.foldLeft("")(_ + _)

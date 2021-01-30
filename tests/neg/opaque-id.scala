@@ -6,7 +6,7 @@ object Test {
   }
 }
 object Test2 {
-  import Test._
+  import Test.*
   val x: T[Int] = 2 // error
   val y: Int = x    // error
 }

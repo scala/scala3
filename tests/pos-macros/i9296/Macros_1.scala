@@ -1,7 +1,7 @@
 package a
 
-import scala.quoted._
-import scala.concurrent._
+import scala.quoted.*
+import scala.concurrent.*
 
 object M {
 
@@ -10,7 +10,7 @@ object M {
 
   def resolveInMacrosImpl[F[_]:Type,T:Type](f:Expr[Future[T]])(using qctx:Quotes):Expr[
                                                       Conversion[Future[T],F[T]]]={
-     import quotes.reflect._
+     import quotes.reflect.*
      val conversion = TypeIdent(Symbol.classSymbol("scala.Conversion")).tpe
      val inFuture = f.asTerm.tpe.widen
      val tType = TypeRepr.of[T]

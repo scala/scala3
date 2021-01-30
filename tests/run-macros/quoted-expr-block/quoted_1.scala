@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def replicate(inline times: Int, code: => Any) = ${replicateImpl('times, 'code)}
 

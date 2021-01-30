@@ -1,6 +1,6 @@
 /** In this implementation variant of =:= (called =::=) we erase all instantiations and definitions of =::= */
 object WithNormalState {
-  import Utils._
+  import Utils.*
 
   trait State
   sealed trait On extends State

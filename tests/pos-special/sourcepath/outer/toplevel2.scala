@@ -1,5 +1,5 @@
 package outer
-import nested._
+import nested.*
 
 object toplevel2 {
   val a: Int = one

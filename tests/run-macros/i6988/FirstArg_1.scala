@@ -6,10 +6,10 @@ object FirstArg {
 }
 
 object Macros {
-  import scala.quoted._
+  import scala.quoted.*
 
   def argsImpl(using Quotes) : Expr[FirstArg] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def enclosingClass(cur: Symbol = Symbol.spliceOwner): Symbol =
       if (cur.isClassDef) cur

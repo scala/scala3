@@ -10,7 +10,7 @@ class A {
   def PrimaryKey: Any = ???
 
   {
-    import ColumnOption._
+    import ColumnOption.*
 
     (null: Any) match { case PrimaryKey => }
 

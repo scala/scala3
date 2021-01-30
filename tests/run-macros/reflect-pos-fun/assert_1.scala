@@ -1,12 +1,12 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
   def assertImpl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
-    import util._
+    import quotes.reflect.*
+    import util.*
 
     cond.asTerm.underlyingArgument match {
       case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>

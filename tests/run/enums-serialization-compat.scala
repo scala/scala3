@@ -1,4 +1,4 @@
-import java.io._
+import java.io.*
 import scala.util.Using
 
 enum JColor extends java.lang.Enum[JColor]:

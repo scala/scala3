@@ -1,4 +1,4 @@
-import scala.collection.immutable._
+import scala.collection.immutable.*
 
 import scala.collection.mutable.{ Builder, ListBuffer }
 

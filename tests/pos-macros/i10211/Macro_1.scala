@@ -1,6 +1,6 @@
 package x
 
-import scala.quoted._
+import scala.quoted.*
 
 trait CB[T]:
  def map[S](f: T=>S): CB[S] = ???
@@ -36,7 +36,7 @@ object X:
  }
 
  def processImpl[T:Type](f:Expr[T])(using Quotes):Expr[CB[T]] =
-   import quotes.reflect._
+   import quotes.reflect.*
 
    def transform(term:Term):Term =
      term match

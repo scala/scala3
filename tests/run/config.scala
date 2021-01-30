@@ -6,8 +6,8 @@ case class Config(name: String, age: Int)
 
 
 object Imperative {
-  import Configs._
-  import Exceptions._
+  import Configs.*
+  import Exceptions.*
 
   // Algebraic Effects
 
@@ -62,8 +62,8 @@ object Exceptions {
 }
 
 object Test extends App {
-  import Configs._
-  import Exceptions._
+  import Configs.*
+  import Exceptions.*
 
   def readName: Configured[Possibly[Name]] = {
     val parts = config.name.split(" ")
@@ -117,9 +117,9 @@ object OptionTest extends App {
 }
 
 object FancyStuff {
-  import Configs._
-  import Exceptions._
-  import Test._
+  import Configs.*
+  import Exceptions.*
+  import Test.*
 
   type PC[T] = Possibly[Configured[T]]
 

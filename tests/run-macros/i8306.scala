@@ -1,4 +1,4 @@
-import scala.compiletime._
+import scala.compiletime.*
 
 case class A(i: Int)
 case class B(a: A)

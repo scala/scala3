@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   inline def betaReduce[Arg,Result](inline fn: Arg=>Result)(inline arg: Arg): Result =

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 case class MyQuoted(val ast: String, runtimeQuotes: List[String])
 

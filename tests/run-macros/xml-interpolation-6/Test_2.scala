@@ -1,4 +1,4 @@
-import XmlQuote._
+import XmlQuote.*
 
 object Test {
   def main(args: Array[String]): Unit = {

@@ -17,7 +17,7 @@ object Test{
     }
   }
 
-  import ZipWith._
+  import ZipWith.*
 
   trait ZipWith[S] {
     type T

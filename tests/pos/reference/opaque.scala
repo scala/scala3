@@ -19,8 +19,8 @@ object Logarithms {
 }
 
 object LogTest {
-  import Logarithms._
-  import Predef.{any2stringadd => _, _}
+  import Logarithms.*
+  import Predef.{any2stringadd as _, *}
 
   val l = Logarithm(1.0)
   val l2 = Logarithm(2.0)
@@ -52,7 +52,7 @@ object Access {
 }
 
 object User {
-  import Access._
+  import Access.*
 
   case class Item(rights: Permissions)
 

@@ -41,7 +41,7 @@ sealed trait Lst[+T] // derives Eq, Pickler, Show
 
 object Lst {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   class GenericLst[T] extends GenericSum[Lst[T]] {
     override type Shape = (Cons[T], Nil.type)
@@ -92,7 +92,7 @@ trait Eq[T] {
 
 object Eq {
   import scala.compiletime.{erasedValue, summonInline}
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
@@ -141,7 +141,7 @@ object Eq {
 }
 
 object Test extends App {
-  import TypeLevel._
+  import TypeLevel.*
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))
@@ -165,7 +165,7 @@ case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
 object Pair {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   val genericClass = new GenericClass("Pair\000x\000y")
   import genericClass.mirror
@@ -193,7 +193,7 @@ case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
 object Either {
-  import TypeLevel._
+  import TypeLevel.*
 
   val genericClass = new GenericClass("Left\000x\001Right\000x")
   import genericClass.mirror
@@ -229,7 +229,7 @@ trait Eq[T] {
 
 object Eq {
   import scala.compiletime.erasedValue
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryEql[T](x: T, y: T) = summonFrom {
     case eq: Eq[T] => eq.eql(x, y)
@@ -280,7 +280,7 @@ trait Pickler[T] {
 
 object Pickler {
   import scala.compiletime.{erasedValue, constValue}
-  import TypeLevel._
+  import TypeLevel.*
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -367,7 +367,7 @@ trait Show[T] {
 }
 object Show {
   import scala.compiletime.erasedValue
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryShow[T](x: T): String = summonFrom {
     case s: Show[T] => s.show(x)
@@ -412,7 +412,7 @@ object Show {
 
 // Tests
 object Test extends App {
-  import TypeLevel._
+  import TypeLevel.*
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))

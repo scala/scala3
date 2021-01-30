@@ -1,4 +1,4 @@
-import base._
+import base.*
 
 object Test extends App {
   class Concrete extends AbstractBase {

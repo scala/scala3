@@ -1,30 +1,30 @@
-import scala.tools.nsc._
+import scala.tools.nsc.*
 
 object Test {
-  
+
   /**
    *  Type inference overlooks constraints posed by type parameters in annotations on types.
    */
-  
+
   val testCode = """
-  
+
     class posingAs[A] extends annotation.TypeConstraint
-    
+
     def resolve[A,B](x: A @posingAs[B]): B = x.asInstanceOf[B]
-    
+
     val x = resolve(7: @posingAs[Any])
-  
+
   """
-  
+
   def main(args: Array[String]): Unit = {
-    
+
     val settings = new Settings()
     settings.classpath.value = System.getProperty("java.class.path")
     val tool = new interpreter.IMain(settings)
     val global = tool.global
 
-    import global._
-    import definitions._
+    import global.*
+    import definitions.*
 
     object checker extends AnnotationChecker {
 
@@ -35,11 +35,11 @@ object Test {
 
       }
     }
-    
+
     global.addAnnotationChecker(checker)
-    
+
     tool.interpret(testCode)
-    
+
   }
 
 }

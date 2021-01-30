@@ -1,4 +1,4 @@
-import api._
+import api.*
 
 object Test {
   def main(args: Array[String]): Unit = {

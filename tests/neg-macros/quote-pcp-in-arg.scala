@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
   inline def foo(x: Int): Int = ${ bar('{ 'x; x }) } // error

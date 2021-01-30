@@ -7,7 +7,7 @@ import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
 
 class ThePlugin(val global: Global) extends Plugin {
-  import global._
+  import global.*
 
   val name = "afterterminal"
   val description = "Declares one plugin that wants to be after the terminal phase"

@@ -1,4 +1,4 @@
-import scala.language._
+import scala.language.*
 
 trait R[+Repr]
 

@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   def neverRuns(f: => Unit): Boolean = true
 

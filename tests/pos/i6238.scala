@@ -95,27 +95,27 @@ object K2 {
 
 object Test {
   {
-    import K1._
+    import K1.*
     implicitly[Bar[A]]
   }
 
   {
-    import K1U._
+    import K1U.*
     implicitly[Bar[A]]
   }
 
   {
-    import K1L._
+    import K1L.*
     implicitly[Bar[A]]
   }
 
   {
-    import K11._
+    import K11.*
     implicitly[Bar[A]]
   }
 
   {
-    import K2._
+    import K2.*
     implicitly[Bar[A]]
   }
 }

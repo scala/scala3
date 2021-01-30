@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 
 object Macros {
@@ -20,7 +20,7 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import quotes.reflect._
+        import quotes.reflect.*
         report.error("Expected explicit DSL", e.asTerm.pos)
         '{ ??? }
 

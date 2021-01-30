@@ -1,6 +1,6 @@
 package cps
 
-import scala.quoted._
+import scala.quoted.*
 
 trait CpsMonad[F[_]]
 
@@ -27,7 +27,7 @@ object Async {
   }
 
   def transformImpl[F[_]:Type,T:Type](f: Expr[T])(using Quotes): Expr[Unit] =
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def uninline(t:Term):Term =
       t match

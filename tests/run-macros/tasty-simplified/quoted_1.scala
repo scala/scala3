@@ -1,12 +1,12 @@
 import scala.annotation.tailrec
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def simplified[T <: Tuple]: Seq[String] = ${ impl[T] }
 
   def impl[T: Type](using Quotes) : Expr[Seq[String]] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def unpackTuple(tp: TypeRepr): List[TypeRepr] = {
       @tailrec

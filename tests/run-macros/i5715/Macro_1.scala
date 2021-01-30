@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     cond.asTerm.underlyingArgument match {
       case app @ Apply(select @ Select(lhs, op), rhs :: Nil) =>

@@ -4,7 +4,7 @@
 
  object Test {
    def f(color: Color) = {
-     import Color._
+     import Color.*
      color match {
        case Red | Green | Blue =>
      }

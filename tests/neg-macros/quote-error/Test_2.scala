@@ -1,4 +1,4 @@
-import Macro_1._
+import Macro_1.*
 
 object Test_2 {
   foo(true)

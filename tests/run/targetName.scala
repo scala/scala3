@@ -4,7 +4,7 @@ object A:
   def f(x: => String): Int = x.length
   @targetName("f2") def f(x: => Int): Int = x
 
-import A._
+import A.*
 
 trait T:
   def f(x: => String): Int

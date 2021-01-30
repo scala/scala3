@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object X:
 
@@ -22,7 +22,7 @@ object Macro:
     }
 
     def mThenImpl[A:Type, B:Type, S<:(A=>B) :Type, R:Type](x:Expr[S])(using Quotes):Expr[R] =
-       import quotes.reflect._
+       import quotes.reflect.*
        val fun = '{X}.asTerm
        val returnType = TypeRepr.of[(S) => ?]
        val firstPart = Select.overloaded(fun,"andThen",

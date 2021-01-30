@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   transparent inline def defaultOf(inline str: String): Any = ${ defaultOfImpl('str) }

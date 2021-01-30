@@ -1,5 +1,5 @@
-import annotation._
-import elidable._
+import annotation.*
+import elidable.*
 
 object Test {
   @elidable(FINEST) def f1() = println("Good for me, I was not elided.")

@@ -8,7 +8,7 @@ object i4176 {
     case class TSumZero[N]() extends TSum[TZero, N, N]
     case class TSumM[M <: TNat, N, R <: TNat](sum: TSum[M, N, R]) extends TSum[TSucc[M], N, TSucc[R]]
   }
-  import TNatSum._
+  import TNatSum.*
 
   implicit def tSumZero[N]: TSum[TZero, N, N] =
     TSumZero()

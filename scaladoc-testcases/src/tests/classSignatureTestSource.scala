@@ -1,8 +1,8 @@
 package tests.classSignatureTestSource
 
-import scala.collection._
+import scala.collection.*
 import scala.deprecated
-import scala.annotation._
+import scala.annotation.*
 import scala.math.{Pi, max}
 import example.level2.Documentation
 

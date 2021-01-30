@@ -6,7 +6,7 @@ object Test {
     val Y   = Value(Integer.MIN_VALUE)
   }
 
-  import MyEnum._
+  import MyEnum.*
   def main(args: Array[String]): Unit = {
     println(Foo > Bar)
     println(X > Y)

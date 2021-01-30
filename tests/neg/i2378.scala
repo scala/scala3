@@ -17,7 +17,7 @@ trait Toolbox {
 }
 
 class Test(val tb: Toolbox) {
-  import tb._
+  import tb.*
   implicit val cap: Cap = null
 
   def foo(tree: Tree): Int = (tree: Any) match {

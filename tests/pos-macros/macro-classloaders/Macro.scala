@@ -1,6 +1,6 @@
 import java.net.URLClassLoader
 
-import scala.quoted._
+import scala.quoted.*
 
 object Macro { self =>
   inline def f: Any = ${ impl }

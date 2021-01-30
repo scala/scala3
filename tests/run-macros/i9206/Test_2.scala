@@ -1,4 +1,4 @@
-import Inspect._
+import Inspect.*
 
 object Test extends App {
   inspect[scala.collection.immutable.List[Int]]

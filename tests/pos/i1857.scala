@@ -26,7 +26,7 @@ trait FooDSL extends CommandeerDSL[Foo] {
 }
 
 object RunMe {
-  //import Foo._
+  //import Foo.*
   def main(args: Array[String]): Unit = {
     println("Hi Mum")
 

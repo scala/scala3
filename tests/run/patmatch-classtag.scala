@@ -28,7 +28,7 @@ object Impl extends API {
 
 object Test extends App {
   val api: API = Impl
-  import api._
+  import api.*
 
   val x: Any = CaseDef("123")
 

@@ -1,5 +1,5 @@
-import annotation._
-import elidable._
+import annotation.*
+import elidable.*
 
 trait T {
   @elidable(FINEST) def f1(): Unit

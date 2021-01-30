@@ -97,7 +97,7 @@ trait Nested {
   {
     import p1._   // warn
     trait Warn {  // warn about unused local trait for good measure
-      import p2._
+      import p2.*
       println(new A)
       println("abc".bippy)
     }

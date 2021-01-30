@@ -16,7 +16,7 @@ class QuickSort[Coll](a: Coll) {
   def quickSortAnything[T](implicit ev0: Coll => TraversableLike[T, Coll],
                            cbf: CanBuildFrom[Coll, T, Coll],
                            n: Ordering[T]): Coll = {
-    import n._
+    import n.*
     if (a.size < 2) {
       a
     } else {
@@ -55,7 +55,7 @@ object MyEnhancements {
 
 object Test extends App {
 
-  import MyEnhancements._
+  import MyEnhancements.*
 
   println("qwe".quickSort)
   println(Array(2, 0).quickSort.toList)

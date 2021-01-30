@@ -2,7 +2,7 @@ enum Opt[+T] derives Eq:
   case Sm[T](t: T) extends Opt[T]
   case Nn
 
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.{erasedValue, summonInline}
 
 trait Eq[T] {
@@ -50,7 +50,7 @@ object Eq {
 }
 
 object Test extends App {
-  import Opt._
+  import Opt.*
   val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(eqoi.eqv(Nn, Nn))

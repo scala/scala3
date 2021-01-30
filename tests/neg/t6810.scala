@@ -18,7 +18,7 @@ trait t6810 {
   val B = s"""
 """                   // or the same for interpolated strings
 
-  import System.{lineSeparator => EOL}
+  import System.{lineSeparator as EOL}
   val `\u000A` = EOL  // backquoted identifiers are arbitrary string literals
                       // anypos-error so as not to interfere with the following bad syntax
   val `
@@ -27,7 +27,8 @@ trait t6810 {
   val firebreak = 42  // help parser recovery, could also use rbrace
 
   val a = '\u000D'    // similar treatment of CR
-  val b = ''        // anypos-error CR seen as EOL by scanner; FSR, error only on open quote, unlike `y`
+  val b = '
+'        // anypos-error CR seen as EOL by scanner; FSR, error only on open quote, unlike `y`
   println();          // scanner firewall
   val c = '\r'        // traditionally
 }

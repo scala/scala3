@@ -8,21 +8,21 @@ package analyzer
 
 import scala.language.implicitConversions
 
-import dotty.tools.dotc._
-import core._
+import dotty.tools.dotc.*
+import core.*
 import Contexts.Context
-import plugins._
+import plugins.*
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
-import Decorators._
+import Decorators.*
 import Symbols.{Symbol, requiredPackage}
 import Constants.Constant
-import Types._
+import Types.*
 import transform.{PickleQuotes, FirstTransform}
 
 class SetDefTree extends PluginPhase {
-  import tpd._
+  import tpd.*
 
   override val phaseName: String = SetDefTree.name
   override def runsAfter: Set[String] = Set(PickleQuotes.name)
@@ -42,7 +42,7 @@ object SetDefTree {
 }
 
 class InitChecker extends PluginPhase with StandardPlugin {
-  import tpd._
+  import tpd.*
 
   val name: String = "initChecker"
   override val description: String = "checks that under -Yretain-trees we may get tree for all symbols"

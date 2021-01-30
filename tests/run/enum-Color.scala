@@ -8,7 +8,7 @@ object Test {
     for (color <- Color.values) {
       println(s"$color: ${color.toString}")
       assert(Color.valueOf(color.toString) eq color)
-      import Color._
+      import Color.*
       color match {
         case Red | Green | Blue =>
       }

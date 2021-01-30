@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def fun(inline prog: Double): Double = ${impl('prog)}
 

@@ -5,7 +5,7 @@ object GadtAscription {
     case S[G, A, B](x: Var[G, A]) extends Var[(B, G), A]
   }
 
-  import Var._
+  import Var.*
   def evalVar[G, A](x: Var[G, A])(rho: G): A = x match {
     case _: Z[g, a] =>
       rho(0)

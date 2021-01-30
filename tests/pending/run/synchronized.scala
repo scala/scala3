@@ -20,7 +20,7 @@ object Util {
 }
 
 class C1 {
-  import Util._
+  import Util.*
 
   val lock = new AnyRef
 
@@ -108,7 +108,7 @@ class C1 {
 }
 
 object O1 {
-  import Util._
+  import Util.*
 
   val lock = new AnyRef
 
@@ -196,7 +196,7 @@ object O1 {
 }
 
 trait T {
-  import Util._
+  import Util.*
 
   val Tclass = Class.forName("T$class")
 

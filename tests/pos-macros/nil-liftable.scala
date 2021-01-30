@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Test:
   given NilToExpr: ToExpr[Nil.type] with {

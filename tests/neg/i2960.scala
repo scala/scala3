@@ -61,7 +61,7 @@ class Text(val value: String) extends Node {
 }
 
 object Test {
-import org.glavo.dotty._
-import org.glavo.dotty.Tag._
+import org.glavo.dotty.*
+import org.glavo.dotty.Tag.*
 'html{} // error
 }

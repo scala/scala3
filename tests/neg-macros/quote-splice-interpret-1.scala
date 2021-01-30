@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   inline def isZero(inline n: Int): Boolean = ${

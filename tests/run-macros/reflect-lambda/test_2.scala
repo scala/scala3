@@ -1,5 +1,5 @@
 object Test {
-  import lib._
+  import lib.*
 
   case class IntList(args: Int*) {
     def exists(f: Int => Boolean): Boolean = args.exists(f)

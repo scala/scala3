@@ -10,7 +10,7 @@ object Test extends App {
     (A.runtimeClass.getSimpleName, f)
 
   val inits: Seq[(String, Int => Set[Int])] = {
-    import collection.immutable.{Seq => _, _}
+    import collection.immutable.{Seq as _, *}
     Seq(sctor(BitSet(_)),
         sctor(HashSet(_)),
         sctor(ListSet(_)),

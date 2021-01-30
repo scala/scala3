@@ -1,4 +1,4 @@
-import java.{lang => jl}
+import java.{lang as jl}
 
 object TestSuite:
   def test(op: => Unit): Unit = op

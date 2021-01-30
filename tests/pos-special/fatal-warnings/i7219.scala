@@ -10,7 +10,7 @@ object Bar {
   type Blue = Foo.Blue
 }
 
-import Foo._
+import Foo.*
 
 def foo(a: MyEnum): Seq[Bar.Blue] = a match {
   case Red => Seq.empty

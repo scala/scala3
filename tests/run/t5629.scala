@@ -1,7 +1,7 @@
 
 
 
-import scala.{specialized => spec}
+import scala.{specialized as spec}
 
 
 

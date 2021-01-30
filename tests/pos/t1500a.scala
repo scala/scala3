@@ -17,7 +17,7 @@ object Steps {
 }
 
 object StepsTest {
-  import Steps._
+  import Steps.*
 
   implicitly[Step0]
   implicitly[Step1]

@@ -1,5 +1,5 @@
-import quoted._
-import scala.quoted.staging._
+import quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {

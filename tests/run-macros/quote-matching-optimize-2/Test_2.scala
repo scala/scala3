@@ -1,5 +1,5 @@
 object Test {
-  import Macro._
+  import Macro.*
 
   def main(args: Array[String]): Unit = {
     val ls = List(1, 2, 3)

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 type G[X]
 case class Foo[T](x: T)

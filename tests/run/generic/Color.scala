@@ -1,6 +1,6 @@
 package generic
 
-import Shapes._
+import Shapes.*
 
 /** enum Color {
  *    case Red

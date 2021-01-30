@@ -1,6 +1,6 @@
 package collections
 
-import decorators._
+import decorators.*
 
 object Test {
   def test(map: Map[Int, String]) = {

@@ -12,7 +12,7 @@ package immutable
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.compat.Platform
-import scala.collection.generic._
+import scala.collection.generic.*
 import scala.collection.mutable.Builder
 import compiletime.uninitialized
 

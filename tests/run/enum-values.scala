@@ -32,7 +32,7 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
   case BranchProd(i: Int)
 
 @main def Test: Unit =
-  import Color._, Suits._, Tag._, Expr._, ListLike._, TypeCtorsK._, MixedParams._, ClassOnly._
+  import Color._, Suits._, Tag._, Expr._, ListLike._, TypeCtorsK._, MixedParams._, ClassOnly.*
 
   type FromOrdinal[T] = {
     def fromOrdinal(ordinal: Int): T

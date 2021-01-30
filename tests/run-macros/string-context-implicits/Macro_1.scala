@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 extension (sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 extension (inline x: String) inline def strip: String =
   ${ stripImpl('x) }

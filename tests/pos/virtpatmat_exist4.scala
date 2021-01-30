@@ -10,7 +10,7 @@ trait IMain { self:  MemberHandlers =>
 
 trait MemberHandlers {
   val intp: IMain
-  import intp.global._
+  import intp.global.*
   sealed abstract class MemberHandler(val member: Tree) {
     def importedSymbols: List[Symbol]
   }

@@ -1,5 +1,5 @@
 object Test {
-  import Dsl._
+  import Dsl.*
 
   inline def q2 = MyQuoteMacro.myquote(ent.content(MyInsert("Foo")))
 

@@ -1,13 +1,13 @@
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.uncheckedVariance
 import annotation.tailrec
 import compiletime.uninitialized
 
 class LowPriority {
-  import CollectionStrawMan6._
+  import CollectionStrawMan6.*
 
   /** Convert array to iterable via view. Lower priority than ArrayOps */
   implicit def arrayToView[T](xs: Array[T]): ArrayView[T] = new ArrayView[T](xs)

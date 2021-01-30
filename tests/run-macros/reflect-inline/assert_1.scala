@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object api {
   extension (inline x: String) inline def stripMargin: String =

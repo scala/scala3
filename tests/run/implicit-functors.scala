@@ -3,7 +3,7 @@ object Utils {
   type Const[c] = [t] =>> c
 }
 
-import Utils._
+import Utils.*
 
 class Instances[F[_[_]], T[_]]
 

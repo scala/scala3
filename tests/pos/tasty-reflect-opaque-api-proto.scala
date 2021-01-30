@@ -19,7 +19,7 @@ class Reflect(val internal: CompilerInterface) {
 
 object App {
   val refl: Reflect = ???
-  import refl._
+  import refl.*
 
   val tree: Tree = ???
   tree.show

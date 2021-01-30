@@ -1,7 +1,7 @@
 package test
 import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
-import scala.quoted._
+import scala.quoted.*
 
 
 case class BigFloat(mantissa: BigInt, exponent: Int) {

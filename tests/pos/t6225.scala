@@ -15,6 +15,6 @@ object ko {
 }
 
 object ko2 {
-  import library.y._
+  import library.y.*
   implicitly[Foo]
 }

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
@@ -8,7 +8,7 @@ object Macros {
     case object HNil extends HList
 
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
-      import quotes.reflect._
+      import quotes.reflect.*
       e match {
         case '{HCons($_,$t)} =>
         //case '{HCons($a,$t)} =>

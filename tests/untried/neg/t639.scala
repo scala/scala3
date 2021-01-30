@@ -1,6 +1,6 @@
 package foo123
 
-import a._
+import a.*
 
 @B
 class C

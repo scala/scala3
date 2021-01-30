@@ -3,7 +3,7 @@
 package dotty.tools
 package io
 
-import java.io.{ InputStream }
+import java.io.InputStream
 import java.util.jar.JarEntry
 import language.postfixOps
 

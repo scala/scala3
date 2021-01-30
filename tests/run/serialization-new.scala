@@ -26,7 +26,7 @@ object Serialize {
     println()
   }
 }
-import Serialize._
+import Serialize.*
 
 //############################################################################
 // Test classes in package "scala"
@@ -44,7 +44,7 @@ object Test1_scala {
     type WeekDay = Value
     val Monday, Tuesday, Wednesday, Thusday, Friday, Saturday, Sunday = Value
   }
-  import WeekDay._, BigDecimal._, RoundingMode._
+  import WeekDay._, BigDecimal._, RoundingMode.*
 
   // in alphabetic order
   try {

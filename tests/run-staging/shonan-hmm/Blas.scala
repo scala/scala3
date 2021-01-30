@@ -1,9 +1,9 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 class Blas1[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
-  import tring._
-  import vec._
+  import tring.*
+  import vec.*
 
   implicit class Blas1VecOps(v1: Vec[Idx, T]) {
     def `*.`(v2: Vec[Idx, T]): Vec[Idx, T] = v1.zipWith(v2, mul)
@@ -16,8 +16,8 @@ class Blas1[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
 }
 
 class Blas2[Idx, T, Unt](tring: Ring[T], vec: VecROp[Idx, T, Unt]) extends Blas1[Idx, T, Unt](tring, vec) {
-  import tring._
-  import vec._
+  import tring.*
+  import vec.*
 
   implicit class Blas2VecOps(v1: Vec[Idx, T]) {
     def dot(v2: Vec[Idx, T]): T = reduce(add, zero, v1 `*.` v2)

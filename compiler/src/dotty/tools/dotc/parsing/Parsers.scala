@@ -3137,9 +3137,10 @@ object Parsers {
             case USCORE => wildcardSelector()
             case GIVEN => givenSelector()
             case _ =>
-              if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
               if isIdent(nme.raw.STAR) then wildcardSelector()
-              else namedSelector(termIdent())
+              else
+                if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
+                namedSelector(termIdent())
         }
         val rest =
           if in.token == COMMA then

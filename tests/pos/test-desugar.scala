@@ -31,7 +31,7 @@ object desugar {
 
   object patDefs {
 
-    import caseClasses._
+    import caseClasses.*
 
     val xs: List[Int] = Cons(1, Cons(2, Nil))
 

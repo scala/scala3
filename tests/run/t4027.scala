@@ -1,6 +1,6 @@
 
 
-import collection._
+import collection.*
 
 // Sorted maps have `filterKeys` and `mapValues` which return MapView.
 // Calling a transformation (map/filter) returns a View.

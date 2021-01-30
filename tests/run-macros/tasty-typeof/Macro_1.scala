@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def testTypeOf(): Unit = ${ testTypeOfImpl }
 
   private def testTypeOfImpl(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     '{
       assert(${Expr(TypeRepr.of[Unit] =:= TypeRepr.of[Unit])}, "Unit")
       assert(${Expr(TypeRepr.of[Byte] =:= TypeRepr.of[Byte])}, "Byte")

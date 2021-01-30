@@ -1,4 +1,4 @@
-import Nat._
+import Nat.*
 
 @main def Test: Unit =
   assert(toIntMacro(Succ(Succ(Succ(Zero)))) == 3)

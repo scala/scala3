@@ -1,6 +1,6 @@
 
-import quoted._
-import scala.quoted.staging._
+import quoted.*
+import scala.quoted.staging.*
 
 object Test {
   given Compiler = Compiler.make(getClass.getClassLoader)

@@ -1,5 +1,5 @@
 object Enums/*<-_empty_::Enums.*/:
-  import <:</*->_empty_::Enums.`<:<`.*/._
+  import <:</*->_empty_::Enums.`<:<`.*/.*
 
   enum Colour/*<-_empty_::Enums.Colour#*/:
     import Colour/*->_empty_::Enums.Colour.*/.Red/*->_empty_::Enums.Colour.Red.*/

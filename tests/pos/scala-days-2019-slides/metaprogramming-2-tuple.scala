@@ -1,5 +1,5 @@
 object TupleExample {
-  import Tuple._
+  import Tuple.*
 
   type A
   type B

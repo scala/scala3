@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 class Foo {
   given Compiler = Compiler.make(getClass.getClassLoader)

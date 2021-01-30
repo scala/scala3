@@ -1,5 +1,5 @@
 object Boom {
-  import scala.compiletime._
+  import scala.compiletime.*
   trait Fail[A <: Int, B <: Int]
 
   erased inline given fail[X <: Int, Y <: Int]: Fail[X, Y] = {

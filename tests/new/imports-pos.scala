@@ -1,9 +1,9 @@
 package test;
 
-import java.lang.{System => S}
+import java.lang.System as S
 
 object test {
-  import S.out.{print => p, println => print}
+  import S.out.{print as p, println as print}
 
   val foo = 1;
 

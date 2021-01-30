@@ -1,7 +1,7 @@
 package stm
 
 trait STMLike[F[_]] {
-  import Internals._
+  import Internals.*
 
   sealed abstract class Txn[+A] {}
 

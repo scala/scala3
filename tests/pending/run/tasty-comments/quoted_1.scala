@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 object Macros {
@@ -7,7 +7,7 @@ object Macros {
     ${ impl('t) }
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val tree = x.asTerm
     tree.symbol.comment.map(_.raw) match {

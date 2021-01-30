@@ -1,6 +1,6 @@
-import Macro1._
-import Macro2._
-import Macro3._
+import Macro1.*
+import Macro2.*
+import Macro3.*
 import Macro3.eqGen
 
 case class Person(name: String, age: Int)
@@ -16,8 +16,8 @@ enum OptInv[+T] {
 }
 
 @main def Test() = {
-  import Opt._
-  import Eq.{given, _}
+  import Opt.*
+  import Eq.{given, *}
 
   val t1 = test1(Person("Test", 23))
   println(t1)

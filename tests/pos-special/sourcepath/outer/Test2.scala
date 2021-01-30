@@ -1,5 +1,5 @@
 package outer
-import nested._
+import nested.*
 
 class Test2 extends A(22) {
 

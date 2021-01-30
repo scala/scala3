@@ -2,7 +2,7 @@ object A {
    def x = 3
 
    def y = {
-     import B._
+     import B.*
      x  // error: ambiguous
    }
 }

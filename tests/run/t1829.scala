@@ -1,6 +1,6 @@
 object Test{
   def main(args : Array[String]): Unit = {
-    import scala.collection.immutable._
+    import scala.collection.immutable.*
     assert(IntMap.empty == HashMap.empty);
     assert(HashMap.empty == IntMap.empty);
     assert(LongMap.empty == HashMap.empty);

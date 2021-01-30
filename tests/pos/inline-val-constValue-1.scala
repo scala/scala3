@@ -1,4 +1,4 @@
-import compiletime._
+import compiletime.*
 
 class C:
   type X <: Tuple

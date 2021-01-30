@@ -4,7 +4,7 @@ enum HLst {
 }
 
 object Test {
-  import HLst._
+  import HLst.*
   def length(hl: HLst): Int = hl match {
     case HCons(_, tl) => 1 + length(tl)
     case HNil => 0

@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   case class Box[T](v: T) {
     def >(that: Box[T]): Boolean = this == that

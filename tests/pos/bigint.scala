@@ -1,5 +1,5 @@
 import scala.math.BigInt
-//import BigInt._
+//import BigInt.*
 object test {
 
   1 * BigInt(0)

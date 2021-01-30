@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def f(x: Expr[Any])(using Quotes) =
   x match {
