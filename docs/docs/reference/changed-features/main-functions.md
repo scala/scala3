@@ -62,7 +62,7 @@ For instance, the `happyBirthDay` method above would generate additional code eq
 
 ```scala
 final class happyBirthday:
-   import scala.util.CommandLineParser => CLP
+   import scala.util.CommandLineParser as CLP
    <static> def main(args: Array[String]): Unit =
       try
          happyBirthday(
