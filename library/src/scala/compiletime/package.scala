@@ -20,8 +20,9 @@ package object compiletime {
    *
    *    var x: T = uninitialized
    *
-   *  This signifies that the field is not initialized on its own (On the JVM
-   *  it is still bulk-initialized to a zero bitfield).
+   *  This signifies that the field is not initialized on its own. It is still initialized
+   *  as part of the bulk initialization of the object it belongs to, which assigns zero
+   *  values such as `null`, `0`, `0.0`, `false` to all object fields.
    */
   erased def uninitialized[T]: T = ???
 
