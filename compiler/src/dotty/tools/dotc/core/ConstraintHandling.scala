@@ -366,17 +366,32 @@ trait ConstraintHandling {
     if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
   end dropTransparentTraits
 
+  /** If `tp` is an applied match type alias with is also an unreducible application
+   *  of a higher-kinded type to a wildcard argument, widen to the match type's bound,
+   *  in order to avoid an unreducible application of higher-kinded type ... in inferred type"
+   *  error in PostTyper. Fixes #11246.
+   */
+  def widenIrreducible(tp: Type)(using Context): Type = tp match
+    case tp @ AppliedType(tycon, _) if tycon.isLambdaSub && tp.hasWildcardArg =>
+      tp.superType match
+        case MatchType(bound, _, _) => bound
+        case _ => tp
+    case _ =>
+      tp
+
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. drop transparent traits from intersections (see @dropTransparentTraits)
+   *   3. Widen some irreducible applications of higher-kinded types to wildcard arguments
+   *      (see @widenIrreducible).
+   *   4. Drop transparent traits from intersections (see @dropTransparentTraits).
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
-   *  and this type ref is different from `inst`, replace by a TermRef to
+   *  and this type ref is different from `inst`, replace by a TermRef t
    *  its source module instead.
    *
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
@@ -397,7 +412,7 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropTransparentTraits(widenOr(widenSingle(inst)), bound)
+      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
