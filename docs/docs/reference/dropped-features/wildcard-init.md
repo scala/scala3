@@ -7,7 +7,7 @@ The syntax
 ```scala
   var x: A = _
 ```
-that was used to indicate an uninitialized field has been dropped.
+that was used to indicate an uninitialized field, has been dropped.
 At its place there is a special value `uninitialized` in the `scala.compiletime` package. To get an uninitialized field, you now write
 ```scala
 import scala.compiletime.uninitialized
