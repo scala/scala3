@@ -983,6 +983,10 @@ class Namer { typer: Typer =>
       def exportForwarders(exp: Export): List[tpd.MemberDef] = {
         val buf = new mutable.ListBuffer[tpd.MemberDef]
         val Export(expr, selectors) = exp
+        if expr.isEmpty then
+          report.error(em"Export selector must have prefix and `.`", exp.srcPos)
+          return Nil
+
         val path = typedAheadExpr(expr, AnySelectionProto)
         checkLegalExportPath(path, selectors)
         lazy val wildcardBound = importBound(selectors, isGiven = false)
