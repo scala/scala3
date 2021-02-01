@@ -46,8 +46,8 @@ trait BasicSupport:
 
     def isDeprecated(): Option[Annotation] =
       sym.annotations.find { a =>
-        a.symbol.packageName == "scala" && a.symbol.className.fold(false)(_ == "deprecated") ||
-        a.symbol.packageName == "java.lang" && a.symbol.className.fold(false)(_ == "Deprecated")
+        a.symbol.packageName == "scala" && a.symbol.className.contains("deprecated") ||
+        a.symbol.packageName == "java.lang" && a.symbol.className.contains("Deprecated")
       }.map(parseAnnotation)
 
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
