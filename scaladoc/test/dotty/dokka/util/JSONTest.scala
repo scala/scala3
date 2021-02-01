@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package util
 
 import org.junit.Test

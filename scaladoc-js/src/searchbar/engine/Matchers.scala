@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 enum Matchers extends Function1[PageEntry, Int]:
   case ByName(query: String)

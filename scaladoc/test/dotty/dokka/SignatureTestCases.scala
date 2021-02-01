@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 

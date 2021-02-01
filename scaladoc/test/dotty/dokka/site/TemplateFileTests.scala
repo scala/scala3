@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package site
 
 import com.vladsch.flexmark.html.HtmlRenderer

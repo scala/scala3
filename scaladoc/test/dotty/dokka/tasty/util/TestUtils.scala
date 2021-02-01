@@ -1,7 +1,7 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package tasty.util
 
-import dotty.dokka.test.BuildInfo
+import dotty.tools.scaladoc.test.BuildInfo
 
 object TestUtils {
   def listOurClasses(): List[String] = {

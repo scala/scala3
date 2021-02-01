@@ -1,9 +1,9 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package linking
 
 import scala.jdk.CollectionConverters._
 import scala.Function.const
-import dotty.dokka.ScaladocTest
+import dotty.tools.scaladoc.ScaladocTest
 
 abstract class DriTest(testName: String) extends ScaladocTest(testName):
   // override for additional assertions

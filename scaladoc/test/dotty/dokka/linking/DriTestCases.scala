@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package linking
 
 import org.junit.Assert.assertTrue

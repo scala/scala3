@@ -1,11 +1,11 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package tasty.comments
 
 import scala.quoted.Quotes
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue}
-import dotty.dokka.tasty.util._
+import dotty.tools.scaladoc.tasty.util._
 
 class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
@@ -125,7 +125,7 @@ class MemberLookupTests {
           alreadyRan = true
 
       def test()(using q: Quotes): Unit = {
-        import dotty.dokka.tasty.comments.MemberLookup
+        import dotty.tools.scaladoc.tasty.comments.MemberLookup
 
         val cases = LookupTestCases[q.type](q)
 

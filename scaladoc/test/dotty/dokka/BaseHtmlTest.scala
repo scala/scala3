@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,7 +8,7 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.dokka.test.BuildInfo
+import dotty.tools.scaladoc.test.BuildInfo
 import util.IO
 
 class BaseHtmlTest:

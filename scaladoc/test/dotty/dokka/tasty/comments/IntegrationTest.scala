@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package tasty.comments
 
 import org.junit.Test

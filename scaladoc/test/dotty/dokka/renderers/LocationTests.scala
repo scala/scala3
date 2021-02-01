@@ -1,9 +1,9 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package renderers
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
-import dotty.dokka.util.HTML._
+import dotty.tools.scaladoc.util.HTML._
 
 class LocationTests:
   given DocContext = testDocContext
