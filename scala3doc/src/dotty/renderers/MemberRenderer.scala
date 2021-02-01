@@ -1,6 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model.api._
 import scala.collection.immutable.SortedMap
 import dotty.dokka.HTML._
 import collection.JavaConverters._

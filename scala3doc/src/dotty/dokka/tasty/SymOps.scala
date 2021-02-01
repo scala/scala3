@@ -1,9 +1,5 @@
-package dotty.dokka.tasty
-
-import dotty.dokka._
-import dotty.dokka.model.api.Visibility
-import dotty.dokka.model.api.VisibilityScope
-import dotty.dokka.model.api.Modifier
+package dotty.dokka
+package tasty
 
 import scala.quoted._
 

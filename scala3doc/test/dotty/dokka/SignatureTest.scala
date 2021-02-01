@@ -7,12 +7,10 @@ import dotty.dokka.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
 
-import dotty.dokka.model.api._
-
-private enum Signature:
+private enum SignatureRes:
   case Expected(name: String, signature: String)
   case Unexpected(name: String)
-import Signature._
+import SignatureRes._
 
 abstract class SignatureTest(
   testName: String,
@@ -88,7 +86,7 @@ abstract class SignatureTest(
       nameMatch <- identifierRegex.findFirstMatchIn(afterKind)
     yield nameMatch.group(1)
 
-  private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[Signature] =
+  private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
     source.getLines.map(_.trim)
         .filterNot(_.isEmpty)
         .filterNot(_.startWithAnyOfThese("=",":","{","}", "//"))

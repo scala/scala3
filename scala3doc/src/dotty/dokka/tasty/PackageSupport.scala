@@ -1,9 +1,6 @@
 package dotty.dokka
 package tasty
 
-import dotty.dokka._
-import dotty.dokka.model.api._
-
 import collection.JavaConverters._
 
 trait PackageSupport:

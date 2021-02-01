@@ -1,7 +1,6 @@
 package dotty.dokka
 
 import dotty.dokka.tasty.DokkaTastyInspector
-import dotty.dokka.model.api._
 import collection.JavaConverters._
 
 case class Module(rootPackage: Member, members: Map[DRI, Member])

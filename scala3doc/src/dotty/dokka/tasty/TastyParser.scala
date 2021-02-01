@@ -13,7 +13,6 @@ import dotty.tools.dotc
 import dotty.dokka.tasty.comments.MemberLookup
 import dotty.dokka.tasty.comments.QueryParser
 import dotty.dokka.tasty.comments.Comment
-import dotty.dokka.model.api._
 
 import java.nio.file.Paths
 import java.nio.file.Files

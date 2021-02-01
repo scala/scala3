@@ -1,8 +1,7 @@
-package dotty.dokka.tasty
+package dotty.dokka
+package tasty
 
 import collection.JavaConverters._
-
-import dotty.dokka.model.api.Link
 
 trait TypesSupport:
   self: TastyParser =>

@@ -2,11 +2,7 @@ package dotty.dokka.tasty
 
 import collection.JavaConverters._
 import dotty.dokka._
-import dotty.dokka.model.api._
-import dotty.dokka.model.api.Modifier
-import dotty.dokka.model.api.Kind
-import dotty.dokka.model.api.ImplicitConversion
-import dotty.dokka.model.api.{Signature => DSignature, Link => DLink}
+import dotty.dokka.{Signature => DSignature}
 
 trait ClassLikeSupport:
   self: TastyParser =>
@@ -415,7 +411,7 @@ trait ClassLikeSupport:
     mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(deprecated = valDef.symbol.isDeprecated())
 
   def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
-    modifiers: Seq[dotty.dokka.model.api.Modifier] = symbol.getExtraModifiers(),
+    modifiers: Seq[Modifier] = symbol.getExtraModifiers(),
     origin: Origin = Origin.RegularlyDefined,
     inheritedFrom: Option[InheritedFrom] = None,
     graph: HierarchyGraph = HierarchyGraph.empty,

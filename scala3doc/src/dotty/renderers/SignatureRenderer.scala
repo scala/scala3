@@ -5,8 +5,6 @@ import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
 import java.util.{List => JList, Set => JSet}
-import dotty.dokka.model.api.Link
-import dotty.dokka.model.api.HierarchyGraph
 import scala.util.Try
 import org.jsoup.Jsoup
 import java.nio.file.Paths

@@ -1,8 +1,6 @@
-package dotty.dokka.translators
+package dotty.dokka
+package translators
 
-import dotty.dokka.model.api._
-
-import dotty.dokka._
 
 object FilterAttributes:
   def attributesFor(m: Member): Map[String, String] =

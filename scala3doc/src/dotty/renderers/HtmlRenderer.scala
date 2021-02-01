@@ -5,7 +5,6 @@ import HTML._
 import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
-import dotty.dokka.model.api._
 import dotty.dokka.site._
 import scala.util.Try
 import org.jsoup.Jsoup

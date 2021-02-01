@@ -5,7 +5,6 @@ import HTML._
 import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
-import dotty.dokka.model.api._
 import dotty.dokka.site._
 import scala.util.Try
 import org.jsoup.Jsoup
@@ -109,7 +108,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
             val sig = Signature(member.kind.name, " ") ++ Seq(Link(member.name, member.dri)) ++ signatureBuilder.names.reverse
             val entry = mkEntry(member.dri, member.name, flattenToText(sig), descr)
             val children = member
-                .membersBy(m => m.kind != dotty.dokka.model.api.Kind.Package && !m.kind.isInstanceOf[Classlike])
+                .membersBy(m => m.kind != Kind.Package && !m.kind.isInstanceOf[Classlike])
                 .filter(m => m.origin == Origin.RegularlyDefined && m.inheritedFrom.isEmpty)
             Seq(entry) ++ children.flatMap(processMember)
 

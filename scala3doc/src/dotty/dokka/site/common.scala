@@ -3,7 +3,6 @@ package site
 
 import java.io.File
 import java.nio.file.Files
-import dotty.dokka.model.api._
 
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension

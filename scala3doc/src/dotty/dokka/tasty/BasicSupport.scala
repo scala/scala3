@@ -3,8 +3,6 @@ package tasty
 
 import collection.JavaConverters._
 import dotty.dokka._
-import dotty.dokka.model.api.Annotation
-import dotty.dokka.model.api.TastyDocumentableSource
 import scala.quoted._
 
 trait BasicSupport:

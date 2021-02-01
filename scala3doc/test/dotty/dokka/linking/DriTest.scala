@@ -3,7 +3,6 @@ package linking
 
 import scala.jdk.CollectionConverters._
 import scala.Function.const
-import dotty.dokka.model.api._
 import dotty.dokka.ScaladocTest
 
 abstract class DriTest(testName: String) extends ScaladocTest(testName):
