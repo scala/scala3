@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import java.nio.file._
 import org.junit.Assert._

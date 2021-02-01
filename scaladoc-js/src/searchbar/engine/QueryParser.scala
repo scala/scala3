@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import scala.util.matching.Regex._
 import scala.util.matching._

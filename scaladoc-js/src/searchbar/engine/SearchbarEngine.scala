@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import math.Ordering.Implicits.seqOrdering
 

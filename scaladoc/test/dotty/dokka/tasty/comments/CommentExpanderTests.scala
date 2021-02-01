@@ -1,12 +1,12 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package tasty.comments
 
 import scala.quoted._
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
-import dotty.dokka.tasty.util._
-import dotty.dokka.tasty.TastyParser
+import dotty.tools.scaladoc.tasty.util._
+import dotty.tools.scaladoc.tasty.TastyParser
 
 class CommentExpanderTests {
   def check(using quoted.Quotes)(): Unit =

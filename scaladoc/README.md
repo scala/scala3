@@ -73,8 +73,8 @@ You can also find the result of building the same sites for latest `master` at:
 ### Testing
 
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/dokka/MultipleFileTest.scala) class
-and its subtypes (such as [SingleFileTest](test/dotty/dokka/SingleFileTest.scala))
+to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/tools/scala3doc/MultipleFileTest.scala) class
+and its subtypes (such as [SingleFileTest](test/dotty/tools/scala3doc/SingleFileTest.scala))
 
 WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
 In case of any discrepancies rely on the source files instead.

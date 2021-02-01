@@ -1,9 +1,9 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import scala.io.Source
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
-import dotty.dokka.test.BuildInfo
+import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
 import util.IO

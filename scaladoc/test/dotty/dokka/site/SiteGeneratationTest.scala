@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package site
 
 import java.nio.file.Files
@@ -9,7 +9,7 @@ import org.junit.Assert._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
-import dotty.dokka.test.BuildInfo
+import dotty.tools.scaladoc.test.BuildInfo
 
 class SiteGeneratationTest extends BaseHtmlTest:
 

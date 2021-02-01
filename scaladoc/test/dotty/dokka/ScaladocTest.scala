@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
 import org.junit.{Test, Rule}

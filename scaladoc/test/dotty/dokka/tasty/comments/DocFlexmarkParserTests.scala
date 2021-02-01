@@ -1,9 +1,9 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 package tasty.comments
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
-import dotty.dokka.tasty.comments.markdown.DocFlexmarkParser
+import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkParser
 
 class DocFlexmarkParserTests {
   @Test def test(): Unit = {

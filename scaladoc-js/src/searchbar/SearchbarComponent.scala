@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import org.scalajs.dom._
 import org.scalajs.dom.html.Input
