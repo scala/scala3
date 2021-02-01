@@ -157,8 +157,5 @@ class TestCategory
 // ********************************************************************************
 // Failed projects:-build / Test / testOnly 3569s
 //  - dotty.communitybuild.CommunityBuildTestA.scalatest
-//  - dotty.communitybuild.CommunityBuildTestA.upickle
-//  - dotty.communitybuild.CommunityBuildTestA.oslib
-//  - dotty.communitybuild.CommunityBuildTestA.utest
 //  - dotty.communitybuild.CommunityBuildTestA.izumiReflect
 // ********************************************************************************
