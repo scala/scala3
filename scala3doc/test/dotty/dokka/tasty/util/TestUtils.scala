@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.util
+package dotty.dokka
+package tasty.util
 
 import dotty.dokka.test.BuildInfo
 

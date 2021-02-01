@@ -1,4 +1,5 @@
-package dotty.dokka.site
+package dotty.dokka
+package site
 
 import org.junit.Test
 import org.junit.Assert._
