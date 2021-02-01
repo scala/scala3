@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 sealed trait Query {
   def asList: List[String] = this match {

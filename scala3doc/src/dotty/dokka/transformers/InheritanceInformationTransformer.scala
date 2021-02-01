@@ -1,4 +1,5 @@
 package dotty.dokka
+package transformers
 
 class InheritanceInformationTransformer(using DocContext) extends (Module => Module):
   override def apply(original: Module): Module =

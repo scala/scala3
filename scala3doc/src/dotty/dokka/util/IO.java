@@ -1,4 +1,4 @@
-package dotty.dokka;
+package dotty.dokka.util;
 
 import java.io.*;
 import java.nio.file.*;

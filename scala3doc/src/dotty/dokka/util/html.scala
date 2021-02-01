@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.dokka.util
 
 /**
  * This is trivial html renderer using api inspired by ScalaTags

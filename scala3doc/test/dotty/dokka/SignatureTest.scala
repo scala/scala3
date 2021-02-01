@@ -6,6 +6,7 @@ import scala.util.matching.Regex
 import dotty.dokka.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
+import util.IO
 
 private enum SignatureRes:
   case Expected(name: String, signature: String)

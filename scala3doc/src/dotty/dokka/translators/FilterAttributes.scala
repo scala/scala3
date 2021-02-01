@@ -1,7 +1,6 @@
 package dotty.dokka
 package translators
 
-
 object FilterAttributes:
   def attributesFor(m: Member): Map[String, String] =
     val base = visibity(m) ++ visibity(m) ++ origin(m) ++ keywords(m) ++ inheritedFrom(m)

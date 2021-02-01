@@ -1,7 +1,7 @@
 package dotty.dokka
 package renderers
 
-import HTML._
+import util.HTML._
 import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
@@ -132,7 +132,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
     head(
       meta(charset := "utf-8"),
-      meta(HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
+      meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
       title(page.link.name),
       link(
         rel := "shortcut icon",

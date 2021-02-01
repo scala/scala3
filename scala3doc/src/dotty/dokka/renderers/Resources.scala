@@ -1,7 +1,7 @@
 package dotty.dokka
 package renderers
 
-import HTML._
+import util.HTML._
 import collection.JavaConverters._
 import java.net.URI
 import java.net.URL
@@ -13,6 +13,8 @@ import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
 import dotty.dokka.translators.FilterAttributes
+import util._
+import translators._
 
 enum Resource(val path: String):
   case Text(override val path: String, content: String) extends Resource(path)

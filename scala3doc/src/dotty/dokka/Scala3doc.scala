@@ -57,7 +57,7 @@ object Scala3doc:
     if !ctx.reporter.hasErrors then
       val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
 
-      if (parsedArgs.output.exists()) IO.delete(parsedArgs.output)
+      if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
 
       run(updatedArgs)
       report.inform("Done")

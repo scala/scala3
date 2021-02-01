@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import dotty.tools._
 import dotc._

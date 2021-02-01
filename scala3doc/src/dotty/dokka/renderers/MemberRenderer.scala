@@ -1,12 +1,14 @@
 package dotty.dokka
+package renderers
 
 import scala.collection.immutable.SortedMap
-import dotty.dokka.HTML._
+import util.HTML._
 import collection.JavaConverters._
 import dotty.dokka.translators.FilterAttributes
 import dotty.dokka.tasty.comments.markdown.DocFlexmarkRenderer
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.dokka.tasty.comments.wiki.WikiDocElement
+import translators._
 
 class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._

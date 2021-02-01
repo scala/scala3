@@ -1,4 +1,5 @@
 package dotty.dokka
+package translators
 
 object ScalaSignatureProvider:
   def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =

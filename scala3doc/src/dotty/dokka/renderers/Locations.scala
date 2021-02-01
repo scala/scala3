@@ -1,7 +1,7 @@
 package dotty.dokka
 package renderers
 
-import HTML._
+import util.HTML._
 import collection.JavaConverters._
 import java.net.URI
 import java.net.URL

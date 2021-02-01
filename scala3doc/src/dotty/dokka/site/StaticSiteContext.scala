@@ -7,7 +7,7 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import util.Try
+import scala.util.Try
 import collection.JavaConverters._
 
 class StaticSiteContext(

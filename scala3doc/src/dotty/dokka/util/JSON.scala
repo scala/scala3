@@ -1,4 +1,5 @@
 package dotty.dokka
+package util
 
 import scala.annotation.tailrec
 

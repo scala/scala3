@@ -1,6 +1,7 @@
 package dotty.dokka
+package renderers
 
-import HTML._
+import util.HTML._
 
 object DotDiagramBuilder:
   def build(diagram: HierarchyGraph, renderer: SignatureRenderer)(using DocContext): String =

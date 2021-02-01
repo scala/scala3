@@ -1,4 +1,5 @@
 package dotty.dokka
+package translators
 
 case class InlineSignatureBuilder(names: Signature = Nil, preName: Signature = Nil) extends SignatureBuilder:
   override def text(str: String): SignatureBuilder = copy(names = str +: names)

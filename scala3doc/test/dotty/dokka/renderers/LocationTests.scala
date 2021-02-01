@@ -3,7 +3,7 @@ package renderers
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
-import dotty.dokka.HTML._
+import dotty.dokka.util.HTML._
 
 class LocationTests:
   given DocContext = testDocContext
