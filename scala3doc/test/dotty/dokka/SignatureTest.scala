@@ -22,7 +22,7 @@ abstract class SignatureTest(
   filterFunc: (Path) => Boolean = _ => true
 ) extends ScaladocTest(testName):
 
-  def runTest = afterRendering {
+  def runTest = { org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/'); afterRendering {
     val sources = sourceFiles match
       case Nil => testName :: Nil
       case s => s
@@ -65,7 +65,7 @@ abstract class SignatureTest(
       reportError(errorMessage)
     end if
 
-  } :: Nil
+  } :: Nil }
 
   // e.g. to remove '(0)' from object IAmACaseObject extends CaseImplementThis/*<-*/(0)/*->*/
   private val commentRegex = raw"\/\*<-\*\/[^\/]+\/\*->\*\/".r
