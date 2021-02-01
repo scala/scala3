@@ -10,8 +10,6 @@ import java.nio.file.Paths
 import util.Try
 import collection.JavaConverters._
 
-import dotty.dokka.model.api._
-
 class StaticSiteContext(
   val root: File,
   val args: Scala3doc.Args,

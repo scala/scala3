@@ -2,7 +2,6 @@ package dotty.dokka
 
 import java.nio.file.Path
 import java.nio.file.Paths
-import dotty.dokka.model.api._
 import dotty.tools.dotc.core.Contexts.Context
 import scala.util.matching.Regex
 

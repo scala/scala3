@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model._
-import dotty.dokka.model.api._
-
 class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Module):
   override def apply(original: Module): Module =
     val classlikeMap = original.members

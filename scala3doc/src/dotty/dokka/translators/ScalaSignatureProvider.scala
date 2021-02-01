@@ -1,7 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model.api._
-
 object ScalaSignatureProvider:
   def rawSignature(documentable: Member, builder: SignatureBuilder): SignatureBuilder =
     documentable.kind match

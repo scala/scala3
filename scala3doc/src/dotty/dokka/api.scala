@@ -1,6 +1,4 @@
 package dotty.dokka
-package model
-package api
 
 import dotty.dokka.tasty.comments.Comment
 
@@ -145,7 +143,7 @@ case class Member(
   dri: DRI,
   kind: Kind,
   visibility: Visibility = Visibility.Unrestricted,
-  modifiers: Seq[dotty.dokka.model.api.Modifier] = Nil,
+  modifiers: Seq[Modifier] = Nil,
   annotations: List[Annotation] = Nil,
   signature: Signature = Signature(),
   sources: Option[TastyDocumentableSource] = None,
@@ -169,7 +167,57 @@ extension[T] (member: Member)
   def asLink: LinkToType = LinkToType(member.signature, member.dri, member.kind)
   def membersBy(op: Member => Boolean): Seq[Member] = member.members.filter(op)
 
+  def withMembers(newMembers: Seq[Member]): Member = member.copy(members = newMembers)
+
+  def updateRecusivly(op: Member => Member): Member =
+    val newMembers = member.members.map(_.updateRecusivly(op))
+    op(member).withMembers(newMembers)
+
+  def withOrigin(origin: Origin): Member = member.copy(origin = origin)
+
+  def withKind(kind: Kind): Member = member.copy(kind = kind)
+
+  def withNewMembers(newMembers: Seq[Member]): Member =
+    member.copy(members = member.members ++ newMembers)
+
+  def withKnownChildren(knownChildren: Seq[LinkToType]): Member =
+    member.copy(knownChildren = knownChildren)
+
+  def withNewGraphEdges(edges: Seq[(LinkToType, LinkToType)]): Member =
+    member.copy(graph = member.graph ++ edges)
+
+  def getDirectParentsAsStrings: Seq[String] =
+    member.directParents.map(_.signature.getName).sorted
+
+  def getParentsAsStrings: Seq[String] =
+    member.parents.map(_.signature.getName).sorted
+
+  def getKnownChildrenAsStrings: Seq[String] =
+    member.knownChildren.map(_.signature.getName).sorted
+
 extension (members: Seq[Member]) def byInheritance =
   members.partition(_.inheritedFrom.isEmpty)
+
+extension (m: Module)
+  def updatePackages(op: Seq[Member] => Seq[Member]): Module =
+    val newRoot = m.rootPackage.withMembers(op(m.rootPackage.members))
+    m.copy(rootPackage = newRoot)
+
+  def updateMembers(op: Member => Member): Module =
+     updatePackages(_.map(p => p.updateRecusivly(op)))
+
+  def visitMembers(callback: Member => Unit): Unit =
+    def visitClasslike(c: Member): Unit =
+      callback(c)
+      c.members.foreach(visitClasslike(_))
+
+    visitClasslike(m.rootPackage)
+
+extension (s: Signature)
+  def getName: String =
+    s.map {
+      case s: String => s
+      case l: Link => l.name
+    }.mkString
 
 case class TastyDocumentableSource(val path: String, val lineNumber: Int)

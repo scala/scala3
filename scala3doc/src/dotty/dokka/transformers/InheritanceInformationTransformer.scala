@@ -1,8 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model._
-import dotty.dokka.model.api._
-
 class InheritanceInformationTransformer(using DocContext) extends (Module => Module):
   override def apply(original: Module): Module =
     val subtypes = getSupertypes(original.rootPackage).groupBy(_._1).transform((k, v) => v.map(_._2))

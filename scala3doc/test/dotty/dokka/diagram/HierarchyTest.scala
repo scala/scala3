@@ -1,7 +1,7 @@
-package dotty.dokka.diagram
+package dotty.dokka
+package diagram
 
 import dotty.dokka.ScaladocTest
-import dotty.dokka.model.api._
 import scala.jdk.CollectionConverters.{ListHasAsScala, SeqHasAsJava}
 import org.junit.Assert.{assertSame, assertTrue, assertEquals}
 

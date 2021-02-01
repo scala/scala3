@@ -1,7 +1,5 @@
 package dotty.dokka
 
-import dotty.dokka.model.api._
-
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 
 class ObjectSignatures extends SignatureTest("objectSignatures", Seq("object"))
@@ -17,7 +15,7 @@ class SignatureTestSourceTest extends SignatureTest("signatureTestSource", Signa
 
 class ModifiersSignatureTest extends SignatureTest("modifiersSignatureTestSource", SignatureTest.all)
 
-class Visibility extends SignatureTest("visibility", SignatureTest.all)
+class VisibilityTest extends SignatureTest("visibility", SignatureTest.all)
 
 
 class GenericMethodsTest extends SignatureTest("genericMethods", Seq("def"))
