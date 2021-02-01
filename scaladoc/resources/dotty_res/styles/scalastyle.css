@@ -661,7 +661,34 @@ footer .pull-right {
   content: url("../images/given.svg")
 }
 
+#leftColumn .socials {
+  margin-left: 5%;
+  margin-right: 5%;
+}
 
+footer .socials {
+  margin-left: 10px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.social-icon {
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.social-icon img {
+  height: 20px;
+  width: 20px;
+}
+
+#generated-by {
+  position: absolute;
+  right: 10px;
+  display: flex;
+  align-items: center;
+}
 
 /* Large Screens */
 @media(min-width: 1100px) {

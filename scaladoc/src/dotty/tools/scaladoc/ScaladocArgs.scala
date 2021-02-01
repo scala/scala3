@@ -36,6 +36,11 @@ class ScaladocArgs extends SettingGroup with CommonScalaSettings:
       "Mapping between regexes matching classpath entries and external documentation. " +
         "'regex::[scaladoc|scaladoc|javadoc]::path' syntax is used")
 
+  val socialLinks: Setting[List[String]] =
+    MultiStringSetting("-social-links", "social-links",
+      "Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used. " +
+        "'custom::link::white_icon_name::black_icon_name' is also allowed, in this case icons must be present in 'images/'' directory.")
+
   val deprecatedSkipPackages: Setting[List[String]] =
     MultiStringSetting("-skip-packages", "packages", "Deprecated, please use `-skip-by-id` or `-skip-by-regex`")
 
@@ -49,7 +54,7 @@ class ScaladocArgs extends SettingGroup with CommonScalaSettings:
     StringSetting("-doc-root-content", "path", "The file from which the root package documentation should be imported.", "")
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, skipById, skipByRegex, deprecatedSkipPackages, docRootContent)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent)
 
 object ScaladocArgs:
   def extract(args: List[String], rootCtx: CompilerContext):(Scaladoc.Args, CompilerContext) =
@@ -119,6 +124,14 @@ object ScaladocArgs:
         )
       )
 
+    val socialLinksParsed =
+      socialLinks.get.flatMap { s =>
+        SocialLinks.parse(s).fold(left => {
+          report.warning(left)
+          None
+        },right => Some(right))
+      }
+
     unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
       report.warning(s"Setting ${s.name} is currently not supported.")
     }
@@ -142,6 +155,7 @@ object ScaladocArgs:
       sourceLinks.get,
       revision.nonDefault,
       externalMappings,
+      socialLinksParsed,
       skipById.get ++ deprecatedSkipPackages.get,
       skipByRegex.get,
       docRootContent.nonDefault

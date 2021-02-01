@@ -138,6 +138,14 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     dottyRes("images/enum.svg"),
     dottyRes("images/enum_comp.svg"),
     dottyRes("images/given.svg"),
+    dottyRes("images/github-icon-black.png"),
+    dottyRes("images/github-icon-white.png"),
+    dottyRes("images/discord-icon-black.png"),
+    dottyRes("images/discord-icon-white.png"),
+    dottyRes("images/twitter-icon-black.png"),
+    dottyRes("images/twitter-icon-white.png"),
+    dottyRes("images/gitter-icon-black.png"),
+    dottyRes("images/gitter-icon-white.png"),
     searchData(pages)
   )
 
