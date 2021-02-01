@@ -44,6 +44,12 @@ trait BasicSupport:
     def getAnnotations(): List[Annotation] =
       sym.annotations.filterNot(_.symbol.packageName.startsWith("scala.annotation.internal")).map(parseAnnotation).reverse
 
+    def isDeprecated(): Option[Annotation] =
+      sym.annotations.find { a =>
+        a.symbol.packageName == "scala" && a.symbol.className.contains("deprecated") ||
+        a.symbol.packageName == "java.lang" && a.symbol.className.contains("Deprecated")
+      }.map(parseAnnotation)
+
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
 
 

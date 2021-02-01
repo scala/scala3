@@ -52,7 +52,11 @@ trait SignatureBuilder extends ScalaSignatureUtils {
 
     private def buildAnnotationParams(a: Annotation): SignatureBuilder =
       if !a.params.isEmpty then
-        list(a.params, "(", ")", ", "){ (bdr, param) => bdr.buildAnnotationParameter(param)}
+        val params = a.params.filterNot {
+          case Annotation.LinkParameter(_, _, text) => text == "_"
+          case _ => false
+        }
+        list(params, "(", ")", ", "){ (bdr, param) => bdr.buildAnnotationParameter(param)}
       else this
 
     private def addParameterName(txt: Option[String]): SignatureBuilder = txt match {
