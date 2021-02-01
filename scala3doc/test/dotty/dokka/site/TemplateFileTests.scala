@@ -1,4 +1,5 @@
-package dotty.dokka.site
+package dotty.dokka
+package site
 
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser

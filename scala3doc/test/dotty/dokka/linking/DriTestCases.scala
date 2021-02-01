@@ -1,7 +1,7 @@
 package dotty.dokka
 package linking
-import org.junit.Assert.assertTrue
 
+import org.junit.Assert.assertTrue
 import org.junit.Ignore
 
 class ExtensionTest extends DriTest("extensionDRIs")
