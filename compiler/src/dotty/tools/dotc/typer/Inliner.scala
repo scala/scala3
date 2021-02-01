@@ -288,8 +288,8 @@ object Inliner {
       }
 
       val Apply(_, codeArg :: Nil) = tree
+      val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
-        val codeArg1 = stripTyped(codeArg.underlying)
         if Inliner.isInlineable(codeArg1) then stripTyped(Inliner.inlineCall(codeArg1))
         else codeArg1
 
@@ -308,7 +308,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          report.error(em"argument to ${tree.symbol} must be a statically known String but was: $codeArg", codeArg.srcPos)
+          report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
           Nil
       }
 
