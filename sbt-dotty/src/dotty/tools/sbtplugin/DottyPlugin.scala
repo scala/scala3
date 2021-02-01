@@ -23,7 +23,7 @@ object DottyPlugin extends AutoPlugin {
     val isDotty = settingKey[Boolean]("Is this project compiled with Dotty?")
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
-    val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
+    val usescaladoc = settingKey[Boolean]("Use scaladoc as the documentation tool")
     val tastyFiles = taskKey[Seq[File]]("List all testy files")
 
     // NOTE:
@@ -370,16 +370,16 @@ object DottyPlugin extends AutoPlugin {
       }.value,
 
       // Configuration for the doctool
-      resolvers ++= (if(!useScala3doc.value) Nil else Seq(Resolver.jcenterRepo)),
-      useScala3doc := {
+      resolvers ++= (if(!usescaladoc.value) Nil else Seq(Resolver.jcenterRepo)),
+      usescaladoc := {
         val v = scalaVersion.value
         v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
       },
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
-          if (useScala3doc.value)
-            dottyScalaInstanceTask("scala3doc")
+          if (usescaladoc.value)
+            dottyScalaInstanceTask("scaladoc")
           else
             dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
         else
@@ -455,7 +455,7 @@ object DottyPlugin extends AutoPlugin {
     },
     sources := Def.taskDyn[Seq[File]] {
       val originalSources = sources.value
-      if (isDotty.value && useScala3doc.value && originalSources.nonEmpty)
+      if (isDotty.value && usescaladoc.value && originalSources.nonEmpty)
         Def.task { tastyFiles.value }
       else Def.task { originalSources }
     }.value,

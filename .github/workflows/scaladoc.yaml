@@ -1,0 +1,107 @@
+name: scaladoc
+
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    env:
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+    runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Cache Coursier
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/coursier
+          key: sbt-coursier-cache
+      - name: Cache SBT
+        uses: actions/cache@v1
+        with:
+          path: ~/.sbt
+          key: sbt-${{ hashFiles('**/build.sbt') }}
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Compile and test
+        run: ./project/scripts/sbt scaladoc/test
+
+      - name: Locally publish self
+        run: ./project/scripts/sbt scaladoc/publishLocal
+
+      - name: Generate self documentation
+        run: ./project/scripts/sbt scaladoc/generateSelfDocumentation
+
+      - name: Generate testcases documentation
+        run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
+
+      - name: Generate Scala 3 documentation
+        run: ./project/scripts/sbt scaladoc/generatescaladocumentation
+
+      - name: Generate documentation for example project using dotty-sbt
+        run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scaladoc"
+
+      - name: Generate index file
+        run: scaladoc/scripts/mk-index.sh scaladoc/output > scaladoc/output/index.html
+
+      - name: Upload documentation to server
+        uses: azure/CLI@v1
+        if: env.AZURE_STORAGE_SAS_TOKEN
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          inlineScript: |
+            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}
+            echo uplading docs to https://scaladoc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scaladocstorage --public-access container
+            az storage blob sync -s scaladoc/output -c $DOC_DEST --account-name scaladocstorage
+
+  community-docs:
+    env:
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+    runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Init submodules
+        run: git submodule update --init --recursive --jobs 7
+
+      - name: Generate docs
+        run: ./project/scripts/sbt "community-build/run doc all docsOutput"
+
+      - name: Upload documentation to server
+        uses: azure/CLI@v1
+        if: env.AZURE_STORAGE_SAS_TOKEN
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          inlineScript: |
+            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}-docs
+            echo uplading docs to https://scaladoc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scaladocstorage --public-access container
+            az storage blob sync -s community-build/docsOutput -c $DOC_DEST --account-name scaladocstorage
