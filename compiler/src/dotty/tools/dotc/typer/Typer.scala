@@ -206,7 +206,7 @@ class Typer extends Namer
         else found
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
-        imp.sym.info match
+        imp.importSym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
             var denot = pre.memberBasedOnFlags(name, required, excluded)
@@ -222,8 +222,8 @@ class Typer extends Namer
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
                   return pre.select(name, denot)
           case _ =>
-            if imp.sym.isCompleting then
-              report.warning(i"cyclic ${imp.sym}, ignored", pos)
+            if imp.importSym.isCompleting then
+              report.warning(i"cyclic ${imp.importSym}, ignored", pos)
         NoType
 
       /** The type representing a named import with enclosing name when imported
@@ -393,7 +393,7 @@ class Typer extends Namer
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
-              else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
+              else if (isPossibleImport(WildImport) && !curImport.importSym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)

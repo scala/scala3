@@ -27,6 +27,7 @@ import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
+import StdNames.nme
 
 import scala.annotation.internal.sharable
 
@@ -474,13 +475,8 @@ object Contexts {
       else fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[?], sym: Symbol): FreshContext = {
-      val impNameOpt = imp.expr match {
-        case ref: RefTree[?] => Some(ref.name.asTermName)
-        case _               => None
-      }
-      fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
-    }
+    def importContext(imp: Import[?], sym: Symbol): FreshContext =
+       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
@@ -632,7 +628,14 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
-    def setImportInfo(importInfo: ImportInfo): this.type = updateStore(importInfoLoc, importInfo)
+    def setImportInfo(importInfo: ImportInfo): this.type =
+      importInfo.mentionsFeature(nme.unsafeNulls) match
+        case Some(true) =>
+          setMode(this.mode &~ Mode.SafeNulls)
+        case Some(false) if ctx.settings.YexplicitNulls.value =>
+          setMode(this.mode | Mode.SafeNulls)
+        case _ =>
+      updateStore(importInfoLoc, importInfo)
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =

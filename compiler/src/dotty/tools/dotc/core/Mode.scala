@@ -119,4 +119,7 @@ object Mode {
 
   /** Are we resolving a TypeTest node? */
   val InTypeTest: Mode = newMode(27, "InTypeTest")
+
+  /** Are we enforcing null safety */
+  val SafeNulls = newMode(28, "SafeNulls")
 }
