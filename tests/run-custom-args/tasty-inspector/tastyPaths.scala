@@ -1,6 +1,8 @@
 import scala.quoted._
 import scala.tasty.inspector._
 
+import java.io.File.separatorChar
+
 opaque type PhoneNumber = String
 
 case class I8163() {
@@ -23,7 +25,7 @@ object Test {
 class TestInspector() extends Inspector:
 
   def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-    println(tastys.map(_.path.split("/tasty-inspector/").last))
+    println(tastys.map(_.path.split("tasty-inspector").last.replace(separatorChar, '/')))
     try
       quotes.reflect.SourceFile.current
       assert(false)
