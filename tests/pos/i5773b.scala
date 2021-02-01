@@ -10,7 +10,7 @@ object Semigroup {
 
   implicit def sumSemigroup[N](implicit N: Numeric[N]): Semigroup[N] = new {
     extension (lhs: N) override def append(rhs: N): N = N.plus(lhs, rhs)
-    extension (lhs: Int) def appendS(rhs: N): N = ??? // N.plus(lhs, rhs)
+    extension (lhs: Int) override def appendS(rhs: N): N = ??? // N.plus(lhs, rhs)
   }
 }
 
@@ -18,7 +18,7 @@ object Semigroup {
 object Main {
   import Semigroup.sumSemigroup // this is not sufficient
   def f1 = {
-    println(1 appendS 2) // error This should give the following error message:
+    println(1 appendS 2) // This used to give the following error message:
 /*
 21 |    println(1 appendS 2)
    |            ^^^^^^^^^
