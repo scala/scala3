@@ -9,6 +9,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
 import dotty.dokka.test.BuildInfo
+import util.IO
 
 class BaseHtmlTest:
   val unresolvedLinkSelector = ".documentableBrief span[data-unresolved-link]"

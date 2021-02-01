@@ -8,6 +8,7 @@ import org.junit.Assert
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.nio.charset.Charset
+import util.IO
 
 class ReportingTest:
   import Scala3doc.Args

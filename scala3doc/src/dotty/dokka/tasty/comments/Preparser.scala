@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import scala.collection.mutable
 import scala.collection.immutable.SortedMap

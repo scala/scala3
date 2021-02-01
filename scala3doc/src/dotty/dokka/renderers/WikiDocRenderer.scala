@@ -1,7 +1,8 @@
 package dotty.dokka
+package renderers
 
 import dotty.dokka.tasty.comments.wiki._
-import dotty.dokka.HTML._
+import util.HTML._
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.dokka.tasty.comments.wiki.WikiDocElement
 import dotty.dokka.tasty.comments.markdown.DocFlexmarkRenderer

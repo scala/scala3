@@ -91,7 +91,7 @@ case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspecto
       def readFile(pathStr: String)(using CompilerContext): Option[String] =
         try
           val path = Paths.get(pathStr)
-          if Files.exists(path) then Some(IO.read(path))
+          if Files.exists(path) then Some(util.IO.read(path))
           else
             report.inform("Rootdoc at $pathStr does not exisits")
             None

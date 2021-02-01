@@ -1,4 +1,5 @@
 package dotty.dokka
+package transformers
 
 class ImplicitMembersExtensionTransformer(using DocContext) extends(Module => Module):
   override def apply(original: Module): Module =

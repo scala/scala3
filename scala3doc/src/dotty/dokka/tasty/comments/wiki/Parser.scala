@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments.wiki
+package dotty.dokka
+package tasty.comments.wiki
 
 import scala.collection.mutable
 

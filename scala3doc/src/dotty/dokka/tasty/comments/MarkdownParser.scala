@@ -1,4 +1,5 @@
-package dotty.dokka.tasty.comments
+package dotty.dokka
+package tasty.comments
 
 import java.util.{ Arrays }
 import Regexes._

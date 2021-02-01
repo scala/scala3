@@ -1,4 +1,5 @@
-package dotty.dokka.tasty
+package dotty.dokka
+package tasty
 
 import scala.jdk.CollectionConverters._
 

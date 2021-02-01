@@ -1,12 +1,13 @@
 package dotty.dokka
 package renderers
+
 import java.io.InputStream
 import java.nio.file.Paths
 import java.nio.file.Path
 import java.nio.file.Files
 import java.io.File
 
-import HTML._
+import util.HTML._
 
 // TODO be more clever about writting - make it much faster!
 trait Writer(using ctx: DocContext) extends Locations:
