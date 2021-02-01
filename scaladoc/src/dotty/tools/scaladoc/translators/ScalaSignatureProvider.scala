@@ -141,8 +141,7 @@ object ScalaSignatureProvider:
       .name(typeDef.name, typeDef.dri)
       .generics(tpe.typeParams)
     if(!tpe.opaque){
-      (if tpe.concreate then bdr.text(" = ") else bdr)
-        .signature(typeDef.signature)
+      bdr.signature(typeDef.signature)
     } else bdr
 
 

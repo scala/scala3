@@ -40,8 +40,8 @@ trait TypesSupport:
     extension (tpeTree: Tree)
       def asSignature: DocSignature =
         tpeTree match
-          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low, high)
-          case tpeTree: TypeTree =>  inner(tpeTree.tpe)
+          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
+          case tpeTree: TypeTree => inner(tpeTree.tpe)
           case term:  Term => inner(term.tpe)
 
   given TypeSyntax: AnyRef with
@@ -96,7 +96,7 @@ trait TypesSupport:
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType) =>
         texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
-          val normalizedName = name.takeWhile(_ != '$')
+          val normalizedName = if name.matches("_\\$\\d*") then "_" else name
           texts(normalizedName) ++ inner(typ)
         }) ++ texts("]")
         ++ texts(" =>> ")
@@ -159,6 +159,8 @@ trait TypesSupport:
         }
       }
       case t @ AppliedType(tpe, typeList) =>
+        // if tpe.typeSymbol.normalizedName == "SomeTraitWithHKTs" then
+          // println(typeList)
         import dotty.tools.dotc.util.Chars._
         if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
           inner(typeList.head)
@@ -242,7 +244,7 @@ trait TypesSupport:
       // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
       case TypeBounds(low, hi) =>
         if(low == hi) texts(" = ") ++ inner(low)
-        else typeBound(low, low = true) ++ typeBound(hi, low = false)
+        else typeBoundsTreeOfHigherKindedType(low, hi)
 
       case NoPrefix() => Nil
 
@@ -271,17 +273,16 @@ trait TypesSupport:
       case _ => Nil
     }
 
-  private def typeBoundsTreeOfHigherKindedType(low: TypeTree, high: TypeTree) =
-    def regularTypeBounds(low: TypeTree, high: TypeTree) =
-      typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
-    high.tpe.match
-      case t: TypeLambda => t.match
-        case TypeLambda(params, paramBounds, resType) =>
-          if resType.typeSymbol == defn.AnyClass && params.foldLeft(true)((acc,e) => acc && e.contains("$")) then
-            texts("[") ++ commas(paramBounds.map { typ =>
-              texts("_") ++ inner(typ)
-            }) ++ texts("]")
-          else
-            regularTypeBounds(low, high)
-        case _ => regularTypeBounds(low, high)
+  private def typeBoundsTreeOfHigherKindedType(low: TypeRepr, high: TypeRepr) =
+    def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
+      typeBound(low, low = true) ++ typeBound(high, low = false)
+    high.match
+      case TypeLambda(params, paramBounds, resType) =>
+        if resType.typeSymbol == defn.AnyClass then
+          texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+            val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+            texts(normalizedName) ++ inner(typ)
+          }) ++ texts("]")
+        else
+          regularTypeBounds(low, high)
       case _ => regularTypeBounds(low, high)
