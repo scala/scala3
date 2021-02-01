@@ -1652,6 +1652,11 @@ object Types {
      */
     def deepenProto(using Context): Type = this
 
+    /** If this is a prototype with some ignored component, reveal it, and
+     *  deepen the result transitively. Otherwise the type itself.
+     */
+    def deepenProtoTrans(using Context): Type = this
+
     /** If this is an ignored proto type, its underlying type, otherwise the type itself */
     def revealIgnored: Type = this
 
@@ -3436,7 +3441,7 @@ object Types {
           case tp: TermRef => applyPrefix(tp)
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
-          case TermParamRef(`thisLambdaType`, _) => TrueDeps
+          case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)

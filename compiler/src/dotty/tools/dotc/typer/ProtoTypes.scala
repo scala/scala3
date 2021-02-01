@@ -49,25 +49,34 @@ object ProtoTypes {
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
      */
-    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean = {
-      def testCompat(using Context): Boolean = {
+    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean =
+
+      def testCompat(using Context): Boolean =
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
-      }
-      if (keepConstraint)
-        tp.widenSingleton match {
+
+      if keepConstraint || ctx.mode.is(Mode.ConstrainResultDeep) then
+        tp.widenSingleton match
           case poly: PolyType =>
-            // We can't keep the constraint in this case, since we have to add type parameters
-            // to it, but there's no place to associate them with type variables.
-            // So we'd get a "inconsistent: no typevars were added to committable constraint"
-            // assertion failure in `constrained`. To do better, we'd have to change the
-            // constraint handling architecture so that some type parameters are committable
-            // and others are not. But that's a whole different ballgame.
-            normalizedCompatible(tp, pt, keepConstraint = false)
+            val newctx = ctx.fresh.setNewTyperState()
+            val result = testCompat(using newctx)
+            typr.println(
+                i"""normalizedCompatible for $poly, $pt = $result
+                   |constraint was: ${ctx.typerState.constraint}
+                   |constraint now: ${newctx.typerState.constraint}""")
+            val existingVars = ctx.typerState.uninstVars.toSet
+            if result
+                && (ctx.typerState.constraint ne newctx.typerState.constraint)
+                && newctx.typerState.uninstVars.forall(existingVars.contains)
+            then newctx.typerState.commit()
+              // If the new constrait contains fresh type variables we cannot keep it,
+              // since those type variables are not instantiated anywhere in the source.
+              // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
+              // for tests where it matters that we keep the constraint otherwise.
+            result
           case _ => testCompat
-        }
       else explore(testCompat)
-    }
+    end normalizedCompatible
 
     private def disregardProto(pt: Type)(using Context): Boolean =
       pt.dealias.isRef(defn.UnitClass)
@@ -80,7 +89,16 @@ object ProtoTypes {
       val res = pt.widenExpr match {
         case pt: FunProto =>
           mt match {
-            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+            case mt: MethodType =>
+              constrainResult(resultTypeApprox(mt), pt.resultType)
+              && {
+                if ctx.mode.is(Mode.ConstrainResultDeep) then
+                  if mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using) then
+                    val tpargs = pt.args.lazyZip(mt.paramInfos).map(pt.typedArg)
+                    tpargs.tpes.corresponds(mt.paramInfos)(_ <:< _)
+                  else true
+                else true
+              }
             case _ => true
           }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
@@ -123,6 +141,7 @@ object ProtoTypes {
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type = ignored
+    override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
@@ -202,7 +221,12 @@ object ProtoTypes {
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
-    override def deepenProto(using Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
+    override def deepenProto(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProto, compat)
+
+    override def deepenProtoTrans(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProtoTrans, compat)
+
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
@@ -419,7 +443,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
-    override def deepenProto(using Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
+    override def deepenProto(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProto, typer)
+
+    override def deepenProtoTrans(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProtoTrans, typer)
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
@@ -472,7 +500,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta(x, argType), resultType)
 
-    override def deepenProto(using Context): ViewProto = derivedViewProto(argType, resultType.deepenProto)
+    override def deepenProto(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProtoTrans)
   }
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
@@ -522,7 +554,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, targs.tpes), resultType)
 
-    override def deepenProto(using Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
+    override def deepenProto(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProtoTrans)
   }
 
   /** A prototype for expressions [] that are known to be functions:
