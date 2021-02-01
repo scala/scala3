@@ -12,7 +12,7 @@ object Main:
     val name = project.project
     try
       project.doc()
-      val pathsOut = s"find community-projects/$name/ -name 'scala3doc.version'".!!
+      val pathsOut = s"find community-projects/$name/ -name 'scaladoc.version'".!!
       pathsOut.linesIterator.map(Paths.get(_).getParent).toList
     catch
       case e: Exception =>

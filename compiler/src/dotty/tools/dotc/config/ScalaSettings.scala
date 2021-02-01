@@ -7,7 +7,7 @@ import PathResolver.Defaults
 import rewrites.Rewrites
 import Settings.Setting
 
-/** Settings shared by compiler and scala3doc */
+/** Settings shared by compiler and scaladoc */
 trait CommonScalaSettings { self: Settings.SettingGroup =>
   protected def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
@@ -227,7 +227,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val Yinstrument: Setting[Boolean] = BooleanSetting("-Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting("-Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
 
-  /** Dottydoc specific settings that are not used in scala3doc */
+  /** Dottydoc specific settings that are not used in scaladoc */
   val docSnapshot: Setting[Boolean] = BooleanSetting("-doc-snapshot", "Generate a documentation snapshot for the current Dotty version")
 
   val projectUrl: Setting[String] = StringSetting (
