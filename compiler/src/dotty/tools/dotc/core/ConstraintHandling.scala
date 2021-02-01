@@ -366,7 +366,7 @@ trait ConstraintHandling {
     if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
   end dropTransparentTraits
 
-  /** If `tp` is an applied match type alias with is also an unreducible application
+  /** If `tp` is an applied match type alias which is also an unreducible application
    *  of a higher-kinded type to a wildcard argument, widen to the match type's bound,
    *  in order to avoid an unreducible application of higher-kinded type ... in inferred type"
    *  error in PostTyper. Fixes #11246.
@@ -391,7 +391,7 @@ trait ConstraintHandling {
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
-   *  and this type ref is different from `inst`, replace by a TermRef t
+   *  and this type ref is different from `inst`, replace by a TermRef to
    *  its source module instead.
    *
    * At this point we also drop the @Repeated annotation to avoid inferring type arguments with it,
