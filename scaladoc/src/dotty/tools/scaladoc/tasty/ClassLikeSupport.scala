@@ -395,10 +395,9 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
-    val memberInfo = unwrapMemberInfo(c, typeDef.symbol)
-    val generics = memberInfo.genericTypes.values.map(_.typeSymbol.tree).collect {
-      case t: TypeDef => mkTypeArgument(t)
-    }.toSeq
+    val (generics, tpeTree) = typeDef.rhs match
+      case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
+      case tpe => (Nil, tpe)
 
     val kind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics)
     mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())

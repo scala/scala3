@@ -159,8 +159,6 @@ trait TypesSupport:
         }
       }
       case t @ AppliedType(tpe, typeList) =>
-        // if tpe.typeSymbol.normalizedName == "SomeTraitWithHKTs" then
-          // println(typeList)
         import dotty.tools.dotc.util.Chars._
         if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
           inner(typeList.head)
