@@ -188,7 +188,7 @@ class ImportInfo(symf: Context ?=> Symbol,
 
   private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 
-  /** Does this import clause or a preceding import clause enable or disable `feature`?
+  /** Does this import clause enable or disable `feature`?
    *  @param  feature   See featureImported for a description
    *  @return Some(true)  if `feature` is imported
    *          Some(false) if `feature` is excluded
