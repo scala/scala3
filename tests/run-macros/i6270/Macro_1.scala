@@ -5,7 +5,7 @@ object api {
     ${ reflImpl('x) }
 
   private def reflImpl(x: Expr[String])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
+    import quotes.reflect._
     Expr(x.show)
   }
 
@@ -13,7 +13,7 @@ object api {
     ${ reflImplColor('x) }
 
   private def reflImplColor(x: Expr[String])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
-    Expr(x.showAnsiColored)
+    import quotes.reflect._
+    Expr(x.asTerm.show(using Printer.TreeAnsiCode))
   }
 }

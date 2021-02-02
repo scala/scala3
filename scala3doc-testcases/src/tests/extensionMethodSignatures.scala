@@ -4,7 +4,7 @@ package extensionMethodSignatures
 class ClassOne
 {
   // Commented cases won't work for now
-  // extension ClassTwoOps on (c: ClassTwo):
+  // extension ClassTwoOps on (c: ClassTwo)
   //     def getA() = c.a
   extension (c: ClassTwo)
     def getB(): String
@@ -15,15 +15,17 @@ class ClassOne
       = 56
 
   extension (c: ClassTwo)
-    def |||:(a: Int, b: Int, d: Int)(e: String): Int
+    def |||:(a: Int)(b: Int, d: Int)(e: String): Int
       = 56
+    def ++:(a: Int): Int
+      = 45
 
   extension (b: Int)
     def secondGroup(): String
       = ???
 
   extension (c:ClassTwo)
-  :
+
     def getString(a: String): String
        = a
 

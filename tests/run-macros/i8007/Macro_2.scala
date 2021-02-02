@@ -21,7 +21,7 @@ object Macro2 {
         }
 
     def derived[T: Type](ev: Expr[Mirror.Of[T]])(using Quotes): Expr[JsonEncoder[T]] = {
-      import qctx.reflect._
+      import quotes.reflect._
 
       val fields = ev match {
         case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = labels } } =>
@@ -30,7 +30,7 @@ object Macro2 {
 
       val body: Expr[T] => Expr[String] = elem =>
         fields.reverse.foldLeft(Expr("")){ (acc, field) =>
-          val res = Select.unique(Term.of(elem), field).asExpr
+          val res = Select.unique(elem.asTerm, field).asExpr
           '{ $res.toString + " " + $acc }
         }
 
@@ -43,7 +43,7 @@ object Macro2 {
   inline def test2[T](value: =>T): Unit = ${ test2Impl('value) }
 
   def test2Impl[T: Type](value: Expr[T])(using Quotes): Expr[Unit] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     val mirrorTpe = Type.of[Mirror.Of[T]]
     val mirrorExpr = Expr.summon(using mirrorTpe).get

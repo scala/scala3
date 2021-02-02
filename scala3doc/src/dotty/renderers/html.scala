@@ -31,7 +31,7 @@ object HTML:
             case a: AppliedTag =>
               sb.append(a)
             case s: String =>
-            sb.append(s.escapeReservedTokens)
+              sb.append(s.escapeReservedTokens)
           }
       }
       sb.append(s"</$name>")
@@ -46,7 +46,7 @@ object HTML:
       .replace("'", "&apos;")
 
   case class Attr(name: String):
-    def :=(value: String): AppliedAttr = AppliedAttr(s"""$name="$value"""")
+    def :=(value: String): AppliedAttr = new AppliedAttr(s"""$name="$value"""")
 
   opaque type AppliedTag = StringBuilder
 
@@ -60,6 +60,8 @@ object HTML:
   val h2 = Tag("h2")
   val h3 = Tag("h3")
   val h4 = Tag("h4")
+  val h5 = Tag("h5")
+  val h6 = Tag("h6")
   val dl = Tag("dl")
   val dd = Tag("dd")
   val dt = Tag("dt")
@@ -77,6 +79,11 @@ object HTML:
   val body = Tag("body")
   val nav = Tag("nav")
   val img = Tag("img")
+  val ul = Tag("ul")
+  val ol = Tag("ol")
+  val li = Tag("li")
+  val code = Tag("code")
+
 
   val cls = Attr("class")
   val href = Attr("href")
@@ -92,6 +99,13 @@ object HTML:
   val content = Attr("content")
   val testId = Attr("data-test-id")
   val alt = Attr("alt")
+  val value = Attr("value")
+  val onclick=Attr("onclick")
+  val titleAttr =Attr("title")
 
-  def raw(content: String): AppliedTag = AppliedTag(content)
+  def raw(content: String): AppliedTag = new AppliedTag(content)
+  def raw(content: StringBuilder): AppliedTag = content
 
+  def text(content: String) = content.escapeReservedTokens
+
+  val hr = raw("<hr/>")

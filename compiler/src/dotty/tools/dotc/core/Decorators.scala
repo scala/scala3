@@ -28,7 +28,7 @@ object Decorators {
       case s: String => typeName(s)
       case n: Name => n.toTypeName
 
-  extension (s: String):
+  extension (s: String)
     def splitWhere(f: Char => Boolean, doDropIndex: Boolean): Option[(String, String)] =
       def splitAt(idx: Int, doDropIndex: Boolean): Option[(String, String)] =
         if (idx == -1) None
@@ -56,12 +56,16 @@ object Decorators {
         termName(chars, 0, len)
       case name: TypeName => s.concat(name.toTermName)
       case _ => termName(s.concat(name.toString))
+
+    def indented(width: Int): String =
+      val padding = " " * width
+      padding + s.replace("\n", "\n" + padding)
   end extension
 
   /** Implements a findSymbol method on iterators of Symbols that
    *  works like find but avoids Option, replacing None with NoSymbol.
    */
-  extension (it: Iterator[Symbol]):
+  extension (it: Iterator[Symbol])
     final def findSymbol(p: Symbol => Boolean): Symbol = {
       while (it.hasNext) {
         val sym = it.next()

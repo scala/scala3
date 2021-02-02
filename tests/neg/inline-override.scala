@@ -25,14 +25,14 @@ object Test {
     override def f1(): Int // OK
     override def f2(): Int // OK
     override def f3(): Int // error
-    override def f4(): Int // OK not retained
+    override def f4(): Int // error
   }
 
   abstract class E extends A { // error f1
     inline override def f1(): Int
     inline override def f2(): Int
     inline override def f3(): Int
-    inline override def f4(): Int // OK not retained
+    inline override def f4(): Int // error
   }
 
 }

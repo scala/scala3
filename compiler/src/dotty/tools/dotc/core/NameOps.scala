@@ -1,14 +1,16 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package core
 
 import java.security.MessageDigest
+import java.nio.CharBuffer
 import scala.io.Codec
 import Int.MaxValue
 import Names._, StdNames._, Contexts._, Symbols._, Flags._, NameKinds._, Types._
 import util.Chars.{isOperatorPart, digit2int}
 import Definitions._
 import nme._
-import Decorators.concat
+import Decorators._
 
 object NameOps {
 
@@ -32,17 +34,18 @@ object NameOps {
     def apply(s: String): String = {
       val marker = "$$$$"
 
-      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6) min
+      val MaxNameLength = (CLASSFILE_NAME_CHAR_LIMIT - 6).min(
         2 * (CLASSFILE_NAME_CHAR_LIMIT - 6 - 2 * marker.length - 32)
+      )
 
       def toMD5(s: String, edge: Int): String = {
-        val prefix = s take edge
-        val suffix = s takeRight edge
+        val prefix = s.take(edge)
+        val suffix = s.takeRight(edge)
 
         val cs = s.toArray
-        val bytes = Codec toUTF8 cs
-        md5 update bytes
-        val md5chars = (md5.digest() map (b => (b & 0xFF).toHexString)).mkString
+        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
+        md5.update(bytes)
+        val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
 
         prefix + marker + md5chars + marker + suffix
       }
@@ -67,7 +70,7 @@ object NameOps {
     def isLocalDummyName: Boolean = name startsWith str.LOCALDUMMY_PREFIX
     def isReplWrapperName: Boolean = name.toString contains str.REPL_SESSION_LINE
     def isReplAssignName: Boolean = name.toString contains str.REPL_ASSIGN_SUFFIX
-    def isSetterName: Boolean = name endsWith str.SETTER_SUFFIX
+    def isSetterName: Boolean = name.endsWith(str.SETTER_SUFFIX) || name.is(SyntheticSetterName)
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
     def isAnonymousClassName: Boolean = name.startsWith(str.ANON_CLASS)
@@ -133,21 +136,6 @@ object NameOps {
       if (flags.is(ModuleClass, butNot = Package)) name.asTypeName.moduleClassName
       else name.toTermName
     }
-
-    /** Does the name match `extension`? */
-    def isExtension: Boolean = name match
-      case name: SimpleName =>
-        name.length == "extension".length && name.startsWith("extension")
-      case _ => false
-
-    /** Does this name start with `extension_`? */
-    def isExtensionName: Boolean = name match
-      case name: SimpleName => name.startsWith("extension_")
-      case _ => false
-
-    // TODO: Drop next 3 methods once extension names have stabilized
-    /** Add an `extension_` in front of this name */
-    def toExtensionName(using Context): SimpleName = "extension_".concat(name)
 
     /** The expanded name.
      *  This is the fully qualified name of `base` with `ExpandPrefixName` as separator,
@@ -229,6 +217,11 @@ object NameOps {
     def isFunction: Boolean =
       (name eq tpnme.FunctionXXL) || checkedFunArity(functionSuffixStart) >= 0
 
+    /** Is a function name
+     *    - FunctionN for N >= 0
+     */
+    def isPlainFunction: Boolean = functionArity >= 0
+
     /** Is an context function name, i.e one of ContextFunctionN or ErasedContextFunctionN for N >= 0
      */
     def isContextFunction: Boolean =
@@ -274,8 +267,10 @@ object NameOps {
       case nme.clone_ => nme.clone_
     }
 
+    /** This method is to be used on **type parameters** from a class, since
+     *  this method does sorting based on their names
+     */
     def specializedFor(classTargs: List[Type], classTargsNames: List[Name], methodTargs: List[Type], methodTarsNames: List[Name])(using Context): N = {
-
       val methodTags: Seq[Name] = (methodTargs zip methodTarsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
       val classTags: Seq[Name] = (classTargs zip classTargsNames).sortBy(_._2).map(x => defn.typeTag(x._1))
 
@@ -283,6 +278,22 @@ object NameOps {
         methodTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.separator ++
         classTags.fold(nme.EMPTY)(_ ++ _) ++ nme.specializedTypeNames.suffix)
     }
+
+    /** Use for specializing function names ONLY and use it if you are **not**
+     *  creating specialized name from type parameters. The order of names will
+     *  be:
+     *
+     *  `<return type><first type><second type><...>`
+     */
+    def specializedFunction(ret: Type, args: List[Type])(using Context): N =
+      val sb = new StringBuilder
+      sb.append(name.toString)
+      sb.append(nme.specializedTypeNames.prefix.toString)
+      sb.append(nme.specializedTypeNames.separator)
+      sb.append(defn.typeTag(ret).toString)
+      args.foreach { arg => sb.append(defn.typeTag(arg)) }
+      sb.append(nme.specializedTypeNames.suffix)
+      likeSpacedN(termName(sb.toString))
 
     /** If name length exceeds allowable limit, replace part of it by hash */
     def compactified(using Context): TermName = termName(compactify(name.toString))
@@ -322,17 +333,21 @@ object NameOps {
 
     def setterName: TermName = name.exclude(FieldName) ++ str.SETTER_SUFFIX
 
+    def syntheticSetterName = SyntheticSetterName(name.exclude(FieldName))
+
     def getterName: TermName =
-      name.exclude(FieldName).mapLast(n =>
+      val name1 = name.exclude(FieldName)
+      if name1.is(SyntheticSetterName) then name1.exclude(SyntheticSetterName)
+      else name1.mapLast(n =>
         if (n.endsWith(str.SETTER_SUFFIX)) n.take(n.length - str.SETTER_SUFFIX.length).asSimpleName
         else n)
 
     def fieldName: TermName =
       if (name.isSetterName)
-        if (name.is(TraitSetterName)) {
-          val TraitSetterName(_, original) = name
-          original.fieldName
-        }
+        if name.is(SyntheticSetterName) then
+          name.exclude(SyntheticSetterName)
+            .replace { case TraitSetterName(_, original) => original }
+            .fieldName
         else getterName.fieldName
       else FieldName(name.toSimpleName)
 

@@ -1,4 +1,4 @@
-Functor[[A >: scala.Nothing <: scala.Any] => scala.collection.immutable.List[A]]
+Functor[Const[scala.collection.immutable.List[Dummy]]]
 Functor[Const[scala.Int]]
-Functor[Id]
-Functor[[A >: scala.Nothing <: scala.Any] => scala.Option[A]]
+Functor[Const[Dummy]]
+Functor[Const[scala.Option[Dummy]]]

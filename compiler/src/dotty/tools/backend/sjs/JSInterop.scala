@@ -22,10 +22,6 @@ object JSInterop {
   def isJSType(sym: Symbol)(using Context): Boolean =
     sym.isJSType
 
-  /** Is this symbol a Scala.js-defined JS class, i.e., a non-native JS class? */
-  def isScalaJSDefinedJSClass(sym: Symbol)(using Context): Boolean =
-    sym.isNonNativeJSClass
-
   /** Should this symbol be translated into a JS getter?
    *
    *  This is true for any parameterless method, i.e., defined without `()`.

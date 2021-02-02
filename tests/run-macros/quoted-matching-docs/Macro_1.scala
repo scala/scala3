@@ -9,17 +9,11 @@ private def sumExprShow(argsExpr: Expr[Seq[Int]]) (using Quotes): Expr[String] =
 
 private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes) : Expr[Int] = {
   UnsafeExpr.underlyingArgument(argsExpr) match {
-    case Varargs(Consts(args)) => // args is of type Seq[Int]
+    case Varargs(Exprs(args)) => // args is of type Seq[Int]
       Expr(args.sum) // precompute result of sum
     case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
-      val staticSum: Int = argExprs.map {
-        case Const(arg) => arg
-        case _ => 0
-      }.sum
-      val dynamicSum: Seq[Expr[Int]] = argExprs.filter {
-        case Const(_) => false
-        case arg => true
-      }
+      val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
+      val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
       dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
     case _ =>
       '{ $argsExpr.sum }
@@ -28,6 +22,6 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes) : Expr[Int] = {
 
 object UnsafeExpr {
   def underlyingArgument[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import qctx.reflect._
-    Term.of(expr).underlyingArgument.asExpr.asInstanceOf[Expr[T]]
+    import quotes.reflect._
+    expr.asTerm.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

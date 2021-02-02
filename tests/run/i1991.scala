@@ -14,9 +14,9 @@ class A[Foo](implicit tag: ClassTag[Foo]) {
   def testBind(x: Any) = x match {
     case foo0: Foo =>
       (foo0: Foo)
-    case foo1 as (_: Foo) =>
+    case foo1 @ (_: Foo) =>
       (foo1: Foo)
-    case foo2 as ExtractFoo() =>
+    case foo2 @ ExtractFoo() =>
       (foo2: Foo)
   }
 }

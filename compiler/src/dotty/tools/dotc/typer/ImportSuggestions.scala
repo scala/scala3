@@ -122,7 +122,7 @@ trait ImportSuggestions:
               .flatMap(sym => rootsIn(sym.termRef))
         val imported =
           if ctx.importInfo eq ctx.outer.importInfo then Nil
-          else ctx.importInfo.sym.info match
+          else ctx.importInfo.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
         defined ++ imported ++ recur(using ctx.outer)
@@ -222,9 +222,7 @@ trait ImportSuggestions:
       site.member(name)
         .alternatives
         .map(mbr => TermRef(site, mbr.symbol))
-        .filter(ref =>
-          ref.symbol.is(ExtensionMethod)
-          && isApplicableMethodRef(ref, argType :: Nil, WildcardType))
+        .filter(ref => ctx.typer.isApplicableExtensionMethod(ref, argType))
         .headOption
 
     try

@@ -3,8 +3,8 @@ package dotc
 package ast
 
 import core._
-import Types._, Contexts._
-import Symbols._, Annotations._, Trees._, Symbols._
+import Types._, Contexts._, Flags._
+import Symbols._, Annotations._, Trees._, Symbols._, Constants.Constant
 import Decorators._
 import dotty.tools.dotc.transform.SymUtils._
 import core.tasty.TreePickler.Hole
@@ -90,11 +90,10 @@ class TreeTypeMap(
       tree1.withType(mapType(tree1.tpe)) match {
         case id: Ident if tpd.needsSelect(id.tpe) =>
           ref(id.tpe.asInstanceOf[TermRef]).withSpan(id.span)
-        case ddef @ DefDef(name, tparams, vparamss, tpt, _) =>
-          val (tmap1, tparams1) = transformDefs(tparams)
-          val (tmap2, vparamss1) = tmap1.transformVParamss(vparamss)
-          val res = cpy.DefDef(ddef)(name, tparams1, vparamss1, tmap2.transform(tpt), tmap2.transform(ddef.rhs))
-          res.symbol.setParamssFromDefs(tparams1, vparamss1)
+        case ddef @ DefDef(name, paramss, tpt, _) =>
+          val (tmap1, paramss1) = transformAllParamss(paramss)
+          val res = cpy.DefDef(ddef)(name, paramss1, tmap1.transform(tpt), tmap1.transform(ddef.rhs))
+          res.symbol.setParamssFromDefs(paramss1)
           res.symbol.transformAnnotations {
             case ann: BodyAnnotation => ann.derivedAnnotation(transform(ann.tree))
             case ann => ann
@@ -124,6 +123,8 @@ class TreeTypeMap(
           cpy.Labeled(labeled)(bind1, expr1)
         case Hole(isTermHole, n, args) =>
           Hole(isTermHole, n, args.mapConserve(transform)).withSpan(tree.span).withType(mapType(tree.tpe))
+        case lit @ Literal(Constant(tpe: Type)) =>
+          cpy.Literal(lit)(Constant(mapType(tpe)))
         case tree1 =>
           super.transform(tree1)
       }
@@ -137,14 +138,15 @@ class TreeTypeMap(
     (tmap, tmap.transformSub(trees))
   }
 
-  private def transformVParamss(vparamss: List[List[ValDef]]): (TreeTypeMap, List[List[ValDef]]) = vparamss match {
-    case vparams :: rest =>
-      val (tmap1, vparams1) = transformDefs(vparams)
-      val (tmap2, vparamss2) = tmap1.transformVParamss(rest)
-      (tmap2, vparams1 :: vparamss2)
+  private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
+    case params :: paramss1 =>
+      val (tmap1, params1: ParamClause) = (params: @unchecked) match
+        case ValDefs(vparams) => transformDefs(vparams)
+        case TypeDefs(tparams) => transformDefs(tparams)
+      val (tmap2, paramss2) = tmap1.transformAllParamss(paramss1)
+      (tmap2, params1 :: paramss2)
     case nil =>
-      (this, vparamss)
-  }
+      (this, paramss)
 
   def apply[ThisTree <: tpd.Tree](tree: ThisTree): ThisTree = transform(tree).asInstanceOf[ThisTree]
 
@@ -176,25 +178,25 @@ class TreeTypeMap(
    *  and return a treemap that contains the substitution
    *  between original and mapped symbols.
    */
-  def withMappedSyms(syms: List[Symbol], mapAlways: Boolean = false): TreeTypeMap =
-    withMappedSyms(syms, mapSymbols(syms, this, mapAlways))
+  def withMappedSyms(syms: List[Symbol]): TreeTypeMap =
+    withMappedSyms(syms, mapSymbols(syms, this))
 
   /** The tree map with the substitution between originals `syms`
    *  and mapped symbols `mapped`. Also goes into mapped classes
    *  and substitutes their declarations.
    */
-  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap = {
-    val symsChanged = syms ne mapped
-    val substMap = withSubstitution(syms, mapped)
-    val fullMap = mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-      val origDcls = cls.info.decls.toList
-      val mappedDcls = mapSymbols(origDcls, tmap)
-      val tmap1 = tmap.withMappedSyms(origDcls, mappedDcls)
-      if (symsChanged)
+  def withMappedSyms(syms: List[Symbol], mapped: List[Symbol]): TreeTypeMap =
+    if syms eq mapped then this
+    else
+      val substMap = withSubstitution(syms, mapped)
+      lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
+      mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
+        val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
+        val mappedDcls = mapSymbols(origDcls, tmap, mapAlways = true)
+        val tmap1 = tmap.withMappedSyms(
+          origCls(cls).typeParams ::: origDcls,
+          cls.typeParams ::: mappedDcls)
         origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
-      tmap1
-    }
-    if (symsChanged || (fullMap eq substMap)) fullMap
-    else withMappedSyms(syms, mapAlways = true)
-  }
+        tmap1
+      }
 }

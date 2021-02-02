@@ -5,26 +5,23 @@ package semanticdb
 import core._
 import Phases._
 import ast.tpd._
+import ast.untpd.given
 import ast.Trees.mods
 import Contexts._
 import Symbols._
 import Flags._
 import Names.Name
 import StdNames.nme
+import NameOps._
 import util.Spans.Span
 import util.{SourceFile, SourcePosition}
+import transform.SymUtils._
+
 import scala.jdk.CollectionConverters._
-import collection.mutable
-import java.nio.file.Paths
-
-import dotty.tools.dotc.transform.SymUtils._
-
-import PartialFunction.condOpt
-
-import ast.untpd.given
-import NameOps._
-
+import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
+import scala.PartialFunction.condOpt
+
 
 /** Extract symbol references and uses to semanticdb files.
  *  See https://scalameta.org/docs/semanticdb/specification.html#symbol-1
@@ -38,7 +35,7 @@ class ExtractSemanticDB extends Phase:
   override val phaseName: String = ExtractSemanticDB.name
 
   override def isRunnable(using Context) =
-    super.isRunnable && ctx.settings.Ysemanticdb.value
+    super.isRunnable && ctx.settings.Xsemanticdb.value
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
@@ -92,6 +89,7 @@ class ExtractSemanticDB extends Phase:
 
     private def excludeSymbol(sym: Symbol)(using Context): Boolean =
       !sym.exists
+      || sym.is(ConstructorProxy)
       || sym.name.isWildcard
       || excludeQual(sym)
 
@@ -164,14 +162,13 @@ class ExtractSemanticDB extends Phase:
               traverse(tree.tpt)
           case tree: DefDef
           if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
-            tree.vparamss.foreach(_.foreach(traverse))
+            tree.trailingParamss.foreach(_.foreach(traverse))
             traverse(tree.rhs)
           case tree: (DefDef | ValDef)
           if tree.symbol.isSyntheticWithIdent =>
             tree match
               case tree: DefDef =>
-                tree.tparams.foreach(tparam => registerSymbolSimple(tparam.symbol))
-                tree.vparamss.foreach(_.foreach(vparam => registerSymbolSimple(vparam.symbol)))
+                tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
               case _ =>
             if !tree.symbol.isGlobal then
               localBodies(tree.symbol) = tree.rhs
@@ -187,7 +184,7 @@ class ExtractSemanticDB extends Phase:
           if !excludeDef(ctorSym) then
             traverseAnnotsOfDefinition(ctorSym)
             registerDefinition(ctorSym, tree.constr.nameSpan.startPos, Set.empty, tree.source)
-            ctorParams(tree.constr.vparamss, tree.body)
+            ctorParams(tree.constr.termParamss, tree.body)
           for parent <- tree.parentsOrDerived if parent.span.hasLength do
             traverse(parent)
           val selfSpan = tree.self.span
@@ -262,7 +259,7 @@ class ExtractSemanticDB extends Phase:
 
         case _ => None
 
-      extension (tpe: Types.Type):
+      extension (tpe: Types.Type)
         private inline def isAnnotatedByUnchecked(using Context) = tpe match
           case Types.AnnotatedType(_, annot) => annot.symbol == defn.UncheckedAnnot
           case _                             => false
@@ -493,14 +490,14 @@ class ExtractSemanticDB extends Phase:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]]):
+    extension (list: List[List[ValDef]])
       private  inline def isSingleArg = list match
         case (_::Nil)::Nil => true
         case _             => false
 
-    extension (tree: DefDef):
+    extension (tree: DefDef)
       private def isSetterDef(using Context): Boolean =
-        tree.name.isSetterName && tree.mods.is(Accessor) && tree.vparamss.isSingleArg
+        tree.name.isSetterName && tree.mods.is(Accessor) && tree.termParamss.isSingleArg
 
     private def findGetters(ctorParams: Set[Names.TermName], body: List[Tree])(using Context): Map[Names.TermName, ValDef] =
       if ctorParams.isEmpty || body.isEmpty then
@@ -524,13 +521,13 @@ class ExtractSemanticDB extends Phase:
         else limit
       Span(start max limit, end)
 
-    extension (span: Span):
+    extension (span: Span)
       private def hasLength: Boolean = span.exists && !span.isZeroExtent
 
     /**Consume head while not an import statement.
      * Returns the rest of the list after the first import, or else the empty list
      */
-    extension (body: List[Tree]):
+    extension (body: List[Tree])
       @tailrec private def foreachUntilImport(op: Tree => Unit): List[Tree] = body match
         case ((_: Import) :: rest) => rest
         case stat :: rest =>
@@ -538,7 +535,7 @@ class ExtractSemanticDB extends Phase:
           rest.foreachUntilImport(op)
         case Nil => Nil
 
-    extension (sym: Symbol):
+    extension (sym: Symbol)
       private def adjustIfCtorTyparam(using Context) =
         if sym.isType && sym.owner.exists && sym.owner.isConstructor then
           matchingMemberType(sym, sym.owner.owner)
@@ -590,37 +587,29 @@ object ExtractSemanticDB:
   import java.nio.file.Path
   import scala.collection.JavaConverters._
   import java.nio.file.Files
+  import java.nio.file.Paths
 
   val name: String = "extractSemanticDB"
 
   def write(source: SourceFile, occurrences: List[SymbolOccurrence], symbolInfos: List[SymbolInformation])(using Context): Unit =
     def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
-    def commonPrefix[T](z: T)(i1: Iterable[T], i2: Iterable[T])(app: (T, T) => T): T =
-      (i1 lazyZip i2).takeWhile(p => p(0) == p(1)).map(_(0)).foldLeft(z)(app)
-    val sourcePath = absolutePath(source.file.jpath)
-    val sourceRoot =
-      // Here if `sourceRoot` and `sourcePath` do not share a common prefix then `relPath` will not be normalised,
-      // containing ../.. etc, which is problematic when appending to `/META-INF/semanticdb/` and will not be accepted
-      // by Files.createDirectories on JDK 11.
-      val sourceRoot0 = absolutePath(Paths.get(ctx.settings.sourceroot.value))
-      commonPrefix(sourcePath.getRoot)(sourcePath.asScala, sourceRoot0.asScala)(_ resolve _)
     val semanticdbTarget =
       val semanticdbTargetSetting = ctx.settings.semanticdbTarget.value
       absolutePath(
         if semanticdbTargetSetting.isEmpty then ctx.settings.outputDir.value.jpath
         else Paths.get(semanticdbTargetSetting)
       )
-    val relPath = sourceRoot.relativize(sourcePath)
+    val relPath = SourceFile.relativePath(source, ctx.settings.sourceroot.value)
     val outpath = semanticdbTarget
       .resolve("META-INF")
       .resolve("semanticdb")
       .resolve(relPath)
-      .resolveSibling(sourcePath.getFileName().toString() + ".semanticdb")
+      .resolveSibling(source.name + ".semanticdb")
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = Tools.mkURIstring(relPath),
+      uri = Tools.mkURIstring(Paths.get(relPath)),
       text = "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,

@@ -23,7 +23,7 @@ class CompletionTest {
       ))
   }
 
-  @Test def completionFromDottyPredef: Unit = {
+  @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }".withSource
       .completion(m1, Set(("summon", Method, "[T](using x: T): x.type")))
   }
@@ -56,16 +56,19 @@ class CompletionTest {
     ) .completion(m1, Set(("baz", Method, "=> Int")))
   }
 
+  // TODO: Also add tests with concrete classes, where the completion will
+  // include the constructor proxy companion
+
   @Test def importCompleteClassWithPrefix: Unit = {
     withSources(
-      code"""object Foo { class MyClass }""",
+      code"""object Foo { abstract class MyClass }""",
       code"""import Foo.My${m1}"""
     ).completion(m1, Set(("MyClass", Class, "Foo.MyClass")))
   }
 
   @Test def importCompleteClassNoPrefix: Unit = {
     withSources(
-      code"""object Foo { class MyClass }""",
+      code"""object Foo { abstract class MyClass }""",
       code"""import Foo.${m1}"""
     ).completion(m1, completionItems => {
       val results = CodeCompletion.simplifyResults(completionItems)
@@ -83,7 +86,7 @@ class CompletionTest {
   @Test def importCompleteFromPackage: Unit = {
     withSources(
       code"""package a
-             class MyClass""",
+             abstract class MyClass""",
       code"""package b
              import a.My${m1}"""
     ).completion(m1, Set(("MyClass", Class, "a.MyClass")))
@@ -91,7 +94,7 @@ class CompletionTest {
 
   @Test def importCompleteFromClass: Unit = {
     withSources(
-      code"""class Foo { val x: Int = 0 }""",
+      code"""abstract class Foo { val x: Int = 0 }""",
       code"""import Foo.${m1}"""
     ).completion(m1, Set())
   }
@@ -129,7 +132,7 @@ class CompletionTest {
   @Test def importCompleteIncludePackage: Unit = {
     withSources(
       code"""package foo.bar
-             class Fizz""",
+             abstract classFizz""",
       code"""import foo.b${m1}"""
     ).completion(m1, Set(("bar", Module, "foo.bar")))
   }
@@ -141,7 +144,7 @@ class CompletionTest {
                def myDef = 0
                var myVar = 0
                object myObject
-               class myClass
+               abstract class myClass
                trait myTrait
              }""",
       code"""import MyObject.my${m1}"""
@@ -212,7 +215,7 @@ class CompletionTest {
 
   @Test def completeErrorKnowsKind: Unit = {
     code"""object Bar {
-          |  class Zig
+          |  abstract class Zig
           |  val Zag: Int = 0
           |  val b = 3 + Bar.${m1}
           |}""".withSource
@@ -287,5 +290,162 @@ class CompletionTest {
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Field, "type and lazy value bar")))
+  }
+
+  @Test def completeExtensionMethodWithoutParameter: Unit = {
+    code"""object Foo
+          |extension (foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodWithParameter: Unit = {
+    code"""object Foo
+          |extension (foo: Foo.type) def xxxx(i: Int) = i
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "(i: Int): Int")))
+  }
+
+  @Test def completeExtensionMethodWithTypeParameter: Unit = {
+    code"""object Foo
+          |extension [A](foo: Foo.type) def xxxx: Int = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "[A] => Int")))
+  }
+
+  @Test def completeExtensionMethodWithParameterAndTypeParameter: Unit = {
+    code"""object Foo
+          |extension [A](foo: Foo.type) def xxxx(a: A) = a
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "[A](a: A): A")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithAUsingSection: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar = new Bar {}
+          |given Baz = new Baz {}
+          |extension (foo: Foo.type)(using Bar, Baz) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithMultipleUsingSections: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar = new Bar {}
+          |given Baz = new Baz {}
+          |extension (foo: Foo.type)(using Bar)(using Baz) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int")))
+  }
+
+  @Test def completeInheritedExtensionMethod: Unit = {
+    code"""object Foo
+          |trait FooOps {
+          |  extension (foo: Foo.type) def xxxx = 1
+          |}
+          |object Main extends FooOps { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeRenamedExtensionMethod: Unit = {
+    code"""object Foo
+          |object FooOps {
+          |  extension (foo: Foo.type) def xxxx = 1
+          |}
+          |import FooOps.{xxxx => yyyy}
+          |object Main { Foo.yy${m1} }""".withSource
+      .completion(m1, Set(("yyyy", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromGivenInstanceDefinedInScope: Unit = {
+    code"""object Foo
+          |trait FooOps
+          |given FooOps with {
+          |  extension (foo: Foo.type) def xxxx = 1
+          |}
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromImportedGivenInstance: Unit = {
+    code"""object Foo
+          |trait FooOps
+          |object Bar {
+          |  given FooOps with {
+          |    extension (foo: Foo.type) def xxxx = 1
+          |  }
+          |}
+          |import Bar.given
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromImplicitScope: Unit = {
+    code"""case class Foo(i: Int)
+          |object Foo {
+          |  extension (foo: Foo) def xxxx = foo.i
+          |}
+          |object Main { Foo(123).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromGivenInImplicitScope: Unit = {
+    code"""trait Bar
+          |case class Foo(i: Int)
+          |object Foo {
+          |  given Bar with {
+          |    extension (foo: Foo) def xxxx = foo.i
+          |  }
+          |}
+          |object Main { Foo(123).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodOnResultOfImplicitConversion: Unit = {
+    code"""import scala.language.implicitConversions
+          |case class Foo(i: Int)
+          |extension (foo: Foo) def xxxx = foo.i
+          |given Conversion[Int, Foo] = Foo(_)
+          |object Main { 123.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def dontCompleteExtensionMethodWithMismatchedName: Unit = {
+    code"""object Foo
+          |extension (foo: Foo.type) def xxxx = 1
+          |object Main { Foo.yy${m1} }""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def preferNormalMethodToExtensionMethod: Unit = {
+    code"""object Foo {
+          |  def xxxx = "abcd"
+          |}
+          |object FooOps {
+          |  extension (foo: Foo.type) def xxxx = 1
+          |}
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def preferExtensionMethodFromExplicitScope: Unit = {
+    code"""object Foo
+          |extension (foo: Foo.type) def xxxx = 1
+          |object FooOps {
+          |  extension (foo: Foo.type) def xxxx = "abcd"
+          |}
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def dontCompleteInapplicableExtensionMethod: Unit = {
+    code"""case class Foo[A](a: A)
+          |extension (foo: Foo[Int]) def xxxx = foo.a
+          |object Main { Foo("abc").xx${m1} }""".withSource
+      .completion(m1, Set())
   }
 }

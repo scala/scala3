@@ -43,7 +43,7 @@ class Operators
 
   // Infix annotation is not well supported in Dotty
   // import scala.annotation.infix
-  // @infix type op[A, B] = Int
+  // infix type op[A, B] = Int
   // type Binary2 = String op Int
 
   import scala.compiletime.ops.boolean._

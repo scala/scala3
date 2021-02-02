@@ -27,7 +27,7 @@ class Zip {
 
   @Benchmark
   def tupleZip(): Tuple = {
-    runtime.Tuple.zip(tuple1, tuple2)
+    runtime.Tuples.zip(tuple1, tuple2)
   }
 
   @Benchmark

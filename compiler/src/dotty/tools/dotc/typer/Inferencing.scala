@@ -38,6 +38,14 @@ object Inferencing {
     result
   }
 
+  /** Try to fully define `tp`. Return whether constraint has changed.
+   *  Any changed constraint is kept.
+   */
+  def canDefineFurther(tp: Type)(using Context): Boolean =
+    val prevConstraint = ctx.typerState.constraint
+    isFullyDefined(tp, force = ForceDegree.all)
+    && (ctx.typerState.constraint ne prevConstraint)
+
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
@@ -61,16 +69,15 @@ object Inferencing {
       ).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
-   *  one of the parameters in `tparams` or `vparamss`.
+   *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
-      @threadUnsafe lazy val params = (tparams :: vparamss).flatten
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
             TypeComparer.bounds(tp.origin)
-              .namedPartsWith(ref => params.contains(ref.symbol))
+              .namedPartsWith(ref => paramss.exists(_.contains(ref.symbol)))
               .nonEmpty =>
           tvars + tp
         case _ =>
@@ -80,6 +87,43 @@ object Inferencing {
     val depVars = dependentVars(Set(), tp)
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
+
+  /** If `tp` is top-level type variable with a lower bound in the current constraint,
+   *  instantiate it from below. We also look for TypeVars whereever their instantiation
+   *  could uncover new type members.
+   */
+  def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
+    case tvar: TypeVar
+    if !tvar.isInstantiated
+       && ctx.typerState.constraint.contains(tvar)
+       && tvar.hasLowerBound =>
+      tvar.instantiate(fromBelow = true)
+      true
+    case AppliedType(tycon, args) =>
+      // The argument in `args` that may potentially appear directly as result
+      // and thereby influence the members of this type
+      def argsInResult: List[Type] = tycon match
+        case tycon: TypeRef =>
+          tycon.info match
+            case MatchAlias(_) => args
+            case TypeBounds(_, upper: TypeLambda) =>
+              upper.resultType match
+                case ref: TypeParamRef if ref.binder == upper =>
+                  args.lazyZip(upper.paramRefs).collect {
+                    case (arg, pref) if pref eq ref => arg
+                  }.toList
+                case _ => Nil
+            case _ => Nil
+      couldInstantiateTypeVar(tycon)
+      || argsInResult.exists(couldInstantiateTypeVar)
+    case RefinedType(parent, _, _) =>
+      couldInstantiateTypeVar(parent)
+    case tp: AndOrType =>
+      couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
+    case AnnotatedType(tp, _) =>
+      couldInstantiateTypeVar(tp)
+    case _ =>
+      false
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
@@ -206,8 +250,7 @@ object Inferencing {
       *     approx, see gadt-approximation-interaction.scala).
       */
     def apply(tp: Type): Type = tp.dealias match {
-      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)
-                                   && variance != 0
+      case tp @ TypeRef(qual, nme) if variance != 0
                                    && ctx.gadt.contains(tp.symbol)
                                    =>
         val sym = tp.symbol

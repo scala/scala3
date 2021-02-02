@@ -148,7 +148,7 @@ with `with-compiler` in their name.
 
 ### SemanticDB tests
 
-The output of the `extractSemanticDB` phase, enabled with `-Ysemanticdb` is tested with the bootstrapped JUnit test
+The output of the `extractSemanticDB` phase, enabled with `-Xsemanticdb` is tested with the bootstrapped JUnit test
 `dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
 two kinds of output file that are compared with "expect files": placement of semanticdb symbol occurrences inline in
 sourcecode (`*.expect.scala`), for human verification by inspection; and secondly metap formatted output which outputs

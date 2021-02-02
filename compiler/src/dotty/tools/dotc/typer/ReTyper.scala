@@ -71,9 +71,6 @@ class ReTyper extends Typer with ReChecking {
   override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree =
     promote(TypeTree(tree.tpe).withSpan(tree.span))
 
-  override def typedFunPart(fn: untpd.Tree, pt: Type)(using Context): Tree =
-    typedExpr(fn, pt)
-
   override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind = {
     assertTyped(tree)
     val body1 = typed(tree.body, pt)
@@ -103,10 +100,6 @@ class ReTyper extends Typer with ReChecking {
 
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(using Context): Tree =
     fallBack
-
-  override def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(using Context): Tree =
-      fallBack(ctx.typerState)
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = ()
 

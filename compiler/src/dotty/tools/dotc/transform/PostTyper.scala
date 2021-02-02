@@ -143,10 +143,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     }
 
     private def processValOrDefDef(tree: Tree)(using Context): tree.type =
+      val sym = tree.symbol
       tree match
-        case tree: ValOrDefDef if !tree.symbol.is(Synthetic) =>
+        case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
-          val sym = tree.symbol
           if sym.is(Method) then
             if sym.isSetter then
               removeUnwantedAnnotations(sym, defn.SetterMetaAnnot, NoSymbol, keepIfNoRelevantAnnot = false)
@@ -250,9 +250,14 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       }
     }
 
+    def checkNoConstructorProxy(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(ConstructorProxy) then
+        report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          checkNoConstructorProxy(tree)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
@@ -263,6 +268,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             withMode(Mode.Type)(super.transform(tree))
           }
           else
+            checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
           val methType = tree.fun.tpe.widen
@@ -335,16 +341,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                && ctx.compilationUnit.source.exists
                && sym != defn.SourceFileAnnot
             then
-              def sourcerootPath =
-                java.nio.file.Paths.get(ctx.settings.sourceroot.value)
-                .toAbsolutePath
-                .normalize
-              val file = ctx.compilationUnit.source.file
-              val jpath = file.jpath
-              val relativePath =
-                if jpath eq null then file.path // repl and other custom tests use abstract files with no path
-                else if jpath.isAbsolute then sourcerootPath.relativize(jpath.normalize).toString
-                else jpath.normalize.toString
+              val reference = ctx.settings.sourceroot.value
+              val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
               sym.addAnnotation(Annotation.makeSourceFile(relativePath))
           else (tree.rhs, sym.info) match
             case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
@@ -385,8 +383,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
           def checkIdent(sel: untpd.ImportSelector): Unit =
             if !exprTpe.member(sel.name).exists
-               && !exprTpe.member(sel.name.toTypeName).exists
-               && !exprTpe.member(sel.name.toExtensionName).exists then
+               && !exprTpe.member(sel.name.toTypeName).exists then
               report.error(NotAMember(exprTpe, sel.name, "value"), sel.imported.srcPos)
             if seen.contains(sel.name) then
               report.error(ImportRenamedTwice(sel.imported), sel.imported.srcPos)
@@ -413,6 +410,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             super.transform(selector),
             cases.mapConserve(tranformIgnoringBoundsCheck)
           )
+        case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
+          superAcc.withInvalidCurrentClass(super.transform(tree))
         case tree =>
           super.transform(tree)
       }

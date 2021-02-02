@@ -1,81 +1,84 @@
 package dotty.dokka.tasty
 
-import org.jetbrains.dokka.model._
-import org.jetbrains.dokka.model.{Projection => JProjection}
 import collection.JavaConverters._
+
+import dotty.dokka.model.api.Link
 
 trait TypesSupport:
   self: TastyParser =>
   import qctx.reflect._
 
-  def getGivenInstance(method: DefDef): Option[Bound] = {
+  type DocSignaturePart = String | Link
+  type DocSignature = List[DocSignaturePart]
+
+  def getGivenInstance(method: DefDef): Option[DocSignature] =
     def extractTypeSymbol(t: Tree): Option[Symbol] = t match
-    case tpeTree: TypeTree =>
-      inner(tpeTree.tpe)
-    case other => None
+      case tpeTree: TypeTree =>
+        inner(tpeTree.tpe)
+      case other => None
 
     def inner(tpe: TypeRepr): Option[Symbol] = tpe match
-    case ThisType(tpe) => inner(tpe)
-    case AnnotatedType(tpe, _) => inner(tpe)
-    case AppliedType(tpe, _) => inner(tpe)
-    case tp @ TermRef(qual, typeName) =>
-      qual match
-      case _: TypeRepr | _: NoPrefix => Some(tp.termSymbol)
-      case other => None
-    case tp @ TypeRef(qual, typeName) =>
-      qual match
-      case _: TypeRepr | _: NoPrefix => Some(tp.typeSymbol)
-      case other => None
+      case ThisType(tpe) => inner(tpe)
+      case AnnotatedType(tpe, _) => inner(tpe)
+      case AppliedType(tpe, _) => inner(tpe)
+      case tp @ TermRef(qual, typeName) =>
+        qual match
+        case _: TypeRepr | _: NoPrefix => Some(tp.termSymbol)
+        case other => None
+      case tp @ TypeRef(qual, typeName) =>
+        qual match
+        case _: TypeRepr | _: NoPrefix => Some(tp.typeSymbol)
+        case other => None
 
     val typeSymbol = extractTypeSymbol(method.returnTpt)
 
     typeSymbol.map(_.tree).collect {
-    case c: ClassDef => c.getParents.headOption
-    case _ => Some(method.returnTpt)
-    }.flatten.map(_.dokkaType)
-  }
+      case c: ClassDef => c.getTreeOfFirstParent
+      case _ => Some(method.returnTpt)
+    }.flatten.map(_.asSignature)
 
-  given TreeSyntax as AnyRef:
-    extension (tpeTree: Tree):
-      def dokkaType: Bound =
-        val data = tpeTree match
+  given TreeSyntax: AnyRef with
+    extension (tpeTree: Tree)
+      def asSignature: DocSignature =
+        tpeTree match
           case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
           case tpeTree: TypeTree =>  inner(tpeTree.tpe)
           case term:  Term => inner(term.tpe)
 
-        new GenericTypeConstructor(tpeTree.symbol.dri, data.asJava, null)
-
-  given TypeSyntax as AnyRef:
-    extension (tpe: TypeRepr):
-      def dokkaType: Bound =
-        val data = inner(tpe)
-        val dri = data.collect{
-          case o: TypeParameter => o
-        }.headOption.map(_.getDri).getOrElse(defn.AnyClass.dri)
-        new GenericTypeConstructor(dri, data.asJava, null)
-
-  private def text(str: String): JProjection = new UnresolvedBound(str)
-
-  private def texts(str: String): List[JProjection] = List(text(str))
+  given TypeSyntax: AnyRef with
+    extension (tpe: TypeRepr)
+      def asSignature: DocSignature = inner(tpe)
 
 
-  private def link(symbol: Symbol): List[JProjection] = {
+  private def text(str: String): DocSignaturePart = str
+
+  private def texts(str: String): DocSignature = List(text(str))
+
+  private def link(symbol: Symbol): DocSignature =
     val suffix = if symbol.isValDef then texts(".type") else Nil
-    (new TypeParameter(symbol.dri, symbol.normalizedName, null)) :: suffix
-  }
+    Link(symbol.normalizedName, symbol.dri) :: suffix
 
-  private def commas(lists: List[List[JProjection]]) = lists match
+  private def commas(lists: List[DocSignature]) = lists match
     case List(single) => single
     case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
 
-  private def isRepeated(tpeAnnotation: Term) =
-    // For some reason annotation.tpe.typeSymbol != defn.RepeatedParamClass
-    // annotation.tpe.typeSymbol prints 'class Repeated' and defn.RepeatedParamClass prints 'class <repeated>'
-    tpeAnnotation.tpe.typeSymbol.toString == "class Repeated"
+  private def isRepeatedAnnotation(term: Term) =
+    term.tpe match
+      case t: TypeRef => t.name == "Repeated" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "internal" => true
+        case _ => false
+      case _ => false
+
+  private def isRepeated(typeRepr: TypeRepr) =
+    typeRepr match
+      case t: TypeRef => t.name == "<repeated>" && t.qualifier.match
+        case ThisType(tref: TypeRef) if tref.name == "scala" => true
+        case _ => false
+      case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(tp: TypeRepr): List[JProjection] =
-    def noSupported(name: String): List[JProjection] =
+  private def inner(tp: TypeRepr): DocSignature =
+    def noSupported(name: String): DocSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
       List(text(s"Unsupported[$name]"))
 
@@ -84,12 +87,11 @@ trait TypesSupport:
       case AndType(left, right) => inner(left) ++ texts(" & ") ++ inner(right)
       case ByNameType(tpe) => text("=> ") :: inner(tpe)
       case ConstantType(constant) =>
-        texts(constant.value match
-          case c: Char => s"'$c'"
-          case other => other.toString
-        )
+        texts(constant.show)
       case ThisType(tpe) => inner(tpe)
-      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeated(annotation) =>
+      case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
+        inner(tpe) :+ text("*")
+      case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe) :+ text("*")
       case AnnotatedType(tpe, _) =>
         inner(tpe)
@@ -107,18 +109,18 @@ trait TypesSupport:
           case t => List(t)
         }
 
-        def getParamBounds(t: PolyType): List[JProjection] = commas(
+        def getParamBounds(t: PolyType): DocSignature = commas(
           t.paramNames.zip(t.paramBounds.map(inner(_)))
             .map(b => texts(b(0)) ++ b(1))
         )
 
-        def getParamList(m: MethodType): List[JProjection] =
+        def getParamList(m: MethodType): DocSignature =
           texts("(")
           ++ m.paramNames.zip(m.paramTypes).map{ case (name, tp) => texts(s"$name: ") ++ inner(tp)}
-            .reduceLeftOption((acc: List[JProjection], elem: List[JProjection]) => acc ++ texts(", ") ++ elem).getOrElse(List())
+            .reduceLeftOption((acc: DocSignature, elem: DocSignature) => acc ++ texts(", ") ++ elem).getOrElse(List())
           ++ texts(")")
 
-        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: List[JProjection] = Nil): List[JProjection] = ( info match {
+        def parseRefinedElem(name: String, info: TypeRepr, polyTyped: DocSignature = Nil): DocSignature = ( info match {
           case m: MethodType => {
             val paramList = getParamList(m)
             texts(s"def $name") ++ polyTyped ++ paramList ++ texts(": ") ++ inner(m.resType)
@@ -137,7 +139,7 @@ trait TypesSupport:
           case other => noSupported(s"Not supported type in refinement $info")
         } ) ++ texts("; ")
 
-        def parsePolyFunction(info: TypeRepr): List[JProjection] = info match {
+        def parsePolyFunction(info: TypeRepr): DocSignature = info match {
           case t: PolyType =>
             val paramBounds = getParamBounds(t)
             val method = t.resType.asInstanceOf[MethodType]
@@ -149,7 +151,7 @@ trait TypesSupport:
         val refinementInfo = getRefinementInformation(r)
         val refinedType = refinementInfo.head
         val refinedElems = refinementInfo.tail.collect{ case r: Refinement => r }.toList
-        val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ texts(" ") else List.empty[JProjection]
+        val prefix = if refinedType.typeSymbol != defn.ObjectClass then inner(refinedType) ++ texts(" ") else Nil
         if (refinedType.typeSymbol.fullName == "scala.PolyFunction" && refinedElems.size == 1) {
           parsePolyFunction(refinedElems.head.info)
         } else {
@@ -171,7 +173,10 @@ trait TypesSupport:
             case Seq(rtpe) =>
               text("() => ") :: inner(rtpe)
             case Seq(arg, rtpe) =>
-              inner(arg) ++ texts(" => ") ++ inner(rtpe)
+              val partOfSignature = arg match
+                case byName: ByNameType => texts("(") ++ inner(byName) ++ texts(")")
+                case _ => inner(arg)
+              partOfSignature ++ texts(" => ") ++ inner(rtpe)
             case args =>
               texts("(") ++ commas(args.init.map(inner)) ++ texts(") => ") ++ inner(args.last)
         else if t.isTupleType then
@@ -215,9 +220,12 @@ trait TypesSupport:
         //     case _ =>
         //     throw Exception("Match error in TypeRef. This should not happen, please open an issue. " + convertTypeOrBoundsToReference(reflect)(qual))
         // }
-      case tr @ TermRef(qual, typeName) => qual match {
-        case _ => link(tr.termSymbol)
-      }
+      case tr @ TermRef(qual, typeName) =>
+        tr.termSymbol.tree match
+          case vd: ValDef => inner(vd.tpt.tpe)
+          case _          => link(tr.termSymbol)
+
+
         // convertTypeOrBoundsToReference(reflect)(qual) match {
         //     case TypeReference(label, link, xs, _) => TypeReference(typeName + "$", link + "/" + label, xs)
         //     case EmptyReference => TypeReference(typeName, "", Nil)
@@ -237,12 +245,16 @@ trait TypesSupport:
 
       case MatchType(bond, sc, cases) =>
         val casesTexts = cases.flatMap {
-          case MatchTypeCase(from, to) =>
+          case MatchCase(from, to) =>
+            texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
+          case TypeLambda(_, _, MatchCase(from, to)) =>
             texts("  case ") ++ inner(from) ++ texts(" => ") ++ inner(to) ++ texts("\n")
         }
         inner(sc) ++ texts(" match {\n") ++ casesTexts ++ texts("}")
 
       case ParamRef(TypeLambda(names, _, _), i) => texts(names.apply(i))
+
+      case ParamRef(m: MethodType, i) => texts(m.paramNames(i))
 
       case RecursiveType(tp) => inner(tp)
 

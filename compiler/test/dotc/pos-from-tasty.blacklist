@@ -8,3 +8,6 @@ t802.scala
 
 # missing position
 rbtree.scala
+
+# transitive reduction of match types
+i10511.scala

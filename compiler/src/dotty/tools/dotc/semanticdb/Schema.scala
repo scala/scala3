@@ -2,7 +2,7 @@ package dotty.tools.dotc.semanticdb
 
 import dotty.tools.dotc.semanticdb.internal._
 
-sealed trait Schema(val value: Int) extends SemanticdbEnum derives Eql
+sealed trait Schema(val value: Int) extends SemanticdbEnum derives CanEqual
 
 object Schema {
 

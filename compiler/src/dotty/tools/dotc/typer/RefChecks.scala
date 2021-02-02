@@ -387,9 +387,11 @@ object RefChecks {
         overrideError("is an extension method, cannot override a normal method")
       else if (other.is(ExtensionMethod) && !member.is(ExtensionMethod)) // (1.3)
         overrideError("is a normal method, cannot override an extension method")
-      else if (!other.is(Deferred) &&
-                 !other.name.is(DefaultGetterName) &&
-                 !member.isAnyOverride)
+      else if !other.is(Deferred)
+            && !member.is(Deferred)
+            && !other.name.is(DefaultGetterName)
+            && !member.isAnyOverride
+      then
         // Exclusion for default getters, fixes SI-5178. We cannot assign the Override flag to
         // the default getter: one default getter might sometimes override, sometimes not. Example in comment on ticket.
         // Also exclusion for implicit shortcut methods
@@ -413,12 +415,8 @@ object RefChecks {
       else if (other.is(AbsOverride) && other.isIncompleteIn(clazz) && !member.is(AbsOverride))
         overrideError("needs `abstract override` modifiers")
       else if (member.is(Override) && other.is(Accessor) &&
-        other.accessedFieldOrGetter.is(Mutable, butNot = Lazy)) {
-        // !?! this is not covered by the spec. We need to resolve this either by changing the spec or removing the test here.
-        // !!! is there a !?! convention? I'm !!!ing this to make sure it turns up on my searches.
-        if (!ctx.settings.YoverrideVars.value)
-          overrideError("cannot override a mutable variable")
-      }
+        other.accessedFieldOrGetter.is(Mutable, butNot = Lazy))
+        overrideError("cannot override a mutable variable")
       else if (member.isAnyOverride &&
         !(member.owner.thisType.baseClasses exists (_ isSubClass other.owner)) &&
         !member.is(Deferred) && !other.is(Deferred) &&
@@ -489,6 +487,22 @@ object RefChecks {
     while opc.hasNext do
       checkOverride(opc.overriding, opc.overridden)
       opc.next()
+
+    // The OverridingPairs cursor does assume that concrete overrides abstract
+    // We have to check separately for an abstract definition in a subclass that
+    // overrides a concrete definition in a superclass. E.g. the following (inspired
+    // from neg/i11130.scala) needs to be rejected as well:
+    //
+    //   class A { type T = B }
+    //   class B extends A { override type T }
+    for
+      dcl <- clazz.info.decls.iterator
+      if dcl.is(Deferred)
+      other <- dcl.allOverriddenSymbols
+      if !other.is(Deferred)
+    do
+      checkOverride(dcl, other)
+
     printMixinOverrideErrors()
 
     // Verifying a concrete class has nothing unimplemented.
@@ -503,7 +517,9 @@ object RefChecks {
         def prelude = (
           if (clazz.isAnonymousClass || clazz.is(Module)) "object creation impossible"
           else if (mustBeMixin) s"$clazz needs to be a mixin"
-          else s"$clazz needs to be abstract") + ", since"
+          else if clazz.is(Synthetic) then "instance cannot be created"
+          else s"$clazz needs to be abstract"
+          ) + ", since"
 
         if (abstractErrors.isEmpty) abstractErrors ++= List(prelude, msg)
         else abstractErrors += msg
@@ -526,10 +542,10 @@ object RefChecks {
 
       def isImplemented(mbr: Symbol) =
         val mbrType = clazz.thisType.memberInfo(mbr)
-        extension (sym: Symbol) def isConcrete = sym.exists && !sym.is(Deferred)
+        def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
-            impl => impl.symbol.isConcrete && mbrType.matchesLoosely(impl.info))
+            impl => isConcrete(impl.symbol) && mbrType.matchesLoosely(impl.info))
           .exists
 
       /** The term symbols in this class and its baseclasses that are
@@ -643,7 +659,11 @@ object RefChecks {
 
                     undefined(s"\n(Note that ${pa.show} does not match ${pc.show}$addendum)")
                   case xs =>
-                    undefined(s"\n(The class implements a member with a different type: ${concrete.showDcl})")
+                    undefined(
+                      if concrete.symbol.is(AbsOverride) then
+                        s"\n(The class implements ${concrete.showDcl} but that definition still needs an implementation)"
+                      else
+                        s"\n(The class implements a member with a different type: ${concrete.showDcl})")
                 }
               case Nil =>
                 undefined("")
@@ -746,17 +766,6 @@ object RefChecks {
       checkMemberTypesOK()
       checkCaseClassInheritanceInvariant()
     }
-    else if (clazz.is(Trait) && !(clazz derivesFrom defn.AnyValClass))
-      // For non-AnyVal classes, prevent abstract methods in interfaces that override
-      // final members in Object; see #4431
-      for (decl <- clazz.info.decls) {
-        // Have to use matchingSymbol, not a method involving overridden symbols,
-        // because the scala type system understands that an abstract method here does not
-        // override a concrete method in Object. The jvm, however, does not.
-        val overridden = decl.matchingDecl(defn.ObjectClass, defn.ObjectType)
-        if (overridden.is(Final))
-          report.error(TraitRedefinedFinalMethodFromAnyRef(overridden), decl.srcPos)
-      }
 
     if (!clazz.is(Trait)) {
       // check that parameterized base classes and traits are typed in the same way as from the superclass
@@ -890,8 +899,32 @@ object RefChecks {
    * in either a deprecated member or a scala bridge method, issue a warning.
    */
   private def checkDeprecated(sym: Symbol, pos: SrcPos)(using Context): Unit =
+
+    /** is the owner an enum or its companion and also the owner of sym */
+    def isEnumOwner(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      if owner.isEnumClass then owner.companionClass eq sym.owner
+      else if owner.is(ModuleClass) && owner.companionClass.isEnumClass then owner eq sym.owner
+      else false
+
+    def isDeprecatedOrEnum(owner: Symbol)(using Context) =
+      // pre: sym is an enumcase
+      owner.isDeprecated
+      || isEnumOwner(owner)
+
+    /**Scan the chain of outer declaring scopes from the current context
+     * a deprecation warning will be skipped if one the following holds
+     * for a given declaring scope:
+     * - the symbol associated with the scope is also deprecated.
+     * - if and only if `sym` is an enum case, the scope is either
+     *   a module that declares `sym`, or the companion class of the
+     *   module that declares `sym`.
+     */
+    def skipWarning(using Context) =
+      ctx.owner.ownersIterator.exists(if sym.isEnumCase then isDeprecatedOrEnum else _.isDeprecated)
+
     for annot <- sym.getAnnotation(defn.DeprecatedAnnot) do
-      if !ctx.owner.ownersIterator.exists(_.isDeprecated) then
+      if !skipWarning then
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)

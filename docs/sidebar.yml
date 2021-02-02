@@ -35,6 +35,8 @@ sidebar:
               url: docs/reference/new-types/match-types.html
             - title: Dependent Function Types
               url: docs/reference/new-types/dependent-function-types.html
+            - title: Polymorphic Function Types
+              url: docs/reference/new-types/polymorphic-function-types.html
         - title: Enums
           subsection:
             - title: Enumerations
@@ -59,7 +61,7 @@ sidebar:
               url: docs/reference/contextual/extension-methods.html
             - title: Implementing Type classes
               url: docs/reference/contextual/type-classes.html
-            - title: Type class Derivation
+            - title: Type Class Derivation
               url: docs/reference/contextual/derivation.html
             - title: Multiversal Equality
               url: docs/reference/contextual/multiversal-equality.html
@@ -79,19 +81,19 @@ sidebar:
               url: docs/reference/metaprogramming/inline.html
             - title: Macros
               url: docs/reference/metaprogramming/macros.html
-            - title: Staging
+            - title: Runtime Staging
               url: docs/reference/metaprogramming/staging.html
-            - title: TASTy Reflection
-              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: Reflection
+              url: docs/reference/metaprogramming/reflection.html
             - title: TASTy Inspection
               url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
           subsection:
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
-            - title: Mixin Traits
-              url: docs/reference/other-new-features/mixin-traits.html
-            - title: Creator Applications
+            - title: Transparent Traits
+              url: docs/reference/other-new-features/transparent-traits.html
+            - title: Universal Applies
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
               url: docs/reference/other-new-features/export.html
@@ -103,6 +105,8 @@ sidebar:
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Matchable Trait
+              url: docs/reference/other-new-features/matchable.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
             - title: targetName Annotation
@@ -185,6 +189,8 @@ sidebar:
               url: docs/reference/dropped-features/nonlocal-returns.html
             - title: "[this] Qualifier"
               url: docs/reference/dropped-features/this-qualifier.html
+        - title: Syntax Summary
+          url: docs/reference/syntax.html
     - title: Contributing
       subsection:
         - title: Contribute Knowledge

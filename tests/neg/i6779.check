@@ -3,11 +3,16 @@
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^
    |                             Found:    F[T]
    |                             Required: F[G[T]]
--- [E007] Type Mismatch Error: tests/neg/i6779.scala:12:31 -------------------------------------------------------------
+-- [E008] Not Found Error: tests/neg/i6779.scala:12:31 -----------------------------------------------------------------
 12 |  def g2[T](x: T): F[G[T]] = x.f // error
    |                             ^^^
-   |                             Found:    F[T]
-   |                             Required: F[G[T]]
+   |                             value f is not a member of T.
+   |                             An extension method was tried, but could not be fully constructed:
+   |
+   |                                 Test.f[G[T]](x)(given_Stuff)    failed with
+   |
+   |                                     Found:    (x : T)
+   |                                     Required: G[T]
 -- [E007] Type Mismatch Error: tests/neg/i6779.scala:14:38 -------------------------------------------------------------
 14 |  def g3[T](x: T): F[G[T]] = this.f(x)(using summon[Stuff]) // error
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

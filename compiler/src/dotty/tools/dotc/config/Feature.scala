@@ -9,12 +9,17 @@ import Decorators.{_, given}
 import util.SrcPos
 import SourceVersion._
 import reporting.Message
+import NameKinds.QualifiedName
 
 object Feature:
 
-  private val dependent = "dependent".toTermName
-  private val namedTypeArguments = "namedTypeArguments".toTermName
-  private val genericNumberLiterals = "genericNumberLiterals".toTermName
+  private def experimental(str: String): TermName =
+    QualifiedName(nme.experimental, str.toTermName)
+
+  private val Xdependent = experimental("dependent")
+  private val XnamedTypeArguments = experimental("namedTypeArguments")
+  private val XgenericNumberLiterals = experimental("genericNumberLiterals")
+  private val Xmacros = experimental("macros")
 
 /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -23,12 +28,8 @@ object Feature:
    *  where <prefix> is the fully qualified name of `owner`, followed by a ".",
    *  but subtracting the prefix `scala.language.` at the front.
    */
-  def enabledBySetting(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    def toPrefix(sym: Symbol): String =
-      if !sym.exists || sym == defn.LanguageModule.moduleClass then ""
-      else toPrefix(sym.owner) + sym.name.stripModuleClassSuffix + "."
-    val prefix = if owner ne NoSymbol then toPrefix(owner) else ""
-    ctx.base.settings.language.value.contains(prefix + feature)
+  def enabledBySetting(feature: TermName)(using Context): Boolean =
+    ctx.base.settings.language.value.contains(feature.toString)
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import
@@ -39,39 +40,31 @@ object Feature:
    *
    *       import owner.{ feature => _ }
    */
-  def enabledByImport(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    atPhase(typerPhase) {
-      ctx.importInfo != null
-      && ctx.importInfo.featureImported(feature,
-          if owner.exists then owner else defn.LanguageModule.moduleClass)
-    }
+  def enabledByImport(feature: TermName)(using Context): Boolean =
+    //atPhase(typerPhase) {
+      ctx.importInfo != null && ctx.importInfo.featureImported(feature)
+    //}
 
   /** Is `feature` enabled by either a command line setting or an import?
    *  @param  feature   The name of the feature
    *  @param  owner     The prefix symbol (nested in `scala.language`) where the
    *                    feature is defined.
    */
-  def enabled(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    enabledBySetting(feature, owner) || enabledByImport(feature, owner)
+  def enabled(feature: TermName)(using Context): Boolean =
+    enabledBySetting(feature) || enabledByImport(feature)
 
   /** Is auto-tupling enabled? */
-  def autoTuplingEnabled(using Context): Boolean =
-    !enabled(nme.noAutoTupling)
+  def autoTuplingEnabled(using Context): Boolean = !enabled(nme.noAutoTupling)
 
-  def dynamicsEnabled(using Context): Boolean =
-    enabled(nme.dynamics)
+  def dynamicsEnabled(using Context): Boolean = enabled(nme.dynamics)
 
-  def dependentEnabled(using Context) =
-    enabled(dependent, defn.LanguageExperimentalModule.moduleClass)
+  def dependentEnabled(using Context) = enabled(Xdependent)
 
-  def namedTypeArgsEnabled(using Context) =
-    enabled(namedTypeArguments, defn.LanguageExperimentalModule.moduleClass)
+  def namedTypeArgsEnabled(using Context) = enabled(XnamedTypeArguments)
 
-  def genericNumberLiteralsEnabled(using Context) =
-    enabled(genericNumberLiterals, defn.LanguageExperimentalModule.moduleClass)
+  def genericNumberLiteralsEnabled(using Context) = enabled(XgenericNumberLiterals)
 
-  def scala2ExperimentalMacroEnabled(using Context) =
-    enabled("macros".toTermName, defn.LanguageExperimentalModule.moduleClass)
+  def scala2ExperimentalMacroEnabled(using Context) = enabled(Xmacros)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -82,8 +75,7 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean =
-    sourceVersion == `3.0-migration` || enabledBySetting(nme.Scala2Compat)
+  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.

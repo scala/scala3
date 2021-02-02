@@ -1,22 +1,12 @@
 package dotty.dokka
 
-import org.jetbrains.dokka.links.PointingToDeclaration
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.DokkaConfiguration$DokkaSourceSet
-import collection.JavaConverters._
-import org.jetbrains.dokka.model.DisplaySourceSet
-import org.jetbrains.dokka.model.properties.WithExtraProperties
-// TODO reproduction! - comment line below to broke compiler!
-import org.jetbrains.dokka.model.properties.ExtraProperty
-// import java.util.Stream // TODO reproduction uncomment
 import java.util.stream.Stream // comment out - wrong error!
 import java.util.stream.Collectors
-import org.jetbrains.dokka.plugability._
-import kotlin.jvm.JvmClassMappingKt.getKotlinClass
-
-def mkDRI(packageName: String = null, extra: String = null) = new DRI(packageName, null, null, PointingToDeclaration.INSTANCE, extra)
-
-val U: kotlin.Unit = kotlin.Unit.INSTANCE
+import java.util.Collections
+import java.nio.file.Path
+import com.vladsch.flexmark.util.ast.{Node => MdNode}
+import dotty.dokka.tasty.comments.wiki.WikiDocElement
+import collection.JavaConverters._
 
 def JList[T](e: T*): JList[T] = e.asJava
 def JSet[T](e: T*): JSet[T] = e.toSet.asJava
@@ -28,53 +18,23 @@ type JMap[K, V] = java.util.Map[K, V]
 type JHashMap[K, V] = java.util.HashMap[K, V]
 type JMapEntry[K, V] = java.util.Map.Entry[K, V]
 
-type DRI = org.jetbrains.dokka.links.DRI
+private val emptyListInst = Collections.emptyList
+def JNil[A] = emptyListInst.asInstanceOf[JList[A]]
 
-type SourceSetWrapper = DokkaConfiguration$DokkaSourceSet
-type DokkaSourceSet = DokkaConfiguration.DokkaSourceSet
+private val emptyMapInst = Collections.emptyMap
+def emptyJMap[A, B] = emptyMapInst.asInstanceOf[JMap[A, B]]
 
-extension [T] (wrapper: SourceSetWrapper):
-    def toSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper)
-    def toMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper -> value)
+enum DocLink:
+  case ToURL(url: String)
+  case ToDRI(dri: DRI, name: String)
+  case UnresolvedDRI(query: String, msg: String)
 
-extension [T] (wrapper: DokkaSourceSet):
-    // when named `toSet` fails in runtime -- TODO: create a minimal!
-    // def toSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
-    def asSet: JSet[DokkaConfiguration$DokkaSourceSet] = JSet(wrapper.asInstanceOf[SourceSetWrapper])
-    def asMap(value: T): JMap[DokkaConfiguration$DokkaSourceSet, T] = JMap(wrapper.asInstanceOf[SourceSetWrapper] -> value)
+type DocPart = Seq[WikiDocElement] | MdNode
 
-extension (sourceSets: JList[DokkaSourceSet]):
-  def asDokka: JSet[SourceSetWrapper] = sourceSets.asScala.toSet.asJava.asInstanceOf[JSet[SourceSetWrapper]]
-  def toDisplaySourceSet = sourceSets.asScala.map(ss => DisplaySourceSet(ss.asInstanceOf[SourceSetWrapper])).toSet.asJava
-
-extension (sourceSets: Set[SourceSetWrapper]):
-  def toDisplay = sourceSets.map(DisplaySourceSet(_)).asJava
-
-extension [V] (a: WithExtraProperties[_]):
-  def get(key: ExtraProperty.Key[_, V]): V = a.getExtra().getMap().get(key).asInstanceOf[V]
-
-extension [E <: WithExtraProperties[E]] (a: E):
-  def put(value: ExtraProperty[_ >: E]): E = a.withNewExtras(a.getExtra plus value)
-
-extension [V] (map: JMap[SourceSetWrapper, V]):
-  def defaultValue: V = map.values.asScala.head
-
-extension [V](jlist: JList[V]):
+extension [V](jlist: JList[V])
   def ++ (other: JList[V]): JList[V] =
     Stream.of(jlist, other).flatMap(_.stream).collect(Collectors.toList())
 
-extension [V](jset: JSet[V]):
+extension [V](jset: JSet[V])
   def ++ (other: JSet[V]): JSet[V] =
     Stream.of(jset, other).flatMap(_.stream).collect(Collectors.toSet())
-
-object PluginUtils:
-    import scala.reflect.ClassTag
-    import scala.reflect._
-    def plugin[T <: DokkaPlugin: ClassTag](ctx: DokkaContext) =
-      ctx.plugin[T](getKotlinClass(implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]))
-
-    def query[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): List[E] =
-        ctx.get(queryFunction(plugin[T](ctx))).asScala.toList
-
-    def querySingle[T <: DokkaPlugin: ClassTag, E](ctx: DokkaContext, queryFunction: (T) => ExtensionPoint[E]): E =
-        ctx.single(queryFunction(plugin[T](ctx)))

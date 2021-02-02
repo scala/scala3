@@ -12,7 +12,7 @@ Currently, the only IDE we officially support is
 Prerequisites
 ============
 To use this in your own Scala project, you must first get it to compile with
-Dotty, please follow the instructions at https://github.com/lampepfl/dotty-example-project
+Dotty, please follow the instructions at https://github.com/scala/scala3-example-project
 
 Usage
 =====

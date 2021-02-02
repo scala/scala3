@@ -1,30 +1,23 @@
-name: CI for Scala3doc
+name: Scala3doc
 
 on:
   push:
-    branches:
-      - master
-  pull_request_target:
+  pull_request:
 jobs:
   build:
+    env:
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
     runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'master')"
 
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
-
-      - name: Checkout to PR code
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run : |
-          if [[ -z "${PR_NUMBER}" ]]; then
-            echo Not a pull request do not need to checkout
-          else
-            REF=refs/pull/$PR_NUMBER/merge
-            echo checking $REF
-            git fetch origin $REF:$REF
-            git checkout $REF
-          fi     
 
       - name: Cache Coursier
         uses: actions/cache@v1
@@ -57,9 +50,6 @@ jobs:
       - name: Generate Scala 3 documentation
         run: ./project/scripts/sbt scala3doc/generateScala3Documentation
 
-      - name: Generate Scala 3 stdlib documentation
-        run: ./project/scripts/sbt scala3doc/generateScala3StdlibDocumentation
-
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scala3doc"
 
@@ -68,12 +58,50 @@ jobs:
 
       - name: Upload documentation to server
         uses: azure/CLI@v1
-        env: 
-          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+        if: env.AZURE_STORAGE_SAS_TOKEN
+        env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           inlineScript: |
-            DOC_DEST=pr-${PR_NUMBER:-master}
+            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
             az storage blob sync -s scala3doc/output -c $DOC_DEST --account-name scala3docstorage
+
+  community-docs:
+    env:
+      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+    runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Init submodules
+        run: git submodule update --init --recursive --jobs 7
+
+      - name: Generate docs
+        run: ./project/scripts/sbt "community-build/run doc all docsOutput"
+
+      - name: Upload documentation to server
+        uses: azure/CLI@v1
+        if: env.AZURE_STORAGE_SAS_TOKEN
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          inlineScript: |
+            DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}-docs
+            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
+            az storage blob sync -s community-build/docsOutput -c $DOC_DEST --account-name scala3docstorage

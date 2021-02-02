@@ -1,7 +1,7 @@
 // This test source should be invariant under the following 4 compilation steps with options
 //  -rewrite -new-syntax
 //  -rewrite -indent
-//  -rewrite -noindent
+//  -rewrite -no-indent
 //  -rewrite -old-syntax
 object test {
 

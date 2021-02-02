@@ -3,6 +3,7 @@ package dotc
 
 import core.Contexts._
 import reporting.Reporter
+import io.AbstractFile
 
 import scala.annotation.internal.sharable
 
@@ -19,12 +20,12 @@ object Bench extends Driver:
 
   @sharable private var times: Array[Int] = _
 
-  override def doCompile(compiler: Compiler, fileNames: List[String])(using Context): Reporter =
+  override def doCompile(compiler: Compiler, files: List[AbstractFile])(using Context): Reporter =
     times = new Array[Int](numRuns)
     var reporter: Reporter = emptyReporter
     for i <- 0 until numRuns do
       val start = System.nanoTime()
-      reporter = super.doCompile(compiler, fileNames)
+      reporter = super.doCompile(compiler, files)
       times(i) = ((System.nanoTime - start) / 1000000).toInt
       println(s"time elapsed: ${times(i)}ms")
       if ctx.settings.Xprompt.value then

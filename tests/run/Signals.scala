@@ -28,7 +28,7 @@ package frp:
 
   object Signal:
     type Caller = Signal[?]
-    given noCaller as Caller(???):
+    given noCaller: Caller(???) with
       override def computeValue() = ()
   end Signal
 

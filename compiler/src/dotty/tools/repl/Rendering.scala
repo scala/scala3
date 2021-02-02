@@ -11,7 +11,7 @@ import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
 import dotc.core.Symbols.{Symbol, defn}
-import dotc.core.StdNames.str
+import dotc.core.StdNames.{nme, str}
 import dotc.core.NameOps._
 import dotc.printing.ReplPrinter
 import dotc.reporting.{MessageRendering, Message, Diagnostic}
@@ -113,27 +113,35 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Option[Diagnostic] = {
+  def renderVal(d: Denotation)(using Context): Option[Diagnostic] =
     val dcl = d.symbol.showUser
+    def msg(s: String) = infoDiagnostic(s, d)
+    try
+      if (d.symbol.is(Flags.Lazy)) Some(msg(dcl))
+      else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+    catch case e: InvocationTargetException => Some(msg(renderError(e, d)))
+  end renderVal
 
-    try {
-      if (d.symbol.is(Flags.Lazy)) Some(infoDiagnostic(dcl, d))
-      else valueOf(d.symbol).map(value => infoDiagnostic(s"$dcl = $value", d))
-    }
-    catch { case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d)) }
-  }
+  /** Force module initialization in the absence of members. */
+  def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+    def load() =
+      val objectName = sym.fullName.encode.toString
+      Class.forName(objectName, true, classLoader())
+      Nil
+    try load() catch case e: ExceptionInInitializerError => List(infoDiagnostic(renderError(e, sym.denot), sym.denot))
 
-  /** Render the stack trace of the underlying exception */
-  private def renderError(ex: InvocationTargetException): String = {
-    val cause = ex.getCause match {
-      case ex: ExceptionInInitializerError => ex.getCause
-      case ex => ex
-    }
-    val sw = new StringWriter()
-    val pw = new PrintWriter(sw)
-    cause.printStackTrace(pw)
-    sw.toString
-  }
+  /** Render the stack trace of the underlying exception. */
+  private def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): String =
+    import dotty.tools.dotc.util.StackTraceOps._
+    val cause = ite.getCause match
+      case e: ExceptionInInitializerError => e.getCause
+      case e => e
+    def isWrapperCode(ste: StackTraceElement) =
+      ste.getClassName == d.symbol.owner.name.show
+      && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
+
+    cause.formatStackTracePrefix(!isWrapperCode(_))
+  end renderError
 
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
@@ -142,7 +150,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 object Rendering {
 
-  extension (s: Symbol):
+  extension (s: Symbol)
     def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)

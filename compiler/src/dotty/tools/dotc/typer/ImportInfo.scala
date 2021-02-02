@@ -13,6 +13,7 @@ import config.SourceVersion
 import StdNames.nme
 import printing.Texts.Text
 import ProtoTypes.NoViewsAllowed.normalizedCompatible
+import NameKinds.QualifiedName
 import Decorators._
 
 object ImportInfo {
@@ -33,32 +34,36 @@ object ImportInfo {
       val expr = tpd.Ident(ref.refFn()) // refFn must be called in the context of ImportInfo.sym
       tpd.Import(expr, selectors).symbol
 
-    ImportInfo(sym, selectors, None, isRootImport = true)
+    ImportInfo(sym, selectors, untpd.EmptyTree, isRootImport = true)
 
-  extension (c: Context):
+  extension (c: Context)
     def withRootImports(rootRefs: List[RootRef])(using Context): Context =
       rootRefs.foldLeft(c)((ctx, ref) => ctx.fresh.setImportInfo(rootImport(ref)))
 
     def withRootImports: Context =
       given Context = c
       c.withRootImports(defn.rootImportFns)
-
 }
 
 /** Info relating to an import clause
- *  @param   sym           The import symbol defined by the clause
+ *  @param   symf          A function that computes the import symbol defined by the clause
  *  @param   selectors     The selector clauses
- *  @param   symNameOpt    Optionally, the name of the import symbol. None for root imports.
+ *  @param   qualifier     The import qualifier, or EmptyTree for root imports.
  *                         Defined for all explicit imports from ident or select nodes.
  *  @param   isRootImport  true if this is one of the implicit imports of scala, java.lang,
- *                         scala.Predef or dotty.DottyPredef in the start context, false otherwise.
+ *                         scala.Predef in the start context, false otherwise.
  */
 class ImportInfo(symf: Context ?=> Symbol,
                  val selectors: List[untpd.ImportSelector],
-                 symNameOpt: Option[TermName],
+                 val qualifier: untpd.Tree,
                  val isRootImport: Boolean = false) extends Showable {
 
-  def sym(using Context): Symbol = {
+  private def symNameOpt = qualifier match {
+    case ref: untpd.RefTree => Some(ref.name.asTermName)
+    case _                  => None
+  }
+
+  def importSym(using Context): Symbol = {
     if (mySym == null) {
       mySym = symf
       assert(mySym != null)
@@ -68,7 +73,7 @@ class ImportInfo(symf: Context ?=> Symbol,
   private var mySym: Symbol = _
 
   /** The (TermRef) type of the qualifier of the import clause */
-  def site(using Context): Type = sym.info match {
+  def site(using Context): Type = importSym.info match {
     case ImportType(expr) => expr.tpe
     case _ => NoType
   }
@@ -177,28 +182,50 @@ class ImportInfo(symf: Context ?=> Symbol,
       assert(myUnimported != null)
     myUnimported
 
+  private val isLanguageImport: Boolean = untpd.isLanguageImport(qualifier)
+
   private var myUnimported: Symbol = _
 
-  private var myOwner: Symbol = null
-  private var myResults: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
+  private var featureCache: SimpleIdentityMap[TermName, java.lang.Boolean] = SimpleIdentityMap.empty
 
-  /** Does this import clause or a preceding import clause import `owner.feature`? */
-  def featureImported(feature: TermName, owner: Symbol)(using Context): Boolean =
+  /** Does this import clause enable or disable `feature`?
+   *  @param  feature   See featureImported for a description
+   *  @return Some(true)  if `feature` is imported
+   *          Some(false) if `feature` is excluded
+   *          None        if `feature` is not mentioned, or this is not a language import
+   */
+  def mentionsFeature(feature: TermName)(using Context): Option[Boolean] =
+    def test(prefix: TermName, feature: TermName): Option[Boolean] =
+      untpd.languageImport(qualifier) match
+        case Some(`prefix`) =>
+          if forwardMapping.contains(feature) then Some(true)
+          else if excluded.contains(feature) then Some(false)
+          else None
+        case _ => None
+    feature match
+      case QualifiedName(prefix, name) => test(prefix, name)
+      case _ => test(EmptyTermName, feature)
 
-    def compute =
-      val isImportOwner = site.typeSymbol.eq(owner)
-      if isImportOwner && forwardMapping.contains(feature) then true
-      else if isImportOwner && excluded.contains(feature) then false
-      else
-        var c = ctx.outer
-        while c.importInfo eq ctx.importInfo do c = c.outer
-        (c.importInfo != null) && c.importInfo.featureImported(feature, owner)(using c)
-
-    if myOwner.ne(owner) || !myResults.contains(feature) then
-      myOwner = owner
-      myResults = myResults.updated(feature, compute)
-    myResults(feature)
-  end featureImported
+  /** Does this import clause or a preceding import clause enable `feature`?
+   *
+   *  @param  feature  a possibly quailified name, e.g.
+   *                      strictEquality
+   *                      experimental.genericNumberLiterals
+   *
+   *  An excluded feature such as `strictEquality => _` in a language import
+   *  means that preceding imports are not considered and the feature is not imported.
+   */
+  def featureImported(feature: TermName)(using Context): Boolean =
+    if !featureCache.contains(feature) then
+      featureCache = featureCache.updated(feature,
+        mentionsFeature(feature) match
+          case Some(bv) => bv
+          case None =>
+            var c = ctx.outer
+            while c.importInfo eq ctx.importInfo do c = c.outer
+            (c.importInfo != null) && c.importInfo.featureImported(feature)(using c)
+      )
+    featureCache(feature)
 
   def toText(printer: Printer): Text = printer.toText(this)
 }

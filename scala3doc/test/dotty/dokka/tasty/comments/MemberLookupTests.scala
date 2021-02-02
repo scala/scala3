@@ -4,7 +4,7 @@ import scala.quoted.Quotes
 
 import org.junit.{Test, Rule}
 import org.junit.Assert.{assertSame, assertTrue}
-import dotty.dokka.BuildInfo
+import dotty.dokka.tasty.util._
 
 class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
@@ -86,12 +86,12 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
   case class Sym(symbol: q.reflect.Symbol) {
     def fld(name: String) =
       def hackResolveModule(s: q.reflect.Symbol): q.reflect.Symbol =
-        if s.flags.is(q.reflect.Flags.Object) then s.moduleClass else s
-      Sym(hackResolveModule(symbol.field(name)))
+        if s.flags.is(q.reflect.Flags.Module) then s.moduleClass else s
+      Sym(hackResolveModule(symbol.declaredField(name)))
     def fun(name: String) =
-      val List(sym) = symbol.method(name)
+      val List(sym) = symbol.memberMethod(name)
       Sym(sym)
-    def tpe(name: String) = Sym(symbol.typeMember(name))
+    def tpe(name: String) = Sym(symbol.memberType(name))
   }
 
   def cls(fqn: String) = Sym(q.reflect.Symbol.classSymbol(fqn))
@@ -101,8 +101,8 @@ class MemberLookupTests {
 
   @Test
   def test(): Unit = {
-    import scala.tasty.inspector.TastyInspector
-    class Inspector extends TastyInspector:
+    import scala.tasty.inspector.OldTastyInspector
+    class Inspector extends OldTastyInspector:
       var alreadyRan: Boolean = false
 
       override def processCompilationUnit(using ctx: quoted.Quotes)(root: ctx.reflect.Tree): Unit =
@@ -118,27 +118,6 @@ class MemberLookupTests {
         cases.testAll()
       }
 
-    Inspector().inspectTastyFiles(listOurClasses())
-  }
-
-  def listOurClasses(): List[String] = {
-    import java.io.File
-    import scala.collection.mutable.ListBuffer
-
-    val classRoot = new File(BuildInfo.test_testcasesOutputDir)
-
-    def go(bld: ListBuffer[String])(file: File): Unit =
-      file.listFiles.foreach { f =>
-        if f.isFile() then
-          if f.toString.endsWith(".tasty") then bld.append(f.toString)
-        else go(bld)(f)
-      }
-
-    if classRoot.isDirectory then
-      val bld = new ListBuffer[String]
-      go(bld)(classRoot)
-      bld.result
-    else
-      sys.error(s"Class root could not be found: $classRoot")
+    Inspector().inspectTastyFiles(TestUtils.listOurClasses())
   }
 }

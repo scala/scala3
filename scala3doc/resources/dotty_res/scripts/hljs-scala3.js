@@ -255,11 +255,11 @@ function highlightDotty(hljs) {
     ]
   }
 
-  // Given instances (for the soft keyword 'as')
+  // Given instances
   const GIVEN = {
     begin: /given/, end: /[=;\n]/,
     excludeEnd: true,
-    keywords: 'as given using',
+    keywords: 'given using with',
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
@@ -316,8 +316,8 @@ function highlightDotty(hljs) {
 
   const CLASS = {
     className: 'class',
-    begin: `((${modifiers}|open|case) +)*class|trait|enum|object|package object`, end: templateDeclEnd,
-    keywords: withSoftKeywords('open'),
+    begin: `((${modifiers}|open|case|transparent) +)*(class|trait|enum|object|package object)`, end: templateDeclEnd,
+    keywords: withSoftKeywords('open transparent'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,

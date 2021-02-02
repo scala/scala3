@@ -62,7 +62,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val arg :: Nil = args
             val t = arg.tpe & tp2
             If(
-              arg.select(defn.Any_isInstanceOf).appliedToType(tp2),
+              arg.isInstance(tp2),
               ref(defn.SomeClass.companionModule.termRef).select(nme.apply)
                 .appliedToType(t)
                 .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),
@@ -77,19 +77,19 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     }
   end synthesizedTypeTest
 
-  /** If `formal` is of the form Eql[T, U], try to synthesize an
-    *  `Eql.eqlAny[T, U]` as solution.
+  /** If `formal` is of the form CanEqual[T, U], try to synthesize an
+    *  `CanEqual.canEqualAny[T, U]` as solution.
     */
-  val synthesizedEql: SpecialHandler = (formal, span) =>
+  val synthesizedCanEqual: SpecialHandler = (formal, span) =>
 
-    /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
+    /** Is there an `CanEqual[T, T]` instance, assuming -strictEquality? */
     def hasEq(tp: Type)(using Context): Boolean =
-      val inst = typer.inferImplicitArg(defn.EqlClass.typeRef.appliedTo(tp, tp), span)
+      val inst = typer.inferImplicitArg(defn.CanEqualClass.typeRef.appliedTo(tp, tp), span)
       !inst.isEmpty && !inst.tpe.isError
 
-    /** Can we assume the eqlAny instance for `tp1`, `tp2`?
+    /** Can we assume the canEqualAny instance for `tp1`, `tp2`?
       *  This is the case if assumedCanEqual(tp1, tp2), or
-      *  one of `tp1`, `tp2` has a reflexive `Eql` instance.
+      *  one of `tp1`, `tp2` has a reflexive `CanEqual` instance.
       */
     def validEqAnyArgs(tp1: Type, tp2: Type)(using Context) =
       typer.assumedCanEqual(tp1, tp2)
@@ -97,7 +97,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             !hasEq(tp1) && !hasEq(tp2)
           }
 
-    /** Is an `Eql[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
+    /** Is an `CanEqual[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
     def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean =
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
@@ -129,8 +129,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         false
     end canComparePredefinedClasses
 
-    /** Some simulated `Eql` instances for predefined types. It's more efficient
-      *  to do this directly instead of setting up a lot of `Eql` instances to
+    /** Some simulated `CanEqual` instances for predefined types. It's more efficient
+      *  to do this directly instead of setting up a lot of `CanEqual` instances to
       *  interpret.
       */
     def canComparePredefined(tp1: Type, tp2: Type) =
@@ -143,10 +143,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
-        then ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
+        then ref(defn.CanEqual_canEqualAny).appliedToTypes(args).withSpan(span)
         else EmptyTree
       case _ => EmptyTree
-  end synthesizedEql
+  end synthesizedCanEqual
 
   /** Creates a tree that will produce a ValueOf instance for the requested type.
    * An EmptyTree is returned if materialization fails.
@@ -266,8 +266,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
-    if mirroredType.classSymbol.isGenericSum then
-      val cls = mirroredType.classSymbol
+    val cls = mirroredType.classSymbol
+    val useCompanion = cls.useCompanionAsMirror
+
+    if cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -318,8 +320,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
-        if cls.linkedClass.exists && !cls.is(Scala2x)
-        then companionPath(mirroredType, span)
+        if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       mirrorRef.cast(mirrorType)
     else EmptyTree
@@ -363,7 +364,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
     defn.TypeTestClass        -> synthesizedTypeTest,
-    defn.EqlClass             -> synthesizedEql,
+    defn.CanEqualClass        -> synthesizedCanEqual,
     defn.ValueOfClass         -> synthesizedValueOf,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,

@@ -6,11 +6,11 @@ object Test {
 
   def impl[T](t: T)(using Quotes, Type[T]): Expr[Any] = {
 
-    import qctx.reflect._
+    import quotes.reflect._
     import util._
 
     val foo = TypeRepr.of[Foo[String]]
-    val symbol = foo.typeSymbol.field("a")
+    val symbol = foo.typeSymbol.memberField("a")
     val a = foo.select(symbol)
     assert(a <:< TypeRepr.of[String])
 

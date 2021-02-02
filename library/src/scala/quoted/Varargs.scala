@@ -1,6 +1,10 @@
 package scala.quoted
 
-/** Literal sequence of expressions */
+/** Expression reepresentation of literal sequence of expressions.
+ *
+ *  `Varargs` can be used to create the an expression `args` that will be used as varargs `'{ f($args: _*) }`
+ *  or it can be used to extract all the arguments of the a varargs.
+ */
 object Varargs {
 
   /** Lifts this sequence of expressions into an expression of a sequence
@@ -16,8 +20,8 @@ object Varargs {
    *  ```
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
-    import qctx.reflect._
-    Repeated(xs.map(Term.of).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
+    import quotes.reflect._
+    Repeated(xs.map(_.asTerm).toList, TypeTree.of[T]).asExpr.asInstanceOf[Expr[Seq[T]]]
   }
 
   /** Matches a literal sequence of expressions and return a sequence of expressions.
@@ -33,14 +37,15 @@ object Varargs {
    *  ```
    */
   def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
-    import qctx.reflect._
+    import quotes.reflect._
     def rec(tree: Term): Option[Seq[Expr[T]]] = tree match {
-      case Typed(Repeated(elems, _), _) => Some(elems.map(x => x.asExpr.asInstanceOf[Expr[T]]))
+      case Repeated(elems, _) => Some(elems.map(x => x.asExpr.asInstanceOf[Expr[T]]))
+      case Typed(e, _) => rec(e)
       case Block(Nil, e) => rec(e)
       case Inlined(_, Nil, e) => rec(e)
       case _  => None
     }
-    rec(Term.of(expr))
+    rec(expr.asTerm)
   }
 
 }

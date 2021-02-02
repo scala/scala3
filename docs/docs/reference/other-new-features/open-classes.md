@@ -8,21 +8,20 @@ An `open` modifier on a class signals that the class is planned for extensions. 
 // File Writer.scala
 package p
 
-open class Writer[T] {
+open class Writer[T]:
 
-  /** Sends to stdout, can be overridden */
-  def send(x: T) = println(x)
+   /** Sends to stdout, can be overridden */
+   def send(x: T) = println(x)
 
-  /** Sends all arguments using `send` */
-  def sendAll(xs: T*) = xs.foreach(send)
-}
+   /** Sends all arguments using `send` */
+   def sendAll(xs: T*) = xs.foreach(send)
+end Writer
 
 // File EncryptedWriter.scala
 package p
 
-class EncryptedWriter[T: Encryptable] extends Writer[T] {
-  override def send(x: T) = super.send(encrypt(x))
-}
+class EncryptedWriter[T: Encryptable] extends Writer[T]:
+   override def send(x: T) = super.send(encrypt(x))
 ```
 An open class typically comes with some documentation that describes
 the internal calling patterns between methods of the class as well as hooks that can be overridden. We call this the _extension contract_ of the class. It is different from the _external contract_ between a class and its users.
@@ -31,17 +30,18 @@ Classes that are not open can still be extended, but only if at least one of two
 
  - The extending class is in the same source file as the extended class. In this case, the extension is usually an internal implementation matter.
 
- - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import statement in the source file of the extension:
+ - The language feature `adhocExtensions` is enabled for the extending class. This is typically enabled by an import clause in the source file of the extension:
    ```scala
    import scala.language.adhocExtensions
    ```
-   Alternatively, the feature can be enabled by the command line option `-language:adhocExtensions`.
+   Alternatively, the feature can be enabled by the compiler option `-language:adhocExtensions`.
    If the feature is not enabled, the compiler will issue a "feature" warning. For instance, if the `open` modifier on class `Writer` is dropped, compiling `EncryptedWriter` would produce a warning:
    ```
    -- Feature Warning: EncryptedWriter.scala:6:14 ----
      |class EncryptedWriter[T: Encryptable] extends Writer[T]
      |                                              ^
-     |Unless class Writer is declared 'open', its extension in a separate file should be enabled
+     |Unless class Writer is declared 'open', its extension
+     | in a separate file should be enabled
      |by adding the import clause 'import scala.language.adhocExtensions'
      |or by setting the compiler option -language:adhocExtensions.
    ```

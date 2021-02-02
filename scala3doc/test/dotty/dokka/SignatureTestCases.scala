@@ -1,11 +1,12 @@
 package dotty.dokka
 
+import dotty.dokka.model.api._
+
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 
 class ObjectSignatures extends SignatureTest("objectSignatures", Seq("object"))
 
 class TraitSignatures extends SignatureTest("traitSignatures", Seq("trait"))
-
 
 // We do not support companion objects properly in tests
 class ClassSignatureTestSourceTest extends SignatureTest("classSignatureTestSource",
@@ -29,6 +30,8 @@ class FieldsSignatures extends SignatureTest("fieldsSignatures", SignatureTest.a
 
 class NestedSignatures extends SignatureTest("nested", SignatureTest.all)
 
+class TypeAppliacneSignatures extends SignatureTest("typeAppliance", SignatureTest.all)
+
 class CompanionObjectSignatures extends SignatureTest("companionObjectSignatures", SignatureTest.all)
 
 class PackageSymbolSignatures extends SignatureTest("packageSymbolSignatures", SignatureTest.all)
@@ -48,7 +51,7 @@ class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.mem
 
 class OpaqueTypes extends SignatureTest("opaqueTypes", SignatureTest.all)
 
-// class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all)
+class GivenSignatures extends SignatureTest("givenSignatures", SignatureTest.all)
 
 class Annotations extends SignatureTest("annotations", SignatureTest.all)
 
@@ -60,3 +63,26 @@ class InheritedMembers extends SignatureTest("inheritedMembers2", SignatureTest.
 class ComplexNames extends SignatureTest("complexNames", Seq("def"))
 
 class WrongDocumentationLinks extends SignatureTest("links", Seq("def"))
+
+class ImplicitConversionsTest1 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = _.toString.endsWith("ClassWithConversionWithOneParam.html")
+)
+
+class ImplicitConversionsTest2 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = _.toString.endsWith("ClassWithConversionFromVal.html")
+)
+
+class ImplicitConversionsTest3 extends SignatureTest(
+  "implicitConversions2",
+  SignatureTest.all,
+  sourceFiles = List("implicitConversions2"),
+  filterFunc = _.toString.endsWith("ClassWithConversionWithProperType.html")
+)
+
+class SpecializedSignature extends SignatureTest("specializedSignature", SignatureTest.all)

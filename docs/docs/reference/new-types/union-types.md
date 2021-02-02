@@ -10,20 +10,18 @@ A union type `A | B` has as values all values of type `A` and also all values of
 case class UserName(name: String)
 case class Password(hash: Hash)
 
-def help(id: UserName | Password) = {
-  val user = id match {
-    case UserName(name) => lookupName(name)
-    case Password(hash) => lookupPassword(hash)
-  }
-  ...
-}
+def help(id: UserName | Password) =
+   val user = id match
+      case UserName(name) => lookupName(name)
+      case Password(hash) => lookupPassword(hash)
+   ...
 ```
 
 Union types are duals of intersection types. `|` is _commutative_:
 `A | B` is the same type as `B | A`.
 
 The compiler will assign a union type to an expression only if such a
-type is explicitly given. This can be seen in the following REPL transcript:
+type is explicitly given. This can be seen in the following [REPL](https://docs.scala-lang.org/overviews/repl/overview.html) transcript:
 
 ```scala
 scala> val password = Password(123)
@@ -32,10 +30,10 @@ val password: Password = Password(123)
 scala> val name = UserName("Eve")
 val name: UserName = UserName(Eve)
 
-scala> if (true) name else password
+scala> if true then name else password
 val res2: Object & Product = UserName(Eve)
 
-scala> val either: Password | UserName = if (true) name else password
+scala> val either: Password | UserName = if true then name else password
 val either: Password | UserName = UserName(Eve)
 ```
 

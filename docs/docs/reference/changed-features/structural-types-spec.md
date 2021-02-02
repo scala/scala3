@@ -14,13 +14,14 @@ RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 
 ## Implementation of structural types
 
-The standard library defines a universal marker trait `Selectable` in the package `scala`:
+The standard library defines a universal marker trait
+[`scala.Selectable`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Selectable.scala):
 
 ```scala
 trait Selectable extends Any
 ```
 
-An implementation of `Selectable` that relies on Java reflection is
+An implementation of `Selectable` that relies on [Java reflection](https://www.oracle.com/technical-resources/articles/java/javareflection.html) is
 available in the standard library: `scala.reflect.Selectable`. Other
 implementations can be envisioned for platforms where Java reflection
 is not available.
@@ -30,9 +31,11 @@ the methods `selectDynamic` and `applyDynamic`. The methods could be members of 
 
 The `selectDynamic` method takes a field name and returns the value associated with that name in the `Selectable`.
 It should have a signature of the form:
+
 ```scala
 def selectDynamic(name: String): T
 ```
+
 Often, the return type `T` is `Any`.
 
 Unlike `scala.Dynamic`, there is no special meaning for an `updateDynamic` method.
@@ -41,10 +44,12 @@ Consequently, it is recommended not to define any member called `updateDynamic` 
 
 The `applyDynamic` method is used for selections that are applied to arguments. It takes a method name and possibly `Class`es representing its parameters types as well as the arguments to pass to the function.
 Its signature should be of one of the two following forms:
+
 ```scala
 def applyDynamic(name: String)(args: Any*): T
 def applyDynamic(name: String, ctags: Class[?]*)(args: Any*): T
 ```
+
 Both versions are passed the actual arguments in the `args` parameter. The second version takes in addition a vararg argument of `java.lang.Class`es that identify the method's parameter classes. Such an argument is needed
 if `applyDynamic` is implemented using Java reflection, but it could be
 useful in other cases as well. `selectDynamic` and `applyDynamic` can also take additional context parameters in using clauses. These are resolved in the normal way at the callsite.
@@ -74,7 +79,8 @@ and `Rs` are structural refinement declarations, and given `v.a` of type `U`, we
   type, an error is emitted.
 
 Note that `v`'s static type does not necessarily have to conform to `Selectable`, nor does it need to have `selectDynamic` and `applyDynamic` as members. It suffices that there is an implicit
-conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as extension methods.
+conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as
+[extension methods](../contextual/extension-methods.md).
 
 ## Limitations of structural types
 
@@ -94,5 +100,4 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
 
 ## Context
 
-For more info, see [Rethink Structural
-Types](https://github.com/lampepfl/dotty/issues/1886).
+For more information, see [Rethink Structural Types](https://github.com/lampepfl/dotty/issues/1886).

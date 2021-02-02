@@ -1,7 +1,7 @@
 package notmacro
 
-import scala.util.Not
+import scala.util.NotGiven
 
 object Main extends App {
-  summon[Not[T[Int]]] // error
+  summon[NotGiven[T[Int]]] // error
 }

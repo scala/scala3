@@ -4,13 +4,13 @@ package jvm
 import scala.quoted._
 import scala.tasty.interpreter.jvm.JVMReflection
 
-class Interpreter[QCtx <: Quotes & Singleton](using qctx0: QCtx) extends TreeInterpreter[QCtx] {
-  import qctx.reflect._
+class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[Q] {
+  import q.reflect._
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any
 
-  val jvmReflection = new JVMReflection(using qctx)
+  val jvmReflection = new JVMReflection(using q)
 
   def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {
@@ -29,7 +29,7 @@ class Interpreter[QCtx <: Quotes & Singleton](using qctx0: QCtx) extends TreeInt
                 }
 
                 // println(method)
-                val symbol = sym.methods.find(_.name == method.getName).get
+                val symbol = sym.memberMethods.find(_.name == method.getName).get
 
                 if (symbol.isDefinedInCurrentRun) {
                   val argsList = if (args == null) Nil else args.toList
@@ -71,7 +71,7 @@ class Interpreter[QCtx <: Quotes & Singleton](using qctx0: QCtx) extends TreeInt
           // FIXME not necesarly static
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
-          if (fn.symbol.flags.is(Flags.Object))
+          if (fn.symbol.flags.is(Flags.Module))
             jvmReflection.loadModule(fn.symbol.moduleClass)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)

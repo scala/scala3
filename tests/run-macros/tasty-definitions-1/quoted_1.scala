@@ -4,8 +4,8 @@ object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
-  def testDefinitionsImpl(using Quotes) : Expr[Unit] = {
-    import qctx.reflect._
+  def testDefinitionsImpl(using q: Quotes) : Expr[Unit] = {
+    import q.reflect._
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {
@@ -74,21 +74,23 @@ object Macros {
     printout(defn.ScalaPrimitiveValueClasses.map(_.name).toString)
     printout(defn.ScalaNumericValueClasses.map(_.name).toString)
 
-    printout(TypeRepr.of[Unit].showExtractors)
-    printout(TypeRepr.of[Byte].showExtractors)
-    printout(TypeRepr.of[Char].showExtractors)
-    printout(TypeRepr.of[Int].showExtractors)
-    printout(TypeRepr.of[Long].showExtractors)
-    printout(TypeRepr.of[Float].showExtractors)
-    printout(TypeRepr.of[Double].showExtractors)
-    printout(TypeRepr.of[Boolean].showExtractors)
-    printout(TypeRepr.of[Any].showExtractors)
-    printout(TypeRepr.of[AnyVal].showExtractors)
-    printout(TypeRepr.of[AnyRef].showExtractors)
-    printout(TypeRepr.of[Object].showExtractors)
-    printout(TypeRepr.of[Nothing].showExtractors)
-    printout(TypeRepr.of[Null].showExtractors)
-    printout(TypeRepr.of[String].showExtractors)
+    given Printer[TypeRepr] = Printer.TypeReprStructure
+
+    printout(TypeRepr.of[Unit].show)
+    printout(TypeRepr.of[Byte].show)
+    printout(TypeRepr.of[Char].show)
+    printout(TypeRepr.of[Int].show)
+    printout(TypeRepr.of[Long].show)
+    printout(TypeRepr.of[Float].show)
+    printout(TypeRepr.of[Double].show)
+    printout(TypeRepr.of[Boolean].show)
+    printout(TypeRepr.of[Any].show)
+    printout(TypeRepr.of[AnyVal].show)
+    printout(TypeRepr.of[AnyRef].show)
+    printout(TypeRepr.of[Object].show)
+    printout(TypeRepr.of[Nothing].show)
+    printout(TypeRepr.of[Null].show)
+    printout(TypeRepr.of[String].show)
 
 
     '{println(${Expr(buff.result().mkString("\n"))})}

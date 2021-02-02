@@ -11,11 +11,11 @@ def triggerStackOverflow(n: Int): Expr[Double] = {
 inline def loop(inline prog: Double): Double = ${impl('prog)}
 
 def impl(prog: Expr[Double])(using Quotes) : Expr[Double] =
-  import qctx.reflect._
+  import quotes.reflect._
   try {
     triggerStackOverflow(0)
   } catch {
     case e =>
-      qctx.reflect.Reporting.error(e.getMessage, Term.of(prog).pos)
+      quotes.reflect.report.error(e.getMessage, prog.asTerm.pos)
       '{ 42.0 }
   }

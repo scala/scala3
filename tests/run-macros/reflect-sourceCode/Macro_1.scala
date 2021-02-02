@@ -5,7 +5,7 @@ object api {
     ${ reflImpl('x) }
 
   private def reflImpl[T](x: Expr[T])(implicit qctx: Quotes): Expr[String] = {
-    import qctx.reflect._
-    Expr(Term.of(x).pos.sourceCode)
+    import quotes.reflect._
+    Expr(x.asTerm.pos.sourceCode.get)
   }
 }

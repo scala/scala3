@@ -7,7 +7,7 @@ object Test extends App {
       case _: T => ()
     }
 
-  sealed trait Base1
+  sealed trait Base1 // Base1 MUST NOT have a companion here!
   case class Foo() extends Base1
   case object Bar extends Base1
   case class Qux(i: Int) extends Base1

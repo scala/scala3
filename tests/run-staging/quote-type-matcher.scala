@@ -3,7 +3,7 @@ import scala.quoted.staging._
 import scala.reflect.ClassTag
 
 object Test {
-  given Toolbox = Toolbox.make(this.getClass.getClassLoader)
+  given Compiler = Compiler.make(this.getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     val '[List[Int]] = Type.of[List[Int]]
 

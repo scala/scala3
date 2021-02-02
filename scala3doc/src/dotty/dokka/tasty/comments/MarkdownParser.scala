@@ -1,6 +1,7 @@
 package dotty.dokka.tasty.comments
 
 import java.util.{ Arrays }
+import Regexes._
 
 import com.vladsch.flexmark.util.{ast => mdu}
 import com.vladsch.flexmark.formatter.Formatter
@@ -16,31 +17,43 @@ import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 import com.vladsch.flexmark.util.options.{ DataHolder, MutableDataSet }
+import com.vladsch.flexmark.util.builder.Extension
+
+import collection.JavaConverters._
 
 object MarkdownParser {
 
-  val markdownOptions: DataHolder =
+  def mkMarkdownOptions(additionalExtensions: Seq[Extension]) =
+    val extArray = Seq(
+      TablesExtension.create(),
+      TaskListExtension.create(),
+      AutolinkExtension.create(),
+      AnchorLinkExtension.create(),
+      EmojiExtension.create(),
+      YamlFrontMatterExtension.create(),
+      StrikethroughExtension.create()
+    ) ++ additionalExtensions
+
     new MutableDataSet()
       .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
-      .set(Parser.EXTENSIONS, Arrays.asList(
-        TablesExtension.create(),
-        TaskListExtension.create(),
-        AutolinkExtension.create(),
-        AnchorLinkExtension.create(),
-        EmojiExtension.create(),
-        YamlFrontMatterExtension.create(),
-        StrikethroughExtension.create(),
-        WikiLinkExtension.create(),
-      ))
+      .set(Parser.EXTENSIONS, Arrays.asList(extArray:_*))
       .set(EmojiExtension.ROOT_IMAGE_PATH,
         "https://github.global.ssl.fastly.net/images/icons/emoji/")
       .set(WikiLinkExtension.LINK_ESCAPE_CHARS, "")
 
+  val markdownOptions: DataHolder = mkMarkdownOptions(Seq(WikiLinkExtension.create()))
+
+  private val parser = Parser.builder(markdownOptions).build()
+
   val RENDERER = Formatter.builder(markdownOptions).build()
 
-  def parseToMarkdown(text: String): mdu.Document =
-    Parser.builder(markdownOptions)
-      .build.parse(text).asInstanceOf[mdu.Document]
+  def parseToMarkdown(text: String, extensions: Extension*): mdu.Document =
+    val thisParser =
+      if(extensions.isEmpty) parser
+      else Parser.builder(mkMarkdownOptions(extensions)).build()
+
+    // We need to remove safe tag markers as they break flexmark parsing
+    thisParser.parse(text.replace(safeTagMarker.toString, "")).asInstanceOf[mdu.Document]
 
 
   def renderToText(node: mdu.Node): String =

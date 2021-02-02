@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     assert('{1} matches '{1})
     assert('{println("foo")} matches '{println("foo")})

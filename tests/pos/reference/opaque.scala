@@ -12,11 +12,10 @@ object Logarithms {
   }
 
   // Extension methods define opaque types' public APIs
-  extension (x: Logarithm) {
+  extension (x: Logarithm)
     def toDouble: Double = math.exp(x)
     def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
-    def * (y: Logarithm): Logarithm = Logarithm(x + y)
-  }
+    def * (y: Logarithm): Logarithm = x + y
 }
 
 object LogTest {
@@ -36,16 +35,20 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  extension (x: Permissions) def & (y: Permissions): Permissions = x & y
-  extension (x: PermissionChoice) def | (y: PermissionChoice): PermissionChoice = x | y
-  extension (x: Permissions) def is(y: Permissions) = (x & y) == y
-  extension (x: Permissions) def isOneOf(y: PermissionChoice) = (x & y) != 0
+  extension (x: Permissions)
+    def & (y: Permissions): Permissions = x | y
+  extension (x: PermissionChoice)
+    def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (granted: Permissions)
+    def is(required: Permissions) = (granted & required) == required
+  extension (granted: Permissions)
+    def isOneOf(required: PermissionChoice) = (granted & required) != 0
 
   val NoPermission: Permission = 0
-  val ReadOnly: Permission = 1
-  val WriteOnly: Permission = 2
-  val ReadWrite: Permissions = ReadOnly & WriteOnly
-  val ReadOrWrite: PermissionChoice = ReadOnly | WriteOnly
+  val Read: Permission = 1
+  val Write: Permission = 2
+  val ReadWrite: Permissions = Read | Write
+  val ReadOrWrite: PermissionChoice = Read | Write
 }
 
 object User {
@@ -53,14 +56,21 @@ object User {
 
   case class Item(rights: Permissions)
 
-  val x = Item(ReadOnly)  // OK, since Permission <: Permissions
+  val roItem = Item(Read)  // OK, since Permission <: Permissions
+  val rwItem = Item(ReadWrite)
+  val noItem = Item(NoPermission)
 
-  assert( x.rights.is(ReadWrite) == false )
-  assert( x.rights.isOneOf(ReadOrWrite) == true )
+  assert( roItem.rights.is(ReadWrite) == false )
+  assert( roItem.rights.isOneOf(ReadOrWrite) == true )
+
+  assert( rwItem.rights.is(ReadWrite) == true )
+  assert( rwItem.rights.isOneOf(ReadOrWrite) == true )
+
+  assert( noItem.rights.is(ReadWrite) == false )
+  assert( noItem.rights.isOneOf(ReadOrWrite) == false )
 
   // Would be a type error:
-  //   assert( x.rights.isOneOf(ReadWrite) == true )
-
+  //   assert( roItem.rights.isOneOf(ReadWrite) == true )
 }
 
 object o {

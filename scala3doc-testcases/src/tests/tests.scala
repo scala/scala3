@@ -10,6 +10,8 @@ package tests
   * This is an *important* _test_ class.
   * Important enough to get multiple sentences in its summary.
   *
+  * Here is foo: $foo
+  *
   * And `this` is inline code.
   *
   * And this is the **strong** __emphasis__ test.
@@ -56,10 +58,12 @@ package tests
   * @version 1.0.0
   * @result A class doesn't actually have a result.
   * @constructor A class has a constructor, and this one is important.
+  *
+  * @define foo Foo expanded.
   */
 class A {
 
-  /** This is a method.
+  /** This is my method.
     *
     * This is a link: [[AA]].
     *
@@ -67,6 +71,9 @@ class A {
     *
     * And yet another: [[B]].
     */
+  final def myMethod(s: String): String = s
+
+  /** This is foo: $foo */
   def method(s: String): String = s
 
   class AA
@@ -84,6 +91,8 @@ object A
   * === So important it gets three headers ===
   *
   * This is an ''important'' '''test''' __class__. And `this` is inline code.
+  *
+  * Here is foo: $foo
   *
   * While
   * {{{
@@ -104,9 +113,12 @@ object A
   *
   * And this is his companion: [[tests.A$]].
   * @syntax wiki
+  * @define foo Bar, actually.
   */
 class B extends A {
-  /** This is a method. */
+  /** @inheritdoc */ override def method(s: String): String = s
+
+  /** This is my foo: $foo */
   def otherMethod(s: String): String = s
 
   class BB
@@ -127,7 +139,8 @@ object B {
   val Z: Int = 0
 }
 
-class C {
+/** This is foo: $foo */
+class C extends A {
   object CC
   class CC
 }
@@ -192,3 +205,10 @@ class Methods:
  def primitives(a: Int, b: Double, c: Short): Byte = 0
  def strings(a: String): String = ""
  def arrays(a: Array[String], b: Array[Int]): Array[Double] = ???
+
+/** @define foo O's foo.
+  */
+object O:
+
+  /** This is foo: $foo */
+  def method(s: String) = s

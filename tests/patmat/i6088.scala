@@ -3,7 +3,7 @@ trait ~>[F[_], G[_]] {
   def apply[A](fa: F[A]): G[A]
 }
 
-/** Higher-kinded pattern functor typeclass. */
+/** Higher-kinded pattern functor type class. */
 trait HFunctor[H[f[_], i]] {
   def hmap[A[_], B[_]](nt: A ~> B): ([x] =>> H[A,x]) ~> ([x] =>> H[B,x])
 }
@@ -17,7 +17,7 @@ enum ExprF[R[_],I] {
 
 /** Companion. */
 object ExprF {
-  given hfunctor as HFunctor[ExprF] {
+  given hfunctor: HFunctor[ExprF] with {
     def hmap[A[_], B[_]](nt: A ~> B): ([x] =>> ExprF[A,x]) ~> ([x] =>> ExprF[B,x]) = {
       new ~>[[x] =>> ExprF[A,x], [x] =>> ExprF[B,x]] {
         def apply[I](fa: ExprF[A,I]): ExprF[B,I] = fa match {

@@ -13,7 +13,7 @@ Context functions are written using `?=>` as the "arrow" sign.
 They are applied to synthesized arguments, in
 the same way methods with context parameters are applied. For instance:
 ```scala
-  given ec as ExecutionContext = ...
+  given ec: ExecutionContext = ...
 
   def f(x: Int): ExecutionContext ?=> Int = ...
 
@@ -27,7 +27,7 @@ Conversely, if the expected type of an expression `E` is a context function type
 `(T_1, ..., T_n) ?=> U` and `E` is not already an
 context function literal, `E` is converted to a context function literal by rewriting it to
 ```scala
-  (using x_1: T1, ..., x_n: Tn) => E
+  (x_1: T1, ..., x_n: Tn) ?=> E
 ```
 where the names `x_1`, ..., `x_n` are arbitrary. This expansion is performed
 before the expression `E` is typechecked, which means that `x_1`, ..., `x_n`
@@ -39,12 +39,12 @@ For example, continuing with the previous definitions,
 ```scala
   def g(arg: Executable[Int]) = ...
 
-  g(22)      // is expanded to g((using ev: ExecutionContext) => 22)
+  g(22)      // is expanded to g((ev: ExecutionContext) ?=> 22)
 
-  g(f(2))    // is expanded to g((using ev: ExecutionContext) => f(2)(using ev))
+  g(f(2))    // is expanded to g((ev: ExecutionContext) ?=> f(2)(using ev))
 
-  g(ExecutionContext ?=> f(3))  // is expanded to g((using ev: ExecutionContext) => f(3)(using ev))
-  g((using ctx: ExecutionContext) => f(22)(using ctx)) // is left as it is
+  g((ctx: ExecutionContext) ?=> f(3))  // is expanded to g((ctx: ExecutionContext) ?=> f(3)(using ctx))
+  g((ctx: ExecutionContext) ?=> f(3)(using ctx)) // is left as it is
 ```
 
 ### Example: Builder Pattern
@@ -54,30 +54,28 @@ instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
 ```scala
   table {
-    row {
-      cell("top left")
-      cell("top right")
-    }
-    row {
-      cell("bottom left")
-      cell("bottom right")
-    }
+     row {
+        cell("top left")
+        cell("top right")
+     }
+     row {
+        cell("bottom left")
+        cell("bottom right")
+     }
   }
 ```
 The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
-  class Table {
-    val rows = new ArrayBuffer[Row]
-    def add(r: Row): Unit = rows += r
-    override def toString = rows.mkString("Table(", ", ", ")")
-  }
+  class Table:
+     val rows = new ArrayBuffer[Row]
+     def add(r: Row): Unit = rows += r
+     override def toString = rows.mkString("Table(", ", ", ")")
 
-  class Row {
-    val cells = new ArrayBuffer[Cell]
-    def add(c: Cell): Unit = cells += c
-    override def toString = cells.mkString("Row(", ", ", ")")
-  }
+  class Row:
+     val cells = new ArrayBuffer[Cell]
+     def add(c: Cell): Unit = cells += c
+     override def toString = cells.mkString("Row(", ", ", ")")
 
   case class Cell(elem: String)
 ```
@@ -85,31 +83,29 @@ Then, the `table`, `row` and `cell` constructor methods can be defined
 with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
-  def table(init: Table ?=> Unit) = {
-    given t as Table // note the use of a creator application; same as: given t as Table = new Table
-    init
-    t
-  }
+  def table(init: Table ?=> Unit) =
+     given t: Table = Table()
+     init
+     t
 
-  def row(init: Row ?=> Unit)(using t: Table) = {
-    given r as Row
-    init
-    t.add(r)
-  }
+  def row(init: Row ?=> Unit)(using t: Table) =
+     given r: Row = Row()
+     init
+     t.add(r)
 
   def cell(str: String)(using r: Row) =
-    r.add(new Cell(str))
+     r.add(new Cell(str))
 ```
 With that setup, the table construction code above compiles and expands to:
 ```scala
-  table { (using $t: Table) =>
+  table { ($t: Table) ?=>
 
-    row { (using $r: Row) =>
+    row { ($r: Row) ?=>
       cell("top left")(using $r)
       cell("top right")(using $r)
     }(using $t)
 
-    row { (using $r: Row) =>
+    row { ($r: Row) ?=>
       cell("bottom left")(using $r)
       cell("bottom right")(using $r)
     }(using $t)
@@ -120,16 +116,16 @@ With that setup, the table construction code above compiles and expands to:
 As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a zero-overhead abstraction.
 
 ```scala
-object PostConditions {
-  opaque type WrappedResult[T] = T
+object PostConditions:
+   opaque type WrappedResult[T] = T
 
-  def result[T](using r: WrappedResult[T]): T = r
+   def result[T](using r: WrappedResult[T]): T = r
 
-  extension [T](x: T) def ensuring(condition: WrappedResult[T] ?=> Boolean): T = {
-    assert(condition(using x))
-    x
-  }
-}
+   extension [T](x: T)
+      def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
+         assert(condition(using x))
+         x
+end PostConditions
 import PostConditions.{ensuring, result}
 
 val s = List(1, 2, 3).sum.ensuring(result == 6)
@@ -145,14 +141,14 @@ does not need boxing either. Hence, the implementation of `ensuring` is as about
 as the best possible code one could write by hand:
 
 ```scala
-{ val result = List(1, 2, 3).sum
-  assert(result == 6)
-  result
-}
+val s =
+   val result = List(1, 2, 3).sum
+   assert(result == 6)
+   result
 ```
 ### Reference
 
-For more info, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
+For more information, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
 (which uses a different syntax that has been superseded).
 
 [More details](./context-functions-spec.md)

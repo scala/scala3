@@ -7,12 +7,12 @@ object Macro {
   transparent inline def ff[A <: Int, B <: Int](): AddInt[A, B] = ${ impl[A, B] }
 
   def impl[A <: Int : Type, B <: Int : Type](using Quotes) : Expr[AddInt[A, B]] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val ConstantType(Constant.Int(v1)) = TypeRepr.of[A]
-    val ConstantType(Constant.Int(v2)) = TypeRepr.of[B]
+    val ConstantType(IntConstant(v1)) = TypeRepr.of[A]
+    val ConstantType(IntConstant(v2)) = TypeRepr.of[B]
 
-    Literal(Constant.Int(v1 + v2)).tpe.asType match
+    Literal(IntConstant(v1 + v2)).tpe.asType match
       case '[t] => '{ null: AddInt[A, B] { type Out = t } }
   }
 }

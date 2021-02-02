@@ -1,3 +1,3 @@
 
 def test: Unit =
-  summon[scala.util.Not[T[Int]]] // error
+  summon[scala.util.NotGiven[T[Int]]] // error

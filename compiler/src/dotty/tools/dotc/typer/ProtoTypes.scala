@@ -38,13 +38,13 @@ object ProtoTypes {
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
-    /** Like isCompatibe, but using a subtype comparison with necessary eithers
-     *  that don't unnecessarily truncate the constraint space, returning false instead.
+    /** Like normalize and then isCompatible, but using a subtype comparison with
+     *  necessary eithers that does not unnecessarily truncate the constraint space,
+     *  returning false instead.
      */
     def necessarilyCompatible(tp: Type, pt: Type)(using Context): Boolean =
-      val tpw = tp.widenExpr
-      val ptw = pt.widenExpr
-      necessarySubType(tpw, ptw) || tpw.isValueSubType(ptw) || viewExists(tp, pt)
+      val tpn = normalize(tp, pt, followIFT = !defn.isContextFunctionType(pt))
+      necessarySubType(tpn, pt) || tpn.isValueSubType(pt) || viewExists(tpn, pt)
 
     /** Test compatibility after normalization.
      *  Do this in a fresh typerstate unless `keepConstraint` is true.
@@ -84,9 +84,9 @@ object ProtoTypes {
             case _ => true
           }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case _ =>
           true
       }
@@ -147,11 +147,6 @@ object ProtoTypes {
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
 
-    private var myExtensionName: TermName = null
-    def extensionName(using Context): TermName =
-      if myExtensionName == null then myExtensionName = name.toExtensionName
-      myExtensionName
-
     /** Is the set of members of this type unknown? This is the case if:
      *  1. The type has Nothing or Wildcard as a prefix or underlying type
      *  2. The type has an uninstantiated TypeVar as a prefix or underlying type,
@@ -198,6 +193,12 @@ object ProtoTypes {
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
+    override def isErroneous(using Context): Boolean =
+      memberProto.isErroneous
+
+    override def unusableForInference(using Context): Boolean =
+      memberProto.unusableForInference
+
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
@@ -234,12 +235,11 @@ object ProtoTypes {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
+  def shallowSelectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
     if (name.isConstructorName) WildcardType
-    else tp match {
+    else tp match
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
-    }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
@@ -408,6 +408,9 @@ object ProtoTypes {
     override def isErroneous(using Context): Boolean =
       state.typedArgs.tpes.exists(_.isErroneous)
 
+    override def unusableForInference(using Context): Boolean =
+      state.typedArgs.exists(_.tpe.unusableForInference)
+
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
     def map(tm: TypeMap)(using Context): FunProto =
@@ -447,8 +450,7 @@ object ProtoTypes {
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
           case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
-               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
-            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
+            ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
@@ -458,6 +460,12 @@ object ProtoTypes {
     def derivedViewProto(argType: Type, resultType: Type)(using Context): ViewProto =
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
       else ViewProto(argType, resultType)
+
+    override def isErroneous(using Context): Boolean =
+      argType.isErroneous || resType.isErroneous
+
+    override def unusableForInference(using Context): Boolean =
+      argType.unusableForInference || resType.unusableForInference
 
     def map(tm: TypeMap)(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
@@ -501,6 +509,12 @@ object ProtoTypes {
     def derivedPolyProto(targs: List[Tree], resultType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
+
+    override def isErroneous(using Context): Boolean =
+      targs.exists(_.tpe.isErroneous)
+
+    override def unusableForInference(using Context): Boolean =
+      targs.exists(_.tpe.unusableForInference)
 
     def map(tm: TypeMap)(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
@@ -607,7 +621,7 @@ object ProtoTypes {
    * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
    * function type is not compatible with the prototype.
    */
-  def normalize(tp: Type, pt: Type)(using Context): Type = {
+  def normalize(tp: Type, pt: Type, followIFT: Boolean = true)(using Context): Type = {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
@@ -632,7 +646,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
         else tp
     }
   }

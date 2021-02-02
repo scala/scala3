@@ -46,7 +46,7 @@ object Types {
 
   @sharable private var nextId = 0
 
-  implicit def eqType: Eql[Type, Type] = Eql.derived
+  implicit def eqType: CanEqual[Type, Type] = CanEqual.derived
 
   /** Main class representing types.
    *
@@ -209,6 +209,10 @@ object Types {
     def isAnyRef(using Context): Boolean  = isRef(defn.ObjectClass, skipRefined = false)
     def isAnyKind(using Context): Boolean = isRef(defn.AnyKindClass, skipRefined = false)
 
+    def isTopType(using Context): Boolean = dealias match
+      case tp: TypeRef => defn.topClasses.contains(tp.symbol)
+      case _ => false
+
     /** Is this type exactly Nothing (no vars, aliases, refinements etc allowed)? */
     def isExactlyNothing(using Context): Boolean = this match {
       case tp: TypeRef =>
@@ -264,9 +268,13 @@ object Types {
           // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
           // and `T` derivesFrom the class, then the OrType derivesFrom the class.
           // Otherwise, we need to check both sides derivesFrom the class.
-          if tp.tp1.isBottomType && cls != defn.NothingClass then
+          def isLowerBottomType(tp: Type) =
+            tp.isBottomType
+            && (tp.hasClassSymbol(defn.NothingClass)
+                || cls != defn.NothingClass && !cls.isValueClass)
+          if isLowerBottomType(tp.tp1) then
             loop(tp.tp2)
-          else if tp.tp2.isBottomType && cls != defn.NothingClass then
+          else if isLowerBottomType(tp.tp2) then
             loop(tp.tp1)
           else
             loop(tp.tp1) && loop(tp.tp2)
@@ -281,14 +289,15 @@ object Types {
     def isFromJavaObject(using Context): Boolean = typeSymbol eq defn.FromJavaObjectSymbol
 
     /** True iff `symd` is a denotation of a class type parameter and the reference
-     *  `<this> . <symd>` is an actual argument reference, i.e. `this` is different
-     *  from the ThisType of `symd`'s owner.
+     *  `<pre> . <symd>` is an actual argument reference, i.e. `pre` is not the
+     *  ThisType of `symd`'s owner, or a reference to `symd`'s owner.'
      */
     def isArgPrefixOf(symd: SymDenotation)(using Context): Boolean =
       symd.exists && !symd.owner.is(Package) && // Early exit if possible because the next check would force SymbolLoaders
       symd.isAllOf(ClassTypeParam) && {
         this match {
           case tp: ThisType => tp.cls ne symd.owner
+          case tp: TypeRef => tp.symbol ne symd.owner
           case _ => true
         }
       }
@@ -324,9 +333,27 @@ object Types {
     /** Is this type produced as a repair for an error? */
     final def isError(using Context): Boolean = stripTypeVar.isInstanceOf[ErrorType]
 
-    /** Is some part of the widened version of this type produced as a repair for an error? */
+    /** Is some part of the widened version of this type produced as a repair for an error?
+     *
+     */
     def isErroneous(using Context): Boolean =
       widen.existsPart(_.isError, forceLazy = false)
+
+    /** Is this type unusable for implicit search or overloading resolution
+     *  since it has embedded errors that can match anything? This is weaker and more
+     *  ad-hoc than isErroneous. The main differences are that we always consider aliases
+     *  (since these are relevant for inference or resolution) but never consider prefixes
+     *  (since these often do not constrain the search space anyway).
+     */
+    def unusableForInference(using Context): Boolean = widenDealias match
+      case AppliedType(tycon, args) => tycon.unusableForInference || args.exists(_.unusableForInference)
+      case RefinedType(parent, _, rinfo) => parent.unusableForInference || rinfo.unusableForInference
+      case TypeBounds(lo, hi) => lo.unusableForInference || hi.unusableForInference
+      case tp: AndOrType => tp.tp1.unusableForInference || tp.tp2.unusableForInference
+      case tp: LambdaType => tp.resultType.unusableForInference || tp.paramInfos.exists(_.unusableForInference)
+      case WildcardType(optBounds) => optBounds.unusableForInference
+      case _: ErrorType => true
+      case _ => false
 
     /** Does the type carry an annotation that is an instance of `cls`? */
     @tailrec final def hasAnnotation(cls: ClassSymbol)(using Context): Boolean = stripTypeVar match {
@@ -508,6 +535,20 @@ object Types {
       case _ =>
         false
 
+    /** Same as hasClassSmbol(MatchableClass), except that we also follow the constraint
+     *  bounds of type variables in the constraint.
+     */
+    def isMatchableBound(using Context): Boolean = dealias match
+      case tp: TypeRef => tp.symbol == defn.MatchableClass
+      case tp: TypeParamRef =>
+        ctx.typerState.constraint.entry(tp) match
+          case bounds: TypeBounds => bounds.hi.isMatchableBound
+          case _ => false
+      case tp: TypeProxy => tp.underlying.isMatchableBound
+      case tp: AndType => tp.tp1.isMatchableBound || tp.tp2.isMatchableBound
+      case tp: OrType => tp.tp1.isMatchableBound && tp.tp2.isMatchableBound
+      case _ => false
+
     /** The term symbol associated with the type */
     @tailrec final def termSymbol(using Context): Symbol = this match {
       case tp: TermRef => tp.symbol
@@ -520,16 +561,17 @@ object Types {
      *  Inherited by all type proxies. Overridden for And and Or types.
      *  `Nil` for all other types.
      */
-    def baseClasses(using Context): List[ClassSymbol] = {
+    def baseClasses(using Context): List[ClassSymbol] =
       record("baseClasses")
-      this match {
-        case tp: TypeProxy =>
-          tp.underlying.baseClasses
-        case tp: ClassInfo =>
-          tp.cls.classDenot.baseClasses
-        case _ => Nil
-      }
-    }
+      try
+        this match
+          case tp: TypeProxy =>
+            tp.underlying.baseClasses
+          case tp: ClassInfo =>
+            tp.cls.classDenot.baseClasses
+          case _ => Nil
+      catch case ex: Throwable =>
+        handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
@@ -1694,6 +1736,19 @@ object Types {
         else funType
     }
 
+    final def dropJavaMethod(using Context): Type = this match
+      case pt: PolyType => pt.derivedLambdaType(resType = pt.resType.dropJavaMethod)
+
+      case mt: MethodType =>
+        if mt.isJavaMethod then
+          MethodType.apply(mt.paramNames, mt.paramInfos, mt.resType.dropJavaMethod)
+        else
+          mt.derivedLambdaType(resType = mt.resType.dropJavaMethod)
+
+      case _ => this
+
+    end dropJavaMethod
+
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
      *  (the reason why we deviate from the "final-method-with-pattern-match-in-base-class"
@@ -2176,7 +2231,8 @@ object Types {
           throw new TypeError(
             i"""bad parameter reference $this at ${ctx.phase}
                |the parameter is ${param.showLocated} but the prefix $prefix
-               |does not define any corresponding arguments.""")
+               |does not define any corresponding arguments.
+               |idx = $idx, args = $args""")
         NoDenotation
       }
     }
@@ -3068,7 +3124,10 @@ object Types {
 
     private def ensureAtomsComputed()(using Context): Unit =
       if atomsRunId != ctx.runId then
-        myAtoms = tp1.atoms | tp2.atoms
+        myAtoms =
+          if tp1.hasClassSymbol(defn.NothingClass) then tp2.atoms
+          else if tp2.hasClassSymbol(defn.NothingClass) then tp1.atoms
+          else tp1.atoms | tp2.atoms
         val tp1w = tp1.widenSingletons
         val tp2w = tp2.widenSingletons
         myWidened = if ((tp1 eq tp1w) && (tp2 eq tp2w)) this else tp1w | tp2w
@@ -3808,10 +3867,6 @@ object Types {
 
     def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
-
-    def any(n: Int)(using Context): PolyType =
-      apply(syntheticParamNames(n))(
-        pt => List.fill(n)(TypeBounds.empty), pt => defn.AnyType)
   }
 
   private object DepStatus {
@@ -3981,11 +4036,11 @@ object Types {
             if (owner == defn.CompiletimePackageObject.moduleClass) name match {
               case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsPackageObjectAny.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsAny.moduleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsPackageObjectInt.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsInt.moduleClass) name match {
               case tpnme.Abs      if nArgs == 1 => constantFold1(intValue, _.abs)
               case tpnme.Negate   if nArgs == 1 => constantFold1(intValue, x => -x)
               case tpnme.ToString if nArgs == 1 => constantFold1(intValue, _.toString)
@@ -4013,10 +4068,10 @@ object Types {
               case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsPackageObjectString.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsString.moduleClass) name match {
               case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsPackageObjectBoolean.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsBoolean.moduleClass) name match {
               case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)
               case tpnme.And if nArgs == 2 => constantFold2(boolValue, _ && _)
               case tpnme.Or  if nArgs == 2 => constantFold2(boolValue, _ || _)
@@ -4975,7 +5030,9 @@ object Types {
                     mapOver(tp)
                 }
               }
-              val approx = approxParams(mt).asInstanceOf[MethodType]
+              val approx =
+                if ctx.owner.isContainedIn(cls) then mt
+                else approxParams(mt).asInstanceOf[MethodType]
               Some(approx)
             case _ =>
               None
@@ -5144,7 +5201,7 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { (using refCtx) =>
+          LazyRef { refCtx ?=>
             val ref1 = tp.ref
             if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context
@@ -5271,8 +5328,23 @@ object Types {
       case _ => tp
     }
 
+    private var expandingBounds: Boolean = false
+
+    /** Whether it is currently expanding bounds
+     *
+     *  It is used to avoid following LazyRef in F-Bounds
+     */
+    def isExpandingBounds: Boolean = expandingBounds
+
     protected def expandBounds(tp: TypeBounds): Type =
-      range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      if expandingBounds then tp
+      else {
+        val saved = expandingBounds
+        expandingBounds = true
+        val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+        expandingBounds = saved
+        res
+      }
 
     /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
      *  The possible cases are listed inline in the code.

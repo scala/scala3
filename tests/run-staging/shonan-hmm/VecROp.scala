@@ -45,7 +45,7 @@ class VecRStaDim[T: Type](r: Ring[T])(using Quotes) extends VecROp[Int, T, Expr[
   override def toString(): String = s"VecRStaDim($r)"
 }
 
-class VecRStaDyn[T : Type : Liftable](r: Ring[PV[T]])(using Quotes) extends VecROp[PV[Int], PV[T], Expr[Unit]] {
+class VecRStaDyn[T : Type : ToExpr](r: Ring[PV[T]])(using Quotes) extends VecROp[PV[Int], PV[T], Expr[Unit]] {
   val VSta: VecROp[Int, PV[T], Expr[Unit]] = new VecRStaDim(r)
   val VDyn = new VecRDyn
   val dyn = Dyns.dyn[T]

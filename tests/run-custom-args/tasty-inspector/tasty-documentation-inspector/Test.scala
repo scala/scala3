@@ -9,20 +9,21 @@ object Test {
     val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.extension == "tasty").map(_.toString).toList
     val tastyFiles = allTastyFiles.filter(_.contains("Foo"))
 
-    new DocumentationInspector().inspectTastyFiles(tastyFiles)
+    TastyInspector.inspectTastyFiles(tastyFiles)(new DocumentationInspector())
   }
 }
 
-class DocumentationInspector extends TastyInspector {
+class DocumentationInspector extends Inspector {
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit = {
-    import qctx.reflect._
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
+
+    import quotes.reflect._
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         case tree: Definition =>
-          tree.symbol.documentation match {
-            case Some(doc) => println(doc.raw)
+          tree.symbol.docstring match {
+            case Some(doc) => println(doc)
             case None => println()
           }
           super.traverseTree(tree)(owner)
@@ -31,7 +32,8 @@ class DocumentationInspector extends TastyInspector {
       }
 
     }
-    Traverser.traverseTree(root)
+    for tasty <- tastys do
+      Traverser.traverseTree(tasty.ast)
   }
 
 }

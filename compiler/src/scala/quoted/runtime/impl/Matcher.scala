@@ -101,7 +101,7 @@ object Matcher {
     // TODO improve performance
 
     // TODO use flag from qctx.reflect. Maybe -debug or add -debug-macros
-    private final val debug = false
+    private inline val debug = false
 
     import qctx.reflect._
     import Matching._
@@ -135,12 +135,12 @@ object Matcher {
       case _ => notMatched
     }
 
-    extension (scrutinees: List[Tree]):
+    extension (scrutinees: List[Tree])
       /** Check that all trees match with =?= and concatenate the results with &&& */
       private def =?= (patterns: List[Tree])(using Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    extension (scrutinee0: Tree):
+    extension (scrutinee0: Tree)
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
        *
@@ -206,10 +206,10 @@ object Matcher {
               }.transformTree(scrutinee)(Symbol.spliceOwner)
             }
             val names = args.map {
-              case Block(List(DefDef("$anonfun", _, _, _, Some(Apply(Ident(name), _)))), _) => name
+              case Block(List(DefDef("$anonfun", _, _, Some(Apply(Ident(name), _)))), _) => name
               case arg => arg.symbol.name
             }
-            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+            val argTypes = args.map(x => x.tpe.widenTermRefByName)
             val resType = pattern.tpe
             val res = Lambda(Symbol.spliceOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
             matched(res.asExpr)
@@ -231,7 +231,7 @@ object Matcher {
             scrutinee =?= expr2
 
           /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
+          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
             ref match
               case Select(qual1, _) => qual1 =?= qual2
               case ref: Ident =>
@@ -240,7 +240,7 @@ object Matcher {
                   case _ => matched
 
           /* Match reference */
-          case (_: Ref, _: Ident) if scrutinee.symbol == pattern.symbol || summon[Env].get(scrutinee.symbol).contains(pattern.symbol) =>
+          case (_: Ref, _: Ident) if symbolMatch(scrutinee, pattern) =>
             matched
 
           /* Match application */
@@ -302,16 +302,19 @@ object Matcher {
             tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
 
           /* Match def */
-          case (DefDef(_, typeParams1, paramss1, tpt1, Some(rhs1)), DefDef(_, typeParams2, paramss2, tpt2, Some(rhs2))) =>
+          case (DefDef(_, paramss1, tpt1, Some(rhs1)), DefDef(_, paramss2, tpt2, Some(rhs2))) =>
             def rhsEnv =
+              val paramSyms: List[(Symbol, Symbol)] =
+                for
+                  (clause1, clause2) <- paramss1.zip(paramss2)
+                  (param1, param2) <- clause1.params.zip(clause2.params)
+                yield
+                  param1.symbol -> param2.symbol
               val oldEnv: Env = summon[Env]
-              val newEnv: List[(Symbol, Symbol)] =
-                (scrutinee.symbol -> pattern.symbol) :: typeParams1.zip(typeParams2).map((tparam1, tparam2) => tparam1.symbol -> tparam2.symbol) :::
-                paramss1.flatten.zip(paramss2.flatten).map((param1, param2) => param1.symbol -> param2.symbol)
+              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol -> pattern.symbol) :: paramSyms
               oldEnv ++ newEnv
 
-            typeParams1 =?= typeParams2
-              &&& matchLists(paramss1, paramss2)(_ =?= _)
+            matchLists(paramss1, paramss2)(_ =?= _)
               &&& tpt1 =?= tpt2
               &&& withEnv(rhsEnv)(rhs1 =?= rhs2)
 
@@ -329,22 +332,46 @@ object Matcher {
                 s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                    |Scrutinee
                    |  ${scrutinee.show}
-                   |
-                   |${scrutinee.showExtractors}
-                   |
                    |did not match pattern
                    |  ${pattern.show}
                    |
-                   |${pattern.showExtractors}
-                   |
                    |with environment: ${summon[Env]}
                    |
+                   |Scrutinee: ${scrutinee.show(using Printer.TreeStructure)}
+                   |Pattern: ${pattern.show(using Printer.TreeStructure)}
                    |
                    |""".stripMargin)
             notMatched
         }
       }
     end extension
+
+    extension (scrutinee: ParamClause)
+      /** Check that all parameters in the clauses clauses match with =?= and concatenate the results with &&& */
+      private def =?= (pattern: ParamClause)(using Env)(using DummyImplicit): Matching =
+        (scrutinee, pattern) match
+          case (TermParamClause(params1), TermParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
+          case (TypeParamClause(params1), TypeParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
+          case _ => notMatched
+
+    /** Does the scrutenne symbol match the pattern symbol? It matches if:
+     *   - They are the same symbol
+     *   - The scrutinee has is in the environment and they are equivalent
+     *   - The scrutinee overrides the symbol of the pattern
+     */
+    private def symbolMatch(scrutineeTree: Tree, patternTree: Tree)(using Env): Boolean =
+      val scrutinee = scrutineeTree.symbol
+      val devirtualizedScrutinee = scrutineeTree match
+        case Select(qual, _) =>
+          val sym = scrutinee.overridingSymbol(qual.tpe.typeSymbol)
+          if sym.exists then sym
+          else scrutinee
+        case _ => scrutinee
+      val pattern = patternTree.symbol
+
+      devirtualizedScrutinee == pattern
+      || summon[Env].get(devirtualizedScrutinee).contains(pattern)
+      || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
@@ -366,7 +393,7 @@ object Matcher {
       def unapply(args: List[Term]): Option[List[Ident]] =
         args.foldRight(Option(List.empty[Ident])) {
           case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", Nil, List(params), Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
+          case (Block(List(DefDef("$anonfun", TermParamClause(params) :: Nil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
               if params.zip(args).forall(_.symbol == _.symbol) =>
             Some(id :: acc)
           case _ => None
@@ -392,7 +419,7 @@ object Matcher {
     val matched: Matching = Some(Tuple())
     def matched(x: Any): Matching = Some(Tuple1(x))
 
-    extension (self: Matching):
+    extension (self: Matching)
       def asOptionOfTuple: Option[Tuple] = self
 
       /** Concatenates the contents of two successful matchings or return a `notMatched` */

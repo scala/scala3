@@ -1,7 +1,7 @@
 package advanced
 
-import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
-import scala.language/*->scalaShadowing::language.*/.reflectiveCalls/*->scalaShadowing::language.reflectiveCalls.*/
+import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
+import scala.language/*->scala::language.*/.reflectiveCalls/*->scala::language.reflectiveCalls.*/
 
 import scala.reflect.Selectable/*->scala::reflect::Selectable.*/.reflectiveSelectable/*->scala::reflect::Selectable.reflectiveSelectable().*/
 

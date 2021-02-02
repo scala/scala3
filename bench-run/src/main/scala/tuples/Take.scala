@@ -23,7 +23,7 @@ class Take {
 
   @Benchmark
   def tupleTake(): Tuple = {
-    runtime.Tuple.take(tuple, half)
+    runtime.Tuples.take(tuple, half)
   }
 
   @Benchmark

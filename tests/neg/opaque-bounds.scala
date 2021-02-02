@@ -19,16 +19,20 @@ object Access {
   opaque type PermissionChoice = Int
   opaque type Permission <: Permissions & PermissionChoice = Int
 
-  extension (x: Permissions) def & (y: Permissions): Permissions = x & y
-  extension (x: PermissionChoice) def | (y: PermissionChoice): PermissionChoice = x | y
-  extension (x: Permissions) def is(y: Permissions) = (x & y) == y
-  extension (x: Permissions) def isOneOf(y: PermissionChoice) = (x & y) != 0
+  extension (x: Permissions)
+    def & (y: Permissions): Permissions = x | y
+  extension (x: PermissionChoice)
+    def | (y: PermissionChoice): PermissionChoice = x | y
+  extension (granted: Permissions)
+    def is(required: Permissions) = (granted & required) == required
+  extension (granted: Permissions)
+    def isOneOf(required: PermissionChoice) = (granted & required) != 0
 
   val NoPermission: Permission = 0
-  val ReadOnly: Permission = 1
-  val WriteOnly: Permission = 2
-  val ReadWrite: Permissions = ReadOnly & WriteOnly
-  val ReadOrWrite: PermissionChoice = ReadOnly | WriteOnly
+  val Read: Permission = 1
+  val Write: Permission = 2
+  val ReadWrite: Permissions = Read | Write
+  val ReadOrWrite: PermissionChoice = Read | Write
 }
 
 object User {
@@ -39,7 +43,7 @@ object User {
   val p1: Permissions = ReadOrWrite  // error
   val p2: PermissionChoice = ReadWrite // error
 
-  val x = Item(ReadOnly)
+  val x = Item(Read)
 
   assert( x.rights.is(ReadWrite) == false )
   assert( x.rights.isOneOf(ReadOrWrite) == true )

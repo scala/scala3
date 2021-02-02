@@ -36,10 +36,9 @@ object Debug {
 
     val fromTastyOut = Files.createDirectory(tmpOut.resolve("from-tasty"))
 
-    val extensions = List("tasty", "hasTasty").map(_.toLowerCase)
     val tastyFiles =
       Directory(fromSourcesOut).walk
-        .filter(x => x.isFile && extensions.exists(_ == x.extension.toLowerCase))
+        .filter(x => x.isFile && "tasty".equalsIgnoreCase(x.extension))
         .map(_.toString)
         .toList
 

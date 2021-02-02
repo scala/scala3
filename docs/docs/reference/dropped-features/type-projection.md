@@ -1,12 +1,12 @@
 ---
 layout: doc-page
-title: Dropped: General Type Projection
+title: "Dropped: General Type Projection"
 ---
 
 Scala so far allowed general type projection `T#A` where `T` is an arbitrary type
 and `A` names a type member of `T`.
 
-Dotty disallows this if `T` is an abstract type (class types and type aliases
+Scala 3 disallows this if `T` is an abstract type (class types and type aliases
 are fine). This change was made because unrestricted type projection
 is [unsound](https://github.com/lampepfl/dotty/issues/1050).
 

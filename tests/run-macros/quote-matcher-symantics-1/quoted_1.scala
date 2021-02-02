@@ -10,7 +10,7 @@ object Macros {
 
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
-      case '{ LitDSL(${ Const(c) }) } =>
+      case '{ LitDSL(${ Expr(c) }) } =>
         '{ $sym.value(${Expr(c)}) }
 
       case '{ ($x: DSL) + ($y: DSL) } =>
@@ -20,8 +20,8 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import qctx.reflect._
-        Reporting.error("Expected explicit DSL", Term.of(e).pos)
+        import quotes.reflect._
+        report.error("Expected explicit DSL", e.asTerm.pos)
         '{ ??? }
 
     }

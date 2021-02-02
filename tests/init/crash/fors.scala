@@ -26,7 +26,7 @@ object Test extends App {
     var n = 0
     for (_ <- xs) n += 1; println(n)
     for ((x, y) <- xs zip ys) print(x + " "); println()
-    for (p as (x, y) <- xs zip ys) print(p._1 + " "); println()
+    for (p @ (x, y) <- xs zip ys) print(p._1 + " "); println()
 
     // iterators
     for (x <- it) print(x + " "); println()
@@ -53,7 +53,7 @@ object Test extends App {
     var n = 0
     for (_ <- xs) n += 1; println(n)
     for ((x, y) <- xs zip ys) print(x + " "); println()
-    for (p as (x, y) <- xs zip ys) print(p._1 + " "); println()
+    for (p @ (x, y) <- xs zip ys) print(p._1 + " "); println()
 
     // iterators
     for (x <- it) print(x + " "); println()

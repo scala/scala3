@@ -291,9 +291,7 @@ class ReplDriver(settings: Array[String],
         info.bounds.hi.finalResultType
           .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
-            denot.symbol.owner == defn.AnyClass ||
-            denot.symbol.owner == defn.ObjectClass ||
-            denot.symbol.isConstructor
+            defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
           }
 
       val vals =
@@ -309,7 +307,9 @@ class ReplDriver(settings: Array[String],
         defs.map(rendering.renderMethod) ++
         vals.flatMap(rendering.renderVal)
 
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers)
+      val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+
+      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)
 
@@ -382,7 +382,7 @@ class ReplDriver(settings: Array[String],
         case _  =>
           compiler.typeOf(expr)(newRun(state)).fold(
             displayErrors,
-            res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
+            res => out.println(res)  // result has some highlights
           )
       }
       state

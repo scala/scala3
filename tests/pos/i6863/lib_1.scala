@@ -1,2 +1,2 @@
 trait Ctx
-inline def foo(): Unit = (using x: Ctx) => ()
+inline def foo(): Unit = (x: Ctx) ?=> ()

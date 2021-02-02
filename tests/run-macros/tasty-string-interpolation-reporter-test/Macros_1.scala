@@ -23,8 +23,8 @@ object Macro {
       case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.reflect._
-            Reporting.error(msg, Term.of(parts(partIdx)).pos)
+            import quotes.reflect._
+            report.error(msg, parts(partIdx).asTerm.pos)
           }
         }
         fooCore(parts, args, reporter)
@@ -37,8 +37,8 @@ object Macro {
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import qctx.reflect._
-            val pos = Term.of(parts(partIdx)).pos
+            import quotes.reflect._
+            val pos = parts(partIdx).asTerm.pos
             errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }
         }
@@ -52,7 +52,7 @@ object Macro {
 
   private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using Quotes): Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
-      val Const(v: String) = part
+      val v = part.valueOrError
       if (v.contains("#"))
         reporter.errorOnPart("Cannot use #", idx)
     }

@@ -388,7 +388,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       projectSeq(pats)
 
     case UnApply(fun, _, pats) =>
-      val (fun1, _, _) = decomposeCall(fun)
+      val fun1 = funPart(fun)
       val funRef = fun1.tpe.asInstanceOf[TermRef]
       if (fun.symbol.name == nme.unapplySeq)
         if (fun.symbol.owner == scalaSeqFactoryClass)
@@ -480,7 +480,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
           else args.map(arg => erase(arg, inArray = false))
         tp.derivedAppliedType(erase(tycon, inArray), args2)
 
-      case tp as OrType(tp1, tp2) =>
+      case tp @ OrType(tp1, tp2) =>
         OrType(erase(tp1, inArray), erase(tp2, inArray), tp.isSoft)
 
       case AndType(tp1, tp2) =>
@@ -870,18 +870,19 @@ class SpaceEngine(using Context) extends SpaceLogic {
         project(OrType(selTyp, constantNullType, soft = false))
 
     // in redundancy check, take guard as false in order to soundly approximate
-    def projectPrevCases(cases: List[CaseDef]): Space =
+    def projectPrevCases(cases: List[CaseDef]): List[Space] =
       cases.map { x =>
         if (x.guard.isEmpty) project(x.pat)
         else Empty
-      }.reduce((a, b) => Or(List(a, b)))
+      }
+
+    val spaces = projectPrevCases(cases)
 
     (1 until cases.length).foreach { i =>
-      val prevs = projectPrevCases(cases.take(i))
-
       val pat = cases(i).pat
 
       if (pat != EmptyTree) { // rethrow case of catch uses EmptyTree
+        val prevs = Or(spaces.take(i))
         val curr = project(pat)
 
         debug.println(s"---------------reachable? ${show(curr)}")

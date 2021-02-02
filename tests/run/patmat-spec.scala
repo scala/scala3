@@ -6,7 +6,7 @@ object Test {
     }
 
     "even" match {
-      case s as Even() => println(s"$s has an even number of characters")
+      case s @ Even() => println(s"$s has an even number of characters")
       case s          => println(s"$s has an odd number of characters")
     }
     // even has an even number of characters

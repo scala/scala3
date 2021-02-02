@@ -13,10 +13,10 @@ final class TypeImpl(val typeTree: tpd.Tree, val scopeId: Int) extends Type[?] {
     case _ => false
   }
 
-  /** View this expression `quoted.Type[T]` as a `TypeTree` */
-  def unseal(using Quotes): qctx.reflect.TypeTree =
-    checkScopeId(qctx.hashCode)
-    typeTree.asInstanceOf[qctx.reflect.TypeTree]
+  /** View this expression `q.Type[T]` as a `TypeTree` */
+  def unseal(using q: Quotes): q.reflect.TypeTree =
+    checkScopeId(q.hashCode)
+    typeTree.asInstanceOf[q.reflect.TypeTree]
 
   def checkScopeId(expectedScopeId: Int): Unit =
     if expectedScopeId != scopeId then

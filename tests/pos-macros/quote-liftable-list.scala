@@ -2,8 +2,8 @@ import scala.quoted._
 
 object Test {
 
-  implicit def ListIsLiftable[T: Liftable: Type]: Liftable[List[T]] = new {
-    def toExpr(xs: List[T]) = '{ Nil: List[T] }
+  implicit def ListIsToExpr[T: ToExpr: Type]: ToExpr[List[T]] = new {
+    def apply(xs: List[T])(using Quotes) = '{ Nil: List[T] }
   }
 
 }

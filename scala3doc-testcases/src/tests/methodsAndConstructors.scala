@@ -47,3 +47,10 @@ class Methods:
 
  def arrays(a: Array[String], b: Array[Int]): Array[Double]
  = ???
+
+ def rightA1(a: Int): Int
+ = ???
+
+ def ++:(a: Int)(b: Double): Int
+ = ???
+

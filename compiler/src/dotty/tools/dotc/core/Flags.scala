@@ -293,7 +293,14 @@ object Flags {
    */
   val (Abstract @ _, _, _) = newFlags(23, "abstract")
 
-  /** Lazy val or method is known or assumed to be stable and realizable */
+  /** Lazy val or method is known or assumed to be stable and realizable.
+   *
+   *  For a trait constructor, this is set if and only if owner.is(NoInits),
+   *  including for Java interfaces and for Scala 2 traits. It will be used by
+   *
+   *  - the purity analysis used by the inliner to decide whether it is safe to elide, and
+   *  - the TASTy reader of Scala 2.13, to determine whether there is a $init$ method.
+   */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
   /** A case parameter accessor */
@@ -319,7 +326,9 @@ object Flags {
 
   /** Variable is accessed from nested function
    *    /
-   *  Trait does not have fields or initialization code.
+   *  Trait does not have own fields or initialization code or class does not
+   *  have own or inherited initialization code.
+   *
    *  Warning: NoInits is set during regular typer pass, should be tested only after typer.
    */
   val (_, Captured @ _, NoInits @ _) = newFlags(32, "<captured>", "<noinits>")
@@ -342,6 +351,9 @@ object Flags {
   /** Symbol is a Java default method */
   val (_, DefaultMethod @ _, _) = newFlags(38, "<defaultmethod>")
 
+  /** Symbol is a transparent inline method or trait */
+  val (Transparent @ _, _, _) = newFlags(39, "transparent")
+
   /** Symbol is an enum class or enum case (if used with case) */
   val (Enum @ _, EnumVal @ _, _) = newFlags(40, "enum")
 
@@ -354,17 +366,19 @@ object Flags {
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
 
+  /** An infix method or type */
+  val (Infix @ _, _, _) = newFlags(44, "infix")
 
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
-  val (NonMember @ _, _, _) = newFlags(45, "<non-member>")
+  val (NonMember @ _, _, _) = newFlags(49, "<non-member>")
 
   /** Denotation is in train of being loaded and completed, used to catch cyclic dependencies */
-  val (Touched @ _, _, _) = newFlags(48, "<touched>")
+  val (Touched @ _, _, _) = newFlags(50, "<touched>")
 
   /** Class has been lifted out to package level, local value has been lifted out to class level */
-  val (Lifted @ _, _, _) = newFlags(51, "<lifted>")
+  val (Lifted @ _, _, _) = newFlags(51, "<lifted>") // only used from lambda-lift (could be merged with ConstructorProxy)
 
   /** Term member has been mixed in */
   val (MixedIn @ _, _, _) = newFlags(52, "<mixedin>")
@@ -406,6 +420,9 @@ object Flags {
   /** A denotation that is valid in all run-ids */
   val (Permanent @ _, _, _) = newFlags(61, "<permanent>")
 
+  /** Symbol is a constructor proxy (either companion, or apply method) */
+  val (ConstructorProxy @ _, _, _) = newFlags(62, "<constructor proxy>") // (could be merged with Lifted)
+
 // --------- Combined Flag Sets and Conjunctions ----------------------
 
   /** All possible flags */
@@ -419,7 +436,7 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
@@ -441,7 +458,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
-    SuperParamAliasOrScala2x, Inline, Macro)
+    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -449,7 +466,8 @@ object Flags {
    *  is completed)
    */
   val AfterLoadFlags: FlagSet = commonFlags(
-    FromStartFlags, AccessFlags, Final, AccessorOrSealed, LazyOrTrait, SelfName, JavaDefined)
+    FromStartFlags, AccessFlags, Final, AccessorOrSealed,
+    Abstract, LazyOrTrait, SelfName, JavaDefined, Transparent)
 
   /** A value that's unstable unless complemented with a Stable flag */
   val UnstableValueFlags: FlagSet = Mutable | Method
@@ -494,12 +512,12 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized
+    Lifted | MixedIn | Specialized | ConstructorProxy
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Given | Lazy |
-    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased
+    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
@@ -512,6 +530,7 @@ object Flags {
 
 // ------- Other flag sets -------------------------------------
 
+  val NotConcrete: FlagSet                   = AbsOverride | Deferred
   val AbstractFinal: FlagSet                 = Abstract | Final
   val AbstractOverride: FlagSet              = Abstract | Override
   val AbstractSealed: FlagSet                = Abstract | Sealed
@@ -525,17 +544,19 @@ object Flags {
   val EnumCase: FlagSet                      = Case | Enum
   val CovariantLocal: FlagSet                = Covariant | Local                              // A covariant type parameter
   val ContravariantLocal: FlagSet            = Contravariant | Local                          // A contravariant type parameter
+  val EffectivelyErased                      = ConstructorProxy | Erased
+  val ConstructorProxyModule: FlagSet        = ConstructorProxy | Module
   val DefaultParameter: FlagSet              = HasDefault | Param                             // A Scala 2x default parameter
+  val DeferredInline: FlagSet                = Deferred | Inline
   val DeferredOrLazy: FlagSet                = Deferred | Lazy
   val DeferredOrLazyOrMethod: FlagSet        = Deferred | Lazy | Method
   val DeferredOrTermParamOrAccessor: FlagSet = Deferred | ParamAccessor | TermParam           // term symbols without right-hand sides
   val DeferredOrTypeParam: FlagSet           = Deferred | TypeParam                           // type symbols without right-hand sides
   val EnumValue: FlagSet                     = Enum | StableRealizable                        // A Scala enum value
-  val StableOrErased: FlagSet                = Erased | StableRealizable                      // Assumed to be pure
   val FinalOrInline: FlagSet                 = Final | Inline
   val FinalOrModuleClass: FlagSet            = Final | ModuleClass                            // A module class or a final class
   val EffectivelyFinalFlags: FlagSet         = Final | Private
-  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro
+  val ExcludedForwarder: Flags.FlagSet       = Specialized | Lifted | Protected | JavaStatic | Private | Macro | ConstructorProxy
   val FinalOrSealed: FlagSet                 = Final | Sealed
   val GivenOrImplicit: FlagSet               = Given | Implicit
   val GivenOrImplicitVal: FlagSet            = GivenOrImplicit.toTermFlags
@@ -576,4 +597,5 @@ object Flags {
   val SyntheticParam: FlagSet                = Synthetic | Param
   val SyntheticTermParam: FlagSet            = Synthetic | TermParam
   val SyntheticTypeParam: FlagSet            = Synthetic | TypeParam
+  val TransparentTrait: FlagSet              = Trait | Transparent
 }

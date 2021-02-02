@@ -1,6 +1,6 @@
 package example
 
-import scala.language/*->scalaShadowing::language.*/.implicitConversions/*->scalaShadowing::language.implicitConversions.*/
+import scala.language/*->scala::language.*/.implicitConversions/*->scala::language.implicitConversions.*/
 
 class Synthetic/*<-example::Synthetic#*/ {
   List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/(1).map/*->scala::collection::immutable::List#map().*/(_ +/*->scala::Int#`+`(+4).*/ 2)

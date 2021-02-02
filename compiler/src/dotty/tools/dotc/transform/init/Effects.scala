@@ -61,7 +61,7 @@ object Effects {
   extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
 
   def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effect =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, effs => show(effs.asInstanceOf[Effects])) { eff match {
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, eff => show(Effects.empty + eff.asInstanceOf[Effect])) { eff match {
       case Promote(pot) =>
         val pot1 = Potentials.asSeenFrom(pot, thisValue)
         Promote(pot1)(eff.source)

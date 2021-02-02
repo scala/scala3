@@ -5,8 +5,8 @@ object Macros {
   implicit inline def withSource(arg: Any): (String, Any) = ${ impl('arg) }
 
   private def impl(arg: Expr[Any])(using Quotes) : Expr[(String, Any)] = {
-    import qctx.reflect._
-    val source = Expr(Term.of(arg).underlyingArgument.pos.sourceCode.toString)
+    import quotes.reflect._
+    val source = Expr(arg.asTerm.underlyingArgument.pos.sourceCode.get.toString)
     '{Tuple2($source, $arg)}
   }
 

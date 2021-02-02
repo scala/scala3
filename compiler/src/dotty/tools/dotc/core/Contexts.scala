@@ -27,6 +27,7 @@ import collection.mutable
 import printing._
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
 import classfile.ReusableDataReader
+import StdNames.nme
 
 import scala.annotation.internal.sharable
 
@@ -75,6 +76,16 @@ object Contexts {
 
   inline def atNextPhase[T](inline op: Context ?=> T)(using Context): T =
     atPhase(ctx.phase.next)(op)
+
+  /** Execute `op` at the current phase if it's before the first transform phase,
+   *  otherwise at the last phase before the first transform phase.
+   *
+   *  Note: this should be used instead of `atPhaseNoLater(ctx.picklerPhase)`
+   *  because the later won't work if the `Pickler` phase is not present (for example,
+   *  when using `QuoteCompiler`).
+   */
+  inline def atPhaseBeforeTransforms[T](inline op: Context ?=> T)(using Context): T =
+    atPhaseNoLater(firstTransformPhase.prev)(op)
 
   inline def atPhaseNoLater[T](limit: Phase)(inline op: Context ?=> T)(using Context): T =
     op(using if !limit.exists || ctx.phase <= limit then ctx else ctx.withPhase(limit))
@@ -266,24 +277,31 @@ object Contexts {
       base.sources.getOrElseUpdate(file, new SourceFile(file, codec))
     }
 
-    /** Sourcefile with given path name, memoized */
-    def getSource(path: TermName): SourceFile = base.sourceNamed.get(path) match {
-      case Some(source) =>
-        source
-      case None => try {
-        val f = new PlainFile(Path(path.toString))
-        val src = getSource(f)
-        base.sourceNamed(path) = src
-        src
-      } catch {
-        case ex: InvalidPathException =>
-          report.error(s"invalid file path: ${ex.getMessage}")
-          NoSource
-      }
-    }
+    /** SourceFile with given path name, memoized */
+    def getSource(path: TermName): SourceFile = getFile(path) match
+      case NoAbstractFile => NoSource
+      case file => getSource(file)
 
-    /** Sourcefile with given path, memoized */
+    /** SourceFile with given path, memoized */
     def getSource(path: String): SourceFile = getSource(path.toTermName)
+
+    /** AbstraFile with given path name, memoized */
+    def getFile(name: TermName): AbstractFile = base.files.get(name) match
+      case Some(file) =>
+        file
+      case None =>
+        try
+          val file = new PlainFile(Path(name.toString))
+          base.files(name) = file
+          file
+        catch
+          case ex: InvalidPathException =>
+            report.error(s"invalid file path: ${ex.getMessage}")
+            NoAbstractFile
+
+    /** AbstractFile with given path, memoized */
+    def getFile(name: String): AbstractFile = getFile(name.toTermName)
+
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] = null
 
@@ -338,8 +356,7 @@ object Contexts {
     private var creationTrace: Array[StackTraceElement] = _
 
     private def setCreationTrace() =
-      if (this.settings.YtraceContextCreation.value)
-        creationTrace = (new Throwable).getStackTrace().take(20)
+      creationTrace = (new Throwable).getStackTrace().take(20)
 
     /** Print all enclosing context's creation stacktraces */
     def printCreationTraces() = {
@@ -458,13 +475,8 @@ object Contexts {
       else fresh.setOwner(exprOwner)
 
     /** A new context that summarizes an import statement */
-    def importContext(imp: Import[?], sym: Symbol): FreshContext = {
-      val impNameOpt = imp.expr match {
-        case ref: RefTree[?] => Some(ref.name.asTermName)
-        case _               => None
-      }
-      fresh.setImportInfo(ImportInfo(sym, imp.selectors, impNameOpt))
-    }
+    def importContext(imp: Import[?], sym: Symbol): FreshContext =
+       fresh.setImportInfo(ImportInfo(sym, imp.selectors, imp.expr))
 
     /** Is the debug option set? */
     def debug: Boolean = base.settings.Ydebug.value
@@ -616,7 +628,14 @@ object Contexts {
     def setRun(run: Run): this.type = updateStore(runLoc, run)
     def setProfiler(profiler: Profiler): this.type = updateStore(profilerLoc, profiler)
     def setNotNullInfos(notNullInfos: List[NotNullInfo]): this.type = updateStore(notNullInfosLoc, notNullInfos)
-    def setImportInfo(importInfo: ImportInfo): this.type = updateStore(importInfoLoc, importInfo)
+    def setImportInfo(importInfo: ImportInfo): this.type =
+      importInfo.mentionsFeature(nme.unsafeNulls) match
+        case Some(true) =>
+          setMode(this.mode &~ Mode.SafeNulls)
+        case Some(false) if ctx.settings.YexplicitNulls.value =>
+          setMode(this.mode | Mode.SafeNulls)
+        case _ =>
+      updateStore(importInfoLoc, importInfo)
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =
@@ -649,8 +668,8 @@ object Contexts {
     def setDebug: this.type = setSetting(base.settings.Ydebug, true)
   }
 
-  given ops as AnyRef:
-    extension (c: Context):
+  given ops: AnyRef with
+    extension (c: Context)
       def addNotNullInfo(info: NotNullInfo) =
         c.withNotNullInfos(c.notNullInfos.extendWith(info))
 
@@ -842,9 +861,9 @@ object Contexts {
     private var _nextSymId: Int = 0
     def nextSymId: Int = { _nextSymId += 1; _nextSymId }
 
-    /** Sources that were loaded */
+    /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val sourceNamed: util.HashMap[TermName, SourceFile] = util.HashMap[TermName, SourceFile]()
+    val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
 
     // Types state
     /** A table for hash consing unique types */
@@ -928,7 +947,7 @@ object Contexts {
       emptyWildcardBounds = null
       errorTypeMsg.clear()
       sources.clear()
-      sourceNamed.clear()
+      files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
 
     // Test that access is single threaded

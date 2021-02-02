@@ -9,7 +9,7 @@ object FQuote {
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>
@@ -31,19 +31,19 @@ object FQuote {
       tree.symbol.fullName == "scala.StringContext$.apply"
 
     // FQuote.SCOps(StringContext.apply([p0, ...]: String*)
-    val parts = Term.of(receiver).underlyingArgument match {
+    val parts = receiver.asTerm.underlyingArgument match {
       case Apply(conv, List(Apply(fun, List(Typed(Repeated(values, _), _)))))
           if isSCOpsConversion(conv) &&
              isStringContextApply(fun) &&
              values.forall(isStringConstant) =>
-        values.collect { case Literal(Constant.String(value)) => value }
+        values.collect { case Literal(StringConstant(value)) => value }
       case tree =>
-        report.error(s"String literal expected, but ${tree.showExtractors} found")
+        report.error(s"String literal expected, but ${tree.show(using Printer.TreeStructure)} found")
         return '{???}
     }
 
     // [a0, ...]: Any*
-    val Typed(Repeated(allArgs, _), _) = Term.of(args).underlyingArgument
+    val Typed(Repeated(allArgs, _), _) = args.asTerm.underlyingArgument
 
     for ((arg, part) <- allArgs.zip(parts.tail)) {
       if (part.startsWith("%d") && !(arg.tpe <:< TypeRepr.of[Int])) {

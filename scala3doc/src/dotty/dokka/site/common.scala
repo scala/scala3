@@ -3,6 +3,7 @@ package site
 
 import java.io.File
 import java.nio.file.Files
+import dotty.dokka.model.api._
 
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
@@ -14,13 +15,12 @@ import com.vladsch.flexmark.ext.yaml.front.matter.{AbstractYamlFrontMatterVisito
 import com.vladsch.flexmark.parser.{Parser, ParserEmulationProfile}
 import com.vladsch.flexmark.util.options.{DataHolder, MutableDataSet}
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
-import org.jetbrains.dokka.model.doc.Text
 
 import scala.collection.JavaConverters._
 
-val docsRootDRI: DRI = mkDRI(extra = "_top_level_index")
-val docsDRI: DRI = mkDRI(extra = "_docs_level_index")
-val apiPageDRI: DRI = mkDRI(packageName = "api", extra = "__api__")
+val docsRootDRI: DRI = DRI(location = "index.md")
+val docsDRI: DRI = DRI(location = "docs/index.md")
+val apiPageDRI: DRI = DRI(location = "api")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
@@ -74,7 +74,7 @@ def loadTemplateFile(file: File): TemplateFile = {
   def getSettingValue(k: String, v: JList[String]): String | List[String] =
     if v.size == 1 then v.get(0) else v.asScala.toList
 
-  val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name")
+  val globalKeys = Set("extraJS", "extraCSS", "layout", "hasFrame", "name", "title")
   val allSettings = yamlCollector.getData.asScala.toMap.transform(getSettingValue)
   val (global, inner) = allSettings.partition((k,_) => globalKeys.contains(k))
   val settings = Map("page" -> inner)
@@ -110,5 +110,3 @@ def loadTemplateFile(file: File): TemplateFile = {
     layout = stringSetting(allSettings, "layout")
   )
 }
-
-def Text(msg: String = "") = new Text(msg, JList(), JMap())

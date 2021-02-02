@@ -16,31 +16,31 @@ object SomeEnum:
   object Bar:
     def apply[S <: SomeEnum](s: S): SomeEnum = new Bar(s)
 
-given LiftFoo as Liftable[Foo.type]:
+given LiftFoo: Liftable[Foo.type] with
   def toExpr(x: Foo.type): Quotes ?=> Expr[Foo.type] = '{Foo}
 
-given LiftBar[S <: SomeEnum: Type: Liftable] as Liftable[Bar[S]]:
+given LiftBar[S <: SomeEnum: Type: Liftable]: Liftable[Bar[S]] with
   def toExpr(x: Bar[S]): Quotes ?=> Expr[Bar[S]] = '{new Bar(${Lift(x.s)})}
 
 sealed abstract class Lst[+T]
 final case class CONS[+T](head: T, tail: Lst[T]) extends Lst[T]
 case object NIL extends Lst[Nothing]
 
-given IntLiftable[T <: Int] as Liftable[T]:
-  def toExpr(x: T): Quotes ?=> Expr[T] = (using qctx) => {
-    import qctx.reflect._
-    Literal(Constant.Int(x)).asExpr.asInstanceOf[Expr[T]]
+given IntLiftable[T <: Int]: Liftable[T] with
+  def toExpr(x: T): Quotes ?=> Expr[T] = qctx ?=> {
+    import quotes.reflect._
+    Literal(IntConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 
-given LiftLst[T: Type: Liftable](using ev1: => Liftable[CONS[T]], ev2: => Liftable[NIL.type]) as Liftable[Lst[T]]:
+given LiftLst[T: Type: Liftable](using ev1: => Liftable[CONS[T]], ev2: => Liftable[NIL.type]): Liftable[Lst[T]] with
   def toExpr(xs: Lst[T]): Quotes ?=> Expr[Lst[T]] = xs match
     case NIL               => ev2.toExpr(NIL)
     case cons @ CONS(_, _) => ev1.toExpr(cons)
 
-given LiftCONS[T: Type: Liftable](using Liftable[Lst[T]]) as Liftable[CONS[T]]:
+given LiftCONS[T: Type: Liftable](using Liftable[Lst[T]]): Liftable[CONS[T]] with
   def toExpr(x: CONS[T]): Quotes ?=> Expr[CONS[T]] = '{CONS(${Lift(x.head)}, ${Lift(x.tail)})}
 
-given LiftNIL as Liftable[NIL.type]:
+given LiftNIL: Liftable[NIL.type] with
   def toExpr(x: NIL.type): Quotes ?=> Expr[NIL.type] = '{NIL}
 
 def mkLst[T](ts: T*) = ts.foldRight(NIL: Lst[T])(CONS(_,_))

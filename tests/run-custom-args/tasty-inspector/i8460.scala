@@ -23,26 +23,27 @@ object Test {
 
     // Tasty Scala Class
     val inspect1 = new TestInspector_Children()
-    inspect1.inspectTastyFiles(allTastyFiles.filter(_.contains("Vehicle")))
+    TastyInspector.inspectTastyFiles(allTastyFiles.filter(_.contains("Vehicle")))(inspect1)
     assert(inspect1.kids == List("Truck","Car","Plane"))
 
     // Java Class
     val inspect2 = new TestInspector_Children()
-    inspect2.inspectTastyFiles(allTastyFiles.filter(_.contains("Flavor")))
+    TastyInspector.inspectTastyFiles(allTastyFiles.filter(_.contains("Flavor")))(inspect2)
     assert(inspect2.kids == List("Vanilla","Chocolate","Bourbon"))
   }
 }
 
-class TestInspector_Children() extends TastyInspector:
+class TestInspector_Children() extends Inspector:
 
   var kids: List[String] = Nil
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
-    inspectClass(root)
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
+    for tasty <- tastys do
+      inspectClass(tasty.ast)
+  }
 
-  private def inspectClass(using Quotes)(tree: qctx.reflect.Tree): Unit =
-    import qctx.reflect._
+  private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
+    import quotes.reflect._
     tree match {
       case t: PackageClause =>
         t.stats.map( m => inspectClass(m) )

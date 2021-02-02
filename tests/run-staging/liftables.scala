@@ -1,7 +1,7 @@
 import scala.quoted._
 import scala.quoted.staging._
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
     println(Expr(true).show)
     println(Expr(false).show)

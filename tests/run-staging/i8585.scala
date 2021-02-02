@@ -1,8 +1,8 @@
 import scala.quoted._
-import scala.quoted.staging.{run, withQuotes, Toolbox}
+import scala.quoted.staging.{run, withQuotes, Compiler}
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
     val toTheEighth = stagedPower(8)

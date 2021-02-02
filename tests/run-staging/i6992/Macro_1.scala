@@ -16,7 +16,7 @@ package scala {
   object MyTest {
     import macros._
 
-   given Toolbox = Toolbox.make(getClass.getClassLoader)
+   given Compiler = Compiler.make(getClass.getClassLoader)
 
     def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] = {
       import ctx.reflect._

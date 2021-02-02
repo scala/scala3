@@ -140,7 +140,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           tpd.patVars(pat).foreach(markSymbol)
           mapOverTree(last)
 
-        case _: Import =>
+        case (_:Import | _:Export) =>
           tree
 
         case _ =>

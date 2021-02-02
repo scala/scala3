@@ -7,10 +7,9 @@ The syntax of vararg patterns has changed. In the new syntax one writes varargs 
 like one writes them in expressions, using a `: _*` type annotation:
 
 ```scala
-xs match {
-  case List(1, 2, xs: _*) => println(xs)    // binds xs
-  case List(1, _ : _*) =>                   // wildcard pattern
-}
+xs match
+   case List(1, 2, xs: _*) => println(xs)    // binds xs
+   case List(1, _ : _*) =>                   // wildcard pattern
 ```
 
 The old syntax, which is shorter but less regular, is no longer supported.
@@ -36,7 +35,7 @@ The change to the grammar is:
 
 ## Compatibility considerations
 
-To enable smooth cross compilation between Scala 2 and Scala 3, Dotty will
+To enable smooth cross compilation between Scala 2 and Scala 3, the compiler will
 accept both the old and the new syntax. Under the `-source 3.1` setting, an error
 will be emitted when the old syntax is encountered. They will be enabled by
 default in version 3.1 of the language.

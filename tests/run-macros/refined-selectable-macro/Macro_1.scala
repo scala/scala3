@@ -15,9 +15,9 @@ object Macro {
   }
 
   private def toTupleImpl(s: Expr[Selectable])(using qctx:Quotes) : Expr[Tuple] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val repr = Term.of(s).tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefByName.dealias
 
     def rec(tpe: TypeRepr): List[(String, TypeRepr)] = {
       tpe match {
@@ -49,16 +49,16 @@ object Macro {
   }
 
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:Quotes) : Expr[Any] = {
-    import qctx.reflect._
+    import quotes.reflect._
 
-    val repr = Term.of(s).tpe.widenTermRefExpr.dealias
+    val repr = s.asTerm.tpe.widenTermRefByName.dealias
 
     def isTupleCons(sym: Symbol): Boolean = sym.owner == defn.ScalaPackageClass && sym.name == "*:"
 
     def extractTuple(tpe: TypeRepr, seen: Set[String]): (Set[String], (String, TypeRepr)) = {
       tpe match {
         // Tuple2(S, T) where S must be a constant string type
-        case AppliedType(parent, ConstantType(Constant.String(name)) :: (info: TypeRepr) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
+        case AppliedType(parent, ConstantType(StringConstant(name)) :: (info: TypeRepr) :: Nil) if (parent.typeSymbol == defn.TupleClass(2)) =>
           if seen(name) then
             report.error(s"Repeated record name: $name", s)
           (seen + name, (name, info))

@@ -7,7 +7,7 @@ object Test {
   def foo[A, B]: A ?=> B ?=> (A, B) =
     (implicitly[A], implicitly[B])
 
-  def bar[A, B]: A ?=> B ?=> (A, B) = {(using a: A) =>
+  def bar[A, B]: A ?=> B ?=> (A, B) = {(a: A) ?=>
     (implicitly[A], implicitly[B])
   }
 

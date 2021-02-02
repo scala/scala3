@@ -5,10 +5,12 @@ title: "Context Functions - More Details"
 
 ## Syntax
 
-    Type              ::=  ...
-                        |  FunArgTypes ‘?=>’ Type
-    Expr              ::=  ...
-                        |  FunParams ‘?=>’ Expr
+```
+Type              ::=  ...
+                    |  FunArgTypes ‘?=>’ Type
+Expr              ::=  ...
+                    |  FunParams ‘?=>’ Expr
+```
 
 Context function types associate to the right, e.g.
 `S ?=> T ?=> U` is the same as `S ?=> (T ?=> U)`.
@@ -17,18 +19,20 @@ Context function types associate to the right, e.g.
 
 Context function types are shorthands for class types that define `apply`
 methods with context parameters. Specifically, the `N`-ary function type
+
 `T1, ..., TN ?=> R` is a shorthand for the class type
-`ContextFunctionN[T1 , ... , TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
+`ContextFunctionN[T1, ..., TN, R]`. Such class types are assumed to have the following definitions, for any value of `N >= 1`:
+
 ```scala
 package scala
-trait ContextFunctionN[-T1 , ... , -TN, +R] {
-  def apply(using x1: T1 , ... , xN: TN): R
-}
+trait ContextFunctionN[-T1, ..., -TN, +R]:
+   def apply(using x1: T1, ..., xN: TN): R
 ```
+
 Context function types erase to normal function types, so these classes are
 generated on the fly for typechecking, but not realized in actual code.
 
-Context function literals `(using x1: T1, ..., xn: Tn) => e` map
+Context function literals `(x1: T1, ..., xn: Tn) ?=> e` map
 context parameters `xi` of types `Ti` to the result of evaluating the expression `e`.
 The scope of each context parameter `xi` is `e`. The parameters must have pairwise distinct names.
 
@@ -41,20 +45,20 @@ The type of the context function literal is `scala.ContextFunctionN[S1, ...,Sn, 
 type of `e`. `T` must be equivalent to a type which does not refer to any of
 the context parameters `xi`.
 
-The context function literal is evaluated as the instance creation
-expression
+The context function literal is evaluated as the instance creation expression
+
 ```scala
-new scala.ContextFunctionN[T1, ..., Tn, T] {
-  def apply(using x1: T1, ..., xn: Tn): T = e
-}
+new scala.ContextFunctionN[T1, ..., Tn, T]:
+   def apply(using x1: T1, ..., xn: Tn): T = e
 ```
+
 A context parameter may also be a wildcard represented by an underscore `_`. In that case, a fresh name for the parameter is chosen arbitrarily.
 
-Note: The closing paragraph of the
-[Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.12/06-expressions.html#anonymous-functions)
-of Scala 2.12 is subsumed by context function types and should be removed.
+**Note:** The closing paragraph of the
+[Anonymous Functions section](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#anonymous-functions)
+of Scala 2.13 is subsumed by context function types and should be removed.
 
-Context function literals `(using x1: T1, ..., xn: Tn) => e` are
+Context function literals `(x1: T1, ..., xn: Tn) ?=> e` are
 automatically created for any expression `e` whose expected type is
 `scala.ContextFunctionN[T1, ..., Tn, R]`, unless `e` is
 itself a context function literal. This is analogous to the automatic

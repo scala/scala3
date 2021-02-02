@@ -1,7 +1,6 @@
 *.DS_Store
 *.class
 *.tasty
-*.hasTasty
 *.log
 *.swp
 *~
@@ -89,3 +88,6 @@ community-build/sbt-scalajs-sbt
 # Vulpix output files
 *.check.out
 !/dist/bin/
+
+# Bloop
+.bsp

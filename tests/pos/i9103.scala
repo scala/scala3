@@ -1,5 +1,5 @@
 object a:
-  type Foo[T]
+  trait Foo[T]
   given Foo[Unit] = ???
 
 val b = a

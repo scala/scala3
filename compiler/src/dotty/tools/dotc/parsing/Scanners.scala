@@ -74,6 +74,9 @@ object Scanners {
 
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
+
+    /** Is current token first one after a newline? */
+    def isAfterLineEnd: Boolean = lineOffset >= 0
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -150,6 +153,7 @@ object Scanners {
     private[Scanners] var allowLeadingInfixOperators = true
 
     var debugTokenStream = false
+    val showLookAheadOnDebug = false
 
     val rewrite = ctx.settings.rewrite.value.isDefined
     val oldSyntax = ctx.settings.oldSyntax.value
@@ -178,7 +182,12 @@ object Scanners {
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
-    /** All doc comments kept by their end position in a `Map` */
+    /** All doc comments kept by their end position in a `Map`.
+      *
+      * Note: the map is necessary since the comments are looked up after an
+      * entire definition is parsed, and a definition can contain nested
+      * definitions with their own docstrings.
+      */
     private var docstringMap: SortedMap[Int, Comment] = SortedMap.empty
 
     /* A Buffer for comment positions */
@@ -190,11 +199,7 @@ object Scanners {
     private def addComment(comment: Comment): Unit = {
       val lookahead = lookaheadReader()
       def nextPos: Int = (lookahead.getc(): @switch) match {
-        case ' ' | '\t' => nextPos
-        case CR | LF | FF =>
-          // if we encounter line delimiting whitespace we don't count it, since
-          // it seems not to affect positions in source
-          nextPos - 1
+        case ' ' | '\t' | CR | LF | FF => nextPos
         case _ => lookahead.charOffset - 1
       }
       docstringMap = docstringMap + (nextPos -> comment)
@@ -319,7 +324,8 @@ object Scanners {
     }
 
     final def printState() =
-      if debugTokenStream then print("[" + show + "]")
+      if debugTokenStream && (showLookAheadOnDebug || !isInstanceOf[LookaheadScanner]) then
+        print(s"[$show${if isInstanceOf[LookaheadScanner] then "(LA)" else ""}]")
 
     /** Insert `token` at assumed `offset` in front of current one. */
     def insert(token: Token, offset: Int) = {
@@ -331,15 +337,15 @@ object Scanners {
 
     /** A leading symbolic or backquoted identifier is treated as an infix operator if
       *   - it does not follow a blank line, and
-      *   - it is followed on the same line by at least one ' '
-      *     and a token that can start an expression.
+      *   - it is followed by at least one whitespace character and a
+      *     token that can start an expression.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && (  token == BACKQUOTED_IDENT
          || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
-      && ch == ' '
+      && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
         val lookahead = LookaheadScanner()
@@ -347,6 +353,7 @@ object Scanners {
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
         canStartExprTokens.contains(lookahead.token)
+        || lookahead.token == NEWLINE && canStartExprTokens.contains(lookahead.next.token)
       }
       && {
         if migrateTo3 then
@@ -456,7 +463,7 @@ object Scanners {
           indentPrefix = r.prefix
         case r =>
           indentIsSignificant = indentSyntax
-          if (r.knownWidth == null) r.knownWidth = nextWidth
+          r.proposeKnownWidth(nextWidth, lastToken)
           lastWidth = r.knownWidth
           newlineIsSeparating = r.isInstanceOf[InBraces]
 
@@ -603,9 +610,6 @@ object Scanners {
         case _ =>
       }
     }
-
-    /** Is current token first one after a newline? */
-    def isAfterLineEnd: Boolean = lineOffset >= 0
 
     /** Is there a blank line between the current token and the last one?
      *  A blank line consists only of characters <= ' '.
@@ -854,6 +858,9 @@ object Scanners {
 
           if (comment.isDocComment)
             addComment(comment)
+          else
+            // "forward" doc comments over normal ones
+            getDocComment(start).foreach(addComment)
         }
 
         true
@@ -1139,6 +1146,7 @@ object Scanners {
       if (ch == '\\') {
         nextChar()
         if ('0' <= ch && ch <= '7') {
+          val start = charOffset - 2
           val leadch: Char = ch
           var oct: Int = digit2int(ch, 8)
           nextChar()
@@ -1150,6 +1158,8 @@ object Scanners {
               nextChar()
             }
           }
+          val alt = if oct == LF then raw"\n" else f"\u$oct%04x"
+          error(s"octal escape literals are unsupported: use $alt instead", start)
           putChar(oct.toChar)
         }
         else if (ch == 'u' || ch == 'U') {
@@ -1343,6 +1353,18 @@ object Scanners {
     /** The indentation width, Zero if not known */
     final def indentWidth: IndentWidth =
       if knownWidth == null then IndentWidth.Zero else knownWidth
+
+    def proposeKnownWidth(width: IndentWidth, lastToken: Token) =
+      if knownWidth == null then
+        this match
+          case InParens(_, _) if lastToken != LPAREN =>
+            useOuterWidth()
+          case _ =>
+            knownWidth = width
+
+    private def useOuterWidth(): Unit =
+      if enclosing.knownWidth == null then enclosing.useOuterWidth()
+      knownWidth = enclosing.knownWidth
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region

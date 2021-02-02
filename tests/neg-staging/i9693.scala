@@ -4,7 +4,7 @@ import scala.quoted.staging._
 object Test extends App {
 
   // make available the necessary toolbox for runtime code generation
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   run {
     val expr: Expr[Int] = '{ var x = 1; x = 2; 42 }

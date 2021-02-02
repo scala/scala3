@@ -15,6 +15,7 @@ i8052.scala
 tuple-filter.scala
 i7740a.scala
 i7740b.scala
+i6507b.scala
 
 # Stale symbol: package object scala
 seqtype-cycle
@@ -30,6 +31,9 @@ i7087.scala
 i7868.scala
 i7872.scala
 6709.scala
+6687.scala
+i11236.scala
+i11247.scala
 
 # Opaque type
 i5720.scala
@@ -52,4 +56,7 @@ annot-bootstrap.scala
 
 # interaction with Scala-2's implicitly
 i9793.scala
+
+# lazy_implicit symbol has different position after pickling
+i8182.scala
 

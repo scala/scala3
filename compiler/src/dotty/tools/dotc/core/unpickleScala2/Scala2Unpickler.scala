@@ -59,9 +59,14 @@ object Scala2Unpickler {
     denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
-  def ensureConstructor(cls: ClassSymbol, scope: Scope)(using Context): Unit = {
+  def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit = {
     if (scope.lookup(nme.CONSTRUCTOR) == NoSymbol) {
       val constr = newDefaultConstructor(cls)
+      // Scala 2 traits have a constructor iff they have initialization code
+      // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
+      if clsDenot.flagsUNSAFE.is(Trait) then
+        constr.setFlag(StableRealizable)
+        clsDenot.setFlag(NoInits)
       addConstructorTypeParams(constr)
       cls.enter(constr, scope)
     }
@@ -95,7 +100,7 @@ object Scala2Unpickler {
       if (tsym.exists) tsym.setFlag(TypeParam)
       else denot.enter(tparam, decls)
     }
-    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(denot.symbol.asClass, decls)
+    if (!denot.flagsUNSAFE.isAllOf(JavaModule)) ensureConstructor(cls, denot, decls)
 
     val scalacCompanion = denot.classSymbol.scalacLinkedClass
 
@@ -111,6 +116,7 @@ object Scala2Unpickler {
 
     denot.info = tempInfo.finalized(normalizedParents)
     denot.ensureTypeParamsInCorrectOrder()
+    defn.patchStdLibClass(denot)
   }
 }
 
@@ -464,11 +470,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       denot.setFlag(flags)
       denot.resetFlag(Touched) // allow one more completion
 
-      // Temporary measure, as long as we do not read these classes from Tasty.
-      // Scala-2 classes don't have NoInits set even if they are pure. We override this
-      // for Product and Serializable so that case classes can be pure. A full solution
-      // requires that we read all Scala code from Tasty.
-      if (owner == defn.ScalaPackageClass && ((name eq tpnme.Serializable) || (name eq tpnme.Product)))
+      // Temporary measure, as long as we do not recompile these traits with Scala 3.
+      // Scala 2 is more aggressive when it comes to defining a $init$ method than Scala 3.
+      // Any concrete definition, even a `def`, causes a trait to receive a $init$ method
+      // to be created, even if it does not do anything, and hence causes not have the NoInits flag.
+      // We override this for Product so that cases classes can be pure.
+      // A full solution requires that we compile Product with Scala 3 in the future.
+      if (owner == defn.ScalaPackageClass && (name eq tpnme.Product))
         denot.setFlag(NoInits)
 
       denot.setPrivateWithin(privateWithin)
@@ -574,6 +582,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case denot: ClassDenotation if !isRefinementClass(denot.symbol) =>
             val selfInfo = if (atEnd) NoType else readTypeRef()
             setClassInfo(denot, tp, fromScala2 = true, selfInfo)
+            NamerOps.addConstructorProxies(denot.classSymbol)
           case denot =>
             val tp1 = translateTempPoly(tp)
             denot.info =
@@ -599,7 +608,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       }
       atReadPos(startCoord(denot).toIndex,
           () => withMode(Mode.Scala2Unpickling) {
-            atPhaseNoLater(picklerPhase) {
+            atPhaseBeforeTransforms {
               parseToCompletion(denot)
             }
           })

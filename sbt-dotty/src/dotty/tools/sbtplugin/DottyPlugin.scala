@@ -8,10 +8,15 @@ import sbt.librarymanagement.{
   VersionNumber
 }
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.inc.classpath.ClassLoaderCache
 import xsbti.compile._
+import xsbti.AppConfiguration
 import java.net.URLClassLoader
 import java.util.Optional
+import java.util.{Enumeration, Collections}
+import java.net.URL
 import scala.util.Properties.isJavaAtLeast
+
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -19,7 +24,7 @@ object DottyPlugin extends AutoPlugin {
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
     val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
-    val scala3docOptions = settingKey[Seq[String]]("Options for Scala3doc")
+    val tastyFiles = taskKey[Seq[File]]("List all testy files")
 
     // NOTE:
     // - this is a def to support `scalaVersion := dottyLatestNightlyBuild`
@@ -136,15 +141,18 @@ object DottyPlugin extends AutoPlugin {
   override def requires: Plugins = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  /** Patches the IncOptions so that .tasty and .hasTasty files are pruned as needed.
+  /** Patches the IncOptions so that .tasty files are pruned as needed.
    *
    *  This code is adapted from `scalaJSPatchIncOptions` in Scala.js, which needs
-   *  to do the exact same thing but for classfiles.
+   *  to do the exact same thing but for .sjsir files.
    *
    *  This complicated logic patches the ClassfileManager factory of the given
-   *  IncOptions with one that is aware of .tasty and .hasTasty files emitted by the Dotty
+   *  IncOptions with one that is aware of .tasty files emitted by the Dotty
    *  compiler. This makes sure that, when a .class file must be deleted, the
-   *  corresponding .tasty or .hasTasty file is also deleted.
+   *  corresponding .tasty file is also deleted.
+   *
+   *  To support older versions of dotty, this also takes care of .hasTasty
+   *  files, although they are not used anymore.
    */
   def dottyPatchIncOptions(incOptions: IncOptions): IncOptions = {
     val tastyFileManager = new TastyFileManager
@@ -166,7 +174,7 @@ object DottyPlugin extends AutoPlugin {
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
     onLoad in Global := onLoad.in(Global).value.andThen { state =>
 
-      val requiredVersion = ">=1.3.6"
+      val requiredVersion = ">=1.4.4"
 
       val sbtV = sbtVersion.value
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
@@ -246,6 +254,10 @@ object DottyPlugin extends AutoPlugin {
           None: Option[File]
         }
       }.value,
+
+      // Prevent the consoleProject task from using the Scala 3 compiler bridge
+      // The consoleProject must load the Scala 2.12 instance and the sbt classpath
+      consoleProject / scalaCompilerBridgeBinaryJar := None,
 
       // Needed for RCs publishing
       scalaBinaryVersion := {
@@ -359,17 +371,9 @@ object DottyPlugin extends AutoPlugin {
 
       // Configuration for the doctool
       resolvers ++= (if(!useScala3doc.value) Nil else Seq(Resolver.jcenterRepo)),
-      useScala3doc := false,
-      scala3docOptions := Nil,
-      Compile / doc / scalacOptions := {
-        // We are passing scala3doc argument list as single argument to scala instance starting with magic prefix "--+DOC+"
-        val s3dOpts = scala3docOptions.value.map("--+DOC+" + _)
-        val s3cOpts = (Compile / doc / scalacOptions).value
-        if (isDotty.value && useScala3doc.value) {
-           s3dOpts ++ s3cOpts
-        } else {
-          s3cOpts
-        }
+      useScala3doc := {
+        val v = scalaVersion.value
+        v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
       },
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
@@ -443,18 +447,18 @@ object DottyPlugin extends AutoPlugin {
   }
 
   private val docSettings = inTask(doc)(Seq(
-    sources := Def.taskDyn {
-      val old = sources.value
-
-      if (isDotty.value) Def.task {
-        val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
-        val tastyFiles = (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
-        old ++ tastyFiles
-      } else Def.task {
-        old
-      }
+    tastyFiles := {
+      val sources = compile.value // Ensure that everything is compiled, so TASTy is available.
+      // sbt is too smart and do not start doc task if there are no *.scala files defined
+      file("___fake___.scala") +:
+        (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
+    },
+    sources := Def.taskDyn[Seq[File]] {
+      val originalSources = sources.value
+      if (isDotty.value && useScala3doc.value && originalSources.nonEmpty)
+        Def.task { tastyFiles.value }
+      else Def.task { originalSources }
     }.value,
-
     scalacOptions ++= {
       if (isDotty.value) {
         val projectName =
@@ -534,15 +538,34 @@ object DottyPlugin extends AutoPlugin {
       scalaLibraryJar,
       dottyLibraryJar,
       compilerJar,
-      allJars
+      allJars,
+      appConfiguration.value
     )
   }
 
   // Adapted from private mkScalaInstance in sbt
   def makeScalaInstance(
-    state: State, dottyVersion: String, scalaLibrary: File, dottyLibrary: File, compiler: File, all: Seq[File]
+    state: State, dottyVersion: String, scalaLibrary: File, dottyLibrary: File, compiler: File, all: Seq[File], appConfiguration: AppConfiguration
   ): ScalaInstance = {
-    val libraryLoader = state.classLoaderCache(List(dottyLibrary, scalaLibrary))
+    /**
+      * The compiler bridge must load the xsbti classes from the sbt
+      * classloader, and similarly the Scala repl must load the sbt provided
+      * jline terminal. To do so we add the `appConfiguration` loader in
+      * the parent hierarchy of the scala 3 instance loader.
+      *
+      * The [[TopClassLoader]] ensures that the xsbti and jline classes
+      * only are loaded from the sbt loader. That is necessary because
+      * the sbt class loader contains the Scala 2.12 library and compiler
+      * bridge.
+      */
+    val topLoader = new TopClassLoader(appConfiguration.provider.loader)
+
+    val libraryJars = Array(dottyLibrary, scalaLibrary)
+    val libraryLoader = state.classLoaderCache.cachedCustomClassloader(
+      libraryJars.toList,
+      () => new URLClassLoader(libraryJars.map(_.toURI.toURL), topLoader)
+    )
+
     class DottyLoader
         extends URLClassLoader(all.map(_.toURI.toURL).toArray, libraryLoader)
     val fullLoader = state.classLoaderCache.cachedCustomClassloader(
@@ -553,10 +576,53 @@ object DottyPlugin extends AutoPlugin {
       dottyVersion,
       fullLoader,
       libraryLoader,
-      Array(dottyLibrary, scalaLibrary),
+      libraryJars,
       compiler,
       all.toArray,
       None)
+  }
+}
 
+/**
+ * The parent classloader of the Scala compiler.
+ *
+ * A TopClassLoader is constructed from the sbt classloader.
+ *
+ * To understand why a custom parent classloader is needed for the compiler,
+ * let us describe some alternatives that wouldn't work.
+ *
+ * - `new URLClassLoader(urls)`:
+ *   The compiler contains sbt phases that callback to sbt using the `xsbti.*`
+ *   interfaces. If `urls` does not contain the sbt interfaces we'll get a
+ *   `ClassNotFoundException` in the compiler when we try to use them, if
+ *   `urls` does contain the interfaces we'll get a `ClassCastException` or a
+ *   `LinkageError` because if the same class is loaded by two different
+ *   classloaders, they are considered distinct by the JVM.
+ *
+ * - `new URLClassLoader(urls, sbtLoader)`:
+ *    Because of the JVM delegation model, this means that we will only load
+ *    a class from `urls` if it's not present in the parent `sbtLoader`, but
+ *    sbt uses its own version of the scala compiler and scala library which
+ *    is not the one we need to run the compiler.
+ *
+ * Our solution is to implement an URLClassLoader whose parent is
+ * `new TopClassLoader(sbtLoader)`. We override `loadClass` to load the
+ * `xsbti.*` interfaces from `sbtLoader`.
+ *
+ * The parent loader of the TopClassLoader is set to `null` so that the JDK
+ * classes and only the JDK classes are loade from it.
+ */
+private class TopClassLoader(sbtLoader: ClassLoader) extends ClassLoader(null) {
+  // We can't use the loadClass overload with two arguments because it's
+  // protected, but we can do the same by hand (the classloader instance
+  // from which we call resolveClass does not matter).
+  // The one argument overload of loadClass delegates to this one.
+  override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+    if (name.startsWith("xsbti.") || name.startsWith("org.jline.")) {
+      val c = sbtLoader.loadClass(name)
+      if (resolve) resolveClass(c)
+      c
+    }
+    else super.loadClass(name, resolve)
   }
 }

@@ -245,9 +245,11 @@ object ExplicitOuter {
   private def hasOuter(cls: ClassSymbol)(using Context): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
-  /** Class constructor takes an outer argument. Can be called only after phase ExplicitOuter. */
-  def hasOuterParam(cls: ClassSymbol)(using Context): Boolean =
-    !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
+  /** Class constructor needs an outer argument. Can be called only after phase ExplicitOuter. */
+  def needsOuterParam(cls: ClassSymbol)(using Context): Boolean =
+    !cls.is(Trait) && needsOuterIfReferenced(cls) && (
+      cls.is(JavaDefined) || // java inner class doesn't has outer accessor
+      outerAccessor(cls).exists)
 
   /** Tree references an outer class of `cls` which is not a static owner.
    */
@@ -353,11 +355,11 @@ object ExplicitOuter {
    */
   class OuterOps(val ictx: Context) extends AnyVal {
     /** The context of all operations of this class */
-    given Context = ictx
+    given [Dummy]: Context = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
-      if (hasOuterParam(cls)) {
+      if (needsOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp
         mt.derivedLambdaType(
           nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
@@ -378,7 +380,7 @@ object ExplicitOuter {
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
             outerArg(r) // cast was inserted, skip
         }
-        if (hasOuterParam(cls))
+        if (needsOuterParam(cls))
           methPart(fun) match {
             case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
@@ -390,7 +392,7 @@ object ExplicitOuter {
      *  argument, the singleton list with the argument, otherwise Nil.
      */
     def argsForNew(cls: ClassSymbol, tpe: Type): List[Tree] =
-      if (hasOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
+      if (needsOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
       else Nil
 
     /** A path of outer accessors starting from node `start`. `start` defaults to the

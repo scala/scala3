@@ -434,7 +434,7 @@ object Checking {
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
-        fail(i"modifier `${flag.flagsString}` is not allowed for this definition")
+        fail(ModifierNotAllowedForDefinition(Erased))
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
@@ -443,12 +443,17 @@ object Checking {
       fail(ParamsNoInline(sym.owner))
     if sym.isInlineMethod && !sym.is(Deferred) && sym.allOverriddenSymbols.nonEmpty then
       checkInlineOverrideParameters(sym)
-    if (sym.isOneOf(GivenOrImplicit)) {
+    if (sym.is(Implicit)) {
       if (sym.owner.is(Package))
         fail(TopLevelCantBeImplicit(sym))
       if (sym.isType)
         fail(TypesAndTraitsCantBeImplicit())
     }
+    if sym.is(Transparent) then
+      if sym.isType then
+        if !sym.is(Trait) then fail(em"`transparent` can only be used for traits")
+      else
+        if !sym.isInlineMethod then fail(em"`transparent` can only be used for inline methods")
     if (!sym.isClass && sym.is(Abstract))
       fail(OnlyClassesCanBeAbstract(sym))
         // note: this is not covered by the next test since terms can be abstract (which is a dual-mode flag)
@@ -495,7 +500,7 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy))
+      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy, butNot = Given))
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -605,8 +610,8 @@ object Checking {
         report.error(ValueClassesMayNotBeAbstract(clazz), clazz.srcPos)
       if (!clazz.isStatic)
         report.error(ValueClassesMayNotBeContainted(clazz), clazz.srcPos)
-      if (isCyclic(clazz.asClass))
-        report.error(ValueClassesMayNotWrapItself(clazz), clazz.srcPos)
+      if (isDerivedValueClass(underlyingOfValueClass(clazz.asClass).classSymbol))
+        report.error(ValueClassesMayNotWrapAnotherValueClass(clazz), clazz.srcPos)
       else {
         val clParamAccessors = clazz.asClass.paramAccessors.filter { param =>
           param.isTerm && !param.is(Flags.Accessor)
@@ -643,6 +648,11 @@ object Checking {
           else "Cannot override non-inline parameter with an inline parameter",
           p1.srcPos)
 
+  def checkConversionsSpecific(to: Type, pos: SrcPos)(using Context): Unit =
+    if to.isRef(defn.AnyValClass, skipRefined = false)
+       || to.isRef(defn.ObjectClass, skipRefined = false)
+    then
+      report.error(em"the result of an implicit conversion must be more specific than $to", pos)
 }
 
 trait Checking {
@@ -666,22 +676,24 @@ trait Checking {
       report.error(ex"$cls cannot be instantiated since it${rstatus.msg}", pos)
   }
 
-  /** Check that pattern `pat` is irrefutable for scrutinee tye `pt`.
-   *  This means `pat` is either marked @unchecked or `pt` conforms to the
+  /** Check that pattern `pat` is irrefutable for scrutinee type `sel.tpe`.
+   *  This means `sel` is either marked @unchecked or `sel.tpe` conforms to the
    *  pattern's type. If pattern is an UnApply, do the check recursively.
    */
-  def checkIrrefutable(pat: Tree, pt: Type, isPatDef: Boolean)(using Context): Boolean = {
+  def checkIrrefutable(sel: Tree, pat: Tree, isPatDef: Boolean)(using Context): Boolean = {
+    val pt = sel.tpe
 
     def fail(pat: Tree, pt: Type): Boolean = {
       var reportedPt = pt.dropAnnot(defn.UncheckedAnnot)
       if (!pat.tpe.isSingleton) reportedPt = reportedPt.widen
       val problem = if (pat.tpe <:< reportedPt) "is more specialized than" else "does not match"
-      val fix = if (isPatDef) "`: @unchecked` after" else "`case ` before"
-      report.errorOrMigrationWarning(
+      val fix = if (isPatDef) "adding `: @unchecked` after the expression" else "writing `case ` before the full pattern"
+      val pos = if (isPatDef) sel.srcPos else pat.srcPos
+      report.warning(
         ex"""pattern's type ${pat.tpe} $problem the right hand side expression's type $reportedPt
             |
-            |If the narrowing is intentional, this can be communicated by writing $fix the full pattern.${err.rewriteNotice}""",
-        pat.srcPos)
+            |If the narrowing is intentional, this can be communicated by $fix.${err.rewriteNotice}""",
+          pos)
       false
     }
 
@@ -689,7 +701,7 @@ trait Checking {
 
     def recur(pat: Tree, pt: Type): Boolean =
       !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
-      pat.tpe.widen.hasAnnotation(defn.UncheckedAnnot) || {
+      pt.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {
           case Bind(_, pat1) =>
@@ -714,11 +726,53 @@ trait Checking {
     recur(pat, pt)
   }
 
-  /** Check that `path` is a legal prefix for an import or export clause */
-  def checkLegalImportPath(path: Tree)(using Context): Unit = {
-    checkStable(path.tpe, path.srcPos, "import prefix")
+  private def checkLegalImportOrExportPath(path: Tree, kind: String)(using Context): Unit = {
+    checkStable(path.tpe, path.srcPos, kind)
     if (!ctx.isAfterTyper) Checking.checkRealizable(path.tpe, path.srcPos)
+    if !isIdempotentExpr(path) then
+      report.error(em"import prefix is not a pure expression", path.srcPos)
   }
+
+  /** Check that `path` is a legal prefix for an import clause */
+  def checkLegalImportPath(path: Tree)(using Context): Unit =
+    checkLegalImportOrExportPath(path, "import prefix")
+    languageImport(path) match
+      case Some(prefix) =>
+        val required =
+          if prefix == nme.experimental then defn.LanguageExperimentalModule
+          else defn.LanguageModule
+        if path.symbol != required then
+          report.error(em"import looks like a language import, but refers to something else: ${path.symbol.showLocated}", path.srcPos)
+      case None =>
+        val foundClasses = path.tpe.classSymbols
+        if foundClasses.contains(defn.LanguageModule.moduleClass)
+           || foundClasses.contains(defn.LanguageExperimentalModule.moduleClass)
+        then
+          report.error(em"no aliases can be used to refer to a language import", path.srcPos)
+
+  /** Check that `path` is a legal prefix for an export clause */
+  def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    checkLegalImportOrExportPath(path, "export prefix")
+    if
+      selectors.exists(_.isWildcard)
+      && path.tpe.classSymbol.is(PackageClass)
+    then
+      // we restrict wildcard export from package as incremental compilation does not yet
+      // register a dependency on "all members of a package" - see https://github.com/sbt/zinc/issues/226
+      report.error(
+        em"Implementation restriction: ${path.tpe.classSymbol} is not a valid prefix " +
+          "for a wildcard export, as it is a package.", path.srcPos)
+
+  /** Check that module `sym` does not clash with a class of the same name
+   *  that is concurrently compiled in another source file.
+   */
+  def checkNoModuleClash(sym: Symbol)(using Context): Unit =
+    if sym.effectiveOwner.is(Package)
+       && sym.owner.info.member(sym.name.moduleClassName).symbol.isAbsent()
+    then
+      val conflicting = sym.owner.info.member(sym.name.toTypeName).symbol
+      if conflicting.exists then
+        report.error(AlreadyDefined(sym.name, sym.owner, conflicting), sym.srcPos)
 
  /**  Check that `tp` is a class type.
   *   Also, if `traitReq` is true, check that `tp` is a trait.
@@ -737,7 +791,7 @@ trait Checking {
         defn.ObjectType
     }
 
-  /** If `sym` is an implicit conversion, check that implicit conversions are enabled.
+  /** If `sym` is an old-style implicit conversion, check that implicit conversions are enabled.
    *  @pre  sym.is(GivenOrImplicit)
    */
   def checkImplicitConversionDefOK(sym: Symbol)(using Context): Unit = {
@@ -750,10 +804,7 @@ trait Checking {
 
     sym.info.stripPoly match {
       case mt @ MethodType(_ :: Nil)
-      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's a conversion
-        check()
-      case AppliedType(tycon, _)
-      if tycon.derivesFrom(defn.ConversionClass) && !sym.is(Synthetic) =>
+      if !mt.isImplicitMethod && !sym.is(Synthetic) => // it's an old-styleconversion
         check()
       case _ =>
     }
@@ -781,7 +832,7 @@ trait Checking {
   }
 
   /** Check that `tree` is a valid infix operation. That is, if the
-   *  operator is alphanumeric, it must be declared `@infix`.
+   *  operator is alphanumeric, it must be declared `infix`.
    */
   def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = {
     tree.op match {
@@ -802,7 +853,7 @@ trait Checking {
               else
                 ("method", (n: Name) => s"method syntax .$n(...)")
             report.deprecationWarning(
-              i"""Alphanumeric $kind $name is not declared @infix; it should not be used as infix operator.
+              i"""Alphanumeric $kind $name is not declared `infix`; it should not be used as infix operator.
                  |The operation can be rewritten automatically to `$name` under -deprecation -rewrite.
                  |Or rewrite to ${alternative(name)} manually.""",
               tree.op.srcPos)
@@ -1146,7 +1197,7 @@ trait Checking {
    */
   def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = {
 
-    def checkCaseOrDefault(stat: Tree, caseCtx: Context) = {
+    def checkEnumCaseOrDefault(stat: Tree, caseCtx: Context) = {
 
       def check(tree: Tree) = {
         // allow access to `sym` if a typedIdent just outside the enclosing enum
@@ -1159,11 +1210,10 @@ trait Checking {
         checkRefsLegal(tree, cdef.symbol, allowAccess, "enum case")
       }
 
-      if (stat.symbol.is(Case))
+      if (stat.symbol.isAllOf(EnumCase))
         stat match {
-          case TypeDef(_, Template(DefDef(_, tparams, vparamss, _, _), parents, _, _)) =>
-            tparams.foreach(check)
-            vparamss.foreach(_.foreach(check))
+          case TypeDef(_, Template(DefDef(_, paramss, _, _), parents, _, _)) =>
+            paramss.foreach(_.foreach(check))
             parents.foreach(check)
           case vdef: ValDef =>
             vdef.rhs match {
@@ -1174,11 +1224,11 @@ trait Checking {
             }
           case _ =>
         }
-      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.is(Case))
+      else if (stat.symbol.is(Module) && stat.symbol.linkedClass.isAllOf(EnumCase))
         stat match {
           case TypeDef(_, impl: Template) =>
             for ((defaultGetter @
-                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _, _)) <- impl.body)
+                  DefDef(DefaultGetterName(nme.CONSTRUCTOR, _), _, _, _)) <- impl.body)
               check(defaultGetter.rhs)
           case _ =>
         }
@@ -1186,16 +1236,16 @@ trait Checking {
 
     cdef.rhs match {
       case impl: Template =>
-        def isCase(stat: Tree) = stat match {
-          case _: ValDef | _: TypeDef => stat.symbol.is(Case)
+        def isEnumCase(stat: Tree) = stat match {
+          case _: ValDef | _: TypeDef => stat.symbol.isAllOf(EnumCase)
           case _ => false
         }
         val cases =
-          for (stat <- impl.body if isCase(stat))
+          for (stat <- impl.body if isEnumCase(stat))
           yield untpd.ImportSelector(untpd.Ident(stat.symbol.name.toTermName))
         val caseImport: Import = Import(ref(cdef.symbol), cases)
         val caseCtx = enumCtx.importContext(caseImport, caseImport.symbol)
-        for (stat <- impl.body) checkCaseOrDefault(stat, caseCtx)
+        for (stat <- impl.body) checkEnumCaseOrDefault(stat, caseCtx)
       case _ =>
     }
   }
@@ -1225,6 +1275,13 @@ trait Checking {
         if preExisting.exists || seen.contains(tname) then
           report.error(em"@targetName annotation ${'"'}$tname${'"'} clashes with other definition in same scope", stat.srcPos)
         if stat.isDef then seen += tname
+
+  def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
+    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`3.1-migration`) then
+      val kind = if pattern then "pattern selector" else "value"
+      report.warning(
+        em"""${kind} should be an instance of Matchable,
+            |but it has unmatchable type $tp instead""", pos)
 }
 
 trait ReChecking extends Checking {
@@ -1235,6 +1292,8 @@ trait ReChecking extends Checking {
   override def checkFullyAppliedType(tree: Tree)(using Context): Unit = ()
   override def checkEnumCaseRefsLegal(cdef: TypeDef, enumCtx: Context)(using Context): Unit = ()
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
+  override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
+  override def checkNoModuleClash(sym: Symbol)(using Context) = ()
 }
 
 trait NoChecking extends ReChecking {

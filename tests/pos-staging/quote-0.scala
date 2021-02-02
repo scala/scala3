@@ -16,7 +16,7 @@ object Macros {
   inline def power(inline n: Int, x: Double) = ${ powerCode('n, 'x) }
 
   def powerCode(n: Expr[Int], x: Expr[Double]) (using Quotes): Expr[Double] =
-    powerCode(n.unliftOrError, x)
+    powerCode(n.valueOrError, x)
 
   def powerCode(n: Int, x: Expr[Double])(using Quotes): Expr[Double] =
     if (n == 0) '{1.0}
@@ -27,7 +27,7 @@ object Macros {
 
 class Test {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   run {
     val program = '{

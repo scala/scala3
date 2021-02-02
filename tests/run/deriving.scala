@@ -4,7 +4,7 @@ object T
 case class A(x: Int, y: Int) extends T
 case object B extends T
 
-sealed trait U
+sealed trait U // U MUST NOT have a companion here!
 case class C() extends U
 
 object Test extends App {

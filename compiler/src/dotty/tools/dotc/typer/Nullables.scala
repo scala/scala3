@@ -339,7 +339,7 @@ object Nullables:
       }.traverse(tree)
   end extension
 
-  extension (tree: Assign):
+  extension (tree: Assign)
     def computeAssignNullable()(using Context): tree.type = tree.lhs match
       case TrackedRef(ref) =>
         val rhstp = tree.rhs.typeOpt

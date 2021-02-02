@@ -25,7 +25,7 @@ package object tools {
     throw new UnsupportedOperationException(methodName)
 
   /** Forward-ported from the explicit-nulls branch. */
-  extension [T](x: T | Null):
+  extension [T](x: T | Null)
 
     /** Assert `x` is non null and strip `Null` from type */
     inline def nn: T =
@@ -50,4 +50,7 @@ package object tools {
   type WrappedResult[T] = resultWrapper.WrappedResult[T]
   def WrappedResult[T](x: T) = resultWrapper.wrap(x)
   def result[T](using x: WrappedResult[T]): T = resultWrapper.unwrap(x)
+
+  def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
+    throw new MatchError(x)
 }

@@ -8,7 +8,7 @@ object Macros {
     case object HNil extends HList
 
     private def sizeImpl(e: Expr[HList], n:Int)(using qctx:Quotes): Expr[Int] = {
-      import qctx.reflect._
+      import quotes.reflect._
       e match {
         case '{HCons(_,$t)} => // error if run with fatal warinings in BootstrappedOnlyCompilationTests
           sizeImpl(t,n+1)

@@ -1,2 +1,2 @@
 @main
-def Test = List(42) match { case List(xs as (ys: _*)) => xs }  // error
+def Test = List(42) match { case List(xs @ (ys: _*)) => xs }  // error

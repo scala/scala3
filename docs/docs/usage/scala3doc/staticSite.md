@@ -1,5 +1,5 @@
 ---
-title: Static docucmentation
+title: Static documentation
 ---
 
 # {{ page.title}}

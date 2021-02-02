@@ -18,6 +18,6 @@ object Test extends App {
   }
   check(classOf[C], "foo - @org.junit.Test()")
   // scala/scala-dev#213, scala/scala#5570: `foo$` should not have the @Test annotation
-  check(classOf[T], "$init$ - ;$init$ - ;foo - @org.junit.Test();foo$ - ")
+  check(classOf[T], "$init$ - ;foo - @org.junit.Test();foo$ - ")
   check(classOf[U], "bar - @org.junit.Test();bar$ - ")
 }

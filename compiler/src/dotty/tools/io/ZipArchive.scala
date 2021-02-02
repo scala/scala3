@@ -31,7 +31,7 @@ object ZipArchive {
    * @return  A ZipArchive if `file` is a readable zip file, otherwise null.
    */
   def fromFile(file: File): FileZipArchive = fromPath(file.jpath)
-  def fromPath(jpath: JPath): FileZipArchive = new FileZipArchive(jpath)
+  def fromPath(jpath: JPath): FileZipArchive = new FileZipArchive(jpath, release = None)
 
   def fromManifestURL(url: URL): AbstractFile = new ManifestResources(url)
 
@@ -52,7 +52,7 @@ object ZipArchive {
 }
 import ZipArchive._
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
+abstract class ZipArchive(override val jpath: JPath, release: Option[String]) extends AbstractFile with Equals {
   self =>
 
   override def underlyingSource: Option[ZipArchive] = Some(this)
@@ -112,9 +112,15 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
   def close(): Unit
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
+final class FileZipArchive(jpath: JPath, release: Option[String]) extends ZipArchive(jpath, release) {
   private def openZipFile(): ZipFile = try {
-    new ZipFile(file)
+    release match {
+      case Some(r) if file.getName.endsWith(".jar") =>
+        val releaseVersion = JDK9Reflectors.runtimeVersionParse(r)
+        JDK9Reflectors.newJarFile(file, true, ZipFile.OPEN_READ, releaseVersion)
+      case _ =>
+        new ZipFile(file)
+    }
   } catch {
     case ioe: IOException => throw new IOException("Error accessing " + file.getPath, ioe)
   }
@@ -128,7 +134,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     override def lastModified: Long = time // could be stale
     override def input: InputStream = {
       val zipFile  = openZipFile()
-      val entry    = zipFile.getEntry(name)
+      val entry = zipFile.getEntry(name) // with `-release`, returns the correct version under META-INF/versions
       val `delegate` = zipFile.getInputStream(entry)
       new FilterInputStream(`delegate`) {
         override def close(): Unit = { zipFile.close() }
@@ -160,20 +166,27 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
     try {
       while (entries.hasMoreElements) {
         val zipEntry = entries.nextElement
-        val dir = getDir(dirs, zipEntry)
-        if (!zipEntry.isDirectory) {
-          val f =
-            if (ZipArchive.closeZipFile)
-              new LazyEntry(
-                zipEntry.getName(),
-                zipEntry.getTime(),
-                zipEntry.getSize().toInt,
-                dir
-              )
-            else
-              new LeakyEntry(zipFile, zipEntry, dir)
+        if (!zipEntry.getName.startsWith("META-INF/versions/")) {
+          val zipEntryVersioned = if (release.isDefined) {
+            // JARFile will return the entry for the corresponding release-dependent version here under META-INF/versions
+            zipFile.getEntry(zipEntry.getName)
+          } else zipEntry
 
-          dir.entries(f.name) = f
+          if (!zipEntry.isDirectory) {
+            val dir = getDir(dirs, zipEntry)
+            val f =
+              if (ZipArchive.closeZipFile)
+                new LazyEntry(
+                  zipEntry.getName(),
+                  zipEntry.getTime(),
+                  zipEntry.getSize().toInt,
+                  dir
+                )
+              else
+                new LeakyEntry(zipFile, zipEntryVersioned, dir)
+
+            dir.entries(f.name) = f
+          }
         }
       }
     } finally {
@@ -205,7 +218,7 @@ final class FileZipArchive(jpath: JPath) extends ZipArchive(jpath) {
   }
 }
 
-final class ManifestResources(val url: URL) extends ZipArchive(null) {
+final class ManifestResources(val url: URL) extends ZipArchive(null, None) {
   def iterator(): Iterator[AbstractFile] = {
     val root     = new DirEntry("/", null)
     val dirs     = mutable.HashMap[String, DirEntry]("/" -> root)

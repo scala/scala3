@@ -8,8 +8,8 @@ private def stringRewriter(e: Expr[Any])(using Quotes): Expr[Any] =
 
 private object StringRewriter extends ExprMap {
 
-  def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = e match
-    case Const(s: String) =>
+  def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = e match
+    case '{ ${Expr(s)}: String } =>
       Expr(s.reverse) match
         case '{ $x: T } => x
         case _ => e // e had a singlton String type

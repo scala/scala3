@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Changes in Implicit Resolution"
 ---
-This page describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Dotty.
+This section describes changes to the implicit resolution that apply both to the new `given`s and to the old-style `implicit`s in Scala 3.
 Implicit resolution uses a new algorithm which caches implicit results
 more aggressively for performance. There are also some changes that
 affect implicits on the language level.
@@ -11,25 +11,25 @@ affect implicits on the language level.
 must be explicitly declared. Excepted are only values in local blocks
 where the type may still be inferred:
 ```scala
-   class C {
+  class C {
 
-   val ctx: Context = ...        // ok
+     val ctx: Context = ...        // ok
 
-   /*!*/ implicit val x = ...    // error: type must be given explicitly
+     /*!*/ implicit val x = ...    // error: type must be given explicitly
 
-   /*!*/ implicit def y = ...    // error: type must be given explicitly
-
-   val y = {
-      implicit val ctx = this.ctx // ok
-      ...
-   }
+     /*!*/ implicit def y = ...    // error: type must be given explicitly
+  }
+  val y = {
+     implicit val ctx = this.ctx // ok
+     ...
+  }
 ```
-**2.** Nesting is now taken into account for selecting an implicit.Consider for instance the following scenario:
+**2.** Nesting is now taken into account for selecting an implicit. Consider for instance the following scenario:
 ```scala
   def f(implicit i: C) = {
-    def g(implicit j: C) = {
-      implicitly[C]
-    }
+     def g(implicit j: C) = {
+        implicitly[C]
+     }
   }
 ```
 This will now resolve the `implicitly` call to `j`, because `j` is nested
@@ -41,12 +41,12 @@ no longer applies.
 **3.** Package prefixes no longer contribute to the implicit search scope of a type. Example:
 ```scala
   package p
-  given a as A
 
-  object o {
-    given b as B
-    type C
-  }
+  given a: A = A()
+
+  object o:
+     given b: B = B()
+     type C
 ```
 Both `a` and `b` are visible as implicits at the point of the definition
 of `type C`. However, a reference to `p.o.C` outside of package `p` will
@@ -55,7 +55,7 @@ have only `b` in its implicit search scope but not `a`.
 In more detail, here are the rules for what constitutes the implicit scope of
 a type:
 
-**Definition:** A reference is an _anchor_ if it refers to an object, a class, a trait, an abstract type, an opaque type alias, or a match type alias. References to packages and package objects are anchors only under -source:3.0-migration.
+**Definition:** A reference is an _anchor_ if it refers to an object, a class, a trait, an abstract type, an opaque type alias, or a match type alias. References to packages and package objects are anchors only under `-source:3.0-migration`.
 
 **Definition:** The _anchors_ of a type _T_ is a set of references defined as follows:
 
@@ -114,7 +114,7 @@ the implicit search for `Q` fails.
 **5.** The treatment of divergence errors has also changed. A divergent implicit is treated as a normal failure, after which alternatives are still tried. This also makes sense: Encountering a divergent implicit means that we assume that no finite solution can be found on the corresponding path, but another path can still be tried. By contrast,
 most (but not all) divergence errors in Scala 2 would terminate the implicit search as a whole.
 
-**6.** Scala-2 gives a lower level of priority to implicit conversions with call-by-name parameters relative to implicit conversions with call-by-value parameters. Dotty drops this distinction. So the following code snippet would be ambiguous in Dotty:
+**6.** Scala 2 gives a lower level of priority to implicit conversions with call-by-name parameters relative to implicit conversions with call-by-value parameters. Scala 3 drops this distinction. So the following code snippet would be ambiguous in Scala 3:
 
 ```scala
   implicit def conv1(x: Int): A = new A(x)
@@ -122,7 +122,7 @@ most (but not all) divergence errors in Scala 2 would terminate the implicit sea
   def buzz(y: A) = ???
   buzz(1)   // error: ambiguous
 ```
-**7.** The rule for picking a _most specific_ alternative among a set of overloaded or implicit alternatives is refined to take context parameters into account. All else being equal, an alternative that takes some context parameters is taken to be less specific than an alternative that takes none. If both alternatives take context parameters, we try to choose between them as if they were methods with regular parameters. The following paragraph in the SLS is affected by this change:
+**7.** The rule for picking a _most specific_ alternative among a set of overloaded or implicit alternatives is refined to take context parameters into account. All else being equal, an alternative that takes some context parameters is taken to be less specific than an alternative that takes none. If both alternatives take context parameters, we try to choose between them as if they were methods with regular parameters. The following paragraph in the [SLS §6.26.3](https://scala-lang.org/files/archive/spec/2.13/06-expressions.html#overloading-resolution) is affected by this change:
 
 _Original version:_
 

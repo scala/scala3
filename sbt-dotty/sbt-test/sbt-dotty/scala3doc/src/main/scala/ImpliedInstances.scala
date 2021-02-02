@@ -20,10 +20,10 @@ object ImpliedInstances {
       override def parse(s: String): Try[A] = f(s)
     }
 
-    given stringParser as StringParser[String] = baseParser(Success(_))
-    given intParser as StringParser[Int] = baseParser(s ⇒ Try(s.toInt))
+    given stringParser: StringParser[String] = baseParser(Success(_))
+    given intParser: StringParser[Int] = baseParser(s ⇒ Try(s.toInt))
 
-    given optionParser[A](using parser: => StringParser[A]) as StringParser[Option[A]] = new StringParser[Option[A]] {
+    given optionParser[A](using parser: => StringParser[A]): StringParser[Option[A]] = new StringParser[Option[A]] {
       override def parse(s: String): Try[Option[A]] = s match {
         case "" ⇒ Success(None) // implicit parser not used.
         case str ⇒ parser.parse(str).map(x ⇒ Some(x)) // implicit parser is evaluated at here

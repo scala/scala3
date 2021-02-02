@@ -4,10 +4,10 @@ inline def showParamSyms(inline x: Any): String =
   ${ showParamSymsExpr('x) }
 
 def showParamSymsExpr(using Quotes)(x: Expr[Any]): Expr[String] =
-  import qctx.reflect._
+  import quotes.reflect._
   val '{ $y: Any } = x // Drop Inlined not to access the symbol
-  val sym = Term.of(y).symbol
+  val sym = y.asTerm.symbol
   Expr(
-    s"""sym: ${sym.show}
-       |paramSymss: ${sym.paramSymss.map(_.map(_.show))}
+    s"""sym: ${sym.fullName}
+       |paramSymss: ${sym.paramSymss.map(_.map(_.fullName))}
        |""".stripMargin)

@@ -266,10 +266,7 @@ import transform.SymUtils._
       val postScript = addenda.find(!_.isEmpty) match
         case Some(p) => p
         case None =>
-          if expected.isAny
-             || expected.isAnyRef
-             || expected.isRef(defn.AnyValClass)
-             || found.isBottomType
+          if expected.isTopType || found.isBottomType
           then ""
           else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
@@ -406,8 +403,8 @@ import transform.SymUtils._
     def explain = {
       val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
       val exampleArgs =
-        if(constr0.vparamss.isEmpty) "..."
-        else constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
+        if(constr0.termParamss.isEmpty) "..."
+        else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
       def defHasBody[T] = impl.body.exists(!_.isEmpty)
       val exampleBody = if (defHasBody) "{\n ...\n }" else ""
       em"""|There may not be any method, member or object in scope with the same name as
@@ -1244,6 +1241,25 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
+  class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
+  extends TypeMsg(SkolemInInferredID):
+    private def argStr =
+      if argument.isEmpty then ""
+      else i" from argument of type ${argument.tpe.widen}"
+    def msg =
+      em"""Failure to generate given instance for type $pt$argStr)
+          |
+          |I found: $tree
+          |But the part corresponding to `<skolem>` is not a reference that can be generated.
+          |This might be because resolution yielded as given instance a function that is not
+          |known to be total and side-effect free."""
+    def explain =
+      em"""The part of given resolution that corresponds to `<skolem>` produced a term that
+          |is not a stable reference. Therefore a given instance could not be generated.
+          |
+          |To trouble-shoot the problem, try to supply an explicit expression instead of
+          |relying on implicit search at this point."""
+
   class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
   extends ReferenceMsg(SuperQualMustBeParentID) {
     def msg = em"""|$qual does not name a parent of $cls"""
@@ -1370,7 +1386,11 @@ import transform.SymUtils._
 
   class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
-    def msg = em"$tpe does not take type parameters"
+    private def fboundsAddendum =
+      if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
+        "\n(Note that F-bounds of type parameters may not be type lambdas)"
+      else ""
+    def msg = em"$tpe does not take type parameters$fboundsAddendum"
     def explain =
       val ps =
         if (params.size == 1) s"a type parameter ${params.head}"
@@ -1598,9 +1618,9 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class ValueClassesMayNotWrapItself(valueClass: Symbol)(using Context)
-    extends SyntaxMsg(ValueClassesMayNotWrapItselfID) {
-    def msg = """A value class may not wrap itself"""
+  class ValueClassesMayNotWrapAnotherValueClass(valueClass: Symbol)(using Context)
+    extends SyntaxMsg(ValueClassesMayNotWrapAnotherValueClassID) {
+    def msg = """A value class may not wrap another user-defined value class"""
     def explain = ""
   }
 
@@ -1762,7 +1782,7 @@ import transform.SymUtils._
           |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
   }
 
-  class MissingEmptyArgumentList(method: Symbol)(using Context)
+  class MissingEmptyArgumentList(method: String)(using Context)
     extends SyntaxMsg(MissingEmptyArgumentListID) {
     def msg = em"$method must be called with ${hl("()")} argument"
     def explain = {
@@ -1830,6 +1850,19 @@ import transform.SymUtils._
     def msg = em"Traits cannot redefine final $method from ${hl("class AnyRef")}."
     def explain = ""
   }
+
+  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
+    private def where: String =
+      if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
+        i" in ${conflicting.associatedFile}"
+      else if conflicting.owner == owner then ""
+      else i" in ${conflicting.owner}"
+    def msg =
+      if conflicting.isTerm != name.isTermName then
+        em"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        em"$name is already defined as $conflicting$where"
+    def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
     lazy val (where, or) =
@@ -1910,7 +1943,7 @@ import transform.SymUtils._
   }
 
   class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using Context) extends SyntaxMsg(StaticFieldsOnlyAllowedInObjectsID) {
-    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside an ${hl("object")}."
+    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside a static ${hl("object")}."
     def explain =
       em"${hl("@static")} members are only allowed inside objects."
   }
@@ -2403,7 +2436,7 @@ import transform.SymUtils._
     def explain =
       em"""|Extension method:
            |  `${mdef}`
-           |has type parameters `[${mdef.tparams.map(_.show).mkString(",")}]`, while the extension clause has
+           |has type parameters `[${mdef.leadingTypeParams.map(_.show).mkString(",")}]`, while the extension clause has
            |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
            |""".stripMargin
   }
@@ -2466,4 +2499,15 @@ import transform.SymUtils._
                    |The variable does not occur as a parameter in the scope of ${hl(owner)}.
                    |""".stripMargin
     def explain = ""
+  }
+
+  class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
+    extends SyntaxMsg(CaseClassInInlinedCodeID) {
+
+    def defKind = if tree.symbol.is(Module) then "object" else "class"
+    def msg = s"Case $defKind definitions are not allowed in inline methods or quoted code. Use a normal $defKind instead."
+    def explain =
+      em"""Case class/object definitions generate a considerable fooprint in code size.
+          |Inlining such definition would multiply this footprint for each call site.
+          |""".stripMargin
   }

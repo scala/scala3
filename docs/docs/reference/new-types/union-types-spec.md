@@ -15,11 +15,15 @@ lower precedence than `:` as used in typed patterns, this means that:
 ```scala
 case _: A | B => ...
 ```
+
 is still equivalent to:
+
 ```scala
 case (_: A) | B => ...
 ```
+
 and not to:
+
 ```scala
 case _: (A | B) => ...
 ```
@@ -29,24 +33,27 @@ case _: (A | B) => ...
 - `A` is always a subtype of `A | B` for all `A`, `B`.
 - If `A <: C` and `B <: C` then `A | B <: C`
 - Like `&`, `|` is commutative and associative:
+
   ```scala
   A | B =:= B | A
   A | (B | C) =:= (A | B) | C
   ```
+
 - `&` is distributive over `|`:
+
   ```scala
   A & (B | C) =:= A & B | A & C
   ```
 
-From these rules it follows that the _least upper bound_ (lub) of a set of types
+From these rules it follows that the _least upper bound_ (LUB) of a set of types
 is the union of these types. This replaces the
-[definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.12/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
+[definition of least upper bound in the Scala 2 specification](https://www.scala-lang.org/files/archive/spec/2.13/03-types.html#least-upper-bounds-and-greatest-lower-bounds).
 
 ## Motivation
 
 The primary reason for introducing union types in Scala is that they allow us to
-guarantee that for every set of types, we can always form a finite lub. This is
-both useful in practice (infinite lubs in Scala 2 were approximated in an ad-hoc
+guarantee that for every set of types, we can always form a finite LUB. This is
+both useful in practice (infinite LUBs in Scala 2 were approximated in an ad-hoc
 way, resulting in imprecise and sometimes incredibly long types) and in theory
 (the type system of Scala 3 is based on the
 [DOT calculus](https://infoscience.epfl.ch/record/227176/files/soundness_oopsla16.pdf),
@@ -89,12 +96,13 @@ treatment of singleton types which are also widened to their underlying type
 unless explicitly specified. The motivation is the same: inferring types
 which are "too precise" can lead to unintuitive typechecking issues later on.
 
-Note: Since this behavior limits the usability of union types, it might
+**Note:** Since this behavior limits the usability of union types, it might
 be changed in the future. For example by not widening unions that have been
 explicitly written down by the user and not inferred, or by not widening a type
-argument when the corresponding type parameter is covariant. See
-[#2330](https://github.com/lampepfl/dotty/pull/2330) and
-[#4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
+argument when the corresponding type parameter is covariant.
+
+See [PR #2330](https://github.com/lampepfl/dotty/pull/2330) and
+[Issue #4867](https://github.com/lampepfl/dotty/issues/4867) for further discussions.
 
 ### Example
 
@@ -117,7 +125,7 @@ The members of a union type are the members of its join.
 
 ### Example
 
-The following code does not typecheck, because `hello` is not a member of
+The following code does not typecheck, because method `hello` is not a member of
 `AnyRef` which is the join of `A | B`.
 
 ```scala
@@ -127,7 +135,8 @@ trait B { def hello: String }
 def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 ```
 
-On the otherhand, the following would be allowed
+On the other hand, the following would be allowed
+
 ```scala
 trait C { def hello: String }
 trait A extends C with D 
@@ -145,12 +154,13 @@ exhaustive if all parts of the union are covered.
 
 The erased type for `A | B` is the _erased least upper bound_ of the erased
 types of `A` and `B`. Quoting from the documentation of `TypeErasure#erasedLub`,
-the erased lub is computed as follows:
+the erased LUB is computed as follows:
 
-- if both argument are arrays of objects, an array of the erased lub of the element types
+- if both argument are arrays of objects, an array of the erased LUB of the element types
 - if both arguments are arrays of same primitives, an array of this primitive
-- if one argument is array of primitives and the other is array of objects, Object
-- if one argument is an array, Object
+- if one argument is array of primitives and the other is array of objects,
+  [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
 - otherwise a common superclass or trait S of the argument classes, with the
   following two properties:
   * S is minimal: no other common superclass or trait derives from S

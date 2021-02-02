@@ -24,6 +24,8 @@ import printing.XprintMode
 import parsing.Parsers.Parser
 import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
+import config.Feature
+import StdNames.nme
 
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
@@ -71,11 +73,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))
       .setScope(rootScope)
     rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
-    val start = bootstrap.fresh
+    var start = bootstrap.fresh
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
+    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
+      start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
     start.setRun(this)
   }
@@ -85,7 +89,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   private var myCtx = rootContext(using ictx)
 
   /** The context created for this run */
-  given runContext[Dummy_so_its_a_def] as Context = myCtx
+  given runContext[Dummy_so_its_a_def]: Context = myCtx
   assert(runContext.runId <= Periods.MaxPossibleRunId)
 
   private var myUnits: List[CompilationUnit] = _
@@ -124,16 +128,15 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
   /** Actions that need to be performed at the end of the current compilation run */
   private var finalizeActions = mutable.ListBuffer[() => Unit]()
 
-  def compile(fileNames: List[String]): Unit = try {
-    val sources = fileNames.map(runContext.getSource(_))
-    compileSources(sources)
-  }
-  catch {
-    case NonFatal(ex) =>
-      if units != null then report.echo(i"exception occurred while compiling $units%, %")
-      else report.echo(s"exception occurred while compiling ${fileNames.mkString(", ")}")
-      throw ex
-  }
+  def compile(files: List[AbstractFile]): Unit =
+    try
+      val sources = files.map(runContext.getSource(_))
+      compileSources(sources)
+    catch
+      case NonFatal(ex) =>
+        if units != null then report.echo(i"exception occurred while compiling $units%, %")
+        else report.echo(s"exception occurred while compiling ${files.map(_.name).mkString(", ")}")
+        throw ex
 
   /** TODO: There's a fundamental design problem here: We assemble phases using `fusePhases`
    *  when we first build the compiler. But we modify them with -Yskip, -Ystop
@@ -146,6 +149,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       units = sources.map(CompilationUnit(_))
       compileUnits()
     }
+
 
   def compileUnits(us: List[CompilationUnit]): Unit = {
     units = us
@@ -218,7 +222,7 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
     if (!files.contains(file) && !lateFiles.contains(file)) {
       lateFiles += file
 
-      val unit = CompilationUnit(ctx.getSource(file.path))
+      val unit = CompilationUnit(ctx.getSource(file))
       val unitCtx = runContext.fresh
         .setCompilationUnit(unit)
         .withRootImports

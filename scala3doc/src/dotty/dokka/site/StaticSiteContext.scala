@@ -7,28 +7,26 @@ import java.nio.file.FileVisitOption
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import org.jetbrains.dokka.base.parsers.MarkdownParser
-import org.jetbrains.dokka.base.transformers.pages.comments.DocTagToContentConverter
-import org.jetbrains.dokka.DokkaConfiguration
-import org.jetbrains.dokka.model.doc.{DocTag, Text}
-import org.jetbrains.dokka.model.properties.PropertyContainer
-import org.jetbrains.dokka.pages.{ContentKind, ContentNode, DCI, PageNode}
-import org.jetbrains.dokka.plugability.DokkaContext
-import org.jetbrains.dokka.pages.Style
-import org.jetbrains.dokka.model.DisplaySourceSet
 import util.Try
+import collection.JavaConverters._
 
-import scala.collection.JavaConverters._
+import dotty.dokka.model.api._
 
-class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args: Args, val sourceLinks: SourceLinks):
+class StaticSiteContext(
+  val root: File,
+  val args: Scala3doc.Args,
+  val sourceLinks: SourceLinks)(using val outerCtx: CompilerContext):
 
   var memberLinkResolver: String => Option[DRI] = _ => None
 
-  def indexPage():Option[StaticPageNode] =
+  def indexTemplate(): Seq[LoadedTemplate] =
     val files = List(new File(root, "index.html"), new File(root, "index.md")).filter { _.exists() }
-    // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-    if (files.size > 1) println(s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}")
-    files.flatMap(loadTemplate(_, isBlog = false)).headOption.map(templateToPage)
+
+    if files.size > 1 then
+      val msg = s"ERROR: Multiple root index pages found: ${files.map(_.getAbsolutePath)}"
+      report.error(msg)
+
+    files.flatMap(loadTemplate(_, isBlog = false)).take(1)
 
   lazy val layouts: Map[String, TemplateFile] =
     val layoutRoot = new File(root, "_layouts")
@@ -40,17 +38,13 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
     if (!Files.exists(sidebarFile)) None
     else Some(Sidebar.load(Files.readAllLines(sidebarFile).asScala.mkString("\n")))
 
-  lazy val templates: Seq[LoadedTemplate] = sideBarConfig.fold(loadAllFiles())(_.map(loadSidebarContent))
+  lazy val templates: Seq[LoadedTemplate] =
+    sideBarConfig.fold(loadAllFiles().sortBy(_.templateFile.title))(_.map(loadSidebarContent))
 
-  lazy val mainPages: Seq[StaticPageNode] = templates.map(templateToPage)
-
-  val docsPath = root.toPath.resolve("docs")
-
-  lazy val allPages: Seq[StaticPageNode] = sideBarConfig.fold(mainPages){ sidebar =>
-    def flattenPages(p: StaticPageNode): Set[Path] =
-      Set(p.template.file.toPath) ++ p.getChildren.asScala.collect { case p: StaticPageNode => flattenPages(p) }.flatten
-
-    val mainFiles = mainPages.toSet.flatMap(flattenPages)
+  lazy val orphanedTemplates: Seq[LoadedTemplate] = {
+    def doFlatten(t: LoadedTemplate): Seq[Path] =
+      t.file.toPath +: t.children.flatMap(doFlatten)
+    val mainFiles = templates.flatMap(doFlatten)
 
     val allPaths =
       if !Files.exists(docsPath) then Nil
@@ -65,9 +59,10 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
         name.endsWith(".md") || name.endsWith(".html")
     }
 
-    val orphanedTemplates = orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
-    mainPages ++ orphanedTemplates.map(templateToPage)
+    orphanedFiles.flatMap(p => loadTemplate(p.toFile, isBlog = false))
   }
+
+  val docsPath = root.toPath.resolve("docs")
 
   private def isValidTemplate(file: File): Boolean =
     (file.isDirectory && !file.getName.startsWith("_")) ||
@@ -81,40 +76,39 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
         val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
-        if (indexes.size > 1)
-          // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-          println(s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}")
+
         def loadIndexPage(): TemplateFile =
-          val indexFiles = from.listFiles { file =>file.getName == "index.md" || file.getName == "index.html" }
-          indexFiles.size match
-            case 0 => emptyTemplate(from, from.getName)
-            case 1 => loadTemplateFile(indexFiles.head).copy(file = from)
+          val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
+          indexes match
+            case Nil => emptyTemplate(from, from.getName)
+            case Seq(loadedTemplate) => loadedTemplate.templateFile.copy(file = from)
             case _ =>
-              val msg = s"ERROR: Multiple index pages found under ${from.toPath}"
+              // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
+              val msg = s"ERROR: Multiple index pages for $from found in ${indexes.map(_.file)}"
               throw new java.lang.RuntimeException(msg)
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        val processedChildren = if !isBlog then children else
+        val processedChildren = if !isBlog then children.sortBy(_.templateFile.title) else
           def dateFrom(p: LoadedTemplate): String =
             val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
             pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
           children.sortBy(dateFrom).reverse
 
-        Some(LoadedTemplate(templateFile, processedChildren.toList, from))
+        val processedTemplate = // Set provided name as arg in page for `docs`
+          if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
+            if templateFile.title != "index" then
+              report.warn("Property `title` will be overriden by project name", from)
+
+            templateFile.copy(title = args.name)
+          else templateFile
+
+        Some(LoadedTemplate(processedTemplate, processedChildren.toList, from))
       catch
           case e: RuntimeException =>
             // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
             e.printStackTrace()
             None
-
-  def asContent(doctag: DocTag, dri: DRI) = new DocTagToContentConverter().buildContent(
-    doctag,
-    new DCI(Set(dri).asJava, ContentKind.Empty),
-    sourceSets.asJava,
-    JSet(),
-    new PropertyContainer(JMap())
-  )
 
   private def loadSidebarContent(entry: Sidebar): LoadedTemplate = entry match
     case Sidebar.Page(title, url) =>
@@ -137,39 +131,45 @@ class StaticSiteContext(val root: File, sourceSets: Set[SourceSetWrapper], args:
     dir("docs").flatMap(_.listFiles()).flatMap(loadTemplate(_, isBlog = false))
       ++ dir("blog").flatMap(loadTemplate(_, isBlog = true))
 
-  def driForLink(template: TemplateFile, link: String): Option[DRI] =
-    val pathDri = Try {
-      val path =
+  def driForLink(template: TemplateFile, link: String): Seq[DRI] =
+    val pathsDri: Option[Seq[DRI]] = Try {
+      val baseFile =
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
-        else template.file.toPath.getParent().resolve(link)
-      if Files.exists(path) then Some(driFor(path)) else None
-    }.toOption.flatten
-    pathDri.orElse(memberLinkResolver(link))
+        else template.file.toPath.getParent().resolve(link).normalize()
 
-  def driFor(dest: Path): DRI = mkDRI(s"_.${root.toPath.relativize(dest)}")
+      val baseFileName = baseFile.getFileName.toString
+      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
+      def trySuffix(pref: String) =
+       if baseFileName == pref then Seq(baseFile.getParent) else Nil
+      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
+
+      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+    }.toOption.filter(_.nonEmpty)
+    pathsDri.getOrElse(memberLinkResolver(link).toList)
+
+  def driFor(dest: Path): DRI =
+    val rawFilePath = root.toPath.relativize(dest)
+    val pageName = dest.getFileName.toString
+    val dotIndex = pageName.lastIndexOf('.')
+
+    val relativePath =
+      if rawFilePath.startsWith(Paths.get("blog","_posts")) then
+        val regex = raw"(\d*)-(\d*)-(\d*)-(.*)\..*".r
+        pageName.toString match
+          case regex(year, month, day, name) =>
+            rawFilePath.getParent.resolveSibling(Paths.get(year, month, day, name))
+          case _ =>
+            val msg = s"Relative path for blog: $rawFilePath doesn't match `yyy-mm-dd-name.md` format."
+            report.warn(msg, dest.toFile)
+            rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+      else
+        if (dotIndex < 0) rawFilePath.resolve("index")
+        else rawFilePath.resolveSibling(pageName.substring(0, dotIndex))
+
+    DRI.forPath(relativePath)
 
   def relativePath(myTemplate: LoadedTemplate) = root.toPath.relativize(myTemplate.file.toPath)
 
-  def templateToPage(myTemplate: LoadedTemplate): StaticPageNode =
-    val dri = driFor(myTemplate.file.toPath)
-    val content = new PartiallyRenderedContent(
-      myTemplate,
-      this,
-      JList(),
-      new DCI(Set(dri).asJava, ContentKind.Empty),
-      sourceSets.toDisplay,
-      JSet()
-    )
-    StaticPageNode(
-      myTemplate.templateFile,
-      myTemplate.templateFile.title,
-      content,
-      JSet(dri),
-      JList(),
-      (myTemplate.children.map(templateToPage)).asJava
-    )
-
   val projectWideProperties =
     Seq("projectName" -> args.name) ++
-      args.projectVersion.map("projectVersion" -> _) ++
-      args.projectTitle.map("projectTitle" -> _)
+      args.projectVersion.map("projectVersion" -> _)

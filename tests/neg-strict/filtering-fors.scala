@@ -1,6 +1,6 @@
 object Test {
 
-  val xs: List[Any] = ???
+  val xs: List[AnyRef] = ???
 
   for (x <- xs) do ()   // OK
   for (x: Any <- xs) do () // OK
@@ -16,7 +16,7 @@ object Test {
   for (case (x: String) <- xs; (y, z) <- xs) do () // error
   for ((x: String) <- xs; case (y, z) <- xs) do () // error
 
-  val pairs: List[Any] = List((1, 2), "hello", (3, 4))
+  val pairs: List[AnyRef] = List((1, 2), "hello", (3, 4))
   for ((x, y) <- pairs) yield (y, x) // error
 
   for (case x: String <- xs) do ()      // OK

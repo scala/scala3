@@ -71,7 +71,7 @@ import collection.mutable.ListBuffer
  */
 object Denotations {
 
-  implicit def eqDenotation: Eql[Denotation, Denotation] = Eql.derived
+  implicit def eqDenotation: CanEqual[Denotation, Denotation] = CanEqual.derived
 
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
@@ -585,7 +585,7 @@ object Denotations {
           try info.signature
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
-              report.echo(s"cannot take signature of ${info.show}")
+              report.echo(s"cannot take signature of $info")
               throw ex
           }
         case _ => Signature.NotAMethod
@@ -1063,7 +1063,16 @@ object Denotations {
           info.asSeenFrom(pre, owner),
           if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
 
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+      // Tt could happen that we see the symbol with prefix `this` as a member a different class
+      // through a self type and that it then has a different info. In this case we have to go
+      // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
+      def hasOriginalInfo: Boolean = this match
+        case sd: SymDenotation => true
+        case _ => info eq symbol.info
+
+      if !owner.membersNeedAsSeenFrom(pre) && ((pre ne owner.thisType) || hasOriginalInfo)
+         || symbol.is(NonMember)
+      then this
       else derived(symbol.info)
     }
   }
@@ -1226,11 +1235,8 @@ object Denotations {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)
       def isPackageFromCoreLibMissing: Boolean =
-        owner.symbol == defn.RootClass &&
-        (
-          selector == nme.scala || // if the scala package is missing, the stdlib must be missing
-          selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
-        )
+        // if the scala package is missing, the stdlib must be missing
+        owner.symbol == defn.RootClass && selector == nme.scala
       if (owner.exists) {
         val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
         if (result.exists) result

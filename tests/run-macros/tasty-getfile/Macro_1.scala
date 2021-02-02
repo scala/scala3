@@ -7,6 +7,6 @@ object SourceFiles {
     ${getThisFileImpl}
 
   private def getThisFileImpl(using Quotes) : Expr[String] =
-    Expr(qctx.reflect.Source.path.getFileName.toString)
+    Expr(quotes.reflect.SourceFile.current.jpath.getFileName.toString)
 
 }

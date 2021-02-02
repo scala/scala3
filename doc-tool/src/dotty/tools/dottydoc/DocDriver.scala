@@ -12,6 +12,7 @@ import dotc.config._
 import dotc.core.Comments.ContextDoc
 import dotc.report
 import staticsite.Site
+import io.AbstractFile
 
 /** `DocDriver` implements the main entry point to the Dotty documentation
  *  tool. It's methods are used by the external scala and java APIs.
@@ -20,17 +21,19 @@ class DocDriver extends Driver {
   import java.util.{ Map => JMap }
   import model.JavaConverters._
 
-  override def setup(args: Array[String], rootCtx: Context): (List[String], Context) = {
+  override def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
     val ctx     = rootCtx.fresh
     val summary = CompilerCommand.distill(args)(using ctx)
 
     ctx.setSettings(summary.sstate)
     ctx.setSetting(ctx.settings.YcookComments, true)
-    ctx.setSetting(ctx.settings.YnoInline, true)
     ctx.setProperty(ContextDoc, new ContextDottydoc)
 
-    val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(using ctx)
-    fromTastySetup(fileNames, ctx)
+    inContext(ctx) {
+      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+      val files = fileNames.map(ctx.getFile)
+      (files, fromTastySetup(files))
+    }
   }
 
   override def newCompiler(using Context): Compiler = new DocCompiler

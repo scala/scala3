@@ -28,13 +28,11 @@ object QuotesImpl {
   def apply()(using Context): Quotes =
     new QuotesImpl
 
-  def showDecompiledTree(tree: tpd.Tree)(using Context): String = {
+  def showDecompiledTree(tree: tpd.Tree)(using Context): String =
+    import qctx.reflect.Printer.{TreeCode, TreeAnsiCode}
     val qctx: QuotesImpl = new QuotesImpl(using MacroExpansion.context(tree))
-    if ctx.settings.color.value == "always" then
-      qctx.reflect.TreeMethodsImpl.temporaryShowAnsiColored(tree)
-    else
-      qctx.reflect.TreeMethodsImpl.temporaryShow(tree)
-  }
+    if ctx.settings.color.value == "always" then TreeAnsiCode.show(tree)
+    else TreeCode.show(tree)
 
   // TODO Explore more fine grained scope ids.
   //      This id can only differentiate scope extrusion from one compiler instance to another.
@@ -48,55 +46,52 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
   private val yCheck: Boolean =
     ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
 
-  extension [T](self: scala.quoted.Expr[T]):
+  extension [T](self: scala.quoted.Expr[T])
     def show: String =
-      reflect.TreeMethodsImpl.show(reflect.Term.of(self))
-
-    def showAnsiColored: String =
-      reflect.TreeMethodsImpl.showAnsiColored(reflect.Term.of(self))
+      reflect.Printer.TreeCode.show(reflect.asTerm(self))
 
     def matches(that: scala.quoted.Expr[Any]): Boolean =
-      treeMatch(reflect.Term.of(self), reflect.Term.of(that)).nonEmpty
+      treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
   end extension
 
-  extension [X](self: scala.quoted.Expr[Any]):
+  extension (self: scala.quoted.Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using scala.quoted.Type[X]): Boolean =
-      reflect.TypeReprMethodsImpl.<:<(reflect.Term.of(self).tpe)(reflect.TypeRepr.of[X])
+    def isExprOf[X](using scala.quoted.Type[X]): Boolean =
+      reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
           s"""Expr cast exception: ${self.show}
-            |of type: ${reflect.TypeReprMethodsImpl.show(reflect.Term.of(self).tpe)}
-            |did not conform to type: ${reflect.TypeReprMethodsImpl.show(reflect.TypeRepr.of[X])}
+            |of type: ${reflect.Printer.TypeReprCode.show(reflect.asTerm(self).tpe)}
+            |did not conform to type: ${reflect.Printer.TypeReprCode.show(reflect.TypeRepr.of[X])}
             |""".stripMargin
         )
     }
   end extension
 
-  object reflect extends Reflection:
+  object reflect extends reflectModule:
+
+    extension (expr: Expr[Any])
+      def asTerm: Term =
+        val exprImpl = expr.asInstanceOf[ExprImpl]
+        exprImpl.checkScopeId(QuotesImpl.this.hashCode)
+        exprImpl.tree
+    end extension
 
     type Tree = tpd.Tree
 
-    object Tree extends TreeModule:
-        def of(expr: Expr[Any]): Tree = Term.of(expr)
-    end Tree
+    object Tree extends TreeModule
 
-    object TreeMethodsImpl extends TreeMethods:
-      extension (self: Tree):
+    given TreeMethods: TreeMethods with
+      extension (self: Tree)
         def pos: Position = self.sourcePos
         def symbol: Symbol = self.symbol
-        def showExtractors: String =
-          Extractors.showTree(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showTree(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show(using printer: Printer[Tree]): String = printer.show(self)
         def isExpr: Boolean =
           self match
             case TermTypeTest(self) =>
@@ -112,17 +107,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](self: Tree)
-        def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
-          QuotesImpl.this.asExprOf[T](self.asExpr)(using tp)
+      extension (self: Tree)
+        def asExprOf[T](using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
+          QuotesImpl.this.asExprOf(self.asExpr)[T](using tp)
       end extension
 
-      extension [ThisTree <: Tree](self: ThisTree):
+      extension [ThisTree <: Tree](self: ThisTree)
         def changeOwner(newOwner: Symbol): ThisTree =
           tpd.TreeOps(self).changeNonLocalOwners(newOwner).asInstanceOf[ThisTree]
       end extension
 
-    end TreeMethodsImpl
+    end TreeMethods
 
     type PackageClause = tpd.PackageDef
 
@@ -137,16 +132,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
         tpd.cpy.PackageDef(original)(pid, stats)
-      def unapply(tree: PackageClause): Some[(Ref, List[Tree])] =
-        Some((tree.pid, tree.stats))
+      def unapply(tree: PackageClause): (Ref, List[Tree]) =
+        (tree.pid, tree.stats)
     end PackageClause
 
-    object PackageClauseMethodsImpl extends PackageClauseMethods:
-      extension (self: PackageClause):
+    given PackageClauseMethods: PackageClauseMethods with
+      extension (self: PackageClause)
         def pid: Ref = self.pid
         def stats: List[Tree] = self.stats
       end extension
-    end PackageClauseMethodsImpl
+    end PackageClauseMethods
 
     type Import = tpd.Import
 
@@ -157,20 +152,42 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ImportTypeTest
 
     object Import extends ImportModule:
-      def apply(expr: Term, selectors: List[ImportSelector]): Import =
+      def apply(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         withDefaultPos(tpd.Import(expr, selectors))
-      def copy(original: Tree)(expr: Term, selectors: List[ImportSelector]): Import =
+      def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         tpd.cpy.Import(original)(expr, selectors)
-      def unapply(tree: Import): Option[(Term, List[ImportSelector])] =
-        Some((tree.expr, tree.selectors))
+      def unapply(tree: Import): (Term, List[Selector]) =
+        (tree.expr, tree.selectors)
     end Import
 
-    object ImportMethodsImpl extends ImportMethods:
-      extension (self: Import):
+    given ImportMethods: ImportMethods with
+      extension (self: Import)
         def expr: Term = self.expr
-        def selectors: List[ImportSelector] = self.selectors
+        def selectors: List[Selector] = self.selectors
       end extension
-    end ImportMethodsImpl
+    end ImportMethods
+
+    type Export = tpd.Export
+
+    object ExportTypeTest extends TypeTest[Tree, Export]:
+      def unapply(x: Tree): Option[Export & x.type] = x match
+        case tree: (tpd.Export & x.type) => Some(tree)
+        case _ => None
+    end ExportTypeTest
+
+    object Export extends ExportModule:
+      def unapply(tree: Export): (Term, List[Selector]) =
+        (tree.expr, tree.selectors)
+    end Export
+
+    given ExportMethods: ExportMethods with
+      extension (self: Export)
+        def expr: Term = self.expr
+        def selectors: List[Selector] = self.selectors
+      end extension
+    end ExportMethods
 
     type Statement = tpd.Tree
 
@@ -192,12 +209,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Definition extends DefinitionModule
 
-    object DefinitionMethodsImpl extends DefinitionMethods:
-      extension (self: Definition):
+    given DefinitionMethods: DefinitionMethods with
+      extension (self: Definition)
         def name: String = self match
           case self: tpd.MemberDef => self.name.toString
       end extension
-    end DefinitionMethodsImpl
+    end DefinitionMethods
 
     type ClassDef = tpd.TypeDef
 
@@ -212,13 +229,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
         tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
-      def unapply(cdef: ClassDef): Option[(String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])] =
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        Some((cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body))
+        (cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body)
     end ClassDef
 
-    object ClassDefMethodsImpl extends ClassDefMethods:
-      extension (self: ClassDef):
+    given ClassDefMethods: ClassDefMethods with
+      extension (self: ClassDef)
         def constructor: DefDef =
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
@@ -230,7 +247,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def body: List[Statement] =
           self.rhs.asInstanceOf[tpd.Template].body
       end extension
-    end ClassDefMethodsImpl
+    end ClassDefMethods
 
     type DefDef = tpd.DefDef
 
@@ -241,22 +258,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end DefDefTypeTest
 
     object DefDef extends DefDefModule:
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): Option[(String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])] =
-        Some((ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs)))
+      def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
+        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
+          yCheckedOwners(rhsFn(prefss), symbol).getOrElse(tpd.EmptyTree)
+        ))
+      def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
+        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+      def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
+        (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
-    object DefDefMethodsImpl extends DefDefMethods:
-      extension (self: DefDef):
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+    given DefDefMethods: DefDefMethods with
+      extension (self: DefDef)
+        def paramss: List[ParamClause] = self.paramss
+        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams
+        def trailingParamss: List[ParamClause] = self.trailingParamss
+        def termParamss: List[TermParamClause] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
-    end DefDefMethodsImpl
+    end DefDefMethods
 
     type ValDef = tpd.ValDef
 
@@ -271,8 +292,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol).getOrElse(tpd.EmptyTree))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
         tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(vdef: ValDef): Option[(String, TypeTree, Option[Term])] =
-        Some((vdef.name.toString, vdef.tpt, optional(vdef.rhs)))
+      def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
+        (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
       def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
@@ -286,12 +307,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         Block(vdefs, body(refs))
     end ValDef
 
-    object ValDefMethodsImpl extends ValDefMethods:
-      extension (self: ValDef):
+    given ValDefMethods: ValDefMethods with
+      extension (self: ValDef)
         def tpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
-    end ValDefMethodsImpl
+    end ValDefMethods
 
     type TypeDef = tpd.TypeDef
 
@@ -306,15 +327,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeDef(symbol.asType))
       def copy(original: Tree)(name: String, rhs: Tree): TypeDef =
         tpd.cpy.TypeDef(original)(name.toTypeName, rhs)
-      def unapply(tdef: TypeDef): Option[(String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)] =
-        Some((tdef.name.toString, tdef.rhs))
+      def unapply(tdef: TypeDef): (String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */) =
+        (tdef.name.toString, tdef.rhs)
     end TypeDef
 
-    object TypeDefMethodsImpl extends TypeDefMethods:
-      extension (self: TypeDef):
+    given TypeDefMethods: TypeDefMethods with
+      extension (self: TypeDef)
         def rhs: Tree = self.rhs
       end extension
-    end TypeDefMethodsImpl
+    end TypeDefMethods
 
     type Term = tpd.Tree
 
@@ -330,11 +351,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TermTypeTest
 
     object Term extends TermModule:
-      def of(expr: Expr[Any]): Term =
-        val exprImpl = expr.asInstanceOf[ExprImpl]
-        exprImpl.checkScopeId(QuotesImpl.this.hashCode)
-        exprImpl.tree
-
       def betaReduce(tree: Term): Option[Term] =
         tree match
           case app @ tpd.Apply(tpd.Select(fn, nme.apply), args) if dotc.core.Symbols.defn.isFunctionType(fn.tpe) =>
@@ -349,8 +365,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             None
     end Term
 
-    object TermMethodsImpl extends TermMethods:
-      extension (self: Term):
+    given TermMethods: TermMethods with
+      extension (self: Term)
         def seal: scala.quoted.Expr[Any] =
           if self.isExpr then new ExprImpl(self, QuotesImpl.this.hashCode)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
@@ -370,7 +386,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -393,7 +409,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def select(sym: Symbol): Select = Select(self, sym)
 
       end extension
-    end TermMethodsImpl
+    end TermMethods
 
     type Ref = tpd.RefTree
 
@@ -424,15 +440,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(tmref).asInstanceOf[Term])
       def copy(original: Tree)(name: String): Ident =
         tpd.cpy.Ident(original)(name.toTermName)
-      def unapply(tree: Ident): Option[String] =
+      def unapply(tree: Ident): Some[String] =
         Some(tree.name.toString)
     end Ident
 
-    object IdentMethodsImpl extends IdentMethods:
-      extension (self: Ident):
+    given IdentMethods: IdentMethods with
+      extension (self: Ident)
         def name: String = self.name.toString
       end extension
-    end IdentMethodsImpl
+    end IdentMethods
 
     type Select = tpd.Select
 
@@ -456,19 +472,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
-      def unapply(x: Select): Option[(Term, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: Select): (Term, String) =
+        (x.qualifier, x.name.toString)
     end Select
 
-    object SelectMethodsImpl extends SelectMethods:
-      extension (self: Select):
+    given SelectMethods: SelectMethods with
+      extension (self: Select)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
         def signature: Option[Signature] =
           if self.symbol.signature == dotc.core.Signature.NotAMethod then None
           else Some(self.symbol.signature)
       end extension
-    end SelectMethodsImpl
+    end SelectMethods
 
     type Literal = tpd.Literal
 
@@ -483,15 +499,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Literal(constant))
       def copy(original: Tree)(constant: Constant): Literal =
         tpd.cpy.Literal(original)(constant)
-      def unapply(x: Literal): Option[Constant] =
+      def unapply(x: Literal): Some[Constant] =
         Some(x.constant)
     end Literal
 
-    object LiteralMethodsImpl extends LiteralMethods:
-      extension (self: Literal):
+    given LiteralMethods: LiteralMethods with
+      extension (self: Literal)
         def constant: Constant = self.const
       end extension
-    end LiteralMethodsImpl
+    end LiteralMethods
 
     type This = tpd.This
 
@@ -506,15 +522,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.This(cls.asClass))
       def copy(original: Tree)(qual: Option[String]): This =
         tpd.cpy.This(original)(qual.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: This): Option[Option[String]] =
+      def unapply(x: This): Some[Option[String]] =
         Some(optional(x.qual).map(_.name.toString))
     end This
 
-    object ThisMethodsImpl extends ThisMethods:
-      extension (self: This):
+    given ThisMethods: ThisMethods with
+      extension (self: This)
         def id: Option[String] = optional(self.qual).map(_.name.toString)
       end extension
-    end ThisMethodsImpl
+    end ThisMethods
 
     type New = tpd.New
 
@@ -529,14 +545,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.New(tpt))
       def copy(original: Tree)(tpt: TypeTree): New =
         tpd.cpy.New(original)(tpt)
-      def unapply(x: New): Option[TypeTree] = Some(x.tpt)
+      def unapply(x: New): Some[TypeTree] = Some(x.tpt)
     end New
 
-    object NewMethodsImpl extends NewMethods:
-      extension (self: New):
+    given NewMethods: NewMethods with
+      extension (self: New)
         def tpt: TypeTree = self.tpt
       end extension
-    end NewMethodsImpl
+    end NewMethods
 
     type NamedArg = tpd.NamedArg
 
@@ -551,16 +567,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.NamedArg(name.toTermName, arg))
       def copy(original: Tree)(name: String, arg: Term): NamedArg =
         tpd.cpy.NamedArg(original)(name.toTermName, arg)
-      def unapply(x: NamedArg): Option[(String, Term)] =
-        Some((x.name.toString, x.value))
+      def unapply(x: NamedArg): (String, Term) =
+        (x.name.toString, x.value)
     end NamedArg
 
-    object NamedArgMethodsImpl extends NamedArgMethods:
-      extension (self: NamedArg):
+    given NamedArgMethods: NamedArgMethods with
+      extension (self: NamedArg)
         def name: String = self.name.toString
         def value: Term = self.arg
       end extension
-    end NamedArgMethodsImpl
+    end NamedArgMethods
 
     type Apply = tpd.Apply
 
@@ -575,16 +591,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
         tpd.cpy.Apply(original)(fun, args)
-      def unapply(x: Apply): Option[(Term, List[Term])] =
-        Some((x.fun, x.args))
+      def unapply(x: Apply): (Term, List[Term]) =
+        (x.fun, x.args)
     end Apply
 
-    object ApplyMethodsImpl extends ApplyMethods:
-      extension (self: Apply):
+    given ApplyMethods: ApplyMethods with
+      extension (self: Apply)
         def fun: Term = self.fun
         def args: List[Term] = self.args
       end extension
-    end ApplyMethodsImpl
+    end ApplyMethods
 
     type TypeApply = tpd.TypeApply
 
@@ -599,16 +615,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeApply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
         tpd.cpy.TypeApply(original)(fun, args)
-      def unapply(x: TypeApply): Option[(Term, List[TypeTree])] =
-        Some((x.fun, x.args))
+      def unapply(x: TypeApply): (Term, List[TypeTree]) =
+        (x.fun, x.args)
     end TypeApply
 
-    object TypeApplyMethodsImpl extends TypeApplyMethods:
-      extension (self: TypeApply):
+    given TypeApplyMethods: TypeApplyMethods with
+      extension (self: TypeApply)
         def fun: Term = self.fun
         def args: List[TypeTree] = self.args
       end extension
-    end TypeApplyMethodsImpl
+    end TypeApplyMethods
 
     type Super = tpd.Super
 
@@ -623,17 +639,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Super(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent), dotc.core.Symbols.NoSymbol))
       def copy(original: Tree)(qual: Term, mix: Option[String]): Super =
         tpd.cpy.Super(original)(qual, mix.map(x => untpd.Ident(x.toTypeName)).getOrElse(untpd.EmptyTypeIdent))
-      def unapply(x: Super): Option[(Term, Option[String])] =
-        Some((x.qualifier, x.id))
+      def unapply(x: Super): (Term, Option[String]) =
+        (x.qualifier, x.id)
     end Super
 
-    object SuperMethodsImpl extends SuperMethods:
-      extension (self: Super):
+    given SuperMethods: SuperMethods with
+      extension (self: Super)
         def qualifier: Term = self.qual
         def id: Option[String] = optional(self.mix).map(_.name.toString)
         def idPos: Position = self.mix.sourcePos
       end extension
-    end SuperMethodsImpl
+    end SuperMethods
 
     type Typed = tpd.Typed
 
@@ -648,16 +664,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Typed(expr, tpt))
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
         tpd.cpy.Typed(original)(expr, tpt)
-      def unapply(x: Typed): Option[(Term, TypeTree)] =
-        Some((x.expr, x.tpt))
+      def unapply(x: Typed): (Term, TypeTree) =
+        (x.expr, x.tpt)
     end Typed
 
-    object TypedMethodsImpl extends TypedMethods:
-      extension (self: Typed):
+    given TypedMethods: TypedMethods with
+      extension (self: Typed)
         def expr: Term = self.expr
         def tpt: TypeTree = self.tpt
       end extension
-    end TypedMethodsImpl
+    end TypedMethods
 
     type Assign = tpd.Assign
 
@@ -672,40 +688,40 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Assign(lhs, rhs))
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign =
         tpd.cpy.Assign(original)(lhs, rhs)
-      def unapply(x: Assign): Option[(Term, Term)] =
-        Some((x.lhs, x.rhs))
+      def unapply(x: Assign): (Term, Term) =
+        (x.lhs, x.rhs)
     end Assign
 
-    object AssignMethodsImpl extends AssignMethods:
-      extension (self: Assign):
+    given AssignMethods: AssignMethods with
+      extension (self: Assign)
         def lhs: Term = self.lhs
         def rhs: Term = self.rhs
       end extension
-    end AssignMethodsImpl
+    end AssignMethods
 
     type Block = tpd.Block
 
-    val BlockTypeTest: TypeTest[Tree, Block] = new {
+    object BlockTypeTest extends TypeTest[Tree, Block]:
       def unapply(x: Tree): Option[Block & x.type] = x match
         case x: (tpd.Block & x.type) => Some(x)
         case _ => None
-    }
+    end BlockTypeTest
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
         withDefaultPos(tpd.Block(stats, expr))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
         tpd.cpy.Block(original)(stats, expr)
-      def unapply(x: Block): Option[(List[Statement], Term)] =
-        Some((x.statements, x.expr))
+      def unapply(x: Block): (List[Statement], Term) =
+        (x.statements, x.expr)
     end Block
 
-    object BlockMethodsImpl extends BlockMethods:
-      extension (self: Block):
+    given BlockMethods: BlockMethods with
+      extension (self: Block)
         def statements: List[Statement] = self.stats
         def expr: Term = self.expr
       end extension
-    end BlockMethodsImpl
+    end BlockMethods
 
     type Closure = tpd.Closure
 
@@ -720,24 +736,24 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
         tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
-      def unapply(x: Closure): Option[(Term, Option[TypeRepr])] =
-        Some((x.meth, x.tpeOpt))
+      def unapply(x: Closure): (Term, Option[TypeRepr]) =
+        (x.meth, x.tpeOpt)
     end Closure
 
-    object ClosureMethodsImpl extends ClosureMethods:
-      extension (self: Closure):
+    given ClosureMethods: ClosureMethods with
+      extension (self: Closure)
         def meth: Term = self.meth
         def tpeOpt: Option[TypeRepr] = optional(self.tpt).map(_.tpe)
       end extension
-    end ClosureMethodsImpl
+    end ClosureMethods
 
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
+        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head.map(withDefaultPos)), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -757,17 +773,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.If(cond, thenp, elsep))
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
         tpd.cpy.If(original)(cond, thenp, elsep)
-      def unapply(tree: If): Option[(Term, Term, Term)] =
-        Some((tree.cond, tree.thenp, tree.elsep))
+      def unapply(tree: If): (Term, Term, Term) =
+        (tree.cond, tree.thenp, tree.elsep)
     end If
 
-    object IfMethodsImpl extends IfMethods:
-      extension (self: If):
+    given IfMethods: IfMethods with
+      extension (self: If)
         def cond: Term = self.cond
         def thenp: Term = self.thenp
         def elsep: Term = self.elsep
+        def isInline: Boolean = self.isInline
       end extension
-    end IfMethodsImpl
+    end IfMethods
 
     type Match = tpd.Match
 
@@ -784,16 +801,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
         tpd.cpy.Match(original)(selector, cases)
 
-      def unapply(x: Match): Option[(Term, List[CaseDef])] =
-        Some((x.scrutinee, x.cases))
+      def unapply(x: Match): (Term, List[CaseDef]) =
+        (x.scrutinee, x.cases)
     end Match
 
-    object MatchMethodsImpl extends MatchMethods:
-      extension (self: Match):
+    given MatchMethods: MatchMethods with
+      extension (self: Match)
         def scrutinee: Term = self.selector
         def cases: List[CaseDef] = self.cases
+        def isInline: Boolean = self.isInline
       end extension
-    end MatchMethodsImpl
+    end MatchMethods
 
     type SummonFrom = tpd.Match
 
@@ -808,15 +826,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom =
         tpd.cpy.Match(original)(tpd.EmptyTree, cases)
-      def unapply(x: SummonFrom): Option[List[CaseDef]] =
+      def unapply(x: SummonFrom): Some[List[CaseDef]] =
         Some(x.cases)
     end SummonFrom
 
-    object SummonFromMethodsImpl extends SummonFromMethods:
-      extension (self: SummonFrom):
+    given SummonFromMethods: SummonFromMethods with
+      extension (self: SummonFrom)
         def cases: List[CaseDef] = self.cases
       end extension
-    end SummonFromMethodsImpl
+    end SummonFromMethods
 
     type Try = tpd.Try
 
@@ -831,17 +849,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
         tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
-      def unapply(x: Try): Option[(Term, List[CaseDef], Option[Term])] =
-        Some((x.body, x.cases, optional(x.finalizer)))
+      def unapply(x: Try): (Term, List[CaseDef], Option[Term]) =
+        (x.body, x.cases, optional(x.finalizer))
     end Try
 
-    object TryMethodsImpl extends TryMethods:
-      extension (self: Try):
+    given TryMethods: TryMethods with
+      extension (self: Try)
         def body: Term = self.expr
         def cases: List[CaseDef] = self.cases
         def finalizer: Option[Term] = optional(self.finalizer)
       end extension
-    end TryMethodsImpl
+    end TryMethods
 
     type Return = tpd.Return
 
@@ -856,16 +874,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Return(expr, from))
       def copy(original: Tree)(expr: Term, from: Symbol): Return =
         tpd.cpy.Return(original)(expr, tpd.ref(from))
-      def unapply(x: Return): Option[(Term, Symbol)] =
-        Some((x.expr, x.from.symbol))
+      def unapply(x: Return): (Term, Symbol) =
+        (x.expr, x.from.symbol)
     end Return
 
-    object ReturnMethodsImpl extends ReturnMethods:
-      extension (self: Return):
+    given ReturnMethods: ReturnMethods with
+      extension (self: Return)
         def expr: Term = self.expr
         def from: Symbol = self.from.symbol
       end extension
-    end ReturnMethodsImpl
+    end ReturnMethods
 
     type Repeated = tpd.SeqLiteral
 
@@ -880,16 +898,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
         tpd.cpy.SeqLiteral(original)(elems, elemtpt)
-      def unapply(x: Repeated): Option[(List[Term], TypeTree)] =
-        Some((x.elems, x.elemtpt))
+      def unapply(x: Repeated): (List[Term], TypeTree) =
+        (x.elems, x.elemtpt)
     end Repeated
 
-    object RepeatedMethodsImpl extends RepeatedMethods:
-      extension (self: Repeated):
+    given RepeatedMethods: RepeatedMethods with
+      extension (self: Repeated)
         def elems: List[Term] = self.elems
         def elemtpt: TypeTree = self.elemtpt
       end extension
-    end RepeatedMethodsImpl
+    end RepeatedMethods
 
     type Inlined = tpd.Inlined
 
@@ -904,17 +922,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
-      def unapply(x: Inlined): Option[(Option[Tree /* Term | TypeTree */], List[Definition], Term)] =
-        Some((optional(x.call), x.bindings, x.body))
+      def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
+        (optional(x.call), x.bindings, x.body)
     end Inlined
 
-    object InlinedMethodsImpl extends InlinedMethods:
-      extension (self: Inlined):
+    given InlinedMethods: InlinedMethods with
+      extension (self: Inlined)
         def call: Option[Tree] = optional(self.call)
         def bindings: List[Definition] = self.bindings
         def body: Term = self.expansion
       end extension
-    end InlinedMethodsImpl
+    end InlinedMethods
 
     type SelectOuter = tpd.Select
 
@@ -932,19 +950,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Select(qualifier, NameKinds.OuterSelectName(name.toTermName, levels)))
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter =
         tpd.cpy.Select(original)(qualifier, NameKinds.OuterSelectName(name.toTermName, levels))
-      def unapply(x: SelectOuter): Option[(Term, String, Int)] =
-        Some((x.qualifier, x.name.toString, x.level))
+      def unapply(x: SelectOuter): (Term, String, Int) =
+        (x.qualifier, x.name.toString, x.level)
     end SelectOuter
 
-    object SelectOuterMethodsImpl extends SelectOuterMethods:
-      extension (self: SelectOuter):
+    given SelectOuterMethods: SelectOuterMethods with
+      extension (self: SelectOuter)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
         def level: Int =
           val NameKinds.OuterSelectName(_, levels) = self.name
           levels
       end extension
-    end SelectOuterMethodsImpl
+    end SelectOuterMethods
 
     type While = tpd.WhileDo
 
@@ -959,16 +977,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.WhileDo(cond, body))
       def copy(original: Tree)(cond: Term, body: Term): While =
         tpd.cpy.WhileDo(original)(cond, body)
-      def unapply(x: While): Option[(Term, Term)] =
-        Some((x.cond, x.body))
+      def unapply(x: While): (Term, Term) =
+        (x.cond, x.body)
     end While
 
-    object WhileMethodsImpl extends WhileMethods:
-      extension (self: While):
+    given WhileMethods: WhileMethods with
+      extension (self: While)
         def cond: Term = self.cond
         def body: Term = self.body
       end extension
-    end WhileMethodsImpl
+    end WhileMethods
 
     type TypeTree = tpd.Tree
 
@@ -984,11 +1002,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tp.asInstanceOf[TypeImpl].typeTree
     end TypeTree
 
-    object TypeTreeMethodsImpl extends TypeTreeMethods:
-      extension (self: TypeTree):
+    given TypeTreeMethods: TypeTreeMethods with
+      extension (self: TypeTree)
         def tpe: TypeRepr = self.tpe.stripTypeVar
       end extension
-    end TypeTreeMethodsImpl
+    end TypeTreeMethods
 
     type Inferred = tpd.TypeTree
 
@@ -1001,7 +1019,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Inferred extends InferredModule:
       def apply(tpe: TypeRepr): Inferred =
         withDefaultPos(tpd.TypeTree(tpe))
-      def unapply(x: Inferred): Boolean = true
+      def unapply(x: Inferred): true = true
     end Inferred
 
     type TypeIdent = tpd.Ident
@@ -1018,15 +1036,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ref(sym).asInstanceOf[tpd.TypeTree])
       def copy(original: Tree)(name: String): TypeIdent =
         tpd.cpy.Ident(original)(name.toTypeName)
-      def unapply(x: TypeIdent): Option[String] =
+      def unapply(x: TypeIdent): Some[String] =
         Some(x.name.toString)
     end TypeIdent
 
-    object TypeIdentMethodsImpl extends TypeIdentMethods:
-      extension (self: TypeIdent):
+    given TypeIdentMethods: TypeIdentMethods with
+      extension (self: TypeIdent)
         def name: String = self.name.toString
       end extension
-    end TypeIdentMethodsImpl
+    end TypeIdentMethods
 
     type TypeSelect = tpd.Select
 
@@ -1041,16 +1059,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: Term, name: String): TypeSelect =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: TypeSelect): Option[(Term, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: TypeSelect): (Term, String) =
+        (x.qualifier, x.name.toString)
     end TypeSelect
 
-    object TypeSelectMethodsImpl extends TypeSelectMethods:
-      extension (self: TypeSelect):
+    given TypeSelectMethods: TypeSelectMethods with
+      extension (self: TypeSelect)
         def qualifier: Term = self.qualifier
         def name: String = self.name.toString
       end extension
-    end TypeSelectMethodsImpl
+    end TypeSelectMethods
 
     type TypeProjection = tpd.Select
 
@@ -1063,16 +1081,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeProjection extends TypeProjectionModule:
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
-      def unapply(x: TypeProjection): Option[(TypeTree, String)] =
-        Some((x.qualifier, x.name.toString))
+      def unapply(x: TypeProjection): (TypeTree, String) =
+        (x.qualifier, x.name.toString)
     end TypeProjection
 
-    object TypeProjectionMethodsImpl extends TypeProjectionMethods:
-      extension (self: TypeProjection):
+    given TypeProjectionMethods: TypeProjectionMethods with
+      extension (self: TypeProjection)
         def qualifier: TypeTree = self.qualifier
         def name: String = self.name.toString
       end extension
-    end TypeProjectionMethodsImpl
+    end TypeProjectionMethods
 
     type Singleton = tpd.SingletonTypeTree
 
@@ -1087,15 +1105,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.SingletonTypeTree(ref))
       def copy(original: Tree)(ref: Term): Singleton =
         tpd.cpy.SingletonTypeTree(original)(ref)
-      def unapply(x: Singleton): Option[Term] =
+      def unapply(x: Singleton): Some[Term] =
         Some(x.ref)
     end Singleton
 
-    object SingletonMethodsImpl extends SingletonMethods:
-      extension (self: Singleton):
+    given SingletonMethods: SingletonMethods with
+      extension (self: Singleton)
         def ref: Term = self.ref
       end extension
-    end SingletonMethodsImpl
+    end SingletonMethods
 
     type Refined = tpd.RefinedTypeTree
 
@@ -1108,16 +1126,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Refined extends RefinedModule:
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
-      def unapply(x: Refined): Option[(TypeTree, List[Definition])] =
-        Some((x.tpt, x.refinements.asInstanceOf[List[Definition]]))
+      def unapply(x: Refined): (TypeTree, List[Definition]) =
+        (x.tpt, x.refinements.asInstanceOf[List[Definition]])
     end Refined
 
-    object RefinedMethodsImpl extends RefinedMethods:
-      extension (self: Refined):
+    given RefinedMethods: RefinedMethods with
+      extension (self: Refined)
         def tpt: TypeTree = self.tpt
         def refinements: List[Definition] = self.refinements.asInstanceOf[List[Definition]]
       end extension
-    end RefinedMethodsImpl
+    end RefinedMethods
 
     type Applied = tpd.AppliedTypeTree
 
@@ -1132,16 +1150,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.AppliedTypeTree(tpt, args))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
         tpd.cpy.AppliedTypeTree(original)(tpt, args)
-      def unapply(x: Applied): Option[(TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/])] =
-        Some((x.tpt, x.args))
+      def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/]) =
+        (x.tpt, x.args)
     end Applied
 
-    object AppliedMethodsImpl extends AppliedMethods:
-      extension (self: Applied):
+    given AppliedMethods: AppliedMethods with
+      extension (self: Applied)
         def tpt: TypeTree = self.tpt
         def args: List[Tree] = self.args
       end extension
-    end AppliedMethodsImpl
+    end AppliedMethods
 
     type Annotated = tpd.Annotated
 
@@ -1156,16 +1174,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Annotated(arg, annotation))
       def copy(original: Tree)(arg: TypeTree, annotation: Term): Annotated =
         tpd.cpy.Annotated(original)(arg, annotation)
-      def unapply(x: Annotated): Option[(TypeTree, Term)] =
-        Some((x.arg, x.annotation))
+      def unapply(x: Annotated): (TypeTree, Term) =
+        (x.arg, x.annotation)
     end Annotated
 
-    object AnnotatedMethodsImpl extends AnnotatedMethods:
-      extension (self: Annotated):
+    given AnnotatedMethods: AnnotatedMethods with
+      extension (self: Annotated)
         def arg: TypeTree = self.arg
         def annotation: Term = self.annot
       end extension
-    end AnnotatedMethodsImpl
+    end AnnotatedMethods
 
     type MatchTypeTree = tpd.MatchTypeTree
 
@@ -1180,17 +1198,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
         tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
-      def unapply(x: MatchTypeTree): Option[(Option[TypeTree], TypeTree, List[TypeCaseDef])] =
-        Some((optional(x.bound), x.selector, x.cases))
+      def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef]) =
+        (optional(x.bound), x.selector, x.cases)
     end MatchTypeTree
 
-    object MatchTypeTreeMethodsImpl extends MatchTypeTreeMethods:
-      extension (self: MatchTypeTree):
+    given MatchTypeTreeMethods: MatchTypeTreeMethods with
+      extension (self: MatchTypeTree)
         def bound: Option[TypeTree] = optional(self.bound)
         def selector: TypeTree = self.selector
         def cases: List[TypeCaseDef] = self.cases
       end extension
-    end MatchTypeTreeMethodsImpl
+    end MatchTypeTreeMethods
 
     type ByName = tpd.ByNameTypeTree
 
@@ -1205,15 +1223,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.ByNameTypeTree(result))
       def copy(original: Tree)(result: TypeTree): ByName =
         tpd.cpy.ByNameTypeTree(original)(result)
-      def unapply(x: ByName): Option[TypeTree] =
+      def unapply(x: ByName): Some[TypeTree] =
         Some(x.result)
     end ByName
 
-    object ByNameMethodsImpl extends ByNameMethods:
-      extension (self: ByName):
+    given ByNameMethods: ByNameMethods with
+      extension (self: ByName)
         def result: TypeTree = self.result
       end extension
-    end ByNameMethodsImpl
+    end ByNameMethods
 
     type LambdaTypeTree = tpd.LambdaTypeTree
 
@@ -1228,16 +1246,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.LambdaTypeTree(tparams, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
         tpd.cpy.LambdaTypeTree(original)(tparams, body)
-      def unapply(tree: LambdaTypeTree): Option[(List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((tree.tparams, tree.body))
+      def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/) =
+        (tree.tparams, tree.body)
     end LambdaTypeTree
 
-    object LambdaTypeTreeMethodsImpl extends LambdaTypeTreeMethods:
-      extension (self: LambdaTypeTree):
+    given LambdaTypeTreeMethods: LambdaTypeTreeMethods with
+      extension (self: LambdaTypeTree)
         def tparams: List[TypeDef] = self.tparams
         def body: Tree = self.body
       end extension
-    end LambdaTypeTreeMethodsImpl
+    end LambdaTypeTreeMethods
 
     type TypeBind = tpd.Bind
 
@@ -1250,16 +1268,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeBind extends TypeBindModule:
       def copy(original: Tree)(name: String, tpt: Tree): TypeBind =
         tpd.cpy.Bind(original)(name.toTypeName, tpt)
-      def unapply(x: TypeBind): Option[(String, Tree /*TypeTree | TypeBoundsTree*/)] =
-        Some((x.name.toString, x.body))
+      def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/) =
+        (x.name.toString, x.body)
     end TypeBind
 
-    object TypeBindMethodsImpl extends TypeBindMethods:
-      extension (self: TypeBind):
+    given TypeBindMethods: TypeBindMethods with
+      extension (self: TypeBind)
         def name: String = self.name.toString
         def body: Tree = self.body
       end extension
-    end TypeBindMethodsImpl
+    end TypeBindMethods
 
     type TypeBlock = tpd.Block
 
@@ -1274,16 +1292,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Block(aliases, tpt))
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
         tpd.cpy.Block(original)(aliases, tpt)
-      def unapply(x: TypeBlock): Option[(List[TypeDef], TypeTree)] =
-        Some((x.aliases, x.tpt))
+      def unapply(x: TypeBlock): (List[TypeDef], TypeTree) =
+        (x.aliases, x.tpt)
     end TypeBlock
 
-    object TypeBlockMethodsImpl extends TypeBlockMethods:
-      extension (self: TypeBlock):
+    given TypeBlockMethods: TypeBlockMethods with
+      extension (self: TypeBlock)
         def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
         def tpt: TypeTree = self.expr
       end extension
-    end TypeBlockMethodsImpl
+    end TypeBlockMethods
 
     type TypeBoundsTree = tpd.TypeBoundsTree | tpd.TypeTree
 
@@ -1302,12 +1320,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.TypeBoundsTree(low, hi))
       def copy(original: Tree)(low: TypeTree, hi: TypeTree): TypeBoundsTree =
         tpd.cpy.TypeBoundsTree(original)(low, hi, tpd.EmptyTree)
-      def unapply(x: TypeBoundsTree): Option[(TypeTree, TypeTree)] =
-        Some((x.low, x.hi))
+      def unapply(x: TypeBoundsTree): (TypeTree, TypeTree) =
+        (x.low, x.hi)
     end TypeBoundsTree
 
-    object TypeBoundsTreeMethodsImpl extends TypeBoundsTreeMethods:
-      extension (self: TypeBoundsTree):
+    given TypeBoundsTreeMethods: TypeBoundsTreeMethods with
+      extension (self: TypeBoundsTree)
         def tpe: TypeBounds = self.tpe.asInstanceOf[Types.TypeBounds]
         def low: TypeTree = self match
           case self: tpd.TypeBoundsTree => self.lo
@@ -1316,7 +1334,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.TypeBoundsTree => self.hi
           case self: tpd.TypeTree => tpd.TypeTree(self.tpe.asInstanceOf[Types.TypeBounds].hi).withSpan(self.span)
       end extension
-    end TypeBoundsTreeMethodsImpl
+    end TypeBoundsTreeMethods
 
     type WildcardTypeTree = tpd.Ident
 
@@ -1328,14 +1346,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object WildcardTypeTree extends WildcardTypeTreeModule:
       def apply(tpe: TypeRepr): WildcardTypeTree = withDefaultPos(tpd.Underscore(tpe))
-      def unapply(x: WildcardTypeTree): Boolean = true
+      def unapply(x: WildcardTypeTree): true = true
     end WildcardTypeTree
 
-    object WildcardTypeTreeMethodsImpl extends WildcardTypeTreeMethods:
-      extension (self: WildcardTypeTree):
+    given WildcardTypeTreeMethods: WildcardTypeTreeMethods with
+      extension (self: WildcardTypeTree)
         def tpe: TypeRepr = self.tpe.stripTypeVar
       end extension
-    end WildcardTypeTreeMethodsImpl
+    end WildcardTypeTreeMethods
 
     type CaseDef = tpd.CaseDef
 
@@ -1350,17 +1368,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.CaseDef(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
       def copy(original: Tree)(pattern: Tree, guard: Option[Term], rhs: Term): CaseDef =
         tpd.cpy.CaseDef(original)(pattern, guard.getOrElse(tpd.EmptyTree), rhs)
-      def unapply(x: CaseDef): Option[(Tree, Option[Term], Term)] =
-        Some((x.pat, optional(x.guard), x.body))
+      def unapply(x: CaseDef): (Tree, Option[Term], Term) =
+        (x.pat, optional(x.guard), x.body)
     end CaseDef
 
-    object CaseDefMethodsImpl extends CaseDefMethods:
-      extension (self: CaseDef):
+    given CaseDefMethods: CaseDefMethods with
+      extension (self: CaseDef)
         def pattern: Tree = self.pat
         def guard: Option[Term] = optional(self.guard)
         def rhs: Term = self.body
       end extension
-    end CaseDefMethodsImpl
+    end CaseDefMethods
 
     type TypeCaseDef = tpd.CaseDef
 
@@ -1375,16 +1393,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.CaseDef(pattern, tpd.EmptyTree, rhs)
       def copy(original: Tree)(pattern: TypeTree, rhs: TypeTree): TypeCaseDef =
         tpd.cpy.CaseDef(original)(pattern, tpd.EmptyTree, rhs)
-      def unapply(tree: TypeCaseDef): Option[(TypeTree, TypeTree)] =
-        Some((tree.pat, tree.body))
+      def unapply(tree: TypeCaseDef): (TypeTree, TypeTree) =
+        (tree.pat, tree.body)
     end TypeCaseDef
 
-    object TypeCaseDefMethodsImpl extends TypeCaseDefMethods:
-      extension (self: TypeCaseDef):
+    given TypeCaseDefMethods: TypeCaseDefMethods with
+      extension (self: TypeCaseDef)
         def pattern: TypeTree = self.pat
         def rhs: TypeTree = self.body
       end extension
-    end TypeCaseDefMethodsImpl
+    end TypeCaseDefMethods
 
     type Bind = tpd.Bind
 
@@ -1399,16 +1417,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.Bind(sym, pattern)
       def copy(original: Tree)(name: String, pattern: Tree): Bind =
         withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
-      def unapply(pattern: Bind): Option[(String, Tree)] =
-        Some((pattern.name.toString, pattern.pattern))
+      def unapply(pattern: Bind): (String, Tree) =
+        (pattern.name.toString, pattern.pattern)
     end Bind
 
-    object BindMethodsImpl extends BindMethods:
-      extension (self: Bind):
+    given BindMethods: BindMethods with
+      extension (self: Bind)
         def name: String = self.name.toString
         def pattern: Tree = self.body
       end extension
-    end BindMethodsImpl
+    end BindMethods
 
     type Unapply = tpd.UnApply | tpd.Typed // tpd.Typed containing a tpd.UnApply as expression
 
@@ -1423,12 +1441,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Unapply extends UnapplyModule:
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
         withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
-      def unapply(x: Unapply): Option[(Term, List[Term], List[Tree])] =
-        Some((x.fun, x.implicits, x.patterns))
+      def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
+        (x.fun, x.implicits, x.patterns)
     end Unapply
 
-    object UnapplyMethodsImpl extends UnapplyMethods:
-      extension (self: Unapply):
+    given UnapplyMethods: UnapplyMethods with
+      extension (self: Unapply)
         def fun: Term = selfUnApply(self).fun
         def implicits: List[Term] = selfUnApply(self).implicits
         def patterns: List[Tree] = effectivePatterns(selfUnApply(self).patterns)
@@ -1441,7 +1459,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         patterns match
           case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
           case _ => patterns
-    end UnapplyMethodsImpl
+    end UnapplyMethods
 
     type Alternatives = tpd.Alternative
 
@@ -1456,65 +1474,117 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Alternative(patterns))
       def copy(original: Tree)(patterns: List[Tree]): Alternatives =
         tpd.cpy.Alternative(original)(patterns)
-      def unapply(x: Alternatives): Option[List[Tree]] =
+      def unapply(x: Alternatives): Some[List[Tree]] =
         Some(x.patterns)
     end Alternatives
 
-    object AlternativesMethodsImpl extends AlternativesMethods:
-      extension (self: Alternatives):
+    given AlternativesMethods: AlternativesMethods with
+      extension (self: Alternatives)
         def patterns: List[Tree] = self.trees
       end extension
-    end AlternativesMethodsImpl
+    end AlternativesMethods
 
-    type ImportSelector = untpd.ImportSelector
+    type ParamClause = tpd.ParamClause
 
-    object ImportSelector extends ImportSelectorModule
+    object ParamClause extends ParamClauseModule
+
+    given ParamClauseMethods: ParamClauseMethods with
+      extension (self: ParamClause)
+        def params: List[ValDef] | List[TypeDef] = self
+    end ParamClauseMethods
+
+    type TermParamClause = List[tpd.ValDef]
+
+    given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] with
+      def unapply(x: ParamClause): Option[TermParamClause & x.type] = x match
+        case tpd.ValDefs(_) => Some(x.asInstanceOf[TermParamClause & x.type])
+        case _ => None
+    end TermParamClauseTypeTest
+
+    object TermParamClause extends TermParamClauseModule:
+      def apply(params: List[ValDef]): TermParamClause =
+        if yCheck then
+          val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
+          assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+        params
+      def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
+    end TermParamClause
+
+    given TermParamClauseMethods: TermParamClauseMethods with
+      extension (self: TermParamClause)
+        def params: List[ValDef] = self
+        def isImplicit: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
+    end TermParamClauseMethods
+
+    type TypeParamClause = List[tpd.TypeDef]
+
+    given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] with
+      def unapply(x: ParamClause): Option[TypeParamClause & x.type] = x match
+        case tpd.TypeDefs(_) => Some(x.asInstanceOf[TypeParamClause & x.type])
+        case _ => None
+    end TypeParamClauseTypeTest
+
+    object TypeParamClause extends TypeParamClauseModule:
+      def apply(params: List[TypeDef]): TypeParamClause =
+        if params.isEmpty then throw IllegalArgumentException("Empty type parameters")
+        params
+      def unapply(x: TypeParamClause): Some[List[TypeDef]] = Some(x)
+    end TypeParamClause
+
+    given TypeParamClauseMethods: TypeParamClauseMethods with
+      extension (self: TypeParamClause)
+        def params: List[TypeDef] = self
+    end TypeParamClauseMethods
+
+    type Selector = untpd.ImportSelector
+
+    object Selector extends SelectorModule
 
     type SimpleSelector = untpd.ImportSelector
 
-    object SimpleSelectorTypeTest extends TypeTest[ImportSelector, SimpleSelector]:
-      def unapply(x: ImportSelector): Option[SimpleSelector & x.type] = x match
-        case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty => Some(x)
+    object SimpleSelectorTypeTest extends TypeTest[Selector, SimpleSelector]:
+      def unapply(x: Selector): Option[SimpleSelector & x.type] = x match
+        case x: (untpd.ImportSelector & x.type) if x.renamed.isEmpty && !x.isGiven => Some(x)
         case _ => None // TODO: handle import bounds
     end SimpleSelectorTypeTest
 
     object SimpleSelector extends SimpleSelectorModule:
-      def unapply(x: SimpleSelector): Option[String] = Some(x.name.toString)
+      def unapply(x: SimpleSelector): Some[String] = Some(x.name.toString)
     end SimpleSelector
 
-
-    object SimpleSelectorMethodsImpl extends SimpleSelectorMethods:
-      extension (self: SimpleSelector):
+    given SimpleSelectorMethods: SimpleSelectorMethods with
+      extension (self: SimpleSelector)
         def name: String = self.imported.name.toString
         def namePos: Position = self.imported.sourcePos
       end extension
-    end SimpleSelectorMethodsImpl
+    end SimpleSelectorMethods
 
     type RenameSelector = untpd.ImportSelector
 
-    object RenameSelectorTypeTest extends TypeTest[ImportSelector, RenameSelector]:
-      def unapply(x: ImportSelector): Option[RenameSelector & x.type] = x match
+    object RenameSelectorTypeTest extends TypeTest[Selector, RenameSelector]:
+      def unapply(x: Selector): Option[RenameSelector & x.type] = x match
         case x: (untpd.ImportSelector & x.type) if !x.renamed.isEmpty => Some(x)
         case _ => None
     end RenameSelectorTypeTest
 
     object RenameSelector extends RenameSelectorModule:
-      def unapply(x: RenameSelector): Option[(String, String)] = Some((x.fromName, x.toName))
+      def unapply(x: RenameSelector): (String, String) = (x.fromName, x.toName)
     end RenameSelector
 
-    object RenameSelectorMethodsImpl extends RenameSelectorMethods:
-      extension (self: RenameSelector):
+    given RenameSelectorMethods: RenameSelectorMethods with
+      extension (self: RenameSelector)
         def fromName: String = self.imported.name.toString
         def fromPos: Position = self.imported.sourcePos
         def toName: String = self.renamed.asInstanceOf[untpd.Ident].name.toString
         def toPos: Position = self.renamed.asInstanceOf[untpd.Ident].sourcePos
       end extension
-    end RenameSelectorMethodsImpl
+    end RenameSelectorMethods
 
     type OmitSelector = untpd.ImportSelector
 
-    object OmitSelectorTypeTest extends TypeTest[ImportSelector, OmitSelector]:
-      def unapply(x: ImportSelector): Option[OmitSelector & x.type] = x match {
+    object OmitSelectorTypeTest extends TypeTest[Selector, OmitSelector]:
+      def unapply(x: Selector): Option[OmitSelector & x.type] = x match {
         case self: (untpd.ImportSelector & x.type) =>
           self.renamed match
             case dotc.ast.Trees.Ident(nme.WILDCARD) => Some(self)
@@ -1524,15 +1594,38 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end OmitSelectorTypeTest
 
     object OmitSelector extends OmitSelectorModule:
-      def unapply(x: OmitSelector): Option[String] = Some(x.imported.name.toString)
+      def unapply(x: OmitSelector): Some[String] = Some(x.imported.name.toString)
     end OmitSelector
 
-    object OmitSelectorMethodsImpl extends OmitSelectorMethods:
-      extension (self: OmitSelector):
+    given OmitSelectorMethods: OmitSelectorMethods with
+      extension (self: OmitSelector)
         def name: String = self.imported.toString
         def namePos: Position = self.imported.sourcePos
       end extension
-    end OmitSelectorMethodsImpl
+    end OmitSelectorMethods
+
+    type GivenSelector = untpd.ImportSelector
+
+    object GivenSelectorTypeTest extends TypeTest[Selector, GivenSelector]:
+      def unapply(x: Selector): Option[GivenSelector & x.type] = x match {
+        case self: (untpd.ImportSelector & x.type) if x.isGiven => Some(self)
+        case _ => None
+      }
+    end GivenSelectorTypeTest
+
+    object GivenSelector extends GivenSelectorModule:
+      def unapply(x: GivenSelector): Some[Option[TypeTree]] =
+        Some(GivenSelectorMethods.bound(x))
+    end GivenSelector
+
+    given GivenSelectorMethods: GivenSelectorMethods with
+      extension (self: GivenSelector)
+        def bound: Option[TypeTree] =
+          self.bound match
+            case untpd.TypedSplice(tpt) => Some(tpt)
+            case _ => None
+      end extension
+    end GivenSelectorMethods
 
     type TypeRepr = dotc.core.Types.Type
 
@@ -1561,16 +1654,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Symbols.getClassIfDefined(clazz.getCanonicalName).typeRef
     end TypeRepr
 
-    object TypeReprMethodsImpl extends TypeReprMethods:
-      extension (self: TypeRepr):
-        def showExtractors: String =
-          Extractors.showType(using QuotesImpl.this)(self)
+    given TypeReprMethods: TypeReprMethods with
+      extension (self: TypeRepr)
 
-        def show: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-
-        def showAnsiColored: String =
-          SourceCode.showType(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show(using printer: Printer[TypeRepr]): String = printer.show(self)
 
         def seal: scala.quoted.Type[_] = self.asType
 
@@ -1580,7 +1667,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
         def widen: TypeRepr = self.widen
-        def widenTermRefExpr: TypeRepr = self.widenTermRefExpr
+        def widenTermRefByName: TypeRepr = self.widenTermRefExpr
+        def widenByName: TypeRepr = self.widenExpr
         def dealias: TypeRepr = self.dealias
         def simplified: TypeRepr = self.simplified
         def classSymbol: Option[Symbol] =
@@ -1610,7 +1698,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
       end extension
-    end TypeReprMethodsImpl
+    end TypeReprMethods
 
     type ConstantType = dotc.core.Types.ConstantType
 
@@ -1622,12 +1710,27 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ConstantType extends ConstantTypeModule:
       def apply(const: Constant): ConstantType = Types.ConstantType(const)
-      def unapply(x: ConstantType): Option[Constant] = Some(x.constant)
+      def unapply(x: ConstantType): Some[Constant] = Some(x.constant)
     end ConstantType
 
-    object ConstantTypeMethodsImpl extends ConstantTypeMethods:
+    given ConstantTypeMethods: ConstantTypeMethods with
       extension (self: ConstantType) def constant: Constant = self.value
-    end ConstantTypeMethodsImpl
+    end ConstantTypeMethods
+
+    type NamedType = dotc.core.Types.NamedType
+
+    object NamedTypeTypeTest extends TypeTest[TypeRepr, NamedType]:
+      def unapply(x: TypeRepr): Option[NamedType & x.type] = x match
+        case tpe: (Types.NamedType & x.type) => Some(tpe)
+        case _ => None
+    end NamedTypeTypeTest
+
+    given NamedTypeMethods: NamedTypeMethods with
+      extension (self: NamedType)
+        def qualifier: TypeRepr = self.prefix
+        def name: String = self.name.toString
+      end extension
+    end NamedTypeMethods
 
     type TermRef = dotc.core.Types.NamedType
 
@@ -1640,16 +1743,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TermRef extends TermRefModule:
       def apply(qual: TypeRepr, name: String): TermRef =
         Types.TermRef(qual, name.toTermName)
-      def unapply(x: TermRef): Option[(TypeRepr, String)] =
-        Some((x.prefix, x.name.toString))
+      def unapply(x: TermRef): (TypeRepr, String) =
+        (x.prefix, x.name.toString)
     end TermRef
-
-    object TermRefMethodsImpl extends TermRefMethods:
-      extension (self: TermRef):
-        def qualifier: TypeRepr = self.prefix
-        def name: String = self.name.toString
-      end extension
-    end TermRefMethodsImpl
 
     type TypeRef = dotc.core.Types.NamedType
 
@@ -1660,18 +1756,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeRefTypeTest
 
     object TypeRef extends TypeRefModule:
-      def unapply(x: TypeRef): Option[(TypeRepr, String)] =
-        Some((x.prefix, x.name.toString))
+      def unapply(x: TypeRef): (TypeRepr, String) =
+        (x.prefix, x.name.toString)
     end TypeRef
 
-    object TypeRefMethodsImpl extends TypeRefMethods:
-      extension (self: TypeRef):
-        def qualifier: TypeRepr = self.prefix
-        def name: String = self.name.toString
+    given TypeRefMethods: TypeRefMethods with
+      extension (self: TypeRef)
         def isOpaqueAlias: Boolean = self.symbol.isOpaqueAlias
         def translucentSuperType: TypeRepr = self.translucentSuperType
       end extension
-    end TypeRefMethodsImpl
+    end TypeRefMethods
 
     type SuperType = dotc.core.Types.SuperType
 
@@ -1684,16 +1778,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object SuperType extends SuperTypeModule:
       def apply(thistpe: TypeRepr, supertpe: TypeRepr): SuperType =
         Types.SuperType(thistpe, supertpe)
-      def unapply(x: SuperType): Option[(TypeRepr, TypeRepr)] =
-        Some((x.thistpe, x.supertpe))
+      def unapply(x: SuperType): (TypeRepr, TypeRepr) =
+        (x.thistpe, x.supertpe)
     end SuperType
 
-    object SuperTypeMethodsImpl extends SuperTypeMethods:
-      extension (self: SuperType):
+    given SuperTypeMethods: SuperTypeMethods with
+      extension (self: SuperType)
         def thistpe: TypeRepr = self.thistpe
         def supertpe: TypeRepr = self.thistpe
       end extension
-    end SuperTypeMethodsImpl
+    end SuperTypeMethods
 
     type Refinement = dotc.core.Types.RefinedType
 
@@ -1710,37 +1804,37 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _: TypeBounds => name.toTypeName
             case _ => name.toTermName
         Types.RefinedType(parent, name1, info)
-      def unapply(x: Refinement): Option[(TypeRepr, String, TypeRepr)] =
-        Some((x.parent, x.name, x.info))
+      def unapply(x: Refinement): (TypeRepr, String, TypeRepr) =
+        (x.parent, x.name, x.info)
     end Refinement
 
-    object RefinementMethodsImpl extends RefinementMethods:
-      extension (self: Refinement):
+    given RefinementMethods: RefinementMethods with
+      extension (self: Refinement)
         def parent: TypeRepr = self.parent
         def name: String = self.refinedName.toString
         def info: TypeRepr = self.refinedInfo
       end extension
-    end RefinementMethodsImpl
+    end RefinementMethods
 
     type AppliedType = dotc.core.Types.AppliedType
 
     object AppliedTypeTypeTest extends TypeTest[TypeRepr, AppliedType]:
       def unapply(x: TypeRepr): Option[AppliedType & x.type] = x match
-        case tpe: (Types.AppliedType & x.type) => Some(tpe)
+        case tpe: (Types.AppliedType & x.type) if !tpe.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(tpe)
         case _ => None
     end AppliedTypeTypeTest
 
     object AppliedType extends AppliedTypeModule:
-      def unapply(x: AppliedType): Option[(TypeRepr, List[TypeRepr])] =
-        Some((x.tycon, x.args))
+      def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
+        (x.tycon, x.args)
     end AppliedType
 
-    object AppliedTypeMethodsImpl extends AppliedTypeMethods:
-      extension (self: AppliedType):
+    given AppliedTypeMethods: AppliedTypeMethods with
+      extension (self: AppliedType)
         def tycon: TypeRepr = self.tycon
         def args: List[TypeRepr] = self.args
       end extension
-    end AppliedTypeMethodsImpl
+    end AppliedTypeMethods
 
     type AnnotatedType = dotc.core.Types.AnnotatedType
 
@@ -1753,16 +1847,31 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object AnnotatedType extends AnnotatedTypeModule:
       def apply(underlying: TypeRepr, annot: Term): AnnotatedType =
         Types.AnnotatedType(underlying, Annotations.Annotation(annot))
-      def unapply(x: AnnotatedType): Option[(TypeRepr, Term)] =
-        Some((x.underlying.stripTypeVar, x.annot.tree))
+      def unapply(x: AnnotatedType): (TypeRepr, Term) =
+        (x.underlying.stripTypeVar, x.annot.tree)
     end AnnotatedType
 
-    object AnnotatedTypeMethodsImpl extends AnnotatedTypeMethods:
-      extension (self: AnnotatedType):
+    given AnnotatedTypeMethods: AnnotatedTypeMethods with
+      extension (self: AnnotatedType)
         def underlying: TypeRepr = self.underlying.stripTypeVar
-        def annot: Term = self.annot.tree
+        def annotation: Term = self.annot.tree
       end extension
-    end AnnotatedTypeMethodsImpl
+    end AnnotatedTypeMethods
+
+    type AndOrType = dotc.core.Types.AndOrType
+
+    object AndOrTypeTypeTest extends TypeTest[TypeRepr, AndOrType]:
+      def unapply(x: TypeRepr): Option[AndOrType & x.type] = x match
+        case tpe: (Types.AndOrType & x.type) => Some(tpe)
+        case _ => None
+    end AndOrTypeTypeTest
+
+    given AndOrTypeMethods: AndOrTypeMethods with
+      extension (self: AndOrType)
+        def left: TypeRepr = self.tp1.stripTypeVar
+        def right: TypeRepr = self.tp2.stripTypeVar
+      end extension
+    end AndOrTypeMethods
 
     type AndType = dotc.core.Types.AndType
 
@@ -1774,15 +1883,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AndType extends AndTypeModule:
       def apply(lhs: TypeRepr, rhs: TypeRepr): AndType = Types.AndType(lhs, rhs)
-      def unapply(x: AndType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
+      def unapply(x: AndType): (TypeRepr, TypeRepr) = (x.left, x.right)
     end AndType
-
-    object AndTypeMethodsImpl extends AndTypeMethods:
-      extension (self: AndType):
-        def left: TypeRepr = self.tp1.stripTypeVar
-        def right: TypeRepr = self.tp2.stripTypeVar
-      end extension
-    end AndTypeMethodsImpl
 
     type OrType = dotc.core.Types.OrType
 
@@ -1794,15 +1896,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object OrType extends OrTypeModule:
       def apply(lhs: TypeRepr, rhs: TypeRepr): OrType = Types.OrType(lhs, rhs, soft = false)
-      def unapply(x: OrType): Option[(TypeRepr, TypeRepr)] = Some((x.left, x.right))
+      def unapply(x: OrType): (TypeRepr, TypeRepr) = (x.left, x.right)
     end OrType
-
-    object OrTypeMethodsImpl extends OrTypeMethods:
-      extension (self: OrType):
-        def left: TypeRepr = self.tp1.stripTypeVar
-        def right: TypeRepr = self.tp2.stripTypeVar
-      end extension
-    end OrTypeMethodsImpl
 
     type MatchType = dotc.core.Types.MatchType
 
@@ -1815,17 +1910,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MatchType extends MatchTypeModule:
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType =
         Types.MatchType(bound, scrutinee, cases)
-      def unapply(x: MatchType): Option[(TypeRepr, TypeRepr, List[TypeRepr])] =
-        Some((x.bound, x.scrutinee, x.cases))
+      def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr]) =
+        (x.bound, x.scrutinee, x.cases)
     end MatchType
 
-    object MatchTypeMethodsImpl extends MatchTypeMethods:
-      extension (self: MatchType):
+    given MatchTypeMethods: MatchTypeMethods with
+      extension (self: MatchType)
         def bound: TypeRepr = self.bound
         def scrutinee: TypeRepr = self.scrutinee
         def cases: List[TypeRepr] = self.cases
       end extension
-    end MatchTypeMethodsImpl
+    end MatchTypeMethods
 
     type ByNameType = dotc.core.Types.ExprType
 
@@ -1837,14 +1932,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ByNameType extends ByNameTypeModule:
       def apply(underlying: TypeRepr): TypeRepr = Types.ExprType(underlying)
-      def unapply(x: ByNameType): Option[TypeRepr] = Some(x.underlying)
+      def unapply(x: ByNameType): Some[TypeRepr] = Some(x.underlying)
     end ByNameType
 
-    object ByNameTypeMethodsImpl extends ByNameTypeMethods:
-      extension (self: ByNameType):
+    given ByNameTypeMethods: ByNameTypeMethods with
+      extension (self: ByNameType)
         def underlying: TypeRepr = self.resType.stripTypeVar
       end extension
-    end ByNameTypeMethodsImpl
+    end ByNameTypeMethods
 
     type ParamRef = dotc.core.Types.ParamRef
 
@@ -1856,16 +1951,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ParamRefTypeTest
 
     object ParamRef extends ParamRefModule:
-      def unapply(x: ParamRef): Option[(LambdaType, Int)] =
-        Some((x.binder, x.paramNum))
+      def unapply(x: ParamRef): (LambdaType, Int) =
+        (x.binder, x.paramNum)
     end ParamRef
 
-    object ParamRefMethodsImpl extends ParamRefMethods:
-      extension (self: ParamRef):
+    given ParamRefMethods: ParamRefMethods with
+      extension (self: ParamRef)
         def binder: LambdaType = self.binder.asInstanceOf[LambdaType] // Cast to tpd
         def paramNum: Int = self.paramNum
       end extension
-    end ParamRefMethodsImpl
+    end ParamRefMethods
 
     type ThisType = dotc.core.Types.ThisType
 
@@ -1876,14 +1971,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ThisTypeTypeTest
 
     object ThisType extends ThisTypeModule:
-      def unapply(x: ThisType): Option[TypeRepr] = Some(x.tref)
+      def unapply(x: ThisType): Some[TypeRepr] = Some(x.tref)
     end ThisType
 
-    object ThisTypeMethodsImpl extends ThisTypeMethods:
-      extension (self: ThisType):
+    given ThisTypeMethods: ThisTypeMethods with
+      extension (self: ThisType)
         def tref: TypeRepr = self.tref
       end extension
-    end ThisTypeMethodsImpl
+    end ThisTypeMethods
 
     type RecursiveThis = dotc.core.Types.RecThis
 
@@ -1894,15 +1989,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RecursiveThisTypeTest
 
     object RecursiveThis extends RecursiveThisModule:
-      def unapply(x: RecursiveThis): Option[RecursiveType] = Some(x.binder)
+      def unapply(x: RecursiveThis): Some[RecursiveType] = Some(x.binder)
     end RecursiveThis
 
 
-    object RecursiveThisMethodsImpl extends RecursiveThisMethods:
-      extension (self: RecursiveThis):
+    given RecursiveThisMethods: RecursiveThisMethods with
+      extension (self: RecursiveThis)
         def binder: RecursiveType = self.binder
       end extension
-    end RecursiveThisMethodsImpl
+    end RecursiveThisMethods
 
     type RecursiveType = dotc.core.Types.RecType
 
@@ -1915,17 +2010,39 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object RecursiveType extends RecursiveTypeModule:
       def apply(parentExp: RecursiveType => TypeRepr): RecursiveType =
         Types.RecType(parentExp)
-      def unapply(x: RecursiveType): Option[TypeRepr] = Some(x.underlying)
+      def unapply(x: RecursiveType): Some[TypeRepr] = Some(x.underlying)
     end RecursiveType
 
-    object RecursiveTypeMethodsImpl extends RecursiveTypeMethods:
-      extension (self: RecursiveType):
+    given RecursiveTypeMethods: RecursiveTypeMethods with
+      extension (self: RecursiveType)
         def underlying: TypeRepr = self.underlying.stripTypeVar
         def recThis: RecursiveThis = self.recThis
       end extension
-    end RecursiveTypeMethodsImpl
+    end RecursiveTypeMethods
 
     type LambdaType = dotc.core.Types.LambdaType
+
+    object LambdaTypeTypeTest extends TypeTest[TypeRepr, LambdaType]:
+      def unapply(x: TypeRepr): Option[LambdaType & x.type] = x match
+        case tpe: (Types.LambdaType & x.type) => Some(tpe)
+        case _ => None
+    end LambdaTypeTypeTest
+
+    given LambdaTypeMethods: LambdaTypeMethods with
+      extension (self: LambdaType)
+        def paramNames: List[String] = self.paramNames.map(_.toString)
+        def paramTypes: List[TypeRepr] = self.paramInfos
+        def resType: TypeRepr = self.resType
+      end extension
+    end LambdaTypeMethods
+
+    type MethodOrPoly = dotc.core.Types.MethodOrPoly
+
+    object MethodOrPolyTypeTest extends TypeTest[TypeRepr, MethodOrPoly]:
+      def unapply(x: TypeRepr): Option[MethodOrPoly & x.type] = x match
+        case tpe: (Types.MethodOrPoly & x.type) => Some(tpe)
+        case _ => None
+    end MethodOrPolyTypeTest
 
     type MethodType = dotc.core.Types.MethodType
 
@@ -1938,20 +2055,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
-      def unapply(x: MethodType): Option[(List[String], List[TypeRepr], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramTypes, x.resType))
+      def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramTypes, x.resType)
     end MethodType
 
-    object MethodTypeMethodsImpl extends MethodTypeMethods:
-      extension (self: MethodType):
+    given MethodTypeMethods: MethodTypeMethods with
+      extension (self: MethodType)
         def isErased: Boolean = self.isErasedMethod
         def isImplicit: Boolean = self.isImplicitMethod
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
-        def resType: TypeRepr = self.resType
       end extension
-    end MethodTypeMethodsImpl
+    end MethodTypeMethods
 
     type PolyType = dotc.core.Types.PolyType
 
@@ -1964,18 +2078,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
         Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
-      def unapply(x: PolyType): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+      def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end PolyType
 
-    object PolyTypeMethodsImpl extends PolyTypeMethods:
-      extension (self: PolyType):
+    given PolyTypeMethods: PolyTypeMethods with
+      extension (self: PolyType)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
         def paramBounds: List[TypeBounds] = self.paramInfos
-        def resType: TypeRepr = self.resType
       end extension
-    end PolyTypeMethodsImpl
+    end PolyTypeMethods
 
     type TypeLambda = dotc.core.Types.TypeLambda
 
@@ -1988,18 +2100,37 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
         Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
-      def unapply(x: TypeLambda): Option[(List[String], List[TypeBounds], TypeRepr)] =
-        Some((x.paramNames.map(_.toString), x.paramBounds, x.resType))
+      def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
+        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
     end TypeLambda
 
-    object TypeLambdaMethodsImpl extends TypeLambdaMethods:
-      extension (self: TypeLambda):
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+    given TypeLambdaMethods: TypeLambdaMethods with
+      extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def resType: TypeRepr = self.resType
+        def paramBounds: List[TypeBounds] = self.paramInfos
       end extension
-    end TypeLambdaMethodsImpl
+    end TypeLambdaMethods
+
+    type MatchCase = dotc.core.Types.AppliedType
+
+    given MatchCaseTypeTest: TypeTest[TypeRepr, MatchCase] with
+      def unapply(x: TypeRepr): Option[MatchCase & x.type] = x match
+        case x: (Types.AppliedType & x.type) if x.tycon.isRef(dotc.core.Symbols.defn.MatchCaseClass) => Some(x)
+        case _ => None
+    end MatchCaseTypeTest
+
+    object MatchCase extends MatchCaseModule:
+      def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase =
+        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, List(pattern, rhs))
+      def unapply(x: MatchCase): (TypeRepr, TypeRepr) = (x.pattern, x.rhs)
+    end MatchCase
+
+    given MatchCaseMethods: MatchCaseMethods with
+      extension (self: MatchCase)
+        def pattern: TypeRepr = self.args(0)
+        def rhs: TypeRepr = self.args(1)
+      end extension
+    end MatchCaseMethods
 
     type TypeBounds = dotc.core.Types.TypeBounds
 
@@ -2011,18 +2142,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeBounds extends TypeBoundsModule:
       def apply(low: TypeRepr, hi: TypeRepr): TypeBounds = Types.TypeBounds(low, hi)
-      def unapply(x: TypeBounds): Option[(TypeRepr, TypeRepr)] = Some((x.low.stripLazyRef, x.hi.stripLazyRef))
+      def unapply(x: TypeBounds): (TypeRepr, TypeRepr) = (x.low.stripLazyRef, x.hi.stripLazyRef)
       def empty: TypeBounds = Types .TypeBounds.empty
       def upper(hi: TypeRepr): TypeBounds = Types .TypeBounds.upper(hi)
       def lower(lo: TypeRepr): TypeBounds = Types .TypeBounds.lower(lo)
     end TypeBounds
 
-    object TypeBoundsMethodsImpl extends TypeBoundsMethods:
-      extension (self: TypeBounds):
+    given TypeBoundsMethods: TypeBoundsMethods with
+      extension (self: TypeBounds)
         def low: TypeRepr = self.lo.stripLazyRef
         def hi: TypeRepr = self.hi.stripLazyRef
       end extension
-    end TypeBoundsMethodsImpl
+    end TypeBoundsMethods
 
     type NoPrefix = dotc.core.Types.NoPrefix.type
 
@@ -2032,110 +2163,165 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end NoPrefixTypeTest
 
     object NoPrefix extends NoPrefixModule:
-      def unapply(x: NoPrefix): Boolean = true
+      def unapply(x: NoPrefix): true = true
     end NoPrefix
 
     type Constant = dotc.core.Constants.Constant
 
-    object Constant extends ConstantModule:
+    object Constant extends ConstantModule
 
-      object Boolean extends ConstantBooleanModule:
-        def apply(x: Boolean): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Boolean] =
-          if constant.tag == dotc.core.Constants.BooleanTag then Some(constant.booleanValue)
-          else None
-      end Boolean
-
-      object Byte extends ConstantByteModule:
-        def apply(x: Byte): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Byte] =
-          if constant.tag == dotc.core.Constants.ByteTag then Some(constant.byteValue)
-          else None
-      end Byte
-
-      object Short extends ConstantShortModule:
-        def apply(x: Short): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Short] =
-          if constant.tag == dotc.core.Constants.ShortTag then Some(constant.shortValue)
-          else None
-      end Short
-
-      object Int extends ConstantIntModule:
-        def apply(x: Int): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Int] =
-          if constant.tag == dotc.core.Constants.IntTag then Some(constant.intValue)
-          else None
-      end Int
-
-      object Long extends ConstantLongModule:
-        def apply(x: Long): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Long] =
-          if constant.tag == dotc.core.Constants.LongTag then Some(constant.longValue)
-          else None
-      end Long
-
-      object Float extends ConstantFloatModule:
-        def apply(x: Float): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Float] =
-          if constant.tag == dotc.core.Constants.FloatTag then Some(constant.floatValue)
-          else None
-      end Float
-
-      object Double extends ConstantDoubleModule:
-        def apply(x: Double): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Double] =
-          if constant.tag == dotc.core.Constants.DoubleTag then Some(constant.doubleValue)
-          else None
-      end Double
-
-      object Char extends ConstantCharModule:
-        def apply(x: Char): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[Char] =
-          if constant.tag == dotc.core.Constants.CharTag then Some(constant.charValue)
-          else None
-      end Char
-
-      object String extends ConstantStringModule:
-        def apply(x: String): Constant = dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[String] =
-          if constant.tag == dotc.core.Constants.StringTag then Some(constant.stringValue)
-          else None
-      end String
-
-      object Unit extends ConstantUnitModule:
-        def apply(): Constant = dotc.core.Constants.Constant(())
-        def unapply(constant: Constant): Boolean =
-          constant.tag == dotc.core.Constants.UnitTag
-      end Unit
-
-      object Null extends ConstantNullModule:
-        def apply(): Constant = dotc.core.Constants.Constant(null)
-        def unapply(constant: Constant): Boolean =
-          constant.tag == dotc.core.Constants.NullTag
-      end Null
-
-      object ClassOf extends ConstantClassOfModule:
-        def apply(x: TypeRepr): Constant =
-          // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
-          dotc.core.Constants.Constant(x)
-        def unapply(constant: Constant): Option[TypeRepr] =
-          if constant.tag == dotc.core.Constants.ClazzTag then Some(constant.typeValue)
-          else None
-      end ClassOf
-
-    end Constant
-
-    object ConstantMethodsImpl extends ConstantMethods:
-      extension (self: Constant):
+    given ConstantMethods: ConstantMethods with
+      extension (self: Constant)
         def value: Any = self.value
-        def showExtractors: String =
-          Extractors.showConstant(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showConstant(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show(using printer: Printer[Constant]): String = printer.show(self)
       end extension
-    end ConstantMethodsImpl
+    end ConstantMethods
+
+    type BooleanConstant = dotc.core.Constants.Constant
+
+    object BooleanConstantTypeTest extends TypeTest[Constant, BooleanConstant]:
+      def unapply(x: Constant): Option[BooleanConstant & x.type] =
+        if x.tag == dotc.core.Constants.BooleanTag then Some(x.asInstanceOf[BooleanConstant & x.type]) else None
+    end BooleanConstantTypeTest
+
+    object BooleanConstant extends BooleanConstantModule:
+      def apply(x: Boolean): BooleanConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: BooleanConstant): Some[Boolean] = Some(constant.booleanValue)
+    end BooleanConstant
+
+    type ByteConstant = dotc.core.Constants.Constant
+
+    object ByteConstantTypeTest extends TypeTest[Constant, ByteConstant]:
+      def unapply(x: Constant): Option[ByteConstant & x.type] =
+        if x.tag == dotc.core.Constants.ByteTag then Some(x.asInstanceOf[ByteConstant & x.type]) else None
+    end ByteConstantTypeTest
+
+    object ByteConstant extends ByteConstantModule:
+      def apply(x: Byte): ByteConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: ByteConstant): Some[Byte] = Some(constant.byteValue)
+    end ByteConstant
+
+    type ShortConstant = dotc.core.Constants.Constant
+
+    object ShortConstantTypeTest extends TypeTest[Constant, ShortConstant]:
+      def unapply(x: Constant): Option[ShortConstant & x.type] =
+        if x.tag == dotc.core.Constants.ShortTag then Some(x.asInstanceOf[ShortConstant & x.type]) else None
+    end ShortConstantTypeTest
+
+    object ShortConstant extends ShortConstantModule:
+      def apply(x: Short): ShortConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: ShortConstant): Some[Short] = Some(constant.shortValue)
+    end ShortConstant
+
+    type IntConstant = dotc.core.Constants.Constant
+
+    object IntConstantTypeTest extends TypeTest[Constant, IntConstant]:
+      def unapply(x: Constant): Option[IntConstant & x.type] =
+        if x.tag == dotc.core.Constants.IntTag then Some(x.asInstanceOf[IntConstant & x.type]) else None
+    end IntConstantTypeTest
+
+    object IntConstant extends IntConstantModule:
+      def apply(x: Int): IntConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: IntConstant): Some[Int] = Some(constant.intValue)
+    end IntConstant
+
+    type LongConstant = dotc.core.Constants.Constant
+
+    object LongConstantTypeTest extends TypeTest[Constant, LongConstant]:
+      def unapply(x: Constant): Option[LongConstant & x.type] =
+        if x.tag == dotc.core.Constants.LongTag then Some(x.asInstanceOf[LongConstant & x.type]) else None
+    end LongConstantTypeTest
+
+    object LongConstant extends LongConstantModule:
+      def apply(x: Long): LongConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: LongConstant): Some[Long] = Some(constant.longValue)
+    end LongConstant
+
+    type FloatConstant = dotc.core.Constants.Constant
+
+    object FloatConstantTypeTest extends TypeTest[Constant, FloatConstant]:
+      def unapply(x: Constant): Option[FloatConstant & x.type] =
+        if x.tag == dotc.core.Constants.FloatTag then Some(x.asInstanceOf[FloatConstant & x.type]) else None
+    end FloatConstantTypeTest
+
+    object FloatConstant extends FloatConstantModule:
+      def apply(x: Float): FloatConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: FloatConstant): Some[Float] = Some(constant.floatValue)
+    end FloatConstant
+
+    type DoubleConstant = dotc.core.Constants.Constant
+
+    object DoubleConstantTypeTest extends TypeTest[Constant, DoubleConstant]:
+      def unapply(x: Constant): Option[DoubleConstant & x.type] =
+        if x.tag == dotc.core.Constants.DoubleTag then Some(x.asInstanceOf[DoubleConstant & x.type]) else None
+    end DoubleConstantTypeTest
+
+    object DoubleConstant extends DoubleConstantModule:
+      def apply(x: Double): DoubleConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: DoubleConstant): Some[Double] = Some(constant.doubleValue)
+    end DoubleConstant
+
+    type CharConstant = dotc.core.Constants.Constant
+
+    object CharConstantTypeTest extends TypeTest[Constant, CharConstant]:
+      def unapply(x: Constant): Option[CharConstant & x.type] =
+        if x.tag == dotc.core.Constants.CharTag then Some(x.asInstanceOf[CharConstant & x.type]) else None
+    end CharConstantTypeTest
+
+    object CharConstant extends CharConstantModule:
+      def apply(x: Char): CharConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: CharConstant): Some[Char] = Some(constant.charValue)
+    end CharConstant
+
+    type StringConstant = dotc.core.Constants.Constant
+
+    object StringConstantTypeTest extends TypeTest[Constant, StringConstant]:
+      def unapply(x: Constant): Option[StringConstant & x.type] =
+        if x.tag == dotc.core.Constants.StringTag then Some(x.asInstanceOf[StringConstant & x.type]) else None
+    end StringConstantTypeTest
+
+    object StringConstant extends StringConstantModule:
+      def apply(x: String): StringConstant = dotc.core.Constants.Constant(x)
+      def unapply(constant: StringConstant): Some[String] = Some(constant.stringValue)
+    end StringConstant
+
+    type UnitConstant = dotc.core.Constants.Constant
+
+    object UnitConstantTypeTest extends TypeTest[Constant, UnitConstant]:
+      def unapply(x: Constant): Option[UnitConstant & x.type] =
+        if x.tag == dotc.core.Constants.UnitTag then Some(x.asInstanceOf[UnitConstant & x.type]) else None
+    end UnitConstantTypeTest
+
+    object UnitConstant extends UnitConstantModule:
+      def apply(): UnitConstant = dotc.core.Constants.Constant(())
+      def unapply(constant: UnitConstant): true = true
+    end UnitConstant
+
+    type NullConstant = dotc.core.Constants.Constant
+
+    object NullConstantTypeTest extends TypeTest[Constant, NullConstant]:
+      def unapply(x: Constant): Option[NullConstant & x.type] =
+        if x.tag == dotc.core.Constants.NullTag then Some(x.asInstanceOf[NullConstant & x.type]) else None
+    end NullConstantTypeTest
+
+    object NullConstant extends NullConstantModule:
+      def apply(): NullConstant = dotc.core.Constants.Constant(null)
+      def unapply(constant: NullConstant): true = true
+    end NullConstant
+
+    type ClassOfConstant = dotc.core.Constants.Constant
+
+    object ClassOfConstantTypeTest extends TypeTest[Constant, ClassOfConstant]:
+      def unapply(x: Constant): Option[ClassOfConstant & x.type] =
+        if x.tag == dotc.core.Constants.ClazzTag then Some(x.asInstanceOf[ClassOfConstant & x.type]) else None
+    end ClassOfConstantTypeTest
+
+    object ClassOfConstant extends ClassOfConstantModule:
+      def apply(x: TypeRepr): ClassOfConstant =
+        // TODO check that the type is a valid class when creating this constant or let Ycheck do it?
+        dotc.core.Constants.Constant(x)
+      def unapply(constant: ClassOfConstant): Some[TypeRepr] = Some(constant.typeValue)
+    end ClassOfConstant
 
     object Implicits extends ImplicitsModule:
       def search(tpe: TypeRepr): ImplicitSearchResult =
@@ -2153,11 +2339,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case _ => Some(x)
     end ImplicitSearchSuccessTypeTest
 
-    object ImplicitSearchSuccessMethodsImpl extends ImplicitSearchSuccessMethods:
-      extension (self: ImplicitSearchSuccess):
+    given ImplicitSearchSuccessMethods: ImplicitSearchSuccessMethods with
+      extension (self: ImplicitSearchSuccess)
         def tree: Term = self
       end extension
-    end ImplicitSearchSuccessMethodsImpl
+    end ImplicitSearchSuccessMethods
 
     type ImplicitSearchFailure = Tree
 
@@ -2168,12 +2354,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case _ => None
     end ImplicitSearchFailureTypeTest
 
-    object ImplicitSearchFailureMethodsImpl extends ImplicitSearchFailureMethods:
-      extension (self: ImplicitSearchFailure):
+    given ImplicitSearchFailureMethods: ImplicitSearchFailureMethods with
+      extension (self: ImplicitSearchFailure)
         def explanation: String =
           self.tpe.asInstanceOf[dotc.typer.Implicits.SearchFailureType].explanation
       end extension
-    end ImplicitSearchFailureMethodsImpl
+    end ImplicitSearchFailureMethods
 
     type DivergingImplicit = Tree
 
@@ -2222,8 +2408,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
     end Symbol
 
-    object SymbolMethodsImpl extends SymbolMethods:
-      extension (self: Symbol):
+    given SymbolMethods: SymbolMethods with
+      extension (self: Symbol)
         def owner: Symbol = self.denot.owner
         def maybeOwner: Symbol = self.denot.maybeOwner
         def flags: Flags = self.denot.flags
@@ -2242,21 +2428,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def name: String = self.denot.name.toString
         def fullName: String = self.denot.fullName.toString
-        def pos: Position = self.sourcePos
+        def pos: Option[Position] =
+          if self.exists then Some(self.sourcePos) else None
 
-        def documentation: Option[Documentation] =
+        def docstring: Option[String] =
           import dotc.core.Comments.CommentsContext
           val docCtx = ctx.docCtx.getOrElse {
             throw new RuntimeException(
               "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
             )
           }
-          docCtx.docstring(self)
+          docCtx.docstring(self).map(_.raw)
 
         def tree: Tree = FromSymbol.definitionFromSym(self)
 
-        def annots: List[Term] =
-          self.annotations.flatMap {
+        def hasAnnotation(annotSym: Symbol): Boolean =
+          self.denot.hasAnnotation(annotSym)
+
+        def getAnnotation(annotSym: Symbol): Option[Term] =
+          self.denot.getAnnotation(annotSym).map(_.tree)
+
+        def annotations: List[Term] =
+          self.denot.annotations.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot => annot.tree :: Nil
           }
@@ -2283,43 +2476,68 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.is(dotc.core.Flags.Case, butNot = Enum | Module) && !self.isClass
         def isNoSymbol: Boolean = self == Symbol.noSymbol
         def exists: Boolean = self != Symbol.noSymbol
-        def fields: List[Symbol] = self.unforcedDecls.filter(isField)
 
-        def field(name: String): Symbol =
+        def declaredField(name: String): Symbol =
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
 
-        def classMethod(name: String): List[Symbol] =
+        def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
+
+        def memberField(name: String): Symbol =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).find {
+            sym => isField(sym) && sym.name.toString == name
+          }.getOrElse(dotc.core.Symbols.NoSymbol)
+
+        def memberFields: List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isField(sym) => sym.asTerm
+          }.toList
+
+        def declaredMethod(name: String): List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
           }.toList
 
-        def classMethods: List[Symbol] =
+        def declaredMethods: List[Symbol] =
           self.typeRef.decls.iterator.collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def members: List[Symbol] =
-          self.typeRef.info.decls.toList
+        def memberMethod(name: String): List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
+          }.toList
 
-        def typeMembers: List[Symbol] =
-          self.unforcedDecls.filter(_.isType)
+        def memberMethods: List[Symbol] =
+          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
+            case sym if isMethod(sym) => sym.asTerm
+          }.toList
 
-        def typeMember(name: String): Symbol =
+        def declaredType(name: String): List[Symbol] =
+          self.typeRef.decls.iterator.collect {
+            case sym if sym.isType && sym.name.toString == name => sym.asType
+          }.toList
+
+        def declaredTypes: List[Symbol] =
+          self.typeRef.decls.iterator.collect {
+            case sym if sym.isType => sym.asType
+          }.toList
+
+        def memberType(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-        def method(name: String): List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
-          }.toList
+        def memberTypes: List[Symbol] =
+          self.unforcedDecls.filter(_.isType)
 
-        def methods: List[Symbol] =
-          appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
-            case sym if isMethod(sym) => sym.asTerm
-          }.toList
+        def declarations: List[Symbol] =
+          self.typeRef.info.decls.toList
 
         def paramSymss: List[List[Symbol]] = self.denot.paramSymss
         def primaryConstructor: Symbol = self.denot.primaryConstructor
+        def allOverriddenSymbols: Iterator[Symbol] = self.denot.allOverriddenSymbols
+        def overridingSymbol(ofclazz: Symbol): Symbol =
+          if ofclazz.isClass then self.denot.overridingSymbol(ofclazz.asClass)
+          else dotc.core.Symbols.NoSymbol
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
@@ -2334,12 +2552,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def companionModule: Symbol = self.denot.companionModule
         def children: List[Symbol] = self.denot.children
 
-        def showExtractors: String =
-          Extractors.showSymbol(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showSymbol(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showSymbol(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show(using printer: Printer[Symbol]): String = printer.show(self)
 
       end extension
 
@@ -2351,17 +2564,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       private def isField(sym: Symbol): Boolean =
         sym.isTerm && !sym.is(dotc.core.Flags.Method)
-    end SymbolMethodsImpl
+    end SymbolMethods
 
     type Signature = dotc.core.Signature
 
     object Signature extends SignatureModule:
-      def unapply(sig: Signature): Option[(List[String | Int], String)] =
-        Some((sig.paramSigs, sig.resultSig))
+      def unapply(sig: Signature): (List[String | Int], String) =
+        (sig.paramSigs, sig.resultSig)
     end Signature
 
-    object SignatureMethodsImpl extends SignatureMethods:
-      extension (self: Signature):
+    given SignatureMethods: SignatureMethods with
+      extension (self: Signature)
         def paramSigs: List[String | Int] =
           self.paramsSig.map {
             case paramSig: dotc.core.Names.TypeName =>
@@ -2372,15 +2585,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def resultSig: String =
           self.resSig.toString
       end extension
-    end SignatureMethodsImpl
+    end SignatureMethods
 
-    object defn extends DefnModule:
+    object defn extends defnModule:
       def RootPackage: Symbol = dotc.core.Symbols.defn.RootPackage
       def RootClass: Symbol = dotc.core.Symbols.defn.RootClass
       def EmptyPackageClass: Symbol = dotc.core.Symbols.defn.EmptyPackageClass
       def ScalaPackage: Symbol = dotc.core.Symbols.defn.ScalaPackageVal
       def ScalaPackageClass: Symbol = dotc.core.Symbols.defn.ScalaPackageClass
       def AnyClass: Symbol = dotc.core.Symbols.defn.AnyClass
+      def MatchableClass: Symbol = dotc.core.Symbols.defn.MatchableClass
       def AnyValClass: Symbol = dotc.core.Symbols.defn.AnyValClass
       def ObjectClass: Symbol = dotc.core.Symbols.defn.ObjectClass
       def AnyRefClass: Symbol = dotc.core.Symbols.defn.AnyRefAlias
@@ -2433,23 +2647,28 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def CaseAccessor: Flags = dotc.core.Flags.CaseAccessor
       def Contravariant: Flags = dotc.core.Flags.Contravariant
       def Covariant: Flags = dotc.core.Flags.Covariant
+      def Deferred: Flags = dotc.core.Flags.Deferred
       def EmptyFlags = dotc.core.Flags.EmptyFlags
       def Enum: Flags = dotc.core.Flags.Enum
       def Erased: Flags = dotc.core.Flags.Erased
+      def Exported: Flags = dotc.core.Flags.Exported
       def ExtensionMethod: Flags = dotc.core.Flags.ExtensionMethod
       def FieldAccessor: Flags = dotc.core.Flags.Accessor
       def Final: Flags = dotc.core.Flags.Final
       def Given: Flags = dotc.core.Flags.Given
       def HasDefault: Flags = dotc.core.Flags.HasDefault
       def Implicit: Flags = dotc.core.Flags.Implicit
+      def Infix: Flags = dotc.core.Flags.Infix
       def Inline: Flags = dotc.core.Flags.Inline
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
+      def JavaStatic: Flags = dotc.core.Flags.JavaStatic
       def Lazy: Flags = dotc.core.Flags.Lazy
       def Local: Flags = dotc.core.Flags.Local
       def Macro: Flags = dotc.core.Flags.Macro
-      def ModuleClass: Flags = dotc.core.Flags.ModuleClass
+      def Method: Flags = dotc.core.Flags.Method
+      def Module: Flags = dotc.core.Flags.Module
       def Mutable: Flags = dotc.core.Flags.Mutable
-      def Object: Flags = dotc.core.Flags.Module
+      def NoInits: Flags = dotc.core.Flags.NoInits
       def Opaque: Flags = dotc.core.Flags.Opaque
       def Open: Flags = dotc.core.Flags.Open
       def Override: Flags = dotc.core.Flags.Override
@@ -2465,85 +2684,94 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Static: Flags = dotc.core.Flags.JavaStatic
       def Synthetic: Flags = dotc.core.Flags.Synthetic
       def Trait: Flags = dotc.core.Flags.Trait
+      def Transparent: Flags = dotc.core.Flags.Transparent
     end Flags
 
-    object FlagsMethodsImpl extends FlagsMethods:
-      extension (self: Flags):
+    given FlagsMethods: FlagsMethods with
+      extension (self: Flags)
         def is(that: Flags): Boolean = self.isAllOf(that)
         def |(that: Flags): Flags = dotc.core.Flags.or(self, that) // TODO: Replace with dotc.core.Flags.|(self)(that)  once extension names have stabilized
         def &(that: Flags): Flags = dotc.core.Flags.and(self, that)// TODO: Replace with dotc.core.Flags.&(self)(that)  once extension names have stabilized
-        def showExtractors: String =
-          Extractors.showFlags(using QuotesImpl.this)(self)
-        def show: String =
-          SourceCode.showFlags(using QuotesImpl.this)(self)(SyntaxHighlight.plain)
-        def showAnsiColored: String =
-          SourceCode.showFlags(using QuotesImpl.this)(self)(SyntaxHighlight.ANSI)
+        def show: String = Extractors.showFlags(using QuotesImpl.this)(self)
       end extension
-    end FlagsMethodsImpl
+    end FlagsMethods
 
     type Position = dotc.util.SourcePosition
 
     object Position extends PositionModule:
       def ofMacroExpansion: dotc.util.SourcePosition =
         MacroExpansion.position.getOrElse(dotc.util.SourcePosition(ctx.source, dotc.util.Spans.NoSpan))
+      def apply(sourceFile: SourceFile, start: Int, end: Int): Position =
+        dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end))
     end Position
 
-    object PositionMethodsImpl extends PositionMethods:
-      extension (self: Position):
+    given PositionMethods: PositionMethods with
+      extension (self: Position)
         def start: Int = self.start
         def end: Int = self.end
-        def exists: Boolean = self.exists
         def sourceFile: SourceFile = self.source
         def startLine: Int = self.startLine
         def endLine: Int = self.endLine
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
-        def sourceCode: String =
-          new String(self.source.content(), self.start, self.end - self.start)
+        def sourceCode: Option[String] =
+          // TODO detect when we do not have a source and return None
+          Some(new String(self.source.content(), self.start, self.end - self.start))
       end extension
-    end PositionMethodsImpl
+    end PositionMethods
 
     type SourceFile = dotc.util.SourceFile
 
-    object SourceFile extends SourceFileModule
+    object SourceFile extends SourceFileModule {
+      def current: SourceFile =
+        if ctx.compilationUnit == null then
+          throw new java.lang.UnsupportedOperationException(
+            "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
+        ctx.compilationUnit.source
+    }
 
-    object SourceFileMethodsImpl extends SourceFileMethods:
-      extension (self: SourceFile):
+    given SourceFileMethods: SourceFileMethods with
+      extension (self: SourceFile)
         def jpath: java.nio.file.Path = self.file.jpath
-        def content: String = new String(self.content())
+        def content: Option[String] =
+          // TODO detect when we do not have a source and return None
+          Some(new String(self.content()))
       end extension
-    end SourceFileMethodsImpl
+    end SourceFileMethods
 
-    object Source extends SourceModule:
-      def path: java.nio.file.Path = ctx.compilationUnit.source.file.jpath
-    end Source
+    object report extends reportModule:
 
-    object Reporting extends ReportingModule:
-      def error(msg: => String, pos: Position): Unit =
+      def error(msg: String): Unit =
+        dotc.report.error(msg, Position.ofMacroExpansion)
+
+      def error(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.error(msg, asTerm(expr).pos)
+
+      def error(msg: String, pos: Position): Unit =
         dotc.report.error(msg, pos)
 
-      def error(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
+      def throwError(msg: String): Nothing =
+        error(msg)
+        throw new scala.quoted.runtime.StopMacroExpansion
 
-      def warning(msg: => String, pos: Position): Unit =
+      def throwError(msg: String, expr: Expr[Any]): Nothing =
+        error(msg, expr)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def throwError(msg: String, pos: Position): Nothing =
+        error(msg, pos)
+        throw new scala.quoted.runtime.StopMacroExpansion
+
+      def warning(msg: String): Unit =
+        dotc.report.warning(msg, Position.ofMacroExpansion)
+
+      def warning(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.warning(msg, asTerm(expr).pos)
+
+      def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
 
-      def warning(msg: => String, sourceFile: SourceFile, start: Int, end: Int): Unit =
-        dotc.report.error(msg, dotc.util.SourcePosition(sourceFile, dotc.util.Spans.Span(start, end)))
-    end Reporting
-
-    type Documentation = dotc.core.Comments.Comment
-
-    object Documentation extends DocumentationModule
-
-    object DocumentationMethodsImpl extends DocumentationMethods:
-      extension (self: Documentation):
-        def raw: String = self.raw
-        def expanded: Option[String] = self.expanded
-        def usecases: List[(String, Option[DefDef])] =
-          self.usecases.map { uc => (uc.code, uc.tpdCode) }
-      end extension
-    end DocumentationMethodsImpl
+    end report
 
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
       if tree.isEmpty then None else Some(tree)
@@ -2586,18 +2814,61 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                    |
                    |
                    |The code of the definition of ${t.symbol} is
-                   |${TreeMethods.show(t)}
+                   |${Printer.TreeCode.show(t)}
                    |
                    |which was found in the code
-                   |${TreeMethods.show(tree)}
+                   |${Printer.TreeCode.show(tree)}
                    |
                    |which has the AST representation
-                   |${TreeMethods.showExtractors(tree)}
+                   |${Printer.TreeStructure.show(tree)}
                    |
                    |""".stripMargin)
             case _ => traverseChildren(t)
       }.traverse(tree)
 
+    object Printer extends PrinterModule:
+
+      lazy val TreeCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.plain, fullNames = true)
+
+      lazy val TreeShortCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.plain, fullNames = false)
+
+      lazy val TreeAnsiCode: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          SourceCode.showTree(using QuotesImpl.this)(tree)(SyntaxHighlight.ANSI, fullNames = true)
+
+      lazy val TreeStructure: Printer[Tree] = new Printer[Tree]:
+        def show(tree: Tree): String =
+          Extractors.showTree(using QuotesImpl.this)(tree)
+
+      lazy val TypeReprCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.plain, fullNames = true)
+
+      lazy val TypeReprShortCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.plain, fullNames = false)
+
+      lazy val TypeReprAnsiCode: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          SourceCode.showType(using QuotesImpl.this)(tpe)(SyntaxHighlight.ANSI, fullNames = true)
+
+      lazy val TypeReprStructure: Printer[TypeRepr] = new Printer[TypeRepr]:
+        def show(tpe: TypeRepr): String =
+          Extractors.showType(using QuotesImpl.this)(tpe)
+
+      lazy val ConstantCode: Printer[Constant] = new Printer[Constant]:
+        def show(const: Constant): String =
+          const.show(using ctx.fresh.setSetting(ctx.settings.color, "never"))
+
+      lazy val ConstantStructure: Printer[Constant] = new Printer[Constant]:
+        def show(const: Constant): String =
+          Extractors.showConstant(using QuotesImpl.this)(const)
+
+    end Printer
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
@@ -2610,8 +2881,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
-      val scrutineeTree = reflect.Term.of(scrutinee)
-      val patternTree = reflect.Term.of(pattern)
+      val scrutineeTree = reflect.asTerm(scrutinee)
+      val patternTree = reflect.asTerm(pattern)
       treeMatch(scrutineeTree, patternTree).asInstanceOf[Option[Tup]]
   end ExprMatch
 

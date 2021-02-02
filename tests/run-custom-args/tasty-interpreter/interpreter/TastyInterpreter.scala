@@ -1,17 +1,17 @@
 package scala.tasty.interpreter
 
 import scala.quoted._
-import scala.tasty.inspector.TastyInspector
+import scala.tasty.inspector._
 
-class TastyInterpreter extends TastyInspector {
+class TastyInterpreter extends Inspector {
 
-  protected def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit = {
-    import qctx.reflect._
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
+    import quotes.reflect._
+
     object Traverser extends TreeTraverser {
-
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {
         // TODO: check the correct sig and object enclosement for main
-        case DefDef("main", _, _, _, Some(rhs)) =>
+        case DefDef("main", _, _, Some(rhs)) =>
           val interpreter = new jvm.Interpreter
 
           interpreter.eval(rhs)(using Map.empty)
@@ -20,6 +20,9 @@ class TastyInterpreter extends TastyInspector {
           super.traverseTree(tree)(owner)
       }
     }
-    Traverser.traverseTree(root)(Symbol.spliceOwner)
+
+    for tasty <- tastys do
+      Traverser.traverseTree(tasty.ast)(Symbol.spliceOwner)
   }
+
 }

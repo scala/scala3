@@ -5,10 +5,6 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 
-import org.jetbrains.dokka.base.renderers.html.{NavigationNode, NavigationPage}
-import org.jetbrains.dokka.model.Documentable
-import org.jetbrains.dokka.pages._
-import org.jetbrains.dokka.transformers.pages.PageTransformer
 import org.jsoup.Jsoup
 import scala.collection.JavaConverters._
 
@@ -17,7 +13,10 @@ case class LazyEntry(getKey: String, value: () => String) extends JMapEntry[Stri
   lazy val getValue: Object = value()
   def setValue(x$0: Object): Object = ???
 
-case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTemplate], file: File):
+case class LoadedTemplate(
+  templateFile: TemplateFile,
+  children: List[LoadedTemplate],
+  file: File):
 
   private def brief(ctx: StaticSiteContext): String =
     try
@@ -25,9 +24,8 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
       Option(code.select("p").first()).fold("...")(_.outerHtml())
     catch
       case e: Throwable =>
-        // TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
-        println(s"[ERROR] Unable to process brief for ${templateFile.file}")
-        e.printStackTrace()
+        val msg = s"[ERROR] Unable to process brief for ${templateFile.file}"
+        report.error(msg, templateFile.file, e)(using ctx.outerCtx)
         "..."
 
   def lazyTemplateProperties(ctx: StaticSiteContext): JMap[String, Object] = new java.util.AbstractMap[String, Object]():
@@ -41,7 +39,7 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
 
   def resolveToHtml(ctx: StaticSiteContext): ResolvedPage =
     val posts = children.map(_.lazyTemplateProperties(ctx))
-    val site = templateFile.settings.getOrElse("site", Map.empty).asInstanceOf[Map[String, Object]]
+    def getMap(key: String) = templateFile.settings.getOrElse(key, Map.empty).asInstanceOf[Map[String, Object]]
     val sourceLinks = if !file.exists() then Nil else
       // TODO (https://github.com/lampepfl/scala3doc/issues/240): configure source root
       // toRealPath is used to turn symlinks into proper paths
@@ -50,6 +48,7 @@ case class LoadedTemplate(templateFile: TemplateFile, children: List[LoadedTempl
         ctx.sourceLinks.pathTo(actualPath, operation = "edit").map("editSource" -> _ )
 
     val updatedSettings = templateFile.settings ++ ctx.projectWideProperties +
-      ("site" -> (site + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap)
+      ("site" -> (getMap("site") + ("posts" -> posts))) + ("urls" -> sourceLinks.toMap) +
+      ("page" -> (getMap("page") + ("title" -> templateFile.title)))
 
     templateFile.resolveInner(RenderingContext(updatedSettings, ctx.layouts))

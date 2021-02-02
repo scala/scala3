@@ -3,7 +3,7 @@ import Lifters._
 
 object UnrolledExpr {
 
-  implicit class Unrolled[T: Liftable, It <: Iterable[T]](xs: It) {
+  implicit class Unrolled[T: ToExpr, It <: Iterable[T]](xs: It) {
     def unrolled: UnrolledExpr[T, It] = new UnrolledExpr(xs)
   }
 
@@ -18,7 +18,7 @@ object UnrolledExpr {
 
 }
 
-class UnrolledExpr[T: Liftable, It <: Iterable[T]](xs: It) {
+class UnrolledExpr[T: ToExpr, It <: Iterable[T]](xs: It) {
   import UnrolledExpr._
 
   def foreach[U](f: T => Expr[U])(using Quotes): Expr[Unit] = block(xs.map(f), '{})

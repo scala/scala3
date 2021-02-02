@@ -7,11 +7,10 @@ A match type reduces to one of its right-hand sides, depending on the type of
 its scrutinee. For example:
 
 ```scala
-type Elem[X] = X match {
-  case String => Char
-  case Array[t] => t
-  case Iterable[t] => t
-}
+type Elem[X] = X match
+   case String => Char
+   case Array[t] => t
+   case Iterable[t] => t
 ```
 
 This defines a type that reduces as follows:
@@ -23,7 +22,7 @@ Elem[List[Float]]  =:=  Float
 Elem[Nil.type]     =:=  Nothing
 ```
 
-Here `=:=` is understood to mean that left and right hand sides are mutually
+Here `=:=` is understood to mean that left and right-hand sides are mutually
 subtypes of each other.
 
 In general, a match type is of the form
@@ -38,21 +37,19 @@ variables in patterns start with a lower case letter, as usual.
 Match types can form part of recursive type definitions. Example:
 
 ```scala
-type LeafElem[X] = X match {
-  case String => Char
-  case Array[t] => LeafElem[t]
-  case Iterable[t] => LeafElem[t]
-  case AnyVal => X
-}
+type LeafElem[X] = X match
+   case String => Char
+   case Array[t] => LeafElem[t]
+   case Iterable[t] => LeafElem[t]
+   case AnyVal => X
 ```
 
 Recursive match type definitions can also be given an upper bound, like this:
 
 ```scala
-type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match {
-  case Unit => Ys
-  case x *: xs => x *: Concat[xs, Ys]
-}
+type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match
+   case EmptyTuple => Ys
+   case x *: xs => x *: Concat[xs, Ys]
 ```
 
 In this definition, every instance of `Concat[A, B]`, whether reducible or not,
@@ -67,12 +64,11 @@ is the value level counterpart to the `LeafElem` type defined above (note the
 use of the match type as the return type):
 
 ```scala
-def leafElem[X](x: X): LeafElem[X] = x match {
-  case x: String      => x.charAt(0)
-  case x: Array[t]    => leafElem(x(9))
-  case x: Iterable[t] => leafElem(x.next())
-  case x: AnyVal      => x
-}
+def leafElem[X](x: X): LeafElem[X] = x match
+   case x: String      => x.charAt(0)
+   case x: Array[t]    => leafElem(x(9))
+   case x: Iterable[t] => leafElem(x.next())
+   case x: AnyVal      => x
 ```
 
 This special mode of typing for match expressions is only used when the
@@ -130,6 +126,7 @@ Disjointness proofs rely on the following properties of Scala types:
 1. Single inheritance of classes
 2. Final classes cannot be extended
 3. Constant types with distinct values are nonintersecting
+4. Singleton paths to distinct values are nonintersecting, such as `object` definitions or singleton enum cases.
 
 Type parameters in patterns are minimally instantiated when computing `S <: Pi`.
 An instantiation `Is` is _minimal_ for `Xs` if all type variables in `Xs` that
@@ -175,9 +172,7 @@ and constraints.
 
    if
 
-   ```
-   S match { P1 => T1 ... Pn => Tn }  reduces-to  U
-   ```
+   `S match { P1 => T1 ... Pn => Tn }` reduces to `U`
 
 3. The third rule states that a match type conforms to its upper bound:
 
@@ -195,9 +190,9 @@ mechanism in place. As a result, the following will already give a reasonable
 error message:
 
 ```scala
-type L[X] = X match {
-  case Int => L[X]
-}
+type L[X] = X match
+   case Int => L[X]
+
 def g[X]: L[X] = ???
 ```
 
@@ -206,23 +201,25 @@ def g[X]: L[X] = ???
    |                ^
    |Recursion limit exceeded.
    |Maybe there is an illegal cyclic reference?
-   |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
+   |If that's not the case, you could also try to
+   |increase the stacksize using the -Xss JVM option.
    |A recurring operation is (inner to outer):
    |
    |  subtype LazyRef(Test.L[Int]) <:< Int
 ```
 
-Internally, `scalac` detects these cycles by turning selected stack overflows into
+Internally, the Scala compiler detects these cycles by turning selected stack overflows into
 type errors. If there is a stack overflow during subtyping, the exception will
 be caught and turned into a compile-time error that indicates a trace of the
 subtype tests that caused the overflow without showing a full stack trace.
 
 ## Variance Laws for Match Types
-NOTE: This section does not reflect the current implementation.
+
+**Note:** This section does not reflect the current implementation.
 
 Within a match type `Match(S, Cs) <: B`, all occurrences of type variables count
 as covariant. By the nature of the cases `Ci` this means that occurrences in
-pattern position are contravarant (since patterns are represented as function
+pattern position are contravariant (since patterns are represented as function
 type arguments).
 
 ## Related Work
@@ -245,4 +242,3 @@ main differences here are:
    whereas match types also work for type parameters and abstract types.
  - Match types support direct recursion.
  - Conditional types distribute through union types.
-

@@ -3,7 +3,7 @@ import scala.quoted.staging._
 
 class Foo {
   def foo: Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     run {
       val a: Expr[Int] = '{3}
       val q: Expr[Int] = '{

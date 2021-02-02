@@ -25,7 +25,7 @@ object Scala3:
 
   private val WILDCARDTypeName = nme.WILDCARD.toTypeName
 
-  enum SymbolKind derives Eql:
+  enum SymbolKind derives CanEqual:
     kind =>
 
     case Val, Var, Setter, Abstract
@@ -68,8 +68,8 @@ object Scala3:
   end Symbols
 
 
-  given NameOps as AnyRef:
-    extension (name: Name):
+  given NameOps: AnyRef with
+    extension (name: Name)
       def isWildcard = name match
         case nme.WILDCARD | WILDCARDTypeName => true
         case _                               => name.is(NameKinds.WildcardParamName)
@@ -89,8 +89,8 @@ object Scala3:
         }
   end NameOps
 
-  given SymbolOps as AnyRef:
-    extension (sym: Symbol):
+  given SymbolOps: AnyRef with
+    extension (sym: Symbol)
 
       def ifExists(using Context): Option[Symbol] = if sym.exists then Some(sym) else None
 
@@ -140,13 +140,13 @@ object Scala3:
 
   end LocalSymbol
 
-  extension (char: Char):
+  extension (char: Char)
     private inline def isGlobalTerminal = (char: @switch) match
       case '/' | '.' | '#' | ']' | ')' => true
       case _                           => false
 
-  given StringOps as AnyRef:
-    extension (symbol: String):
+  given StringOps: AnyRef with
+    extension (symbol: String)
       def isSymbol: Boolean = !symbol.isEmpty
       def isRootPackage: Boolean = RootPackage == symbol
       def isEmptyPackage: Boolean = EmptyPackage == symbol
@@ -169,8 +169,8 @@ object Scala3:
         isJavaIdentifierStart(symbol.head) && symbol.tail.forall(isJavaIdentifierPart)
   end StringOps
 
-  given InfoOps as AnyRef:
-    extension (info: SymbolInformation):
+  given InfoOps: AnyRef with
+    extension (info: SymbolInformation)
       def isAbstract: Boolean = (info.properties & SymbolInformation.Property.ABSTRACT.value) != 0
       def isFinal: Boolean = (info.properties & SymbolInformation.Property.FINAL.value) != 0
       def isSealed: Boolean = (info.properties & SymbolInformation.Property.SEALED.value) != 0
@@ -204,13 +204,13 @@ object Scala3:
       def isInterface: Boolean = info.kind.isInterface
   end InfoOps
 
-  given RangeOps as AnyRef:
-    extension (range: Range):
+  given RangeOps: AnyRef with
+    extension (range: Range)
       def hasLength = range.endLine > range.startLine || range.endCharacter > range.startCharacter
   end RangeOps
 
   /** Sort symbol occurrences by their start position. */
-  given OccurrenceOrdering as Ordering[SymbolOccurrence] = (x, y) =>
+  given OccurrenceOrdering: Ordering[SymbolOccurrence] = (x, y) =>
     x.range -> y.range match
     case None -> _ | _ -> None => 0
     case Some(a) -> Some(b) =>

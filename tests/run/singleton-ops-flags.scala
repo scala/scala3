@@ -56,8 +56,9 @@ package example {
       extension (s: EmptyFlagSet) def next: SingletonFlagSet[0] = 1
       extension [N <: Int: ValueOf](s: SingletonFlagSet[N]) def next: SingletonFlagSet[S[N]] = valueOf[N].succ.shift
       extension [N <: Int: ValueOf](s: SingletonFlagSet[N]) def idx: N = valueOf[N]
-      extension [N <: Int](s: FlagSet) def toSingletonSets: SingletonSets[N] = s
-      extension (s: FlagSet) def | (t: FlagSet): FlagSet = s | t
+      extension (s: FlagSet)
+        def toSingletonSets[N <: Int]: SingletonSets[N] = s
+        def | (t: FlagSet): FlagSet = s | t
 
       extension [A, N <: Int: ValueOf](ss: SingletonSets[N]) def map(f: [t <: Int] => (s: SingletonFlagSet[t]) => A): List[A] =
         val maxFlag = valueOf[N]

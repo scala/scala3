@@ -1,5 +1,4 @@
-import annotation.mixin
-@mixin trait S
+transparent trait S
 trait A
 class B extends A, S
 class C extends A, S

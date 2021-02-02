@@ -362,6 +362,7 @@ object StdNames {
     val CAP: N                  = "CAP"
     val Constant: N             = "Constant"
     val ConstantType: N         = "ConstantType"
+    val Eql: N                  = "Eql"
     val EnumValue: N            = "EnumValue"
     val ExistentialTypeTree: N  = "ExistentialTypeTree"
     val Flag : N                = "Flag"
@@ -370,6 +371,7 @@ object StdNames {
     val Import: N               = "Import"
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
+    val Matchable: N            = "Matchable"
     val MatchCase: N            = "MatchCase"
     val MirroredElemTypes: N    = "MirroredElemTypes"
     val MirroredElemLabels: N   = "MirroredElemLabels"
@@ -386,7 +388,6 @@ object StdNames {
     val Ref: N                  = "Ref"
     val RootPackage: N          = "RootPackage"
     val RootClass: N            = "RootClass"
-    val Scala2Compat: N         = "Scala2Compat"
     val Select: N               = "Select"
     val Shape: N                = "Shape"
     val StringContext: N        = "StringContext"
@@ -433,12 +434,14 @@ object StdNames {
     val bundle: N               = "bundle"
     val bytes: N                = "bytes"
     val canEqual_ : N           = "canEqual"
+    val canEqualAny : N         = "canEqualAny"
     val cbnArg: N               = "<cbn-arg>"
     val checkInitialized: N     = "checkInitialized"
     val ClassManifestFactory: N = "ClassManifestFactory"
     val classOf: N              = "classOf"
     val clone_ : N              = "clone"
     val common: N               = "common"
+    val compiletime : N         = "compiletime"
     val conforms_ : N           = "$conforms"
     val copy: N                 = "copy"
     val currentMirror: N        = "currentMirror"
@@ -561,6 +564,7 @@ object StdNames {
     val reflect: N              = "reflect"
     val reflectiveSelectable: N = "reflectiveSelectable"
     val reify : N               = "reify"
+    val releaseFence : N        = "releaseFence"
     val rootMirror : N          = "rootMirror"
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
@@ -570,7 +574,6 @@ object StdNames {
     val s: N                    = "s"
     val sameElements: N         = "sameElements"
     val scala : N               = "scala"
-    val scalaShadowing : N      = "scalaShadowing"
     val selectDynamic: N        = "selectDynamic"
     val selectOverloadedMethod: N = "selectOverloadedMethod"
     val selectTerm: N           = "selectTerm"
@@ -595,7 +598,6 @@ object StdNames {
     val thisPrefix : N          = "thisPrefix"
     val throw_ : N              = "throw"
     val toArray: N              = "toArray"
-    val toExpr: N               = "toExpr"
     val toList: N               = "toList"
     val toObjectArray : N       = "toObjectArray"
     val toSeq: N                = "toSeq"
@@ -611,6 +613,7 @@ object StdNames {
     val unapplySeq: N           = "unapplySeq"
     val unbox: N                = "unbox"
     val universe: N             = "universe"
+    val unsafeNulls: N          = "unsafeNulls"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val using: N                = "using"
@@ -828,6 +831,9 @@ object StdNames {
     final val Conforms: TypeName = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
+
+    val JFunctionPrefix: Seq[TypeName] = (0 to 2).map(i => s"scala.runtime.java8.JFunction${i}")
+    val JProcedure: Seq[TypeName] = (0 to 22).map(i => s"scala.runtime.function.JProcedure${i}")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

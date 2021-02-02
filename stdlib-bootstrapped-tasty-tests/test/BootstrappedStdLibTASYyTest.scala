@@ -8,6 +8,7 @@ import dotty.tools.io._
 import dotty.tools.dotc.util.ClasspathFromClassloader
 
 import scala.quoted._
+import scala.tasty.inspector._
 
 import java.io.File.pathSeparator
 import java.io.File.separator
@@ -101,13 +102,14 @@ object BootstrappedStdLibTASYyTest:
       .toList
 
   def loadWithTastyInspector(blacklisted: Set[String]): Unit =
-    val inspector = new scala.tasty.inspector.TastyInspector {
-      def processCompilationUnit(using Quotes)(root: qctx.reflect.Tree): Unit =
-        root.showExtractors // Check that we can traverse the full tree
+    val inspector = new scala.tasty.inspector.Inspector {
+      def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
+        for tasty <- tastys do
+          tasty.ast.show(using quotes.reflect.Printer.TreeStructure) // Check that we can traverse the full tree
         ()
     }
     val tastyFiles = scalaLibTastyPaths.filterNot(blacklisted)
-    val hasErrors = inspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))
+    val hasErrors = TastyInspector.inspectTastyFiles(tastyFiles.map(x => scalaLibClassesPath.resolve(x).toString))(inspector)
     assert(!hasErrors, "Errors reported while loading from TASTy")
 
   def compileFromTastyInJar(blacklisted: Set[String]): Unit = {

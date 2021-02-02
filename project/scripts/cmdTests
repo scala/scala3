@@ -18,25 +18,28 @@ clear_out "$OUT"
 "$SBT" ";scalac -d $OUT/out.jar $SOURCE ;scalac -from-tasty -d $OUT1 $OUT/out.jar ;scala -classpath $OUT1 $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
-# check that `sbt scalac -decompile` runs
-echo "testing sbt scalac -decompile from file"
-"$SBT" ";scalac -decompile -color:never $OUT/$TASTY" > "$tmp"
-grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
-
 echo "testing sbt scala with no -classpath"
 clear_out "$OUT"
 "$SBT" ";scalac $SOURCE ; scala $MAIN" > "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
-echo "testing loading tasty from .tasty file in jar"
-clear_out "$OUT"
-"$SBT" ";scalac -d $OUT/out.jar $SOURCE; scalac -decompile -color:never $OUT/out.jar" > "$tmp"
-grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
-
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
-"$SBT" ";scalac -d $OUT/out.jar $(pwd)/$SOURCE; scalac -decompile -color:never $OUT/out.jar" > "$tmp"
-grep -qe "SourceFile(\"$SOURCE\")" "$tmp"
+"$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
+"$SBT" "scalac -decompile -print-tasty -color:never $OUT/out.jar" > "$tmp"
+cat "$tmp" # for debugging
+grep -q ": i10430/lib.scala" "$tmp"
+grep -q ": i10430/app.scala" "$tmp"
+grep -q "[i10430/lib.scala]" "$tmp"
+grep -q "[i10430/app.scala]" "$tmp"
+if grep -q "tests/pos/i10430/lib.scala" "$tmp"; then
+  echo "incorrect source file path in tasty"
+  exit 1
+fi
+if grep -q "tests/pos/i10430/app.scala" "$tmp"; then
+  echo "incorrect source file path in tasty"
+  exit 1
+fi
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"
@@ -52,6 +55,7 @@ cp tests/neg/i6371/B_2.scala $OUT/B.scala
 rm $OUT/A.scala
 "$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
 grep -qe "B.scala:2:7" "$tmp"
+grep -qe "This location contains code that was inlined from A.scala:3" "$tmp"
 
 echo "testing -Ythrough-tasty"
 clear_out "$OUT"

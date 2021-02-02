@@ -330,12 +330,12 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       if (isProp)
         genExportProperty(alts, jsName, static)
       else
-        genExportMethod(alts.map(Exported), jsName, static)
+        genExportMethod(alts.map(Exported.apply), jsName, static)
     }
   }
 
   def genJSConstructorDispatch(alts: List[Symbol]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
-    val exporteds = alts.map(Exported)
+    val exporteds = alts.map(Exported.apply)
 
     val isConstructorOfNestedJSClass = exporteds.head.isConstructorOfNestedJSClass
     assert(exporteds.tail.forall(_.isConstructorOfNestedJSClass == isConstructorOfNestedJSClass),
@@ -391,7 +391,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       } else {
         val formalArgsRegistry = new FormalArgsRegistry(1, false)
         val List(arg) = formalArgsRegistry.genFormalArgs()
-        val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported), static, None)
+        val body = genExportSameArgc(jsName, formalArgsRegistry, setters.map(Exported.apply), static, None)
         Some((arg, body))
       }
     }
@@ -753,7 +753,10 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
 
     if (targetSym.isJSType) {
       if (defaultGetter.owner.isNonNativeJSClass) {
-        genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
+        if (defaultGetter.hasAnnotation(jsdefn.JSOptionalAnnot))
+          js.Undefined()
+        else
+          genApplyJSClassMethod(targetTree, defaultGetter, defaultGetterArgs)
       } else {
         report.error(
             "When overriding a native method with default arguments, " +
@@ -942,7 +945,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   private case object NoTypeTest extends RTTypeTest
 
   private object RTTypeTest {
-    given PartialOrdering[RTTypeTest] {
+    given PartialOrdering[RTTypeTest] with {
       override def tryCompare(lhs: RTTypeTest, rhs: RTTypeTest): Option[Int] = {
         if (lteq(lhs, rhs)) if (lteq(rhs, lhs)) Some(0) else Some(-1)
         else                if (lteq(rhs, lhs)) Some(1) else None

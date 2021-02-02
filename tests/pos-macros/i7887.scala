@@ -1,5 +1,5 @@
-def typed[A](using t: quoted.Type[A], qctx: quoted.Quotes): Unit = {
-  import qctx.reflect._
+def typed[A](using t: quoted.Type[A], q: quoted.Quotes): Unit = {
+  import q.reflect._
   '{
     type T = A
     ${'{???}.asExprOf[T]}
