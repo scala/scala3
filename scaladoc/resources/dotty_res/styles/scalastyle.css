@@ -181,14 +181,20 @@ th {
 #sideMenu2 div.expanded>div {
   display: block;
 }
-
 /* always show top level entry*/
 #sideMenu2>div{
   display: block;
 }
 
+#sideMenu2 span.micon {
+  height: 16px;
+  width: 16px;
+  margin-right: 8px;
+}
+
 /* 'a's in side menu represent text of entry with link */
 #sideMenu2 a {
+  display: flex;
   align-items: center;
   flex: 1;
   overflow-x: hidden;
@@ -200,17 +206,10 @@ th {
   margin-top: 1px;
   margin-bottom: 1px;
   width: 100%;
-  display: block;
   /* This trick adds selected bachground stratching to the lef side of screen */
   margin-left: calc(0px - var(--side-width));
   padding-left: var(--side-width);
   width: calc(2 * var(--side-width));
-}
-
-#sideMenu2 a::before {
-  margin-left: -12em;
-  width: 12em;
-  background: red;
 }
 
 #sideMenu2 a.selected {
@@ -224,7 +223,7 @@ th {
 }
 
 /* spans represent a expand button */
-#sideMenu2 span {
+#sideMenu2 span.ar {
   align-items: center;
   cursor: pointer;
   position: absolute;
@@ -233,7 +232,7 @@ th {
   padding: 4px;
 }
 
-#sideMenu2 span::before {
+#sideMenu2 span.ar::before {
   content: "\e903"; /* arrow down */
   font-family: "dotty-icons" !important;
   font-size: 20px;
@@ -244,11 +243,11 @@ th {
   align-items: center;
   justify-content: center;
 }
-#sideMenu2 .expanded>span::before {
+#sideMenu2 .expanded>span.ar::before {
   content: "\e905"; /* arrow up */
 }
 
-#sideMenu2 .div:hover>span::before {
+#sideMenu2 .div:hover>span.ar::before {
   color: var(--leftbar-current-bg);
 }
 
@@ -613,54 +612,56 @@ footer .pull-right {
   position: relative;
 }
 
-.header {
+.cover-header {
   display: flex;
   flex-direction: row;
   padding-top: 1em;
 }
 
-.member-icon {
+.micon {
   box-sizing: content-box;
   height: 5.7em;
   width: 5.7em;
   color:transparent;
 }
 
-.member-icon.class::before {
+.micon.c {
   content: url("../images/class.svg")
 }
 
-.member-icon.class-with-companion::before {
+.micon.c-wc {
   content: url("../images/class_comp.svg")
 }
 
-.member-icon.object::before {
+.micon.o {
   content: url("../images/object.svg")
 }
 
-.member-icon.object-with-companion::before {
+.micon.o-wc {
   content: url("../images/object_comp.svg")
 }
 
-.member-icon.trait::before {
+.micon.t {
   content: url("../images/trait.svg")
 }
 
-.member-icon.trait-with-companion::before {
+.micon.t-wc {
   content: url("../images/trait_comp.svg")
 }
 
-.member-icon.enum::before {
+.micon.e {
   content: url("../images/enum.svg")
 }
 
-.member-icon.enum-with-companion::before {
+.micon.e-wc {
   content: url("../images/enum_comp.svg")
 }
 
-.member-icon.given::before {
+.micon.g {
   content: url("../images/given.svg")
 }
+
+
 
 /* Large Screens */
 @media(min-width: 1100px) {
