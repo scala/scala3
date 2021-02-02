@@ -251,6 +251,28 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  /** If `path` looks like a language import, `Some(name)` where name
+   *  is `experimental` if that sub-module is imported, and the empty
+   *  term name otherwise.
+   */
+  def languageImport(path: Tree): Option[TermName] = path match
+    case Select(p1, nme.experimental) =>
+      languageImport(p1) match
+        case Some(EmptyTermName) => Some(nme.experimental)
+        case _ => None
+    case p1: RefTree if p1.name == nme.language =>
+      p1.qualifier match
+        case EmptyTree => Some(EmptyTermName)
+        case p2: RefTree if p2.name == nme.scala =>
+          p2.qualifier match
+            case EmptyTree => Some(EmptyTermName)
+            case Ident(nme.ROOTPKG) => Some(EmptyTermName)
+            case _ => None
+        case _ => None
+    case _ => None
+
+  def isLanguageImport(path: Tree): Boolean = languageImport(path).isDefined
+
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)

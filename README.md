@@ -1,6 +1,6 @@
 Dotty
 =====
-[![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty%20CI/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amaster)
+[![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amaster)
 [![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 * [Homepage](http://dotty.epfl.ch)

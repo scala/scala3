@@ -206,7 +206,7 @@ class Typer extends Namer
         else found
 
       def selection(imp: ImportInfo, name: Name, checkBounds: Boolean): Type =
-        imp.sym.info match
+        imp.importSym.info match
           case ImportType(expr) =>
             val pre = expr.tpe
             var denot = pre.memberBasedOnFlags(name, required, excluded)
@@ -222,8 +222,8 @@ class Typer extends Namer
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
                   return pre.select(name, denot)
           case _ =>
-            if imp.sym.isCompleting then
-              report.warning(i"cyclic ${imp.sym}, ignored", pos)
+            if imp.importSym.isCompleting then
+              report.warning(i"cyclic ${imp.importSym}, ignored", pos)
         NoType
 
       /** The type representing a named import with enclosing name when imported
@@ -393,7 +393,7 @@ class Typer extends Namer
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 recurAndCheckNewOrShadowed(namedImp, NamedImport, ctx)(using outer)
-              else if (isPossibleImport(WildImport) && !curImport.sym.isCompleting) {
+              else if (isPossibleImport(WildImport) && !curImport.importSym.isCompleting) {
                 val wildImp = wildImportRef(curImport)
                 if (wildImp.exists)
                   recurAndCheckNewOrShadowed(wildImp, WildImport, ctx)(using outer)
@@ -2030,6 +2030,15 @@ class Typer extends Namer
     val tparamss = paramss1.collect {
       case untpd.TypeDefs(tparams) => tparams
     }
+
+    // Register GADT constraint for class type parameters from outer to inner class definition. (Useful when nested classes exist.) But do not cross a function definition.
+    if sym.flags.is(Method) then
+      rhsCtx.setFreshGADTBounds
+      ctx.outer.outersIterator.takeWhile(!_.owner.is(Method))
+        .filter(ctx => ctx.owner.isClass && ctx.owner.typeParams.nonEmpty)
+        .toList.reverse
+        .foreach(ctx => rhsCtx.gadt.addToConstraint(ctx.owner.typeParams))
+
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
       val tparamSyms = tparamss.flatten.map(_.symbol)

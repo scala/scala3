@@ -77,6 +77,8 @@ object language:
    */
   object adhocExtensions
 
+  object unsafeNulls
+
   /** Set source version to 3.0-migration.
     *
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]

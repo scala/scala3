@@ -603,7 +603,7 @@ object Parsers {
       in.currentRegion = f(cur)
       try op finally in.currentRegion = cur
 
-    /** Parse `body` while checking (under -noindent) that a `{` is not missing before it.
+    /** Parse `body` while checking (under -no-indent) that a `{` is not missing before it.
      *  This is done as follows:
      *    If the next token S is indented relative to the current region,
      *    and the end of `body` is followed by a new line and another statement,
@@ -3068,11 +3068,7 @@ object Parsers {
 
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
-      val isLanguageImport = tree match
-        case Ident(nme.language) => true
-        case Select(Ident(nme.scala), nme.language) => true
-        case _ => false
-      if isLanguageImport then
+      if isLanguageImport(tree) then
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)

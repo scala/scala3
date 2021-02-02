@@ -734,9 +734,21 @@ trait Checking {
   }
 
   /** Check that `path` is a legal prefix for an import clause */
-  def checkLegalImportPath(path: Tree)(using Context): Unit = {
+  def checkLegalImportPath(path: Tree)(using Context): Unit =
     checkLegalImportOrExportPath(path, "import prefix")
-  }
+    languageImport(path) match
+      case Some(prefix) =>
+        val required =
+          if prefix == nme.experimental then defn.LanguageExperimentalModule
+          else defn.LanguageModule
+        if path.symbol != required then
+          report.error(em"import looks like a language import, but refers to something else: ${path.symbol.showLocated}", path.srcPos)
+      case None =>
+        val foundClasses = path.tpe.classSymbols
+        if foundClasses.contains(defn.LanguageModule.moduleClass)
+           || foundClasses.contains(defn.LanguageExperimentalModule.moduleClass)
+        then
+          report.error(em"no aliases can be used to refer to a language import", path.srcPos)
 
   /** Check that `path` is a legal prefix for an export clause */
   def checkLegalExportPath(path: Tree, selectors: List[untpd.ImportSelector])(using Context): Unit =

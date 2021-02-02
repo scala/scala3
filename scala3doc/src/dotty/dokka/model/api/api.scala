@@ -158,6 +158,7 @@ case class Member(
   parents: Seq[LinkToType] = Nil,
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
+  deprecated: Option[Annotation] = None,
 )
 
 object Member:
@@ -166,9 +167,6 @@ object Member:
 
 extension[T] (member: Member)
   def asLink: LinkToType = LinkToType(member.signature, member.dri, member.kind)
-  def deprecated: Option[Annotation] =
-    member.annotations.find(_.dri.location == "scala.deprecated")
-
   def membersBy(op: Member => Boolean): Seq[Member] = member.members.filter(op)
 
 extension (members: Seq[Member]) def byInheritance =
