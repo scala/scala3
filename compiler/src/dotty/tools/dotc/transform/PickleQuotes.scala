@@ -377,7 +377,7 @@ class PickleQuotes extends MacroTransform {
             (tree: Tree) => {
               def newCapture = {
                 val tpw = tree.tpe.widen match {
-                  case tpw: MethodicType => tpw.toFunctionType()
+                  case tpw: MethodicType => tpw.toFunctionType(isJava = false)
                   case tpw => tpw
                 }
                 assert(tpw.isInstanceOf[ValueType])

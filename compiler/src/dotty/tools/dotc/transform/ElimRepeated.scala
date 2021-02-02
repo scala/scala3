@@ -31,7 +31,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   override def changesMembers: Boolean = true // the phase adds vararg forwarders
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
-    elimRepeated(tp)
+    elimRepeated(tp, sym.is(JavaDefined))
 
   /** Create forwarder symbols for the methods that are annotated
    *  with `@varargs` or that override java varargs.
@@ -88,15 +88,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       (sym.allOverriddenSymbols.exists(s => s.is(JavaDefined) || hasVarargsAnnotation(s)))
 
   /** Eliminate repeated parameters from method types. */
-  private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match
+  private def elimRepeated(tp: Type, isJava: Boolean)(using Context): Type = tp.stripTypeVar match
     case tp @ MethodTpe(paramNames, paramTypes, resultType) =>
-      val resultType1 = elimRepeated(resultType)
+      val resultType1 = elimRepeated(resultType, isJava)
       val paramTypes1 =
         val lastIdx = paramTypes.length - 1
         if lastIdx >= 0 then
           val last = paramTypes(lastIdx)
           if last.isRepeatedParam then
-            val isJava = tp.isJavaMethod
             // We need to be careful when handling Java repeated parameters
             // of the form `Object...` or `T...` where `T` is unbounded:
             // in both cases, `Object` will have been translated to `FromJavaObject`
@@ -117,21 +116,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         else paramTypes
       tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType, isJava))
     case tp =>
       tp
-
-  def transformTypeOfTree(tree: Tree)(using Context): Tree =
-    tree.withType(elimRepeated(tree.tpe))
-
-  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
-    transformTypeOfTree(tree)
-
-  override def transformIdent(tree: Ident)(using Context): Tree =
-    transformTypeOfTree(tree)
-
-  override def transformSelect(tree: Select)(using Context): Tree =
-    transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(using Context): Tree =
     val args = tree.args.mapConserve {
@@ -147,7 +134,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           arg.expr
       case arg => arg
     }
-    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args))
+    cpy.Apply(tree)(tree.fun, args)
 
   /** Convert sequence argument to Java array */
   private def seqToArray(tree: Tree)(using Context): Tree = tree match

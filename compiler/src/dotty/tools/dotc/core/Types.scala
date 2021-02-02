@@ -77,9 +77,7 @@ object Types {
    *        +- GroundType -+- AndType
    *                       +- OrType
    *                       +- MethodOrPoly ---+-- PolyType
-   *                                          +-- MethodType ---+- ImplicitMethodType
-   *                                                            +- ContextualMethodType
-   *                       |                                    +- JavaMethodType
+   *                       |                  +-- MethodType
    *                       +- ClassInfo
    *                       |
    *                       +- NoType
@@ -399,9 +397,6 @@ object Types {
 
     /** Is this an alias TypeBounds? */
     final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
-
-    /** Is this a MethodType which is from Java? */
-    def isJavaMethod: Boolean = false
 
     /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
@@ -1725,34 +1720,21 @@ object Types {
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
      */
-    def toFunctionType(dropLast: Int = 0)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean, dropLast: Int = 0)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
-          case res: MethodType => res.toFunctionType()
+          case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
-          formals1 mapConserve (_.translateFromRepeated(toArray = mt.isJavaMethod)),
+          formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
           result1, isContextual, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
-
-    final def dropJavaMethod(using Context): Type = this match
-      case pt: PolyType => pt.derivedLambdaType(resType = pt.resType.dropJavaMethod)
-
-      case mt: MethodType =>
-        if mt.isJavaMethod then
-          MethodType.apply(mt.paramNames, mt.paramInfos, mt.resType.dropJavaMethod)
-        else
-          mt.derivedLambdaType(resType = mt.resType.dropJavaMethod)
-
-      case _ => this
-
-    end dropJavaMethod
 
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
@@ -3558,7 +3540,6 @@ object Types {
 
     def companion: MethodTypeCompanion
 
-    final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
       companion.eq(ErasedImplicitMethodType) ||
@@ -3654,21 +3635,14 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
-      if (isJava) {
-        assert(!isImplicit)
-        assert(!isErased)
-        assert(!isContextual)
-        JavaMethodType
-      }
-      else if (isContextual)
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
+      if (isContextual)
         if (isErased) ErasedContextualMethodType else ContextualMethodType
       else if (isImplicit)
         if (isErased) ErasedImplicitMethodType else ImplicitMethodType
       else
         if (isErased) ErasedMethodType else MethodType
   }
-  object JavaMethodType extends MethodTypeCompanion("JavaMethodType")
   object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
   object ErasedContextualMethodType extends MethodTypeCompanion("ErasedContextualMethodType")
