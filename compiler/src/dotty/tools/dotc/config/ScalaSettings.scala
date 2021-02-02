@@ -72,8 +72,9 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
 }
 
 class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
+  // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
   private val minTargetVersion = 8
-  private val maxTargetVersion = 15
+  private val maxTargetVersion = 16
 
   private def supportedTargetVersions: List[String] =
     (minTargetVersion to maxTargetVersion).toList.map(_.toString)
