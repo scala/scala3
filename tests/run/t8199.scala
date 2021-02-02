@@ -44,7 +44,6 @@ object Test extends App {
   }
   def checkCallerImplClassName(): Unit = {
     val name = Thread.currentThread.getStackTrace.apply(2).getClassName
-    assert(name.contains("$class"))
     Test.checkClassName(name)
   }
 
