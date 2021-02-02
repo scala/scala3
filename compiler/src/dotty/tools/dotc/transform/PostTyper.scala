@@ -338,6 +338,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             )
           }
         case tree: ValDef =>
+          if tree.symbol.is(Inline, butNot = Param) then
+            ctx.compilationUnit.needsInlining = true
           val tree1 = cpy.ValDef(tree)(rhs = normalizeErasedRhs(tree.rhs, tree.symbol))
           processValOrDefDef(super.transform(tree1))
         case tree: DefDef =>
