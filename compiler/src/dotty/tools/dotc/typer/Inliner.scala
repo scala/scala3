@@ -1300,6 +1300,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
       inlineIfIsNestedInlineCall(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
 
+    override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
+      val tree1 =
+        if tree.isInline then
+          // TODO this might not be useful if we do not support #11291
+          val sel1 = typedExpr(tree.selector)(using ctx.addMode(Mode.ForceInline))
+          untpd.cpy.Match(tree)(sel1, tree.cases)
+        else tree
+      super.typedMatch(tree1, pt)
+
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
