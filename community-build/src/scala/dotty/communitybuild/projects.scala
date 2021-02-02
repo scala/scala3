@@ -162,12 +162,12 @@ final case class SbtCommunityProject(
 
   override val publishCommand = if sbtPublishCommand eq null then null else
     val disableDocCommand =
-      if sbtDocCommand eq null then "" else "set every usescaladoc := false;"
+      if sbtDocCommand eq null then "" else "set every useScaladoc := false;"
     s"$baseCommand$disableDocCommand$sbtPublishCommand"
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
-      s"$baseCommand set every usescaladoc := true; set every doc/logLevel := Level.Warn $cmd "
+      s"$baseCommand set every useScaladoc := true; set every doc/logLevel := Level.Warn $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
