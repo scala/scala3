@@ -618,9 +618,9 @@ def setForExpr[T: Type](using Quotes): Expr[Set[T]] =
       case _ => '{ new HashSet[T] }
 ```
 
-## Relationship with Whitebox Inline
+## Relationship with Transparent Inline
 
-[Inline](./inline.md) documents inlining. The code below introduces a whitebox
+[Inline](./inline.md) documents inlining. The code below introduces a transparent
 inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 

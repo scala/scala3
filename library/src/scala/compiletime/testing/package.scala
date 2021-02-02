@@ -3,6 +3,8 @@ package testing
 
 /** Whether the code type checks in the current context?
  *
+ *  An inline definition with a call to `typeChecks` should be transparent.
+ *
  *  @param code The code to be type checked
  *
  *  @return false if the code has syntax error or type error in the current context, otherwise returns true.
@@ -19,6 +21,8 @@ transparent inline def typeChecks(inline code: String): Boolean =
  *  errors. This means the format and the API may change from
  *  version to version. This API is to be used for testing purposes
  *  only.
+ *
+ *  An inline definition with a call to `typeCheckErrors` should be transparent.
  *
  *  @param code The code to be type checked
  *
