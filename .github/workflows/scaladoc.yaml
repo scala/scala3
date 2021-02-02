@@ -48,7 +48,7 @@ jobs:
         run: ./project/scripts/sbt scaladoc/generateTestcasesDocumentation
 
       - name: Generate Scala 3 documentation
-        run: ./project/scripts/sbt scaladoc/generatescaladocumentation
+        run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
       - name: Generate documentation for example project using dotty-sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted sbt-dotty/scaladoc"

@@ -1227,12 +1227,12 @@ object Build {
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
-  val generatescaladocumentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  lazy val `scaladoc` = project.in(file("scaladoc")).asscaladoc
-  lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).asscaladocTestcases
+  lazy val `scaladoc` = project.in(file("scaladoc")).asScaladoc
+  lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).asScaladocTestcases
 
-  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).asscaladocJs
+  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).asScaladocJs
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
@@ -1531,7 +1531,7 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asscaladoc: Project = {
+    def asScaladoc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
@@ -1570,7 +1570,7 @@ object Build {
           Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scaladoc-testcases`)).value,
           testcasesOutputDir.in(Test) := joinProducts((`scaladoc-testcases`/Compile/products).value),
           testcasesSourceRoot.in(Test) := (baseDirectory.in(`scaladoc-testcases`).value / "src").getAbsolutePath.toString,
-          Compile / mainClass := Some("dotty.dokka.Main"),
+          Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
             generateDocumentation(
@@ -1583,7 +1583,7 @@ object Build {
             )
           }.value,
 
-          generatescaladocumentation := Def.inputTaskDyn {
+          generateScalaDocumentation := Def.inputTaskDyn {
             val dottydocExtraArgs = spaceDelimited("[output]").parsed
             val dest = file(dottydocExtraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
             val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
@@ -1636,7 +1636,7 @@ object Build {
             Build.testDocumentationRoot,
           ),
           Compile / buildInfoKeys := Seq[BuildInfoKey](version),
-          Compile / buildInfoPackage := "dotty.dokka",
+          Compile / buildInfoPackage := "dotty.tools.scaladoc",
           Compile / resourceGenerators += Def.task {
             val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
             sbt.IO.copyFile((fullOptJS in Compile in `scaladoc-js`).value.data, jsDestinationFile)
@@ -1651,17 +1651,17 @@ object Build {
             }.apply(Set(cssSourceFile)).toSeq
           }.taskValue,
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
-          buildInfoPackage in Test := "dotty.dokka.test",
+          buildInfoPackage in Test := "dotty.tools.scaladoc.test",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
           BuildInfoPlugin.buildInfoScopedSettings(Compile),
           BuildInfoPlugin.buildInfoDefaultSettings,
         )
     }
 
-    def asscaladocTestcases: Project =
+    def asScaladocTestcases: Project =
       project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
 
-    def asscaladocJs: Project =
+    def asScaladocJs: Project =
       project.
         enablePlugins(MyScalaJSPlugin).
         dependsOn(`scala3-library-bootstrappedJS`).
