@@ -38,6 +38,11 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   val freshNames: FreshNameCreator = new FreshNameCreator.Default
 
+  /** Will be set to `true` if there are inline call that must be inlined after typer.
+   *  The information is used in phase `Inlining` in order to avoid traversing trees that need no transformations.
+   */
+  var needsInlining: Boolean = false
+
   /** Will be set to `true` if contains `Quote`.
    *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
    */
@@ -100,6 +105,7 @@ object CompilationUnit {
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
       unit1.needsQuotePickling = force.containsQuote
+      unit1.needsInlining = force.containsInline
     }
     unit1
   }
@@ -126,9 +132,12 @@ object CompilationUnit {
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
     var containsQuote = false
+    var containsInline = false
     def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
         containsQuote = true
+      if tree.symbol.is(Flags.Inline) then
+        containsInline = true
       traverseChildren(tree)
     }
   }

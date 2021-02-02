@@ -258,12 +258,16 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
+          if tree.symbol.is(Inline) then
+            ctx.compilationUnit.needsInlining = true
           checkNoConstructorProxy(tree)
           tree.tpe match {
             case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
             case _ => tree
           }
         case tree @ Select(qual, name) =>
+          if tree.symbol.is(Inline) then
+            ctx.compilationUnit.needsInlining = true
           if (name.isTypeName) {
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(tree))
@@ -272,6 +276,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
+          if tree.symbol.is(Inline) then
+            ctx.compilationUnit.needsInlining = true
           val methType = tree.fun.tpe.widen
           val app =
             if (methType.isErasedMethod)
@@ -303,6 +309,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.symbol.isQuote then
             ctx.compilationUnit.needsStaging = true
             ctx.compilationUnit.needsQuotePickling = true
+          if tree.symbol.is(Inline) then
+            ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           args.foreach(checkInferredWellFormed)
           if (fn.symbol != defn.ChildAnnot.primaryConstructor)

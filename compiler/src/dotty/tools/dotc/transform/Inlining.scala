@@ -40,8 +40,9 @@ class Inlining extends MacroTransform {
   override def allowsImplicitSearch: Boolean = true
 
   override def run(using Context): Unit =
-    try super.run
-    catch case _: CompilationUnit.SuspendException => ()
+    if ctx.compilationUnit.needsInlining then
+      try super.run
+      catch case _: CompilationUnit.SuspendException => ()
 
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     val newUnits = super.runOn(units).filterNot(_.suspended)
