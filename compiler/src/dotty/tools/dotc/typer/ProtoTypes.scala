@@ -55,7 +55,7 @@ object ProtoTypes {
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
 
-      if keepConstraint || ctx.mode.is(Mode.ConstrainResultDeep) then
+      if keepConstraint then
         tp.widenSingleton match
           case poly: PolyType =>
             val newctx = ctx.fresh.setNewTyperState()
@@ -88,19 +88,18 @@ object ProtoTypes {
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
-          mt match {
+          mt match
             case mt: MethodType =>
               constrainResult(resultTypeApprox(mt), pt.resultType)
               && {
-                if ctx.mode.is(Mode.ConstrainResultDeep) then
-                  if mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using) then
-                    val tpargs = pt.args.lazyZip(mt.paramInfos).map(pt.typedArg)
-                    tpargs.tpes.corresponds(mt.paramInfos)(_ <:< _)
-                  else true
+                if pt.constrainResultDeep
+                   && mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using)
+                then
+                  val tpargs = pt.args.lazyZip(mt.paramInfos).map(pt.typedArg)
+                  tpargs.tpes.corresponds(mt.paramInfos)(_ <:< _)
                 else true
               }
             case _ => true
-          }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
           necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
@@ -300,9 +299,21 @@ object ProtoTypes {
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType
+   *
+   *  @param  args      The untyped arguments to which the function is applied
+   *  @param  resType   The expeected result type
+   *  @param  typer     The typer to use for typing the arguments
+   *  @param  applyKind The kind of application (regular/using/tupled infix operand)
+   *  @param  state     The state object to use for tracking the changes to this prototype
+   *  @param  constrainResultDeep
+   *                    A flag to indicate that constrainResult on this prototype
+   *                    should typecheck and compare the arguments.
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val applyKind: ApplyKind, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type)(
+    typer: Typer,
+    override val applyKind: ApplyKind,
+    state: FunProtoState = new FunProtoState,
+    val constrainResultDeep: Boolean = false)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
 
@@ -314,9 +325,17 @@ object ProtoTypes {
       typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
-    def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType)(typer, applyKind)
+    def derivedFunProto(
+        args: List[untpd.Tree] = this.args,
+        resultType: Type = this.resultType,
+        typer: Typer = this.typer,
+        constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
+      if (args eq this.args)
+          && (resultType eq this.resultType)
+          && (typer eq this.typer)
+          && constrainResultDeep == this.constrainResultDeep
+      then this
+      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep)
 
     /** @return True if all arguments have types.
      */
@@ -444,10 +463,10 @@ object ProtoTypes {
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
     override def deepenProto(using Context): FunProto =
-      derivedFunProto(args, resultType.deepenProto, typer)
+      derivedFunProto(args, resultType.deepenProto)
 
     override def deepenProtoTrans(using Context): FunProto =
-      derivedFunProto(args, resultType.deepenProtoTrans, typer)
+      derivedFunProto(args, resultType.deepenProtoTrans, constrainResultDeep = true)
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
