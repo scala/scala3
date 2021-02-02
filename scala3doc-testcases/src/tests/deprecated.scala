@@ -19,5 +19,5 @@ class B extends A:
   val y: Int = 1
 
 
-@java.lang.Deprecated(since = "1.1")
+@java.lang.Deprecated
 class JavaDeprecated
