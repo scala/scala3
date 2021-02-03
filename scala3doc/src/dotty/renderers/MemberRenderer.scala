@@ -197,9 +197,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
       (
         actualGroup(name, defined),
-        actualGroup(s"Deprectated ${name.toLowerCase}", depDefined),
+        actualGroup(s"Deprecated ${name.toLowerCase}", depDefined),
         actualGroup(s"Inherited ${name.toLowerCase}", inherited),
-        actualGroup(s"Deprectated and Inherited ${name.toLowerCase}", depInherited)
+        actualGroup(s"Deprecated and Inherited ${name.toLowerCase}", depInherited)
       )
     }
 
