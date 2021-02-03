@@ -854,8 +854,24 @@ class Typer extends Namer
     case _ => tree
   }
 
+
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(using Context): NamedArg = {
-    val arg1 = typed(tree.arg, pt)
+    /* Special case for resolving types for arguments of an annotation defined in Java.
+     * It allows that value of any type T can appear in positions where Array[T] is expected.
+     * For example, both `@Annot(5)` and `@Annot({5, 6}) are viable calls of the constructor
+     * of annotation defined as `@interface Annot { int[] value() }`
+     * We assume that calling `typedNamedArg` in context of Java implies that we are dealing
+     * with annotation contructor, as named arguments are not allowed anywhere else in Java.
+     */
+    val arg1 = pt match {
+      case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
+        tryAlternatively { typed(tree.arg, pt) } { 
+            val elemTp = untpd.TypedSplice(TypeTree(typ))
+            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt) 
+        }
+      case _ => typed(tree.arg, pt)
+    }
+
     assignType(cpy.NamedArg(tree)(tree.name, arg1), arg1)
   }
 
@@ -1977,10 +1993,10 @@ class Typer extends Namer
    */
   def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context = {
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
-    val c = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
-    c.property(ExprOwner) match {
-      case Some(exprOwner) if c.owner.isClass => c.exprContext(mdef, exprOwner)
-      case _ => c
+    val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
+    outer.property(ExprOwner) match {
+      case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
+      case _ => outer
     }
   }
 
