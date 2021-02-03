@@ -64,9 +64,9 @@ jobs:
         with:
           inlineScript: |
             DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}
-            echo uplading docs to https://scaladoc.virtuslab.com/$DOC_DEST
-            az storage container create --name $DOC_DEST --account-name scaladocstorage --public-access container
-            az storage blob sync -s scaladoc/output -c $DOC_DEST --account-name scaladocstorage
+            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
+            az storage blob sync -s scaladoc/output -c $DOC_DEST --account-name scala3docstorage
 
   community-docs:
     env:
@@ -77,6 +77,7 @@ jobs:
            && !contains(github.event.pull_request.body, '[skip docs]')
          )
          || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'scala3doc')
          || contains(github.event.ref, 'master')"
 
     steps:
@@ -102,6 +103,6 @@ jobs:
         with:
           inlineScript: |
             DOC_DEST=pr-${PR_NUMBER:-${GITHUB_REF##*/}}-docs
-            echo uplading docs to https://scaladoc.virtuslab.com/$DOC_DEST
-            az storage container create --name $DOC_DEST --account-name scaladocstorage --public-access container
-            az storage blob sync -s community-build/docsOutput -c $DOC_DEST --account-name scaladocstorage
+            echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
+            az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
+            az storage blob sync -s community-build/docsOutput -c $DOC_DEST --account-name scala3docstorage

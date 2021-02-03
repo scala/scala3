@@ -143,8 +143,8 @@ object SourceLinks:
       | - <scaladoc-template>
       |
       |<scaladoc-template> is a format for `doc-source-url` parameter scaladoc.
-      |NOTE: We only supports `€{FILE_PATH_EXT}` and €{FILE_LINE} patterns
-      |
+      |NOTE: We only supports `€{FILE_PATH_EXT}`, `€{TPL_NAME}`, `€{FILE_EXT}`,
+      | €{FILE_PATH}, and €{FILE_LINE} patterns
       |
       |
       |Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`.

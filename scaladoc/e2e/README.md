@@ -1,4 +1,4 @@
-## scaladoc e2e test suite
+## Scaladoc e2e test suite
 
 ### Prerequisites
 

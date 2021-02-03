@@ -1,9 +1,9 @@
-# scaladoc
+# Scaladoc
 
-scaladoc (name subject to change) is the documentation tool for
-[Dotty](https://github.com/lampepfl/dotty), which is scheduled to become
+Scaladoc  is the documentation tool for
+[Scala 3](https://github.com/lampepfl/dotty), which is scheduled to become
 Scala 3.  It uses the TastyInspector to access definitions,
-which is an officially supported way to access Dotty's perspective of a
+which is an officially supported way to access Scala 3's perspective of a
 codebase.
 
 We're aiming to support all the features Scaladoc did, plus new and exciting ones such as:
@@ -57,24 +57,24 @@ work on the project.
 For every PR, we build documentation for scaladoc and Dotty. For example, for
 PR 123 you can find them at:
 
-- <https://scaladoc.virtuslab.com/pr-123/self/main/index.html>
-- <https://scaladoc.virtuslab.com/pr-123/scala3/main/index.html>
-- <https://scaladoc.virtuslab.com/pr-123/testcases/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/self/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/scala3/main/index.html>
+- <https://scala3doc.virtuslab.com/pr-123/testcases/main/index.html>
 
 Note that these correspond to the contents of `output` directory - that's
 precisely what they are.
 
 You can also find the result of building the same sites for latest `master` at:
 
-- <https://scaladoc.virtuslab.com/master/self/main/index.html>
-- <https://scaladoc.virtuslab.com/master/scala3/main/index.html>
-- <https://scaladoc.virtuslab.com/master/testcases/main/index.html>
+- <https://scala3doc.virtuslab.com/master/self/main/index.html>
+- <https://scala3doc.virtuslab.com/master/scala3/main/index.html>
+- <https://scala3doc.virtuslab.com/master/testcases/main/index.html>
 
 ### Testing
 
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/tools/scaladoc/MultipleFileTest.scala) class
-and its subtypes (such as [SingleFileTest](test/dotty/tools/scaladoc/SingleFileTest.scala))
+to signatures found in source files. Such tests are defined using [MultipleFileTest](test/dotty/tools/scala3doc/MultipleFileTest.scala) class
+and its subtypes (such as [SingleFileTest](test/dotty/tools/scala3doc/SingleFileTest.scala))
 
 WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
 In case of any discrepancies rely on the source files instead.

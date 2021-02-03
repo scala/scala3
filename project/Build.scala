@@ -1535,7 +1535,10 @@ object Build {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val sourceLinks = "-source-links:github://lampepfl/dotty "
+          val scala3version = stdlibVersion(Bootstrapped)
+          // TODO add versions etc.
+          val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library -source-links:github://lampepfl/dotty"
           val revision = s"-revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
           run.in(Compile).toTask(cmd)
@@ -1611,7 +1614,7 @@ object Build {
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
               // contains special definitions which are "transplanted" elsewhere
-              // and which therefore confuse scaladoc when accessed from this pkg
+              // and which therefore confuse Scaladoc when accessed from this pkg
               "-skip-by-id:scala.runtime.stdLibPatches " +
               // MatchCase is a special type that represents match type cases,
               // Reflect doesn't expect to see it as a standalone definition
