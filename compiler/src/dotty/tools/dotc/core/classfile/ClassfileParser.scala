@@ -916,22 +916,14 @@ class ClassfileParser(
                 Array.empty
               }
             case _ =>
-              if (classfile.jpath == null) {
-                val tastyFileOrNull = classfile.container
-                  .lookupName(classfile.name.stripSuffix(".class") + ".tasty", false)
-                if (tastyFileOrNull == null) {
-                  report.error("Could not load TASTY from .tasty for virtual file " + classfile)
-                  Array.empty
-                } else
-                  tastyFileOrNull.toByteArray
-              } else {
-                val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
-                if (plainFile.exists) plainFile.toByteArray
-                else {
-                  report.error("Could not find " + plainFile)
-                  Array.empty
-                }
-              }
+              val dir = classfile.container
+              val name = classfile.name.stripSuffix(".class") + ".tasty"
+              val tastyFileOrNull = dir.lookupName(name, false)
+              if (tastyFileOrNull == null) {
+                report.error(s"Could not find TASTY file $name under $dir")
+                Array.empty
+              } else
+                tastyFileOrNull.toByteArray
           }
           if (tastyBytes.nonEmpty) {
             val reader = new TastyReader(bytes, 0, 16)
