@@ -865,7 +865,10 @@ class Typer extends Namer
      */
     val arg1 = pt match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
-        tryAlternatively { typed(tree.arg, pt) } { typed(untpd.JavaSeqLiteral(tree.arg :: Nil, TypeTree(typ)), pt) }
+        tryAlternatively { typed(tree.arg, pt) } { 
+            val elemTp = untpd.TypedSplice(TypeTree(typ))
+            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt) 
+        }
       case _ => typed(tree.arg, pt)
     }
 
