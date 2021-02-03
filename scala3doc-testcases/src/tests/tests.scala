@@ -63,6 +63,9 @@ package tests
   */
 class A {
 
+  type X = tests.B
+  type Y <: tests.B
+
   /** This is my method.
     *
     * This is a link: [[AA]].

@@ -270,7 +270,7 @@ object TastyFormat {
   final val PositionsSection = "Positions"
   final val CommentsSection = "Comments"
 
-  /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
+  /** Tags used to serialize names, should update [[TastyFormat$.nameTagToString]] if a new constant is added */
   class NameTags {
     final val UTF8 = 1               // A simple name in UTF8 encoding.
 
