@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import MegaPhase._
+import core.Denotations.NonSymSingleDenotation
 import core.DenotTransformers._
 import core.Symbols._
 import core.Contexts._
@@ -548,6 +549,16 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         tree
     }
   }
+
+  override def transformSelect(tree: Select)(using Context): Tree =
+    val denot = tree.denot
+    val sym = tree.symbol
+    // The Lifter updates the type of symbols using `installAfter` to give them a
+    // new `SymDenotation`, but that doesn't affect non-sym denotations, so we
+    // reload them manually here.
+    if denot.isInstanceOf[NonSymSingleDenotation] && lifter.free.contains(sym) then
+      tree.qualifier.select(sym).withSpan(tree.span)
+    else tree
 
   override def transformApply(tree: Apply)(using Context): Apply =
     cpy.Apply(tree)(tree.fun, lifter.addFreeArgs(tree.symbol, tree.args)).withSpan(tree.span)
