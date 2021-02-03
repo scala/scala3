@@ -917,8 +917,13 @@ class ClassfileParser(
               }
             case _ =>
               if (classfile.jpath == null) {
-                report.error("Could not load TASTY from .tasty for virtual file " + classfile)
-                Array.empty
+                val tastyFileOrNull = classfile.container
+                  .lookupName(classfile.name.stripSuffix(".class") + ".tasty", false)
+                if (tastyFileOrNull == null) {
+                  report.error("Could not load TASTY from .tasty for virtual file " + classfile)
+                  Array.empty
+                } else
+                  tastyFileOrNull.toByteArray
               } else {
                 val plainFile = new PlainFile(io.File(classfile.jpath).changeExtension("tasty"))
                 if (plainFile.exists) plainFile.toByteArray
