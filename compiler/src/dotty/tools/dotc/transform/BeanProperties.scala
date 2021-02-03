@@ -45,7 +45,7 @@ class BeanProperties(thisPhase: DenotTransformer):
         val meth = newSymbol(
           owner,
           name = prefixedName("set", valDef.name),
-          flags = Method | Permanent | Synthetic,
+          flags = Method | Synthetic,
           info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm

@@ -590,7 +590,7 @@ class TreeUnpickler(reader: TastyReader,
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
         case cls: ClassSymbol if (!isScala2MacroDefinedInScala3 || cls == defn.StringContextClass) && !isSyntheticBeanAccessor  =>
-          // Enter all members of classes that are not Scala 2 macros or synthetic accessors.
+          // Enter all members of classes that are not Scala 2 macros or synthetic bean accessors.
           //
           // For `StringContext`, enter `s`, `f` and `raw`
           // These definitions will be entered when defined in Scala 2. It is fine to enter them
