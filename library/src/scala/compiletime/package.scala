@@ -1,4 +1,5 @@
 package scala
+import annotation.compileTimeOnly
 
 package object compiletime {
 
@@ -24,7 +25,8 @@ package object compiletime {
    *  as part of the bulk initialization of the object it belongs to, which assigns zero
    *  values such as `null`, `0`, `0.0`, `false` to all object fields.
    */
-  erased def uninitialized[T]: T = ???
+  @compileTimeOnly("`uninitialized` can only be used as the right hand side of a mutable field definition")
+  def uninitialized: Nothing = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
    *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
