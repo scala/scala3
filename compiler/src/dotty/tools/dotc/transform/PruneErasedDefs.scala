@@ -48,7 +48,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     if sym.isEffectivelyErased && !tree.rhs.isEmpty then
       cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
     else tree.rhs match
-      case rhs: TypeApply
+      case rhs: RefTree
       if rhs.symbol == defn.Compiletime_uninitialized
          && sym.is(Mutable) && sym.owner.isClass =>
         cpy.ValDef(tree)(rhs = cpy.Ident(rhs)(nme.WILDCARD))
