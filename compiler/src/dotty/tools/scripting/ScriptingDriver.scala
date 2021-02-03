@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.Settings.Setting._
 import sys.process._
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(): Unit =
+  def compileAndRun(pack:(Path,String) => Unit = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
     val (toCompile, rootCtx) = setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh)
     given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
@@ -25,6 +25,12 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
 
     if doCompile(newCompiler, toCompile).hasErrors then
       throw ScriptingException("Errors encountered during compilation")
+
+    Option(pack) match {
+    case None =>
+    case Some(func) =>
+      func(outDir,ctx.settings.classpath.value)
+    }
 
     try detectMainMethod(outDir, ctx.settings.classpath.value).invoke(null, scriptArgs)
     catch

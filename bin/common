@@ -15,6 +15,7 @@ version="$ROOT/dist/target/pack/VERSION"
 # Create the target if absent or if file changed in ROOT/compiler
 new_files="$(find "$ROOT/compiler" \( -iname "*.scala" -o -iname "*.java" \) -newer "$version" 2> /dev/null)"
 
+set -x
 if [ ! -f "$version" ] || [ ! -z "$new_files" ]; then
   echo "Building Dotty..."
   (cd $ROOT && sbt "dist/pack")

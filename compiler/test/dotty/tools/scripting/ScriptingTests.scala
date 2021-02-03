@@ -36,4 +36,8 @@ class ScriptingTests:
           "-classpath", TestConfiguration.basicClasspath),
         scriptFile = scriptFile,
         scriptArgs = scriptArgs
-      ).compileAndRun()
+      ).compileAndRun { (path:java.nio.file.Path,classpath:String) =>
+        path.toFile.listFiles.foreach { (f:File) => printf(" [%s]\n",f.getName) }
+        printf("%s\n%s\n",path,classpath)
+      }
+      
