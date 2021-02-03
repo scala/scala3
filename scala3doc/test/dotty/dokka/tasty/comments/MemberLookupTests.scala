@@ -16,6 +16,11 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
   def testOwnerlessLookup(): Unit = {
     val cases = List[(String, Sym)](
+      "Array" -> cls("scala.Array"),
+      "Option" -> cls("scala.Option"),
+      "Predef$.identity" -> cls("scala.Predef$").fun("identity"),
+      "Array$.from" -> cls("scala.Array$").fun("from"),
+      "???" -> cls("scala.Predef$").fun("???"),
       "tests.A" -> cls("tests.A"),
       "tests.A$" -> cls("tests.A$"),
       "tests.Methods.simple" -> cls("tests.Methods").fun("simple"),
@@ -61,6 +66,14 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
       cls("tests.A").fun("method") -> "B" -> cls("tests.B"),
       cls("tests.A").fun("method") -> "B$" -> cls("tests.B$"),
+
+      cls("tests.A") -> "B.method" -> cls("tests.B").fun("method"),
+      cls("tests.A") -> "Option" -> cls("scala.Option"),
+
+      /*sanity*/ cls("tests.A") -> "this.X" -> cls("tests.A").tpe("X"),
+      /*sanity*/ cls("tests.A") -> "this.Y" -> cls("tests.A").tpe("Y"),
+      cls("tests.A") -> "this.X.method" -> cls("tests.B").fun("method"),
+      cls("tests.A") -> "this.Y.method" -> cls("tests.B").fun("method"),
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>
