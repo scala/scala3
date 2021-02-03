@@ -4,7 +4,7 @@ title: Static documentation
 
 # {{ page.title}}
 
-scaladoc is able to generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
+Scaladoc is able to generate static sites, known from [Jekyll](http://jekyllrb.com/) or [Docusaurus](https://docusaurus.io/).
 Having a combined tool allows to provide interaction between static documentation and API, thus allowing the two to blend naturally.
 
 Creating a site is just as simple as in Jekyll. The site root contains the
@@ -29,18 +29,18 @@ index.html
 docs/getting-started.html
 ```
 
-scaladoc can transform both files and directories (to organize your documentation into tree-like structure). By default directories has title based on file name and has empty content. There is an option to include `index.html` or `index.md` (not both) to provide both content and properties like title (see [Properties](#properties)).
+Scaladoc can transform both files and directories (to organize your documentation into tree-like structure). By default directories has title based on file name and has empty content. There is an option to include `index.html` or `index.md` (not both) to provide both content and properties like title (see [Properties](#properties)).
 
 ## Properties
 
-scaladoc uses the [Liquid](https://shopify.github.io/liquid/) templating engine
+Scaladoc uses the [Liquid](https://shopify.github.io/liquid/) templating engine
 and provides a number of custom filters and tags specific to Scala
 documentation.
 
-In scaladoc, all templates can contain YAML front-matter. The front-matter
+In Scaladoc, all templates can contain YAML front-matter. The front-matter
 is parsed and put into the `page` variable available in templates via Liquid.
 
-scaladoc uses some predefined properties to controls some aspect of page.
+Scaladoc uses some predefined properties to controls some aspect of page.
 
 Predefined properties:
 
@@ -94,7 +94,7 @@ Layouts must be placed in a `_layouts` directory in the site root:
 
 Sidebar
 =======
-scaladoc by default uses layout of files in `docs` directory to create table of content. There is also ability to override it by providing a `sidebar.yml` file in the site root:
+Scaladoc by default uses layout of files in `docs` directory to create table of content. There is also ability to override it by providing a `sidebar.yml` file in the site root:
 
 ```yaml
 sidebar:

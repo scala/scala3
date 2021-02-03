@@ -4,7 +4,7 @@ title: scaladoc
 
 ![scaladoc logo](/images/scaladoc-logo.png)
 
-scaladoc is tool to generate documentation for your Scala 3 projects. It provies similar features to `javadoc` or `scaladoc` as well as `jekyll` or `docusaurus`.
+scaladoc is tool to generate documentation for your Scala 3 projects. It provies similar features to `javadoc` as well as `jekyll` or `docusaurus`.
 
 As you probably have guessed, this whole site was created using scaladoc.
 

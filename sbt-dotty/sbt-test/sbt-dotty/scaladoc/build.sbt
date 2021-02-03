@@ -1,7 +1,7 @@
 scalaVersion := sys.props("plugin.scalaVersion")
 
-lazy val assertUsingscaladoc = taskKey[Unit]("")
+lazy val assertUsingScaladoc = taskKey[Unit]("")
 
-assertUsingscaladoc := {
+assertUsingScaladoc := {
   assert(useScaladoc.value)
 }

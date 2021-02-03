@@ -4,7 +4,7 @@ title: API Documentation
 
 # {{ page.title }}
 
-scaladoc's main feature is creating API documentation from code comments.
+Scaladoc's main feature is creating API documentation from code comments.
 
 By default, the code comments are understood as Markdown, though we also support
 Scaladoc's old [Wiki syntax](https://docs.scala-lang.org/style/scaladoc.html).
@@ -74,8 +74,8 @@ closer together. The new features are:
     /** TODO: Figure out what [[`([.abusive.])`]] is. */
     def foo = `([.abusive.])`
     ```
-    Scaladoc required backslash-escaping to reference such identifiers. Instead,
-    scaladoc allows using the familiar Scala backtick quotation.
+    Previously (versions 2.x), Scaladoc required backslash-escaping to reference such identifiers. Now (3.x versions),
+    Scaladoc allows using the familiar Scala backtick quotation.
 
 #### Why keep the Wiki syntax for links?
 

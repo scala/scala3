@@ -44,7 +44,7 @@ private def sourcePostionFor(f: File)(using CompilerContext) =
     val sourceFile = new SourceFile(virtualFile, Codec.UTF8)
     SourcePosition(sourceFile, Spans.NoSpan)
 
-// TODO (https://github.com/lampepfl/scaladoc/issues/238): provide proper error handling
+// TODO (https://github.com/lampepfl/scala3doc/issues/238): provide proper error handling
 private def createMessage(
   msg: String, file: File, e: Throwable | Null)(using CompilerContext): String =
     val localizedMessage = s"$file: $msg"
