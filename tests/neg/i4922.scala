@@ -9,7 +9,7 @@ object A {
 object Main {
   def main(args: Array[String]): Unit = {
     val seq: Seq[Int] = 2 match {
-      case A(xs: _*) => xs // error // error
+      case A(xs*) => xs // error // error
     }
   }
 }

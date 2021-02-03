@@ -8,9 +8,9 @@ object Test:
 
   object Record:
 
-    inline def apply[R <: Record](elems: (String, Any)*) : R = new Record(elems: _*).asInstanceOf[R]
+    inline def apply[R <: Record](elems: (String, Any)*) : R = new Record(elems*).asInstanceOf[R]
 
-    def fromUntypedTuple(elems: (String, Any)*): Record = Record(elems: _*) // error: ambiguous overload
+    def fromUntypedTuple(elems: (String, Any)*): Record = Record(elems*) // error: ambiguous overload
 
   def apply(x: String): Test = Test(x ++ x)
 

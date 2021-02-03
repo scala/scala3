@@ -12,7 +12,7 @@ object FIntepolator {
   def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
     import quotes.reflect._
     report.error("there are no parts", strCtxExpr.asTerm.underlyingArgument.pos)
-    '{ ($strCtxExpr).s($argsExpr: _*) }
+    '{ ($strCtxExpr).s($argsExpr*) }
   }
 
 }

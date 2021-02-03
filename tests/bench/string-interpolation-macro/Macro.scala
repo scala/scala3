@@ -9,8 +9,8 @@ object Macro {
     var res: Expr[String] = null
     for _ <- 0 to 5_000 do
       (strCtxExpr, argsExpr) match {
-        case ('{ StringContext(${Varargs(Exprs(parts))}: _*) }, Varargs(Exprs(args))) =>
-          res = Expr(StringContext(parts: _*).s(args: _*))
+        case ('{ StringContext(${Varargs(Exprs(parts))}*) }, Varargs(Exprs(args))) =>
+          res = Expr(StringContext(parts*).s(args*))
         case _ => ???
       }
     res

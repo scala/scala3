@@ -4,12 +4,12 @@ class A {
   def f(xs: AnyRef*) = ()
 
   f()
-  f(List[AnyRef](): _*)
-  f(List(): _*)
-  f(Nil: _*)
-  // f(Array(): _*)  // undetermined ClassTag
-  f(Array[AnyRef](): _*)
+  f(List[AnyRef]()*)
+  f(List()*)
+  f(Nil*)
+  // f(Array()*)  // undetermined ClassTag
+  f(Array[AnyRef]()*)
   f(List(1))
-  f(List(1), Nil: _*)
-  // f(List(1), Array(): _*)  // undetermined ClassTag
+  f(List(1), Nil*)
+  // f(List(1), Array()*)  // undetermined ClassTag
 }

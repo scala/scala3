@@ -53,6 +53,6 @@ object FQuote {
     }
 
     val string = parts.mkString("")
-    '{ new collection.immutable.StringOps(${Expr(string)}).format($args: _*) }
+    '{ new collection.immutable.StringOps(${Expr(string)}).format($args*) }
   }
 }

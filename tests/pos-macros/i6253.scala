@@ -4,6 +4,6 @@ object Macros {
     case '{ StringContext() } => '{""}
     case '{ StringContext($part1) } => part1
     case '{ StringContext($part1, $part2) } => '{ $part1 + $part2 }
-    case '{ StringContext($parts: _*) } => '{ $parts.mkString }
+    case '{ StringContext($parts*) } => '{ $parts.mkString }
   }
 }

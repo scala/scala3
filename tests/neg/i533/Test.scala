@@ -3,6 +3,6 @@ object Test {
     val x = new Array[Int](1)
     x(0) = 10
     println(JA.get(x)) // error
-    println(JA.getVarargs(x: _*)) // now OK.
+    println(JA.getVarargs(x*)) // now OK.
   }
 }

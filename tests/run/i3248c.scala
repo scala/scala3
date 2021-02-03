@@ -2,14 +2,14 @@ object Test {
   case class Foo(name: String, children: Int *)
 
   def foo(f: Foo) = f match {
-    case Foo(name, ns: _*) =>
+    case Foo(name, ns*) =>
       assert(name == "hello")
       assert(ns(0) == 3)
       assert(ns(1) == 5)
   }
 
   def bar(f: Foo) = f match {
-    case Foo(name, x, y, ns : _*) =>
+    case Foo(name, x, y, ns *) =>
       assert(name == "hello")
       assert(x == 3)
       assert(y == 5)
