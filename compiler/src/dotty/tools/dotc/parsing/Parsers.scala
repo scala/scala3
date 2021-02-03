@@ -2628,7 +2628,7 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern2    ::=  InfixPattern [‘*’]
+    /**  Pattern3    ::=  InfixPattern [‘*’]
      */
     def pattern3(): Tree =
       val p = infixPattern()
