@@ -30,11 +30,14 @@ import transform.{PostTyper, Inlining}
 import collection.mutable
 import reporting.trace
 import util.Spans.Span
+import util.Property
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
 import quoted.QuoteUtils
 
 object Inliner {
   import tpd._
+
+  val InliningPosition = new Property.StickyKey[SourcePosition]
 
   /** `sym` is an inline method with a known body to inline.
    */
@@ -226,8 +229,7 @@ object Inliner {
     val tree1 =
       if inlined.bindings.isEmpty then inlined.expansion
       else cpy.Block(inlined)(inlined.bindings, inlined.expansion)
-    // Reposition in the outer most inlined call
-    if (enclosingInlineds.nonEmpty) tree1 else reposition(tree1, inlined.span)
+    tree1.withAttachment(InliningPosition, inlined.sourcePos)
 
   def reposition(tree: Tree, callSpan: Span)(using Context): Tree = {
     // Reference test tests/run/i4947b
