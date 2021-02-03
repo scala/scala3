@@ -111,6 +111,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def genPlainClass(cd0: TypeDef) = cd0 match {
       case TypeDef(_, impl: Template) =>
+
       assert(cnode == null, "GenBCode detected nested methods.")
 
       claszSymbol       = cd0.symbol
@@ -276,7 +277,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(cunit.source.file.name, null /* SourceDebugExtension */)
+        cnode.visitSource(cunit.source.file.name, InlinedsPositioner(cunit).debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
