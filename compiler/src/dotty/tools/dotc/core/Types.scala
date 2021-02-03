@@ -2299,6 +2299,7 @@ object Types {
      */
     private def infoDependsOnPrefix(symd: SymDenotation, prefix: Type)(using Context): Boolean =
       symd.maybeOwner.membersNeedAsSeenFrom(prefix) && !symd.is(NonMember)
+      || prefix.isInstanceOf[Types.ThisType] && symd.is(Opaque) // see pos/i11277.scala for a test where this matters
 
     /** Is this a reference to a class or object member? */
     def isMemberRef(using Context): Boolean = designator match {
