@@ -81,15 +81,6 @@ object Typer {
    */
   private val DroppedEmptyArgs = new Property.Key[Unit]
 
-
-  /** Marker context property that indicates that typer is resolving types for arguments of
-   *  an annotation defined in Java. This means that value of any type T can appear in positions where
-   *  Array[T] is expected.
-   *  For example, both `@Annot(5)` and `@Annot({5, 6}) are viable calls of the constructor
-   *  of annotation defined as `@interface Annot { int[] value() }`
-   */
-  private[typer] val JavaAnnotationArg = Property.Key[Unit]()
-
   /** An attachment that indicates a failed conversion or extension method
    *  search was tried on a tree. This will in some cases be reported in error messages
    */
@@ -863,14 +854,20 @@ class Typer extends Namer
     case _ => tree
   }
 
+
   def typedNamedArg(tree: untpd.NamedArg, pt: Type)(using Context): NamedArg = {
-    val arg1 = if (ctx.property(JavaAnnotationArg).isDefined) {
-      pt match {
-        case AppliedType(a, typ :: Nil) if (a.isRef(defn.ArrayClass)) =>
-          tryAlternatively { typed(tree.arg, pt) } { typed(untpd.JavaSeqLiteral(tree.arg :: Nil, TypeTree(typ)), pt) }
-        case _ => typed(tree.arg, pt)
-      }
-    } else typed(tree.arg, pt)
+    /* Special case for resolving types for arguments of an annotation defined in Java.
+     * It allows that value of any type T can appear in positions where Array[T] is expected.
+     * For example, both `@Annot(5)` and `@Annot({5, 6}) are viable calls of the constructor
+     * of annotation defined as `@interface Annot { int[] value() }`
+     * We assume that calling `typedNamedArg` in context of Java implies that we are dealing
+     * with annotation contructor, as named arguments are not allowed anywhere else in Java.
+     */
+    val arg1 = pt match {
+      case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
+        tryAlternatively { typed(tree.arg, pt) } { typed(untpd.JavaSeqLiteral(tree.arg :: Nil, TypeTree(typ)), pt) }
+      case _ => typed(tree.arg, pt)
+    }
 
     assignType(cpy.NamedArg(tree)(tree.name, arg1), arg1)
   }
@@ -1994,12 +1991,10 @@ class Typer extends Namer
   def annotContext(mdef: untpd.Tree, sym: Symbol)(using Context): Context = {
     def isInner(owner: Symbol) = owner == sym || sym.is(Param) && owner == sym.owner
     val outer = ctx.outersIterator.dropWhile(c => isInner(c.owner)).next()
-    val c = outer.property(ExprOwner) match {
+    outer.property(ExprOwner) match {
       case Some(exprOwner) if outer.owner.isClass => outer.exprContext(mdef, exprOwner)
       case _ => outer
     }
-    if (c.isJava) c.fresh.setProperty(JavaAnnotationArg, ())
-    else c
   }
 
   def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = {
