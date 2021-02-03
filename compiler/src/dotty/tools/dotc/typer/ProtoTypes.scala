@@ -47,7 +47,7 @@ object ProtoTypes {
       necessarySubType(tpn, pt) || tpn.isValueSubType(pt) || viewExists(tpn, pt)
 
     /** Test compatibility after normalization.
-     *  Do this in a fresh typerstate unless `keepConstraint` is true.
+     *  If `keepConstraint` is false, the current constraint set will not be modified by this call.
      */
     def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean =
 
@@ -64,15 +64,19 @@ object ProtoTypes {
                 i"""normalizedCompatible for $poly, $pt = $result
                    |constraint was: ${ctx.typerState.constraint}
                    |constraint now: ${newctx.typerState.constraint}""")
-            val existingVars = ctx.typerState.uninstVars.toSet
             if result
                 && (ctx.typerState.constraint ne newctx.typerState.constraint)
-                && newctx.typerState.uninstVars.forall(existingVars.contains)
+                && {
+                  val existingVars = ctx.typerState.uninstVars.toSet
+                  newctx.typerState.uninstVars.forall(existingVars.contains)
+                }
             then newctx.typerState.commit()
               // If the new constrait contains fresh type variables we cannot keep it,
               // since those type variables are not instantiated anywhere in the source.
               // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
               // for tests where it matters that we keep the constraint otherwise.
+              // TODO: A better solution would clean the new constraint, so that it "avoids"
+              // the problematic type variables. But we have not implemented such an algorithm yet.
             result
           case _ => testCompat
       else explore(testCompat)
@@ -95,8 +99,8 @@ object ProtoTypes {
                 if pt.constrainResultDeep
                    && mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using)
                 then
-                  val tpargs = pt.args.lazyZip(mt.paramInfos).map(pt.typedArg)
-                  tpargs.tpes.corresponds(mt.paramInfos)(_ <:< _)
+                  pt.args.lazyZip(mt.paramInfos).forall((arg, paramInfo) =>
+                    pt.typedArg(arg, paramInfo).tpe <:< paramInfo)
                 else true
               }
             case _ => true
