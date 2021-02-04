@@ -1,0 +1,34 @@
+name: Community Build
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - "community-build-sync" # for test only
+      # - "master"
+    paths:
+      - "community-build/**"
+jobs:
+  community-build:
+    name: Community Build
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: Init submodules
+        run: git submodule update --init --recursive --jobs 7
+      - name: Sync community builds
+        run: ./project/scripts/sbt "community-build/run sync all"
+        env:
+          LOGIN: "dotty-bot"
+          TOKEN: ${{ secrets.BOT_TOKEN }}
+          NAME: "Dotty Bot"
+          EMAIL: "12519979+dotty-bot@users.noreply.github.com"
+          PR_BRANCH: "community-build-sync"
+          PR_TITLE: "Community Build Sync"
+          DIFF_URL: ${{ github.event.pull_request.diff_url }}

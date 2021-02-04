@@ -57,6 +57,7 @@ sealed trait CommunityProject:
   val dependencies: List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
+  val sync: Boolean
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
@@ -89,7 +90,8 @@ end CommunityProject
 final case class MillCommunityProject(
     project: String,
     baseCommand: String,
-    dependencies: List[CommunityProject] = Nil) extends CommunityProject:
+    dependencies: List[CommunityProject] = Nil,
+    sync: Boolean = false) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
@@ -101,6 +103,7 @@ final case class SbtCommunityProject(
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
+    sync: Boolean = false,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null
   ) extends CommunityProject:
@@ -191,6 +194,13 @@ object projects:
     val tastyFiles =
       (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
+
+  lazy val cbTest = SbtCommunityProject(
+    project           = "cb-test",
+    sbtTestCommand    = "",
+    sbtPublishCommand = "",
+    sync              = true
+  )
 
   lazy val utest = MillCommunityProject(
     project = "utest",

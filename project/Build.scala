@@ -1382,7 +1382,13 @@ object Build {
             Seq()
         }
         sbtProps
-      }
+      },
+      libraryDependencies ++= Seq(
+        "com.lihaoyi" % "ammonite-ops_2.13" % "2.3.8",
+        "org.eclipse.mylyn.github" % "org.eclipse.egit.github.core" % "2.1.5",
+        "org.http4s" % "http4s-dsl_2.13" % "1.0-234-d1a2b53",
+        "org.http4s" % "http4s-blaze-client_2.13" % "1.0-234-d1a2b53"
+      )
     )
 
   lazy val publishSettings = Seq(

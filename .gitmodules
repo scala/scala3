@@ -177,3 +177,6 @@
 [submodule "community-build/community-projects/izumi-reflect"]
 	path = community-build/community-projects/izumi-reflect
 	url = https://github.com/dotty-staging/izumi-reflect.git
+[submodule "community-build/community-projects/cb-test"]
+	path = community-build/community-projects/cb-test
+	url = https://github.com/tdudzik/cb-test.git

@@ -80,6 +80,16 @@ object Main:
           println(s"Documentation not found for ${failed.mkString(", ")}")
           sys.exit(1)
 
+      case "sync" :: "all" :: Nil =>
+        try {
+          syncAll()
+          sys.exit(0)
+        } catch {
+          case e: Exception =>
+            println(e.getMessage)
+            sys.exit(1)
+        }
+
       case args =>
         println("USAGE: <COMMAND> <PROJECT NAME>")
         println("COMMAND is one of: publish doc")
