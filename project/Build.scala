@@ -283,7 +283,8 @@ object Build {
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
-  lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+  lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
+    bspEnabled := false,
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -419,9 +420,11 @@ object Build {
       ),
 
       // For convenience, change the baseDirectory when running the compiler
-      baseDirectory in (Compile, run) := baseDirectory.value / "..",
+      (Compile / forkOptions) := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
+      (Compile / run / forkOptions) := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       // And when running the tests
-      baseDirectory in Test := baseDirectory.value / "..",
+      (Test / forkOptions) := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
+      (Test / testOnly / forkOptions) := (Test / testOnly / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
 
       test in Test := {
         // Exclude VulpixMetaTests
