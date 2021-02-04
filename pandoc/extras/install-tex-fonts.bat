@@ -81,7 +81,7 @@ if not defined __ARG (
 if "%__ARG:~0,1%"=="-" (
     @rem option
     if "%__ARG%"=="-debug" ( set _DEBUG=1
-	) else if "%__ARG%"=="-help" ( set _HELP=1
+    ) else if "%__ARG%"=="-help" ( set _HELP=1
     ) else if "%__ARG%"=="-verbose" ( set _VERBOSE=1
     ) else (
         echo %_ERROR_LABEL% Unknown option %__ARG% 1>&2
@@ -91,7 +91,7 @@ if "%__ARG:~0,1%"=="-" (
 ) else (
     @rem subcommand
     if "%__ARG%"=="help" ( set _HELP=1
-	) else if "%__ARG%"=="run" ( set _RUN=1
+    ) else if "%__ARG%"=="run" ( set _RUN=1
     ) else (
         echo %_ERROR_LABEL% Unknown subcommand %__ARG% 1>&2
         set _EXITCODE=1
@@ -107,8 +107,8 @@ if %_DEBUG%==1 set _REDIRECT_STDOUT=1^>^&2
 
 if %_DEBUG%==1 (
     echo %_DEBUG_LABEL% Options    : _HELP=%_HELP% _VERBOSE=%_VERBOSE% 1>&2
-	echo %_DEBUG_LABEL% Subcommands: _RUN=%_RUN% 1>&2
-	echo %_DEBUG_LABEL% Variables  : TEXLIVE_HOME=%TEXLIVE_HOME% 1>&2
+    echo %_DEBUG_LABEL% Subcommands: _RUN=%_RUN% 1>&2
+    echo %_DEBUG_LABEL% Variables  : TEXLIVE_HOME=%TEXLIVE_HOME% 1>&2
 )
 goto :eof
 
@@ -143,11 +143,11 @@ for /f %%f in ('dir /b "%_DOWNLOADS_DIR%\*.tar.xz"') do (
         if %_DEBUG%==1 echo %_DEBUG_LABEL% "%_XZ_CMD%" -dk "!__XZ_FILE!" 1>&2
         call "%_XZ_CMD%" -dk "!__XZ_FILE!"
     )
-	for /f %%i in ('%_CYGPATH_CMD% "%_TEXMF_LOCAL_DIR%"') do set "__C_ARG=%%i"
-	for /f %%i in ('%_CYGPATH_CMD% "!__TAR_FILE!"') do set "__XF_ARG=%%i"
+    for /f %%i in ('%_CYGPATH_CMD% "%_TEXMF_LOCAL_DIR%"') do set "__C_ARG=%%i"
+    for /f %%i in ('%_CYGPATH_CMD% "!__TAR_FILE!"') do set "__XF_ARG=%%i"
     if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_TAR_CMD%" -C "!__C_ARG!" -xf "!__XF_ARG!" 1>&2
-	) else if %_VERBOSE%==1 ( echo Extract fonts from archive file "!__TAR_FILE:%TEMP%=%%TEMP%%!" 1>&2
-	)
+    ) else if %_VERBOSE%==1 ( echo Extract fonts from archive file "!__TAR_FILE:%TEMP%=%%TEMP%%!" 1>&2
+    )
     call "%_TAR_CMD%" -C "!__C_ARG!" -xf "!__XF_ARG!"
     @rem del "!__TAR_FILE!"
 )
@@ -157,7 +157,7 @@ if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_TEXHASH_CMD%" 1>&2
 call "%_TEXHASH_CMD%" %_REDIRECT_STDOUT%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
-	goto :eof
+    goto :eof
 )
 goto :eof
 

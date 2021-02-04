@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Scala 3 Internals"
 titlegraphic: ../out/pandoc/images/scala-spiral.png
-author: Martin Odersky and al.
+author: Martin Odersky et al.
 abstract-title: WILL_BE_IGNORED
 abstract: |
   Latest HTML version available at

@@ -6,15 +6,12 @@ LABEL md2pdf.author="Stéphane Micheloud <stephane.micheloud@gmail.com>"
 LABEL md2pdf.description="Create PDF file for Scala 3 documentation"
 LABEL md2pdf.version=1.0
 
-WORKDIR /app
+WORKDIR /dotty
+COPY ./tmp/docs ./docs/docs
 
+WORKDIR pandoc
 COPY ./data ./data
-COPY ./src ./src
 COPY ./md2pdf .
-
-## See https://vsupalov.com/docker-arg-env-variable-guide/
-ENV PROJECT_NAME=reference
-ENV GIT_HASH=
 
 ENV TEXLIVE_HOME=/opt/texlive/texdir
 
@@ -31,7 +28,8 @@ RUN tlmgr install \
  tcolorbox \
  trimspaces
 
-RUN echo "#!/bin/bash \n ./md2pdf ${PROJECT_NAME} ${GIT_HASH}" > ./entrypoint.sh
+RUN echo "#!/bin/bash \n ./md2pdf" > ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
 ENTRYPOINT [ "./entrypoint.sh" ]
+CMD [ "reference" ]

@@ -55,6 +55,8 @@ error() {
 }
 
 args() {
+    PROJECT_NAME=$PROJECT_NAME_DEFAULT
+
     [[ $# -eq 0 ]] && HELP=true && return 1
 
     for arg in "$@"; do
@@ -79,7 +81,7 @@ args() {
            ;;
         esac
     done
-    $CLEAN || $COMPILE || $RUN || HELP=true
+    $CLEAN || $COMPILE || $HELP || HELP=true
     debug "Options    : DEBUG=$DEBUG TIMER=$TIMER VERBOSE=$VERBOSE"
     debug "Subcommands: CLEAN=$CLEAN COMPILE=$COMPILE HELP=$HELP"
     debug "Variables  : PANDOC_HOME=$PANDOC_HOME"
@@ -96,7 +98,7 @@ Usage: $BASENAME { <option> | <subcommand> }
   Options:
     -debug           show commands executed by this script
     -help            display this help message
-    -project:<name>  project name (default: $PROJECT_NAME)
+    -project:<name>  project name (default: $PROJECT_NAME_DEFAULT)
     -timer           display total elapsed time
     -verbose         display progress messages
 
@@ -108,7 +110,7 @@ EOS
 }
 
 project_name() {
-    local name="reference"
+    local name=""
     case "$1" in
     internals) name="internals" ;;
     reference) name="reference" ;;
@@ -146,13 +148,13 @@ EXITCODE=0
 PROG_HOME="$(getHome)"
 
 OS="$(getOS)"
-[ $OS == "Unknown" ] && error "Unsuppored OS"
+[ $OS == "Unknown" ] && error "Unsupported OS"
 [ $OS == "Win" ] && EXT=".exe" || EXT=""
 
 MD2PDF_CMD=$PROG_HOME/md2pdf
 [ -x "$MD2PDF_CMD" ] || error "md2pdf script not found"
 
-PROJECT_NAME=reference
+PROJECT_NAME_DEFAULT=reference
 
 CLEAN=false
 COMPILE=false

@@ -31,7 +31,7 @@ In the next sections we describe our setup of [TeX Live 2020][tex_live] in the M
 - [Docker](#docker) (Ubuntu)
 <div style="font-size:90%;margin:-10px 0 0 24px;"><sup>(*)</sup> Previous versions not tested (tested Windows 10 environments : <a href="https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/windows-commands#command-shell-overview">Windows Command Prompt</a> and MSYS2 Bash Shell).</div>
 
-## <span id="windows">Setting up TeX Live 2020 on MS Windows 10</span> <sup style="font-size:60%;">[**&#9650;**](#top "Back to top")</sup>
+## <span id="windows">Setting up TeX Live 2020 on MS Windows 10</span> 
 
 We start with the following two steps :
 
@@ -85,7 +85,7 @@ c:\opt\pandoc-2.11.4\pandoc.exe
 >  48M c:\opt\texlive\texmf-local
 > </pre>
 
-## <span id="ubuntu">Setting up TeX Live 2020 on Ubuntu 18.04</span> <sup style="font-size:60%;">[**&#9650;**](#top "Back to top")</sup>
+## <span id="ubuntu">Setting up TeX Live 2020 on Ubuntu 18.04</span>
 
 On Ubuntu we follow the same steps as for MS Windows 10 :
 
@@ -134,7 +134,7 @@ This is LuaHBTeX, Version 1.12.0 (TeX Live 2020)
 > 25M     /opt/texlive/texmf-local/
 > </pre>
 
-## <span id="docker">Setting up TeX Live 2020 on Docker</span> <sup style="font-size:60%;">[**&#9650;**](#top "Back to top")</sup>
+## <span id="docker">Setting up TeX Live 2020 on Docker</span>
 
 We use [`pandoc/ubuntu-latex`][docker_pandoc], a Ubuntu based image which bundles [TeX Live][tex_live] and [Pandoc]; the Docker image is available from the [Docker Hub][docker_hub].
 

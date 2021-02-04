@@ -109,7 +109,8 @@ goto :eof
 @rem output parameters: _INPUT_FILE, _OUTPUT_FILE
 :args
 set __ARG=%~1
-if "%__ARG%"=="reference" ( set __PROJECT_NAME=reference
+if not defined __ARG ( set __PROJECT_NAME=reference
+) else if "%__ARG%"=="reference" ( set __PROJECT_NAME=reference
 ) else if "%__ARG%"=="internals" ( set __PROJECT_NAME=internals
 ) else if "%__ARG%"=="usage" ( set __PROJECT_NAME=usage
 ) else (

@@ -23,8 +23,12 @@ if %_HELP%==1 (
     call :help
     exit /b !_EXITCODE!
 )
-if %_RUN%==1 (
-    call :run
+if %_BUILD%==1 (
+    call :build
+    if not !_EXITCODE!==0 goto end
+)
+if %_TEST%==1 (
+    call :test
     if not !_EXITCODE!==0 goto end
 )
 if %_SAVE%==1 (
@@ -38,7 +42,8 @@ goto end
 
 :env
 set _BASENAME=%~n0
-for %%f in ("%~dp0\.") do set "_ROOT_DIR=%%~dpf"
+for %%f in ("%~dp0\..") do set "_ROOT_DIR=%%~dpf"
+for %%f in ("%~dp0\.") do set "_PANDOC_DIR=%%~dpf"
 
 set _DEBUG_LABEL=[DEBUG]
 set _ERROR_LABEL=Error:
@@ -52,18 +57,16 @@ set "_DOCKER_CMD=docker.exe"
 set "_GIT_CMD=git.exe"
 
 set "_GZIP_CMD=gzip.exe"
-where "%_GZIP_CMD%" 2>NUL
+where /q "%_GZIP_CMD%" 2>NUL
 if %ERRORLEVEL%==1 (
-    set _GZIP_CMD=%GIT_HOME%\usr\bin\gzip.exe"
-	if !ERRORLEVEL!==1 (
-	    echo %_ERRORLABEL% Gzip executable not found 1>&2
-		set _EXITCODE=1
-		goto :eof
-	)
+    set "_GZIP_CMD=%GIT_HOME%\usr\bin\gzip.exe"
+    if !ERRORLEVEL!==1 (
+        echo %_ERROR_LABEL% Gzip executable not found 1>&2
+        set _EXITCODE=1
+        goto :eof
+    )
 )
-set "_FILE_NAME=scala3_reference.pdf
-set "_TARGET_DIR=%_ROOT_DIR%\target"
-set "_OUTPUT_FILE=%_TARGET_DIR%\%_FILE_NAME%"
+set "_TARGET_DIR=%_ROOT_DIR%\out\pandoc"
 set "_TAR_FILE=%_TARGET_DIR%\%_IMAGE_NAME:/=_%-%_TAG_NAME%.tar"
 goto :eof
 
@@ -71,8 +74,10 @@ goto :eof
 :args
 set _CLEAN=0
 set _HELP=0
-set _RUN=0
+set _BUILD=0
+set _PROJECT_NAME=internals
 set _SAVE=0
+set _TEST=0
 set _VERBOSE=0
 set __N=0
 :args_loop
@@ -93,9 +98,10 @@ if "%__ARG:~0,1%"=="-" (
     )
 ) else (
     @rem subcommand
-    if "%__ARG%"=="help" ( set _HELP=1
-    ) else if "%__ARG%"=="run" ( set _RUN=1
-	) else if "%__ARG%"=="save" ( set _SAVE=1
+    if "%__ARG%"=="build" ( set _BUILD=1
+	) else if "%__ARG%"=="help" ( set _HELP=1
+    ) else if "%__ARG%"=="save" ( set _SAVE=1
+    ) else if "%__ARG%"=="test" ( set _TEST=1
     ) else (
         echo %_ERROR_LABEL% Unknown subcommand %__ARG% 1>&2
         set _EXITCODE=1
@@ -109,9 +115,12 @@ goto :args_loop
 set _REDIRECT_STDOUT=1^>NUL
 if %_DEBUG%==1 set _REDIRECT_STDOUT=1^>^&2
 
+set "_FILE_NAME=scala3_%_PROJECT_NAME%.pdf
+set "_OUTPUT_FILE=%_TARGET_DIR%\%_FILE_NAME%"
+
 if %_DEBUG%==1 (
     echo %_DEBUG_LABEL% Options    : _VERBOSE=%_VERBOSE% 1>&2
-    echo %_DEBUG_LABEL% Subcommands: _RUN=%_RUN% _SAVE=%_SAVE% 1>&2
+    echo %_DEBUG_LABEL% Subcommands: _BUILD=%_BUILD% _SAVE=%_SAVE% _TEST=%_TEST% 1>&2
 )
 goto :eof
 
@@ -124,61 +133,71 @@ echo     -help       display this help message
 echo     -verbose    display progress messages
 echo.
 echo   Subcommands:
+echo     build       create image "%_IMAGE_NAME%:%_TAG_NAME%"
 echo     help        display this help message
-echo     run         create image "%_IMAGE_NAME%:%_TAG_NAME%"
 echo     save        save image as a tar archive file
+echo     test        test image "%_IMAGE_NAME%:%_TAG_NAME%" with project %_PROJECT_NAME%
 goto :eof
 
-:run
+:build
 for /f %%i in ('%_DOCKER_CMD% container ps --all --format "{{.Names}}" ^| findstr /c:"%_CONTAINER_NAME%"') do (
     if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" container rm "%_CONTAINER_NAME%" 1>&2
-	) else if %_VERBOSE%==1 ( echo Remove container "%_CONTAINER_NAME%" based on image "%_IMAGE_NAME%" 1>&2
-	)
+    ) else if %_VERBOSE%==1 ( echo Remove container "%_CONTAINER_NAME%" based on image "%_IMAGE_NAME%" 1>&2
+    )
     call "%_DOCKER_CMD%" container rm "%_CONTAINER_NAME%" %_REDIRECT_STDOUT%
     if not !ERRORLEVEL!==0 ( set _EXITCODE=1& goto :eof )
 )
-
 for /f %%i in ('%_DOCKER_CMD% image ls --format "{{.Repository}}" ^| findstr /c:"%_IMAGE_NAME%:%_TAG_NAME%"') do (
     if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" image rm "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
-	) else if %_VERBOSE%==1 ( echo Remove docker image "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
-	)
+    ) else if %_VERBOSE%==1 ( echo Remove docker image "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
+    )
     call "%_DOCKER_CMD%" image rm "%_IMAGE_NAME%:%_TAG_NAME%" %_REDIRECT_STDOUT%
     if not !ERRORLEVEL!==0 ( set _EXITCODE=1& goto :eof )
 )
-for /f "usebackq delims=" %%d in (`powershell -c "$culture=[CultureInfo]'en-us'; (Get-Date).ToString('yyyy-MM-ddThh:mm:ssK', $culture)"`) do set "__BUILD_DATE=%%d"
-set __BUILD_OPTS=--tag "%_IMAGE_NAME%:%_TAG_NAME%" --build-arg "BUILD_DATE=%__BUILD_DATE%"
-if %_DEBUG%==0 if %_VERBOSE%==0 set __BUILD_OPTS=--quiet %__BUILD_OPTS%
+@rem check path of Docker build context
+if /i not "%CD%\"=="%_PANDOC_DIR%" (
+    echo %_ERROR_LABEL% Docker build context must be the pandoc directory 1>&2
+    set _EXITCODE=1
+	goto :eof
+)
+xcopy /e /y "%_ROOT_DIR%docs\docs" "%_PANDOC_DIR%tmp\docs\" %_REDIRECT_STDOUT%
+if not %ERRORLEVEL%==0 (
+    echo %_ERROR_LABEL% Failed to copy directory docs\docs 1>&2
+    set _EXITCODE=1
+    goto :eof
+)
+set __BUILD_OPTS=--tag "%_IMAGE_NAME%:%_TAG_NAME%"
 
-if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" build %__BUILD_OPTS% . 1>&2
+if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" image build %__BUILD_OPTS% . 1>&2
 ) else if %_VERBOSE%==1 ( echo Build docker image "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
 )
-call "%_DOCKER_CMD%" build %__BUILD_OPTS% . %_REDIRECT_STDOUT%
+call "%_DOCKER_CMD%" image build %__BUILD_OPTS% . %_REDIRECT_STDOUT%
 if not %ERRORLEVEL%==0 (
     set _EXITCODE=1
     goto :eof
 )
+goto :eof
+
+:test
 call :hash
 if not %_EXITCODE%==0 goto :eof
 
-set __RUN_OPTS=--name "%_CONTAINER_NAME%" --env "GIT_HASH=%_HASH%"
-if %_DEBUG%==1 set __RUN_OPTS=%__RUN_OPTS% --env "DEBUG=1"
+@rem see https://docs.docker.com/engine/reference/commandline/run/
+set __RUN_OPTS=--name "%_CONTAINER_NAME%"
 
 if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" container run %__RUN_OPTS% "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
 ) else if %_VERBOSE%==1 ( echo Start container "%_CONTAINER_NAME%" based on image "%_IMAGE_NAME%:%_TAG_NAME%" 1>&2
 )
 call "%_DOCKER_CMD%" container run %__RUN_OPTS% "%_IMAGE_NAME%:%_TAG_NAME%" %_REDIRECT_STDOUT%
-if not %ERRORLEVEL%==0 (
-    set _EXITCODE=1
-    goto :eof
-)
-if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" cp "%_CONTAINER_NAME%:/app/target/%_FILE_NAME%" "%_OUTPUT_FILE%" 1>&2
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto :eof )
+
+if %_DEBUG%==1 ( echo %_DEBUG_LABEL% "%_DOCKER_CMD%" cp "%_CONTAINER_NAME%:/dotty/out/pandoc/%_FILE_NAME%" "%_OUTPUT_FILE%" 1>&2
 ) else if %_VERBOSE%==1 ( echo Copy file %_FILE_NAME% to directory "!_TARGET_DIR:%_ROOT_DIR%\=!" 1>&2
 )
-call "%_DOCKER_CMD%" cp "%_CONTAINER_NAME%:/app/target/%_FILE_NAME%" "%_OUTPUT_FILE%"
-if not %ERRORLEVEL%==0 (
-    set _EXITCODE=1
-    goto :eof
-)
+call "%_DOCKER_CMD%" cp "%_CONTAINER_NAME%:/dotty/out/pandoc/%_FILE_NAME%" "%_OUTPUT_FILE%"
+if not %ERRORLEVEL%==0 ( set _EXITCODE=1& goto :eof )
+
+if %_DEBUG%==1 dir "%_TARGET_DIR%" 1>&2
 goto :eof
 
 @rem output parameter: _HASH

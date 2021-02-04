@@ -1,10 +1,6 @@
 # <span id="top">More about the project</span> <span style="size:25%;"><a href="../README.md" title="Back to README">↩</a></span>
 <!-- created by mics (https://github.com/michelou/) on December 2020 -->
 
-This project is located at the root of the [`lampepfl/dotty`][github_dotty] repository, at the same level as the [`Scala3doc`][github_scala3doc] project.
-
-## <span id="structure">Directory structure</span>
-
 The `pandoc/` directory is organized as follows:
 
 <table>

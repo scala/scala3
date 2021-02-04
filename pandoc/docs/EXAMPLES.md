@@ -29,7 +29,7 @@ Elapsed time: 59 seconds
 images  scala3_reference.pdf  src_managed
 </pre>
 
-With `DEBUG=1` we execute [`md2pd`](../md2pdf) in debug mode :
+With `DEBUG=1` we execute [`md2pdf`](../md2pdf) in debug mode :
 
 <pre>
 <b>pandoc$ DEBUG=1 ./<a href="../md2pdf">md2pdf</a></b>
