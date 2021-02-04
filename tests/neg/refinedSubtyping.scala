@@ -13,7 +13,7 @@ class Test3 {
   type U1 = C { type T <: B }
   type U2 = C { type T <: A }
 
-  var x: T2 = _
+  var x: T2 = compiletime.uninitialized
   val y1: U1 = ???
   val y2: U2 = ???
 

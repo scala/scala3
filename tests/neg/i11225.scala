@@ -4,8 +4,8 @@ class Test:
 
   val x1: Int = uninitialized // error
   var x2: Int = if ??? then uninitialized else uninitialized // error // error
-  var x3: Int = if true then uninitialized else 1 // error
-  var x4: Int = if false then uninitialized else 1 // ok, since inlined away
+  var x3: Int = if true then uninitialized else 1 // ok
+  var x4: Int = if false then uninitialized else 1 // ok
   var x5: () => Int = () => uninitialized // error
   var x6: Int = { uninitialized } // error
 

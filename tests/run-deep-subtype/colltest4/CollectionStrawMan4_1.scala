@@ -462,7 +462,7 @@ object CollectionStrawMan4 {
       -1
     }
     def filter(p: A => Boolean): Iterator[A] = new Iterator[A] {
-      private var hd: A = _
+      private var hd: A = compiletime.uninitialized
       private var hdDefined: Boolean = false
 
       def hasNext: Boolean = hdDefined || {
