@@ -1227,12 +1227,12 @@ object Build {
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
-  val generateScala3Documentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
-  lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
+  lazy val `scaladoc` = project.in(file("scaladoc")).asScaladoc
+  lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).asScaladocTestcases
 
-  lazy val `scala3doc-js` = project.in(file("scala3doc-js")).asScala3docJs
+  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).asScaladocJs
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
@@ -1280,7 +1280,7 @@ object Build {
         publishLocal in `scala3-staging`,
         publishLocal in `scala3-tasty-inspector`,
         publishLocal in `scala3-doc-bootstrapped`,
-        publishLocal in `scala3doc`,
+        publishLocal in `scaladoc`,
         publishLocal in `scala3-bootstrapped` // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
     )
@@ -1351,7 +1351,7 @@ object Build {
         (publishLocal in `scala3-library-bootstrapped`).value
         (publishLocal in `scala3-doc-bootstrapped`).value
         (publishLocal in `scala3-tasty-inspector`).value
-        (publishLocal in `scala3doc`).value
+        (publishLocal in `scaladoc`).value
         (publishLocal in `scala3-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `scala3-bootstrapped`).value
@@ -1484,7 +1484,7 @@ object Build {
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `scala3-sbt-bridge`).
       bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
-        `scala3-library-bootstrappedJS`, scala3doc).
+        `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -1531,11 +1531,14 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asScala3doc: Project = {
+    def asScaladoc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val sourceLinks = "-source-links:github://lampepfl/dotty "
+          val scala3version = stdlibVersion(Bootstrapped)
+          // TODO add versions etc.
+          val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library -source-links:github://lampepfl/dotty"
           val revision = s"-revision $ref -project-version $projectVersion"
           val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
           run.in(Compile).toTask(cmd)
@@ -1567,25 +1570,25 @@ object Build {
 
             "com.novocode" % "junit-interface" % "0.11" % "test",
           ),
-          Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scala3doc-testcases`)).value,
-          testcasesOutputDir.in(Test) := joinProducts((`scala3doc-testcases`/Compile/products).value),
-          testcasesSourceRoot.in(Test) := (baseDirectory.in(`scala3doc-testcases`).value / "src").getAbsolutePath.toString,
-          Compile / mainClass := Some("dotty.dokka.Main"),
+          Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scaladoc-testcases`)).value,
+          testcasesOutputDir.in(Test) := joinProducts((`scaladoc-testcases`/Compile/products).value),
+          testcasesSourceRoot.in(Test) := (baseDirectory.in(`scaladoc-testcases`).value / "src").getAbsolutePath.toString,
+          Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
-              "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
-              "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg " +
+              "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
+              "-siteroot scaladoc/documentation -project-logo scaladoc/documentation/logo.svg " +
               "-external-mappings:" +
-                ".*scala.*::scala3doc::http://dotty.epfl.ch/api/," +
+                ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
                 ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
             )
           }.value,
 
-          generateScala3Documentation := Def.inputTaskDyn {
+          generateScalaDocumentation := Def.inputTaskDyn {
             val dottydocExtraArgs = spaceDelimited("[output]").parsed
-            val dest = file(dottydocExtraArgs.headOption.getOrElse("scala3doc/output/scala3")).getAbsoluteFile
+            val dest = file(dottydocExtraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
             val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
 
             val dottyJars: Seq[java.io.File] = Seq(
@@ -1611,7 +1614,7 @@ object Build {
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
               // contains special definitions which are "transplanted" elsewhere
-              // and which therefore confuse Scala3doc when accessed from this pkg
+              // and which therefore confuse Scaladoc when accessed from this pkg
               "-skip-by-id:scala.runtime.stdLibPatches " +
               // MatchCase is a special type that represents match type cases,
               // Reflect doesn't expect to see it as a standalone definition
@@ -1619,7 +1622,7 @@ object Build {
               "-skip-by-id:scala.runtime.MatchCase " +
               "-skip-by-regex:.+\\.internal($|\\..+) " +
               "-skip-by-regex:.+\\.impl($|\\..+) " +
-              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
+              "-comment-syntax wiki -siteroot scaladoc/scala3-docs -project-logo scaladoc/scala3-docs/logo.svg " +
               "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
               s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
               s"-doc-root-content $docRootFile"
@@ -1627,7 +1630,7 @@ object Build {
           }.evaluated,
 
           generateTestcasesDocumentation := Def.taskDyn {
-            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "scala3doc/output/testcases", "master")
+            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "scaladoc testcases", "scaladoc/output/testcases", "master")
           }.value,
 
           buildInfoKeys in Test := Seq[BuildInfoKey](
@@ -1636,32 +1639,32 @@ object Build {
             Build.testDocumentationRoot,
           ),
           Compile / buildInfoKeys := Seq[BuildInfoKey](version),
-          Compile / buildInfoPackage := "dotty.dokka",
+          Compile / buildInfoPackage := "dotty.tools.scaladoc",
           Compile / resourceGenerators += Def.task {
             val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
-            sbt.IO.copyFile((fullOptJS in Compile in `scala3doc-js`).value.data, jsDestinationFile)
+            sbt.IO.copyFile((fullOptJS in Compile in `scaladoc-js`).value.data, jsDestinationFile)
             Seq(jsDestinationFile)
           }.taskValue,
           Compile / resourceGenerators += Def.task {
-            val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scala3doc-searchbar.css"
-            val cssSourceFile = (resourceDirectory in Compile in `scala3doc-js`).value / "scala3doc-searchbar.css"
+            val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scaladoc-searchbar.css"
+            val cssSourceFile = (resourceDirectory in Compile in `scaladoc-js`).value / "scaladoc-searchbar.css"
             FileFunction.cached(streams.value.cacheDirectory / "css-cache") { (in: Set[File]) =>
               in.headOption.map(sbt.IO.copyFile(_, cssDesitnationFile))
               Set(cssDesitnationFile)
             }.apply(Set(cssSourceFile)).toSeq
           }.taskValue,
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
-          buildInfoPackage in Test := "dotty.dokka.test",
+          buildInfoPackage in Test := "dotty.tools.scaladoc.test",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
           BuildInfoPlugin.buildInfoScopedSettings(Compile),
           BuildInfoPlugin.buildInfoDefaultSettings,
         )
     }
 
-    def asScala3docTestcases: Project =
+    def asScaladocTestcases: Project =
       project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
 
-    def asScala3docJs: Project =
+    def asScaladocJs: Project =
       project.
         enablePlugins(MyScalaJSPlugin).
         dependsOn(`scala3-library-bootstrappedJS`).
