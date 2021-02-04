@@ -779,14 +779,15 @@ trait Implicits:
    */
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
+    val wfromtp = from.tpe.widen
     if    to.isAny
        || to.isAnyRef
        || to.isRef(defn.UnitClass)
-       || from.tpe.isRef(defn.NothingClass)
-       || from.tpe.isRef(defn.NullClass)
+       || wfromtp.isRef(defn.NothingClass)
+       || wfromtp.isRef(defn.NullClass)
        || !ctx.mode.is(Mode.ImplicitsEnabled)
        || from.isInstanceOf[Super]
-       || (from.tpe eq NoPrefix)
+       || (wfromtp eq NoPrefix)
     then NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
