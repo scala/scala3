@@ -106,7 +106,7 @@ class Inlining extends MacroTransform {
 object Inlining {
   val name: String = "inlining"
 
-  /** Check that `vdef.rhs` can be right hand-side or argument to `inline` value or parameter. */
+  /** Check that `vdef.rhs` can be right hand-side of an `inline` value definition. */
   def checkInlineConformant(vdef: tpd.ValDef)(using Context): Unit = {
     val ValDef(_, tpt, rhs) = vdef
     if vdef.symbol.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then

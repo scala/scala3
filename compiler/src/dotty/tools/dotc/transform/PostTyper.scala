@@ -258,7 +258,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         case tree: Ident if !tree.isType =>
-          if tree.symbol.is(Inline) then
+          if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
             ctx.compilationUnit.needsInlining = true
           checkNoConstructorProxy(tree)
           tree.tpe match {
@@ -276,7 +276,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
         case tree: Apply =>
-          if tree.symbol.is(Inline) then
+          if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
             ctx.compilationUnit.needsInlining = true
           val methType = tree.fun.tpe.widen
           val app =
