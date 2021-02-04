@@ -12,8 +12,8 @@ Scala 3 generalizes this scheme to all concrete classes. Example:
 class StringBuilder(s: String):
    def this() = this("")
 
-StringBuilder("abc")  // same as new StringBuilder("abc")
-StringBuilder()       // same as new StringBuilder()
+StringBuilder("abc")  // old: new StringBuilder("abc")
+StringBuilder()       // old: new StringBuilder()
 ```
 
 This works since a companion object with two `apply` methods
