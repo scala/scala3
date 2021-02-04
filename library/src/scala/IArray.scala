@@ -1,6 +1,8 @@
 package scala
 import reflect.ClassTag
 
+import scala.collection.immutable
+
 /** An immutable array. An `IArray[T]` has the same representation as an `Array[T]`,
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
@@ -269,6 +271,50 @@ object opaques:
     * If one of the two collections is longer than the other, its remaining elements are ignored. */
   extension [T](arr: IArray[T]) def zip[U: ClassTag](that: IArray[U]): IArray[(T, U)] =
     genericArrayOps(arr).zip(that)
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension [T](arr: IArray[T]) def toSeq: immutable.ArraySeq[T] =
+    immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[T]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension [T <: AnyRef](arr: IArray[T]) def toSeq: immutable.ArraySeq[T] =
+    immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Int]) def toSeq: immutable.ArraySeq[Int] =
+    immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Double]) def toSeq: immutable.ArraySeq[Double] =
+    immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Long]) def toSeq: immutable.ArraySeq[Long] =
+    immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Float]) def toSeq: immutable.ArraySeq[Float] =
+    immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Char]) def toSeq: immutable.ArraySeq[Char] =
+    immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Byte]) def toSeq: immutable.ArraySeq[Byte] =
+    immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Short]) def toSeq: immutable.ArraySeq[Short] =
+    immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Boolean]) def toSeq: immutable.ArraySeq[Boolean] =
+    immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  extension (arr: IArray[Unit]) def toSeq: immutable.ArraySeq[Unit] =
+    immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]])
 
 end opaques
 
