@@ -12,7 +12,6 @@ import Implicits.RenamedImplicitRef
 import config.SourceVersion
 import StdNames.nme
 import printing.Texts.Text
-import ProtoTypes.NoViewsAllowed.normalizedCompatible
 import NameKinds.QualifiedName
 import Decorators._
 

@@ -8,7 +8,7 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using Quotes): Expr[String] = {
     self match {
-      case '{ StringContext($parts: _*) } => // Should not match as the parameter is not marked as inlined
+      case '{ StringContext($parts*) } => // Should not match as the parameter is not marked as inlined
         '{ ??? }
       case _ =>
         '{ "Ok" }

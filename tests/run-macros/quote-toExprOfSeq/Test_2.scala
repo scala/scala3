@@ -3,7 +3,7 @@ object Test {
     println(seq)
     val s: Seq[Int] = seq
     println(s)
-    println(List(seq: _*))
+    println(List(seq*))
     println(seq(1))
   }
 }

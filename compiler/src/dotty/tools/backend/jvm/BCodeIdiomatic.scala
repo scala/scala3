@@ -39,6 +39,7 @@ trait BCodeIdiomatic {
       case (None, None) => "8" // least supported version by default
 
 
+  // Keep synchronized with `minTargetVersion` and `maxTargetVersion` in ScalaSettings
   lazy val classfileVersion: Int = target match {
     case "8"  => asm.Opcodes.V1_8
     case "9"  => asm.Opcodes.V9
@@ -48,6 +49,7 @@ trait BCodeIdiomatic {
     case "13" => asm.Opcodes.V13
     case "14" => asm.Opcodes.V14
     case "15" => asm.Opcodes.V15
+    case "16" => asm.Opcodes.V16
   }
 
   lazy val majorVersion: Int = (classfileVersion & 0xFF)

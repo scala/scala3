@@ -20,7 +20,7 @@ object Macro2 {
       '{ new Record($elems:_*).asInstanceOf[R] }
     }
 
-    def fromUntypedTuple(elems: (String, Any)*): Record = new Record(elems: _*)
+    def fromUntypedTuple(elems: (String, Any)*): Record = new Record(elems*)
       // `new` is needed since resolving the two `apply`s is ambiguous; this was hidden by old scheme for creator applications
   }
 }

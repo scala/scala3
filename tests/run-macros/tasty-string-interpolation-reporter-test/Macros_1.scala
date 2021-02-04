@@ -20,7 +20,7 @@ object Macro {
 
   def foo(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
     (sc, argsExpr) match {
-      case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
+      case ('{ StringContext(${Varargs(parts)}*) }, Varargs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
             import quotes.reflect._
@@ -33,7 +33,7 @@ object Macro {
 
   def fooErrors(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[List[(Int, Int, Int, String)]] = {
     (sc, argsExpr) match {
-      case ('{ StringContext(${Varargs(parts)}: _*) }, Varargs(args)) =>
+      case ('{ StringContext(${Varargs(parts)}*) }, Varargs(args)) =>
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
@@ -57,7 +57,7 @@ object Macro {
         reporter.errorOnPart("Cannot use #", idx)
     }
 
-    '{ StringContext(${Expr.ofList(parts)}: _*).s(${Expr.ofList(args)}: _*) }
+    '{ StringContext(${Expr.ofList(parts)}*).s(${Expr.ofList(args)}*) }
   }
 
 

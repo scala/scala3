@@ -1,7 +1,7 @@
 import runtime.ArrayCharSequence
 
 object Test {
-  val arr = Array[Char]('a' to 'i': _*)
+  val arr = Array[Char]('a' to 'i'*)
   var xs: CharSequence = new runtime.ArrayCharSequence(arr, 0, arr.length)
   val hash = xs.hashCode
 

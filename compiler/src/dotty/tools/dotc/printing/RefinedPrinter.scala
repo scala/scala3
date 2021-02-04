@@ -415,10 +415,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         }
       case Typed(expr, tpt) =>
         changePrec(InfixPrec) {
-          val exprText = toText(expr)
-          val line = exprText.lastLine
-          val colon = if (!line.isEmpty && isOperatorPart(line.last)) " :" else ":"
-          exprText ~ colon ~ toText(tpt) }
+          if isWildcardStarArg(tree) then
+            expr match
+              case Ident(nme.WILDCARD_STAR) =>
+              	// `_*` is used as a wildcard name to indicate a vararg splice pattern;
+              	// avoid the double `*` in this case.
+              	toText(expr)
+              case _ =>
+                toText(expr) ~ "*"
+          else
+            val exprText = toText(expr)
+            val line = exprText.lastLine
+            val colon = if !line.isEmpty && isOperatorPart(line.last) then " :" else ":"
+            exprText ~ colon ~ toText(tpt)
+        }
       case NamedArg(name, arg) =>
         toText(name) ~ " = " ~ toText(arg)
       case Assign(lhs, rhs) =>

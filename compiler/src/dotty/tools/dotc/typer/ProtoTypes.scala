@@ -47,27 +47,40 @@ object ProtoTypes {
       necessarySubType(tpn, pt) || tpn.isValueSubType(pt) || viewExists(tpn, pt)
 
     /** Test compatibility after normalization.
-     *  Do this in a fresh typerstate unless `keepConstraint` is true.
+     *  If `keepConstraint` is false, the current constraint set will not be modified by this call.
      */
-    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean = {
-      def testCompat(using Context): Boolean = {
+    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean =
+
+      def testCompat(using Context): Boolean =
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
-      }
-      if (keepConstraint)
-        tp.widenSingleton match {
+
+      if keepConstraint then
+        tp.widenSingleton match
           case poly: PolyType =>
-            // We can't keep the constraint in this case, since we have to add type parameters
-            // to it, but there's no place to associate them with type variables.
-            // So we'd get a "inconsistent: no typevars were added to committable constraint"
-            // assertion failure in `constrained`. To do better, we'd have to change the
-            // constraint handling architecture so that some type parameters are committable
-            // and others are not. But that's a whole different ballgame.
-            normalizedCompatible(tp, pt, keepConstraint = false)
+            val newctx = ctx.fresh.setNewTyperState()
+            val result = testCompat(using newctx)
+            typr.println(
+                i"""normalizedCompatible for $poly, $pt = $result
+                   |constraint was: ${ctx.typerState.constraint}
+                   |constraint now: ${newctx.typerState.constraint}""")
+            if result
+                && (ctx.typerState.constraint ne newctx.typerState.constraint)
+                && {
+                  val existingVars = ctx.typerState.uninstVars.toSet
+                  newctx.typerState.uninstVars.forall(existingVars.contains)
+                }
+            then newctx.typerState.commit()
+              // If the new constrait contains fresh type variables we cannot keep it,
+              // since those type variables are not instantiated anywhere in the source.
+              // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
+              // for tests where it matters that we keep the constraint otherwise.
+              // TODO: A better solution would clean the new constraint, so that it "avoids"
+              // the problematic type variables. But we have not implemented such an algorithm yet.
+            result
           case _ => testCompat
-        }
       else explore(testCompat)
-    }
+    end normalizedCompatible
 
     private def disregardProto(pt: Type)(using Context): Boolean =
       pt.dealias.isRef(defn.UnitClass)
@@ -79,10 +92,18 @@ object ProtoTypes {
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
-          mt match {
-            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+          mt match
+            case mt: MethodType =>
+              constrainResult(resultTypeApprox(mt), pt.resultType)
+              && {
+                if pt.constrainResultDeep
+                   && mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using)
+                then
+                  pt.args.lazyZip(mt.paramInfos).forall((arg, paramInfo) =>
+                    pt.typedArg(arg, paramInfo).tpe <:< paramInfo)
+                else true
+              }
             case _ => true
-          }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
           necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
@@ -123,6 +144,7 @@ object ProtoTypes {
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type = ignored
+    override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
@@ -202,7 +224,12 @@ object ProtoTypes {
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
-    override def deepenProto(using Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
+    override def deepenProto(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProto, compat)
+
+    override def deepenProtoTrans(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProtoTrans, compat)
+
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
@@ -276,9 +303,21 @@ object ProtoTypes {
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType
+   *
+   *  @param  args      The untyped arguments to which the function is applied
+   *  @param  resType   The expeected result type
+   *  @param  typer     The typer to use for typing the arguments
+   *  @param  applyKind The kind of application (regular/using/tupled infix operand)
+   *  @param  state     The state object to use for tracking the changes to this prototype
+   *  @param  constrainResultDeep
+   *                    A flag to indicate that constrainResult on this prototype
+   *                    should typecheck and compare the arguments.
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val applyKind: ApplyKind, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type)(
+    typer: Typer,
+    override val applyKind: ApplyKind,
+    state: FunProtoState = new FunProtoState,
+    val constrainResultDeep: Boolean = false)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
 
@@ -290,9 +329,17 @@ object ProtoTypes {
       typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
-    def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType)(typer, applyKind)
+    def derivedFunProto(
+        args: List[untpd.Tree] = this.args,
+        resultType: Type = this.resultType,
+        typer: Typer = this.typer,
+        constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
+      if (args eq this.args)
+          && (resultType eq this.resultType)
+          && (typer eq this.typer)
+          && constrainResultDeep == this.constrainResultDeep
+      then this
+      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep)
 
     /** @return True if all arguments have types.
      */
@@ -419,7 +466,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
-    override def deepenProto(using Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
+    override def deepenProto(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProtoTrans, constrainResultDeep = true)
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
@@ -472,7 +523,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta(x, argType), resultType)
 
-    override def deepenProto(using Context): ViewProto = derivedViewProto(argType, resultType.deepenProto)
+    override def deepenProto(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProtoTrans)
   }
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
@@ -522,7 +577,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, targs.tpes), resultType)
 
-    override def deepenProto(using Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
+    override def deepenProto(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProtoTrans)
   }
 
   /** A prototype for expressions [] that are known to be functions:

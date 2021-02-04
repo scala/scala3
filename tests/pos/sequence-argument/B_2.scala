@@ -9,20 +9,20 @@ object B {
   def widen(args: Long*): Unit = {}
   def conv(args: Y*): Unit = {}
 
-  box(doubleSeq(1): _*)
-  box(doubleArray(1): _*)
-  Java_2.box(doubleSeq(1): _*)
-  Java_2.box(doubleArray(1): _*)
+  box(doubleSeq(1)*)
+  box(doubleArray(1)*)
+  Java_2.box(doubleSeq(1)*)
+  Java_2.box(doubleArray(1)*)
 
-  widen(doubleSeq(1): _*)
-  widen(doubleArray(1): _*)
-  Java_2.widen(doubleSeq(1): _*)
-  Java_2.widen(doubleArray(1): _*)
+  widen(doubleSeq(1)*)
+  widen(doubleArray(1)*)
+  Java_2.widen(doubleSeq(1)*)
+  Java_2.widen(doubleArray(1)*)
 
   implicit def xToY(x: X): Y = new Y
   val x: X = new X
-  conv(doubleSeq(x): _*)
-  conv(doubleArray(x): _*)
-  Java_2.conv(doubleSeq(x): _*)
-  Java_2.conv(doubleArray(x): _*)
+  conv(doubleSeq(x)*)
+  conv(doubleArray(x)*)
+  Java_2.conv(doubleSeq(x)*)
+  Java_2.conv(doubleArray(x)*)
 }

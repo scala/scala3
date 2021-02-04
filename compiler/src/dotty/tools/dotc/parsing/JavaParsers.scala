@@ -246,7 +246,7 @@ object JavaParsers {
 
     def qualId(): RefTree = {
       var t: RefTree = atSpan(in.offset) { Ident(ident()) }
-      while (in.token == DOT) {
+      while (in.token == DOT && in.lookaheadToken == IDENTIFIER) {
         in.nextToken()
         t = atSpan(t.span.start, in.offset) { Select(t, ident()) }
       }
@@ -343,22 +343,105 @@ object JavaParsers {
       annots.toList
     }
 
-    /** Annotation ::= TypeName [`(` AnnotationArgument {`,` AnnotationArgument} `)`]
+    /** Annotation                   ::= TypeName [`(` [AnnotationArgument {`,` AnnotationArgument}] `)`]
+      * AnnotationArgument           ::= ElementValuePair | ELementValue
+      * ElementValuePair             ::= Identifier `=` ElementValue
+      * ElementValue                 ::= ConstExpressionSubset
+      *                                | ElementValueArrayInitializer
+      *                                | Annotation
+      * ElementValueArrayInitializer ::= `{` [ElementValue {`,` ElementValue}] [`,`]  `}`
+      * ConstExpressionSubset        ::= Literal
+      *                                | QualifiedName
+      *                                | ClassLiteral
+      *
+      * We support only subset of const expressions expected in this context by java.
+      * If we encounter expression that we cannot parse, we do not raise parsing error,
+      * but instead we skip entire annotation silently.
       */
     def annotation(): Option[Tree] = {
-      val id = convertToTypeId(qualId())
-      // only parse annotations without arguments
-      if (in.token == LPAREN && in.lookaheadToken != RPAREN) {
-        skipAhead()
-        accept(RPAREN)
-        None
-      }
-      else {
-        if (in.token == LPAREN) {
+      object LiteralT:
+        def unapply(token: Token) = Option(token match {
+          case TRUE      => true
+          case FALSE     => false
+          case CHARLIT   => in.name(0)
+          case INTLIT    => in.intVal(false).toInt
+          case LONGLIT   => in.intVal(false)
+          case FLOATLIT  => in.floatVal(false).toFloat
+          case DOUBLELIT => in.floatVal(false)
+          case STRINGLIT => in.name.toString
+          case _         => null
+        }).map(Constant(_))
+
+      def classOrId(): Tree =
+        val id = qualId()
+        if in.lookaheadToken == CLASS then
           in.nextToken()
-          accept(RPAREN)
+          accept(CLASS)
+          TypeApply(
+            Select(
+              scalaDot(nme.Predef),
+              nme.classOf),
+            convertToTypeId(id) :: Nil
+          )
+        else id
+
+      def array(): Option[Tree] =
+        accept(LBRACE)
+        val buffer = ListBuffer[Option[Tree]]()
+        while in.token != RBRACE do
+          buffer += argValue()
+          if in.token == COMMA then
+            in.nextToken() // using this instead of repsep allows us to handle trailing commas
+        accept(RBRACE)
+        Option.unless(buffer contains None) {
+          Apply(scalaDot(nme.Array), buffer.flatten.toList)
         }
-        Some(ensureApplied(Select(New(id), nme.CONSTRUCTOR)))
+
+      def argValue(): Option[Tree] =
+        val tree = in.token match {
+          case LiteralT(c) =>
+            val tree = atSpan(in.offset)(Literal(c))
+            in.nextToken()
+            Some(tree)
+          case AT =>
+            in.nextToken()
+            annotation()
+          case IDENTIFIER => Some(classOrId())
+          case LBRACE => array()
+          case _ => None
+        }
+        if in.token == COMMA || in.token == RBRACE || in.token == RPAREN then
+          tree
+        else
+          skipTo(COMMA, RBRACE, RPAREN)
+          None
+
+      def annArg(): Option[Tree] =
+        val name = if (in.token == IDENTIFIER && in.lookaheadToken == EQUALS)
+          val n = ident()
+          accept(EQUALS)
+          n
+        else
+          nme.value
+        argValue().map(NamedArg(name, _))
+
+
+      val id = convertToTypeId(qualId())
+      val args = ListBuffer[Option[Tree]]()
+      if in.token == LPAREN then
+        in.nextToken()
+        if in.token != RPAREN then
+          args += annArg()
+          while in.token == COMMA do
+            in.nextToken()
+            args += annArg()
+        accept(RPAREN)
+
+      Option.unless(args contains None) {
+        Apply(
+          Select(New(id), nme.CONSTRUCTOR),
+          args.flatten.toList
+        )
       }
     }
 

@@ -8,15 +8,15 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using Quotes): Expr[String] = {
     self match {
-      case '{ StringContext(${Varargs(Exprs(parts))}: _*) } =>
+      case '{ StringContext(${Varargs(Exprs(parts))}*) } =>
         val upprerParts: List[String] = parts.toList.map(_.toUpperCase)
         val upprerPartsExpr: Expr[List[String]] = Expr.ofList(upprerParts.map(Expr(_)))
-        '{ StringContext($upprerPartsExpr: _*).s($args: _*) }
+        '{ StringContext($upprerPartsExpr*).s($args*) }
       case _ =>
         '{
           val parts: Seq[String] = $self.parts
           val upprerParts = parts.map(_.toUpperCase)
-          StringContext(upprerParts: _*).s($args: _*)
+          StringContext(upprerParts*).s($args*)
         }
     }
 

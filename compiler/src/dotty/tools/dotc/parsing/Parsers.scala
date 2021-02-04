@@ -376,13 +376,13 @@ object Parsers {
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             accept(SEMI)
 
-    def rewriteNotice(additionalOption: String = "") = {
+    def rewriteNotice(version: String = "3.0", additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
-      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source 3.0-migration."
+      i"\nThis construct can be rewritten automatically under$optionStr -rewrite -source $version-migration."
     }
 
     def syntaxVersionError(option: String, span: Span) =
-      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice(option)}""", span)
+      syntaxError(em"""This construct is not allowed under $option.${rewriteNotice("3.0", option)}""", span)
 
     def rewriteToNewSyntax(span: Span = Span(in.offset)): Boolean = {
       if (in.newSyntax) {
@@ -919,7 +919,20 @@ object Parsers {
       val next = in.lookahead.token
       next == LBRACKET || next == LPAREN
 
-/* --------- OPERAND/OPERATOR STACK --------------------------------------- */
+    /** Is current ident a `*`, and is it followed by a `)` or `, )`? */
+    def followingIsVararg(): Boolean =
+      in.isIdent(nme.raw.STAR) && {
+        val lookahead = in.LookaheadScanner()
+        lookahead.nextToken()
+        lookahead.token == RPAREN
+        || lookahead.token == COMMA
+           && {
+             lookahead.nextToken()
+             lookahead.token == RPAREN
+           }
+      }
+
+  /* --------- OPERAND/OPERATOR STACK --------------------------------------- */
 
     var opStack: List[OpInfo] = Nil
 
@@ -956,8 +969,8 @@ object Parsers {
      */
     def infixOps(
         first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
-        isType: Boolean = false,
-        isOperator: => Boolean = true,
+        isType: Boolean,
+        isOperator: => Boolean,
         maybePostfix: Boolean = false): Tree = {
       val base = opStack
 
@@ -1522,15 +1535,9 @@ object Parsers {
      */
     def infixType(): Tree = infixTypeRest(refinedType())
 
-    /** Is current ident a `*`, and is it followed by a `)` or `,`? */
-    def isPostfixStar: Boolean =
-      in.name == nme.raw.STAR && {
-        val nxt = in.lookahead.token
-        nxt == RPAREN || nxt == COMMA
-      }
-
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, isType = true, isOperator = !isPostfixStar)
+      infixOps(t, canStartTypeTokens, refinedType, isType = true,
+        isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
@@ -2046,7 +2053,7 @@ object Parsers {
                 case t =>
                   syntaxError(em"`inline` must be followed by an `if` or a `match`", start)
                   t
-        else expr1Rest(postfixExpr(), location)
+        else expr1Rest(postfixExpr(location), location)
     end expr1
 
     def expr1Rest(t: Tree, location: Location): Tree = in.token match
@@ -2068,22 +2075,25 @@ object Parsers {
 
     def ascription(t: Tree, location: Location): Tree = atSpan(startOffset(t)) {
       in.token match {
-        case USCORE =>
+        case USCORE if in.lookahead.isIdent(nme.raw.STAR) =>
           val uscoreStart = in.skipToken()
-          if isIdent(nme.raw.STAR) then
-            in.nextToken()
-            if !(location.inArgs && in.token == RPAREN) then
-              if opStack.nonEmpty then
-                report.errorOrMigrationWarning(
-                  em"""`_*` can be used only for last argument of method application.
-                      |It is no longer allowed in operands of infix operations.""",
-                  in.sourcePos(uscoreStart))
-              else
-                syntaxError(SeqWildcardPatternPos(), uscoreStart)
-            Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
+          val isVarargSplice = location.inArgs && followingIsVararg()
+          in.nextToken()
+          if isVarargSplice then
+            if sourceVersion.isAtLeast(`3.1`) then
+              report.errorOrMigrationWarning(
+                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("3.1")}",
+                in.sourcePos(uscoreStart))
+            if sourceVersion == `3.1-migration` then
+              patch(source, Span(t.span.end, in.lastOffset), " *")
+          else if opStack.nonEmpty then
+            report.errorOrMigrationWarning(
+              em"""`_*` can be used only for last argument of method application.
+                  |It is no longer allowed in operands of infix operations.""",
+              in.sourcePos(uscoreStart))
           else
-            syntaxErrorOrIncomplete(IncorrectRepeatedParameterSyntax())
-            t
+            syntaxError(SeqWildcardPatternPos(), uscoreStart)
+          Typed(t, atSpan(uscoreStart) { Ident(tpnme.WILDCARD_STAR) })
         case AT if !location.inPattern =>
           annotations().foldLeft(t)(Annotated)
         case _ =>
@@ -2152,7 +2162,7 @@ object Parsers {
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice()}",
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("3.1")}",
                 source.atSpan(Span(start, in.lastOffset)))
             in.nextToken()
             val t = infixType()
@@ -2200,10 +2210,18 @@ object Parsers {
      *                  | InfixExpr id [nl] InfixExpr
      *                  | InfixExpr MatchClause
      */
-    def postfixExpr(): Tree = postfixExprRest(prefixExpr())
+    def postfixExpr(location: Location = Location.ElseWhere): Tree =
+      val t = postfixExprRest(prefixExpr(), location)
+      if location.inArgs && followingIsVararg() then
+        Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
+      else
+        t
 
-    def postfixExprRest(t: Tree): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr, maybePostfix = true)
+    def postfixExprRest(t: Tree, location: Location = Location.ElseWhere): Tree =
+      infixOps(t, in.canStartExprTokens, prefixExpr,
+        isType = false,
+        isOperator = !(location.inArgs && followingIsVararg()),
+        maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
@@ -2331,7 +2349,7 @@ object Parsers {
       if (in.token == RPAREN) Nil else commaSeparated(exprInParens)
 
     /** ParArgumentExprs ::= `(' [‘using’] [ExprsInParens] `)'
-     *                    |  `(' [ExprsInParens `,'] PostfixExpr `:' `_' `*' ')'
+     *                    |  `(' [ExprsInParens `,'] PostfixExpr `*' ')'
      */
     def parArgumentExprs(): (List[Tree], Boolean) = inParens {
       if in.token == RPAREN then
@@ -2610,37 +2628,44 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern2    ::=  [id `as'] InfixPattern
+    /**  Pattern3    ::=  InfixPattern [‘*’]
      */
-    val pattern2: () => Tree = () => infixPattern() match {
+    def pattern3(): Tree =
+      val p = infixPattern()
+      if followingIsVararg() then
+        atSpan(in.skipToken()) {
+          Typed(p, Ident(tpnme.WILDCARD_STAR))
+        }
+      else p
+
+    /**  Pattern2    ::=  [id `@'] Pattern3
+     */
+    val pattern2: () => Tree = () => pattern3() match
       case p @ Ident(name) if in.token == AT =>
         val offset = in.skipToken()
-        infixPattern() match {
-          case pt @ Ident(tpnme.WILDCARD_STAR) =>  // compatibility for Scala2 `x @ _*` syntax
-            warnMigration(p)
-            atSpan(startOffset(p), offset) { Typed(p, pt) }
+        pattern3() match {
           case pt @ Bind(nme.WILDCARD, pt1: Typed) if pt.mods.is(Given) =>
             atSpan(startOffset(p), 0) { Bind(name, pt1).withMods(pt.mods) }
+          case Typed(Ident(nme.WILDCARD), pt @ Ident(tpnme.WILDCARD_STAR)) =>
+            atSpan(startOffset(p), 0) { Typed(p, pt) }
           case pt =>
             atSpan(startOffset(p), 0) { Bind(name, pt) }
         }
-      case p @ Ident(tpnme.WILDCARD_STAR) =>
-        warnMigration(p)
-        atSpan(startOffset(p)) { Typed(Ident(nme.WILDCARD), p) }
       case p =>
         p
-    }
 
-    private def warnMigration(p: Tree) =
+    private def warnStarMigration(p: Tree) =
       if sourceVersion.isAtLeast(`3.1`) then
         report.errorOrMigrationWarning(
-          "The syntax `x @ _*` is no longer supported; use `x : _*` instead",
+          em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
           in.sourcePos(startOffset(p)))
 
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePattern, isOperator = in.name != nme.raw.BAR)
+      infixOps(simplePattern(), in.canStartExprTokens, simplePattern,
+        isType = false,
+        isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
     /** SimplePattern    ::= PatVar
      *                    |  Literal
@@ -2659,16 +2684,7 @@ object Parsers {
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
           case t => simplePatternRest(t)
       case USCORE =>
-        val wildIdent = wildcardIdent()
-
-        // compatibility for Scala2 `x @ _*` and `_*` syntax
-        // `x: _*' is parsed in `ascription'
-        if (isIdent(nme.raw.STAR)) {
-          in.nextToken()
-          if (in.token != RPAREN) syntaxError(SeqWildcardPatternPos(), wildIdent.span)
-          atSpan(wildIdent.span) { Ident(tpnme.WILDCARD_STAR) }
-        }
-        else wildIdent
+        wildcardIdent()
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
@@ -2710,7 +2726,7 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘:’ ‘_’ ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
       inParens(patternsOpt(Location.InPatternArgs))
