@@ -4,7 +4,7 @@ object WhatsYourTypeIsMyType {
   }
 
   class Foo extends WithMyType[Foo] {
-    var x: MyType = _
+    var x: MyType = compiletime.uninitialized
     def setX() = x = new Foo
   }
 

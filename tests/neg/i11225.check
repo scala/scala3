@@ -10,10 +10,6 @@
 6 |  var x2: Int = if ??? then uninitialized else uninitialized // error // error
   |                                               ^^^^^^^^^^^^^
   |                             `uninitialized` can only be used as the right hand side of a mutable field definition
--- Error: tests/neg/i11225.scala:7:29 ----------------------------------------------------------------------------------
-7 |  var x3: Int = if true then uninitialized else 1 // error
-  |                             ^^^^^^^^^^^^^
-  |                             `uninitialized` can only be used as the right hand side of a mutable field definition
 -- Error: tests/neg/i11225.scala:9:28 ----------------------------------------------------------------------------------
 9 |  var x5: () => Int = () => uninitialized // error
   |                            ^^^^^^^^^^^^^

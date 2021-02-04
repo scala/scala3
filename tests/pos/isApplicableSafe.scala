@@ -1,5 +1,5 @@
 import reflect.ClassTag
-
+import compiletime.uninitialized
 // The same problems arise in real arrays.
 class A {
 
@@ -10,8 +10,8 @@ class A {
   }
 
   // Any of Array[List[Symbol]], List[Array[Symbol]], or List[List[Symbol]] compile.
-  var xs: Array[Array[Symbol]] = _
-  var ys: Array[Map[Symbol, Set[Symbol]]] = _
+  var xs: Array[Array[Symbol]] = uninitialized
+  var ys: Array[Map[Symbol, Set[Symbol]]] = uninitialized
 
   //xs = Array(Array())
     // gives:

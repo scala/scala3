@@ -43,17 +43,25 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
       cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
     else tree
 
+  private def hasUninitializedRHS(tree: ValOrDefDef)(using Context): Boolean =
+    def recur(rhs: Tree): Boolean = rhs match
+      case rhs: RefTree =>
+        rhs.symbol == defn.Compiletime_uninitialized
+        && tree.symbol.is(Mutable) && tree.symbol.owner.isClass
+      case closureDef(ddef) if defn.isContextFunctionType(tree.tpt.tpe.dealias) =>
+        recur(ddef.rhs)
+      case _ =>
+        false
+    recur(tree.rhs)
+
   override def transformValDef(tree: ValDef)(using Context): Tree =
     val sym = tree.symbol
-    if sym.isEffectivelyErased && !tree.rhs.isEmpty then
+    if tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty then
       cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
-    else tree.rhs match
-      case rhs: RefTree
-      if rhs.symbol == defn.Compiletime_uninitialized
-         && sym.is(Mutable) && sym.owner.isClass =>
-        cpy.ValDef(tree)(rhs = cpy.Ident(rhs)(nme.WILDCARD))
-      case _ =>
-        tree
+    else if hasUninitializedRHS(tree) then
+      cpy.ValDef(tree)(rhs = cpy.Ident(tree.rhs)(nme.WILDCARD).withType(tree.tpt.tpe))
+    else
+      tree
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)

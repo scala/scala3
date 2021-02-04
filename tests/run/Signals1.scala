@@ -8,7 +8,7 @@ package frp:
   object Signal:
 
     abstract class AbstractSignal[+T] extends Signal[T]:
-      private var currentValue: T = _
+      private var currentValue: T = compiletime.uninitialized
       private var observers: Set[Caller] = Set()
 
       protected def eval: Caller => T

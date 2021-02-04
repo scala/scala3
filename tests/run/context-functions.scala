@@ -28,7 +28,7 @@ object m extends A:
   def g(x: Boolean): Ctx[Int] =
     if x then summon[String].length else 0
   val a: Ctx[Int] = summon[String].length
-  var b: Ctx[Int] = _
+  var b: Ctx[Int] = compiletime.uninitialized
   b = summon[String].length
 
   def h(x: Int): Ctx[Int] = x + g(true) + f + a + b

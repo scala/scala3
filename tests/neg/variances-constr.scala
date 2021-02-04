@@ -1,6 +1,6 @@
 class C[+A] {
 
-  private[this] var y: A = _
+  private[this] var y: A = compiletime.uninitialized
   def getY: A = y
 
   class Inner(x: A) { // error A appears contravariantly
