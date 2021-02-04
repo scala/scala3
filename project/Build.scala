@@ -1622,7 +1622,7 @@ object Build {
               "-skip-by-id:scala.runtime.MatchCase " +
               "-skip-by-regex:.+\\.internal($|\\..+) " +
               "-skip-by-regex:.+\\.impl($|\\..+) " +
-              "-comment-syntax wiki -siteroot scaladoc/scala3-docs -project-logo scaladoc/scala3-docs/logo.svg " +
+              "-comment-syntax wiki -siteroot docs -project-logo docs/logo.svg " +
               "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
               s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
               s"-doc-root-content $docRootFile"
