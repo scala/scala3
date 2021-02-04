@@ -270,6 +270,50 @@ object opaques:
   extension [T](arr: IArray[T]) def zip[U: ClassTag](that: IArray[U]): IArray[(T, U)] =
     genericArrayOps(arr).zip(that)
 
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapIArray[T](using DummyImplicit): Conversion[IArray[T], scala.collection.immutable.ArraySeq[T]] =
+    arr => scala.collection.immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[T]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapAnyRefIArray[T <: AnyRef](using DummyImplicit): Conversion[IArray[T], scala.collection.immutable.ArraySeq[T]] =
+    arr => scala.collection.immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapIntIArray(using DummyImplicit): Conversion[IArray[Int], scala.collection.immutable.ArraySeq[Int]] =
+    arr => scala.collection.immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapDoubleIArray(using DummyImplicit): Conversion[IArray[Double], scala.collection.immutable.ArraySeq[Double]] =
+    arr => scala.collection.immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapLongIArray(using DummyImplicit): Conversion[IArray[Long], scala.collection.immutable.ArraySeq[Long]] =
+    arr => scala.collection.immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapFloatIArray(using DummyImplicit): Conversion[IArray[Float], scala.collection.immutable.ArraySeq[Float]] =
+    arr => scala.collection.immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapCharIArray(using DummyImplicit): Conversion[IArray[Char], scala.collection.immutable.ArraySeq[Char]] =
+    arr => scala.collection.immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapByteIArray(using DummyImplicit): Conversion[IArray[Byte], scala.collection.immutable.ArraySeq[Byte]] =
+    arr => scala.collection.immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapShortIArray(using DummyImplicit): Conversion[IArray[Short], scala.collection.immutable.ArraySeq[Short]] =
+    arr => scala.collection.immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapBooleanIArray(using DummyImplicit): Conversion[IArray[Boolean], scala.collection.immutable.ArraySeq[Boolean]] =
+    arr => scala.collection.immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]])
+
+  /** Conversion from IArray to immutable.ArraySeq */
+  given genericWrapUnitIArray(using DummyImplicit): Conversion[IArray[Unit], scala.collection.immutable.ArraySeq[Unit]] =
+    arr => scala.collection.immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]])
+
 end opaques
 
 type IArray[+T] = opaques.IArray[T]
