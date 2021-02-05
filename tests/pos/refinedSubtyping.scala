@@ -1,3 +1,4 @@
+import compiletime.uninitialized
 class Test {
 
   class C { type T; type Coll }
@@ -10,8 +11,8 @@ class Test {
 
   type T22 = T2 { type T = Int }
 
-  var x: T11 = _
-  var y: T22 = _
+  var x: T11 = uninitialized
+  var y: T22 = uninitialized
 
   x = y
   y = x
@@ -29,8 +30,8 @@ class Test2 {
 
   type U1 = C { type T <: B } { type T <: A }
 
-  var x: T1 = _
-  var y: U1 = _
+  var x: T1 = uninitialized
+  var y: U1 = uninitialized
 
   x = y
   y = x
@@ -50,8 +51,8 @@ class Test3 {
   type U1 = C { type T <: B }
   type U2 = U1 { type T <: A }
 
-  var x: T2 = _
-  var y: U2 = _
+  var x: T2 = uninitialized
+  var y: U2 = uninitialized
 
   val x1 = x
   val y1 = y

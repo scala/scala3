@@ -4,7 +4,7 @@
 // 7/10/2008
 
 class A  {
-  var name:String = _
+  var name:String = compiletime.uninitialized
   def getName() = name
   def this(name:String, age:Int) = {this(); this.name = name}
 

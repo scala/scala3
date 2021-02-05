@@ -3201,7 +3201,8 @@ object Parsers {
 
     /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
      *            |  Pattern2 [‘:’ Type] ‘=’ Expr
-     *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
+     *  VarDef  ::=  PatDef
+     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.1)
      *  ValDcl  ::=  id {`,' id} `:' Type
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
@@ -3224,9 +3225,14 @@ object Parsers {
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
+          val rhsOffset = in.offset
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
+              if sourceVersion.isAtLeast(`3.1`) then
+                deprecationWarning(
+                  em"""`= _` has been deprecated; use `= uninitialized` instead.
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

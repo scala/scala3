@@ -24,7 +24,7 @@ def i10(i2: i4): i3 = new i4(i5)
 object i10 {
 def main(i12: Array[String]): Unit = {
 val i10: Array[String] = null
-var i2 = _
+var i2 = compiletime.uninitialized
 def i3(i2: Int) = i2
 }
 object i0 {

@@ -3,7 +3,7 @@ package scala.util.control {
 object NonLocalReturns {
 
   class ReturnThrowable[T] extends ControlThrowable {
-    private var myResult: T = _
+    private var myResult: T = compiletime.uninitialized
     def throwReturn(result: T): Nothing = {
       myResult = result
       throw this
