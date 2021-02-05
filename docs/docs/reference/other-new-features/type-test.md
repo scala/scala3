@@ -127,7 +127,7 @@ trait Peano:
    val Succ: SuccExtractor
    trait SuccExtractor:
       def apply(nat: Nat): Succ
-      def unapply(nat: Succ): Option[Nat]
+      def unapply(succ: Succ): Some[Nat]
 
    given typeTestOfZero: TypeTest[Nat, Zero] 
    given typeTestOfSucc: TypeTest[Nat, Succ]
@@ -147,7 +147,7 @@ object PeanoInt extends Peano:
 
    val Succ: SuccExtractor = new:
       def apply(nat: Nat): Succ = nat + 1
-      def unapply(nat: Succ) = Some(nat - 1)
+      def unapply(succ: Succ) = Some(succ - 1)
 
    def typeTestOfZero: TypeTest[Nat, Zero] = new:
       def unapply(x: Nat): Option[x.type & Zero] =
