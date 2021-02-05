@@ -118,7 +118,7 @@ class ReTyper extends Typer with ReChecking {
     try super.typedUnadapted(tree, pt, locked)
     catch {
       case NonFatal(ex) =>
-        if ctx.isAfterTyper && ctx.phase != Phases.inliningPhase then
+        if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase then
           println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }

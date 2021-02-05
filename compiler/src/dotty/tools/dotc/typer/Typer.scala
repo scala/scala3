@@ -865,9 +865,9 @@ class Typer extends Namer
      */
     val arg1 = pt match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
-        tryAlternatively { typed(tree.arg, pt) } { 
+        tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
-            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt) 
+            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt)
         }
       case _ => typed(tree.arg, pt)
     }
@@ -3406,11 +3406,7 @@ class Typer extends Namer
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if
-          Inliner.isInlineable(tree) &&
-          !suppressInline &&
-          StagingContext.level == 0 &&
-          (tree.symbol.is(Transparent) || ctx.settings.YforceInlineWhileTyping.value)
+        else if Inliner.needsInlining(tree)
         then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
@@ -3734,8 +3730,8 @@ class Typer extends Namer
     }
   }
 
-  // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = ctx.isAfterTyper && ctx.phase != Phases.inliningPhase
+  /** True if this inline typer has already issued errors */
+  def hasInliningErrors(using Context): Boolean = false
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

@@ -87,7 +87,7 @@ class Inlining extends MacroTransform {
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
-        case _ if Inliner.isInlineable(tree) && !tree.tpe.widen.isInstanceOf[MethodOrPoly] && StagingContext.level == 0 =>
+        case _ if Inliner.needsInlining(tree) =>
           val tree1 = super.transform(tree)
           if tree1.tpe.isError then tree1
           else Inliner.inlineCall(tree1)
