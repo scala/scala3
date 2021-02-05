@@ -3,6 +3,7 @@ package repl
 
 import java.io.{Reader, StringWriter}
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine => JScriptEngine, ScriptEngineFactory, ScriptException, SimpleBindings}
+import scala.beans.BeanProperty
 import dotc.core.StdNames.str
 
 /** A JSR 223 (Scripting API) compatible wrapper around the REPL for improved
@@ -65,13 +66,13 @@ object ScriptEngine {
   import scala.util.Properties
 
   class Factory extends ScriptEngineFactory {
-    def getEngineName = "Scala REPL"
-    def getEngineVersion = "3.0"
-    def getExtensions = Arrays.asList("scala")
-    def getLanguageName = "Scala"
-    def getLanguageVersion = Properties.versionString
-    def getMimeTypes = Arrays.asList("application/x-scala")
-    def getNames = Arrays.asList("scala")
+    @BeanProperty val engineName = "Scala REPL"
+    @BeanProperty val engineVersion = "3.0"
+    @BeanProperty val extensions = Arrays.asList("scala")
+    @BeanProperty val languageName = "Scala"
+    @BeanProperty val languageVersion = Properties.versionString
+    @BeanProperty val mimeTypes = Arrays.asList("application/x-scala")
+    @BeanProperty val names = Arrays.asList("scala")
 
     def getMethodCallSyntax(obj: String, m: String, args: String*) = s"$obj.$m(${args.mkString(", ")})"
 
