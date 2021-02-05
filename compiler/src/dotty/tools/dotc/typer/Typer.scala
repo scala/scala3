@@ -3781,7 +3781,19 @@ class Typer extends Namer
           TypeComparer.constrainPatternType(tree.tpe, pt)
         }
 
-        if tree.symbol.is(Module) && !(tree.tpe <:< pt) then
+        // approximate type params with bounds
+        def approx = new ApproximatingTypeMap {
+          def apply(tp: Type) = tp.dealias match
+            case tp: TypeRef if !tp.symbol.isClass =>
+              expandBounds(tp.info.bounds)
+            case _ =>
+              mapOver(tp)
+        }
+
+        if tree.symbol.is(Module)
+           && !(tree.tpe frozen_<:< pt) // fast track
+           && !(tree.tpe frozen_<:< approx(pt))
+        then
           // We could check whether `equals` is overriden.
           // Reasons for not doing so:
           // - it complicates the protocol
