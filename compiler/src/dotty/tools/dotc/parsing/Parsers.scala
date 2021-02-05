@@ -3232,7 +3232,7 @@ object Parsers {
               if sourceVersion.isAtLeast(`3.1`) then
                 deprecationWarning(
                   em"""`= _` has been deprecated; use `= uninitialized` instead.
-                      |`uninitialized` needs to be imported from scala.compiletime.""", rhsOffset)
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0
