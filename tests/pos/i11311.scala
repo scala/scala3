@@ -1,3 +1,4 @@
+import language.`3.1`
 object Test:
 
   def cat1(s1: String)(s2: String) = s1 + s2
