@@ -135,7 +135,7 @@ since `Permissions` and `PermissionChoice` are different, unrelated types outsid
 
 
 ### Opaque Type Members on Classes
-While typically, opaque types are used toghether with objects to hide implementation details of a module, they can also be used with classes.
+While typically, opaque types are used together with objects to hide implementation details of a module, they can also be used with classes.
 
 For example, we can redefine the above example of Logarithms as a class.
 ```scala
