@@ -148,6 +148,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
+  @Test def perspective = projects.perspective.run()
 
 end CommunityBuildTestB
 

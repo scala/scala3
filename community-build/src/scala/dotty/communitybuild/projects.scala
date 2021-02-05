@@ -627,6 +627,14 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest)
   )
+  
+  lazy val perspective = SbtCommunityProject(
+    project = "perspective",
+    // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
+    // Until then I guess this mainly serves to check that it still compiles at all
+    sbtTestCommand = "dottyPerspectiveExamples/compile",
+    dependencies = List(cats)
+  )
 
 end projects
 
@@ -691,6 +699,7 @@ def allProjects = List(
   projects.scalaSTM,
   projects.scissLucre,
   projects.izumiReflect,
+  projects.perspective,
 )
 
 lazy val projectMap = allProjects.map(p => p.project -> p).toMap
