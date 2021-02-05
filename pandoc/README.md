@@ -1,19 +1,21 @@
 # <span id="top">Creating PDF files for the Scala 3 documentation</span>
 <!-- created by mics (https://github.com/michelou/) on December 2020 -->
 
-This project aims to generate a *single* PDF file from a collection of [Markdown] documents, for instance for the [*Scala 3 reference*][scala3_reference] documentation.
+This project is located at the root of the [`lampepfl/dotty`][github_dotty] repository, at the same level as the [`Scaladoc`][github_scala3doc] project.
+
+We aim to generate a *single* PDF file from a collection of [Markdown] documents, for instance for the [*Scala 3 reference*][scala3_reference] documentation.
 
 Our solution is built on [Pandoc]; it gets its inputs from two directories and generates a PDF file into the output directory:
 
 <table style="margin-top:-10px; max-width:650px;">
 <tr>
 <td><b>Input directories</b></td>
-<td><code>dotty/docs/docs/&lt;project&gt;/</code><br/><code>dotty/pandoc/data/</code></td>
+<td><code>docs/docs/&lt;project&gt;/</code><br/><code>pandoc/data/</code></td>
 <td><code>*.md</code> files<br/><a href="https://pandoc.org/">Pandoc</a> data files</td>
 </tr>
 <tr>
 <td><b>Output directory</b></td>
-<td><code>dotty/out/pandoc/</code></td>
+<td><code>out/pandoc/</code></td>
 <td><code>scala3_<i>&lt;project&gt;</i>.pdf</code><sup>(*)</sup></td>
 </tr>
 </table>
@@ -21,12 +23,12 @@ Our solution is built on [Pandoc]; it gets its inputs from two directories and g
 <span style="margin-left:10px;font-size:90%;"><sup>(*)</sup> *`<project>`* is one of [`contributing`](https://github.com/lampepfl/dotty/tree/master/docs/docs/contributing), [`internals`](https://github.com/lampepfl/dotty/tree/master/docs/docs/internals), [`reference`](https://github.com/lampepfl/dotty/tree/master/docs/docs/reference) or [`usage`](https://github.com/lampepfl/dotty/tree/master/docs/docs/usage).</span>
 
 The generated PDF file is more elaborated than its sibling HTML version; unlike the online [*Scala 3 reference*][scala3_reference] documentation available on the [Scala 3 documentation](https://docs.scala-lang.org/scala3/) webpage, the `scala3_reference.pdf` document :
-- starts with a *title page* directly followed by a *table of contents* and end with an *appendix*.
+- starts with a *title page* directly followed by a *table of contents* and ends with an *appendix*.
 - gathers all the "*More details*" sections in the appendix.
 
 > See document [`PROJECT.md`](docs/PROJECT.md) for further information, e.g. project organisation.
 
-## <span id="dependencies">Project dependencies</span> <sup style="font-size:60%;">[**&#9650;**](#top)</sup>
+## <span id="dependencies">Project dependencies</span>
 
 This project depends on the following software :
 
@@ -41,16 +43,16 @@ One may also install the following software:
 
 > See document [`DOCKER.md`](docs/DOCKER.md) for further information, e.g. `Dockerfile` usage.
 
-## <span id="commands">Build commands</span> <sup style="font-size:60%;">[**&#9650;**](#top)</sup>
+## <span id="commands">Build commands</span>
 
 We provide two commands for MacOS/Ubuntu as well as their equivalents for MS Windows :
 - for *interactive users* :<br/>[`build {<option>|<subcommand>}`](./build) (resp. [`build.bat`](./build.bat) on MS Windows)<br/><span style="font-size:80%;">(option `-help` displays the available options/subcommands).</span>
 - for *automated tasks* (primarily, but not exclusively) :<br/>[`md2pdf [<project>]`](./md2pdf) (resp. [`md2pdf.bat`](./md2pdf.bat) on MS Windows)<br/><span style="font-size:80%;">(default value for `<project>` : `reference`).</span>
 
-We also provide support for cloud development/deployment for Docker and GitHub Actions :
+We also provide support for cloud development/deployment :
 
-- for *Docker*<br/><a href="./Dockerfile"><code>Dockerfile</code></a>, a text document to create a Docker image featuring <a href="https://tug.org/texlive/">TeX Live</a>, <a href="https://pandoc.org/">Pandoc</a> and <a href="./md2pdf"><code>md2pdf</code></a>.
-- for *GitHub Actions* <b style="color:red;">WIP</b> :<br/><a href="../.github/workflows/pandoc.yaml"><code>pandoc.yaml</code></a>, a workflow file to run CI jobs with <a href="https://docs.github.com/en/actions">GitHub Actions</a>.
+- with *Docker*<br/><a href="./Dockerfile"><code>Dockerfile</code></a>, a text document to create a Docker image featuring <a href="https://tug.org/texlive/">TeX Live</a>, <a href="https://pandoc.org/">Pandoc</a> and <a href="./md2pdf"><code>md2pdf</code></a>.
+- with *GitHub Actions* <b style="color:red;">WIP</b> :<br/><a href="../.github/workflows/pandoc.yaml"><code>pandoc.yaml</code></a>, a workflow file to run CI jobs with <a href="https://docs.github.com/en/actions">GitHub Actions</a>.
 
 > See document [`EXAMPLES.md`](docs/EXAMPLES.md) for usage examples in different environments.
 
@@ -80,6 +82,8 @@ Note that WSL 2 is required to interact with Docker on Windows from <a href="htt
 *[mics](https://github.com/michelou/)/January 2021* [**&#9650;**](#top "Back to top")
 <span id="bottom">&nbsp;</span>
 
+[github_dotty]: https://github.com/lampepfl/dotty/#dotty
+[github_scala3doc]: https://github.com/lampepfl/dotty/tree/master/scala3doc#scala3doc
 [markdown]: https://commonmark.org/
 [pandoc]: https://pandoc.org/ "A universal document converter"
 [scala3_reference]: https://dotty.epfl.ch/docs/reference/overview.html

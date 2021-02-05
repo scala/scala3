@@ -156,7 +156,7 @@ if %_DEBUG%==1 (
     echo %_DEBUG_LABEL% Options    : _TIMER=%_TIMER% _VERBOSE=%_VERBOSE% 1>&2
     echo %_DEBUG_LABEL% Subcommands: _CLEAN=%_CLEAN% _COMPILE=%_COMPILE% _RUN=%_RUN% 1>&2
     echo %_DEBUG_LABEL% Variables  : PANDOC_HOME=%PANDOC_HOME% 1>&2
-	echo %_DEBUG_LABEL% Variables  : TEXLIVE_HOME=%TEXLIVE_HOME% 1>&2
+    echo %_DEBUG_LABEL% Variables  : TEXLIVE_HOME=%TEXLIVE_HOME% 1>&2
     echo %_DEBUG_LABEL% Variables  : _PROJECT_NAME=%_PROJECT_NAME% 1>&2
 )
 if %_TIMER%==1 for /f "delims=" %%i in ('powershell -c "(Get-Date)"') do set _TIMER_START=%%i
