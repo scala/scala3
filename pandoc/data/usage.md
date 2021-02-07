@@ -41,14 +41,29 @@ abstract: |
 ```
 
 \newpage
-# Scala3doc [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scala3doc/index.html) {#index}
+# Scaladoc [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scaladoc/index.html) {#index}
 ```{.include}
-../out/pandoc/src_managed/usage/scala3doc/index.md
+../out/pandoc/src_managed/usage/scaladoc/index.md
 ```
 
-# API Documentation {#docComments}
+# API Documentation [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scaladoc/docComments.html) {#docComments}
 ```{.include}
-../out/pandoc/src_managed/usage/scala3doc/docComments.md
+../out/pandoc/src_managed/usage/scaladoc/docComments.md
+```
+
+# Built-in blog [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scaladoc/blog.html) {#blog}
+```{.include}
+../out/pandoc/src_managed/usage/scaladoc/blog.md
+```
+
+# Scaladoc-specific Tags and Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scaladoc/specificTags.html) {#specificTags}
+```{.include}
+../out/pandoc/src_managed/usage/scaladoc/specificTags.md
+```
+
+# Static documentation [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/usage/scaladoc/staticSite.html) {#staticSite}
+```{.include}
+../out/pandoc/src_managed/usage/scaladoc/staticSite.md
 ```
 
 \newpage
