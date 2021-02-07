@@ -341,9 +341,9 @@ abstract: |
 ../out/pandoc/src_managed/reference/changed-features/match-syntax.md
 ```
 
-## Vararg Patterns [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) {#vararg-patterns}
+## Vararg Splices [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/vararg-splices.html) {#vararg-splices}
 ```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/changed-features/vararg-patterns.md
+../out/pandoc/src_managed/reference/changed-features/vararg-splices.md
 ```
 
 ## Pattern Bindings [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html) {#pattern-bindings}
@@ -381,7 +381,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/changed-features/interpolation-escapes.md
 ```
 
-[383]: #######################################################################
+[384]: #######################################################################
 
 \newpage
 # Dropped Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Dropped Features/) {#dropped-features}
@@ -466,6 +466,11 @@ abstract: |
 ../out/pandoc/src_managed/reference/dropped-features/this-qualifier.md
 ```
 
+## Dropped: `Wildcard Initializer` [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/dropped-features/wildcard-init.html) {#wilcard-init}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/dropped-features/wildcard-init.md
+```
+
 [468]: #######################################################################
 
 \newpage
@@ -474,7 +479,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/syntax.md
 ```
 
-[476]: #######################################################################
+[482]: #######################################################################
 
 \newpage
 # Appendix {#appendix}
