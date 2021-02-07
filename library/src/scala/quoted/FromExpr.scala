@@ -25,7 +25,7 @@ trait FromExpr[T] {
 object FromExpr {
 
   /** Default implementation of `FromExpr[Boolean]`
-   *  - Unlifts `'{true}` into `Some(ture)`
+   *  - Unlifts `'{true}` into `Some(true)`
    *  - Unlifts `'{false}` into `Some(false)`
    *  - Otherwise unlifts to `None`
    */
