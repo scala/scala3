@@ -1291,7 +1291,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
         super.typedMatchFinish(tree, sel, wideSelType, cases, pt)
       else {
-        val selType = if (sel.isEmpty) wideSelType else sel.tpe
+        def selTyped(sel: Tree): Type = sel match {
+          case Typed(sel2, _) => selTyped(sel2)
+          case Block(Nil, sel2) => selTyped(sel2)
+          case Inlined(_, Nil, sel2) => selTyped(sel2)
+          case _ => sel.tpe
+        }
+        val selType = if (sel.isEmpty) wideSelType else selTyped(sel)
         reduceInlineMatch(sel, selType, cases.asInstanceOf[List[CaseDef]], this) match {
           case Some((caseBindings, rhs0)) =>
             // drop type ascriptions/casts hiding pattern-bound types (which are now aliases after reducing the match)
@@ -1508,5 +1514,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case ConstantType(Constant(x)) => Some(x)
             case _ => None
   }
+
 
 }
