@@ -573,8 +573,12 @@ object Denotations {
 
     final def name(using Context): Name = symbol.name
 
-    /** If this is not a SymDenotation: The prefix under which the denotation was constructed.
-     *  NoPrefix for SymDenotations.
+    /** For SymDenotation, this is NoPrefix. For other denotations this is the prefix
+     *  under which the denotation was constructed.
+     *
+     *  Note that `asSeenFrom` might return a `SymDenotation` and therefore in
+     *  general one cannot rely on `prefix` being set, see
+     *  `Config.reuseSymDenotations` for details.
      */
     def prefix: Type = NoPrefix
 
@@ -1044,24 +1048,25 @@ object Denotations {
       }
 
       /** The derived denotation with the given `info` transformed with `asSeenFrom`.
-       *  The prefix of the derived denotation is the new prefix `pre` if the type is
-       *  opaque, or if the current prefix is already different from `NoPrefix`.
-       *  That leaves SymDenotations (which have NoPrefix as the prefix), which are left
-       *  as SymDenotations unless the type is opaque. The treatment of opaque types
-       *  is needed, without it i7159.scala fails in from-tasty. Without the treatment,
-       *  opaque type denotations in subclasses are kept as SymDenotations, which means
-       *  that the transform in `ElimOpaque` will return the symbol's opaque alias without
-       *  adding the needed asSeenFrom.
        *
-       *  Logically, the right thing to do would be to extend the same treatment to all denotations
-       *  Currently this fails the bootstrap. There's also a concern that this generalization
-       *  would create more denotation objects, at a price in performance.
+       *  As a performance hack, we might reuse an existing SymDenotation,
+       *  instead of creating a new denotation with a given `prefix`,
+       *  see `Config.reuseSymDenotations`.
        */
       def derived(info: Type) =
-        derivedSingleDenotation(
-          symbol,
-          info.asSeenFrom(pre, owner),
-          if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
+        /** Do we need to return a denotation with a prefix set? */
+        def needsPrefix =
+          // For opaque types, the prefix is used in `ElimOpaques#transform`,
+          // without this i7159.scala would fail when compiled from tasty.
+          symbol.is(Opaque)
+
+        val derivedInfo = info.asSeenFrom(pre, owner)
+        if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
+           && (derivedInfo eq info) && !needsPrefix then
+          this
+        else
+          derivedSingleDenotation(symbol, derivedInfo, pre)
+      end derived
 
       // Tt could happen that we see the symbol with prefix `this` as a member a different class
       // through a self type and that it then has a different info. In this case we have to go
