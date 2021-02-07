@@ -19,7 +19,9 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     val cases = List[(String, Sym)](
       "Array" -> cls("scala.Array"),
       "Option" -> cls("scala.Option"),
+      "Predef$" -> cls("scala.Predef$"),
       "Predef$.identity" -> cls("scala.Predef$").fun("identity"),
+      "Predef.identity" -> cls("scala.Predef$").fun("identity"),
       "Array$.from" -> cls("scala.Array$").fun("from"),
       "???" -> cls("scala.Predef$").fun("???"),
       "tests.A" -> cls("tests.A"),
@@ -75,6 +77,10 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       /*sanity*/ cls("tests.A") -> "this.Y" -> cls("tests.A").tpe("Y"),
       cls("tests.A") -> "this.X.method" -> cls("tests.B").fun("method"),
       cls("tests.A") -> "this.Y.method" -> cls("tests.B").fun("method"),
+
+      cls("tests.A") -> "A.foo" -> cls("tests.A$").fun("foo"),
+
+      cls("tests.inner.B") -> "A" -> cls("tests.inner.A$"),
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>
