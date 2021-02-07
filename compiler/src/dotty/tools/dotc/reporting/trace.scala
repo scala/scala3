@@ -7,27 +7,39 @@ import config.Config
 import config.Printers
 import core.Mode
 
+object trace extends TraceSyntax:
+  inline def isEnabled = Config.tracingEnabled
+  protected val isForced = false
+
+  object force extends TraceSyntax:
+    inline def isEnabled: true = true
+    protected val isForced = true
+end trace
+
 /** This module is carefully optimized to give zero overhead if Config.tracingEnabled
  *  is false. The `trace` operation is called in various hotspots, so every tiny bit
  *  of overhead is unacceptable: boxing, closures, additional method calls are all out.
  */
-object trace:
+trait TraceSyntax:
+
+  inline def isEnabled: Boolean
+  protected val isForced: Boolean
 
   inline def onDebug[TD](inline question: String)(inline op: TD)(using Context): TD =
     conditionally(ctx.settings.YdebugTrace.value, question, false)(op)
 
   inline def conditionally[TC](inline cond: Boolean, inline question: String, inline show: Boolean)(inline op: TC)(using Context): TC =
-    if Config.tracingEnabled then
+    inline if isEnabled then
       apply(question, if cond then Printers.default else Printers.noPrinter, show)(op)
     else op
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer, inline showOp: Any => String)(inline op: T)(using Context): T =
-    if Config.tracingEnabled then
+    inline if isEnabled then
       doTrace[T](question, printer, showOp)(op)
     else op
 
   inline def apply[T](inline question: String, inline printer: Printers.Printer, inline show: Boolean)(inline op: T)(using Context): T =
-    if Config.tracingEnabled then
+    inline if isEnabled then
       doTrace[T](question, printer, if show then showShowable(_) else alwaysToString)(op)
     else op
 
@@ -50,7 +62,7 @@ object trace:
                          printer: Printers.Printer = Printers.default,
                          showOp: Any => String = alwaysToString)
                         (op: => T)(using Context): T =
-    if ctx.mode.is(Mode.Printing) || (printer eq Printers.noPrinter) then op
+    if ctx.mode.is(Mode.Printing) || !isForced && (printer eq Printers.noPrinter) then op
     else
       // Avoid evaluating question multiple time, since each evaluation
       // may cause some extra logging output.
@@ -61,13 +73,14 @@ object trace:
       var logctx = ctx
       while logctx.reporter.isInstanceOf[StoreReporter] do logctx = logctx.outer
       def margin = ctx.base.indentTab * ctx.base.indent
+      def doLog(s: String) = if isForced then println(s) else report.log(s)
       def finalize(result: Any, note: String) =
         if !finalized then
           ctx.base.indent -= 1
-          report.log(s"$margin${trailing(result)}$note")
+          doLog(s"$margin${trailing(result)}$note")
           finalized = true
       try
-        report.log(s"$margin$leading")
+        doLog(s"$margin$leading")
         ctx.base.indent += 1
         val res = op
         finalize(res, "")
@@ -75,4 +88,4 @@ object trace:
       catch case ex: Throwable =>
         finalize("<missing>", s" (with exception $ex)")
         throw ex
-end trace
+end TraceSyntax

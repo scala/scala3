@@ -206,16 +206,19 @@ class PathResolver(using c: Context) {
     import classPathFactory._
 
     // Assemble the elements!
-    def basis: List[Traversable[ClassPath]] = List(
-      JrtClassPath.apply(),                         // 1. The Java 9 classpath (backed by the jrt:/ virtual system, if available)
-      classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
-      contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
-      classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
-      classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
-      contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
-      classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
-      sourcesInPath(sourcePath)                     // 8. The Scala source path.
-    )
+    def basis: List[Traversable[ClassPath]] =
+      val release = Option(ctx.settings.release.value).filter(_.nonEmpty)
+
+      List(
+        JrtClassPath(release),                        // 1. The Java 9+ classpath (backed by the jrt:/ virtual system, if available)
+        classesInPath(javaBootClassPath),             // 2. The Java bootstrap class path.
+        contentsOfDirsInPath(javaExtDirs),            // 3. The Java extension class path.
+        classesInExpandedPath(javaUserClassPath),     // 4. The Java application class path.
+        classesInPath(scalaBootClassPath),            // 5. The Scala boot class path.
+        contentsOfDirsInPath(scalaExtDirs),           // 6. The Scala extension class path.
+        classesInExpandedPath(userClassPath),         // 7. The Scala application class path.
+        sourcesInPath(sourcePath)                     // 8. The Scala source path.
+      )
 
     lazy val containers: List[ClassPath] = basis.flatten.distinct
 

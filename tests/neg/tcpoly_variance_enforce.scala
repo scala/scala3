@@ -32,7 +32,7 @@ object fcoll4_2 extends  coll4[FooString, Any] // error
 
 
 object test {
-  var ok: coll[FooCov] = _
+  var ok: coll[FooCov] = compiletime.uninitialized
 
   def x: coll[FooInvar] = sys.error("foo") // error
   def y: coll[FooContra] = sys.error("foo") // error

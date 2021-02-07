@@ -51,6 +51,10 @@ object Test:
       y * y
   }
 
+  val gg = (x: Int) ?=>
+    val y = x + 1
+    y
+
   xs.map {
     x =>
     val y = x * x
@@ -80,11 +84,15 @@ object Test:
 
 class Test2:
   self =>
-  def foo = 1
+  def foo(x: Int) =
+    if x < 0 then throw
+      val ex = new AssertionError()
+      ex
+    x
 
   val x =
     new Test2 {
-      override def foo = 2
+      override def foo(x: Int) = 2
     }
   end x
 end Test2

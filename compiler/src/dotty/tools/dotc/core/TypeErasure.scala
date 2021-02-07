@@ -36,7 +36,7 @@ import scala.annotation.tailrec
 object TypeErasure {
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass
+    sym == defn.ArrayClass || sym == defn.PairClass || isDerivedValueClass(sym)
 
   def normalizeClass(cls: ClassSymbol)(using Context): ClassSymbol = {
     if (cls.owner == defn.ScalaPackageClass) {
@@ -59,7 +59,7 @@ object TypeErasure {
     case tp: TypeRef =>
       val sym = tp.symbol
       sym.isClass &&
-      !erasureDependsOnArgs(sym) &&
+      (!erasureDependsOnArgs(sym) || isDerivedValueClass(sym)) &&
       !defn.specialErasure.contains(sym) &&
       !defn.isSyntheticFunctionClass(sym)
     case _: TermRef =>
@@ -157,7 +157,7 @@ object TypeErasure {
 
   def sigName(tp: Type, isJava: Boolean)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = isJava)
-    val erase = erasureFn(isJava, semiEraseVCs = false, isConstructor = false, wildcardOK = true)
+    val erase = erasureFn(isJava, semiEraseVCs = true, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(using preErasureCtx)
   }
 
@@ -444,7 +444,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
     case tp: TypeRef =>
       val sym = tp.symbol
       if (!sym.isClass) this(tp.translucentSuperType)
-      else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClassRef(tp)
+      else if (semiEraseVCs && isDerivedValueClass(sym)) eraseDerivedValueClass(tp)
       else if (defn.isSyntheticFunctionClass(sym)) defn.erasedFunctionType(sym)
       else eraseNormalClassRef(tp)
     case tp: AppliedType =>
@@ -452,6 +452,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       if (tycon.isRef(defn.ArrayClass)) eraseArray(tp)
       else if (tycon.isRef(defn.PairClass)) erasePair(tp)
       else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = isJava))
+      else if (semiEraseVCs && isDerivedValueClass(tycon.classSymbol)) eraseDerivedValueClass(tp)
       else apply(tp.translucentSuperType)
     case _: TermRef | _: ThisType =>
       this(tp.widen)
@@ -551,12 +552,34 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           case rt => MethodType(Nil, Nil, rt)
       case tp1 => this(tp1)
 
-  private def eraseDerivedValueClassRef(tref: TypeRef)(using Context): Type = {
-    val cls = tref.symbol.asClass
-    val underlying = underlyingOfValueClass(cls)
-    if underlying.exists && !isCyclic(cls) then
-      val erasedValue = valueErasure(underlying)
-      if erasedValue.exists then ErasedValueType(tref, erasedValue)
+  private def eraseDerivedValueClass(tp: Type)(using Context): Type = {
+    val cls = tp.classSymbol.asClass
+    val unbox = valueClassUnbox(cls)
+    if unbox.exists then
+      val genericUnderlying = unbox.info.resultType
+      val underlying = tp.select(unbox).widen.resultType
+
+      val erasedUnderlying = erasure(underlying)
+
+      // Ideally, we would just use `erasedUnderlying` as the erasure of `tp`, but to
+      // be binary-compatible with Scala 2 we need two special cases for polymorphic
+      // value classes:
+      // - Given `class Foo[A](x: A) extends AnyVal`, `Foo[X]` should erase like
+      //   `X`, except if its a primitive in which case it erases to the boxed
+      //   version of this primitive.
+      // - Given `class Bar[A](x: Array[A]) extends AnyVal`, `Bar[X]` will be
+      //   erased like `Array[A]` as seen from its definition site, no matter
+      //   the `X` (same if `A` is bounded).
+      //
+      // The binary compatibility is checked by sbt-dotty/sbt-test/scala2-compat/i8001
+      val erasedValueClass =
+        if erasedUnderlying.isPrimitiveValueType && !genericUnderlying.isPrimitiveValueType then
+          defn.boxedType(erasedUnderlying)
+        else if genericUnderlying.derivesFrom(defn.ArrayClass) then
+          erasure(genericUnderlying)
+        else erasedUnderlying
+
+      if erasedValueClass.exists then ErasedValueType(cls.typeRef, erasedValueClass)
       else
         assert(ctx.reporter.errorsReported, i"no erasure for $underlying")
         NoType
@@ -569,22 +592,23 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
   }
 
   /** The erasure of a function result type. */
-  private def eraseResult(tp: Type)(using Context): Type = tp match {
-    case tp: TypeRef =>
-      val sym = tp.symbol
-      if (sym eq defn.UnitClass) sym.typeRef
-      // For a value class V, "new V(x)" should have type V for type adaptation to work
-      // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the return type of a
-      // constructor method should not be semi-erased.
-      else if (isConstructor && isDerivedValueClass(sym)) eraseNormalClassRef(tp)
-      else this(tp)
-    case tp: AppliedType =>
-      val sym = tp.tycon.typeSymbol
-      if (sym.isClass && !erasureDependsOnArgs(sym)) eraseResult(tp.tycon)
-      else this(tp)
-    case _ =>
-      this(tp)
-  }
+  def eraseResult(tp: Type)(using Context): Type =
+    // For a value class V, "new V(x)" should have type V for type adaptation to work
+    // correctly (see SIP-15 and [[Erasure.Boxing.adaptToType]]), so the result type of a
+    // constructor method should not be semi-erased.
+    if semiEraseVCs && isConstructor && !tp.isInstanceOf[MethodOrPoly] then
+      erasureFn(isJava, semiEraseVCs = false, isConstructor, wildcardOK).eraseResult(tp)
+    else tp match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym eq defn.UnitClass) sym.typeRef
+        else this(tp)
+      case tp: AppliedType =>
+        val sym = tp.tycon.typeSymbol
+        if (sym.isClass && !erasureDependsOnArgs(sym)) eraseResult(tp.tycon)
+        else this(tp)
+      case _ =>
+        this(tp)
 
   /** The name of the type as it is used in `Signature`s.
    *  Need to ensure correspondence with erasure!
@@ -602,7 +626,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
           return sigName(info)
         }
         if (isDerivedValueClass(sym)) {
-          val erasedVCRef = eraseDerivedValueClassRef(tp)
+          val erasedVCRef = eraseDerivedValueClass(tp)
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
         if (defn.isSyntheticFunctionClass(sym))

@@ -6,7 +6,9 @@
   |
   |    M.pure[A, F]("ola")(
   |      /* ambiguous: both object listMonad in object M and object optionMonad in object M match type M[F] */summon[M[F]]
-  |    )
+  |    )    failed with
+  |
+  |        ambiguous implicit arguments: both object listMonad in object M and object optionMonad in object M match type M[F] of parameter m of method pure in object M
 -- Error: tests/neg/i9185.scala:8:28 -----------------------------------------------------------------------------------
 8 |  val value3 = M.pure("ola") // error
   |                            ^
@@ -17,4 +19,7 @@
    |          value len is not a member of String.
    |          An extension method was tried, but could not be fully constructed:
    |
-   |              M.len("abc")
+   |              M.len("abc")    failed with
+   |
+   |                  Found:    ("abc" : String)
+   |                  Required: Int

@@ -4,7 +4,7 @@ case class FailsChild2(a: Seq[String]) extends Fails
 object FailsTest {
   def matchOnVarArgsFirstFails(f: Fails) = {
     f match {
-      case VarArgs1(_: _*) => ???
+      case VarArgs1(_*) => ???
       // BUG: Without this line we should get a non-exhaustive match compiler error.
       //case FailsChild2(_) => ???
     }

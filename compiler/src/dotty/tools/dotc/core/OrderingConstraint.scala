@@ -297,7 +297,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   /** If `inst` is a TypeBounds, make sure it does not contain toplevel
    *  references to `param` (see `Constraint#occursAtToplevel` for a definition
    *  of "toplevel").
-   *  Any such references are replace by `Nothing` in the lower bound and `Any`
+   *  Any such references are replaced by `Nothing` in the lower bound and `Any`
    *  in the upper bound.
    *  References can be direct or indirect through instantiations of other
    *  parameters in the constraint.

@@ -9,12 +9,13 @@ import scala.tasty.inspector._
   val tastyFiles = allTastyFiles.filter(_.contains("TraitParams"))
 
   // in dotty-example-project
-  val inspector = new TastyInspector {
-    protected def processCompilationUnit(using Quotes)(tree: quotes.reflect.Tree): Unit = {
-      println(tree.show)
+  val inspector = new Inspector {
+    def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
+      for tasty <- tastys do
+        println(tasty.ast.show)
     }
   }
-  inspector.inspectTastyFiles(tastyFiles)
+  TastyInspector.inspectTastyFiles(tastyFiles)(inspector)
 }
 
 object TraitParams {

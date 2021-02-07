@@ -34,8 +34,9 @@ class CheckStatic extends MiniPhase {
     var hadNonStaticField = false
     for (defn <- defns)
       if (defn.symbol.isScalaStatic) {
-        if (!ctx.owner.is(Module))
+        if (!ctx.owner.isStaticOwner)
           report.error(StaticFieldsOnlyAllowedInObjects(defn.symbol), defn.srcPos)
+          defn.symbol.resetFlag(JavaStatic)
 
         if (defn.isInstanceOf[ValDef] && hadNonStaticField)
           report.error(StaticFieldsShouldPrecedeNonStatic(defn.symbol, defns), defn.srcPos)
@@ -58,22 +59,6 @@ class CheckStatic extends MiniPhase {
 
     tree
   }
-
-  override def transformSelect(tree: tpd.Select)(using Context): tpd.Tree =
-    if (tree.symbol.hasAnnotation(defn.ScalaStaticAnnot)) {
-      val symbolWhitelist = tree.symbol.ownersIterator.flatMap(x => if (x.is(Flags.Module)) List(x, x.companionModule) else List(x)).toSet
-      def isSafeQual(t: Tree): Boolean = // follow the desugared paths created by typer
-        t match {
-          case t: This => true
-          case t: Select => isSafeQual(t.qualifier) && symbolWhitelist.contains(t.symbol)
-          case t: Ident => symbolWhitelist.contains(t.symbol)
-          case t: Block => t.stats.forall(tpd.isPureExpr) && isSafeQual(t.expr)
-        }
-      if (isSafeQual(tree.qualifier))
-        ref(tree.symbol)
-      else tree
-    }
-    else tree
 }
 
 object CheckStatic {

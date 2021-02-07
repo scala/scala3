@@ -20,7 +20,7 @@ object ExtMethods:
   extension [T](xs: List[T])
     def second = xs.tail.head
 
-  assert(List(1, 2, 3).second[Int] == List(1, 2, 3).second)
+  assert(second[Int](List(1, 2, 3)) == List(1, 2, 3).second)
 
   extension [T: Numeric](x: T)
     def + (y: T): T = summon[Numeric[T]].plus(x, y)
@@ -76,7 +76,7 @@ object ExtMethods:
   class Lst[T](xs: T*):
     private val elems = xs.toList
     def foldLeft[U](x: U)(op: (U, T) => U): U = elems.foldLeft(x)(op)
-    def ++ (other: Lst[T]): Lst[T] = Lst(elems ++ other.elems: _*)
+    def ++ (other: Lst[T]): Lst[T] = Lst((elems ++ other.elems)*)
 
   trait Ord[T]:
     extension (x: T) def less (y: T): Boolean

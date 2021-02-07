@@ -70,56 +70,39 @@ trait TypeAssigner {
     case ex: StaleSymbol => false
   }
 
-  /** If `tpe` is a named type, check that its denotation is accessible in the
-   *  current context. Return the type with those alternatives as denotations
-   *  which are accessible.
+  /** If `tpe` is a named type, return the type with those alternatives as denotations
+   *  which are accessible (or NoType, if no alternatives are accessible).
    *
    *  Also performs the following normalizations on the type `tpe`.
-   *  (1) parameter accessors are always dereferenced.
-   *  (2) if the owner of the denotation is a package object, it is assured
+   *  (1) if the owner of the denotation is a package object, it is assured
    *      that the package object shows up as the prefix.
-   *  (3) in Java compilation units, `Object` is replaced by `defn.FromJavaObjectType`
+   *  (2) in Java compilation units, `Object` is replaced by `defn.FromJavaObjectType`
    */
-  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type = {
-    def test(tpe: Type, firstTry: Boolean): Type = tpe match {
+  def accessibleType(tpe: Type, superAccess: Boolean)(using Context): Type =
+    tpe match
       case tpe: NamedType =>
         val pre = tpe.prefix
         val name = tpe.name
+        def postProcess(d: Denotation) =
+          if ctx.isJava && tpe.isAnyRef then defn.FromJavaObjectType
+          else TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
         val d = tpe.denot.accessibleFrom(pre, superAccess)
-        if !d.exists then
+        if d.exists then postProcess(d)
+        else
           // it could be that we found an inaccessible private member, but there is
           // an inherited non-private member with the same name and signature.
-          val d2 = pre.nonPrivateMember(name)
-          if (reallyExists(d2) && firstTry)
-            test(NamedType(pre, name, d2), false)
-          else if (pre.derivesFrom(defn.DynamicClass) && name.isTermName)
-            TryDynamicCallType
-          else {
-            val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
-            var packageAccess = false
-            val whatCanNot = alts match {
-              case Nil =>
-                em"$name cannot"
-              case sym :: Nil =>
-                em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
-              case _ =>
-                em"none of the overloaded alternatives named $name can"
-            }
-            val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
-            val whyNot = new StringBuffer
-            alts foreach (_.isAccessibleFrom(pre, superAccess, whyNot))
-            if (tpe.isError) tpe
-            else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
-          }
-        else if ctx.isJava && tpe.isAnyRef then
-          defn.FromJavaObjectType
-        else
-          TypeOps.makePackageObjPrefixExplicit(tpe withDenot d)
-      case _ =>
-        tpe
-    }
-    test(tpe, true)
-  }
+          val d2 = pre.nonPrivateMember(name).accessibleFrom(pre, superAccess)
+          if reallyExists(d2) then postProcess(d2)
+          else NoType
+      case tpe => tpe
+
+  /** Try to make `tpe` accessible, emit error if not possible */
+  def ensureAccessible(tpe: Type, superAccess: Boolean, pos: SrcPos)(using Context): Type =
+    val tpe1 = accessibleType(tpe, superAccess)
+    if tpe1.exists then tpe1
+    else tpe match
+      case tpe: NamedType => inaccessibleErrorType(tpe, superAccess, pos)
+      case NoType => tpe
 
   /** Return a potentially skolemized version of `qualTpe` to be used
    *  as a prefix when selecting `name`.
@@ -133,53 +116,66 @@ trait TypeAssigner {
       qualType
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
-  def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type = {
+  def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
     var qualType = qual1.tpe.widenIfUnstable
-    if (!qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR)
+    if !qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
       // constructors are selected on typeconstructor, type arguments are passed afterwards
       qualType = errorType(em"$qualType takes type parameters", qual1.srcPos)
-    else if (!qualType.isInstanceOf[TermType])
+    else if !qualType.isInstanceOf[TermType] then
       qualType = errorType(em"$qualType is illegal as a selection prefix", qual1.srcPos)
 
+    def arrayElemType = qual1.tpe.widen match
+      case JavaArrayType(elemtp) => elemtp
+      case qualType =>
+        report.error("Expected Array but was " + qualType.show, tree.srcPos)
+        defn.NothingType
+
     val name = tree.name
-    val pre = maybeSkolemizePrefix(qualType, name)
-    val mbr = qualType.findMember(name, pre)
-    def isDynamicExpansion(tree: untpd.RefTree): Boolean = {
-      Dynamic.isDynamicMethod(name) || (
-        tree match
-          case Select(Apply(fun: untpd.RefTree, _), nme.apply) if defn.isContextFunctionClass(fun.symbol.owner) =>
-            isDynamicExpansion(fun)
-          case  Select(qual, nme.apply) =>
-            Dynamic.isDynamicMethod(qual.symbol.name) && tree.span.isSynthetic
-          case _ => false
-      )
-    }
-    if (reallyExists(mbr))
-      qualType.select(name, mbr)
-    else if (qualType.derivesFrom(defn.DynamicClass) && name.isTermName && !isDynamicExpansion(tree))
-      TryDynamicCallType
-    else if (qualType.isErroneous || name.toTermName == nme.ERROR)
-      UnspecifiedErrorType
-    else if couldInstantiateTypeVar(qualType) then
-      // try again with more defined qualifier type
-      selectionType(tree, qual1)
-    else if (name == nme.CONSTRUCTOR)
-      errorType(ex"$qualType does not have a constructor", tree.srcPos)
-    else {
-      val kind = if (name.isTypeName) "type" else "value"
-      def addendum = err.selectErrorAddendum(tree, qual1, qualType, importSuggestionAddendum)
-      errorType(NotAMember(qualType, name, kind, addendum), tree.srcPos)
-    }
-  }
+    val p = nme.primitive
+    name match
+      case p.arrayApply  => MethodType(defn.IntType :: Nil, arrayElemType)
+      case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
+      case p.arrayLength => MethodType(Nil, defn.IntType)
+      // Note that we do not need to handle calls to Array[T]#clone() specially:
+      // The JLS section 10.7 says "The return type of the clone method of an array type
+      // T[] is T[]", but the actual return type at the bytecode level is Object which
+      // is casted to T[] by javac. Since the return type of Array[T]#clone() is Array[T],
+      // this is exactly what Erasure will do.
+      case _ =>
+        val pre = maybeSkolemizePrefix(qualType, name)
+        val mbr = qualType.findMember(name, pre)
+        if reallyExists(mbr) then qualType.select(name, mbr)
+        else if qualType.isErroneous || name.toTermName == nme.ERROR then UnspecifiedErrorType
+        else NoType
+  end selectionType
 
   def importSuggestionAddendum(pt: Type)(using Context): String = ""
 
-  /** The type of the selection in `tree`, where `qual1` is the typed qualifier part.
-   *  The selection type is additionally checked for accessibility.
-   */
-  def accessibleSelectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    val ownType = selectionType(tree, qual1)
-    ensureAccessible(ownType, qual1.isInstanceOf[Super], tree.srcPos)
+  def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
+    val qualType = qual.tpe.widenIfUnstable
+    def kind = if tree.isType then "type" else "value"
+    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum)
+    val msg: Message =
+      if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor"
+      else NotAMember(qualType, tree.name, kind, addendum)
+    errorType(msg, tree.srcPos)
+
+  def inaccessibleErrorType(tpe: NamedType, superAccess: Boolean, pos: SrcPos)(using Context): Type =
+    val pre = tpe.prefix
+    val name = tpe.name
+    val alts = tpe.denot.alternatives.map(_.symbol).filter(_.exists)
+    val whatCanNot = alts match
+      case Nil =>
+        em"$name cannot"
+      case sym :: Nil =>
+        em"${if (sym.owner == pre.typeSymbol) sym.show else sym.showLocated} cannot"
+      case _ =>
+        em"none of the overloaded alternatives named $name can"
+    val where = if (ctx.owner.exists) s" from ${ctx.owner.enclosingClass}" else ""
+    val whyNot = new StringBuffer
+    alts.foreach(_.isAccessibleFrom(pre, superAccess, whyNot))
+    if tpe.isError then tpe
+    else errorType(ex"$whatCanNot be accessed as a member of $pre$where.$whyNot", pos)
 
   /** Type assignment method. Each method takes as parameters
    *   - an untpd.Tree to which it assigns a type,
@@ -189,32 +185,14 @@ trait TypeAssigner {
   def assignType(tree: untpd.Ident, tp: Type)(using Context): Ident =
     tree.withType(tp)
 
-  def assignType(tree: untpd.Select, qual: Tree)(using Context): Select = {
-    def qualType = qual.tpe.widen
-    def arrayElemType = {
-      qualType match {
-        case JavaArrayType(elemtp) => elemtp
-        case _ =>
-          report.error("Expected Array but was " + qualType.show, tree.srcPos)
-          defn.NothingType
-      }
-    }
-    val p = nme.primitive
-    val tp = tree.name match {
-      case p.arrayApply => MethodType(defn.IntType :: Nil, arrayElemType)
-      case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
-      case p.arrayLength => MethodType(Nil, defn.IntType)
-
-      // Note that we do not need to handle calls to Array[T]#clone() specially:
-      // The JLS section 10.7 says "The return type of the clone method of an array type
-      // T[] is T[]", but the actual return type at the bytecode level is Object which
-      // is casted to T[] by javac. Since the return type of Array[T]#clone() is Array[T],
-      // this is exactly what Erasure will do.
-
-      case _ => accessibleSelectionType(tree, qual)
-    }
+  def assignType(tree: untpd.Select, tp: Type)(using Context): Select =
     ConstFold.Select(tree.withType(tp))
-  }
+
+  def assignType(tree: untpd.Select, qual: Tree)(using Context): Select =
+    val rawType = selectionType(tree, qual)
+    val checkedType = ensureAccessible(rawType, qual.isInstanceOf[Super], tree.srcPos)
+    val ownType = checkedType.orElse(notAMemberErrorType(tree, qual))
+    assignType(tree, ownType)
 
   /** Normalize type T appearing in a new T by following eta expansions to
    *  avoid higher-kinded types.

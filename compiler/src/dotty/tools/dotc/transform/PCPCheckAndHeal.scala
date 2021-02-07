@@ -93,7 +93,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         checkAnnotations(tree)
         healInfo(tree, tree.srcPos)
         super.transform(tree)
-
+      case tree: UnApply =>
+        super.transform(tree).withType(healTypeOfTerm(tree.srcPos)(tree.tpe))
+      case tree: TypeDef if tree.symbol.is(Case) && level > 0 =>
+        report.error(reporting.CaseClassInInlinedCode(tree), tree)
+        super.transform(tree)
       case _ =>
         super.transform(tree)
     }
@@ -140,8 +144,11 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
 
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree = {
     val body1 = transform(body)(using spliceContext)
-    val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
-    ref(tagRef).withSpan(splice.span)
+    if ctx.reporter.hasErrors then
+      splice
+    else
+      val tagRef = getQuoteTypeTags.getTagRef(splice.qualifier.tpe.asInstanceOf[TermRef])
+      ref(tagRef).withSpan(splice.span)
   }
 
   /** Check that annotations do not contain quotes and and that splices are valid */

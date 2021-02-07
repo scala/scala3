@@ -62,7 +62,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val arg :: Nil = args
             val t = arg.tpe & tp2
             If(
-              arg.select(defn.Any_isInstanceOf).appliedToType(tp2),
+              arg.isInstance(tp2),
               ref(defn.SomeClass.companionModule.termRef).select(nme.apply)
                 .appliedToType(t)
                 .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),
@@ -266,8 +266,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
-    if mirroredType.classSymbol.isGenericSum then
-      val cls = mirroredType.classSymbol
+    val cls = mirroredType.classSymbol
+    val useCompanion = cls.useCompanionAsMirror
+
+    if cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -318,8 +320,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
-        if cls.linkedClass.exists && !cls.is(Scala2x)
-        then companionPath(mirroredType, span)
+        if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       mirrorRef.cast(mirrorType)
     else EmptyTree

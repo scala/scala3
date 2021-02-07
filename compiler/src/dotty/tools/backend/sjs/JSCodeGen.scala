@@ -1035,7 +1035,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
     implicit val pos = dd.span
     val sym = dd.symbol
-    val vparamss = dd.vparamss
+    val vparamss = dd.termParamss
     val rhs = dd.rhs
 
     withScopedVars(
@@ -1420,7 +1420,7 @@ class JSCodeGen()(using genCtx: Context) {
             /* This is a default parameter whose assignment was moved to
              * a local variable. Put an undefined param instead.
              */
-            js.Transient(UndefinedParam)(toIRType(sym.info))
+            js.Transient(UndefinedParam)
           } else {
             js.VarRef(encodeLocalSym(sym))(toIRType(sym.info))
           }
@@ -1691,7 +1691,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     fun match {
       case _ if sym.isJSDefaultParam =>
-        js.Transient(UndefinedParam)(toIRType(sym.info.finalResultType))
+        js.Transient(UndefinedParam)
 
       case Select(Super(_, _), _) =>
         genSuperCall(tree, isStat)
@@ -4135,7 +4135,7 @@ class JSCodeGen()(using genCtx: Context) {
   }
 
   private def computeJSNativeLoadSpecOfValDef(sym: Symbol): js.JSNativeLoadSpec = {
-    atPhase(picklerPhase.next) {
+    atPhaseBeforeTransforms {
       computeJSNativeLoadSpecOfInPhase(sym)
     }
   }
@@ -4144,7 +4144,7 @@ class JSCodeGen()(using genCtx: Context) {
     if (sym.is(Trait) || sym.hasAnnotation(jsdefn.JSGlobalScopeAnnot)) {
       None
     } else {
-      atPhase(picklerPhase.next) {
+      atPhaseBeforeTransforms {
         if (sym.owner.isStaticOwner)
           Some(computeJSNativeLoadSpecOfInPhase(sym))
         else
@@ -4306,6 +4306,15 @@ object JSCodeGen {
    *  To be used inside a `js.Transient` node.
    */
   case object UndefinedParam extends js.Transient.Value {
+    val tpe: jstpe.Type = jstpe.UndefType
+
+    def traverse(traverser: ir.Traversers.Traverser): Unit = ()
+
+    def transform(transformer: ir.Transformers.Transformer, isStat: Boolean)(
+        implicit pos: ir.Position): js.Tree = {
+      js.Transient(this)
+    }
+
     def printIR(out: ir.Printers.IRTreePrinter): Unit =
       out.print("<undefined-param>")
   }

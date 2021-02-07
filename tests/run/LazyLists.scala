@@ -1,10 +1,11 @@
 package xcollections:
   import annotation.unchecked.uncheckedVariance
+  import compiletime.uninitialized
 
   abstract class LazyList[+T]:
 
-    private var myHead: T = _
-    private var myTail: LazyList[T] = _
+    private var myHead: T = uninitialized
+    private var myTail: LazyList[T] = uninitialized
     private var myForced: LazyList[T] | Null = null
 
     protected def force(): LazyList[T]

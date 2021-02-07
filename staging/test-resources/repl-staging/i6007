@@ -1,7 +1,7 @@
 scala> import scala.quoted._
-scala> import scala.quoted.staging._
-scala> implicit def toolbox: Toolbox = Toolbox.make(getClass.getClassLoader)
-def toolbox: quoted.staging.Toolbox
+scala> import quoted.staging.{Compiler => StagingCompiler, _}
+scala> implicit def compiler: StagingCompiler = StagingCompiler.make(getClass.getClassLoader)
+def compiler: quoted.staging.Compiler
 scala> def v(using Quotes) = '{ (if true then Some(1) else None).map(v => v+1) }
 def v(using x$1: quoted.Quotes): quoted.Expr[Option[Int]]
 scala> scala.quoted.staging.withQuotes(v.show)

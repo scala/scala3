@@ -1,6 +1,5 @@
 package scala
-
-import scala.quoted._
+import annotation.compileTimeOnly
 
 package object compiletime {
 
@@ -17,6 +16,17 @@ package object compiletime {
    *  the branches.
    */
   erased def erasedValue[T]: T = ???
+
+  /** Used as the initializer of a mutable class or object field, like this:
+   *
+   *    var x: T = uninitialized
+   *
+   *  This signifies that the field is not initialized on its own. It is still initialized
+   *  as part of the bulk initialization of the object it belongs to, which assigns zero
+   *  values such as `null`, `0`, `0.0`, `false` to all object fields.
+   */
+  @compileTimeOnly("`uninitialized` can only be used as the right hand side of a mutable field definition")
+  def uninitialized: Nothing = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
    *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.

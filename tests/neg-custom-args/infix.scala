@@ -58,7 +58,7 @@ def test() = {
   val Pair(_, _) = p
   val _ Pair _ = p   // error
   val _ `Pair` _ = p // OK
-  val (_ PP _): @unchecked = p     // OK
+  val (_ PP _) = p: @unchecked     // OK
 
   val q = Q(1, 2)
   val Q(_, _) = q

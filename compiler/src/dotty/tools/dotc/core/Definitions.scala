@@ -226,8 +226,9 @@ class Definitions {
   @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
     @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageObject.requiredMethod("codeOf")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
+    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageObject.requiredMethod("uninitialized")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
-    @tu lazy val Compiletime_requireConst: Symbol = CompiletimePackageObject.requiredMethod("requireConst")
+    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageObject.requiredMethod("requireConst")
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
@@ -259,10 +260,19 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract, Nil), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val AnyValClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyClass.typeRef)))
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait, AnyType :: Nil), ensureCtor = false)
+  def MatchableType: TypeRef = MatchableClass.typeRef
+  @tu lazy val AnyValClass: ClassSymbol =
+    val res = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.AnyVal, Abstract, List(AnyType, MatchableType)))
+    // Mark companion as absent, so that class does not get re-completed
+    val companion = ScalaPackageVal.info.decl(nme.AnyVal).symbol
+    companion.moduleClass.markAbsent()
+    companion.markAbsent()
+    res
+
   def AnyValType: TypeRef = AnyValClass.typeRef
 
-    @tu lazy val Any_== : TermSymbol           = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
+    @tu lazy val Any_== : TermSymbol          = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     @tu lazy val Any_!= : TermSymbol          = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
     @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
     @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
@@ -288,17 +298,13 @@ class Definitions {
   @tu lazy val ObjectClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Object")
     assert(!cls.isCompleted, "race for completing java.lang.Object")
-    cls.info = ClassInfo(cls.owner.thisType, cls, AnyClass.typeRef :: Nil, newScope)
+    cls.info = ClassInfo(cls.owner.thisType, cls, List(AnyType, MatchableType), newScope)
     cls.setFlag(NoInits | JavaDefined)
 
-    // The companion object doesn't really exist, so it needs to be marked as
-    // absent. Here we need to set it before completing attempt to load Object's
-    // classfile, which causes issue #1648.
-    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol
-    companion.moduleClass.markAbsent()
-    companion.markAbsent()
-
-    completeClass(cls)
+    ensureConstructor(cls, cls.denot.asClass, EmptyScope)
+    val companion = JavaLangPackageVal.info.decl(nme.Object).symbol.asTerm
+    NamerOps.makeConstructorCompanion(companion, cls)
+    cls
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 
@@ -444,7 +450,7 @@ class Definitions {
       MethodType(List(ThrowableType), NothingType))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
-    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyClass.typeRef))
+    ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val NullClass: ClassSymbol = {
     val parent = if (ctx.explicitNulls) AnyType else ObjectType
@@ -520,7 +526,7 @@ class Definitions {
     // but does not define it as an explicit class.
     enterCompleteClassSymbol(
       ScalaPackageClass, tpnme.Singleton, PureInterfaceCreationFlags | Final,
-      List(AnyClass.typeRef), EmptyScope)
+      List(AnyType), EmptyScope)
   @tu lazy val SingletonType: TypeRef = SingletonClass.typeRef
 
   @tu lazy val CollectionSeqType: TypeRef = requiredClassRef("scala.collection.Seq")
@@ -862,20 +868,20 @@ class Definitions {
 
     def TupleXXL_fromIterator(using Context): Symbol = TupleXXLModule.requiredMethod("fromIterator")
 
-  @tu lazy val RuntimeTupleModule: Symbol = requiredModule("scala.runtime.Tuple")
-  @tu lazy val RuntimeTupleModuleClass: Symbol = RuntimeTupleModule.moduleClass
-    lazy val RuntimeTuple_consIterator: Symbol = RuntimeTupleModule.requiredMethod("consIterator")
-    lazy val RuntimeTuple_concatIterator: Symbol = RuntimeTupleModule.requiredMethod("concatIterator")
-    lazy val RuntimeTuple_apply: Symbol = RuntimeTupleModule.requiredMethod("apply")
-    lazy val RuntimeTuple_cons: Symbol = RuntimeTupleModule.requiredMethod("cons")
-    lazy val RuntimeTuple_size: Symbol = RuntimeTupleModule.requiredMethod("size")
-    lazy val RuntimeTuple_tail: Symbol = RuntimeTupleModule.requiredMethod("tail")
-    lazy val RuntimeTuple_concat: Symbol = RuntimeTupleModule.requiredMethod("concat")
-    lazy val RuntimeTuple_toArray: Symbol = RuntimeTupleModule.requiredMethod("toArray")
-    lazy val RuntimeTuple_productToArray: Symbol = RuntimeTupleModule.requiredMethod("productToArray")
-    lazy val RuntimeTuple_isInstanceOfTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfTuple")
-    lazy val RuntimeTuple_isInstanceOfEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfEmptyTuple")
-    lazy val RuntimeTuple_isInstanceOfNonEmptyTuple: Symbol = RuntimeTupleModule.requiredMethod("isInstanceOfNonEmptyTuple")
+  @tu lazy val RuntimeTuplesModule: Symbol = requiredModule("scala.runtime.Tuples")
+  @tu lazy val RuntimeTuplesModuleClass: Symbol = RuntimeTuplesModule.moduleClass
+    lazy val RuntimeTuples_consIterator: Symbol = RuntimeTuplesModule.requiredMethod("consIterator")
+    lazy val RuntimeTuples_concatIterator: Symbol = RuntimeTuplesModule.requiredMethod("concatIterator")
+    lazy val RuntimeTuples_apply: Symbol = RuntimeTuplesModule.requiredMethod("apply")
+    lazy val RuntimeTuples_cons: Symbol = RuntimeTuplesModule.requiredMethod("cons")
+    lazy val RuntimeTuples_size: Symbol = RuntimeTuplesModule.requiredMethod("size")
+    lazy val RuntimeTuples_tail: Symbol = RuntimeTuplesModule.requiredMethod("tail")
+    lazy val RuntimeTuples_concat: Symbol = RuntimeTuplesModule.requiredMethod("concat")
+    lazy val RuntimeTuples_toArray: Symbol = RuntimeTuplesModule.requiredMethod("toArray")
+    lazy val RuntimeTuples_productToArray: Symbol = RuntimeTuplesModule.requiredMethod("productToArray")
+    lazy val RuntimeTuples_isInstanceOfTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfTuple")
+    lazy val RuntimeTuples_isInstanceOfEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfEmptyTuple")
+    lazy val RuntimeTuples_isInstanceOfNonEmptyTuple: Symbol = RuntimeTuplesModule.requiredMethod("isInstanceOfNonEmptyTuple")
 
   // Annotation base classes
   @tu lazy val AnnotationClass: ClassSymbol = requiredClass("scala.annotation.Annotation")
@@ -885,6 +891,8 @@ class Definitions {
 
   // Annotation classes
   @tu lazy val AnnotationDefaultAnnot: ClassSymbol = requiredClass("scala.annotation.internal.AnnotationDefault")
+  @tu lazy val BeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BeanProperty")
+  @tu lazy val BooleanBeanPropertyAnnot: ClassSymbol = requiredClass("scala.beans.BooleanBeanProperty")
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
@@ -1144,6 +1152,8 @@ class Definitions {
 
   // ----- Symbol sets ---------------------------------------------------
 
+  @tu lazy val topClasses: Set[Symbol] = Set(AnyClass, MatchableClass, ObjectClass, AnyValClass)
+
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0)
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))
   def AbstractFunctionClass(n: Int)(using Context): Symbol = AbstractFunctionClassPerRun()(using ctx)(n)
@@ -1372,7 +1382,7 @@ class Definitions {
   @tu lazy val ShadowableImportNames: Set[TermName] = Set("Predef".toTermName)
 
   /** Class symbols for which no class exist at runtime */
-  @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, AnyValClass, NullClass, NothingClass)
+  @tu lazy val NotRuntimeClasses: Set[Symbol] = Set(AnyClass, MatchableClass, AnyValClass, NullClass, NothingClass)
 
   @tu lazy val SpecialClassTagClasses: Set[Symbol] = Set(UnitClass, AnyClass, AnyValClass)
 
@@ -1457,7 +1467,12 @@ class Definitions {
     new PerRun(Function2SpecializedReturnTypes.map(_.symbol))
 
   def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
-    paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length)) && (paramTypes match {
+    paramTypes.length <= 2 && cls.derivesFrom(FunctionClass(paramTypes.length))
+    && isSpecializableFunctionSAM(paramTypes, retType)
+
+  /** If the Single Abstract Method of a Function class has this type, is it specializable? */
+  def isSpecializableFunctionSAM(paramTypes: List[Type], retType: Type)(using Context): Boolean =
+    paramTypes.length <= 2 && (paramTypes match {
       case Nil =>
         Function0SpecializedReturnClasses().contains(retType.typeSymbol)
       case List(paramType0) =>
@@ -1672,6 +1687,7 @@ class Definitions {
   @tu lazy val specialErasure: SimpleIdentityMap[Symbol, ClassSymbol] =
     SimpleIdentityMap.empty[Symbol]
       .updated(AnyClass, ObjectClass)
+      .updated(MatchableClass, ObjectClass)
       .updated(AnyValClass, ObjectClass)
       .updated(SingletonClass, ObjectClass)
       .updated(TupleClass, ProductClass)
@@ -1683,6 +1699,7 @@ class Definitions {
   @tu lazy val syntheticScalaClasses: List[TypeSymbol] = {
     val synth = List(
       AnyClass,
+      MatchableClass,
       AnyRefAlias,
       AnyKindClass,
       andType,

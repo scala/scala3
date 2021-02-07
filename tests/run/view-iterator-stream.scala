@@ -49,7 +49,7 @@ object Test {
   def sdt(n: Int): Perturber = p(slice(n, n * 2), drop(n / 2), take(n / 4))
   def std(n: Int): Perturber = p(slice(n, n * 2), take(n / 2), drop(n / 4))
 
-  val transforms = (fns.permutations map (xs => p(xs take 3: _*))).toList.distinct
+  val transforms = (fns.permutations map (xs => p(xs take 3*))).toList.distinct
   def mkOps(n: Int) = List[Perturber](tds(n), dts(n), sdt(n), std(n))
   def runOps(n: Int) = {
     val xs: List[(String, List[String])] = mkOps(n) map { op =>

@@ -371,6 +371,7 @@ object StdNames {
     val Import: N               = "Import"
     val Literal: N              = "Literal"
     val LiteralAnnotArg: N      = "LiteralAnnotArg"
+    val Matchable: N            = "Matchable"
     val MatchCase: N            = "MatchCase"
     val MirroredElemTypes: N    = "MirroredElemTypes"
     val MirroredElemLabels: N   = "MirroredElemLabels"
@@ -612,6 +613,7 @@ object StdNames {
     val unapplySeq: N           = "unapplySeq"
     val unbox: N                = "unbox"
     val universe: N             = "universe"
+    val unsafeNulls: N          = "unsafeNulls"
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val using: N                = "using"
@@ -829,6 +831,9 @@ object StdNames {
     final val Conforms: TypeName = encode("<:<")
 
     final val Uninstantiated: TypeName = "?$"
+
+    val JFunctionPrefix: Seq[TypeName] = (0 to 2).map(i => s"scala.runtime.java8.JFunction${i}")
+    val JProcedure: Seq[TypeName] = (0 to 22).map(i => s"scala.runtime.function.JProcedure${i}")
   }
 
   abstract class JavaNames[N <: Name] extends DefinedNames[N] {

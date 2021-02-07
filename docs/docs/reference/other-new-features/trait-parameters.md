@@ -3,16 +3,14 @@ layout: doc-page
 title: "Trait Parameters"
 ---
 
-Dotty allows traits to have parameters, just like classes have parameters.
+Scala 3 allows traits to have parameters, just like classes have parameters.
 
 ```scala
-trait Greeting(val name: String) {
-  def msg = s"How are you, $name"
-}
+trait Greeting(val name: String):
+   def msg = s"How are you, $name"
 
-class C extends Greeting("Bob") {
-  println(msg)
-}
+class C extends Greeting("Bob"):
+   println(msg)
 ```
 
 Arguments to a trait are evaluated immediately before the trait is initialized.
@@ -22,7 +20,7 @@ ambiguities. For instance, you might try to extend `Greeting` twice,
 with different parameters.
 
 ```scala
-class D extends C with Greeting("Bill") // error: parameter passed twice
+class D extends C, Greeting("Bill") // error: parameter passed twice
 ```
 
 Should this print "Bob" or "Bill"? In fact this program is illegal,
@@ -37,9 +35,8 @@ because it violates the second rule of the following for trait parameters:
 Here's a trait extending the parameterized trait `Greeting`.
 
 ```scala
-trait FormalGreeting extends Greeting {
-  override def msg = s"How do you do, $name"
-}
+trait FormalGreeting extends Greeting:
+   override def msg = s"How do you do, $name"
 ```
 As is required, no arguments are passed to `Greeting`. However, this poses an issue
 when defining a class that extends `FormalGreeting`:
@@ -52,9 +49,9 @@ The correct way to write `E` is to extend both `Greeting` and
 `FormalGreeting` (in either order):
 
 ```scala
-class E extends Greeting("Bob") with FormalGreeting
+class E extends Greeting("Bob"), FormalGreeting
 ```
 
-### Reference
+## Reference
 
-For more info, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).
+For more information, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).

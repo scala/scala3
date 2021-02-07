@@ -40,6 +40,7 @@ object Versions:
   val discipline = "1.1.3-SNAPSHOT"
   val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
   val disciplineSpecs2 = "1.1.3-SNAPSHOT"
+  val izumiReflect = "1.0.0-SNAPSHOT"
   val scalacheck = "1.15.2-SNAPSHOT"
   val scalatest = "3.2.3"
   val munit = "0.7.19+DOTTY-SNAPSHOT"
@@ -147,19 +148,26 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
     s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
     s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
+    s""""dev.zio" %% "izumi-reflect" % "${Versions.izumiReflect}"""",
   )
 
   private val baseCommand =
-    "clean; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
+    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
     ++ s"""set dependencyOverrides in ThisBuild ++= ${dependencyOverrides.mkString("Seq(", ", ", ")")}; """
     ++ s"++$compilerVersion!; "
 
-  override val testCommand = s"$baseCommand$sbtTestCommand"
-  override val publishCommand = if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+  override val testCommand =
+    """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
+    ++ s"$baseCommand$sbtTestCommand"
+
+  override val publishCommand = if sbtPublishCommand eq null then null else
+    val disableDocCommand =
+      if sbtDocCommand eq null then "" else "set every useScaladoc := false;"
+    s"$baseCommand$disableDocCommand$sbtPublishCommand"
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
-      s"$baseCommand set every useScala3doc := true; set every doc/logLevel := Level.Warn $cmd "
+      s"$baseCommand set every useScaladoc := true; set every doc/logLevel := Level.Warn $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -316,7 +324,7 @@ object projects:
     sbtDocCommand   = ";core/doc ;akka/doc ;shapelessScanner/doc"
   )
 
-  lazy val ScalaPB = SbtCommunityProject(
+  lazy val scalaPB = SbtCommunityProject(
     project       = "ScalaPB",
     sbtTestCommand   = "dotty-community-build/compile",
     // aggregateDoc("runtimeJVM")("scalapbc", "grpcRuntime", "compilerPlugin") fails with
@@ -392,7 +400,8 @@ object projects:
   lazy val zio = SbtCommunityProject(
     project = "zio",
     sbtTestCommand = "testJVMDotty",
-    sbtDocCommand  = forceDoc("coreJVM"),
+    sbtDocCommand = forceDoc("coreJVM"),
+    dependencies = List(izumiReflect)
   )
 
   lazy val munit = SbtCommunityProject(
@@ -612,8 +621,85 @@ object projects:
     dependencies      = List(scalaSTM, scissAsyncFile, scissEqual, scissFingerTree, scissLog, scissModel, scissNumbers, scissSerial, scissSpan, scalatest),
   )
 
+  lazy val izumiReflect = SbtCommunityProject(
+    project = "izumi-reflect",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
+  )
+  
+  lazy val perspective = SbtCommunityProject(
+    project = "perspective",
+    // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
+    // Until then I guess this mainly serves to check that it still compiles at all
+    sbtTestCommand = "dottyPerspectiveExamples/compile",
+    dependencies = List(cats)
+  )
+
 end projects
 
-def allProjects = projects.reflectedFields.of[CommunityProject].sortBy(_.project)
+def allProjects = List(
+  projects.utest,
+  projects.sourcecode,
+  projects.oslib,
+  projects.oslibWatch,
+  projects.ujson,
+  projects.upickle,
+  projects.upickleCore,
+  projects.geny,
+  projects.fansi,
+  projects.pprint,
+  projects.requests,
+  projects.scas,
+  projects.intent,
+  projects.algebra,
+  projects.scalacheck,
+  projects.scalatest,
+  projects.scalatestplusScalacheck,
+  projects.scalatestplusJunit,
+  projects.scalaXml,
+  projects.scalap,
+  projects.betterfiles,
+  projects.scalaPB,
+  projects.minitest,
+  projects.fastparse,
+  projects.stdLib213,
+  projects.shapeless,
+  projects.xmlInterpolator,
+  projects.effpi,
+  projects.sconfig,
+  projects.zio,
+  projects.munit,
+  projects.scodecBits,
+  projects.scodec,
+  projects.scalaParserCombinators,
+  projects.dottyCpsAsync,
+  projects.scalaz,
+  projects.endpoints4s,
+  projects.catsEffect2,
+  projects.catsEffect3,
+  projects.scalaParallelCollections,
+  projects.scalaCollectionCompat,
+  projects.verify,
+  projects.discipline,
+  projects.disciplineMunit,
+  projects.disciplineSpecs2,
+  projects.simulacrumScalafixAnnotations,
+  projects.cats,
+  projects.catsMtl,
+  projects.coop,
+  projects.scissEqual,
+  projects.scissFingerTree,
+  projects.scissLog,
+  projects.scissModel,
+  projects.scissNumbers,
+  projects.scissSerial,
+  projects.scissAsyncFile,
+  projects.scissSpan,
+  projects.scalaSTM,
+  projects.scissLucre,
+  projects.izumiReflect,
+  projects.perspective,
+)
 
 lazy val projectMap = allProjects.map(p => p.project -> p).toMap

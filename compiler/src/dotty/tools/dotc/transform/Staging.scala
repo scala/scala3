@@ -35,6 +35,8 @@ class Staging extends MacroTransform {
 
   override def phaseName: String = Staging.name
 
+  override def runsAfter: Set[String] = Set(PostTyper.name)
+
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =

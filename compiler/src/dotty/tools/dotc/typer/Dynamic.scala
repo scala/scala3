@@ -19,8 +19,21 @@ import ErrorReporting._
 import reporting._
 
 object Dynamic {
-  def isDynamicMethod(name: Name): Boolean =
+  private def isDynamicMethod(name: Name): Boolean =
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
+
+  /** Is `tree` a reference over `Dynamic` that should be expanded to a
+   *  dyanmic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
+   */
+  def isDynamicExpansion(tree: untpd.RefTree)(using Context): Boolean =
+    isDynamicMethod(tree.name)
+    || tree.match
+          case Select(Apply(fun: untpd.RefTree, _), nme.apply)
+          if defn.isContextFunctionClass(fun.symbol.owner) =>
+            isDynamicExpansion(fun)
+          case Select(qual, nme.apply) =>
+            isDynamicMethod(qual.symbol.name) && tree.span.isSynthetic
+          case _ => false
 }
 
 object DynamicUnapply {
@@ -106,7 +119,7 @@ trait Dynamic {
    *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
-  def typedDynamicSelect(tree: untpd.Select, targs: List[Tree], pt: Type)(using Context): Tree =
+  def typedDynamicSelect(tree: untpd.Select, targs: List[untpd.Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
@@ -160,10 +173,11 @@ trait Dynamic {
    *  where c11, ..., cNn are the classOf constants representing the erasures of T11, ..., TNn.
    *
    *  It's an error if U is neither a value nor a method type, or a dependent method
-   *  type.
+   *  type
    */
   def handleStructural(tree: Tree)(using Context): Tree = {
-    val (fun @ Select(qual, name), targs, vargss) = decomposeCall(tree)
+    val fun @ Select(qual, name) = funPart(tree)
+    val vargss = termArgss(tree)
 
     def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef)

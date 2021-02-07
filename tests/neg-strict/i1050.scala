@@ -74,7 +74,7 @@ object Tiark3 {
       def brand(x: Any): p.L = x // error: underlying not concrete
     }
     trait V extends U {
-      type X = B with A
+      type X = B & A
       def p2: X = ???
     }
     val v = new V {}
@@ -95,35 +95,35 @@ object Tiark6 {
 }
 
 object Indirect {
-    trait B { type L >: Any }
-    trait A { type L <: Nothing }
-    trait U {
-      trait X {
-        val q: A & B = ???
-        type M = q.L
-      }
-      final lazy val p: X = ???
-      def brand(x: Any): p.M = x // error: conflicting bounds
+  trait B { type L >: Any }
+  trait A { type L <: Nothing }
+  trait U {
+    trait X {
+      val q: A & B = ???
+      type M = q.L
     }
+    final lazy val p: X = ???
+    def brand(x: Any): p.M = x // error: conflicting bounds
+  }
   def main(args: Array[String]): Unit = {
     val v = new U {}
     v.brand("boom!"): Nothing
   }
 }
 object Indirect2 {
-    trait B { type L >: Any }
-    trait A { type L <: Nothing }
-    trait U {
-      trait Y {
-        val r: A & B = ???
-      }
-      trait X {
-        val q: Y = ???
-        type M = q.r.L
-      }
-      final lazy val p: X = ???
-      def brand(x: Any): p.M = x // error: conflicting bounds
+  trait B { type L >: Any }
+  trait A { type L <: Nothing }
+  trait U {
+    trait Y {
+      val r: A & B = ???
     }
+    trait X {
+      val q: Y = ???
+      type M = q.r.L
+    }
+    final lazy val p: X = ???
+    def brand(x: Any): p.M = x // error: conflicting bounds
+  }
   def main(args: Array[String]): Unit = {
     val v = new U {}
     v.brand("boom!"): Nothing
@@ -144,38 +144,38 @@ object Rec1 {
     }
 }
 object Rec2 {
-    trait B { type L >: Any }
-    trait A { type L <: Nothing }
-    trait U {
-      trait Y {
-        val r: A & B & Y
-      }
-      trait X {
-        val q: Y = ???
-        type M = q.r.L
-      }
-      final lazy val p: X = ???
-      def brand(x: Any): p.M = x // error: conflicting bounds
+  trait B { type L >: Any }
+  trait A { type L <: Nothing }
+  trait U {
+    trait Y {
+      val r: A & B & Y
     }
+    trait X {
+      val q: Y = ???
+      type M = q.r.L
+    }
+    final lazy val p: X = ???
+    def brand(x: Any): p.M = x // error: conflicting bounds
+  }
   def main(args: Array[String]): Unit = {
     val v = new U {}
     v.brand("boom!"): Nothing
   }
 }
 object Indirect3 {
-    trait B { type L >: Any }
-    trait A { type L <: Nothing }
-    trait U {
-      trait Y {
-        val r: Y & A & B = ???
-      }
-      trait X {
-        val q: Y = ???
-        type M = q.r.L
-      }
-      final lazy val p: X = ???
-      def brand(x: Any): p.M = x // error: conflicting bounds
+  trait B { type L >: Any }
+  trait A { type L <: Nothing }
+  trait U {
+    trait Y {
+      val r: Y & A & B = ???
     }
+    trait X {
+      val q: Y = ???
+      type M = q.r.L
+    }
+    final lazy val p: X = ???
+    def brand(x: Any): p.M = x // error: conflicting bounds
+  }
   def main(args: Array[String]): Unit = {
     val v = new U {}
     v.brand("boom!"): Nothing

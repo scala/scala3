@@ -3,7 +3,7 @@ class Test {
   def log(): Unit = {
       logger.info(
         "My {} String {} with multiple args {}",
-        Array("a", "b", "c"): _*
+        Array("a", "b", "c")*
       )
   }
 }

@@ -15,11 +15,11 @@ class Common:
     def unit: T
 
   trait Functor[F[_]]:
-    extension [A, B](x: F[A]) def map (f: A => B): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F]:
-    extension [A, B](x: F[A]) def flatMap (f: A => F[B]): F[B]
-    extension [A, B](x: F[A]) def map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
 end Common
@@ -50,13 +50,13 @@ object Instances extends Common:
     def third = xs.tail.tail.head
 
   given listMonad: Monad[List] with
-    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
+    extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
 
   given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
-    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
+    extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x

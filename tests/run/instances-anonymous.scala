@@ -91,25 +91,25 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]] {
-    extension [A, B](x: F[A]) def map (f: A => B): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    extension [A, B](x: F[A]) def flatMap (f: A => F[B]): F[B]
-    extension [A, B](x: F[A]) def map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A](x: F[A]) def flatMap[B](f: A => F[B]): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   given Monad[List] with {
-    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
+    extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   given [Ctx]: Monad[[X] =>> Ctx => X] with {
-    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
+    extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -119,6 +119,6 @@ object Test extends App {
     fs.foldLeft(implicitly[Monad[F]].pure(x))((x: F[T], f: T => T) =>
       if (true) implicitly[Monad[F]].map(x)(f)
       else if (true) x.map(f)
-      else x.map[T, T](f)
+      else x.map[T](f)
     )
 }

@@ -28,7 +28,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
     // withLocalValue(`this`, inst) {
       sym.tree match
         case ddef: DefDef =>
-          val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+          val syms = ddef.termParamss.headOption.map(_.params).getOrElse(Nil).map(_.symbol)
           withLocalValues(syms, args.map(LocalValue.valFrom(_))) {
             eval(ddef.rhs.get)
           }
@@ -45,7 +45,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
     val evaluatedArgs = argss.flatten.map(arg => LocalValue.valFrom(eval(arg)))
     fn.symbol.tree match
       case ddef: DefDef =>
-        val syms = ddef.paramss.headOption.getOrElse(Nil).map(_.symbol)
+        val syms = ddef.termParamss.headOption.map(_.params).getOrElse(Nil).map(_.symbol)
         withLocalValues(syms, evaluatedArgs) {
           eval(ddef.rhs.get)
         }
@@ -75,7 +75,7 @@ abstract class TreeInterpreter[Q <: Quotes & Singleton](using val q: Q) {
           else LocalValue.valFrom(evalRhs)
 
         accEnv.updated(stat.symbol, evalRef)
-      case DefDef(_, _, _, _, _) =>
+      case DefDef(_, _, _, _) =>
         // TODO: record the environment for closure purposes
         accEnv
       case stat =>

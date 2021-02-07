@@ -14,6 +14,6 @@ object api {
 
   private def reflImplColor(x: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect._
-    Expr(Term.of(x).show(using Printer.TreeAnsiCode))
+    Expr(x.asTerm.show(using Printer.TreeAnsiCode))
   }
 }

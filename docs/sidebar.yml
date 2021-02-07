@@ -15,8 +15,8 @@ sidebar:
           url: docs/usage/language-versions.html
         - title: cbt-projects
           url: docs/usage/cbt-projects.html
-        - title: Scala3doc
-          url: docs/usage/scala3doc
+        - title: Scaladoc
+          url: docs/usage/scaladoc
         - title: Dottydoc [Legacy]
           url: docs/usage/dottydoc.html
     - title: Reference
@@ -81,10 +81,10 @@ sidebar:
               url: docs/reference/metaprogramming/inline.html
             - title: Macros
               url: docs/reference/metaprogramming/macros.html
-            - title: Staging
+            - title: Runtime Staging
               url: docs/reference/metaprogramming/staging.html
-            - title: TASTy Reflection
-              url: docs/reference/metaprogramming/tasty-reflect.html
+            - title: Reflection
+              url: docs/reference/metaprogramming/reflection.html
             - title: TASTy Inspection
               url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
@@ -93,7 +93,7 @@ sidebar:
               url: docs/reference/other-new-features/trait-parameters.html
             - title: Transparent Traits
               url: docs/reference/other-new-features/transparent-traits.html
-            - title: Creator Applications
+            - title: Universal Applies
               url: docs/reference/other-new-features/creator-applications.html
             - title: Export Clauses
               url: docs/reference/other-new-features/export.html
@@ -105,6 +105,8 @@ sidebar:
               url: docs/reference/other-new-features/parameter-untupling.html
             - title: Kind Polymorphism
               url: docs/reference/other-new-features/kind-polymorphism.html
+            - title: Matchable Trait
+              url: docs/reference/other-new-features/matchable.html
             - title: threadUnsafe Annotation
               url: docs/reference/other-new-features/threadUnsafe-annotation.html
             - title: targetName Annotation
@@ -139,8 +141,8 @@ sidebar:
               url: docs/reference/changed-features/overload-resolution.html
             - title: Match Expressions
               url: docs/reference/changed-features/match-syntax.html
-            - title: Vararg Patterns
-              url: docs/reference/changed-features/vararg-patterns.html
+            - title: Vararg Splices
+              url: docs/reference/changed-features/vararg-splices.html
             - title: Pattern Bindings
               url: docs/reference/changed-features/pattern-bindings.html
             - title: Pattern Matching
@@ -187,6 +189,8 @@ sidebar:
               url: docs/reference/dropped-features/nonlocal-returns.html
             - title: "[this] Qualifier"
               url: docs/reference/dropped-features/this-qualifier.html
+            - title: Wildcard initializers
+              url: docs/reference/dropped-features/wildcard-init.html
         - title: Syntax Summary
           url: docs/reference/syntax.html
     - title: Contributing

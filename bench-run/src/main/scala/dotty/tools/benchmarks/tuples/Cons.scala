@@ -23,7 +23,7 @@ class Cons {
 
   @Benchmark
   def tupleCons(): Tuple = {
-    runtime.Tuple.cons("elem", tuple)
+    runtime.Tuples.cons("elem", tuple)
   }
 
   @Benchmark

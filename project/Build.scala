@@ -28,6 +28,8 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 
 import scala.util.Properties.isJavaAtLeast
 
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+
 object MyScalaJSPlugin extends AutoPlugin {
   import Build._
 
@@ -53,17 +55,17 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-RC1-bin-20201202-67d9790-NIGHTLY"
+  val referenceVersion = "3.0.0-RC1-bin-20210122-6947b0f-NIGHTLY"
 
-  val baseVersion = "3.0.0-M3"
-  val baseSbtDottyVersion = "0.4.7"
+  val baseVersion = "3.0.0-M4"
+  val baseSbtDottyVersion = "0.5.3"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.4.6"
+  val publishedSbtDottyVersion = "0.5.2"
 
   /** scala-library version required to compile Dotty.
    *
@@ -489,7 +491,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "7.3.1-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.0.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.15.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.15.0",
@@ -1148,12 +1150,14 @@ object Build {
       },
 
       managedSources in Compile ++= {
-        val dir = fetchScalaJSSource.value / "test-suite/js/src/main/scala"
-        val filter = (
-          ("*.scala": FileFilter)
+        val dir = fetchScalaJSSource.value
+        (
+          (dir / "test-suite/js/src/main/scala" ** (("*.scala": FileFilter)
             -- "Typechecking*.scala" // defines a Scala 2 macro
+            )).get
+
+          ++ (dir / "junit-async/js/src/main/scala" ** "*.scala").get
         )
-        (dir ** filter).get
       },
 
       // A first blacklist of tests for those that do not compile or do not link
@@ -1223,10 +1227,12 @@ object Build {
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
-  val generateScala3Documentation = inputKey[Unit]("Generate documentation for dotty lib")
+  val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  lazy val `scala3doc` = project.in(file("scala3doc")).asScala3doc
-  lazy val `scala3doc-testcases` = project.in(file("scala3doc-testcases")).asScala3docTestcases
+  lazy val `scaladoc` = project.in(file("scaladoc")).asScaladoc
+  lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).asScaladocTestcases
+
+  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).asScaladocJs
 
   // sbt plugin to use Dotty in your own build, see
   // https://github.com/lampepfl/scala3-example-project for usage.
@@ -1254,6 +1260,7 @@ object Build {
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dplugin.scalaJSVersion=" + scalaJSVersion,
         "-Dsbt.boot.directory=" + ((baseDirectory in ThisBuild).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
       // Pass along ivy home and repositories settings to sbt instances run from the tests
@@ -1273,7 +1280,7 @@ object Build {
         publishLocal in `scala3-staging`,
         publishLocal in `scala3-tasty-inspector`,
         publishLocal in `scala3-doc-bootstrapped`,
-        publishLocal in `scala3doc`,
+        publishLocal in `scaladoc`,
         publishLocal in `scala3-bootstrapped` // Needed because sbt currently hardcodes the dotty artifact
       ).evaluated
     )
@@ -1344,7 +1351,7 @@ object Build {
         (publishLocal in `scala3-library-bootstrapped`).value
         (publishLocal in `scala3-doc-bootstrapped`).value
         (publishLocal in `scala3-tasty-inspector`).value
-        (publishLocal in `scala3doc`).value
+        (publishLocal in `scaladoc`).value
         (publishLocal in `scala3-compiler-bootstrapped`).value
         (publishLocal in `sbt-dotty`).value
         (publishLocal in `scala3-bootstrapped`).value
@@ -1360,6 +1367,7 @@ object Build {
       testOptions in Test += Tests.Argument(
         TestFrameworks.JUnit,
         "--include-categories=dotty.communitybuild.TestCategory",
+        "--run-listener=dotty.communitybuild.FailureSummarizer",
       ),
       Compile/run := (Compile/run).dependsOn(prepareCommunityBuild).evaluated,
       (Test / testOnly) := ((Test / testOnly) dependsOn prepareCommunityBuild).evaluated,
@@ -1476,7 +1484,7 @@ object Build {
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
       aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, dottyDoc, `scala3-sbt-bridge`).
       bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
-        `scala3-library-bootstrappedJS`, scala3doc).
+        `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
       dependsOn(dottyCompiler).
       dependsOn(dottyLibrary).
@@ -1523,63 +1531,64 @@ object Build {
       settings(commonBenchmarkSettings).
       enablePlugins(JmhPlugin)
 
-    def asScala3doc: Project = {
+    def asScaladoc: Project = {
       def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val sourcesAndRevision = s"-source-links github://lampepfl/dotty  -revision $ref -project-version $projectVersion"
-          val cmd = s""" -d $outDir -project "$name" $sourcesAndRevision $params $targets"""
+          val scala3version = stdlibVersion(Bootstrapped)
+          // TODO add versions etc.
+          val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library -source-links:github://lampepfl/dotty"
+          val revision = s"-revision $ref -project-version $projectVersion"
+          val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
           run.in(Compile).toTask(cmd)
       }
 
       def joinProducts(products: Seq[java.io.File]): String =
         products.iterator.map(_.getAbsolutePath.toString).mkString(" ")
 
-      val dokkaVersion = "1.4.10.2"
+      val flexmarkVersion = "0.42.12"
 
       project.settings(commonBootstrappedSettings).
         dependsOn(`scala3-compiler-bootstrapped`).
         dependsOn(`scala3-tasty-inspector`).
         settings(
-          // Needed to download dokka and its dependencies
-          resolvers += Resolver.jcenterRepo,
           libraryDependencies ++= Seq(
-            "org.jetbrains.dokka" % "dokka-core" % dokkaVersion,
-            "org.jetbrains.dokka" % "dokka-base" % dokkaVersion,
-            "org.jetbrains.kotlinx" % "kotlinx-html-jvm" % "0.7.2", // Needs update when dokka version changes
-            "com.vladsch.flexmark" % "flexmark-all" % "0.42.12",
+            "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-html-parser" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-gfm-tables" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-wikilink" % flexmarkVersion,
+            "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
             "nl.big-o" % "liqp" % "0.6.7",
             "org.jsoup" % "jsoup" % "1.13.1", // Needed to process .html files for static site
-            "args4j" % "args4j" % "2.33",
             Dependencies.`jackson-dataformat-yaml`,
 
-            "org.jetbrains.dokka" % "dokka-test-api" % dokkaVersion % "test",
             "com.novocode" % "junit-interface" % "0.11" % "test",
           ),
-          Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scala3doc-testcases`)).value,
-          testcasesOutputDir.in(Test) := joinProducts((`scala3doc-testcases`/Compile/products).value),
-          testcasesSourceRoot.in(Test) := (baseDirectory.in(`scala3doc-testcases`).value / "src").getAbsolutePath.toString,
-          Compile / mainClass := Some("dotty.dokka.Main"),
-          // There is a bug in dokka that prevents parallel tests withing the same jvm
-          fork.in(test) := true,
+          Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scaladoc-testcases`)).value,
+          testcasesOutputDir.in(Test) := joinProducts((`scaladoc-testcases`/Compile/products).value),
+          testcasesSourceRoot.in(Test) := (baseDirectory.in(`scaladoc-testcases`).value / "src").getAbsolutePath.toString,
+          Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
           baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
           generateSelfDocumentation := Def.taskDyn {
             generateDocumentation(
               classDirectory.in(Compile).value.getAbsolutePath,
-              "scala3doc", "scala3doc/output/self", VersionUtil.gitHash,
-              "-siteroot scala3doc/documentation -project-logo scala3doc/documentation/logo.svg " +
-              "-external-mappings " + raw".*scala.*" + "::" +
-                "scala3doc" + "::" +
-                "http://dotty.epfl.ch/api/" + ":::" +
-                raw".*java.*" + "::" +
-                "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/"
+              "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
+              "-siteroot scaladoc/documentation -project-logo scaladoc/documentation/logo.svg " +
+              "-external-mappings:" +
+                ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+                ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
             )
           }.value,
 
-          generateScala3Documentation := Def.inputTaskDyn {
+          generateScalaDocumentation := Def.inputTaskDyn {
             val dottydocExtraArgs = spaceDelimited("[output]").parsed
-            val dest = file(dottydocExtraArgs.headOption.getOrElse("scala3doc/output/scala3")).getAbsoluteFile
+            val dest = file(dottydocExtraArgs.headOption.getOrElse("scaladoc/output/scala3")).getAbsoluteFile
             val majorVersion = (scalaBinaryVersion in LocalProject("scala3-library-bootstrapped")).value
 
             val dottyJars: Seq[java.io.File] = Seq(
@@ -1590,6 +1599,12 @@ object Build {
 
             val roots = joinProducts(dottyJars)
 
+            val managedSources =
+              (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
+            val projectRoot = (ThisBuild/baseDirectory).value.toPath
+            val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
+            val docRootFile = stdLibRoot.resolve("rootdoc.txt")
+
             if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
             else Def.task{
               IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
@@ -1598,15 +1613,24 @@ object Build {
               IO.write(dest / "CNAME", "dotty.epfl.ch")
             }.dependsOn(generateDocumentation(
               roots, "Scala 3", dest.getAbsolutePath, "master",
-              "-comment-syntax wiki -siteroot scala3doc/scala3-docs -project-logo scala3doc/scala3-docs/logo.svg " +
-              "-external-mappings " + raw".*java.*" + "::" +
-                "javadoc" + "::" +
-                "https://docs.oracle.com/javase/8/docs/api/"
+              // contains special definitions which are "transplanted" elsewhere
+              // and which therefore confuse Scaladoc when accessed from this pkg
+              "-skip-by-id:scala.runtime.stdLibPatches " +
+              // MatchCase is a special type that represents match type cases,
+              // Reflect doesn't expect to see it as a standalone definition
+              // and therefore it's easier just not to document it
+              "-skip-by-id:scala.runtime.MatchCase " +
+              "-skip-by-regex:.+\\.internal($|\\..+) " +
+              "-skip-by-regex:.+\\.impl($|\\..+) " +
+              "-comment-syntax wiki -siteroot scaladoc/scala3-docs -project-logo scaladoc/scala3-docs/logo.svg " +
+              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
+              s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
+              s"-doc-root-content $docRootFile"
               ))
           }.evaluated,
 
           generateTestcasesDocumentation := Def.taskDyn {
-            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "Scala3doc testcases", "scala3doc/output/testcases", "master")
+            generateDocumentation(Build.testcasesOutputDir.in(Test).value, "scaladoc testcases", "scaladoc/output/testcases", "master")
           }.value,
 
           buildInfoKeys in Test := Seq[BuildInfoKey](
@@ -1615,19 +1639,41 @@ object Build {
             Build.testDocumentationRoot,
           ),
           Compile / buildInfoKeys := Seq[BuildInfoKey](version),
-          Compile / buildInfoPackage := "dotty.dokka",
+          Compile / buildInfoPackage := "dotty.tools.scaladoc",
+          Compile / resourceGenerators += Def.task {
+            val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
+            sbt.IO.copyFile((fullOptJS in Compile in `scaladoc-js`).value.data, jsDestinationFile)
+            Seq(jsDestinationFile)
+          }.taskValue,
+          Compile / resourceGenerators += Def.task {
+            val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scaladoc-searchbar.css"
+            val cssSourceFile = (resourceDirectory in Compile in `scaladoc-js`).value / "scaladoc-searchbar.css"
+            FileFunction.cached(streams.value.cacheDirectory / "css-cache") { (in: Set[File]) =>
+              in.headOption.map(sbt.IO.copyFile(_, cssDesitnationFile))
+              Set(cssDesitnationFile)
+            }.apply(Set(cssSourceFile)).toSeq
+          }.taskValue,
           testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
-          buildInfoPackage in Test := "dotty.dokka.test",
+          buildInfoPackage in Test := "dotty.tools.scaladoc.test",
           BuildInfoPlugin.buildInfoScopedSettings(Test),
           BuildInfoPlugin.buildInfoScopedSettings(Compile),
           BuildInfoPlugin.buildInfoDefaultSettings,
-          // Uncomment to debug dokka processing (require to run debug in listen mode on 5005 port)
-          // javaOptions.in(run) += "-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:5005,suspend=y"
         )
     }
 
-    def asScala3docTestcases: Project =
+    def asScaladocTestcases: Project =
       project.dependsOn(`scala3-compiler-bootstrapped`).settings(commonBootstrappedSettings)
+
+    def asScaladocJs: Project =
+      project.
+        enablePlugins(MyScalaJSPlugin).
+        dependsOn(`scala3-library-bootstrappedJS`).
+        settings(
+          fork in Test := false,
+          scalaJSUseMainModuleInitializer := true,
+          libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").withDottyCompat(scalaVersion.value)
+        )
+
 
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).

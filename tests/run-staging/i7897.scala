@@ -1,7 +1,7 @@
 import scala.quoted._, staging._
 
 object Test:
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   val f: Array[Int] => Int = run {
     val stagedSum: Expr[Array[Int] => Int] = '{ (arr: Array[Int]) => 6 }

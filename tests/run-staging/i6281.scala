@@ -37,7 +37,7 @@ object Test extends App {
 
   def m(using Quotes): STM[Int, RS] = k => k('{42})
 
-  implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+  implicit val toolbox: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(getClass.getClassLoader)
 
   withQuotes {
      println(Effects[RS].reify[Int] { m }.show)

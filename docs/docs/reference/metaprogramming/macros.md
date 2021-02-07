@@ -3,7 +3,7 @@ layout: doc-page
 title: "Macros"
 ---
 
-### Macros: Quotes and Splices
+## Macros: Quotes and Splices
 
 Macros are built on two well-known fundamental operations: quotation and
 splicing.  Quotation is expressed as `'{...}` for expressions and as `'[...]`
@@ -16,10 +16,7 @@ schemes with the familiar string interpolation syntax.
 println(s"Hello, $name, here is the result of 1 + 1 = ${1 + 1}")
 ```
 
-In string interpolation we _quoted_ a string and then we _spliced_ into it, two
-others. The first, `name`, is a reference to a value of type `string`, and the
-second is an arithmetic expression that will be _evaluated_ followed by the
-splicing of its string representation.
+In string interpolation we _quoted_ a string and then we _spliced_ into it, two others. The first, `name`, is a reference to a value of type [`String`](https://dotty.epfl.ch/api/scala/Predef$.html#String), and the second is an arithmetic expression that will be _evaluated_ followed by the splicing of its string representation.
 
 Quotes and splices in this section allow us to treat code in a similar way,
 effectively supporting macros. The entry point for macros is an inline method
@@ -34,15 +31,15 @@ prints it again in an error message if it evaluates to `false`.
 import scala.quoted._
 
 inline def assert(inline expr: Boolean): Unit =
-  ${ assertImpl('expr) }
+   ${ assertImpl('expr) }
 
 def assertImpl(expr: Expr[Boolean])(using Quotes) = '{
-  if (!$expr)
-    throw new AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
+   if !$expr then
+      throw AssertionError(s"failed assertion: ${${ showExpr(expr) }}")
 }
 
 def showExpr(expr: Expr[Boolean])(using Quotes): Expr[String] =
-  '{ "<some source code>" } // Better implementation later in this document
+   '{ "<some source code>" } // Better implementation later in this document
 ```
 
 If `e` is an expression, then `'{e}` represents the typed
@@ -73,7 +70,7 @@ ${'[T]} = T
 '[${T}] = T
 ```
 
-### Types for Quotations
+## Types for Quotations
 
 The type signatures of quotes and splices can be described using
 two fundamental types:
@@ -86,7 +83,7 @@ and it takes types `T` to expressions of type `Type[T]`. Splicing
 takes expressions of type `Expr[T]` to expressions of type `T` and it
 takes expressions of type `Type[T]` to types `T`.
 
-The two types can be defined in package `scala.quoted` as follows:
+The two types can be defined in package [`scala.quoted`](https://dotty.epfl.ch/api/scala/quoted.html) as follows:
 
 ```scala
 package scala.quoted
@@ -100,7 +97,7 @@ these types are provided by the system. One way to construct values of
 these types is by quoting, the other is by type-specific lifting
 operations that will be discussed later on.
 
-### The Phase Consistency Principle
+## The Phase Consistency Principle
 
 A fundamental *phase consistency principle* (PCP) regulates accesses
 to free variables in quoted and spliced code:
@@ -137,17 +134,17 @@ environment, with some restrictions and caveats since such accesses involve
 serialization. However, this does not constitute a fundamental gain in
 expressiveness.
 
-### From `Expr`s to Functions and Back
+## From `Expr`s to Functions and Back
 
 It is possible to convert any `Expr[T => R]` into `Expr[T] => Expr[R]` and back.
 These conversions can be implemented as follows:
 
 ```scala
 def to[T: Type, R: Type](f: Expr[T] => Expr[R])(using Quotes): Expr[T => R] =
-  '{ (x: T) => ${ f('x) } }
+   '{ (x: T) => ${ f('x) } }
 
 def from[T: Type, R: Type](f: Expr[T => R])(using Quotes): Expr[T] => Expr[R] =
-  (x: Expr[T]) => '{ $f($x) }
+   (x: Expr[T]) => '{ $f($x) }
 ```
 
 Note how the fundamental phase consistency principle works in two
@@ -158,9 +155,11 @@ is legal because it is spliced, then quoted.
 They can be used as follows:
 
 ```scala
-val f1: Expr[Int => String] = to((x: Expr[Int]) => '{ $x.toString }) // '{ (x: Int) => x.toString }
+val f1: Expr[Int => String] =
+   to((x: Expr[Int]) => '{ $x.toString }) // '{ (x: Int) => x.toString }
 
-val f2: Expr[Int] => Expr[String] = from('{ (x: Int) => x.toString }) // (x: Expr[Int]) => '{ ((x: Int) => x.toString)($x) }
+val f2: Expr[Int] => Expr[String] =
+   from('{ (x: Int) => x.toString }) // (x: Expr[Int]) => '{ ((x: Int) => x.toString)($x) }
 f2('{2}) // '{ ((x: Int) => x.toString)(2) }
 ```
 
@@ -169,10 +168,9 @@ In some cases we want to remove the lambda from the code, for this we provide th
 describing a function into a function mapping trees to trees.
 
 ```scala
-object Expr {
-  ...
-  def betaReduce[...](...)(...): ... = ...
-}
+object Expr:
+   ...
+   def betaReduce[...](...)(...): ... = ...
 ```
 
 The definition of `Expr.betaReduce(f)(x)` is assumed to be functionally the same as
@@ -184,7 +182,7 @@ result of beta-reducing `f(x)` if `f` is a known lambda expression.
 Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Expr[R])
 ```
 
-### Lifting Types
+## Lifting Types
 
 Types are not directly affected by the phase consistency principle.
 It is possible to use types defined at any level in any other level.
@@ -196,7 +194,7 @@ usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
 
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], Quotes): Expr[T => R] =
-  '{ (x: T) => ${ f('x) } }
+   '{ (x: T) => ${ f('x) } }
 ```
 
 In this version of `to`, the type of `x` is now the result of
@@ -208,15 +206,15 @@ reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` 
 For instance, the user-level definition of `to`:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
-  '{ (x: T) => ${ f('x) } }
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
+   '{ (x: T) => ${ f('x) } }
 ```
 
 would be rewritten to
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R], Quotes): Expr[T => R] =
-  '{ (x: t.Underlying) => ${ f('x) } }
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
+   '{ (x: t.Underlying) => ${ f('x) } }
 ```
 
 The `summon` query succeeds because there is a given instance of
@@ -225,7 +223,7 @@ to the context bound `: Type`), and the reference to that value is
 phase-correct. If that was not the case, the phase inconsistency for
 `T` would be reported as an error.
 
-### Lifting Expressions
+## Lifting Expressions
 
 Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
@@ -233,12 +231,13 @@ a compiler through staging.
 ```scala
 import scala.quoted._
 
-enum Exp {
-  case Num(n: Int)
-  case Plus(e1: Exp, e2: Exp)
-  case Var(x: String)
-  case Let(x: String, e: Exp, in: Exp)
-}
+enum Exp:
+   case Num(n: Int)
+   case Plus(e1: Exp, e2: Exp)
+   case Var(x: String)
+   case Let(x: String, e: Exp, in: Exp)
+
+import Exp._
 ```
 
 The interpreted language consists of numbers `Num`, addition `Plus`, and variables
@@ -256,16 +255,16 @@ The compiler takes an environment that maps variable names to Scala `Expr`s.
 ```scala
 import scala.quoted._
 
-def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match {
-  case Num(n) =>
-    Expr(n)
-  case Plus(e1, e2) =>
-    '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
-  case Var(x) =>
-    env(x)
-  case Let(x, e, body) =>
-    '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
-}
+def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] =
+   e match
+      case Num(n) =>
+         Expr(n)
+      case Plus(e1, e2) =>
+         '{ ${ compile(e1, env) } + ${ compile(e2, env) } }
+      case Var(x) =>
+         env(x)
+      case Let(x, e, body) =>
+         '{ val y = ${ compile(e, env) }; ${ compile(body, env + (x -> 'y)) } }
 ```
 
 Running `compile(letExp, Map())` would yield the following Scala code:
@@ -285,17 +284,16 @@ The `Expr.apply` method is defined in package `quoted`:
 ```scala
 package quoted
 
-object Expr {
-  ...
-  def apply[T: ToExpr](x: T)(using Quotes): Expr[T] = summon[ToExpr[T]].toExpr(x)
-  ...
-}
+object Expr:
+   ...
+   def apply[T: ToExpr](x: T)(using Quotes): Expr[T] =
+      summon[ToExpr[T]].toExpr(x)
 ```
 
 This method says that values of types implementing the `ToExpr` type class can be
 converted to `Expr` values using `Expr.apply`.
 
-Dotty comes with given instances of `ToExpr` for
+Scala 3 comes with given instances of `ToExpr` for
 several types including `Boolean`, `String`, and all primitive number
 types. For example, `Int` values can be converted to `Expr[Int]`
 values by wrapping the value in a `Literal` tree node. This makes use
@@ -306,10 +304,9 @@ knowing anything about the representation of `Expr` trees. For
 instance, here is a possible instance of `ToExpr[Boolean]`:
 
 ```scala
-given ToExpr[Boolean] {
-  def toExpr(b: Boolean) =
-    if (b) '{ true } else '{ false }
-}
+given ToExpr[Boolean] with
+   def toExpr(b: Boolean) =
+      if b then '{ true } else '{ false }
 ```
 
 Once we can lift bits, we can work our way up. For instance, here is a
@@ -317,15 +314,13 @@ possible implementation of `ToExpr[Int]` that does not use the underlying
 tree machinery:
 
 ```scala
-given ToExpr[Int] {
-  def toExpr(n: Int) = n match {
-    case Int.MinValue    => '{ Int.MinValue }
-    case _ if n < 0      => '{ - ${ toExpr(-n) } }
-    case 0               => '{ 0 }
-    case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
-    case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
-  }
-}
+given ToExpr[Int] with
+   def toExpr(n: Int) = n match
+      case Int.MinValue    => '{ Int.MinValue }
+      case _ if n < 0      => '{ - ${ toExpr(-n) } }
+      case 0               => '{ 0 }
+      case _ if n % 2 == 0 => '{ ${ toExpr(n / 2) } * 2 }
+      case _               => '{ ${ toExpr(n / 2) } * 2 + 1 }
 ```
 
 Since `ToExpr` is a type class, its instances can be conditional. For example,
@@ -333,10 +328,9 @@ a `List` is liftable if its element type is:
 
 ```scala
 given [T: ToExpr : Type]: ToExpr[List[T]] with
-  def toExpr(xs: List[T]) = xs match {
-    case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
-    case Nil => '{ Nil: List[T] }
-  }
+   def toExpr(xs: List[T]) = xs match
+      case head :: tail => '{ ${ Expr(head) } :: ${ toExpr(tail) } }
+      case Nil          => '{ Nil: List[T] }
 ```
 
 In the end, `ToExpr` resembles very much a serialization
@@ -348,16 +342,15 @@ analogue of lifting.
 Using lifting, we can now give the missing definition of `showExpr` in the introductory example:
 
 ```scala
-def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] = {
-  val code: String = expr.show
-  Expr(code)
-}
+def showExpr[T](expr: Expr[T])(using Quotes): Expr[String] =
+   val code: String = expr.show
+   Expr(code)
 ```
 
 That is, the `showExpr` method converts its `Expr` argument to a string (`code`), and lifts
 the result back to an `Expr[String]` using `Expr.apply`.
 
-### Lifting Types
+## Lifting Types
 
 The previous section has shown that the metaprogramming framework has
 to be able to take a type `T` and convert it to a type tree of type
@@ -388,41 +381,36 @@ In fact Scala 2's type tag feature can be understood as a more ad-hoc version of
 `quoted.Type`. As was the case for type tags, the implicit search for a `quoted.Type`
 is handled by the compiler, using the algorithm sketched above.
 
-### Relationship with Inline
+## Relationship with `inline`
 
 Seen by itself, principled metaprogramming looks more like a framework for
 runtime metaprogramming than one for compile-time metaprogramming with macros.
-But combined with Dotty’s `inline` feature it can be turned into a compile-time
+But combined with Scala 3’s `inline` feature it can be turned into a compile-time
 system. The idea is that macro elaboration can be understood as a combination of
 a macro library and a quoted program. For instance, here’s the `assert` macro
 again together with a program that calls `assert`.
 
 ```scala
-object Macros {
+object Macros:
 
-  inline def assert(inline expr: Boolean): Unit =
-    ${ assertImpl('expr) }
+   inline def assert(inline expr: Boolean): Unit =
+      ${ assertImpl('expr) }
 
-  def assertImpl(expr: Expr[Boolean])(using Quotes) =
-    val failMsg: Expr[String] = Expr("failed assertion: " + expr.show)
-    '{ if !($expr) then throw new AssertionError($failMsg) }
-}
+   def assertImpl(expr: Expr[Boolean])(using Quotes) =
+      val failMsg: Expr[String] = Expr("failed assertion: " + expr.show)
+      '{ if !($expr) then throw new AssertionError($failMsg) }
 
-object App {
-  val program = {
-    val x = 1
-    Macros.assert(x != 0)
-  }
-}
+@main def program =
+   val x = 1
+   Macros.assert(x != 0)
 ```
 
 Inlining the `assert` function would give the following program:
 
 ```scala
-val program = {
-  val x = 1
-  ${ Macros.assertImpl('{ x != 0) } }
-}
+@main def program =
+   val x = 1
+   ${ Macros.assertImpl('{ x != 0) } }
 ```
 
 The example is only phase correct because `Macros` is a global value and
@@ -442,9 +430,9 @@ compiled before they are used. Hence, conceptually the program part
 should be treated by the compiler as if it was quoted:
 
 ```scala
-val program = '{
-  val x = 1
-  ${ Macros.assertImpl('{ x != 0 }) }
+@main def program = '{
+   val x = 1
+   ${ Macros.assertImpl('{ x != 0 }) }
 }
 ```
 
@@ -477,18 +465,18 @@ implementation of the `power` function that makes use of a statically known expo
 inline def power(x: Double, inline n: Int) = ${ powerCode('x, 'n) }
 
 private def powerCode(x: Expr[Double], n: Expr[Int])(using Quotes): Expr[Double] =
-  n.value match
-    case Some(m) => powerCode(x, m)
-    case None => '{ Math.pow($x, $y) }
+   n.value match
+      case Some(m) => powerCode(x, m)
+      case None => '{ Math.pow($x, $n.toDouble) }
 
 private def powerCode(x: Expr[Double], n: Int)(using Quotes): Expr[Double] =
-  if (n == 0) '{ 1.0 }
-  else if (n == 1) x
-  else if (n % 2 == 0) '{ val y = $x * $x; ${ powerCode('y, n / 2) } }
-  else '{ $x * ${ powerCode(x, n - 1) } }
+   if n == 0 then '{ 1.0 }
+   else if n == 1 then x
+   else if n % 2 == 0 then '{ val y = $x * $x; ${ powerCode('y, n / 2) } }
+   else '{ $x * ${ powerCode(x, n - 1) } }
 ```
 
-### Scope Extrusion
+## Scope Extrusion
 
 Quotes and splices are duals as far as the PCP is concerned. But there is an
 additional restriction that needs to be imposed on splices to guarantee
@@ -531,30 +519,32 @@ appearing in splices. In a base language with side effects we would have to do t
 anyway: Since `run` runs arbitrary code it can always produce a side effect if
 the code it runs produces one.
 
-### Example Expansion
+## Example Expansion
 
 Assume we have two methods, one `map` that takes an `Expr[Array[T]]` and a
 function `f` and one `sum` that performs a sum by delegating to `map`.
 
 ```scala
-object Macros {
-  def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])(using Type[T], Quotes): Expr[Unit] = '{
-    var i: Int = 0
-    while (i < ($arr).length) {
-      val element: T = ($arr)(i)
-      ${f('element)}
-      i += 1
-    }
-  }
+object Macros:
 
-  def sum(arr: Expr[Array[Int]])(using Quotes): Expr[Int] = '{
-    var sum = 0
-    ${ map(arr, x => '{sum += $x}) }
-    sum
-  }
+   def map[T](arr: Expr[Array[T]], f: Expr[T] => Expr[Unit])
+             (using Type[T], Quotes): Expr[Unit] = '{
+      var i: Int = 0
+      while i < ($arr).length do
+         val element: T = ($arr)(i)
+         ${f('element)}
+         i += 1
+   }
 
-  inline def sum_m(arr: Array[Int]): Int = ${sum('arr)}
-}
+   def sum(arr: Expr[Array[Int]])(using Quotes): Expr[Int] = '{
+      var sum = 0
+      ${ map(arr, x => '{sum += $x}) }
+      sum
+   }
+
+   inline def sum_m(arr: Array[Int]): Int = ${sum('arr)}
+
+end Macros
 ```
 
 A call to `sum_m(Array(1,2,3))` will first inline `sum_m`:
@@ -593,11 +583,10 @@ val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 var sum = 0
 val f = x => '{sum += $x}
 var i: Int = 0
-while (i < (arr).length) {
-  val element: Int = (arr)(i)
-  sum += element
-  i += 1
-}
+while i < arr.length do
+   val element: Int = (arr)(i)
+   sum += element
+   i += 1
 sum
 ```
 
@@ -607,43 +596,42 @@ Finally cleanups and dead code elimination:
 val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 var sum = 0
 var i: Int = 0
-while (i < arr.length) {
-  val element: Int = arr(i)
-  sum += element
-  i += 1
-}
+while i < arr.length do
+   val element: Int = arr(i)
+   sum += element
+   i += 1
 sum
 ```
 
-### Find implicits within a macro
+## Find implicits within a macro
 
 Similarly to the `summonFrom` construct, it is possible to make implicit search available
 in a quote context. For this we simply provide `scala.quoted.Expr.summon`:
 
 ```scala
+import scala.collection.immutable.{ TreeSet, HashSet }
 inline def setFor[T]: Set[T] = ${ setForExpr[T] }
 
-def setForExpr[T: Type](using Quotes): Expr[Set[T]] = {
-  Expr.summon[Ordering[T]] match {
-    case Some(ord) => '{ new TreeSet[T]()($ord) }
-    case _ => '{ new HashSet[T] }
-  }
-}
+def setForExpr[T: Type](using Quotes): Expr[Set[T]] =
+   Expr.summon[Ordering[T]] match
+      case Some(ord) => '{ new TreeSet[T]()($ord) }
+      case _ => '{ new HashSet[T] }
 ```
 
-### Relationship with Whitebox Inline
+## Relationship with Whitebox Inline
 
 [Inline](./inline.md) documents inlining. The code below introduces a whitebox
 inline method that can calculate either a value of type `Int` or a value of type
 `String`.
 
 ```scala
-transparent inline def defaultOf(inline str: String) = ${ defaultOfImpl('str) }
+transparent inline def defaultOf(inline str: String) =
+   ${ defaultOfImpl('str) }
 
 def defaultOfImpl(strExpr: Expr[String])(using Quotes): Expr[Any] =
-  strExpr.valueOrError match
-    case "int" => '{1}
-    case "string" => '{"a"}
+   strExpr.valueOrError match
+      case "int" => '{1}
+      case "string" => '{"a"}
 
 // in a separate file
 val a: Int = defaultOf("int")
@@ -651,19 +639,19 @@ val b: String = defaultOf("string")
 
 ```
 
-### Defining a macro and using it in a single project
+## Defining a macro and using it in a single project
 
 It is possible to define macros and use them in the same project as long as the implementation
 of the macros does not have run-time dependencies on code in the file where it is used.
 It might still have compile-time dependencies on types and quoted code that refers to the use-site file.
 
-To provide this functionality Dotty provides a transparent compilation mode where files that
+To provide this functionality Scala 3 provides a transparent compilation mode where files that
 try to expand a macro but fail because the macro has not been compiled yet are suspended.
 If there are any suspended files when the compilation ends, the compiler will automatically restart
 compilation of the suspended files using the output of the previous (partial) compilation as macro classpath.
 In case all files are suspended due to cyclic dependencies the compilation will fail with an error.
 
-### Pattern matching on quoted expressions
+## Pattern matching on quoted expressions
 
 It is possible to deconstruct or extract values out of `Expr` using pattern matching.
 
@@ -677,21 +665,21 @@ These could be used in the following way to optimize any call to `sum` that has 
 
 ```scala
 inline def sum(inline args: Int*): Int = ${ sumExpr('args) }
-private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match {
-  case Varargs(args @ Exprs(argValues)) =>
-    // args is of type Seq[Expr[Int]]
-    // argValues is of type Seq[Int]
-    Expr(argValues.sum) // precompute result of sum
-  case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
-    val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
-    val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
-  case _ =>
-    '{ $argsExpr.sum }
-}
+private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] =
+   argsExpr match
+      case Varargs(args @ Exprs(argValues)) =>
+         // args is of type Seq[Expr[Int]]
+         // argValues is of type Seq[Int]
+         Expr(argValues.sum) // precompute result of sum
+      case Varargs(argExprs) => // argExprs is of type Seq[Expr[Int]]
+         val staticSum: Int = argExprs.map(_.value.getOrElse(0)).sum
+         val dynamicSum: Seq[Expr[Int]] = argExprs.filter(_.value.isEmpty)
+         dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
+      case _ =>
+         '{ $argsExpr.sum }
 ```
 
-#### Quoted patterns
+### Quoted patterns
 
 Quoted pattens allow deconstructing complex code that contains a precise structure, types or methods.
 Patterns `'{ ... }` can be placed in any location where Scala expects a pattern.
@@ -700,87 +688,94 @@ For example
 
 ```scala
 optimize {
-  sum(sum(1, a, 2), 3, b)
+   sum(sum(1, a, 2), 3, b)
 } // should be optimized to 6 + a + b
 ```
 
 ```scala
 def sum(args: Int*): Int = args.sum
 inline def optimize(inline arg: Int): Int = ${ optimizeExpr('arg) }
-private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] = body match {
-  // Match a call to sum without any arguments
-  case '{ sum() } => Expr(0)
-  // Match a call to sum with an argument $n of type Int. n will be the Expr[Int] representing the argument.
-  case '{ sum($n) } => n
-  // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
-  case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
-  case body => body
-}
-private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] = {
-    def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match {
+private def optimizeExpr(body: Expr[Int])(using Quotes): Expr[Int] =
+   body match
+      // Match a call to sum without any arguments
+      case '{ sum() } => Expr(0)
+      // Match a call to sum with an argument $n of type Int.
+      // n will be the Expr[Int] representing the argument.
+      case '{ sum($n) } => n
+      // Match a call to sum and extracts all its args in an `Expr[Seq[Int]]`
+      case '{ sum(${Varargs(args)}: _*) } => sumExpr(args)
+      case body => body
+
+private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] =
+   def flatSumArgs(arg: Expr[Int]): Seq[Expr[Int]] = arg match
       case '{ sum(${Varargs(subArgs)}: _*) } => subArgs.flatMap(flatSumArgs)
       case arg => Seq(arg)
-    }
-    val args2 = args1.flatMap(flatSumArgs)
-    val staticSum: Int = args2.map(_.value.getOrElse(0)).sum
-    val dynamicSum: Seq[Expr[Int]] = args2.filter(_.value.isEmpty)
-    dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
-}
+   val args2 = args1.flatMap(flatSumArgs)
+   val staticSum: Int = args2.map(_.value.getOrElse(0)).sum
+   val dynamicSum: Seq[Expr[Int]] = args2.filter(_.value.isEmpty)
+   dynamicSum.foldLeft(Expr(staticSum))((acc, arg) => '{ $acc + $arg })
 ```
 
-#### Recovering precise types using patterns
+### Recovering precise types using patterns
 
 Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
 
 ```scala
-def f(expr: Expr[Any])(using Quotes) =
-  expr match
-    case '{ $x: t } =>
-      // If the pattern match succeeds, then there is some type `t` such that
+def f(expr: Expr[Any])(using Quotes) = expr match
+   case '{ $x: t } =>
+      // If the pattern match succeeds, then there is
+      // some type `t` such that
       // - `x` is bound to a variable of type `Expr[t]`
-      // - `t` is bound to a new type `t` and a given instance `Type[t]` is provided for it
-      // That is, we have `x: Expr[t]` and `given Type[t]`, for some (unknown) type `t`.
+      // - `t` is bound to a new type `t` and a given
+      //   instance `Type[t]` is provided for it
+      // That is, we have `x: Expr[t]` and `given Type[t]`,
+      // for some (unknown) type `t`.
 ```
 
 This might be used to then perform an implicit search as in:
 
 ```scala
-extension (inline sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
+extension (inline sc: StringContext)
+   inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
 
-private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] = {
-  argsExpr match {
-    case Varargs(argExprs) =>
-      val argShowedExprs = argExprs.map {
-        case '{ $arg: tp } =>
-          val showTp = Type.of[Show[tp]]
-          Expr.summon(using showTp) match {
-            case Some(showExpr) => '{ $showExpr.show($arg) }
-            case None           => report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
-          }
-      }
-      val newArgsExpr = Varargs(argShowedExprs)
-      '{ $sc.s($newArgsExpr: _*) }
-    case _ =>
-      // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
-      report.error(s"Args must be explicit", argsExpr)
-      '{???}
-  }
-}
+private def showMeExpr(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
+   import quotes.reflect.report
+   argsExpr match
+      case Varargs(argExprs) =>
+         val argShowedExprs = argExprs.map {
+            case '{ $arg: tp } =>
+               Expr.summon[Show[tp]] match
+                  case Some(showExpr) =>
+                     '{ $showExpr.show($arg) }
+                  case None =>
+                     report.error(s"could not find implicit for ${Type.show[Show[tp]]}", arg); '{???}
+         }
+         val newArgsExpr = Varargs(argShowedExprs)
+         '{ $sc.s($newArgsExpr: _*) }
+      case _ =>
+         // `new StringContext(...).showMeExpr(args: _*)` not an explicit `showMeExpr"..."`
+         report.error(s"Args must be explicit", argsExpr)
+         '{???}
 
-trait Show[-T] {
-  def show(x: T): String
-}
+trait Show[-T]:
+   def show(x: T): String
+
+// in a different file
+given Show[Boolean] with
+   def show(b: Boolean) = "boolean!"
+
+println(showMe"${true}")
 ```
 
-#### Open code patterns
+### Open code patterns
 
-Quote pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
+Quoted pattern matching also provides higher-order patterns to match open terms. If a quoted term contains a definition,
 then the rest of the quote can refer to this definition.
 
 ```scala
 '{
-  val x: Int = 4
-  x * x
+   val x: Int = 4
+   x * x
 }
 ```
 
@@ -796,30 +791,28 @@ the subexpression of type `Expr[Int]` is bound to `body` as an `Expr[Int => Int]
 ```scala
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 
-private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = {
-  e match {
-    case '{ val y: Int = $x; $body(y): Int } =>
-      // body: Expr[Int => Int] where the argument represents references to y
+private def evalExpr(e: Expr[Int])(using Quotes): Expr[Int] = e match
+   case '{ val y: Int = $x; $body(y): Int } =>
+      // body: Expr[Int => Int] where the argument represents
+      // references to y
       evalExpr(Expr.betaReduce('{$body(${evalExpr(x)})}))
-    case '{ ($x: Int) * ($y: Int) } =>
+   case '{ ($x: Int) * ($y: Int) } =>
       (x.value, y.value) match
-        case (Some(a), Some(b)) => Expr(a * b)
-        case _ => e
-    case _ => e
-  }
-}
+         case (Some(a), Some(b)) => Expr(a * b)
+         case _ => e
+   case _ => e
 ```
 
 ```scala
 eval { // expands to the code: (16: Int)
-  val x: Int = 4
-  x * x
+   val x: Int = 4
+   x * x
 }
 ```
 
 We can also close over several bindings using `$b(a1, a2, ..., an)`.
 To match an actual application we can use braces on the function part `${b}(a1, a2, ..., an)`.
 
-### More details
+## More details
 
 [More details](./macros-spec.md)

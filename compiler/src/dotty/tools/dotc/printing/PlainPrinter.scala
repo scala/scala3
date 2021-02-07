@@ -219,7 +219,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        toTextLocal(tpe) ~ " " ~ toText(annot)
+        if annot.symbol == defn.InlineParamAnnot then toText(tpe)
+        else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
@@ -419,13 +420,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
       if (sym.isClass) "package object class"
       else "package object"
     else if (sym.isAnonymousClass) "anonymous class"
-    else if (flags.is(ModuleClass)) "module class"
-    else if (flags.is(ModuleVal)) "module"
+    else if (flags.is(ModuleClass)) "object class"
+    else if (flags.is(ModuleVal)) "object"
     else if (flags.is(Trait)) "trait"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (sym.isGetter) "getter"
     else if (sym.isSetter) "setter"
+    else if sym.is(Param) then "parameter"
+    else if sym.is(Given) then "given instance"
     else if (flags.is(Lazy)) "lazy value"
     else if (flags.is(Mutable)) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"

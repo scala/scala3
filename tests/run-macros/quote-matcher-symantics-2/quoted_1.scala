@@ -21,7 +21,7 @@ object Macros {
 
     def lift(e: Expr[DSL])(implicit env: Map[Int, Expr[T]]): Expr[T] = e match {
 
-      case '{ LitDSL(${Const(c)}) } => sym.value(c)
+      case '{ LitDSL(${Expr(c)}) } => sym.value(c)
 
       case '{ ($x: DSL) + ($y: DSL) } => sym.plus(lift(x), lift(y))
 
@@ -35,7 +35,7 @@ object Macros {
           lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
         }
 
-      case '{ envVar(${Const(i)}) } => env(i)
+      case '{ envVar(${Expr(i)}) } => env(i)
 
       case _ =>
         import quotes.reflect._
@@ -70,7 +70,7 @@ object UnsafeExpr {
   }
   private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[quotes.reflect.ValDef], Expr[R]) = {
     import quotes.reflect._
-    val Block(List(DefDef("$anonfun", Nil, List(params), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
+    val Block(List(DefDef("$anonfun", List(TermParamClause(params)), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 

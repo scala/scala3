@@ -55,14 +55,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   end extension
 
-  extension [X](self: scala.quoted.Expr[Any])
+  extension (self: scala.quoted.Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using scala.quoted.Type[X]): Boolean =
+    def isExprOf[X](using scala.quoted.Type[X]): Boolean =
       reflect.TypeReprMethods.<:<(reflect.asTerm(self).tpe)(reflect.TypeRepr.of[X])
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
-      if isExprOf[X] then
+    def asExprOf[X](using scala.quoted.Type[X]): scala.quoted.Expr[X] = {
+      if self.isExprOf[X] then
         self.asInstanceOf[scala.quoted.Expr[X]]
       else
         throw Exception(
@@ -107,9 +107,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => throw new Exception("Expected a Term but was: " + self)
       end extension
 
-      extension [T](self: Tree)
-        def asExprOf(using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
-          QuotesImpl.this.asExprOf[T](self.asExpr)(using tp)
+      extension (self: Tree)
+        def asExprOf[T](using tp: scala.quoted.Type[T]): scala.quoted.Expr[T] =
+          QuotesImpl.this.asExprOf(self.asExpr)[T](using tp)
       end extension
 
       extension [ThisTree <: Tree](self: ThisTree)
@@ -153,8 +153,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Import extends ImportModule:
       def apply(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         withDefaultPos(tpd.Import(expr, selectors))
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
+        if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
         tpd.cpy.Import(original)(expr, selectors)
       def unapply(tree: Import): (Term, List[Selector]) =
         (tree.expr, tree.selectors)
@@ -256,18 +258,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end DefDefTypeTest
 
     object DefDef extends DefDefModule:
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef =
-        withDefaultPos(tpd.polyDefDef(symbol.asTerm, tparams => vparamss => yCheckedOwners(rhsFn(tparams)(vparamss), symbol).getOrElse(tpd.EmptyTree)))
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, typeParams, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
-      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.typeParams, ddef.paramss, ddef.tpt, optional(ddef.rhs))
+      def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
+        withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
+          yCheckedOwners(rhsFn(prefss), symbol).getOrElse(tpd.EmptyTree)
+        ))
+      def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
+        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+      def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
+        (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def typeParams: List[TypeDef] = self.tparams
-        def paramss: List[List[ValDef]] = self.vparamss
+        def paramss: List[ParamClause] = self.paramss
+        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams
+        def trailingParamss: List[ParamClause] = self.trailingParamss
+        def termParamss: List[TermParamClause] = self.termParamss
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -380,7 +386,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -744,10 +750,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head), meth))
+        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head.map(withDefaultPos)), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -1478,6 +1484,59 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end AlternativesMethods
 
+    type ParamClause = tpd.ParamClause
+
+    object ParamClause extends ParamClauseModule
+
+    given ParamClauseMethods: ParamClauseMethods with
+      extension (self: ParamClause)
+        def params: List[ValDef] | List[TypeDef] = self
+    end ParamClauseMethods
+
+    type TermParamClause = List[tpd.ValDef]
+
+    given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] with
+      def unapply(x: ParamClause): Option[TermParamClause & x.type] = x match
+        case tpd.ValDefs(_) => Some(x.asInstanceOf[TermParamClause & x.type])
+        case _ => None
+    end TermParamClauseTypeTest
+
+    object TermParamClause extends TermParamClauseModule:
+      def apply(params: List[ValDef]): TermParamClause =
+        if yCheck then
+          val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
+          assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+        params
+      def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
+    end TermParamClause
+
+    given TermParamClauseMethods: TermParamClauseMethods with
+      extension (self: TermParamClause)
+        def params: List[ValDef] = self
+        def isImplicit: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
+    end TermParamClauseMethods
+
+    type TypeParamClause = List[tpd.TypeDef]
+
+    given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] with
+      def unapply(x: ParamClause): Option[TypeParamClause & x.type] = x match
+        case tpd.TypeDefs(_) => Some(x.asInstanceOf[TypeParamClause & x.type])
+        case _ => None
+    end TypeParamClauseTypeTest
+
+    object TypeParamClause extends TypeParamClauseModule:
+      def apply(params: List[TypeDef]): TypeParamClause =
+        if params.isEmpty then throw IllegalArgumentException("Empty type parameters")
+        params
+      def unapply(x: TypeParamClause): Some[List[TypeDef]] = Some(x)
+    end TypeParamClause
+
+    given TypeParamClauseMethods: TypeParamClauseMethods with
+      extension (self: TypeParamClause)
+        def params: List[TypeDef] = self
+    end TypeParamClauseMethods
+
     type Selector = untpd.ImportSelector
 
     object Selector extends SelectorModule
@@ -1608,7 +1667,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
         def widen: TypeRepr = self.widen
-        def widenTermRefExpr: TypeRepr = self.widenTermRefExpr
+        def widenTermRefByName: TypeRepr = self.widenTermRefExpr
+        def widenByName: TypeRepr = self.widenExpr
         def dealias: TypeRepr = self.dealias
         def simplified: TypeRepr = self.simplified
         def classSymbol: Option[Symbol] =
@@ -2534,6 +2594,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def ScalaPackage: Symbol = dotc.core.Symbols.defn.ScalaPackageVal
       def ScalaPackageClass: Symbol = dotc.core.Symbols.defn.ScalaPackageClass
       def AnyClass: Symbol = dotc.core.Symbols.defn.AnyClass
+      def MatchableClass: Symbol = dotc.core.Symbols.defn.MatchableClass
       def AnyValClass: Symbol = dotc.core.Symbols.defn.AnyValClass
       def ObjectClass: Symbol = dotc.core.Symbols.defn.ObjectClass
       def AnyRefClass: Symbol = dotc.core.Symbols.defn.AnyRefAlias
@@ -2662,7 +2723,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     type SourceFile = dotc.util.SourceFile
 
     object SourceFile extends SourceFileModule {
-      def current: SourceFile = ctx.compilationUnit.source
+      def current: SourceFile =
+        if ctx.compilationUnit == null then
+          throw new java.lang.UnsupportedOperationException(
+            "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
+        ctx.compilationUnit.source
     }
 
     given SourceFileMethods: SourceFileMethods with

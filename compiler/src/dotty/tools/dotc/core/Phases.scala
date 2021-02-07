@@ -16,24 +16,25 @@ import Periods._
 import typer.{FrontEnd, RefChecks}
 import typer.ImportInfo.withRootImports
 import ast.tpd
+import scala.annotation.internal.sharable
 
 object Phases {
 
   inline def phaseOf(id: PhaseId)(using Context): Phase =
     ctx.base.phases(id)
 
+  @sharable object NoPhase extends Phase {
+    override def exists: Boolean = false
+    def phaseName: String = "<no phase>"
+    def run(using Context): Unit = unsupported("run")
+    def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
+  }
+
   trait PhasesBase {
     this: ContextBase =>
 
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
-
-    object NoPhase extends Phase {
-      override def exists: Boolean = false
-      def phaseName: String = "<no phase>"
-      def run(using Context): Unit = unsupported("run")
-      def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
-    }
 
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
@@ -198,6 +199,7 @@ object Phases {
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
     private var myPickleQuotesPhase: Phase = _
+    private var myFirstTransformPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
     private var myRefChecksPhase: Phase = _
     private var myPatmatPhase: Phase = _
@@ -217,6 +219,7 @@ object Phases {
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
     final def pickleQuotesPhase: Phase = myPickleQuotesPhase
+    final def firstTransformPhase: Phase = myFirstTransformPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
     final def refchecksPhase: Phase = myRefChecksPhase
     final def patmatPhase: Phase = myPatmatPhase
@@ -239,6 +242,7 @@ object Phases {
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
       myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
+      myFirstTransformPhase = phaseOfClass(classOf[FirstTransform])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
       myRefChecksPhase = phaseOfClass(classOf[RefChecks])
       myElimRepeatedPhase = phaseOfClass(classOf[ElimRepeated])
@@ -385,10 +389,10 @@ object Phases {
       exists && id <= that.id
 
     final def prev: Phase =
-      if (id > FirstPhaseId) myBase.phases(start - 1) else myBase.NoPhase
+      if (id > FirstPhaseId) myBase.phases(start - 1) else NoPhase
 
     final def next: Phase =
-      if (hasNext) myBase.phases(end + 1) else myBase.NoPhase
+      if (hasNext) myBase.phases(end + 1) else NoPhase
 
     final def hasNext: Boolean = start >= FirstPhaseId && end + 1 < myBase.phases.length
 
@@ -403,6 +407,7 @@ object Phases {
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
   def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
+  def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
   def elimRepeatedPhase(using Context): Phase           = ctx.base.elimRepeatedPhase
   def extensionMethodsPhase(using Context): Phase       = ctx.base.extensionMethodsPhase

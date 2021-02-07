@@ -174,3 +174,10 @@
 [submodule "community-build/community-projects/scalatestplus-junit"]
 	path = community-build/community-projects/scalatestplus-junit
 	url = https://github.com/dotty-staging/scalatestplus-junit.git
+[submodule "community-build/community-projects/izumi-reflect"]
+	path = community-build/community-projects/izumi-reflect
+	url = https://github.com/dotty-staging/izumi-reflect.git
+[submodule "community-build/community-projects/perspective"]
+	path = community-build/community-projects/perspective
+	url = https://github.com/dotty-staging/perspective.git
+	branch = dotty/nightly

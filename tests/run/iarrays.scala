@@ -43,7 +43,7 @@ object Test extends App {
         k += 1
       }
     }
-    IArray(flat: _*)
+    IArray(flat*)
   }
 
   val ys = IArray.concat(xs, xs, xs)

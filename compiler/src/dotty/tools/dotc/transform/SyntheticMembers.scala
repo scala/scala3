@@ -117,7 +117,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
       def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToArgs(This(clazz) :: vrefs)
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) :: vrefs)
 
       def ownName: Tree =
         Literal(Constant(clazz.name.stripModuleClassSuffix.toString))
@@ -521,7 +521,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     else {
       val cases =
         for ((child, idx) <- cls.children.zipWithIndex) yield {
-          val patType = if (child.isTerm) child.termRef else child.rawTypeRef
+          val patType = if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
@@ -563,7 +563,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       if (existing.exists && !existing.is(Deferred)) existing
       else {
         val monoType =
-          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.rawTypeRef), coord = clazz.coord)
+          newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
         monoType.entered
       }
@@ -584,9 +584,9 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (clazz.is(Module)) {
       if (clazz.is(Case)) makeSingletonMirror()
       else if (linked.isGenericProduct) makeProductMirror(linked)
-      else if (linked.isGenericSum) makeSumMirror(linked)
+      else if (linked.isGenericSum(clazz)) makeSumMirror(linked)
       else if (linked.is(Sealed))
-        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum}")
+        derive.println(i"$linked is not a sum because ${linked.whyNotGenericSum(clazz)}")
     }
     else if (impl.removeAttachment(ExtendsSingletonMirror).isDefined)
       makeSingletonMirror()

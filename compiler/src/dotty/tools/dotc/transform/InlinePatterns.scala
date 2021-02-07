@@ -56,6 +56,6 @@ class InlinePatterns extends MiniPhase:
     fn match
       case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
         template.body match
-          case List(ddef @ DefDef(`name`, _, _, _, _)) => BetaReduce(ddef, args)
+          case List(ddef @ DefDef(`name`, _, _, _)) => BetaReduce(ddef, args)
           case _ => tree
       case _ => tree

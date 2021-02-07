@@ -185,8 +185,9 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             field.setFlag(Mutable)
             myState.classesThatNeedReleaseFence += sym.owner
           val initializer =
-            if (isErasableBottomField(field, tree.vparamss.head.head.tpt.tpe.classSymbol)) Literal(Constant(()))
-            else Assign(ref(field), adaptToField(field, ref(tree.vparamss.head.head.symbol)))
+            if isErasableBottomField(field, tree.termParamss.head.head.tpt.tpe.classSymbol)
+            then Literal(Constant(()))
+            else Assign(ref(field), adaptToField(field, ref(tree.termParamss.head.head.symbol)))
           val setterDef = cpy.DefDef(tree)(rhs = transformFollowingDeep(initializer)(using ctx.withOwner(sym)))
           removeUnwantedAnnotations(sym, defn.SetterMetaAnnot)
           setterDef

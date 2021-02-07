@@ -61,7 +61,7 @@ object Annotations {
       mySym match {
         case symFn: (Context ?=> Symbol) @unchecked =>
           mySym = null
-          mySym = atPhaseNoLater(picklerPhase)(symFn)
+          mySym = atPhaseBeforeTransforms(symFn)
             // We should always produce the same annotation tree, no matter when the
             // annotation is evaluated. Setting the phase to a pre-transformation phase
             // seems to be enough to ensure this (note that after erasure, `ctx.typer`
@@ -79,7 +79,7 @@ object Annotations {
       myTree match {
         case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
-          myTree = atPhaseNoLater(picklerPhase)(treeFn)
+          myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
       }
       myTree.asInstanceOf[Tree]
@@ -112,7 +112,7 @@ object Annotations {
       myTree match {
         case treeFn: (Context ?=> Tree) @unchecked =>
           myTree = null
-          myTree = atPhaseNoLater(picklerPhase)(treeFn)
+          myTree = atPhaseBeforeTransforms(treeFn)
         case _ =>
       }
       myTree.asInstanceOf[Tree]
@@ -124,7 +124,7 @@ object Annotations {
   object LazyBodyAnnotation {
     def apply(bodyFn: Context ?=> Tree): LazyBodyAnnotation =
       new LazyBodyAnnotation:
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => bodyFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> bodyFn(using ctx)
   }
 
   object Annotation {
@@ -155,15 +155,15 @@ object Annotations {
     /** Create an annotation where the tree is computed lazily. */
     def deferred(sym: Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
         protected var mySym: Symbol | (Context ?=> Symbol) = sym
       }
 
     /** Create an annotation where the symbol and the tree are computed lazily. */
     def deferredSymAndTree(symFn: Context ?=> Symbol)(treeFn: Context ?=> Tree)(using Context): Annotation =
       new LazyAnnotation {
-        protected var mySym: Symbol | (Context ?=> Symbol) = (using ctx) => symFn(using ctx)
-        protected var myTree: Tree | (Context ?=> Tree) = (using ctx) => treeFn(using ctx)
+        protected var mySym: Symbol | (Context ?=> Symbol) = ctx ?=> symFn(using ctx)
+        protected var myTree: Tree | (Context ?=> Tree) = ctx ?=> treeFn(using ctx)
       }
 
     /** Extractor for child annotations */

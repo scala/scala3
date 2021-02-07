@@ -23,7 +23,8 @@ object DottyPlugin extends AutoPlugin {
     val isDotty = settingKey[Boolean]("Is this project compiled with Dotty?")
     val isDottyJS = settingKey[Boolean]("Is this project compiled with Dotty and Scala.js?")
 
-    val useScala3doc = settingKey[Boolean]("Use Scala3doc as the documentation tool")
+    val useScaladoc = settingKey[Boolean]("Use scaladoc as the documentation tool")
+    val useScala3doc = useScaladoc
     val tastyFiles = taskKey[Seq[File]]("List all testy files")
 
     // NOTE:
@@ -174,7 +175,7 @@ object DottyPlugin extends AutoPlugin {
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
     onLoad in Global := onLoad.in(Global).value.andThen { state =>
 
-      val requiredVersion = ">=1.3.6"
+      val requiredVersion = ">=1.4.4"
 
       val sbtV = sbtVersion.value
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
@@ -254,6 +255,10 @@ object DottyPlugin extends AutoPlugin {
           None: Option[File]
         }
       }.value,
+
+      // Prevent the consoleProject task from using the Scala 3 compiler bridge
+      // The consoleProject must load the Scala 2.12 instance and the sbt classpath
+      consoleProject / scalaCompilerBridgeBinaryJar := None,
 
       // Needed for RCs publishing
       scalaBinaryVersion := {
@@ -366,15 +371,21 @@ object DottyPlugin extends AutoPlugin {
       }.value,
 
       // Configuration for the doctool
-      resolvers ++= (if(!useScala3doc.value) Nil else Seq(Resolver.jcenterRepo)),
-      useScala3doc := false,
+      resolvers ++= (if(!useScaladoc.value) Nil else Seq(Resolver.jcenterRepo)),
+      useScaladoc := {
+        val v = scalaVersion.value
+        v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
+      },
       // We need to add doctool classes to the classpath so they can be called
       scalaInstance in doc := Def.taskDyn {
         if (isDotty.value)
-          if (useScala3doc.value)
-            dottyScalaInstanceTask("scala3doc")
-          else
-            dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
+          if (useScaladoc.value) {
+            val v = scalaVersion.value
+            val shouldUseScala3doc =
+              v.startsWith("3.0.0-M1") || v.startsWith("3.0.0-M2") || v.startsWith("3.0.0-M3")  || v.startsWith("3.0.0-RC1-bin-20210")
+            val name = if (shouldUseScala3doc) "scala3doc" else "scaladoc"
+            dottyScalaInstanceTask(name)
+          } else dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
         else
           Def.valueStrict { (scalaInstance in doc).taskValue }
       }.value,
@@ -441,14 +452,16 @@ object DottyPlugin extends AutoPlugin {
 
   private val docSettings = inTask(doc)(Seq(
     tastyFiles := {
-      val _ = compile.value // Ensure that everything is compiled, so TASTy is available.
+      val sources = compile.value // Ensure that everything is compiled, so TASTy is available.
       // sbt is too smart and do not start doc task if there are no *.scala files defined
       file("___fake___.scala") +:
         (classDirectory.value ** "*.tasty").get.map(_.getAbsoluteFile)
     },
     sources := Def.taskDyn[Seq[File]] {
-      if (isDotty.value && useScala3doc.value) Def.task { tastyFiles.value }
-      else Def.task { sources.value }
+      val originalSources = sources.value
+      if (isDotty.value && useScaladoc.value && originalSources.nonEmpty)
+        Def.task { tastyFiles.value }
+      else Def.task { originalSources }
     }.value,
     scalacOptions ++= {
       if (isDotty.value) {
@@ -480,9 +493,9 @@ object DottyPlugin extends AutoPlugin {
     dependencyRes.update(descriptor, updateConfig, warningConfig, log) match {
       case Right(report) =>
         report
-      case _ =>
+      case Left(warning) =>
         throw new MessageOnlyException(
-          s"Couldn't retrieve `$moduleID`.")
+          s"Couldn't retrieve `$moduleID` : ${warning.resolveException.getMessage}.")
     }
   }
 

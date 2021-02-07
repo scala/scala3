@@ -13,20 +13,11 @@ import vulpix._
 import java.nio.file._
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
-class BootstrappedOnlyCompilationTests extends ParallelTesting {
+class BootstrappedOnlyCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import BootstrappedOnlyCompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 60.seconds
-  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -36,6 +27,7 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/bench", defaultOptions),
       compileFilesInDir("tests/pos-macros", defaultOptions),
       compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
+      compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
     ).checkCompile()
   }
 
@@ -137,8 +129,9 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
       compileFilesInDir("tests/run-custom-args/tasty-inspector", withTastyInspectorOptions)
     )
     val tests =
-      if (scala.util.Properties.isWin) basicTests
+      if scala.util.Properties.isWin then basicTests
       else compileDir("tests/run-custom-args/tasty-interpreter", withTastyInspectorOptions) :: basicTests
+
     aggregateTests(tests: _*).checkRuns()
   }
 
@@ -209,7 +202,19 @@ class BootstrappedOnlyCompilationTests extends ParallelTesting {
   }
 }
 
-object BootstrappedOnlyCompilationTests {
+object BootstrappedOnlyCompilationTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 60.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

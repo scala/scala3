@@ -116,6 +116,7 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
+JNA=$(find_lib "*jna-5*")
 
 # debug
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005

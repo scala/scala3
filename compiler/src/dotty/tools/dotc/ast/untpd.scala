@@ -118,7 +118,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   case class GenAlias(pat: Tree, expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
   case class ContextBounds(bounds: TypeBoundsTree, cxBounds: List[Tree])(implicit @constructorOnly src: SourceFile) extends TypTree
   case class PatDef(mods: Modifiers, pats: List[Tree], tpt: Tree, rhs: Tree)(implicit @constructorOnly src: SourceFile) extends DefTree
-  case class ExtMethods(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(implicit @constructorOnly src: SourceFile) extends Tree
+  case class ExtMethods(paramss: List[ParamClause], methods: List[DefDef])(implicit @constructorOnly src: SourceFile) extends Tree
   case class MacroTree(expr: Tree)(implicit @constructorOnly src: SourceFile) extends Tree
 
   case class ImportSelector(imported: Ident, renamed: Tree = EmptyTree, bound: Tree = EmptyTree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -402,7 +402,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def Alternative(trees: List[Tree])(implicit src: SourceFile): Alternative = new Alternative(trees)
   def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): ValDef = new ValDef(name, tpt, rhs)
-  def DefDef(name: TermName, tparams: List[TypeDef], vparamss: List[List[ValDef]], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, tparams, vparamss, tpt, rhs)
+  def DefDef(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, paramss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceFile): TypeDef = new TypeDef(name, rhs)
   def Template(constr: DefDef, parents: List[Tree], derived: List[Tree], self: ValDef, body: LazyTreeList)(implicit src: SourceFile): Template =
     if (derived.isEmpty) new Template(constr, parents, self, body)
@@ -481,7 +481,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def javaDotLangDot(name: Name)(implicit src: SourceFile): Select = Select(Select(Ident(nme.java), nme.lang), name)
 
   def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
-    DefDef(nme.CONSTRUCTOR, tparams, vparamss, TypeTree(), rhs)
+    DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 
   def emptyConstructor(using Context): DefDef =
     makeConstructor(Nil, Nil)
@@ -633,9 +633,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: PatDef if (mods eq tree.mods) && (pats eq tree.pats) && (tpt eq tree.tpt) && (rhs eq tree.rhs) => tree
       case _ => finalize(tree, untpd.PatDef(mods, pats, tpt, rhs)(tree.source))
     }
-    def ExtMethods(tree: Tree)(tparams: List[TypeDef], vparamss: List[List[ValDef]], methods: List[DefDef])(using Context): Tree = tree match
-      case tree: ExtMethods if (tparams eq tree.tparams) && (vparamss eq tree.vparamss) && (methods == tree.methods) => tree
-      case _ => finalize(tree, untpd.ExtMethods(tparams, vparamss, methods)(tree.source))
+    def ExtMethods(tree: Tree)(paramss: List[ParamClause], methods: List[DefDef])(using Context): Tree = tree match
+      case tree: ExtMethods if (paramss eq tree.paramss) && (methods == tree.methods) => tree
+      case _ => finalize(tree, untpd.ExtMethods(paramss, methods)(tree.source))
     def ImportSelector(tree: Tree)(imported: Ident, renamed: Tree, bound: Tree)(using Context): Tree = tree match {
       case tree: ImportSelector if (imported eq tree.imported) && (renamed eq tree.renamed) && (bound eq tree.bound) => tree
       case _ => finalize(tree, untpd.ImportSelector(imported, renamed, bound)(tree.source))
@@ -700,8 +700,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.ContextBounds(tree)(transformSub(bounds), transform(cxBounds))
       case PatDef(mods, pats, tpt, rhs) =>
         cpy.PatDef(tree)(mods, transform(pats), transform(tpt), transform(rhs))
-      case ExtMethods(tparams, vparamss, methods) =>
-        cpy.ExtMethods(tree)(transformSub(tparams), vparamss.mapConserve(transformSub(_)), transformSub(methods))
+      case ExtMethods(paramss, methods) =>
+        cpy.ExtMethods(tree)(transformParamss(paramss), transformSub(methods))
       case ImportSelector(imported, renamed, bound) =>
         cpy.ImportSelector(tree)(transformSub(imported), transform(renamed), transform(bound))
       case Number(_, _) | TypedSplice(_) =>
@@ -759,8 +759,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(this(x, bounds), cxBounds)
       case PatDef(mods, pats, tpt, rhs) =>
         this(this(this(x, pats), tpt), rhs)
-      case ExtMethods(tparams, vparamss, methods) =>
-        this(vparamss.foldLeft(this(x, tparams))(apply), methods)
+      case ExtMethods(paramss, methods) =>
+        this(paramss.foldLeft(x)(apply), methods)
       case ImportSelector(imported, renamed, bound) =>
         this(this(this(x, imported), renamed), bound)
       case Number(_, _) =>

@@ -76,9 +76,9 @@ object Implicits:
    */
   def hasExtMethod(tp: Type, expected: Type)(using Context) = expected match
     case selProto @ SelectionProto(selName: TermName, _, _, _) =>
-         tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
-      || tp.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists
-    case _ => false
+      tp.memberBasedOnFlags(selName, required = ExtensionMethod).exists
+    case _ =>
+      false
 
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
@@ -249,7 +249,7 @@ object Implicits:
       else
         val candidates = new mutable.ListBuffer[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
-          var ckind = exploreInFreshCtx { (using ctx: FreshContext) =>
+          var ckind = exploreInFreshCtx { (ctx: FreshContext) ?=>
             ctx.setMode(ctx.mode | Mode.TypevarsMissContext)
             candidateKind(ref.underlyingRef)
           }
@@ -396,12 +396,13 @@ object Implicits:
   }
 
   /** A successful search
-   *  @param tree   The typed tree that needs to be inserted
-   *  @param ref    The implicit reference that succeeded
-   *  @param level  The level where the reference was found
+   *  @param tree        The typed tree that needs to be inserted
+   *  @param ref         The implicit reference that succeeded
+   *  @param level       The level where the reference was found
+   *  @param isExtension Whether the result is an extension method application
    *  @param tstate The typer state to be committed if this alternative is chosen
    */
-  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int)(val tstate: TyperState, val gstate: GadtConstraint)
+  case class SearchSuccess(tree: Tree, ref: TermRef, level: Int, isExtension: Boolean = false)(val tstate: TyperState, val gstate: GadtConstraint)
   extends SearchResult with RefAndLevel with Showable
 
   /** A failed search */
@@ -491,12 +492,14 @@ object Implicits:
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
       em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
-    override def whyNoConversion(using Context): String = {
-      val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
-      i"""
-         |Note that implicit $what cannot be applied because they are ambiguous;
-         |$explanation"""
-    }
+    override def whyNoConversion(using Context): String =
+      if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
+        ""
+      else
+        val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
+        i"""
+           |Note that implicit $what cannot be applied because they are ambiguous;
+           |$explanation"""
   }
 
   class MismatchedImplicit(ref: TermRef,
@@ -513,9 +516,19 @@ object Implicits:
       em"${err.refStr(ref)} produces a diverging implicit search when trying to $qualify"
   }
 
-  class FailedExtension(extApp: Tree, val expectedType: Type) extends SearchFailureType:
+  /** A search failure type for attempted ill-typed extension method calls */
+  class FailedExtension(extApp: Tree, val expectedType: Type, val whyFailed: Message) extends SearchFailureType:
     def argument = EmptyTree
     def explanation(using Context) = em"$extApp does not $qualify"
+
+   /** A search failure type for aborted searches of extension methods, typically
+    *  because of a cyclic reference or similar.
+    */
+  class NestedFailure(_msg: Message, val expectedType: Type) extends SearchFailureType:
+    def argument = EmptyTree
+    override def msg(using Context) = _msg
+    def explanation(using Context) = msg.toString
+
 end Implicits
 
 import Implicits._
@@ -766,14 +779,15 @@ trait Implicits:
    */
   def inferView(from: Tree, to: Type)(using Context): SearchResult = {
     record("inferView")
+    val wfromtp = from.tpe.widen
     if    to.isAny
        || to.isAnyRef
        || to.isRef(defn.UnitClass)
-       || from.tpe.isRef(defn.NothingClass)
-       || from.tpe.isRef(defn.NullClass)
+       || wfromtp.isRef(defn.NothingClass)
+       || wfromtp.isRef(defn.NullClass)
        || !ctx.mode.is(Mode.ImplicitsEnabled)
        || from.isInstanceOf[Super]
-       || (from.tpe eq NoPrefix)
+       || (wfromtp eq NoPrefix)
     then NoMatchingImplicitsFailure
     else {
       def adjust(to: Type) = to.stripTypeVar.widenExpr match {
@@ -792,12 +806,11 @@ trait Implicits:
         val inferred = inferImplicit(adjust(to), from, from.span)
 
         inferred match {
-          case SearchSuccess(_, ref, _) =>
-            if isOldStyleFunctionConversion(ref.underlying) then
-              report.migrationWarning(
-                i"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
-                from
-              )
+          case SearchSuccess(_, ref, _, false) if isOldStyleFunctionConversion(ref.underlying) =>
+            report.migrationWarning(
+              i"The conversion ${ref} will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.",
+              from
+            )
           case _ =>
         }
 
@@ -819,7 +832,7 @@ trait Implicits:
    */
   def inferImplicitArg(formal: Type, span: Span)(using Context): Tree =
     inferImplicit(formal, EmptyTree, span) match
-      case SearchSuccess(arg, _, _) => arg
+      case SearchSuccess(arg, _, _, _) => arg
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
         else
@@ -898,6 +911,8 @@ trait Implicits:
             case TypeBounds(lo, hi) if lo.ne(hi) && !t.symbol.is(Opaque) => apply(hi)
             case _ => t
           }
+        case t: SingletonType =>
+          apply(t.widen)
         case t: RefinedType =>
           apply(t.parent)
         case _ =>
@@ -925,7 +940,6 @@ trait Implicits:
           case Select(qual, _) => apply(x, qual)
           case Apply(fn, _) => apply(x, fn)
           case TypeApply(fn, _) => apply(x, fn)
-          case tree: Applications.IntegratedTypeArgs => apply(x, tree.app)
           case _: This => false
           case _ => foldOver(x, tree)
       }
@@ -942,6 +956,11 @@ trait Implicits:
       assert(ctx.phase.allowsImplicitSearch,
         if (argument.isEmpty) i"missing implicit parameter of type $pt after typer"
         else i"type error: ${argument.tpe} does not conform to $pt${err.whyNoMatchStr(argument.tpe, pt)}")
+
+      if pt.unusableForInference
+         || !argument.isEmpty && argument.tpe.unusableForInference
+      then return NoMatchingImplicitsFailure
+
       val result0 =
         try ImplicitSearch(pt, argument, span).bestImplicit
         catch case ce: CyclicReference =>
@@ -1009,18 +1028,23 @@ trait Implicits:
               pt, locked)
           }
           pt match
-            case selProto @ SelectionProto(selName: TermName, mbrType, _, _) if cand.isExtension =>
+            case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
+
               def tryExtension(using Context) =
-                val xname =
-                  if ref.memberBasedOnFlags(selProto.extensionName, required = ExtensionMethod).exists then
-                    selProto.extensionName
-                  else
-                    selName
-                extMethodApply(untpd.Select(untpdGenerated, xname), argument, mbrType)
-              if cand.isConversion then
+                extMethodApply(untpd.Select(untpdGenerated, selName), argument, mbrType)
+
+              def tryConversionForSelection(using Context) =
+                val converted = tryConversion
+                if !ctx.reporter.hasErrors && !selProto.isMatchedBy(converted.tpe) then
+                  // this check is needed since adapting relative to a `SelectionProto` can succeed
+                  // even if the term is not a subtype of the `SelectionProto`
+                  err.typeMismatch(converted, selProto)
+                converted
+
+              if cand.isExtension && cand.isConversion then
                 val extensionCtx, conversionCtx = ctx.fresh.setNewTyperState()
                 val extensionResult = tryExtension(using extensionCtx)
-                val conversionResult = tryConversion(using conversionCtx)
+                val conversionResult = tryConversionForSelection(using conversionCtx)
                 if !extensionCtx.reporter.hasErrors then
                   extensionCtx.typerState.commit()
                   if !conversionCtx.reporter.hasErrors then
@@ -1029,7 +1053,8 @@ trait Implicits:
                 else
                   conversionCtx.typerState.commit()
                   conversionResult
-              else tryExtension
+              else if cand.isExtension then tryExtension
+              else tryConversionForSelection
             case _ =>
               tryConversion
         }
@@ -1048,10 +1073,7 @@ trait Implicits:
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
       else
-        val returned =
-          if (cand.isExtension) Applications.ExtMethodApply(adapted)
-          else adapted
-        SearchSuccess(returned, ref, cand.level)(ctx.typerState, ctx.gadt)
+        SearchSuccess(adapted, ref, cand.level, cand.isExtension)(ctx.typerState, ctx.gadt)
     }
 
   /** An implicit search; parameters as in `inferImplicit` */
@@ -1114,20 +1136,13 @@ trait Implicits:
         case alt1: SearchSuccess =>
           var diff = compareAlternatives(alt1, alt2)
           assert(diff <= 0)   // diff > 0 candidates should already have been eliminated in `rank`
-          if diff == 0 then
+          if diff == 0 && alt1.isExtension && alt2.isExtension then
             // Fall back: if both results are extension method applications,
             // compare the extension methods instead of their wrappers.
-            object extMethodApply:
-              def unapply(t: Tree): Option[Type] = t match
-                case t: Applications.ExtMethodApply => Some(methPart(stripApply(t.app)).tpe)
-                case _ => None
-            end extMethodApply
-
-            (alt1.tree, alt2.tree) match
-              case (extMethodApply(ref1: TermRef), extMethodApply(ref2: TermRef)) =>
-                diff = compare(ref1, ref2)
+            def stripExtension(alt: SearchSuccess) = methPart(stripApply(alt.tree)).tpe
+            (stripExtension(alt1), stripExtension(alt2)) match
+              case (ref1: TermRef, ref2: TermRef) => diff = compare(ref1, ref2)
               case _ =>
-
           if diff < 0 then alt2
           else if diff > 0 then alt1
           else SearchFailure(new AmbiguousImplicits(alt1, alt2, pt, argument), span)
@@ -1243,7 +1258,7 @@ trait Implicits:
         val arity2 = sym2.info.firstParamTypes.length
         if arity1 < arity2 then return true
         if arity1 > arity2 then return false
-        compareOwner(sym1, sym2) == 1
+        compareOwner(sym1.owner, sym2.owner) == 1
 
       /** Sort list of implicit references according to `prefer`.
        *  This is just an optimization that aims at reducing the average
@@ -1553,7 +1568,7 @@ final class SearchRoot extends SearchHistory:
     else
       result match {
         case failure: SearchFailure => failure
-        case success @ SearchSuccess(tree, _, _) =>
+        case success: SearchSuccess =>
           import tpd._
 
           // We might have accumulated dictionary entries for by name implicit arguments
@@ -1576,7 +1591,7 @@ final class SearchRoot extends SearchHistory:
               else prune(in.map(_._2) ++ trees, out, in ++ acc)
           }
 
-          val pruned = prune(List(tree), implicitDictionary.map(_._2).toList, Nil)
+          val pruned = prune(List(success.tree), implicitDictionary.map(_._2).toList, Nil)
           myImplicitDictionary = null
           if (pruned.isEmpty) result
           else if (pruned.exists(_._2 == EmptyTree)) NoMatchingImplicitsFailure
@@ -1633,7 +1648,7 @@ final class SearchRoot extends SearchHistory:
               case tree => tree
             })
 
-            val res = resMap(tree)
+            val res = resMap(success.tree)
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 
@@ -1650,14 +1665,15 @@ sealed class TermRefSet(using Context):
 
   def += (ref: TermRef): Unit =
     val pre = ref.prefix
-    val sym = ref.symbol.asTerm
-    elems.get(sym) match
-      case null =>
-        elems.put(sym, pre)
-      case prefix: Type =>
-        if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
-      case prefixes: List[Type] =>
-        if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
+    if ref.symbol.exists then
+      val sym = ref.symbol.asTerm
+      elems.get(sym) match
+        case null =>
+          elems.put(sym, pre)
+        case prefix: Type =>
+          if !(prefix =:= pre) then elems.put(sym, pre :: prefix :: Nil)
+        case prefixes: List[Type] =>
+          if !prefixes.exists(_ =:= pre) then elems.put(sym, pre :: prefixes)
 
   def ++= (that: TermRefSet): Unit =
     if !that.isEmpty then that.foreach(+=)

@@ -12,7 +12,7 @@ end Type
 object Type:
 
   /** Show a source code like representation of this type without syntax highlight */
-  def show[T](using Type[T])(using Quotes): String =
+  def show[T <: AnyKind](using Type[T])(using Quotes): String =
     import quotes.reflect._
     TypeTree.of[T].show
 

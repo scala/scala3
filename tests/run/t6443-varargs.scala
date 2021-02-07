@@ -11,6 +11,6 @@ object Test {
   object X extends T { type U = Int }
 
   def lazyDep(t: T)(us: t.U*): Unit = {
-    List(us: _*)
+    List(us*)
   }
 }

@@ -12,7 +12,7 @@ object Lens {
   }
 
   def impl[S: Type, T: Type](getter: Expr[S => T])(using Quotes): Expr[Lens[S, T]] = {
-    implicit val toolbox: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(this.getClass.getClassLoader)
+    implicit val toolbox: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(this.getClass.getClassLoader)
     import quotes.reflect._
     import util._
     // obj.copy(field = value)
@@ -24,7 +24,7 @@ object Lens {
       case Inlined(
         None, Nil,
         Block(
-          DefDef(_, Nil, (param :: Nil) :: Nil, _, Some(Select(o, field))) :: Nil,
+          DefDef(_, TermParamClause(param :: Nil) :: Nil, _, Some(Select(o, field))) :: Nil,
           Lambda(meth, _)
         )
       ) if o.symbol == param.symbol =>

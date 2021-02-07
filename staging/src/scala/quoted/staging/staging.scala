@@ -16,7 +16,7 @@ package object staging:
    *  This method should not be called in a context where there is already has a `Quotes`
    *  such as within a `run` or a `withQuotes`.
    */
-  def run[T](expr: Quotes ?=> Expr[T])(using toolbox: Toolbox): T = toolbox.run(expr(using _))
+  def run[T](expr: Quotes ?=> Expr[T])(using compiler: Compiler): T = compiler.run(expr(using _))
 
   /** Provide a new quote context within the scope of the argument that is only valid within the scope the argument.
    *  Return the result of the argument.
@@ -32,15 +32,15 @@ package object staging:
    *  This method should not be called in a context where there is already has a `Quotes`
    *  such as within a `run` or a `withQuotes`.
    */
-  def withQuotes[T](thunk: Quotes ?=> T)(using toolbox: Toolbox): T =
+  def withQuotes[T](thunk: Quotes ?=> T)(using compiler: Compiler): T =
     val noResult = new Object
     var result: T = noResult.asInstanceOf[T]
     def dummyRun(using Quotes): Expr[Unit] = {
       result = thunk
       '{}
     }
-    toolbox.run(dummyRun(using _))
-    assert(result != noResult) // toolbox.run should have thrown an exception
+    compiler.run(dummyRun(using _))
+    assert(result != noResult) // compiler.run should have thrown an exception
     result
   end withQuotes
 

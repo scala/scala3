@@ -7,5 +7,5 @@ class CompatVargs {
   def vargsFromScala(): Unit =
     vargs("single")
     vargs("a", "b")
-    vargs(Seq("a", "b"): _*)
+    vargs(Seq("a", "b")*)
 }

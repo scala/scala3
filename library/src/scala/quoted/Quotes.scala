@@ -2,8 +2,17 @@ package scala.quoted
 
 import scala.reflect.TypeTest
 
-/** Current Quotes in scope */
-inline def quotes(using q: Quotes): q.type = q
+/** Current Quotes in scope
+ *
+ *  Usage:
+ *  ```scala
+ *  def myExpr[T](using Quotes): Expr[T] = {
+ *     import quotes.relect._
+ *     ...
+ *  }
+ *  ```
+ */
+transparent inline def quotes(using inline q: Quotes): q.type = q
 
 /** Quotation context provided by a macro expansion or in the scope of `scala.quoted.staging.run`.
  *  Used to perform all operations on quoted `Expr` or `Type`.
@@ -27,12 +36,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *  ```
     */
     def matches(that: Expr[Any]): Boolean
-
-    @deprecated("Use `.value` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
-    def unlift(using FromExpr[T]): Option[T] = self.value
-
-    @deprecated("Use `.valueOrError` instead. This will be removed in 3.0.0-RC1", "3.0.0-M3")
-    def unliftOrError(using FromExpr[T]): T = self.valueOrError
 
     /** Return the value of this expression.
      *
@@ -59,12 +62,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
   end extension
 
   // Extension methods for `Expr[Any]` that take another explicit type parameter
-  extension [X](self: Expr[Any])
+  extension (self: Expr[Any])
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X` */
-    def isExprOf(using Type[X]): Boolean
+    def isExprOf[X](using Type[X]): Boolean
 
     /** Convert this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws */
-    def asExprOf(using Type[X]): Expr[X]
+    def asExprOf[X](using Type[X]): Expr[X]
   end extension
 
   /** Low-level Typed AST metaprogramming API.
@@ -156,6 +159,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           +- Unapply
    *           +- Alternatives
    *
+   *  +- ParamClause -+- TypeParamClause
+   *                  +- TermParamClause
    *
    *  +- TypeRepr -+- NamedType -+- TermRef
    *               |             +- TypeRef
@@ -227,11 +232,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     val Tree: TreeModule
 
     /** Methods of the module object `val Tree` */
-    trait TreeModule { this: Tree.type =>
-      /** Returns the Term representation this expression */
-      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
-      def of(expr: Expr[Any]): Tree = expr.asTerm
-    }
+    trait TreeModule { this: Tree.type => }
 
     /** Makes extension methods on `Tree` available without any imports */
     given TreeMethods: TreeMethods
@@ -257,8 +258,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
 
       /** Convert this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws */
-      extension [T](self: Tree)
-        def asExprOf(using Type[T]): Expr[T]
+      extension (self: Tree)
+        def asExprOf[T](using Type[T]): Expr[T]
 
       extension [ThisTree <: Tree](self: ThisTree)
         /** Changes the owner of the symbols in the tree */
@@ -267,7 +268,21 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     }
 
-    /** Tree representing a pacakage clause in the source code */
+    /** Tree representing a pacakage clause in the source code
+     *
+     *  ```scala
+     *  package foo {
+     *     // package stats
+     *  }
+     *  ```
+     *
+     *  or
+     *
+     *  ```scala
+     *  package foo.bar
+     *  // package stats
+     *  ```
+     */
     type PackageClause <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `PackageClause` */
@@ -278,8 +293,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val PackageClause` */
     trait PackageClauseModule { this: PackageClause.type =>
+      /** Create a package clause `package pid { stats }` */
       def apply(pid: Ref, stats: List[Tree]): PackageClause
+      /** Copy a package clause `package pid { stats }` */
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
+      /** Matches a package clause `package pid { stats }` and extracts the `pid` and `stats` */
       def unapply(tree: PackageClause): (Ref, List[Tree])
     }
 
@@ -289,12 +307,17 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `PackageClause` */
     trait PackageClauseMethods:
       extension (self: PackageClause)
+        /** Tree containing the package name */
         def pid: Ref
+        /** Definitions, imports or exports within the package */
         def stats: List[Tree]
       end extension
     end PackageClauseMethods
 
-    /** Tree representing an import in the source code */
+    /** Tree representing an import in the source code.
+     *
+     *  See also documentation on `Selector`.
+     */
     type Import <: Statement
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Import` */
@@ -305,8 +328,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Import` */
     trait ImportModule { this: Import.type =>
+      /** Create an `Import` with the given qualifier and selectors */
       def apply(expr: Term, selectors: List[Selector]): Import
+      /** Copy an `Import` with the given qualifier and selectors */
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import
+      /** Matches an `Import` and extracts the qualifier and selectors */
       def unapply(tree: Import): (Term, List[Selector])
     }
 
@@ -316,7 +342,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Import` */
     trait ImportMethods:
       extension (self: Import)
+        /** Qualifier of the import */
         def expr: Term
+        /** List selectors of the import
+         *
+         *  See documentation on `Selector`
+         */
         def selectors: List[Selector]
       end extension
     end ImportMethods
@@ -334,6 +365,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Export` */
     trait ExportModule { this: Export.type =>
+      /** Matches an `Export` and extracts the qualifier and selectors */
       def unapply(tree: Export): (Term, List[Selector])
     }
 
@@ -343,7 +375,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Export` */
     trait ExportMethods:
       extension (self: Export)
+        /** Qualifier of the export */
         def expr: Term
+        /** List selectors of the export
+         *
+         *  See documentation on `Selector`
+         */
         def selectors: List[Selector]
       end extension
     end ExportMethods
@@ -374,6 +411,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Definition` */
     trait DefinitionMethods:
       extension (self: Definition)
+        /** Name of the definition */
         def name: String
       end extension
     end DefinitionMethods
@@ -402,10 +440,31 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ClassDef` */
     trait ClassDefMethods:
       extension (self: ClassDef)
+        /** The primary constructor of this class */
         def constructor: DefDef
+        /** List of extended parent classes or traits.
+         *  The first parent is always a class.
+         */
         def parents: List[Tree /* Term | TypeTree */]
-        def derived: List[TypeTree]
+        /** List of derived type classes */
+        def derived: List[TypeTree] // TODO remove? It seems these don't exist after desugaring
+        /** Self-type of the class
+         *
+         *  ```scala
+         *  class C { self: T =>
+         *     ...
+         *  }
+         *  ```
+         */
         def self: Option[ValDef]
+        /** Statements within the class
+         *
+         *  ```scala
+         *  class C {
+         *     ... // statemets
+         *  }
+         *  ```
+         */
         def body: List[Statement]
       end extension
     end ClassDefMethods
@@ -423,9 +482,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val DefDef` */
     trait DefDefModule { this: DefDef.type =>
-      def apply(symbol: Symbol, rhsFn: List[TypeRepr] => List[List[Term]] => Option[Term]): DefDef
-      def copy(original: Tree)(name: String, typeParams: List[TypeDef], paramss: List[List[ValDef]], tpt: TypeTree, rhs: Option[Term]): DefDef
-      def unapply(ddef: DefDef): (String, List[TypeDef], List[List[ValDef]], TypeTree, Option[Term])
+      def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef
+      def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef
+      def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term])
     }
 
     /** Makes extension methods on `DefDef` available without any imports */
@@ -434,9 +493,37 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `DefDef` */
     trait DefDefMethods:
       extension (self: DefDef)
-        def typeParams: List[TypeDef]
-        def paramss: List[List[ValDef]]
+        /** List of type and term parameter clauses */
+        def paramss: List[ParamClause]
+
+        /** List of leading type paramters or Nil if the method does not have leading type paramters.
+         *
+         *  Note: Non leading type parameters can be found in extension methods such as
+         *  ```scala
+         *  extension (a: A) def f[T]() = ...
+         *  ```
+         */
+        def leadingTypeParams: List[TypeDef]
+
+        /** List of parameter clauses following the leading type parameters or all clauses.
+         *  Return all parameter clauses if there are no leading type paramters.
+         *
+         *  Non leading type parameters can be found in extension methods such as
+         *  ```scala
+         *  extension (a: A) def f[T]() = ...
+         *  ```
+         */
+        def trailingParamss: List[ParamClause]
+
+        /** List of term parameter clauses */
+        def termParamss: List[TermParamClause]
+
+        /** The tree of the return type of this `def` definition */
         def returnTpt: TypeTree
+
+        /** The tree of the implementation of the method.
+         *  Returns `None` if the method does not hava an implemetation.
+         */
         def rhs: Option[Term]
       end extension
     end DefDefMethods
@@ -475,7 +562,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `ValDef` */
     trait ValDefMethods:
       extension (self: ValDef)
+        /** The type tree of this `val` definition */
         def tpt: TypeTree
+        /** The right-hand side of this `val` definition */
         def rhs: Option[Term]
       end extension
     end ValDefMethods
@@ -494,8 +583,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val TypeDef` */
     trait TypeDefModule { this: TypeDef.type =>
       def apply(symbol: Symbol): TypeDef
-      def copy(original: Tree)(name: String, rhs: Tree /*TypeTree | TypeBoundsTree*/): TypeDef
-      def unapply(tdef: TypeDef): (String, Tree /*TypeTree | TypeBoundsTree*/ /* TypeTree | TypeBoundsTree */)
+      def copy(original: Tree)(name: String, rhs: Tree): TypeDef
+      def unapply(tdef: TypeDef): (String, Tree)
     }
 
     /** Makes extension methods on `TypeDef` available without any imports */
@@ -504,7 +593,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeDef` */
     trait TypeDefMethods:
       extension (self: TypeDef)
-        def rhs: Tree /*TypeTree | TypeBoundsTree*/
+        /** The type bounds on the right-hand side of this `type` definition */
+        def rhs: Tree
       end extension
     end TypeDefMethods
 
@@ -522,10 +612,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Term` */
     trait TermModule { this: Term.type =>
-
-      /** Returns the Term representation this expression */
-      @deprecated("Use `expr.asTerm` instead (must `import quotes.reflect._`). This will be removed in 3.0.0-RC1", "3.0.0-M3")
-      def of(expr: Expr[Any]): Term = expr.asTerm
 
       /** Returns a term that is functionally equivalent to `t`,
       *  however if `t` is of the form `((y1, ..., yn) => e2)(e1, ..., en)`
@@ -649,6 +735,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Ident` */
     trait IdentMethods:
       extension (self: Ident)
+        /** Name of this `Ident` */
         def name: String
       end extension
     end IdentMethods
@@ -693,8 +780,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Select` */
     trait SelectMethods:
       extension (self: Select)
+        /** Qualifier of the `qualifier.name` */
         def qualifier: Term
+        /** Name of this `Select` */
         def name: String
+        /** Signature of this method */
         def signature: Option[Signature]
       end extension
     end SelectMethods
@@ -726,11 +816,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Literal` */
     trait LiteralMethods:
       extension (self: Literal)
+        /** Value of this literal */
         def constant: Constant
       end extension
     end LiteralMethods
 
-    /** Tree representing `this` in the source code */
+    /** Tree representing `this` or `C.this` in the source code */
     type This <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `This` */
@@ -742,12 +833,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Methods of the module object `val This` */
     trait ThisModule { this: This.type =>
 
-      /** Create a `this[<id: String]>` */
+      /** Create a `C.this` for `C` pointing to `cls` */
       def apply(cls: Symbol): This
 
       def copy(original: Tree)(qual: Option[String]): This
 
-      /** Matches `this[<id: Option[String]>` */
+      /** Matches `this` or `qual.this` and returns the name of `qual` */
       def unapply(x: This): Some[Option[String]]
     }
 
@@ -757,6 +848,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `This` */
     trait ThisMethods:
       extension (self: This)
+        /** Returns `C` if the underlying tree is of the form `C.this`
+         *
+         *  Otherwise, return `None`.
+         */
         def id: Option[String]
       end extension
     end ThisMethods
@@ -778,7 +873,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       def copy(original: Tree)(tpt: TypeTree): New
 
-      /** Matches a `new <tpt: TypeTree>` */
+      /** Matches `new <tpt: TypeTree>` */
       def unapply(x: New): Some[TypeTree]
     }
 
@@ -788,6 +883,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `New` */
     trait NewMethods:
       extension (self: New)
+        /** Returns the type tree of this `new` */
         def tpt: TypeTree
       end extension
     end NewMethods
@@ -819,7 +915,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `NamedArg` */
     trait NamedArgMethods:
       extension (self: NamedArg)
+        /** The name part of `name = arg` */
         def name: String
+        /** The argument part of `name = arg` */
         def value: Term
       end extension
     end NamedArgMethods
@@ -851,7 +949,27 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Apply` */
     trait ApplyMethods:
       extension (self: Apply)
+        /** The `fun` part of an (implicit) application like `fun(args)`
+         *
+         *  It maybe a partially applied method:
+         *  ```scala
+         *  def f(x1: Int)(x2: Int) = ...
+         *  f(1)(2)
+         *  ```
+         *  - `fun` is `f(1)` in the `Apply` of `f(1)(2)`
+         *  - `fun` is `f` in the `Apply` of `f(1)`
+         */
         def fun: Term
+        /** The arguments (implicitly) passed to the method
+         *
+         *  The `Apply` maybe a partially applied method:
+         *  ```scala
+         *  def f(x1: Int)(x2: Int) = ...
+         *  f(1)(2)
+         *  ```
+         *  - `args` is `(2)` in the `Apply` of `f(1)(2)`
+         *  - `args` is `(1)` in the `Apply` of `f(1)`
+         */
         def args: List[Term]
       end extension
     end ApplyMethods
@@ -883,7 +1001,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `TypeApply` */
     trait TypeApplyMethods:
       extension (self: TypeApply)
+        /** The `fun` part of an (inferred) type application like `fun[Args]`
+         *
+         *  It maybe a partially applied method:
+         *  ```scala
+         *  extension (x: Int) def f[T](y: T) = ...
+         *  // represented as
+         *  // def f(x: Int)[T](y: T) = ...
+         *
+         *  1.f[Int](2)
+         *  // represented as
+         *  // f(1)[Int](2)
+         *  ```
+         *  - `fun` is `f(1)` in the `TypeApply` of `f(1)[Int]`
+         */
         def fun: Term
+        /** The (inferred) type arguments passed to the method
+         *
+         *  The `TypeApply` maybe a partially applied method:
+         *  ```scala
+         *  extension (x: Int) def f[T](y: T) = ...
+         *  // represented as
+         *  // def f(x: Int)[T](y: T) = ...
+         *
+         *  1.f[Int](2)
+         *  // represented as
+         *  // f(1)[Int](2)
+         *  ```
+         *  - `fun` is `[Int]` in the `TypeApply` of `f(1)[Int]`
+         */
         def args: List[TypeTree]
       end extension
     end TypeApplyMethods
@@ -1934,16 +2080,100 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AlternativesMethods
 
+    /** A parameter clause `[X1, ..., Xn]` or `(x1: X1, ..., xn: Xx)`
+     *
+     *  `[X1, ..., Xn]` are reresented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
+     *
+     *  `ParamClause` encodes the following enumeration
+     *  ```scala
+     *  enum ParamClause:
+     *    case TypeParamClause(params: List[TypeDef])
+     *    case TermParamClause(params: List[ValDef])
+     *  ```
+     */
+    type ParamClause <: AnyRef
+
+    /** Module object of `type ParamClause`  */
+    val ParamClause: ParamClauseModule
+
+    /** Methods of the module object `val ParamClause` */
+    trait ParamClauseModule { this: ParamClause.type =>
+    }
+
+    /** Makes extension methods on `ParamClause` available without any imports */
+    given ParamClauseMethods: ParamClauseMethods
+
+    /** Extension methods of `ParamClause` */
+    trait ParamClauseMethods:
+      extension (self: ParamClause)
+        /** List of parameters of the clause */
+        def params: List[ValDef] | List[TypeDef]
+    end ParamClauseMethods
+
+    /** A term parameter clause `(x1: X1, ..., xn: Xx)`
+     *  Can also be `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)`
+     */
+    type TermParamClause <: ParamClause
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TermParamClause` */
+    given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause]
+
+    /** Module object of `type TermParamClause`  */
+    val TermParamClause: TermParamClauseModule
+
+    /** Methods of the module object `val TermParamClause` */
+    trait TermParamClauseModule { this: TermParamClause.type =>
+      def apply(params: List[ValDef]): TermParamClause
+      def unapply(x: TermParamClause): Some[List[ValDef]]
+    }
+
+    /** Makes extension methods on `TermParamClause` available without any imports */
+    given TermParamClauseMethods: TermParamClauseMethods
+
+    /** Extension methods of `TermParamClause` */
+    trait TermParamClauseMethods:
+      extension (self: TermParamClause)
+        /** List of parameters of the clause */
+        def params: List[ValDef]
+        /** Is this a given parameter clause `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)` */
+        def isImplicit: Boolean
+    end TermParamClauseMethods
+
+    /** A type parameter clause `[X1, ..., Xn]` */
+    type TypeParamClause <: ParamClause
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `ParamClause` is a `TypeParamClause` */
+    given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause]
+
+    /** Module object of `type TypeParamClause`  */
+    val TypeParamClause: TypeParamClauseModule
+
+    /** Methods of the module object `val TypeParamClause` */
+    trait TypeParamClauseModule { this: TypeParamClause.type =>
+      def apply(params: List[TypeDef]): TypeParamClause
+      def unapply(x: TypeParamClause): Some[List[TypeDef]]
+    }
+
+    /** Makes extension methods on `TypeParamClause` available without any imports */
+    given TypeParamClauseMethods: TypeParamClauseMethods
+
+    /** Extension methods of `TypeParamClause` */
+    trait TypeParamClauseMethods:
+      extension (self: TypeParamClause)
+        /** List of parameters of the clause */
+        def params: List[TypeDef]
+    end TypeParamClauseMethods
+
     //////////////////////
     //    SELECTORS     //
     /////////////////////
 
     /** Import/Export selectors:
-    *   * SimpleSelector: `.bar` in `import foo.bar`
-    *   * RenameSelector: `.{bar => baz}` in `export foo.{bar => baz}`
-    *   * OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
-    *   * GivenSelector: `.given`/`.{given T}` in `export foo.given`/`import foo.{given T}`
-    */
+     *  - SimpleSelector: `.bar` in `import foo.bar`
+     *  - RenameSelector: `.{bar => baz}` in `export foo.{bar => baz}`
+     *  - OmitSelector: `.{bar => _}` in `import foo.{bar => _}`
+     *  - GivenSelector: `.given`/`.{given T}` in `export foo.given`/`import foo.{given T}`
+     */
     type Selector <: AnyRef
 
     /** Module object of `type Selector`  */
@@ -2102,25 +2332,25 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def <:<(that: TypeRepr): Boolean
 
         /** Widen from singleton type to its underlying non-singleton
-        *  base type by applying one or more `underlying` dereferences,
-        *  Also go from => T to T.
-        *  Identity for all other types. Example:
-        *
-        *  class Outer { class C ; val x: C }
-        *  def o: Outer
-        *  <o.x.type>.widen = o.C
-        */
+         *  base type by applying one or more `underlying` dereferences,
+         *  Also go from => T to T.
+         *  Identity for all other types. Example:
+         *
+         *  class Outer { class C ; val x: C }
+         *  def o: Outer
+         *  <o.x.type>.widen = o.C
+         */
         def widen: TypeRepr
 
         /** Widen from TermRef to its underlying non-termref
-          *  base type, while also skipping `=>T` types.
-          */
-        def widenTermRefExpr: TypeRepr
+         *  base type, while also skipping ByName types.
+         */
+        def widenTermRefByName: TypeRepr
 
-        /** Follow aliases and dereferences LazyRefs, annotated types and instantiated
-          *  TypeVars until type is no longer alias type, annotated type, LazyRef,
-          *  or instantiated type variable.
-          */
+        /** Widen from ByName type to its result type. */
+        def widenByName: TypeRepr
+
+        /** Follow aliases, annotated types until type is no longer alias type, annotated type. */
         def dealias: TypeRepr
 
         /** A simplified version of this type which is equivalent wrt =:= to this type.
@@ -2452,7 +2682,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchTypeMethods
 
-    /** Type of a by by name parameter */
+    /** Type of a by-name definition of type `=>T`.
+     *
+     *  May represent by-name parameter such as `thunk` in
+     *  ```scala
+     *    def log[T](thunk: =>T): T = ...
+     *  ```
+     *
+     *  May also represent a the return type of a parameterless method definition such as
+     *  ```scala
+     *    def foo: Int = ...
+     *  ```
+     */
     type ByNameType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `ByNameType` */
@@ -2631,6 +2872,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `MethodType` */
     trait MethodTypeMethods:
       extension (self: MethodType)
+        /** Is this the type of given parameter clause `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
         def isErased: Boolean
         def param(idx: Int): TypeRepr
@@ -3411,6 +3653,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** The class symbol of core class `scala.Any`. */
       def AnyClass: Symbol
 
+      /** The class symbol of core trait `scala.Matchable` */
+      def MatchableClass: Symbol
+
       /** The class symbol of core class `scala.AnyVal`. */
       def AnyValClass: Symbol
 
@@ -3910,9 +4155,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case vdef @ ValDef(_, tpt, rhs) =>
             val owner = vdef.symbol
             foldTrees(foldTree(x, tpt)(owner), rhs)(owner)
-          case ddef @ DefDef(_, tparams, vparamss, tpt, rhs) =>
+          case ddef @ DefDef(_, paramss, tpt, rhs) =>
             val owner = ddef.symbol
-            foldTrees(foldTree(vparamss.foldLeft(foldTrees(x, tparams)(owner))((acc, y) => foldTrees(acc, y)(owner)), tpt)(owner), rhs)(owner)
+            foldTrees(foldTree(paramss.foldLeft(x)((acc, y) => foldTrees(acc, y.params)(owner)), tpt)(owner), rhs)(owner)
           case tdef @ TypeDef(_, rhs) =>
             val owner = tdef.symbol
             foldTree(x, rhs)(owner)
@@ -4021,7 +4266,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             ValDef.copy(tree)(tree.name, tpt1, rhs1)
           case tree: DefDef =>
             val owner = tree.symbol
-            DefDef.copy(tree)(tree.name, transformSubTrees(tree.typeParams)(owner), tree.paramss mapConserve (x => transformSubTrees(x)(owner)), transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
+            val newParamClauses = tree.paramss.mapConserve {
+              case TypeParamClause(params) => TypeParamClause(transformSubTrees(params)(owner))
+              case TermParamClause(params) => TermParamClause(transformSubTrees(params)(owner))
+            }
+            DefDef.copy(tree)(tree.name, newParamClauses, transformTypeTree(tree.returnTpt)(owner), tree.rhs.map(x => transformTerm(x)(owner)))
           case tree: TypeDef =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))

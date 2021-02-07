@@ -141,30 +141,31 @@ object SymDenotations {
     }
 
     final def completeFrom(completer: LazyType)(using Context): Unit =
-      if (Config.showCompletions) {
-        println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
-        indent += 1
+      if completer.needsCompletion(this) then
+        if (Config.showCompletions) {
+          println(i"${"  " * indent}completing ${if (isType) "type" else "val"} $name")
+          indent += 1
 
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
+          if (myFlags.is(Touched)) throw CyclicReference(this)
+          myFlags |= Touched
 
-        // completions.println(s"completing ${this.debugString}")
-        try atPhase(validFor.firstPhaseId)(completer.complete(this))
-        catch {
-          case ex: CyclicReference =>
-            println(s"error while completing ${this.debugString}")
-            throw ex
+          // completions.println(s"completing ${this.debugString}")
+          try atPhase(validFor.firstPhaseId)(completer.complete(this))
+          catch {
+            case ex: CyclicReference =>
+              println(s"error while completing ${this.debugString}")
+              throw ex
+          }
+          finally {
+            indent -= 1
+            println(i"${"  " * indent}completed $name in $owner")
+          }
         }
-        finally {
-          indent -= 1
-          println(i"${"  " * indent}completed $name in $owner")
+        else {
+          if (myFlags.is(Touched)) throw CyclicReference(this)
+          myFlags |= Touched
+          atPhase(validFor.firstPhaseId)(completer.complete(this))
         }
-      }
-      else {
-        if (myFlags.is(Touched)) throw CyclicReference(this)
-        myFlags |= Touched
-        atPhase(validFor.firstPhaseId)(completer.complete(this))
-      }
 
     protected[dotc] def info_=(tp: Type): Unit = {
       /* // DEBUG
@@ -290,16 +291,14 @@ object SymDenotations {
     final def rawParamss_=(pss: List[List[Symbol]]): Unit =
       myParamss = pss
 
-    final def setParamss(tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit =
-      rawParamss = (tparams :: vparamss).filterConserve(!_.isEmpty)
+    final def setParamss(paramss: List[List[Symbol]])(using Context): Unit =
+      rawParamss = paramss.filterConserve(!_.isEmpty)
 
-    final def setParamssFromDefs(tparams: List[TypeDef[?]], vparamss: List[List[ValDef[?]]])(using Context): Unit =
-      setParamss(tparams.map(_.symbol), vparamss.map(_.map(_.symbol)))
-
+    final def setParamssFromDefs(paramss: List[tpd.ParamClause])(using Context): Unit =
+      setParamss(paramss.map(_.map(_.symbol)))
 
     /** The symbols of each type parameter list and value parameter list of this
      *  method, or Nil if this isn't a method.
-     *
      *
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.
@@ -481,7 +480,8 @@ object SymDenotations {
           // duplicate scalac's behavior: don't write a double '$$' for module class members.
           prefix = prefix.exclude(ModuleClassName)
         def qualify(n: SimpleName) =
-          kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
+          val qn = kind(prefix.toTermName, if (filler.isEmpty) n else termName(filler + n))
+          if kind == FlatName && !encl.is(JavaDefined) then qn.compactified else qn
         val fn = name replace {
           case name: SimpleName => qualify(name)
           case name @ AnyQualifiedName(_, _) => qualify(name.mangled.toSimpleName)
@@ -951,7 +951,8 @@ object SymDenotations {
 
     /** An erased value or an erased inline method or field */
     def isEffectivelyErased(using Context): Boolean =
-      is(Erased) || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
+      isOneOf(EffectivelyErased)
+      || is(Inline) && !isRetainedInline && !hasAnnotation(defn.ScalaStaticAnnot)
 
     /** ()T and => T types should be treated as equivalent for this symbol.
      *  Note: For the moment, we treat Scala-2 compiled symbols as loose matching,
@@ -1393,10 +1394,10 @@ object SymDenotations {
     def thisType(using Context): Type = NoPrefix
 
     def typeRef(using Context): TypeRef =
-      TypeRef(owner.thisType, symbol)
+      TypeRef(maybeOwner.thisType, symbol)
 
     def termRef(using Context): TermRef =
-      TermRef(owner.thisType, symbol)
+      TermRef(maybeOwner.thisType, symbol)
 
     /** The typeRef applied to its own type parameters */
     def appliedRef(using Context): Type =
@@ -1407,6 +1408,37 @@ object SymDenotations {
      */
     def namedType(using Context): NamedType =
       if (isType) typeRef else termRef
+
+    /** Like typeRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+     def reachableTypeRef(using Context) =
+       TypeRef(owner.reachableThisType, symbol)
+
+    /** Like termRef, but objects in the prefix are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     *
+     *  This is required to avoid owner crash in ExplicitOuter.
+     *  See tests/pos/i10769.scala
+     */
+    def reachableTermRef(using Context) =
+      TermRef(owner.reachableThisType, symbol)
+
+    /** Like thisType, but objects in the type are represented by their singleton type,
+     *  this means we output `pre.O.member` rather than `pre.O$.this.member`.
+     */
+    def reachableThisType(using Context): Type =
+      if this.is(Package) then
+        symbol.thisType
+      else if this.isTerm then
+        NoPrefix
+      else if this.is(Module) then
+        TermRef(owner.reachableThisType, this.sourceModule)
+      else
+        ThisType.raw(TypeRef(owner.reachableThisType, symbol.asType))
 
     /** The variance of this type parameter or type member as a subset of
      *  {Covariant, Contravariant}
@@ -1434,7 +1466,7 @@ object SymDenotations {
       else if myFlags.is(Trait)  then "trait"
       else if isClass            then "class"
       else if isType             then "type"
-      else if myFlags.is(Module) then "module"
+      else if myFlags.is(Module) then "object"
       else if myFlags.is(Method) then "method"
       else                            "val"
 
@@ -1609,7 +1641,7 @@ object SymDenotations {
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = BaseTypeMap()
+        myBaseTypeCache = new BaseTypeMap()
         myBaseTypeCachePeriod = ctx.period
       myBaseTypeCache
     }
@@ -1629,7 +1661,11 @@ object SymDenotations {
       myBaseTypeCachePeriod = Nowhere
     }
 
-    def invalidateMemberCaches(sym: Symbol)(using Context): Unit =
+    def invalidateMemberCaches()(using Context): Unit =
+      myMemberCachePeriod = Nowhere
+      invalidateMemberNamesCache()
+
+    def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
       if myMemberCache != null then myMemberCache.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
@@ -1830,7 +1866,7 @@ object SymDenotations {
     /** Enter a symbol in given `scope` without potentially replacing the old copy. */
     def enterNoReplace(sym: Symbol, scope: MutableScope)(using Context): Unit =
       scope.enter(sym)
-      invalidateMemberCaches(sym)
+      invalidateMemberCachesFor(sym)
 
     /** Replace symbol `prev` (if defined in current class) by symbol `replacement`.
      *  If `prev` is not defined in current class, do nothing.
@@ -2165,6 +2201,8 @@ object SymDenotations {
       if (companion.isClass && !isAbsent(canForce = false) && !companion.isAbsent(canForce = false))
         myCompanion = companion
 
+    private[core] def unforcedRegisteredCompanion: Symbol = myCompanion
+
     override def registeredCompanion(using Context) =
       if !myCompanion.exists then
         ensureCompleted()
@@ -2246,9 +2284,7 @@ object SymDenotations {
           if (pcls.isCompleting) recur(pobjs1, acc)
           else
             val pobjMembers = pcls.nonPrivateMembersNamed(name).filterWithPredicate { d =>
-              // Drop members of `Any` and `Object`
-              val owner = d.symbol.maybeOwner
-              (owner ne defn.AnyClass) && (owner ne defn.ObjectClass)
+              !defn.topClasses.contains(d.symbol.maybeOwner) // Drop members of top classes
             }
             recur(pobjs1, acc.union(pobjMembers))
         case nil =>
@@ -2258,6 +2294,15 @@ object SymDenotations {
             case d: DenotUnion => dropStale(d)
             case d => d
 
+      /** Filter symbols making up a DenotUnion to remove alternatives from stale classfiles.
+       *  This proceeds as follow:
+       *
+       *   - prefer alternatives that are currently compiled over ones that have been compiled before.
+       *   - if no alternative is compiled now, and they all come from the same file, keep all of them
+       *   - if no alternative is compiled now, and they come from different files, keep the
+       *     ones from the youngest file, but issue a warning that one of the class files
+       *     should be removed from the classpath.
+       */
       def dropStale(multi: DenotUnion): PreDenotation =
         val compiledNow = multi.filterWithPredicate(d =>
           d.symbol.isDefinedInCurrentRun || d.symbol.associatedFile == null
@@ -2503,10 +2548,17 @@ object SymDenotations {
     def withModuleClass(moduleClassFn: Context ?=> Symbol): this.type = { myModuleClassFn = moduleClassFn; this }
 
     override def toString: String = getClass.toString
+
+    /** A hook that is called before trying to complete a symbol with its
+     *  associated cycle detection via the Touched flag. This is overridden
+     *  for Type definitions in Namer, where we make sure that owners are
+     *  completed before nested types.
+     */
+    def needsCompletion(symd: SymDenotation)(using Context): Boolean = true
   }
 
   object LazyType:
-    private val NoSymbolFn = (using _: Context) => NoSymbol
+    private val NoSymbolFn = (_: Context) ?=> NoSymbol
 
   /** A subtrait of LazyTypes where completerTypeParams yields a List[TypeSymbol], which
    *  should be completed independently of the info.

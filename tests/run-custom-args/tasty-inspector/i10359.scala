@@ -29,18 +29,19 @@ object Test {
     val tastyFiles = allTastyFiles.filter(_.contains("TraitParams"))
 
     val inspect = new TestInspector()
-    inspect.inspectTastyFiles(allTastyFiles.filter(_.contains("Bar")))
+    TastyInspector.inspectTastyFiles(allTastyFiles.filter(_.contains("Bar")))(inspect)
   }
 }
 
-class TestInspector() extends TastyInspector:
+class TestInspector() extends Inspector:
 
-  protected def processCompilationUnit(using Quotes)(root: quotes.reflect.Tree): Unit =
+  def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
     import quotes.reflect._
 
-    val code = root.show
-    assert(code.contains("import Foo.this.g.{given}"), code)
-    assert(code.contains("import Foo.this.g.{given scala.Int}"), code)
+    for tasty <- tastys do
+      val code = tasty.ast.show
+      assert(code.contains("import Foo.this.g.{given}"), code)
+      assert(code.contains("import Foo.this.g.{given scala.Int}"), code)
 
-    val extractors = root.show(using Printer.TreeStructure)
-    assert(extractors.contains("GivenSelector"), extractors)
+      val extractors = tasty.ast.show(using Printer.TreeStructure)
+      assert(extractors.contains("GivenSelector"), extractors)

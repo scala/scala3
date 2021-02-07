@@ -23,25 +23,30 @@ If `y` gets compared to other values of type `T`,
 the program will still typecheck, since values of all types can be compared with each other.
 But it will probably give unexpected results and fail at runtime.
 
-Multiversal equality is an opt-in way to make universal equality
-safer. It uses a binary type class `CanEqual` to indicate that values of
-two given types can be compared with each other.
+Multiversal equality is an opt-in way to make universal equality safer.
+It uses a binary type class [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+to indicate that values of two given types can be compared with each other.
 The example above would not typecheck if `S` or `T` was a class
 that derives `CanEqual`, e.g.
+
 ```scala
 class T derives CanEqual
 ```
+
 Alternatively, one can also provide a `CanEqual` given instance directly, like this:
+
 ```scala
 given CanEqual[T, T] = CanEqual.derived
 ```
+
 This definition effectively says that values of type `T` can (only) be
 compared to other values of type `T` when using `==` or `!=`. The definition
 affects type checking but it has no significance for runtime
 behavior, since `==` always maps to `equals` and `!=` always maps to
-the negation of `equals`. The right hand side `CanEqual.derived` of the definition
+the negation of `equals`. The right-hand side `CanEqual.derived` of the definition
 is a value that has any `CanEqual` instance as its type. Here is the definition of class
 `CanEqual` and its companion object:
+
 ```scala
 package scala
 import annotation.implicitNotFound
@@ -49,9 +54,8 @@ import annotation.implicitNotFound
 @implicitNotFound("Values of types ${L} and ${R} cannot be compared with == or !=")
 sealed trait CanEqual[-L, -R]
 
-object CanEqual {
-  object derived extends CanEqual[Any, Any]
-}
+object CanEqual:
+   object derived extends CanEqual[Any, Any]
 ```
 
 One can have several `CanEqual` given instances for a type. For example, the four
@@ -64,7 +68,9 @@ given CanEqual[B, B] = CanEqual.derived
 given CanEqual[A, B] = CanEqual.derived
 given CanEqual[B, A] = CanEqual.derived
 ```
-The `scala.CanEqual` object defines a number of `CanEqual` given instances that together
+
+The [`scala.CanEqual`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/CanEqual.scala)
+object defines a number of `CanEqual` given instances that together
 define a rule book for what standard types can be compared (more details below).
 
 There is also a "fallback" instance named `canEqualAny` that allows comparisons
@@ -74,7 +80,8 @@ over all types that do not themselves have a `CanEqual` given.  `canEqualAny` is
 def canEqualAny[L, R]: CanEqual[L, R] = CanEqual.derived
 ```
 
-Even though `canEqualAny` is not declared as `given`, the compiler will still construct an `canEqualAny` instance as answer to an implicit search for the
+Even though `canEqualAny` is not declared as `given`, the compiler will still
+construct an `canEqualAny` instance as answer to an implicit search for the
 type `CanEqual[L, R]`, unless `L` or `R` have `CanEqual` instances
 defined on them, or the language feature `strictEquality` is enabled.
 
@@ -91,15 +98,21 @@ or with a command line option `-language:strictEquality`.
 ## Deriving CanEqual Instances
 
 Instead of defining `CanEqual` instances directly, it is often more convenient to derive them. Example:
+
 ```scala
 class Box[T](x: T) derives CanEqual
 ```
+
 By the usual rules of [type class derivation](./derivation.md),
 this generates the following `CanEqual` instance in the companion object of `Box`:
+
 ```scala
-given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] = CanEqual.derived
+given [T, U](using CanEqual[T, U]): CanEqual[Box[T], Box[U]] =
+   CanEqual.derived
 ```
+
 That is, two boxes are comparable with `==` or `!=` if their elements are. Examples:
+
 ```scala
 new Box(1) == new Box(1L)   // ok since there is an instance for `CanEqual[Int, Long]`
 new Box(1) == new Box("a")  // error: can't compare
@@ -159,24 +172,23 @@ we are dealing with a refinement of pre-existing, universal equality. It is best
 
 Say you want to come up with a safe version of the `contains` method on `List[T]`. The original definition of `contains` in the standard library was:
 ```scala
-class List[+T] {
-  ...
-  def contains(x: Any): Boolean
-}
+class List[+T]:
+   ...
+   def contains(x: Any): Boolean
 ```
 That uses universal equality in an unsafe way since it permits arguments of any type to be compared with the list's elements. The "obvious" alternative definition
 ```scala
-  def contains(x: T): Boolean
+   def contains(x: T): Boolean
 ```
 does not work, since it refers to the covariant parameter `T` in a nonvariant context. The only variance-correct way to use the type parameter `T` in `contains` is as a lower bound:
 ```scala
-  def contains[U >: T](x: U): Boolean
+   def contains[U >: T](x: U): Boolean
 ```
 This generic version of `contains` is the one used in the current (Scala 2.13) version of `List`.
 It looks different but it admits exactly the same applications as the `contains(x: Any)` definition we started with.
 However, we can make it more useful (i.e. restrictive) by adding a `CanEqual` parameter:
 ```scala
-  def contains[U >: T](x: U)(using CanEqual[T, U]): Boolean // (1)
+   def contains[U >: T](x: U)(using CanEqual[T, U]): Boolean // (1)
 ```
 This version of `contains` is equality-safe! More precisely, given
 `x: T`, `xs: List[T]` and `y: U`, then `xs.contains(y)` is type-correct if and only if
@@ -184,7 +196,7 @@ This version of `contains` is equality-safe! More precisely, given
 
 Unfortunately, the crucial ability to "lift" equality type checking from simple equality and pattern matching to arbitrary user-defined operations gets lost if we restrict ourselves to an equality class with a single type parameter. Consider the following signature of `contains` with a hypothetical `CanEqual1[T]` type class:
 ```scala
-  def contains[U >: T](x: U)(using CanEqual1[U]): Boolean   // (2)
+   def contains[U >: T](x: U)(using CanEqual1[U]): Boolean   // (2)
 ```
 This version could be applied just as widely as the original `contains(x: Any)` method,
 since the `CanEqual1[Any]` fallback is always available! So we have gained nothing. What got lost in the transition to a single parameter type class was the original rule that `CanEqual[A, B]` is available only if neither `A` nor `B` have a reflexive `CanEqual` instance. That rule simply cannot be expressed if there is a single type parameter for `CanEqual`.

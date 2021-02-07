@@ -8,8 +8,8 @@ object Macro {
   def impl(sc: Expr[StringContext])(using Quotes) : Expr[Unit] = {
     import quotes.reflect._
     sc match {
-      case '{ StringContext(${Varargs(parts)}: _*) } =>
-        for (part @ Const(s) <- parts)
+      case '{ StringContext(${Varargs(parts)}*) } =>
+        for (part @ Expr(s) <- parts)
           report.error(s, part.asTerm.pos)
     }
     '{}

@@ -116,4 +116,10 @@ object Mode {
 
   /** Are we typechecking the rhs of an extension method? */
   val InExtensionMethod: Mode = newMode(26, "InExtensionMethod")
+
+  /** Are we resolving a TypeTest node? */
+  val InTypeTest: Mode = newMode(27, "InTypeTest")
+
+  /** Are we enforcing null safety */
+  val SafeNulls = newMode(28, "SafeNulls")
 }

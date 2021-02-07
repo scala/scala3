@@ -86,6 +86,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
+  @Test def izumiReflect = projects.izumiReflect.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def pprint = projects.pprint.run()
@@ -113,7 +114,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   // @Test def scissAsyncFile  = projects.scissAsyncFile .run()
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scalaSTM        = projects.scalaSTM       .run()
-  @Test def scissLucre      = projects.scissLucre     .run()
+  // @Test def scissLucre      = projects.scissLucre     .run()
 
 end CommunityBuildTestA
 
@@ -139,7 +140,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def scodecBits = projects.scodecBits.run()
   @Test def scalap = projects.scalap.run()
   @Test def scalaParserCombinators = projects.scalaParserCombinators.run()
-  @Test def ScalaPB = projects.ScalaPB.run()
+  @Test def scalaPB = projects.scalaPB.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
@@ -147,6 +148,7 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
   @Test def verify = projects.verify.run()
   @Test def xmlInterpolator = projects.xmlInterpolator.run()
+  @Test def perspective = projects.perspective.run()
 
 end CommunityBuildTestB
 

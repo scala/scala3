@@ -97,7 +97,7 @@ class C {
     println(s"initialize $name"); "result"
   }
 
-  @volatile private[this] var _x: AnyRef = _
+  @volatile private[this] var _x: AnyRef = compiletime.uninitialized
 
   // Expansion of:  lazy val x: String = init("x")
 

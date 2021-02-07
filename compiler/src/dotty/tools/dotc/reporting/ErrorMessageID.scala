@@ -35,7 +35,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     IllegalVariableInPatternAlternativeID,
     IdentifierExpectedID,
     AuxConstructorNeedsNonImplicitParameterID,
-    IncorrectRepeatedParameterSyntaxID,
+    VarArgsParamMustComeLastID,
     IllegalLiteralID,
     PatternMatchExhaustivityID,
     MatchCaseUnreachableID,
@@ -84,7 +84,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ValueClassesMayNotContainInitalizationID,
     ValueClassesMayNotBeAbstractID,
     ValueClassesMayNotBeContaintedID,
-    ValueClassesMayNotWrapItselfID,
+    ValueClassesMayNotWrapAnotherValueClassID,
     ValueClassParameterMayNotBeAVarID,
     ValueClassNeedsExactlyOneValParamID,
     OnlyCaseClassOrCaseObjectAllowedID,
@@ -168,7 +168,9 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     CannotExtendJavaEnumID,
     InvalidReferenceInImplicitNotFoundAnnotationID,
     TraitMayNotDefineNativeMethodID,
-    JavaEnumParentArgsID
+    JavaEnumParentArgsID,
+    AlreadyDefinedID,
+    CaseClassInInlinedCodeID
 
   def errorNumber = ordinal - 2
 }

@@ -10,7 +10,7 @@ title: Getting Started: Users
 This is an easy way to try Dotty without installing anything, directly in your browser.
 
 ### sbt
-The fastest way to create a new project compiled by Dotty is using [sbt (1.1.4+)](http://www.scala-sbt.org/)
+The fastest way to create a new project compiled by Dotty is using [sbt](http://www.scala-sbt.org/)
 
 Create a simple Dotty project:
 ```bash

@@ -9,7 +9,7 @@ object Test {
 
 package scala {
   object MyTest {
-    implicit val tbx: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+    implicit val tbx: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(getClass.getClassLoader)
 
     def myTest() = {
       def y(using Quotes): Expr[Unit] = '{

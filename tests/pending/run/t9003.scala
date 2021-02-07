@@ -62,7 +62,7 @@ object Test {
 
     case class CaseSequence(as: Int*)
     val buffer1 = collection.mutable.Buffer(0, 0)
-    CaseSequence(buffer1: _*) match {
+    CaseSequence(buffer1*) match {
       case CaseSequence(_, i) =>
         buffer1(1) = 1
         assertZero(i) // failed

@@ -5,9 +5,9 @@ object Test extends App {
   val a = "a"
   val a2 = "a2"
 
-  qual.sel(a, a2: _*) // error
-  qual.sel(arg = a, a2: _*) // error
-  qual.sel(arg, arg2 = "a2", a2: _*) // error
+  qual.sel(a, a2*) // error
+  qual.sel(arg = a, a2*) // error
+  qual.sel(arg, arg2 = "a2", a2*) // error
 
   class Bad1 extends Dynamic {
     def selectDynamic(n: Int) = n

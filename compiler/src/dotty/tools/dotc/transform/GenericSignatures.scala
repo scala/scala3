@@ -33,8 +33,8 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `None` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type)(using Context): Option[String] =
-    // Avoid generating a signature for local symbols.
-    if (sym0.isLocal) None
+    // Avoid generating a signature for non-class local symbols.
+    if (sym0.isLocal && !sym0.isClass) None
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
   @noinline
@@ -212,12 +212,11 @@ object GenericSignatures {
             else if (sym == defn.UnitClass) jsig(defn.BoxedUnitClass.typeRef)
             else builder.append(defn.typeTag(sym.info))
           else if (ValueClasses.isDerivedValueClass(sym)) {
-            val unboxed     = ValueClasses.valueClassUnbox(sym.asClass).info.finalResultType
-            val unboxedSeen = tp.memberInfo(ValueClasses.valueClassUnbox(sym.asClass)).finalResultType
-            if (unboxedSeen.isPrimitiveValueType && !primitiveOK)
+            val erasedUnderlying = core.TypeErasure.fullErasure(tp)
+            if (erasedUnderlying.isPrimitiveValueType && !primitiveOK)
               classSig(sym, pre, args)
             else
-              jsig(unboxedSeen, toplevel, primitiveOK)
+              jsig(erasedUnderlying, toplevel, primitiveOK)
           }
           else if (defn.isSyntheticFunctionClass(sym)) {
             val erasedSym = defn.erasedFunctionClass(sym)

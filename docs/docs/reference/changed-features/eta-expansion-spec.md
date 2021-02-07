@@ -3,11 +3,13 @@ layout: doc-page
 title: "Automatic Eta Expansion - More Details"
 ---
 
-### Motivation
+## Motivation
 
 Scala maintains a convenient distinction between _methods_ and _functions_.
 Methods are part of the definition of a class that can be invoked in objects while functions are complete objects themselves, making them first-class entities. For example, they can be assigned to variables.
-These two mechanisms are bridged in Scala by a mechanism called _eta-expansion_ (also called eta-abstraction), which converts a reference to a method into a function. Intuitively, a method `m` can be passed around by turning it into an object: the function `x => m(x)`.
+These two mechanisms are bridged in Scala by a mechanism called
+[_eta-expansion_](https://www.scala-lang.org/files/archive/spec/2.13/06-expressions.html#eta-expansion-section)
+(also called eta-abstraction), which converts a reference to a method into a function. Intuitively, a method `m` can be passed around by turning it into an object: the function `x => m(x)`.
 
 In this snippet which assigns a method to a `val`, the compiler will perform _automatic eta-expansion_, as shown in the comment:
 
@@ -16,7 +18,7 @@ def m(x: Int, y: String) = ???
 val f = m // becomes: val f = (x: Int, y: String) => m(x, y)
 ```
 
-In Scala 2, a method reference `m` was converted to a function value only if the expected type was a function type, which means the conversion in the example above would not have been triggered, because `val f` does not have a type ascription. To still get eta-expansion, a shortcut `m _` would force the conversion.
+In Scala 2, a method reference `m` is converted to a function value only if the expected type is a function type, which means the conversion in the example above would not have been triggered, because `val f` does not have a type ascription. To still get eta-expansion, a shortcut `m _` would force the conversion.
 
 For methods with one or more parameters like in the example above, this restriction has now been dropped. The syntax `m _` is no longer needed and will be deprecated in the future.
 
@@ -69,6 +71,6 @@ Thus, an unapplied method with an empty argument list is only converted to a fun
 
 The method value syntax `m _` is deprecated.
 
-### Reference
+## Reference
 
-For more info, see [PR #2701](https://github.com/lampepfl/dotty/pull/2701).
+For more information, see [PR #2701](https://github.com/lampepfl/dotty/pull/2701).

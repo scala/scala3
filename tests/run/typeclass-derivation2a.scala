@@ -25,8 +25,8 @@ object TypeLevel {
     def mirror(ordinal: Int): Mirror =
       mirror(ordinal, EmptyProduct)
 
-    private final val elemSeparator = '\000'
-    private final val caseSeparator = '\001'
+    private final val elemSeparator = '\u0000'
+    private final val caseSeparator = '\u0001'
 
     val label: Array[Array[String]] =
       initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
@@ -123,7 +123,7 @@ object Lst {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  val genericClass = new GenericClass("Cons\000hd\000tl\001Nil")
+  val genericClass = new GenericClass("Cons\u0000hd\u0000tl\u0001Nil")
   import genericClass.mirror
 
   private type ShapeOf[T] = Shape.Cases[(
@@ -158,7 +158,7 @@ object Pair {
   // common compiler-generated infrastructure
   import TypeLevel._
 
-  val genericClass = new GenericClass("Pair\000x\000y")
+  val genericClass = new GenericClass("Pair\u0000x\u0000y")
   import genericClass.mirror
 
   private type ShapeOf[T] = Shape.Case[Pair[T], (T, T)]
@@ -186,7 +186,7 @@ case class Right[R](x: R) extends Either[Nothing, R]
 object Either {
   import TypeLevel._
 
-  val genericClass = new GenericClass("Left\000x\001Right\000x")
+  val genericClass = new GenericClass("Left\u0000x\u0001Right\u0000x")
   import genericClass.mirror
 
   private type ShapeOf[L, R] = Shape.Cases[(

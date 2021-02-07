@@ -216,7 +216,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Nil, initArgs)
+        (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }
 
     val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
@@ -253,7 +253,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
       for
         getter <- mixin.info.decls.toList
-        if getter.isGetter && !wasOneOf(getter, Deferred) && !getter.isConstExprFinalVal
+        if getter.isGetter
+           && !getter.isEffectivelyErased
+           && !wasOneOf(getter, Deferred)
+           && !getter.isConstExprFinalVal
       yield
         if (isCurrent(getter) || getter.name.is(ExpandedName)) {
           val rhs =
@@ -282,12 +285,12 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
+        transformFollowing(DefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
       }
 
     cpy.Template(impl)(
       constr =
-        if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
+        if (cls.is(Trait)) cpy.DefDef(impl.constr)(paramss = Nil :: Nil)
         else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =

@@ -318,20 +318,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
-        case app: Closure =>
-          val env: List[Tree] = app.env
-          val call: Tree = app.meth
-          val functionalInterface: Symbol = {
-            val t = app.tpt.tpe.typeSymbol
-            if (t.exists) t
-            else {
-              val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
-              val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
-              if (returnsUnit) requiredClass(("scala.runtime.function.JProcedure" + arity))
-              else if (arity <= 2) requiredClass(("scala.runtime.function.JFunction" + arity))
-              else requiredClass(("scala.Function" + arity))
-            }
-          }
+        case t @ Closure(env, call, tpt) =>
+          val functionalInterface: Symbol =
+            if !tpt.isEmpty then tpt.tpe.classSymbol
+            else t.tpe.classSymbol
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
             case t @ DesugaredSelect(_, _) => (t, Nil) // TODO: use Select

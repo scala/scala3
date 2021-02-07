@@ -4,7 +4,7 @@ object Test extends App {
 
   val m = x.getClass.getMethod("toString")
 
-  assert(m.invoke(x, (Nil: List[AnyRef]): _*) == "abc")
+  assert(m.invoke(x, (Nil: List[AnyRef])*) == "abc")
 
   Test2.main(Array())
 }
@@ -14,7 +14,7 @@ object Test2 {
   def main(args: Array[String]): Unit = {
     val x = "abc"
     val m = x.getClass.getMethod("toString")
-    m.invoke(x, Nil: _*)
-    m.invoke(x, Seq(): _*)
+    m.invoke(x, Nil*)
+    m.invoke(x, Seq()*)
   }
 }

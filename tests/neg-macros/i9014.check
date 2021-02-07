@@ -7,4 +7,4 @@
   |
   |                         given_Bar
   |
-  |                     But method given_Bar does not match type Bar.
+  |                     But given instance given_Bar does not match type Bar.

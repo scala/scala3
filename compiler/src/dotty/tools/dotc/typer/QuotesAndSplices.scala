@@ -43,7 +43,7 @@ trait QuotesAndSplices {
   def typedQuote(tree: untpd.Quote, pt: Type)(using Context): Tree = {
     record("typedQuote")
     tree.quoted match {
-      case untpd.Splice(innerExpr) if tree.isTerm =>
+      case untpd.Splice(innerExpr) if tree.isTerm && !ctx.mode.is(Mode.Pattern) =>
         report.warning("Canceled splice directly inside a quote. '{ ${ XYZ } } is equivalent to XYZ.", tree.srcPos)
       case untpd.TypSplice(innerType) if tree.isType =>
         report.warning("Canceled splice directly inside a quote. '[ ${ XYZ } ] is equivalent to XYZ.", tree.srcPos)

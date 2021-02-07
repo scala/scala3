@@ -2,7 +2,7 @@ import scala.quoted._
 import scala.quoted.staging._
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def ret(using Quotes): Expr[Int => Int] = '{ (x: Int) =>
     ${
       val z = run('{x + 1}) // throws scala.quoted.runtime.impl.ScopeException =>
@@ -16,7 +16,7 @@ object Test {
 
 package scala {
   package mytest {
-    def myTest()(using Toolbox) = {
+    def myTest()(using Compiler) = {
       try {
         run(Test.ret).apply(10)
         throw new Exception

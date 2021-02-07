@@ -24,6 +24,8 @@ import printing.XprintMode
 import parsing.Parsers.Parser
 import parsing.JavaParsers.JavaParser
 import typer.ImplicitRunInfo
+import config.Feature
+import StdNames.nme
 
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
@@ -71,11 +73,13 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
       .setPeriod(Period(comp.nextRunId, FirstPhaseId))
       .setScope(rootScope)
     rootScope.enter(ctx.definitions.RootPackage)(using bootstrap)
-    val start = bootstrap.fresh
+    var start = bootstrap.fresh
       .setOwner(defn.RootClass)
       .setTyper(new Typer)
       .addMode(Mode.ImplicitsEnabled)
       .setTyperState(ctx.typerState.fresh(ctx.reporter))
+    if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
+      start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
     start.setRun(this)
   }

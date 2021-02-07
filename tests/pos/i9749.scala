@@ -3,6 +3,6 @@ class A {
   def f(x: String*) = 1
 
   def foo(x: List[String]): Unit = {
-    f(x: _*)
+    f(x*)
   }
 }

@@ -38,36 +38,49 @@ object ProtoTypes {
     def isCompatible(tp: Type, pt: Type)(using Context): Boolean =
       (tp.widenExpr relaxed_<:< pt.widenExpr) || viewExists(tp, pt)
 
-    /** Like isCompatibe, but using a subtype comparison with necessary eithers
-     *  that don't unnecessarily truncate the constraint space, returning false instead.
+    /** Like normalize and then isCompatible, but using a subtype comparison with
+     *  necessary eithers that does not unnecessarily truncate the constraint space,
+     *  returning false instead.
      */
     def necessarilyCompatible(tp: Type, pt: Type)(using Context): Boolean =
-      val tpw = tp.widenExpr
-      val ptw = pt.widenExpr
-      necessarySubType(tpw, ptw) || tpw.isValueSubType(ptw) || viewExists(tp, pt)
+      val tpn = normalize(tp, pt, followIFT = !defn.isContextFunctionType(pt))
+      necessarySubType(tpn, pt) || tpn.isValueSubType(pt) || viewExists(tpn, pt)
 
     /** Test compatibility after normalization.
-     *  Do this in a fresh typerstate unless `keepConstraint` is true.
+     *  If `keepConstraint` is false, the current constraint set will not be modified by this call.
      */
-    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean = {
-      def testCompat(using Context): Boolean = {
+    def normalizedCompatible(tp: Type, pt: Type, keepConstraint: Boolean)(using Context): Boolean =
+
+      def testCompat(using Context): Boolean =
         val normTp = normalize(tp, pt)
         isCompatible(normTp, pt) || pt.isRef(defn.UnitClass) && normTp.isParameterless
-      }
-      if (keepConstraint)
-        tp.widenSingleton match {
+
+      if keepConstraint then
+        tp.widenSingleton match
           case poly: PolyType =>
-            // We can't keep the constraint in this case, since we have to add type parameters
-            // to it, but there's no place to associate them with type variables.
-            // So we'd get a "inconsistent: no typevars were added to committable constraint"
-            // assertion failure in `constrained`. To do better, we'd have to change the
-            // constraint handling architecture so that some type parameters are committable
-            // and others are not. But that's a whole different ballgame.
-            normalizedCompatible(tp, pt, keepConstraint = false)
+            val newctx = ctx.fresh.setNewTyperState()
+            val result = testCompat(using newctx)
+            typr.println(
+                i"""normalizedCompatible for $poly, $pt = $result
+                   |constraint was: ${ctx.typerState.constraint}
+                   |constraint now: ${newctx.typerState.constraint}""")
+            if result
+                && (ctx.typerState.constraint ne newctx.typerState.constraint)
+                && {
+                  val existingVars = ctx.typerState.uninstVars.toSet
+                  newctx.typerState.uninstVars.forall(existingVars.contains)
+                }
+            then newctx.typerState.commit()
+              // If the new constrait contains fresh type variables we cannot keep it,
+              // since those type variables are not instantiated anywhere in the source.
+              // See pos/i6682a.scala for a test case. See pos/11243.scala and pos/i5773b.scala
+              // for tests where it matters that we keep the constraint otherwise.
+              // TODO: A better solution would clean the new constraint, so that it "avoids"
+              // the problematic type variables. But we have not implemented such an algorithm yet.
+            result
           case _ => testCompat
-        }
       else explore(testCompat)
-    }
+    end normalizedCompatible
 
     private def disregardProto(pt: Type)(using Context): Boolean =
       pt.dealias.isRef(defn.UnitClass)
@@ -79,14 +92,22 @@ object ProtoTypes {
       val savedConstraint = ctx.typerState.constraint
       val res = pt.widenExpr match {
         case pt: FunProto =>
-          mt match {
-            case mt: MethodType => constrainResult(resultTypeApprox(mt), pt.resultType)
+          mt match
+            case mt: MethodType =>
+              constrainResult(resultTypeApprox(mt), pt.resultType)
+              && {
+                if pt.constrainResultDeep
+                   && mt.isImplicitMethod == (pt.applyKind == ApplyKind.Using)
+                then
+                  pt.args.lazyZip(mt.paramInfos).forall((arg, paramInfo) =>
+                    pt.typedArg(arg, paramInfo).tpe <:< paramInfo)
+                else true
+              }
             case _ => true
-          }
         case _: ValueTypeOrProto if !disregardProto(pt) =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case pt: WildcardType if pt.optBounds.exists =>
-          necessarilyCompatible(normalize(mt, pt), pt)
+          necessarilyCompatible(mt, pt)
         case _ =>
           true
       }
@@ -123,6 +144,7 @@ object ProtoTypes {
   abstract case class IgnoredProto(ignored: Type) extends CachedGroundType with MatchAlways:
     override def revealIgnored = ignored
     override def deepenProto(using Context): Type = ignored
+    override def deepenProtoTrans(using Context): Type = ignored.deepenProtoTrans
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
@@ -146,11 +168,6 @@ object ProtoTypes {
    */
   abstract case class SelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean)
   extends CachedProxyType with ProtoType with ValueTypeOrProto {
-
-    private var myExtensionName: TermName = null
-    def extensionName(using Context): TermName =
-      if myExtensionName == null then myExtensionName = name.toExtensionName
-      myExtensionName
 
     /** Is the set of members of this type unknown? This is the case if:
      *  1. The type has Nothing or Wildcard as a prefix or underlying type
@@ -198,10 +215,21 @@ object ProtoTypes {
       if ((name eq this.name) && (memberProto eq this.memberProto) && (compat eq this.compat)) this
       else SelectionProto(name, memberProto, compat, privateOK)
 
+    override def isErroneous(using Context): Boolean =
+      memberProto.isErroneous
+
+    override def unusableForInference(using Context): Boolean =
+      memberProto.unusableForInference
+
     def map(tm: TypeMap)(using Context): SelectionProto = derivedSelectionProto(name, tm(memberProto), compat)
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T = ta(x, memberProto)
 
-    override def deepenProto(using Context): SelectionProto = derivedSelectionProto(name, memberProto.deepenProto, compat)
+    override def deepenProto(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProto, compat)
+
+    override def deepenProtoTrans(using Context): SelectionProto =
+      derivedSelectionProto(name, memberProto.deepenProtoTrans, compat)
+
     override def computeHash(bs: Hashable.Binders): Int = {
       val delta = (if (compat eq NoViewsAllowed) 1 else 0) | (if (privateOK) 2 else 0)
       addDelta(doHash(bs, name, memberProto), delta)
@@ -234,12 +262,11 @@ object ProtoTypes {
   /** Create a selection proto-type, but only one level deep;
    *  treat constructors specially
    */
-  def selectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
+  def shallowSelectionProto(name: Name, tp: Type, typer: Typer)(using Context): TermType =
     if (name.isConstructorName) WildcardType
-    else tp match {
+    else tp match
       case tp: UnapplyFunProto => new UnapplySelectionProto(name)
       case tp => SelectionProto(name, IgnoredProto(tp), typer, privateOK = true)
-    }
 
   /** A prototype for expressions [] that are in some unspecified selection operation
    *
@@ -276,9 +303,21 @@ object ProtoTypes {
   /** A prototype for expressions that appear in function position
    *
    *  [](args): resultType
+   *
+   *  @param  args      The untyped arguments to which the function is applied
+   *  @param  resType   The expeected result type
+   *  @param  typer     The typer to use for typing the arguments
+   *  @param  applyKind The kind of application (regular/using/tupled infix operand)
+   *  @param  state     The state object to use for tracking the changes to this prototype
+   *  @param  constrainResultDeep
+   *                    A flag to indicate that constrainResult on this prototype
+   *                    should typecheck and compare the arguments.
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(typer: Typer,
-    override val applyKind: ApplyKind, state: FunProtoState = new FunProtoState)(using protoCtx: Context)
+  case class FunProto(args: List[untpd.Tree], resType: Type)(
+    typer: Typer,
+    override val applyKind: ApplyKind,
+    state: FunProtoState = new FunProtoState,
+    val constrainResultDeep: Boolean = false)(using protoCtx: Context)
   extends UncachedGroundType with ApplyingProto with FunOrPolyProto {
     override def resultType(using Context): Type = resType
 
@@ -290,9 +329,17 @@ object ProtoTypes {
       typer.isApplicableType(tp, args, resultType, keepConstraint && !args.exists(isPoly))
     }
 
-    def derivedFunProto(args: List[untpd.Tree] = this.args, resultType: Type, typer: Typer = this.typer): FunProto =
-      if ((args eq this.args) && (resultType eq this.resultType) && (typer eq this.typer)) this
-      else new FunProto(args, resultType)(typer, applyKind)
+    def derivedFunProto(
+        args: List[untpd.Tree] = this.args,
+        resultType: Type = this.resultType,
+        typer: Typer = this.typer,
+        constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
+      if (args eq this.args)
+          && (resultType eq this.resultType)
+          && (typer eq this.typer)
+          && constrainResultDeep == this.constrainResultDeep
+      then this
+      else new FunProto(args, resultType)(typer, applyKind, constrainResultDeep = constrainResultDeep)
 
     /** @return True if all arguments have types.
      */
@@ -408,6 +455,9 @@ object ProtoTypes {
     override def isErroneous(using Context): Boolean =
       state.typedArgs.tpes.exists(_.isErroneous)
 
+    override def unusableForInference(using Context): Boolean =
+      state.typedArgs.exists(_.tpe.unusableForInference)
+
     override def toString: String = s"FunProto(${args mkString ","} => $resultType)"
 
     def map(tm: TypeMap)(using Context): FunProto =
@@ -416,7 +466,11 @@ object ProtoTypes {
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, typedArgs().tpes), resultType)
 
-    override def deepenProto(using Context): FunProto = derivedFunProto(args, resultType.deepenProto, typer)
+    override def deepenProto(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): FunProto =
+      derivedFunProto(args, resultType.deepenProtoTrans, constrainResultDeep = true)
 
     override def withContext(newCtx: Context): ProtoType =
       if newCtx `eq` protoCtx then this
@@ -447,8 +501,7 @@ object ProtoTypes {
       ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
         resType match {
           case selProto @ SelectionProto(selName: TermName, mbrType, _, _) =>
-               ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
-            || ctx.typer.hasExtensionMethodNamed(tp, selProto.extensionName, argType, mbrType)
+            ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
               //.reporting(i"has ext $tp $name $argType $mbrType: $result")
           case _ =>
             false
@@ -459,12 +512,22 @@ object ProtoTypes {
       if ((argType eq this.argType) && (resultType eq this.resultType)) this
       else ViewProto(argType, resultType)
 
+    override def isErroneous(using Context): Boolean =
+      argType.isErroneous || resType.isErroneous
+
+    override def unusableForInference(using Context): Boolean =
+      argType.unusableForInference || resType.unusableForInference
+
     def map(tm: TypeMap)(using Context): ViewProto = derivedViewProto(tm(argType), tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta(x, argType), resultType)
 
-    override def deepenProto(using Context): ViewProto = derivedViewProto(argType, resultType.deepenProto)
+    override def deepenProto(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): ViewProto =
+      derivedViewProto(argType, resultType.deepenProtoTrans)
   }
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
@@ -502,13 +565,23 @@ object ProtoTypes {
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
+    override def isErroneous(using Context): Boolean =
+      targs.exists(_.tpe.isErroneous)
+
+    override def unusableForInference(using Context): Boolean =
+      targs.exists(_.tpe.unusableForInference)
+
     def map(tm: TypeMap)(using Context): PolyProto =
       derivedPolyProto(targs, tm(resultType))
 
     def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
       ta(ta.foldOver(x, targs.tpes), resultType)
 
-    override def deepenProto(using Context): PolyProto = derivedPolyProto(targs, resultType.deepenProto)
+    override def deepenProto(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProto)
+
+    override def deepenProtoTrans(using Context): PolyProto =
+      derivedPolyProto(targs, resultType.deepenProtoTrans)
   }
 
   /** A prototype for expressions [] that are known to be functions:
@@ -607,7 +680,7 @@ object ProtoTypes {
    * of toString method. The problem is solved by dereferencing nullary method types if the corresponding
    * function type is not compatible with the prototype.
    */
-  def normalize(tp: Type, pt: Type)(using Context): Type = {
+  def normalize(tp: Type, pt: Type, followIFT: Boolean = true)(using Context): Type = {
     Stats.record("normalize")
     tp.widenSingleton match {
       case poly: PolyType =>
@@ -632,7 +705,7 @@ object ProtoTypes {
         normalize(et.resultType, pt)
       case wtp =>
         val iftp = defn.asContextFunctionType(wtp)
-        if iftp.exists then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
+        if iftp.exists && followIFT then normalize(iftp.dropDependentRefinement.argInfos.last, pt)
         else tp
     }
   }

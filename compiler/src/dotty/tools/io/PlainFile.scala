@@ -7,6 +7,7 @@ package dotty.tools
 package io
 
 import java.io.{InputStream, OutputStream}
+import java.nio.file.{InvalidPathException, Paths}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
@@ -25,7 +26,30 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   dotc.util.Stats.record("new PlainFile")
 
   def jpath: JPath = givenPath.jpath
-  override def underlyingSource: Some[PlainFile] = Some(this)
+  
+  override def underlyingSource  = {
+    val fileSystem = jpath.getFileSystem
+    fileSystem.provider().getScheme match {
+      case "jar" =>
+        val fileStores = fileSystem.getFileStores.iterator()
+        if (fileStores.hasNext) {
+          val jarPath = fileStores.next().name
+          try {
+            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
+          } catch {
+            case _: InvalidPathException =>
+              None
+          }
+        } else None
+      case "jrt" =>
+        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
+          // TODO limit this to OpenJDK based JVMs?
+          val moduleName = jpath.getName(1)
+          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
+        } else None
+      case _ => None
+    }
+  }
 
 
   /** Returns the name of this abstract file. */
@@ -93,4 +117,9 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
    */
   def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile =
     new PlainFile(givenPath / name)
+}
+
+object PlainFile {
+  extension (jPath: JPath)
+    def toPlainFile = new PlainFile(new Path(jPath))
 }

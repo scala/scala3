@@ -7,7 +7,7 @@ object Macros {
 
   private def impl(self: Expr[StringContext], args: Expr[Seq[String]])(using Quotes): Expr[String] = {
     self match {
-      case '{ StringContext($parts: _*) } =>
+      case '{ StringContext($parts*) } =>
         '{
           val p: Seq[String] = $parts
           val a: Seq[Any] = $args ++ Seq("")
