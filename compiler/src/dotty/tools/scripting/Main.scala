@@ -35,7 +35,9 @@ object Main:
   def main(args: Array[String]): Unit =
     val (compilerArgs, scriptFile, scriptArgs, saveCompiled) = distinguishArgs(args)
     if verbose then showArgs(args, compilerArgs, scriptFile, scriptArgs)
-    try ScriptingDriver(compilerArgs, scriptFile, scriptArgs).compileAndRun { (outDir:Path, classpath:String) =>
+    try
+      ScriptingDriver(compilerArgs, scriptFile, scriptArgs).compileAndRun {
+          (outDir:Path, classpath:String) =>
       val classFiles = outDir.toFile.listFiles.toList match {
       case Nil => sys.error(s"no files below [$outDir]")
       case list => list
@@ -61,7 +63,8 @@ object Main:
         println(s"Error: ${e.getMessage}")
         sys.exit(1)
 
-  def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String], classpath:String, mainClassName: String): Unit =
+  def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
+      classpath:String, mainClassName: String): Unit =
     import java.net.{URI, URL}
     val jarTargetDir: Path = Option(scriptFile.toPath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
@@ -93,13 +96,15 @@ object Main:
 
   lazy val verbose = Option(System.getenv("DOTC_VERBOSE")) != None
 
-  def showArgs(args:Array[String], compilerArgs:Array[String], scriptFile:File, scriptArgs:Array[String]): Unit =
+  def showArgs(args:Array[String], compilerArgs:Array[String],
+      scriptFile:File, scriptArgs:Array[String]): Unit =
     args.foreach { printf("args[%s]\n", _) }
     compilerArgs.foreach { printf("compilerArgs[%s]\n", _) }
     scriptArgs.foreach { printf("scriptArgs[%s]\n", _) }
     printf("scriptFile[%s]\n", scriptFile)
 
-  private def detectMainMethod(outDir: Path, classpath: String, scriptFile: File): (String, Method) =
+  private def detectMainMethod(outDir: Path, classpath: String,
+      scriptFile: File): (String, Method) =
     val outDirURL = outDir.toUri.toURL
     val classpathUrls = classpath.split(pathsep).map(File(_).toURI.toURL)
     val cl = URLClassLoader(classpathUrls :+ outDirURL)
