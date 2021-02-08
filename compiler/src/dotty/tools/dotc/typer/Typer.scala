@@ -3406,8 +3406,7 @@ class Typer extends Namer
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if Inliner.needsInlining(tree)
-        then
+        else if Inliner.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
           val inlined = Inliner.inlineCall(tree)
