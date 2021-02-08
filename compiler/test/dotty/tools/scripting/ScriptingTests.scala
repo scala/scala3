@@ -16,6 +16,7 @@ class ScriptingTests:
 
   @Test def scriptingTests =
     val testFiles = scripts("/scripting")
+    testFiles.foreach { (f:File) => System.err.printf("script[%s]\n",f.toString) }
 
     val argss: Map[String, Array[String]] = (
       for
@@ -38,6 +39,6 @@ class ScriptingTests:
         scriptArgs = scriptArgs
       ).compileAndRun { (path:java.nio.file.Path,classpath:String) =>
         path.toFile.listFiles.foreach { (f:File) => printf(" [%s]\n",f.getName) }
-        printf("%s\n%s\n",path,classpath)
+        printf("%s\n%s\n",path,classpath.length)
       }
       
