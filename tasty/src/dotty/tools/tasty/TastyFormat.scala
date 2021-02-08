@@ -19,10 +19,11 @@ Micro-syntax:
 
 Macro-format:
 
-  File          = Header majorVersion_Nat minorVersion_Nat UUID
+  File          = Header majorVersion_Nat minorVersion_Nat experimentalVersion_Nat VersionString UUID
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
   UUID          = Byte*16                 -- random UUID
+  VersionString = Length UTF8-CodePoint*  -- string that represents the compiler that produced the TASTy
 
   Section       = NameRef Length Bytes
   Length        = Nat                     -- length of rest of entry in bytes
@@ -263,8 +264,25 @@ Standard Section: "Comments" Comment*
 object TastyFormat {
 
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 27
-  val MinorVersion: Int = 0
+
+  /** Each increment of the MajorVersion begins a new series of backward compatible TASTy versions
+   *  - The MajorVersion is and will always be the first value in a TASTy document after the header bytes.
+   *  - A TASTy document can then be further parsed if and only if the MajorVersion read
+   *    from a TASTy file is equal to or less than this value.
+   *  - i.e. `MajorVersion` and `header` are the only stable parts of TASTy that can be used to decide how to parse
+   *    the rest of the document.
+   */
+  final val MajorVersion: Int = 28
+
+  /** The last minor version to break forward compatability */
+  final val MinorVersion: Int = 0
+
+  /** A transitionary marker:
+   *  - 0 means that `MinorVersion` is from a final release of TASTy
+   *  - A positive number means TASTy was produced by an experimental compiler, released in between
+   *    increasing `MinorVersion`.
+   */
+  final val ExperimentalVersion: Int = 1
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"
