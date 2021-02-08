@@ -144,11 +144,20 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
     )
 
   private def buildNavigation(pageLink: Link): AppliedTag =
+    def navigationIcon(member: Member) = member.kind match {
+      case m if m.isInstanceOf[Classlike] => Seq(span(cls := s"micon ${member.kind.name.head}"))
+      case _ => Nil
+    }
+
     def renderNested(nav: Page): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
       def linkHtml(exapnded: Boolean = false) =
         val attrs = if (isSelected) Seq(cls := "selected expanded") else Nil
-        a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(nav.link.name)
+        val icon = nav.content match {
+          case m: Member => navigationIcon(m)
+          case _ => Nil
+        }
+        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(icon, nav.link.name))
 
       nav.children match
         case Nil => isSelected -> div(linkHtml())
@@ -158,7 +167,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           val attr = if expanded || isSelected then Seq(cls := "expanded") else Nil
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded),
-            span(),
+            span(cls := "ar"),
             nested.map(_._2)
           )
     renderNested(navigablePage)._2
