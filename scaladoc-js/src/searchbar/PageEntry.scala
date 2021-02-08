@@ -15,18 +15,15 @@ case class PageEntry(
   description: String,
   location: String,
   shortName: String,
-  acronym: Option[String]
+  tokens: List[String]
 )
 
 object PageEntry {
-  private def createAcronym(s: String): Option[String] =
-    s.headOption.map(firstLetter => firstLetter.toString ++ s.tail.filter(_.isUpper))
-
   def apply(jsObj: PageEntryJS): PageEntry = PageEntry(
-    jsObj.t,
-    jsObj.d,
-    jsObj.l,
-    jsObj.n.toLowerCase,
-    createAcronym(jsObj.n)
-  )
+      jsObj.t,
+      jsObj.d,
+      jsObj.l,
+      jsObj.n.toLowerCase,
+      StringUtils.createCamelCaseTokens(jsObj.n)
+    )
 }
