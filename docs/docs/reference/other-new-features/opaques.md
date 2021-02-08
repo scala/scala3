@@ -133,4 +133,34 @@ end User
 On the other hand, the call `roItem.rights.isOneOf(ReadWrite)` would give a type error
 since `Permissions` and `PermissionChoice` are different, unrelated types outside `Access`.
 
+
+### Opaque Type Members on Classes
+While typically, opaque types are used together with objects to hide implementation details of a module, they can also be used with classes.
+
+For example, we can redefine the above example of Logarithms as a class.
+```scala
+class Logarithms:
+
+   opaque type Logarithm = Double
+
+   def apply(d: Double): Logarithm = math.log(d)
+
+   def safe(d: Double): Option[Logarithm] =
+      if d > 0.0 then Some(math.log(d)) else None
+
+   def mul(x: Logarithm, y: Logarithm) = x + y
+```
+
+Opaque type members of different instances are treated as different:
+```scala
+val l1 = new Logarithms
+val l2 = new Logarithms
+val x = l1(1.5)
+val y = l1(2.6)
+val z = l2(3.1)
+l1.mul(x, y) // type checks
+l1.mul(x, z) // error: found l2.Logarithm, required l1.Logarithm
+```
+In general, one can think of an opaque type as being only transparent in the scope of `private[this]`.
+
 [More details](opaques-details.md)
