@@ -3101,7 +3101,7 @@ object Parsers {
      *                     |  SimpleRef ‘as’ id
      *  ImportSpec       ::=  NamedSelector
      *                     |  WildcardSelector
-     *                     | ‘{’ ImportSelectors) ‘}’
+     *                     | ‘{’ ImportSelectors ‘}’
      *  ImportSelectors  ::=  NamedSelector [‘,’ ImportSelectors]
      *                     |  WildCardSelector {‘,’ WildCardSelector}
      *  NamedSelector    ::=  id [‘as’ (id | ‘_’)]
@@ -3121,7 +3121,7 @@ object Parsers {
       /** 'given [InfixType]' */
       def givenSelector() =
         ImportSelector(
-          atSpan(in.skipToken()) { Ident(nme.EMPTY )},
+          atSpan(in.skipToken()) { Ident(nme.EMPTY) },
           bound =
             if canStartTypeTokens.contains(in.token) then rejectWildcardType(infixType())
             else EmptyTree)
