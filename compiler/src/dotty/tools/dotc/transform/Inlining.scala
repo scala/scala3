@@ -61,8 +61,6 @@ class Inlining extends MacroTransform {
                 traverseChildren(tree)(using StagingContext.spliceContext)
               case tree: RefTree if !Inliner.inInlineMethod && StagingContext.level == 0 =>
                 assert(!tree.symbol.isInlineMethod, tree.show)
-              case tree: ValDef =>
-                checkInlineConformant(tree)
               case _ =>
                 traverseChildren(tree)
         }.traverse(tree)
@@ -77,11 +75,6 @@ class Inlining extends MacroTransform {
   private class InliningTreeMap extends TreeMapWithImplicits {
     override def transform(tree: Tree)(using Context): Tree = {
       tree match
-        case tree: ValDef =>
-          super.transform(tree) match
-            case tree: ValDef =>
-              checkInlineConformant(tree)
-              tree
         case tree: DefTree =>
           if tree.symbol.is(Inline) then tree
           else super.transform(tree)
@@ -103,21 +96,5 @@ class Inlining extends MacroTransform {
   }
 }
 
-object Inlining {
+object Inlining:
   val name: String = "inlining"
-
-  /** Check that `vdef.rhs` can be right hand-side of an `inline` value definition. */
-  def checkInlineConformant(vdef: tpd.ValDef)(using Context): Unit = {
-    val ValDef(_, tpt, rhs) = vdef
-    if vdef.symbol.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
-      val rhs = vdef.rhs
-      vdef.tpt.tpe.widenTermRefExpr.dealias.normalized match
-        case tp: ConstantType =>
-          if !tpd.isPureExpr(rhs) then
-            val details = if tpd.enclosingInlineds.isEmpty then "" else em"but was: $rhs"
-            report.error(s"inline value must be pure$details", rhs.srcPos)
-        case _ =>
-          val pos = if vdef.tpt.span.isZeroExtent then rhs.srcPos else vdef.tpt.srcPos
-          report.error(em"inline value must have a literal constant type", pos)
-  }
-}
