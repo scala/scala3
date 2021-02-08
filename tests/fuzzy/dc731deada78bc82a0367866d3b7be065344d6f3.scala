@@ -6,4 +6,4 @@ new i0 {
 implicit def i4: Any = super[String]
 }
 trait i3
-class i4 extends import +({ classTag) => i5 }(Tuple2.i6) }
+class i4 extends import +({ classTag) as i5 }(Tuple2.i6) }

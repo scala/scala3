@@ -1,4 +1,4 @@
-import collection.mutable._
+import collection.mutable.*
 class TestSet(s0: Set[Int], s1: Set[Int]) {
   val Iterations = 10
   val Range = 100000

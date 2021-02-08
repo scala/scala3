@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   def tup1(tup: Expr[Tuple1[Int]]) (using Quotes): Expr[Int] = Expr(tup.valueOrError.productIterator.map(_.asInstanceOf[Int]).sum)

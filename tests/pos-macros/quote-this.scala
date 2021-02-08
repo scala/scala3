@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Foo {
  def a(using Quotes): Expr[Int] = '{1}

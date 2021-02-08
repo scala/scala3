@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 case class Position(path: String, start: Int, end: Int,
     startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
@@ -10,7 +10,7 @@ object Positioned {
   implicit inline def apply[T](x: => T): Positioned[T] = ${impl('x)}
 
   def impl[T](x: Expr[T])(implicit ev: Type[T], qctx: Quotes): Expr[Positioned[T]] = {
-    import quotes.reflect.{Position => Pos, _}
+    import quotes.reflect.{Position as Pos, *}
     val pos = Pos.ofMacroExpansion
 
     val path = Expr(pos.sourceFile.jpath.toString)

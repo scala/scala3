@@ -3,7 +3,7 @@ object Test {
     case A extends Hoge[List]
     case B extends Hoge[[X] =>> String]
   }
-  import Hoge._
+  import Hoge.*
 
   A == A
   A == (B: Hoge[_])
@@ -22,7 +22,7 @@ object Test2 {
     case A extends Hoge[[F[_]] =>> F[Int]]
     case B extends Hoge[[F[_]] =>> F[String]]
   }
-  import Hoge._
+  import Hoge.*
 
   A == A
   A == (B: Hoge[_])
@@ -41,7 +41,7 @@ object Test3 {
     case A extends Hoge[[X] =>> List]   // error: wrong kind
     case B extends Hoge[[X] =>> [Y] =>> String]  // error: wrong kind
   }
-  import Hoge._
+  import Hoge.*
 
   A == A
   A == (B: Hoge[_])

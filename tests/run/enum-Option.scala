@@ -12,7 +12,7 @@ object Option {
 }
 
 object Test {
-  import Option._
+  import Option.*
   def main(args: Array[String]) = {
     assert(Some(None).isDefined)
     Option("22") match { case Option.Some(x) => assert(x == "22") }

@@ -6,7 +6,7 @@ object impl {
 }
 
 object inlines {
-  import impl._
+  import impl.*
 
   class C {
     implicit val x: X = new X()

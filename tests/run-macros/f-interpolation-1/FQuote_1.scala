@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 import scala.language.implicitConversions
 
@@ -9,7 +9,7 @@ object FQuote {
   }
 
   /*private*/ def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def liftListOfAny(lst: List[Term]): Expr[List[Any]] = lst match {
       case x :: xs  =>

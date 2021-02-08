@@ -1,5 +1,5 @@
-import Nat._
-import compiletime._
+import Nat.*
+import compiletime.*
 
 enum Nat:
   case Zero

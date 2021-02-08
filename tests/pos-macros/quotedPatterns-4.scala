@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Test {
   def impl(receiver: Expr[StringContext])(using qctx: scala.quoted.Quotes) = {
     import quotes.reflect.Repeated

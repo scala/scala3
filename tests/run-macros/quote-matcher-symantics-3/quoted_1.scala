@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
@@ -77,18 +77,18 @@ object Macros {
 
 object UnsafeExpr {
   def open[T1, R, X](f: Expr[T1 => R])(content: (Expr[R], [t] => Expr[t] => Expr[T1] => Expr[t]) => X)(using Quotes): X = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val (params, bodyExpr) = paramsAndBody[R](f)
     content(bodyExpr, [t] => (e: Expr[t]) => (v: Expr[T1]) => bodyFn[t](e.asTerm, params, List(v.asTerm)).asExpr.asInstanceOf[Expr[t]])
   }
   private def paramsAndBody[R](using Quotes)(f: Expr[Any]): (List[quotes.reflect.ValDef], Expr[R]) = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val Block(List(DefDef("$anonfun", List(TermParamClause(params)), _, Some(body))), Closure(Ident("$anonfun"), None)) = f.asTerm.etaExpand(Symbol.spliceOwner)
     (params, body.asExpr.asInstanceOf[Expr[R]])
   }
 
   private def bodyFn[t](using Quotes)(e: quotes.reflect.Term, params: List[quotes.reflect.ValDef], args: List[quotes.reflect.Term]): quotes.reflect.Term = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val map = params.map(_.symbol).zip(args).toMap
     new TreeMap {
       override def transformTerm(tree: Term)(owner: Symbol): Term =
@@ -125,7 +125,7 @@ object Symantics {
 
 object Const {
   def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     def rec(tree: Term): Option[T] = tree match {
       case Literal(c) =>
         c match

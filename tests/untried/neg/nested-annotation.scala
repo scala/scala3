@@ -1,4 +1,4 @@
-import annotation._
+import annotation.*
 
 class ComplexAnnotation(val value: Annotation) extends ClassfileAnnotation
 

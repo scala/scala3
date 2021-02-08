@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
   def staged[T](using Quotes) = {
-    import quotes.reflect._
+    import quotes.reflect.*
     given typeT: Type[T] with {} // error
     val tt = TypeRepr.of[T]
     '{ "in staged" }

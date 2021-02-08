@@ -42,7 +42,7 @@ object typerep {
 }
 
 object test extends App {
- import typerep._
+ import typerep.*
  println(3.getType)
  println(List(3).getType)
 }

@@ -1,5 +1,5 @@
 // Invalid because nested hk type parameters are no longer allowed
-import language._
+import language.*
 
 
 object Test {

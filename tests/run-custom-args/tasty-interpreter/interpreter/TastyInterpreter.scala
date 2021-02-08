@@ -1,12 +1,12 @@
 package scala.tasty.interpreter
 
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 class TastyInterpreter extends Inspector {
 
   def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     object Traverser extends TreeTraverser {
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {

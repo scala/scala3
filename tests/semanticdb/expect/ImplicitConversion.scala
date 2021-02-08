@@ -3,7 +3,7 @@ package example
 import scala.language.implicitConversions
 
 class ImplicitConversion {
-  import ImplicitConversion._
+  import ImplicitConversion.*
   implicit def string2Number(
       string: String
   ): Int = 42

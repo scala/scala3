@@ -1,4 +1,4 @@
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 
 object Test {
   class Vec[S <: Int] {

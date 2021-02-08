@@ -22,7 +22,7 @@ class I {
 object Test {
   def main(args: Array[String]): Unit = {
     val c = new I
-    import c._
+    import c.*
     val l1 = List(A1,
       A2,
       A3,

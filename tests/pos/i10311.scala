@@ -8,7 +8,7 @@ object Module {
   }
 }
 object test:
-  import Module._
+  import Module.*
 
   val a = new MyInt(42, 43)
   val b = a.x

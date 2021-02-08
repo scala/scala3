@@ -6,7 +6,7 @@ object Base {
     case Int => Trait2
   }
 }
-import Base._
+import Base.*
 
 object UpperBoundParametricVariant {
   trait Cov[+T]

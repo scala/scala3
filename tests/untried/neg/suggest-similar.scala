@@ -2,7 +2,7 @@ class Dingus
 object Dingus {
   var flippity = 1
 }
-import Dingus._
+import Dingus.*
 
 class A {
   flippitx = 123

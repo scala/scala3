@@ -3,7 +3,7 @@ object Utils {
   type Const[c] = [t] =>> c
 }
 
-import Utils._
+import Utils.*
 
 abstract class ErasedInstances { type FT }
 class ErasedProductInstances(override val toString: String) extends ErasedInstances

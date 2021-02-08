@@ -41,7 +41,7 @@ object Test extends App {
 
   // Test with imported extension methods
   object test2 {
-    import test1._
+    import test1.*
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -102,7 +102,7 @@ object Test extends App {
       def yy (y: Int) = x - y
     }
 
-  import D._
+  import D.*
   assert((1 yy 2) == 3)  // imported extension method takes precedence
 
   trait Rectangle {

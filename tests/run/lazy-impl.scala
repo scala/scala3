@@ -89,7 +89,7 @@
  *
  *   - lazy vals of primitive types are boxed
  */
-import sun.misc.Unsafe._
+import sun.misc.Unsafe.*
 
 class C {
   def init(name: String) = {

@@ -5,7 +5,7 @@ object Basis {
   val x1 = Seq(X("asdf"))
   val x2 = Seq(X('d'))
 }
-import Basis._
+import Basis.*
 
 object DoesWork {
   // Doesn'tWork

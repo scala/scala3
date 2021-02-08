@@ -73,7 +73,7 @@ object Test4 {
     }
 
   }
-  import Test4.Base._
+  import Test4.Base.*
   def foo(d1: Base, d2: Base) =
     (d1, d2) match {
       case (Up, Up) | (Down, Down) => false

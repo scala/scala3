@@ -1,4 +1,4 @@
-import Q._
+import Q.*
 
 class Bop(var workUnit: WorkUnit) {
   def addStages(stageBuilder: Stage.Builder): Unit = {

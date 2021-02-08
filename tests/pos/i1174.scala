@@ -1,5 +1,5 @@
 import scala.reflect.ClassTag
-import scala.util._
+import scala.util.*
 
 object Main {
   class A

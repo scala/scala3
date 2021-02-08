@@ -2,7 +2,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 
 object datatypes {
-  import typeclasses._
+  import typeclasses.*
 
   // An algebraic datatype
   enum Lst[+T] derives Eq, Pickler, Show {
@@ -32,8 +32,8 @@ object typeclasses {
 
   object Eq {
     import scala.compiletime.{erasedValue, summonFrom}
-    import compiletime._
-    import scala.deriving._
+    import compiletime.*
+    import scala.deriving.*
 
     inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
       case eq: Eq[TT] => eq.eql(x, y)
@@ -85,8 +85,8 @@ object typeclasses {
 
   object Pickler {
     import scala.compiletime.{erasedValue, constValue, summonFrom}
-    import compiletime._
-    import deriving._
+    import compiletime.*
+    import deriving.*
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -185,8 +185,8 @@ object typeclasses {
   }
   object Show {
     import scala.compiletime.{erasedValue, summonInline}
-    import compiletime._
-    import deriving._
+    import compiletime.*
+    import deriving.*
 
     inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -236,8 +236,8 @@ object typeclasses {
     }
   }
 }
-import datatypes._
-import typeclasses._
+import datatypes.*
+import typeclasses.*
 
 // Tests
 object Test extends App {

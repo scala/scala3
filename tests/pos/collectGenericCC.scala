@@ -1,4 +1,4 @@
-import scala.collection._
+import scala.collection.*
 
 object Test {
   def collect[A, Res](r: Iterable[A])(implicit bf: Factory[A, Res]) = {

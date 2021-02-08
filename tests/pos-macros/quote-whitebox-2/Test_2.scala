@@ -1,4 +1,4 @@
-import Macro._
+import Macro.*
 
 object Test {
 

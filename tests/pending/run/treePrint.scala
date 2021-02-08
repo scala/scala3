@@ -1,8 +1,8 @@
 /** Testing compact tree printers.
  */
 object Test {
-  import scala.tools.nsc._
-  import interpreter._
+  import scala.tools.nsc.*
+  import interpreter.*
   import java.io.{ OutputStream, BufferedReader, StringReader, PrintWriter, Writer, OutputStreamWriter}
 
   val code = """

@@ -12,7 +12,7 @@ object Test extends App {
   }
 
   val fe: IExp = {
-    import IExp._
+    import IExp.*
     Add(Lit(8), Neg(Add(Lit(1), Lit(2))))
   }
 
@@ -60,7 +60,7 @@ object Test extends App {
   object MultSyntax {
     def mul[T](l: T, r: T)(using e: Mult[T]): T = e.mul(l, r)
   }
-  import MultSyntax._
+  import MultSyntax.*
 
   def tfm1[T: Exp : Mult] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2[T: Exp : Mult] = mul(lit(7), tf1)
@@ -81,7 +81,7 @@ object Test extends App {
     case Leaf(s: String)
     case Node(s: String, ts: Tree*)
   }
-  import Tree._
+  import Tree.*
 
   given Exp[Tree] with Mult[Tree] with
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
@@ -110,7 +110,7 @@ object Test extends App {
       }
     }
   }
-  import CanThrow._
+  import CanThrow.*
 
   type Maybe[T] = CanThrow ?=> T
 
@@ -191,7 +191,7 @@ object Test extends App {
   enum NCtx { case Pos, Neg }
 
   given [T](using e: Exp[T]): Exp[NCtx => T] with
-    import NCtx._
+    import NCtx.*
     def lit(i: Int) = {
       case Pos => e.lit(i)
       case Neg => e.neg(e.lit(i))
@@ -210,7 +210,7 @@ object Test extends App {
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
   given [T](using e: Mult[T]): Mult[NCtx => T] with
-    import NCtx._
+    import NCtx.*
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
       case Neg => e.mul(l(Pos), r(Neg))
@@ -219,7 +219,7 @@ object Test extends App {
   println(pushNeg(tfm1[NCtx => String]))
   println(pushNeg(tfm2[NCtx => String]))
 
-  import IExp._
+  import IExp.*
 
   // Going from type class encoding to ADT encoding
   given initialize: Exp[IExp] with

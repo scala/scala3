@@ -1027,6 +1027,7 @@ object Trees {
     type Template = Trees.Template[T]
     type Import = Trees.Import[T]
     type Export = Trees.Export[T]
+    type ImportOrExport = Trees.ImportOrExport[T]
     type PackageDef = Trees.PackageDef[T]
     type Annotated = Trees.Annotated[T]
     type Thicket = Trees.Thicket[T]

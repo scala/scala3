@@ -1,5 +1,5 @@
 import java.lang.Thread.State
-import java.lang.Thread.State._
+import java.lang.Thread.State.*
 
 object Test {
   def f(state: State) = state match {

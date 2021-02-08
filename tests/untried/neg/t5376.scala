@@ -5,8 +5,8 @@ object Test {
 
   // Import two implicits with the same name in the same scope.
   def m1 = {
-    import O1._
-    import O2._
+    import O1.*
+    import O2.*
 
     // Implicit usage compiles.
     "a": Int
@@ -15,8 +15,8 @@ object Test {
   // Import one implicit and one non-implicit method with the
   // same name in the same scope.
   def m2 = {
-    import O1._
-    import O3._
+    import O1.*
+    import O3.*
 
     // Implicit usage compiles.
     "a": Int

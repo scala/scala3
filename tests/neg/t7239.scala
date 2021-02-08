@@ -21,12 +21,12 @@ object Test {
   BrokenMethod().filter(_ => true)     // ok
 
   locally {
-    import addWithFilter._
+    import addWithFilter.*
     BrokenMethod().withFilter((_: (Int, String)) => true) // error
   }
 
   locally {
-    import addWithFilter._
+    import addWithFilter.*
     // adaptToMemberWithArgs sets the type of the tree `x`
     // to ErrorType (while in silent mode, so the error is not
     // reported. Later, when the fallback from `withFilter`

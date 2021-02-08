@@ -1,5 +1,5 @@
-import scala.collection._
-import scala.collection.generic._
+import scala.collection.*
+import scala.collection.generic.*
 import scala.collection.mutable.Builder
 
 

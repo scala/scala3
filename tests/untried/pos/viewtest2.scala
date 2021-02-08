@@ -83,7 +83,7 @@ case class Str(elem: String) extends Ordered[Str] {
 }
 
 object Test {
-  import O._
+  import O.*
 
   private def toCharList(s: String): List[Char] =
     if (s.length() == 0) List()

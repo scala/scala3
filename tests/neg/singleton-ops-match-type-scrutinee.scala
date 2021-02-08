@@ -1,4 +1,4 @@
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 
 object Test {
   type Max2[A <: Int, B <: Int] <: Int = (A < B) match {

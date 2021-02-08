@@ -1,11 +1,11 @@
-import quoted._
+import quoted.*
 
 object Macros {
 
   inline def theTestBlock : Unit = ${ theTestBlockImpl }
 
   def theTestBlockImpl(using q: Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     // simple smoke test
     val sym1 : Symbol = Symbol.newMethod(

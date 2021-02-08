@@ -1,5 +1,5 @@
 object Test {
-  import collection.mutable._
-  import collection.mutable._
+  import collection.mutable.*
+  import collection.mutable.*
   val x = new HashMap
 }

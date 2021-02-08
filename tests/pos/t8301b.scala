@@ -9,7 +9,7 @@ trait Universe {
 
 object Test extends App {
   val u: Universe = ???
-  import u._
+  import u.*
 
   val ScalaName: TermName = ???
   locally {
@@ -17,12 +17,12 @@ object Test extends App {
     ??? match {
       case Test.ScalaName => ???
     }
-    import Test.ScalaName._
+    import Test.ScalaName.*
 
     ??? match {
       case ScalaName => ???
     }
-    import ScalaName._
+    import ScalaName.*
 
     // both the pattern and import led to
     // stable identifier required, but SN found. Note that value SN
@@ -31,6 +31,6 @@ object Test extends App {
     ??? match {
       case SN => ???
     }
-    import SN._
+    import SN.*
   }
 }

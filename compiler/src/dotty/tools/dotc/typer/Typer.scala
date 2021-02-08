@@ -2338,19 +2338,36 @@ class Typer extends Namer
         .asInstanceOf[untpd.ImportSelector]
     }
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
-    val expr1 = typedExpr(imp.expr, AnySelectionProto)
+  def typedImportQualifier(imp: untpd.Import, typd: (untpd.Tree, Type) => Tree)(using Context): Tree =
+    if imp.expr == untpd.EmptyTree then
+      assert(imp.selectors.length == 1, imp)
+      val from = imp.selectors.head.imported
+      val sel = tryAlternatively
+          (typedIdent(from, WildcardType))
+          (typedIdent(cpy.Ident(from)(from.name.toTypeName), WildcardType))
+
+      sel.tpe match
+        case TermRef(prefix: SingletonType, _)  =>
+          singleton(prefix).withSpan(from.span)
+        case TypeRef(prefix: SingletonType, _)  =>
+          singleton(prefix).withSpan(from.span)
+        case _ =>
+          errorTree(from,
+            em"""Illegal import selector: $from
+                |The selector is not a member of an object or package.""")
+    else typd(imp.expr, AnySelectionProto)
+
+  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import =
+    val expr1 = typedImportQualifier(imp, typedExpr)
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
-  }
 
-  def typedExport(exp: untpd.Export)(using Context): Export = {
+  def typedExport(exp: untpd.Export)(using Context): Export =
     val expr1 = typedExpr(exp.expr, AnySelectionProto)
     // already called `checkLegalExportPath` in Namer
     val selectors1 = typedSelectors(exp.selectors)
     assignType(cpy.Export(exp)(expr1, selectors1))
-  }
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))

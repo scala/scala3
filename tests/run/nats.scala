@@ -16,7 +16,7 @@ trait Plus[X <: Nat, Y <: Nat, R <: Nat] {
 }
 
 object Test {
-  import Nat._
+  import Nat.*
   implicit def zPlus[Y <: Nat]: Plus[Z, Y, Y] = new {
     def add(x: Z, y: Y): Y = y
   }

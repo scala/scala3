@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def inner(exprs: Any): Any = ${innerImpl('exprs)}
 def innerImpl(exprs: Expr[Any])(using Quotes): Expr[Any] =
@@ -6,6 +6,6 @@ def innerImpl(exprs: Expr[Any])(using Quotes): Expr[Any] =
 
 inline def outer(expr: => Any): Any = ${outerImpl('expr)}
 def outerImpl(body: Expr[Any])(using Quotes): Expr[Any] = {
-  import quotes.reflect._
+  import quotes.reflect.*
   body.asTerm.underlyingArgument.asExpr
 }

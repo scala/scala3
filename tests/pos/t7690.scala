@@ -11,7 +11,7 @@ object C {
 
   def amethod(in: Int): Boolean =
     in.x { i =>
-      import A._
+      import A.*
       "asdf" == i.toString
     }
 }

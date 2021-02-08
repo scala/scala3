@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   trait Eq[T]
   implicit val eq: Eq[Int] = new Eq[Int] {}

@@ -1,4 +1,4 @@
-import language._
+import language.*
 
 object Test {
   class Foo[T](val x: T) ; object Foo { def unapply[T](x: Foo[T]) = Some(x.x) }

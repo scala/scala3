@@ -48,7 +48,7 @@ object runtime {
 }
 
 object semiGroups {
-  import runtime._
+  import runtime.*
 
   trait SemiGroup extends TypeClass {
     def add(that: This): This

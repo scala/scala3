@@ -27,7 +27,7 @@ object NonLocalReturns {
 
 object Test extends App {
 
-  import scala.util.control.NonLocalReturns._
+  import scala.util.control.NonLocalReturns.*
   import scala.collection.mutable.ListBuffer
 
   def has(xs: List[Int], elem: Int) =

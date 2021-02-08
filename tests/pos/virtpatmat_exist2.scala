@@ -8,7 +8,7 @@ object Test {
 
   // what's the _$1 doing there?
   // def grow[T >: Nothing <: Any]: ParseResult[T] = {
-  //   import OptionMatching._
+  //   import OptionMatching.*
   //   runOrElse[MemoEntry[T], ParseResult[T]]((null: MemoEntry[T]))(((x1: MemoEntry[T]) =>
   //     (MemoEntry.unapply[T](x1).flatMap[ParseResult[T]](((x4: Either[Nothing,ParseResult[_]]) =>
   //       guard[Right[Nothing,ParseResult[_]]](x4.isInstanceOf[Right[Nothing,ParseResult[_]]], x4.asInstanceOf[Right[Nothing,ParseResult[_]]]).flatMap[ParseResult[T]](((cp3: Right[Nothing,ParseResult[_]]) =>

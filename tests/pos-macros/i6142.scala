@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object O {
   def foo(using Quotes) = {

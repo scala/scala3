@@ -1,5 +1,5 @@
 import dotty.tools.dotc.ast.Trees.Thicket
-import dotty.tools.dotc.ast.tpd._
+import dotty.tools.dotc.ast.tpd.*
 
 
 object Labels {

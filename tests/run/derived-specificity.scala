@@ -1,4 +1,4 @@
-import scala.deriving._
+import scala.deriving.*
 
 object Test extends App {
   case class Foo() derives Bar, Baz
@@ -20,9 +20,9 @@ object Test extends App {
   }
 
   val bar = implicitly[Bar[Foo]]
-  assert(bar.id == "Bar.derived") 
+  assert(bar.id == "Bar.derived")
 
   val baz = implicitly[Baz[Foo]]
-  assert(baz.id == "Baz.derived") 
+  assert(baz.id == "Baz.derived")
 }
 

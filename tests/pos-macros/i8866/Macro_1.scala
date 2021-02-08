@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object OtherMacro {
 
@@ -12,7 +12,7 @@ object OtherMacro {
 object Macro {
 
   def impl(using Quotes): Expr[Int] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     ValDef.let(
       Symbol.spliceOwner,

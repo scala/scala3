@@ -1,5 +1,5 @@
-import annotation._
-import elidable._
+import annotation.*
+import elidable.*
 
 class ElidableCrashTest {
   trait My

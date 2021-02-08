@@ -7,7 +7,7 @@ trait AxisCompanion {
 }
 object Axis extends AxisCompanion
 class Axis {
-   import Axis._
+   import Axis.*
    def test( f: Format ) = f match {
       case Format.Integer => "Int"
    }

@@ -14,7 +14,7 @@ import compiletime.uninitialized
  *    Otherwise:                         an Array[Any] containing the elements
  */
 class Lst[+T](val elems: Any) extends AnyVal { self =>
-  import Lst._
+  import Lst.*
 
   inline def locally[T](body: => T): T = body
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
@@ -9,13 +9,13 @@ object Macros {
     ${isSubTypeOfImpl[T, U]}
 
   def isTypeEqualImpl[T: Type, U: Type](using Quotes) : Expr[Boolean] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val isTypeEqual = TypeRepr.of[T] =:= TypeRepr.of[U]
     Expr(isTypeEqual)
   }
 
   def isSubTypeOfImpl[T: Type, U: Type](using Quotes) : Expr[Boolean] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val isTypeEqual = TypeRepr.of[T] <:< TypeRepr.of[U]
     Expr(isTypeEqual)
   }

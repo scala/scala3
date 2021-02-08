@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 // This test checks the correct interpretation of the inlined value class
 

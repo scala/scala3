@@ -1,7 +1,7 @@
 package listV
 
 //import reflect.Selectable.reflectiveSelectable
-import scalaLibV._
+import scalaLibV.*
 
 object sci {
   val isEmpty = iftTrue

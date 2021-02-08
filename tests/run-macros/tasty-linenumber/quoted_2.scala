@@ -1,5 +1,5 @@
 
-import LineNumber._
+import LineNumber.*
 
 object Test {
   def main(args: Array[String]): Unit = {

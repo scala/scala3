@@ -129,6 +129,8 @@ sidebar:
               url: docs/reference/changed-features/operators.html
             - title: Wildcard Types
               url: docs/reference/changed-features/wildcards.html
+            - title: Imports
+              url: docs/reference/changed-features/imports.html
             - title: Type Checking
               url: docs/reference/changed-features/type-checking.html
             - title: Type Inference

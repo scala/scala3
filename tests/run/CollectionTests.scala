@@ -1,4 +1,4 @@
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 
 /** A strawman architecture for new collections. It contains some
@@ -522,7 +522,7 @@ object CollectionStrawMan5 {
 }
 
 object Test {
-  import CollectionStrawMan5._
+  import CollectionStrawMan5.*
 
   def seqOps(xs: Seq[Int]) = {
     val x1 = xs.foldLeft("")(_ + _)

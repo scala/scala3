@@ -28,7 +28,7 @@ a boolean expression tree as argument. `assertImpl` evaluates the expression and
 prints it again in an error message if it evaluates to `false`.
 
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 inline def assert(inline expr: Boolean): Unit =
    ${ assertImpl('expr) }
@@ -229,7 +229,7 @@ Consider the following implementation of a staged interpreter that implements
 a compiler through staging.
 
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 enum Exp:
    case Num(n: Int)
@@ -237,7 +237,7 @@ enum Exp:
    case Var(x: String)
    case Let(x: String, e: Exp, in: Exp)
 
-import Exp._
+import Exp.*
 ```
 
 The interpreted language consists of numbers `Num`, addition `Plus`, and variables
@@ -253,7 +253,7 @@ language to quoted Scala code of type `Expr[Int]`.
 The compiler takes an environment that maps variable names to Scala `Expr`s.
 
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 def compile(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] =
    e match

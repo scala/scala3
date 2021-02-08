@@ -1,4 +1,4 @@
-import scala.collection._
+import scala.collection.*
 
 trait GenSeqView0[+A, +Coll]
 

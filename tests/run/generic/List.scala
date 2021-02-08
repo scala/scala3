@@ -1,6 +1,6 @@
 package generic
 
-import Shapes._
+import Shapes.*
 
 /** enum List[T] {
  *    case Cons(x: T, xs: List[T])

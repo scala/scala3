@@ -7,6 +7,6 @@ object Container {
 }
 
 trait Container {
-  import Container._
+  import Container.*
   implicit def mkStringExtras(s: String): StringExtras = new StringExtras(s)
 }

@@ -70,7 +70,7 @@ object Show {
 }
 
 object Test extends App {
-  import ListInstances._
+  import ListInstances.*
   val sl = Show[List[Int]]
   assert(sl.show(List(1, 2, 3)) == "Left((1, (Left((2, (Left((3, (Right(Left(())), ()), ()), ())")
 }

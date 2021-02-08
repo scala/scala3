@@ -1,6 +1,6 @@
 package scala.internal
 
-import scala.quoted._
+import scala.quoted.*
 
 import scala.runtime.TupleXXL
 

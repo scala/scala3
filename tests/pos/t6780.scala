@@ -2,7 +2,7 @@ object O {
   implicit def i: Int = 0
 }
 
-import O._
+import O.*
 
 trait Foo {
   implicit val v1: Any

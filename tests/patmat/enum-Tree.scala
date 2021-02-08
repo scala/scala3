@@ -9,7 +9,7 @@ enum Tree[T] {
 }
 
 object Test {
-  import Tree._
+  import Tree.*
 
   def eval[T](e: Tree[T]): T = e match {
     case True => true

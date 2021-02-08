@@ -1,4 +1,4 @@
-import Predef.{byte2Byte => _, _}
+import Predef.{byte2Byte as _, *}
 import math.Numeric
 
 val DAYS = scala.concurrent.duration.DAYS

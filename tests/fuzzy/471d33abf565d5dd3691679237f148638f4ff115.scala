@@ -45,7 +45,7 @@ private def i3 = 1000 * 60 * 24 * i2 = 5 + i4 + i2; case 5 => 0
 }
 }
 }
-import i0.{ toInt, i2 => this }
+import i0.{ toInt, i2 as this }
 val i7 = new i4
 val i5 = new i0
 val i6 = new i0

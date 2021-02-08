@@ -10,7 +10,7 @@ def doSomething(body: M ?=> Unit) = body(using new M{})
 
 def Test1 =
   given M = new M{}
-  import m._
+  import m.*
   val x: X = X.foo()
   println(x)
 
@@ -30,7 +30,7 @@ def Test2 =
   doSomething {
     // not ideal
     val myM = m // or summon[M]
-    import myM._
+    import myM.*
     val x: X = X.foo()
     println(x)
   }

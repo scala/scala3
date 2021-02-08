@@ -17,13 +17,13 @@ object Test extends App {
     Days.values.toList.sorted.map(x => x.toString)
 
   def nameOfMon(): String =  {
-    import Days._
+    import Days.*
     val d: Day = Mon
     d.toString
   }
 
   def nameOfTue(): String =  {
-    import Days._
+    import Days.*
     val d: Day = Tue
     d.toString
   }

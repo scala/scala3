@@ -26,7 +26,7 @@ object Test {
   }
 
   def testCollectionSorted(): Unit = {
-    import collection._
+    import collection.*
     val order = implicitly[Ordering[Int]].reverse
     var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
     var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
@@ -47,7 +47,7 @@ object Test {
   }
 
   def testImmutableSorted(): Unit = {
-    import collection.immutable._
+    import collection.immutable.*
     val order = implicitly[Ordering[Int]].reverse
     var m1: SortedMap[Int, String] = SortedMap.empty[Int, String](order)
     var m2: SortedMap[Int, String] = SortedMap.empty[Int, String](order)

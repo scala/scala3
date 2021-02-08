@@ -1,6 +1,6 @@
-import util._
+import util.*
 
-import control.Exception._
+import control.Exception.*
 
 object Test {
   def main(args: Array[String]): Unit = {

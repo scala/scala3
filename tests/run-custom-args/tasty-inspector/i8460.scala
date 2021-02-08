@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 // Ambiguous member names
 sealed trait Vehicle
@@ -43,7 +43,7 @@ class TestInspector_Children() extends Inspector:
   }
 
   private def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
-    import quotes.reflect._
+    import quotes.reflect.*
     tree match {
       case t: PackageClause =>
         t.stats.map( m => inspectClass(m) )

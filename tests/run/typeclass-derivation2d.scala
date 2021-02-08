@@ -69,7 +69,7 @@ object Deriving {
   def productElement[T](x: Any, idx: Int) =
     x.asInstanceOf[Product].productElement(idx).asInstanceOf[T]
 }
-import Deriving._
+import Deriving.*
 
 sealed trait Lst[+T] // derives Eq, Pickler, Show
 

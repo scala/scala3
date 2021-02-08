@@ -8,7 +8,7 @@ sealed trait U // U MUST NOT have a companion here!
 case class C() extends U
 
 object Test extends App {
-  import deriving._
+  import deriving.*
 
   case class AA[X >: Null <: AnyRef](x: X, y: X, z: String)
 

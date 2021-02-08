@@ -54,7 +54,7 @@ package shapeless {
   }
 }
 
-import shapeless._
+import shapeless.*
 
 object Test extends App {
   val sel = Selector[L, Boolean]

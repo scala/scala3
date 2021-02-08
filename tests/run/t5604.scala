@@ -7,7 +7,7 @@ package foo {
     def buh(n: Double) = println("double")
   }
   class regular {
-    import regular._
+    import regular.*
 
     duh(33L)
     duh(3.0d)

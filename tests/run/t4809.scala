@@ -1,6 +1,6 @@
 
 
-import scala.util.control.Breaks._
+import scala.util.control.Breaks.*
 
 
 

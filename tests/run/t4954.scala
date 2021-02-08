@@ -1,4 +1,4 @@
-import collection._
+import collection.*
 
 object Test {
 

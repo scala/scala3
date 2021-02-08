@@ -1,5 +1,5 @@
 object Test {
-  import Dsl._
+  import Dsl.*
 
   inline def makeEnt = Entity("foo")
 

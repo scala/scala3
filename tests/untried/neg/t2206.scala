@@ -5,7 +5,7 @@ object o {
       def f(): Unit = { }
   }
 
-  import Implicits._
+  import Implicits.*
   val a = new A
   a.f()
 

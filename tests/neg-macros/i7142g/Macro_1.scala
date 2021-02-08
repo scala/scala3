@@ -1,5 +1,5 @@
 package macros
-import scala.quoted._
+import scala.quoted.*
 
 def oops(using Quotes) = {
   var v = '{};

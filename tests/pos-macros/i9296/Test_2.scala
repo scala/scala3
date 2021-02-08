@@ -1,7 +1,7 @@
 package a
 
 import scala.language.implicitConversions
-import scala.concurrent._
+import scala.concurrent.*
 
 trait CB[T]
 

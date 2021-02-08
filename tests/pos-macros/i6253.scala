@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Macros {
   def impl(self: Expr[StringContext])(using Quotes): Expr[String] = self match {
     case '{ StringContext() } => '{""}

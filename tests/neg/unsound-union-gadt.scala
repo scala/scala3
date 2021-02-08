@@ -3,7 +3,7 @@ object Test {
     case StrLit() extends Expr[String]
     case IntLit() extends Expr[Int]
   }
-  import Expr._
+  import Expr.*
 
   def foo[T](e: Expr[T]) = e match {
     case _: (StrLit | IntLit) =>

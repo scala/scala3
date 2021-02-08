@@ -1,4 +1,4 @@
-import api._
+import api.*
 
 object Test {
   def f(implicit x: Int): Int = x * x

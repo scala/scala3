@@ -1,5 +1,5 @@
 package foo {
-  import java.util._
+  import java.util.*
   object X {
     def bar(x: Properties): Unit = println(x.getClass.getName)
     bar(new Properties)

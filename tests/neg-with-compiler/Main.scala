@@ -6,7 +6,7 @@ package dotty.tools
 package dotc
 
 import core.Contexts.Context
-import config.Settings.Setting._
+import config.Settings.Setting.*
 
 object Main extends Driver {
   def resident(compiler: Compiler): Unit = unsupported("resident") /*loop { line =>

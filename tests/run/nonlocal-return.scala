@@ -1,4 +1,4 @@
-import scala.util.control.NonLocalReturns._
+import scala.util.control.NonLocalReturns.*
 
 object Test {
   def has(xs: List[Int], elem: Int) =

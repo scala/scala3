@@ -157,7 +157,7 @@ matches. `erasedValue` is implemented with `erased`, so the state machine above
 can be encoded as follows:
 
 ```scala
-import scala.compiletime._
+import scala.compiletime.*
 
 sealed trait State
 final class On extends State

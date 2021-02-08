@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def test[T[_]]: Unit = ${ testExpr[T] }
 
 def testExpr[T[_]: Type](using Quotes): Expr[Unit] = {
-  import quotes.reflect._
+  import quotes.reflect.*
   def variance(f: Flags) =
      if f.is(Flags.Covariant) then "+"
      else if f.is(Flags.Contravariant) then "-"

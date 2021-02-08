@@ -1,5 +1,5 @@
 object Test {
-  import Lib._
+  import Lib.*
   val xs: IArray2[Int] = IArray2(1)
 }
 

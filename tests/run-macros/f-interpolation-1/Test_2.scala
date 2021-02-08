@@ -1,4 +1,4 @@
-import FQuote._
+import FQuote.*
 
 object Test {
   def main(args: Array[String]): Unit = {

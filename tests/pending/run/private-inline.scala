@@ -34,7 +34,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val a = new A
-    import a._
+    import a.*
     println(f1a() + f1b() + f2a() + f2b())
 
     // Don't know how else to test this: all these should have been

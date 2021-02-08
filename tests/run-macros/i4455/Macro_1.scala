@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Macros {
   inline def foo(inline i: Int): Int = ${ bar('i) }
 

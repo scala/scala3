@@ -6,7 +6,7 @@ object Impl {
 }
 
 trait Impl[T <: Txn[T], K] {
-  import Impl._
+  import Impl.*
 
   def put[A](): Unit = {
     val opt: Option[Entry[T, A]] = ???

@@ -1,5 +1,5 @@
 // Testing predef masking
-import Predef.{ any2stringadd => _, _ }
+import Predef.{ any2stringadd as _, * }
 
 object StringPlusConfusion {
   // Would love to do something about this error message, but by the

@@ -17,7 +17,7 @@ case object HNil extends HList
 case class HCons [H, T <: HList](hd: H, tl: T) extends HList
 
 object Test extends App {
-  import typelevel._
+  import typelevel.*
   type HNil = HNil.type
   type Z = Z.type
 

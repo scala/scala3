@@ -1,10 +1,10 @@
 package org.scalajs.testsuite.compiler
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class CustomReflectSelectableTestScala3 {
-  import CustomReflectSelectableTestScala3._
+  import CustomReflectSelectableTestScala3.*
 
   @Test def selectField(): Unit = {
     val obj: reflect.Selectable { val x: Int } = new CustomReflectSelectable(42)

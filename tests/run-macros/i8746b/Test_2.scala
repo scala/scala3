@@ -1,6 +1,6 @@
-import Macro._
+import Macro.*
 
-import Macro._
+import Macro.*
 
 @main def Test() = { //hello
   mac((x: String) => "anything")

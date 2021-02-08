@@ -1,4 +1,4 @@
-import Utils._
+import Utils.*
 
 object Test {
   val a = foo(new Box["a"])

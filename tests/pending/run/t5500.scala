@@ -1,4 +1,4 @@
-import scala.{specialized => spec}
+import scala.{specialized as spec}
 
 class C1[@spec(Int, AnyRef) A, @spec(Int, AnyRef) B](v:A, w:B)
 

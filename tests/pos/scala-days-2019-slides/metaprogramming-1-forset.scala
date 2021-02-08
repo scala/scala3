@@ -1,6 +1,6 @@
 object ForSetExample {
 
-  import scala.collection.immutable._
+  import scala.collection.immutable.*
   import scala.compiletime.summonFrom
 
   inline def setFor[T]: Set[T] =

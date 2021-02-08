@@ -1,4 +1,4 @@
-import FileName._
+import FileName.*
 
 @main def Test = {
   val fileName1: FileName = ToFileName("fileName1")

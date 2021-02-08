@@ -5,8 +5,8 @@ object B {
   def foo: Int = 2
 }
 class C {
-  import A._
-  import B._
+  import A.*
+  import B.*
 
   def bar: Int = 4
 

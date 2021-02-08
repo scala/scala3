@@ -70,8 +70,7 @@ A member is _eligible_ if all of the following holds:
  - it is not a constructor, nor the (synthetic) class part of an object,
  - it is a given instance (declared with `given`) if and only if the export is from a _given selector_.
 
-It is a compile-time error if a simple or renaming selector does not identify any eligible
-members.
+It is a compile-time error if a simple or renaming selector does not identify any eligible members.
 
 Type members are aliased by type definitions, and term members are aliased by method definitions. Export aliases copy the type and value parameters of the members they refer to.
 Export aliases are always `final`. Aliases of given instances are again defined as givens (and aliases of old-style implicits are `implicit`). Aliases of inline methods or values are again defined `inline`. There are no other modifiers that can be given to an alias. This has the following consequences for overriding:
@@ -91,11 +90,21 @@ export O.c
 def f: c.T = ...
 ```
 
+
+**Restrictions:**
+
+ 1. Export clauses can appear in classes or they can appear at the top-level. An   export clause cannot appear as a statement in a block.
+ 1. If an export clause contains a wildcard or given selector, it is forbidden for its qualifier path to refer to a package. This is because it is not yet known how to safely track wildcard dependencies to a package for the purposes of incremental compilation.
+
+ 1. Simple renaming exports like
+    ```scala
+    export status as stat
+    ```
+    are not supported yet. They would run afoul of the restriction that the
+    exported `a` cannot be already a member of the object containing the export.
+    This restriction might be lifted in the future.
+
 <a id="note_class"></a>
-Export clauses can appear in classes or they can appear at the top-level. An export clause cannot appear as a statement in a block.
-
-If an export clause contains a wildcard or given selector, it is forbidden for its qualifier path to refer to a package. This is because it is not yet known how to safely track wildcard dependencies to a package for the purposes of incremental compilation.
-
 (\*) **Note:** Unless otherwise stated, the term "class" in this discussion also includes object and trait definitions.
 
 ## Motivation
@@ -116,17 +125,15 @@ TemplateStat      ::=  ...
                     |  Export
 TopStat           ::=  ...
                     |  Export
-Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  StableId ‘.’ ImportSpec
-ImportSpec        ::=  id
-                    |  ‘_’
-                    |  ‘given’
-                    |  ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘_'
-                    |  ‘given’ [InfixType]
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+ImportSpec        ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```
 
 ## Elaboration of Export Clauses

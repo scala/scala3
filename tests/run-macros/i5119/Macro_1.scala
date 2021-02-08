@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
   class StringContextOps(sc: => StringContext) {
@@ -6,7 +6,7 @@ object Macro {
   }
   implicit inline def XmlQuote(inline sc: StringContext): StringContextOps = new StringContextOps(sc)
   def impl(sc: Expr[StringContext], args: Expr[Seq[Any]])(using q: Quotes) : Expr[String] = {
-    import q.reflect._
+    import q.reflect.*
     given Printer[Tree] = Printer.TreeStructure
     Expr(sc.asTerm.underlyingArgument.show + "\n" + args.asTerm.underlyingArgument.show)
   }

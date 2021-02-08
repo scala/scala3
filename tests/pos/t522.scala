@@ -6,7 +6,7 @@ object Util {
   def foo(s: String) = new foo(s) {}
 }
 
-import imptwice.Util._
+import imptwice.Util.*
 
 
 object User {

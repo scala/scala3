@@ -16,7 +16,7 @@ object O {
 
 }
 object Test {
-  import O._
+  import O.*
   def main(args: Array[String]): Unit = {
     println(Feet(3) == Meters(3)) // error: cannot compare
     println(Feet(3) == 3.0) // error: cannot compare

@@ -1,5 +1,5 @@
 
-import annotation.unchecked._
+import annotation.unchecked.*
 package frp:
 
   trait Signal[+T]:
@@ -50,7 +50,7 @@ package frp:
   end Signal
 end frp
 
-import frp._
+import frp.*
 class BankAccount:
   def balance: Signal[Int] = myBalance
 

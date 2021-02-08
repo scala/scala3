@@ -1,6 +1,6 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 class Foo[T: Type] {
   def q(using Quotes) = '{(null: Any).asInstanceOf[T]}

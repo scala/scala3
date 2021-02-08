@@ -8,7 +8,7 @@ object OverloadedWithLong {
 
 object Test {
   def main(args: Array[String]): Unit =
-    import OverloadedWithLong._
+    import OverloadedWithLong.*
 
     val l: Any = 0 :: Nil
     val r = overloaded(l match {

@@ -8,6 +8,6 @@ case i0(i1, i1) => case _ => i2
 }
 }
 object i5 {
-import collection.mutable._
+import collection.mutable.*
 try { ??? mutable { case i1(i5, i3, i4) => i5 })
 }

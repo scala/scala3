@@ -1,7 +1,7 @@
 
 
 
-import collection._
+import collection.*
 
 
 

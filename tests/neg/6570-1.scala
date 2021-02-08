@@ -1,4 +1,4 @@
-import scala.Tuple._
+import scala.Tuple.*
 
 trait Trait1
 trait Trait2

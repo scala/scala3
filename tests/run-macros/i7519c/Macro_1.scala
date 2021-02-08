@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 import scala.annotation.StaticAnnotation
 
 class Annot(in: Int) extends StaticAnnotation

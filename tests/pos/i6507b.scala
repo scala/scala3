@@ -1,4 +1,4 @@
-import scala.compiletime._
+import scala.compiletime.*
 
 object Test {
   transparent inline def summonValues[T]: Tuple = inline erasedValue[T] match {
