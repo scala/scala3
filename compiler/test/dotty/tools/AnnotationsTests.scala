@@ -29,13 +29,20 @@ class AnnotationsTest:
         val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
 
         atPhase(erasurePhase.next) {
-          val annot = cls.getAnnotation(annotCls)
           // Even though we're forcing the annotation after erasure,
           // the typed trees should be unerased, so the type of
           // the annotation argument should be `arrayOfString` and
           // not a `JavaArrayType`.
+          val annot = cls.getAnnotation(annotCls)
           val arg = annot.get.argument(0).get
-          assert(arg.tpe.isInstanceOf[AppliedType] && arg.tpe =:= arrayOfString,
+
+          // If we run the type check after erasure, we will have
+          // `Array[String] =:= Array[String]` being false.
+          // The reason is that in `TypeComparer.compareAppliedType2` we have
+          // `tycon2.typeParams == Nil` after erasure, thus always get false.
+          val res = atPhase(typerPhase) { arrayOfString =:= arg.tpe }
+
+          assert(arg.tpe.isInstanceOf[AppliedType] && res,
             s"Argument $arg had type:\n${arg.tpe}\nbut expected type:\n$arrayOfString")
         }
       }
