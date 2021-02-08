@@ -12,7 +12,7 @@ object Foo {
 }
 
 object Test {
-  import Foo._
+  import Foo.*
   def main(args: Array[String]): Unit = {
     track {
       printStack("main1")

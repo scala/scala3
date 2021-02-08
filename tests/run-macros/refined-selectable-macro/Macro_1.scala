@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
 
@@ -15,7 +15,7 @@ object Macro {
   }
 
   private def toTupleImpl(s: Expr[Selectable])(using qctx:Quotes) : Expr[Tuple] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val repr = s.asTerm.tpe.widenTermRefByName.dealias
 
@@ -49,7 +49,7 @@ object Macro {
   }
 
   private def fromTupleImpl[T: Type](s: Expr[Tuple], newRecord: Expr[Array[(String, Any)] => T])(using qctx:Quotes) : Expr[Any] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val repr = s.asTerm.tpe.widenTermRefByName.dealias
 

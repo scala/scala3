@@ -31,7 +31,7 @@ object Test extends App {
   Copier.config2
 
   def test() = {
-    import Copier._
+    import Copier.*
     print()
     scanIt()
     val x = config2

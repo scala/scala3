@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def eval(inline e: Int): Int = ${ evalExpr('e) }
 

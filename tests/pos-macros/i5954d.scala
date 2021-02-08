@@ -3,7 +3,7 @@ abstract class MatcherFactory1 {
 }
 
 object MatcherFactory1 {
-  import scala.quoted._
+  import scala.quoted.*
 
   def impl(self: Expr[MatcherFactory1#AndNotWord])(using Quotes) =
     '{ val a: Any = $self }

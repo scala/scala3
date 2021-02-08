@@ -13,7 +13,7 @@ package Q {
 }
 
 object Test extends App {
-  import Q._
+  import Q.*
 
   val d = new D
   val i = new d.Inner

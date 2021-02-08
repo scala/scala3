@@ -1,5 +1,5 @@
 object `implicit-match-and-inline-match` {
-  import scala.compiletime._
+  import scala.compiletime.*
 
   case class Box[T](value: T)
   implicit val ibox: Box[Int] = Box(0)

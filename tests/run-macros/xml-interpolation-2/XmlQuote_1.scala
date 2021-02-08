@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 
 import scala.language.implicitConversions
@@ -14,7 +14,7 @@ object XmlQuote {
   implicit inline def SCOps(ctx: => StringContext): SCOps = new SCOps(ctx)
 
   def impl(receiver: Expr[SCOps], args: Expr[Seq[Any]])(using Quotes) : Expr[Xml] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     // for debugging purpose
     def pp(tree: Tree): Unit = {

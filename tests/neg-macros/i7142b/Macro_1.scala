@@ -1,6 +1,6 @@
 package macros
-import scala.quoted._
-import scala.util.control.NonLocalReturns._
+import scala.quoted.*
+import scala.util.control.NonLocalReturns.*
 
 def oops(using Quotes): Expr[Int] =
   returning('{ { (x: Int) => ${ throwReturn('x) }} apply 0 })

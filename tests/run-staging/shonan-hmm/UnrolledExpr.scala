@@ -1,5 +1,5 @@
-import scala.quoted._
-import Lifters._
+import scala.quoted.*
+import Lifters.*
 
 object UnrolledExpr {
 
@@ -19,7 +19,7 @@ object UnrolledExpr {
 }
 
 class UnrolledExpr[T: ToExpr, It <: Iterable[T]](xs: It) {
-  import UnrolledExpr._
+  import UnrolledExpr.*
 
   def foreach[U](f: T => Expr[U])(using Quotes): Expr[Unit] = block(xs.map(f), '{})
 

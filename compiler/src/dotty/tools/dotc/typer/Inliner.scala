@@ -43,7 +43,7 @@ object Inliner {
    *  @pre  hasBodyToInline(sym)
    */
   def bodyToInline(sym: SymDenotation)(using Context): Tree =
-    if (sym.isInlineMethod && sym.hasAnnotation(defn.BodyAnnot))
+    if hasBodyToInline(sym) then
       sym.getAnnotation(defn.BodyAnnot).get.tree
     else
       EmptyTree
@@ -52,15 +52,28 @@ object Inliner {
   def inInlineMethod(using Context): Boolean =
     ctx.owner.ownersIterator.exists(_.isInlineMethod)
 
-  /** Should call to method `meth` be inlined in this context? */
+  /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
     meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
 
   /** Should call be inlined in this context? */
-  def isInlineable(tree: Tree)(using Context): Boolean = tree match {
-    case Block(_, expr) => isInlineable(expr)
-    case _ => isInlineable(tree.symbol) && !tree.tpe.isInstanceOf[MethodOrPoly]
+  def needsInlining(tree: Tree)(using Context): Boolean = tree match {
+    case Block(_, expr) => needsInlining(expr)
+    case _ =>
+      isInlineable(tree.symbol)
+      && !tree.tpe.widenTermRefExpr.isInstanceOf[MethodOrPoly]
+      && StagingContext.level == 0
+      && (
+        ctx.phase == Phases.inliningPhase
+        || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
+      )
+      && !ctx.typer.hasInliningErrors
   }
+
+  private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
+    tree.symbol.is(Transparent)
+    || ctx.mode.is(Mode.ForceInline)
+    || ctx.settings.YforceInlineWhileTyping.value
 
   /** Try to inline a call to an inline method. Fail with error if the maximal
    *  inline depth is exceeded.
@@ -283,11 +296,17 @@ object Inliner {
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
+        case Block(Nil, t2) => stripTyped(t2)
+        case Inlined(_, Nil, t2) => stripTyped(t2)
         case _ => t
       }
 
       val Apply(_, codeArg :: Nil) = tree
-      val underlyingCodeArg = stripTyped(codeArg.underlying)
+      val codeArg1 = stripTyped(codeArg.underlying)
+      val underlyingCodeArg =
+        if Inliner.isInlineable(codeArg1.symbol) then stripTyped(Inliner.inlineCall(codeArg1))
+        else codeArg1
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
@@ -303,7 +322,7 @@ object Inliner {
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
         case t =>
-          report.error("argument to compileError must be a statically known String", underlyingCodeArg.srcPos)
+          report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
           Nil
       }
 
@@ -327,7 +346,7 @@ object Inliner {
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(using Context): Tree =
       val errors = compileForErrors(tree, true)
-      Literal(Constant(errors.isEmpty))
+      Literal(Constant(errors.isEmpty)).withSpan(tree.span)
 
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
     def typeCheckErrors(tree: Tree)(using Context): Tree =
@@ -941,7 +960,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       }
     }
 
-    def tryInline(tree: Tree)(using Context): Tree = tree match {
+    def tryInlineArg(tree: Tree)(using Context): Tree = tree match {
       case InlineableArg(rhs) =>
         inlining.println(i"inline arg $tree -> $rhs")
         rhs
@@ -1236,7 +1255,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      tryInline(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt)
+      inlineIfNeeded(tryInlineArg(tree.asInstanceOf[tpd.Tree]) `orElse` super.typedIdent(tree, pt))
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.hasType, tree)
@@ -1248,11 +1267,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       else
         val res = resMaybeReduced
         ensureAccessible(res.tpe, tree.qualifier.isInstanceOf[untpd.Super], tree.srcPos)
-        res
+        inlineIfNeeded(res)
     }
 
     override def typedIf(tree: untpd.If, pt: Type)(using Context): Tree =
-      typed(tree.cond, defn.BooleanType) match {
+      val condCtx = if tree.isInline then ctx.addMode(Mode.ForceInline) else ctx
+      typed(tree.cond, defn.BooleanType)(using condCtx) match {
         case cond1 @ ConstantValue(b: Boolean) =>
           val selected0 = if (b) tree.thenp else tree.elsep
           val selected = if (selected0.isEmpty) tpd.Literal(Constant(())) else typed(selected0, pt)
@@ -1278,14 +1298,30 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       super.typedValDef(vdef1, sym)
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
-      constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
+      val res = constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
         case res: Apply if res.symbol == defn.QuotedRuntime_exprSplice
                         && level == 0
-                        && !suppressInline =>
+                        && !hasInliningErrors =>
           val expanded = expandMacro(res.args.head, tree.span)
           typedExpr(expanded) // Inline calls and constant fold code generated by the macro
-        case res => res
+        case res =>
+          inlineIfNeeded(res)
       }
+      if res.symbol == defn.QuotedRuntime_exprQuote then
+        ctx.compilationUnit.needsQuotePickling = true
+      res
+
+    override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
+      inlineIfNeeded(constToLiteral(betaReduce(super.typedTypeApply(tree, pt))))
+
+    override def typedMatch(tree: untpd.Match, pt: Type)(using Context): Tree =
+      val tree1 =
+        if tree.isInline then
+          // TODO this might not be useful if we do not support #11291
+          val sel1 = typedExpr(tree.selector)(using ctx.addMode(Mode.ForceInline))
+          untpd.cpy.Match(tree)(sel1, tree.cases)
+        else tree
+      super.typedMatch(tree1, pt)
 
     override def typedMatchFinish(tree: untpd.Match, sel: Tree, wideSelType: Type, cases: List[untpd.CaseDef], pt: Type)(using Context) =
       if (!tree.isInline || ctx.owner.isInlineMethod) // don't reduce match of nested inline method yet
@@ -1338,9 +1374,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
 
     override def newLikeThis: Typer = new InlineTyper(initialErrorCount)
 
-    /** Suppress further inlining if this inline typer has already issued errors */
-    override def suppressInline(using Context) =
-      ctx.reporter.errorCount > initialErrorCount || super.suppressInline
+    /** True if this inline typer has already issued errors */
+    override def hasInliningErrors(using Context) = ctx.reporter.errorCount > initialErrorCount
+
+    private def inlineIfNeeded(tree: Tree)(using Context): Tree =
+      if Inliner.needsInlining(tree) then Inliner.inlineCall(tree)
+      else tree
+
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.

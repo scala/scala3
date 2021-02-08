@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 case class Entity(value: String)
 case class Input(ent: Entity)
@@ -9,7 +9,7 @@ object Dsl {
 
   inline def container(inline c: Input):Container = ${ containerImpl('c) }
   def containerImpl(c: Expr[Input])(using Quotes): Expr[Container] =
-    import quotes.reflect._
+    import quotes.reflect.*
     //println("Getting Input: " + Printer.TreeStructure.show(c.asTerm))
     val entExpr = c match
       case '{ Input($ent) } => ent
@@ -25,7 +25,7 @@ object Dsl {
 
   inline def pull(inline c: Container): Entity = ${ pullImpl('c) }
   def pullImpl(c: Expr[Container])(using Quotes): Expr[Entity] =
-    import quotes.reflect._
+    import quotes.reflect.*
     val inputs = c match
       case '{ Container($list) } =>
         list.valueOrError

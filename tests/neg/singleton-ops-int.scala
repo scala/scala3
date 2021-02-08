@@ -1,4 +1,4 @@
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 
 object Test {
   summon[2 + 3 =:= 6 - 1]

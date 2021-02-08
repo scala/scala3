@@ -1,13 +1,14 @@
 package a
 
 import scala.language.implicitConversions
-import scala.concurrent._
+import scala.concurrent.*
 
 trait CB[T]
 
-given myConversion[T]: Conversion[Future[T],CB[T]] = (ft => ???)
 
 object O {
+
+  given myConversion[T]: Conversion[Future[T],CB[T]] = (ft => ???)
 
   def main(argvs: Array[String]): Unit = {
     val p = Promise[Int]()

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Asserts {
 
@@ -13,7 +13,7 @@ object Asserts {
     ${ impl('cond) }
 
   def impl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val tree = cond.asTerm
 

@@ -7,7 +7,7 @@ package dingus {
 }
 
 package hungus {
-  import dingus._
+  import dingus.*
 
   object P {
     class Bar1 extends Foo1("abc")

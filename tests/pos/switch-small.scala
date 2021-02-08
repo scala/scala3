@@ -1,4 +1,4 @@
-import annotation._
+import annotation.*
 
 object Test {
   def f(x: Int) = (x: @switch) match {

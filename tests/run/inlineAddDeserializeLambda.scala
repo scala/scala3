@@ -1,7 +1,7 @@
 class C { inline final def f: Int => Int = (x: Int) => x + 1 }
 
 object Test extends App {
-  import java.io._
+  import java.io.*
 
   def serialize(obj: AnyRef): Array[Byte] = {
     val buffer = new ByteArrayOutputStream

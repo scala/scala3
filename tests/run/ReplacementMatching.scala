@@ -1,7 +1,7 @@
 
 
 
-import util.matching._
+import util.matching.*
 
 
 

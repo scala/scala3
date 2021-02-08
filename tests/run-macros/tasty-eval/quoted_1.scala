@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
@@ -17,7 +17,7 @@ object Macros {
 
   implicit def intIsEvalable: Valuable[Int] = new Valuable[Int] {
     override def value(e: Expr[Int])(using Quotes) : Option[Int] = {
-      import quotes.reflect._
+      import quotes.reflect.*
 
       e.asTerm.tpe match {
         case pre: TermRef if pre.termSymbol.isValDef =>

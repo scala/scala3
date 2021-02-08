@@ -2,7 +2,7 @@ object store {
   var str = ""
 }
 
-import store._
+import store.*
 
 trait A {
  str += "a"

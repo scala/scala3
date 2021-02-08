@@ -1,5 +1,5 @@
 import collection.immutable.SortedMap
-import scala.math.Ordering.Implicits._
+import scala.math.Ordering.Implicits.*
 
 object Test {
   implicit val ord: Ordering[Array[Byte]] = Ordering.by(x => x.toIterable: collection.Seq[Byte])

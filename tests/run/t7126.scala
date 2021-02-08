@@ -1,4 +1,4 @@
-import language._
+import language.*
 
 // Currently typer infers a Nothing as a CC[T] to be Nothing[T], and isn't
 // able to figure out that Nothing[Any] =:= Nothing. We've had a discussion

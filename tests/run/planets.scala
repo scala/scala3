@@ -14,7 +14,7 @@ enum Planet(mass: Double, radius: Double) {
 }
 object Test {
   def main(args: Array[String]) = {
-    import Planet._
+    import Planet.*
     assert(valueOf("SATURN") == SATURN)
     val earthWeight = 100
     val mass = earthWeight/EARTH.surfaceGravity

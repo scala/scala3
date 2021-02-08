@@ -1,7 +1,7 @@
-import Macro._
-import Macro2._
+import Macro.*
+import Macro2.*
 
-import scala.compiletime.testing._
+import scala.compiletime.testing.*
 
 object Test {
 

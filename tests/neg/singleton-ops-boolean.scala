@@ -1,4 +1,4 @@
-import scala.compiletime.ops.boolean._
+import scala.compiletime.ops.boolean.*
 
 object Test {
   val t0: ![true] = false

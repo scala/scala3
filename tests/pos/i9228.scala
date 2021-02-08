@@ -7,7 +7,7 @@ object ABug {
   def gtoll(using g: Graph): List[List[g.Node]] = ???
 
   object graph extends Graph
-  import graph._
+  import graph.*
   given graph.type = graph
 
   val osq: List[List[Node]] = gtoll

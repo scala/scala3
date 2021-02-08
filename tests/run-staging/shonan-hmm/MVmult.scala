@@ -1,9 +1,9 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 class MVmult[Idx, T, Unt](tring: Ring[T], vec: VecROp[Idx, T, Unt]) {
   private[this] val blas2 = new Blas2(tring, vec)
-  import blas2._
+  import blas2.*
   def mvmult(vout: OVec[Idx, T, Unt], a: Vec[Idx, Vec[Idx, T]], v: Vec[Idx, T]): Unt = vout := a * v
   override def toString(): String = s"MVmult($tring, $vec)"
 }
@@ -54,7 +54,7 @@ object MVmult {
   }
 
   def mvmult_ac(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
-    import Lifters._
+    import Lifters.*
     '{
       val arr = ${Expr(a)}
       ${
@@ -65,7 +65,7 @@ object MVmult {
   }
 
   def mvmult_opt(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
-    import Lifters._
+    import Lifters.*
     '{
       val arr = ${Expr(a)}
       ${
@@ -76,7 +76,7 @@ object MVmult {
   }
 
   def mvmult_roll(a: Array[Array[Int]])(using Quotes): Expr[(Array[Int], Array[Int]) => Unit] = {
-    import Lifters._
+    import Lifters.*
     '{
       val arr = ${Expr(a)}
       ${
@@ -99,7 +99,7 @@ object MVmult {
   }
 
   def initRows[T: Type](a: Array[Array[Int]])(cont: Array[Expr[Array[Int]]] => Expr[T])(using Quotes): Expr[T] = {
-    import Lifters._
+    import Lifters.*
     def loop(i: Int, acc: List[Expr[Array[Int]]]): Expr[T] = {
       if (i >= a.length) cont(acc.toArray.reverse)
       else if (a(i).count(_ != 0) < VecRStaOptDynInt.threshold) {
@@ -148,13 +148,13 @@ object MVmult {
   }
 
   def copy_row1(using Quotes): Array[Int] => (Expr[Int] => Expr[Int]) = v => {
-    import Lifters._
+    import Lifters.*
     val arr = Expr(v)
     i => '{ ($arr).apply($i) }
   }
 
   def copy_row_let(using Quotes): Array[Int] => (Expr[Int] => Expr[Int]) = v => {
-    import Lifters._
+    import Lifters.*
     val arr: Expr[Array[Int]] = ??? // FIXME used genlet v
     i => '{ ($arr).apply($i) }
   }

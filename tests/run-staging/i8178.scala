@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 def foo(n: Int, t: Expr[Int])(using Quotes): Expr[Int] =
   if (n == 0) t

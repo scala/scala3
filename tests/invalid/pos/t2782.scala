@@ -1,4 +1,4 @@
-import scala.{collection => sc}
+import scala.collection as sc
 
 object Test {
   trait Foo[T]

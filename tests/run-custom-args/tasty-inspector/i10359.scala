@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 object Bar {
   class Givens {
@@ -36,7 +36,7 @@ object Test {
 class TestInspector() extends Inspector:
 
   def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-    import quotes.reflect._
+    import quotes.reflect.*
 
     for tasty <- tastys do
       val code = tasty.ast.show

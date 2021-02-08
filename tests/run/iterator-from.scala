@@ -2,8 +2,8 @@
  * filter: inliner warnings
  */
 
-import scala.util.{Random => R}
-import scala.collection._
+import scala.util.{Random as R}
+import scala.collection.*
 import scala.math.Ordered
 
 object Test extends App {

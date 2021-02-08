@@ -1,6 +1,6 @@
 package notmacro
 
-import scala.quoted._
+import scala.quoted.*
 
 case class T[A <: AnyKind](s: String)
 

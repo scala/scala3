@@ -48,7 +48,7 @@ object Test extends App {
   }
 
   val c = new reallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongnamereallylongname
-  import c._
+  import c.*
 
   check(obj0.getClass)
   check(obj01.getClass)

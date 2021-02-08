@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def f() = ()
 
@@ -11,7 +11,7 @@ def triggerStackOverflow(n: Int): Expr[Double] = {
 inline def loop(inline prog: Double): Double = ${impl('prog)}
 
 def impl(prog: Expr[Double])(using Quotes) : Expr[Double] =
-  import quotes.reflect._
+  import quotes.reflect.*
   try {
     triggerStackOverflow(0)
   } catch {

@@ -16,7 +16,7 @@ trait U2(a: Any) extends T {
   a // used to crash
 }
 
-import State._
+import State.*
 class C(x: Int) extends U with T(x, x * x + s)
 class C2(x: Int) extends T(x, x * x + s) with U
 

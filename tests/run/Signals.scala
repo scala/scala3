@@ -1,5 +1,5 @@
 
-import annotation.unchecked._
+import annotation.unchecked.*
 import compiletime.uninitialized
 package frp:
 
@@ -38,7 +38,7 @@ package frp:
   end Var
 end frp
 
-import frp._
+import frp.*
 class BankAccount:
   def balance: Signal[Int] = myBalance
 

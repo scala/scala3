@@ -29,7 +29,7 @@ package s {
   object G11 { def unapplySeq[A](x: C11[A]): Option[(A, Seq[A])]    = ??? }
   object G21 { def unapplySeq[A](x: C21[A]): Option[(A, A, Seq[A])] = ??? }
 }
-import s._
+import s.*
 
 package pos {
   object Test {

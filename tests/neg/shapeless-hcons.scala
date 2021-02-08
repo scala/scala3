@@ -18,7 +18,7 @@ sealed trait HNil extends HList {
 case object HNil extends HNil
 
 }
-import shapeless._
+import shapeless.*
 
 package test {
 

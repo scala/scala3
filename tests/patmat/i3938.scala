@@ -21,7 +21,7 @@ class Foo {
 
 class Test {
   val foo = new Foo
-  import foo.bar._
+  import foo.bar.*
 
   def h(a: A) = {
     a match {

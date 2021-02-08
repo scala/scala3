@@ -1,4 +1,4 @@
-import scala.deriving._
+import scala.deriving.*
 
 object Test {
   object K0 {

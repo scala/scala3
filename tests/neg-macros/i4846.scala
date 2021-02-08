@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
   inline def foo(inline x: Int): Int = ${

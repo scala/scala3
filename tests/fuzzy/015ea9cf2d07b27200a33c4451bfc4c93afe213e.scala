@@ -2,7 +2,7 @@ class i0 {
 type Int;
 val i1 = 2
 private val i2 = (List(): List[Int])
-import i1.{ () => Double(_)).asInstanceOf[i2]) } else new i0(1)
+import i1.{ () as Double(_)).asInstanceOf[i2]) } else new i0(1)
 List(List(1), None)
 println(i1(17))
 new _

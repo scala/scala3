@@ -34,7 +34,7 @@ object Generator:
   val nums: Generator[Integer] = range(NumLimit).map(Integer(_))
 
 @main def Test =
-  import Generator._
+  import Generator.*
 
   val set1 = dotty.tools.dotc.util.HashSet[Int]()
   val set2 = scala.collection.mutable.HashSet[Int]()

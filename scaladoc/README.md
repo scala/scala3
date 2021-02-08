@@ -167,3 +167,9 @@ Make sure all the tests pass (simply run `sbt test` to verify that).
 A documentation tool needs to access compiler information about the project - it
 needs to list all definitions, resolve them by name, and query their members.
 Tasty Reflect is the dedicated way in Scala 3 of accessing this information.
+
+## Credits
+
+- [Flatart](https://www.iconfinder.com/Flatart) - Gitter icon
+
+

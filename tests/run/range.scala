@@ -30,7 +30,7 @@ object Test {
   }
 
   case class GR[T](val x: T)(implicit val num: Integral[T]) {
-    import num._
+    import num.*
 
     def negated = GR[T](-x)
 

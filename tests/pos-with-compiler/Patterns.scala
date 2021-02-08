@@ -1,5 +1,5 @@
-import dotty.tools.dotc.ast.Trees._
-import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.ast.Trees.*
+import dotty.tools.dotc.core.Types.*
 
 object Patterns {
   val d: Object = null

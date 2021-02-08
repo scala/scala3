@@ -1,5 +1,5 @@
-import javax.swing._
-import java.awt._
+import javax.swing.*
+import java.awt.*
 
 class DuplicateSymbolError_DirectSuperclass extends DefaultListCellRenderer() {
   override def getListCellRendererComponent(list: JList[_ <: Object], value: Object, index: Int, isSelected: Boolean, cellHasFocus: Boolean): Component = ???

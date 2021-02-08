@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
   inline def test[A, B]: Any =

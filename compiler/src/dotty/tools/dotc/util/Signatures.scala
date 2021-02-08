@@ -66,7 +66,7 @@ object Signatures {
           case _ =>
             val funSymbol = fun.symbol
             val alternatives = funSymbol.owner.info.member(funSymbol.name).alternatives
-            val alternativeIndex = alternatives.indexOf(funSymbol.denot) max 0
+            val alternativeIndex = alternatives.map(_.symbol).indexOf(funSymbol) max 0
             (alternativeIndex, alternatives)
         }
 

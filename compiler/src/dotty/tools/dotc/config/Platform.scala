@@ -38,12 +38,10 @@ abstract class Platform {
   def newClassLoader(bin: AbstractFile)(using Context): SymbolLoader
 
   /** The given symbol is a method with the right name and signature to be a runnable program. */
-  def isMainMethod(sym: SymDenotation)(using Context): Boolean
+  def isMainMethod(sym: Symbol)(using Context): Boolean
 
   /** The given class has a main method. */
   final def hasMainMethod(sym: Symbol)(using Context): Boolean =
-    sym.info.member(nme.main).hasAltWith {
-      case x: SymDenotation => isMainMethod(x) && (sym.is(Module) || x.isStatic)
-      case _ => false
-    }
+    sym.info.member(nme.main).hasAltWith(d =>
+      isMainMethod(d.symbol) && (sym.is(Module) || d.symbol.isStatic))
 }

@@ -15,7 +15,7 @@ object test1 {
 }
 
 object test2 {
-  import E5._
+  import E5.*
   object E5 {
     type INT = Integer
     val defaultX = 2
@@ -34,7 +34,7 @@ object test3 {
     val defaultX = 2
   }
 
-  import E5._
+  import E5.*
 
   enum E5 {
     case C1(x: INT) // ok
@@ -51,7 +51,7 @@ object test4 {
     case C3[T <: INT]() // error: illegal reference
   }
 
-  import E5._
+  import E5.*
 
   object E5 {
     type INT = Integer
@@ -73,7 +73,7 @@ object test5 {
 }
 
 object test6 {
-  import E5._
+  import E5.*
   enum E5[T](x: T) {
     case C3() extends E5[INT](defaultX) // ok
     case C4() extends E5[INT](defaultX) // ok

@@ -8,7 +8,7 @@ object Xor {
 }
 
 object TestXor {
-  import Xor._
+  import Xor.*
   def meh[F[_], A, B](fa: F[A])(f: A => B): F[B] = ???
   meh(new Right(23): Xor[Boolean, Int])(_ < 13)
   meh(new Left(true): Xor[Boolean, Int])(_ < 13)

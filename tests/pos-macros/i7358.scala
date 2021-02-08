@@ -1,7 +1,7 @@
 package test
 
-import scala.quoted._
-import scala.compiletime._
+import scala.quoted.*
+import scala.compiletime.*
 
 transparent inline def summonT[Tp <: Tuple](using Quotes): Tuple = inline erasedValue[Tp] match {
   case _ : EmptyTuple => Tuple()

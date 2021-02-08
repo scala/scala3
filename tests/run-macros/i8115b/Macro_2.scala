@@ -1,6 +1,6 @@
 package example
 
-import scala.quoted._
+import scala.quoted.*
 
 object MyClassMaker {
   inline def make: MyClass = ${ makeImpl }

@@ -1,7 +1,7 @@
 package annot
 
-import com.javacp.annot._
-import scala.annotation.meta._
+import com.javacp.annot.*
+import scala.annotation.meta.*
 import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
 
 @ClassAnnotation/*->com::javacp::annot::ClassAnnotation#*/

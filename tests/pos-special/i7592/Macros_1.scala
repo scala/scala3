@@ -1,7 +1,7 @@
-import scala.quoted._
+import scala.quoted.*
 
 def compileImpl[T](expr : Expr[T])(using Quotes) : Expr[T] = {
-  import quotes.reflect._
+  import quotes.reflect.*
 
   def proc(term : Term): Term = {
     term match {

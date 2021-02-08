@@ -1,4 +1,4 @@
-import quoted._
+import quoted.*
 
 object Macros {
   inline def theTestBlock : Unit = ${ theTestBlockImpl }
@@ -11,7 +11,7 @@ object Macros {
   class TestAnnotation extends scala.annotation.Annotation
 
   def theTestBlockImpl(using qctx : Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val x1T = ConstantType(IntConstant(1))
     val x2T = OrType(ConstantType(IntConstant(1)), ConstantType(IntConstant(2)))

@@ -33,10 +33,21 @@ import scala.annotation.constructorOnly
 /** Inlines all calls to inline methods that are not in an inline method or a quote */
 class Inlining extends MacroTransform {
   import tpd._
+  import Inlining._
 
   override def phaseName: String = Inlining.name
 
   override def allowsImplicitSearch: Boolean = true
+
+  override def run(using Context): Unit =
+    if ctx.compilationUnit.needsInlining then
+      try super.run
+      catch case _: CompilationUnit.SuspendException => ()
+
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val newUnits = super.runOn(units).filterNot(_.suspended)
+    ctx.run.checkSuspendedUnits(newUnits)
+    newUnits
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
@@ -69,13 +80,13 @@ class Inlining extends MacroTransform {
           else super.transform(tree)
         case _: Typed | _: Block =>
           super.transform(tree)
-        case _ if Inliner.isInlineable(tree) && !tree.tpe.widen.isInstanceOf[MethodOrPoly] && StagingContext.level == 0 =>
+        case _ if Inliner.needsInlining(tree) =>
           val tree1 = super.transform(tree)
-          val inlined = Inliner.inlineCall(tree1)
-          if tree1 eq inlined then inlined
-          else transform(inlined)
+          if tree1.tpe.isError then tree1
+          else Inliner.inlineCall(tree1)
         case _: GenericApply if tree.symbol.isQuote =>
-          ctx.compilationUnit.needsStaging = true
+          if level == 0 then
+            ctx.compilationUnit.needsQuotePickling = true
           super.transform(tree)(using StagingContext.quoteContext)
         case _: GenericApply if tree.symbol.isExprSplice =>
           super.transform(tree)(using StagingContext.spliceContext)
@@ -85,6 +96,5 @@ class Inlining extends MacroTransform {
   }
 }
 
-object Inlining {
+object Inlining:
   val name: String = "inlining"
-}

@@ -1,4 +1,4 @@
-import Predef.{any2stringadd => _, _}
+import Predef.{any2stringadd as _, *}
 
 object Test {
   val o = new Object()

@@ -1,6 +1,6 @@
 
 
-import scala.language.{ postfixOps }
+import scala.language.postfixOps
 
 object Test {
   def main(args: Array[String]): Unit = {

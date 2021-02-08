@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 trait Foo:
   def mcrImpl1(e: Expr[Any])(using ctx: Quotes): Expr[Any] =
@@ -9,7 +9,7 @@ object Foo extends Foo:
     '{println(s"Hello ${$e}")}
 
 object Bar:
-  import Foo._
+  import Foo.*
   inline def mcr1(e: => Any) = ${mcrImpl1('e)}
 
   inline def mcr2(e: => Any) = ${Foo.mcrImpl1('e)}

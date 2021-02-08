@@ -1,5 +1,5 @@
-import scala.deriving._
-import scala.quoted._
+import scala.deriving.*
+import scala.quoted.*
 
 
 object Macro1 {
@@ -17,7 +17,7 @@ object Macro1 {
     ${ test1Impl('value) }
 
   def test1Impl[T: Type](value: Expr[T])(using Quotes): Expr[List[String]] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val mirrorTpe = Type.of[Mirror.Of[T]]
 

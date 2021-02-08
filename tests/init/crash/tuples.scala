@@ -1,4 +1,4 @@
-import Function._
+import Function.*
 
 object Test extends App {
   var xyz: (Int, String, Boolean) = _  // error

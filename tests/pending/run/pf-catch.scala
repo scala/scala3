@@ -1,5 +1,5 @@
 
-import scala.language.{ postfixOps }
+import scala.language.postfixOps
 object Test {
   def shortName(x: AnyRef) = x.getClass.getName split '.' last
   type Handler[+T] = PartialFunction[Throwable, T]

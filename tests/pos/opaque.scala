@@ -1,4 +1,4 @@
-import Predef.{any2stringadd => _, _}
+import Predef.{any2stringadd as _, *}
 object opaquetypes {
   opaque type Logarithm = Double
 
@@ -27,7 +27,7 @@ object opaquetypes {
   val LL: Logarithm = Logarithm(1)
 }
 object usesites {
-  import opaquetypes._
+  import opaquetypes.*
   val l = Logarithm(1.0)
   val l2 = Logarithm(2.0)
   val l3 = l * l2

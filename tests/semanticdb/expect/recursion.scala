@@ -3,7 +3,7 @@ package recursion
 
 object Nats {
   sealed trait Nat {
-    inline def ++ : Succ[this.type] = Succ(this)
+    transparent inline def ++ : Succ[this.type] = Succ(this)
 
     transparent inline def +(inline that: Nat): Nat =
       inline this match {

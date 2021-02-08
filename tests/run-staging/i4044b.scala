@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 sealed abstract class VarRef[T] {
   def update(expr: Expr[T])(using Quotes): Expr[Unit]

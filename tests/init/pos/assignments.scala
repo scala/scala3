@@ -20,7 +20,7 @@ object assignments {
   c.x = c.x * 2
 
   val cc = c
-  import cc._
+  import cc.*
   x = x + 1
   x *= 2
 }

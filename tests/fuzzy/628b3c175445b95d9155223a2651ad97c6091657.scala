@@ -11,7 +11,7 @@ type i6
 type i79 <: i7{type i9, i10 <: i5.i2] }
 val i9: i8 { type i4 = i13.i9 }
 val i16 = new i1 {} }
-import i9.{ Set, i8 => }i9 {
+import i9.{ Set, i8 as }i9 {
 object i10 extends i6 with i4 {
 val i5 = new i9
 var i9: i3.i2

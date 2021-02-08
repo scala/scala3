@@ -1,5 +1,5 @@
 // This relies on the naming of the transformed classes which will have to change in the new stdlib.
-import scala.collection._
+import scala.collection.*
 
 trait Foo[+A,
                      +Coll,

@@ -1,4 +1,4 @@
-import scala.collection._
+import scala.collection.*
 import scala.language.postfixOps
 
 object Test extends App {

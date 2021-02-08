@@ -46,6 +46,6 @@ class Operators
   // infix type op[A, B] = Int
   // type Binary2 = String op Int
 
-  import scala.compiletime.ops.boolean._
+  import scala.compiletime.ops.boolean.*
   type Unary = ![true]
 }

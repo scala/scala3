@@ -1,7 +1,7 @@
-import scala.quoted._
+import scala.quoted.*
 
 def test(using Quotes)(x: Expr[_]) = {
-  import quotes.reflect._
+  import quotes.reflect.*
   x.asTerm.asExprOf[Any]
 }
 

@@ -1,6 +1,6 @@
 package x
 
-import scala.quoted._
+import scala.quoted.*
 
 object FastPath {
 
@@ -23,7 +23,7 @@ object X {
  }
 
  def transformImpl[A:Type](x:Expr[A])(using Quotes):Expr[A] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val slowPath = '{ SlowPath }.asTerm
     val fastPath = '{ FastPath }.asTerm
     val transformer = new TreeMap() {

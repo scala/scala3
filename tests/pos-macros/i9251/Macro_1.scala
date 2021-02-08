@@ -1,6 +1,6 @@
 package cps
 
-import scala.quoted._
+import scala.quoted.*
 
 trait CpsMonad[F[_]]
 
@@ -19,7 +19,7 @@ object Async {
 
 
   def checkPrintTypeImpl[F[_]:Type,T:Type](f: Expr[T])(using Quotes): Expr[Unit] =
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val fu = f.asTerm
     fu match

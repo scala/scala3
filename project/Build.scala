@@ -1624,6 +1624,9 @@ object Build {
               "-skip-by-regex:.+\\.impl($|\\..+) " +
               "-comment-syntax wiki -siteroot scaladoc/scala3-docs -project-logo scaladoc/scala3-docs/logo.svg " +
               "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
+              "-social-links:github::https://github.com/lampepfl/dotty," +
+              "gitter::https://gitter.im/scala/scala," +
+              "twitter::https://twitter.com/scala_lang " +
               s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
               s"-doc-root-content $docRootFile"
               ))

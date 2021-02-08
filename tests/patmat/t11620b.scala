@@ -5,7 +5,7 @@ object Length {
   case object StateColumn extends Length
 }
 
-import Length._
+import Length.*
 
 case class Indent[T <: Length](length: T)
 

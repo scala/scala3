@@ -1,6 +1,6 @@
 object SetBug {
-  import scala.collection.immutable.{ Set => ImmutSet }
-  import scala.collection.mutable.{ Set => MutSet }
+  import scala.collection.immutable.Set as ImmutSet
+  import scala.collection.mutable.Set as MutSet
 
   case class IH (i: Int, h: Int) {
     override def hashCode: Int = h
@@ -22,8 +22,8 @@ object SetBug {
 }
 
 object MapBug {
-  import scala.collection.immutable.{ Map => ImmutMap }
-  import scala.collection.mutable.{ Map => MutMap }
+  import scala.collection.immutable.Map as ImmutMap
+  import scala.collection.mutable.Map as MutMap
 
   case class IH (i: Int, h: Int) {
     override def hashCode: Int = h

@@ -1,4 +1,4 @@
-import scala.collection.mutable._
+import scala.collection.mutable.*
 
 class Tag(val name: String, val buffer: Buffer[Tag] = ArrayBuffer()) {
 	def space(n: Int = 0): String = {

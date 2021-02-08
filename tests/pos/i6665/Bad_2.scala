@@ -1,4 +1,4 @@
 package foo
-import foo._
+import foo.*
 object A extends Oops
 object B extends Oops

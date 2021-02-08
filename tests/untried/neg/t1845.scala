@@ -3,7 +3,7 @@ trait TokenParsers { val lexical: Tokens }
 
 
 class MyTokenParsers extends TokenParsers {
-  import lexical._
+  import lexical.*
 
 
   val lexical = new Tokens

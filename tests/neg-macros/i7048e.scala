@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 abstract class Test {
   type T

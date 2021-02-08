@@ -24,7 +24,7 @@ object O {
 }
 
 class T2a {
-    import O._
+    import O.*
 
     def x: B = {
         val aToB = 3

@@ -30,7 +30,7 @@ object Logger {
 }
 
 object Test{
-  import Logger._
+  import Logger.*
 
   var indentSetting = 2
 

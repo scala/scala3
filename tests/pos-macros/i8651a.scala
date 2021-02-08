@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 def coroutineImpl(using Quotes): Expr[Any] =
   '{
     new {

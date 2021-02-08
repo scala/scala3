@@ -8,7 +8,7 @@ object Exporter {
   export Exportee._
 }
 
-import Exporter._
+import Exporter.*
 
 @main def Test =
   println(foo("a", "b", "c"))

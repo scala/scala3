@@ -18,7 +18,7 @@ object Test {
     println()
 
     {
-      import UnboundedIntImplementation._
+      import UnboundedIntImplementation.*
       val large = (BigInt(1) << 100).asInstanceOf[Succ]
       large match {
         case Zero() => println("test fail")
@@ -30,7 +30,7 @@ object Test {
   }
 
   def testInterface(numbers: Numbers): Unit = {
-    import numbers._
+    import numbers.*
     val zero = Zero()
     println("underlying rep: " + zero)
 

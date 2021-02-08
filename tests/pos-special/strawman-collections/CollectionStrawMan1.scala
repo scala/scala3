@@ -1,6 +1,6 @@
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 
 /** A strawman architecture for new collections. It contains some

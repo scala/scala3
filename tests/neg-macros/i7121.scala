@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class annot1[T](x: Expr[T]) extends scala.annotation.Annotation
 class annot2[T: Type](x: T) extends scala.annotation.Annotation

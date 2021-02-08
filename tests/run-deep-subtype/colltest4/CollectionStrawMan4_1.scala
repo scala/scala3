@@ -1,7 +1,7 @@
 package colltest4
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.uncheckedVariance
 import annotation.tailrec

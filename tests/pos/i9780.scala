@@ -1,5 +1,5 @@
 import java.awt.event.WindowEvent
-import java.awt.{Window => AWTWindow}
+import java.awt.Window as AWTWindow
 
 abstract class Window {
   def peer: AWTWindow with InterfaceMixin

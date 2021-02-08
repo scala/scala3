@@ -9,10 +9,10 @@ class Test {
   //   ^
   // one error found
   def f2 = {
-    import scala._
+    import scala.*
   }
   def f2b = {
-    import scala.collection.mutable.{ Map => MMap }
+    import scala.collection.mutable.Map as MMap
   }
   def f(): Unit = {
     locally {
@@ -22,14 +22,14 @@ class Test {
 
   // parses
   def f3 = {
-    import scala._
+    import scala.*
     5
   }
   locally { (x: Int) =>
-    import scala.util._
+    import scala.util.*
   }
   1 match {
-    case 1 => import scala.concurrent._
+    case 1 => import scala.concurrent.*
   }
 }
 

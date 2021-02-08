@@ -3,7 +3,7 @@ class WordExp {
   type _labelT <: Label
 }
 
-import scala.collection._
+import scala.collection.*
 
 abstract class S2 {
   val lang: WordExp

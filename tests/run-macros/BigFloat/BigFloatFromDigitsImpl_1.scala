@@ -1,7 +1,7 @@
 package test
 import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
-import scala.quoted._
+import scala.quoted.*
 
 object BigFloatFromDigitsImpl:
   def apply(digits: Expr[String])(using Quotes): Expr[BigFloat] =

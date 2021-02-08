@@ -18,7 +18,7 @@ object qualified_private {
   case class D private[qualified_private] (i: Int) // ok: no user-defined companion object
 }
 object QPrivTest {
-  import qualified_private._
+  import qualified_private.*
   def c1: C = C(1) // error: apply is private
   def c2: C = c1.copy(2) // error: copy is private
 
@@ -36,7 +36,7 @@ object qualified_protected {
   case class F protected[qualified_protected] (i: Int)
 }
 object QProtTest {
-  import qualified_protected._
+  import qualified_protected.*
   def f1: F = F(1)
   def f2: F = f2.copy(2) // error: copy is protected
 }

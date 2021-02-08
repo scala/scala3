@@ -5,7 +5,7 @@ object Foo {
   println(summon)  // error
 }
 
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.erasedValue
 
 inline def summon[T](using t:T): T = t match {

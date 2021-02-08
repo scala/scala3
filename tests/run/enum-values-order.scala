@@ -23,7 +23,7 @@ enum Color extends java.lang.Enum[Color]:
     val labels   = Seq("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z")
 
     def testLatin1() =
-      import LatinAlphabet._
+      import LatinAlphabet.*
       val ordered = Seq(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
 
       assert(ordered sameElements LatinAlphabet.values)
@@ -31,7 +31,7 @@ enum Color extends java.lang.Enum[Color]:
       assert(labels == ordered.map(_.productPrefix))
 
     def testLatin2() =
-      import LatinAlphabet2._
+      import LatinAlphabet2.*
       val ordered = Seq(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
 
       assert(ordered sameElements LatinAlphabet2.values)
@@ -39,7 +39,7 @@ enum Color extends java.lang.Enum[Color]:
       assert(labels == ordered.map(_.name))
 
     def testLatin3() =
-      import LatinAlphabet3._
+      import LatinAlphabet3.*
       val ordered = Seq(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
 
       assert(ordered sameElements LatinAlphabet3.values)
@@ -53,7 +53,7 @@ enum Color extends java.lang.Enum[Color]:
   end testLatin
 
   def testColor() =
-    import Color._
+    import Color.*
     val ordered  = Seq(Red, Green, Blue, Aqua, Grey, Black, White, Emerald, Brown)
     val ordinals = Seq(0, 1, 2, 3, 4, 5, 6, 7, 8)
     val labels   = Seq("Red", "Green", "Blue", "Aqua", "Grey", "Black", "White", "Emerald", "Brown")

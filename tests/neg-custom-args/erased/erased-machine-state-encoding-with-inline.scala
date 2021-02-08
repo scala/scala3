@@ -1,4 +1,4 @@
-import scala.compiletime._
+import scala.compiletime.*
 
 sealed trait State
 final class On extends State

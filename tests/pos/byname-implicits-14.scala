@@ -179,7 +179,7 @@ object equal {
     def ===(y: T): Boolean = eqT.eqv(x, y)
   }
 
-  import GenericInstances._
+  import GenericInstances.*
 
   implicit val EqLongInstance:   Eq[Long]   = new Eq[Long]   { def eqv(x: Long, y: Long):     Boolean = x == y }
   implicit val EqDoubleInstance: Eq[Double] = new Eq[Double] { def eqv(x: Double, y: Double): Boolean = x == y }

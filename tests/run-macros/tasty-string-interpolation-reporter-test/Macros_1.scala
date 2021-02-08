@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 import scala.language.implicitConversions
@@ -23,7 +23,7 @@ object Macro {
       case ('{ StringContext(${Varargs(parts)}*) }, Varargs(args)) =>
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import quotes.reflect._
+            import quotes.reflect.*
             report.error(msg, parts(partIdx).asTerm.pos)
           }
         }
@@ -37,7 +37,7 @@ object Macro {
         val errors = List.newBuilder[Expr[(Int, Int, Int, String)]]
         val reporter = new Reporter {
           def errorOnPart(msg: String, partIdx: Int): Unit = {
-            import quotes.reflect._
+            import quotes.reflect.*
             val pos = parts(partIdx).asTerm.pos
             errors += '{ Tuple4(${Expr(partIdx)}, ${Expr(pos.start)}, ${Expr(pos.end)}, ${Expr(msg)}) }
           }

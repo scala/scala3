@@ -1,4 +1,4 @@
-import scala.concurrent._
+import scala.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 object Test {

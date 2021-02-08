@@ -1,4 +1,4 @@
-import x._
+import x.*
 
 class Writer[A] {
 

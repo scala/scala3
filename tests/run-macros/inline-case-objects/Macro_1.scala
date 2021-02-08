@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   def impl(expr: Expr[Any]) (using Quotes): Expr[String] =

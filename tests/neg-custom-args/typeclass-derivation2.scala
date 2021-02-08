@@ -5,7 +5,7 @@ object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
   class GenericClass(labelsStr: String) {
-    import GenericClass._
+    import GenericClass.*
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
     def mirror(ordinal: Int, product: Product): Mirror =
@@ -128,7 +128,7 @@ enum Lst[+T] {
 
 object Lst {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
@@ -161,7 +161,7 @@ case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
 object Pair {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
@@ -182,7 +182,7 @@ case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
 object Either {
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[L, R] = Shape.Cases[(
     Shape.Case[Left[L], L *: EmptyTuple],
@@ -211,7 +211,7 @@ trait Show[T] {
 }
 object Show {
   import scala.compiletime.{erasedValue, error, summonInline}
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -263,7 +263,7 @@ object Show {
 
 // Tests
 object Test extends App {
-  import TypeLevel._
+  import TypeLevel.*
 
   def showPrintln[T: Show](x: T): Unit =
     println(implicitly[Show[T]].show(x))

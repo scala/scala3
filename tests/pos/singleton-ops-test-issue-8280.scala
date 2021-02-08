@@ -1,4 +1,4 @@
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 import scala.compiletime.S
 
 class Foo[T <: Int] {

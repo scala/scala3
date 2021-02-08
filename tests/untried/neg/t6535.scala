@@ -1,5 +1,5 @@
 object As {
-  import Bs.B._
+  import Bs.B.*
 
   object A
   extends scala.AnyRef // needed for the cycle;
@@ -8,7 +8,7 @@ object As {
 }
 
 object Bs {
-  import As.A._
+  import As.A.*
 
   object B
   extends scala.AnyRef // scala.Immutable, ...

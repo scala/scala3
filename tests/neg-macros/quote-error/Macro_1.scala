@@ -1,4 +1,4 @@
-import quoted._
+import quoted.*
 
 object Macro_1 {
   inline def foo(inline b: Boolean): Unit = ${fooImpl('b)}

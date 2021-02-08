@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
   inline def mac(inline tree: Any): String = ${ macImpl('tree) }

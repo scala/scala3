@@ -1,5 +1,5 @@
 object Test {
-    import B._, C._
+    import B._, C.*
 
     1.isEmpty
 }

@@ -5,8 +5,8 @@ package object bar {
 }
 
 package baz {
-  import java.io._
-  import foo.bar._
+  import java.io.*
+  import foo.bar.*
 
   object Test {
     def f = new IOException

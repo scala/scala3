@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -16,7 +16,7 @@ object Test {
 class DBInspector extends Inspector {
 
   def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit = {
-    import quotes.reflect._
+    import quotes.reflect.*
     object Traverser extends TreeTraverser {
 
       override def traverseTree(tree: Tree)(owner: Symbol): Unit = tree match {

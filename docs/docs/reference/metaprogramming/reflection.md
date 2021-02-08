@@ -19,27 +19,27 @@ guarantees and may fail at macro expansion time, hence additional explicit
 checks must be done.
 
 To provide reflection capabilities in macros we need to add an implicit parameter
-of type `scala.quoted.Quotes` and import `quotes.reflect._` from it in the scope
+of type `scala.quoted.Quotes` and import `quotes.reflect.*` from it in the scope
 where it is used.
 
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 inline def natConst(inline x: Int): Int = ${natConstImpl('{x})}
 
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
-   import quotes.reflect._
+   import quotes.reflect.*
    ...
 ```
 
 ### Extractors
 
-`import quotes.reflect._` will provide all extractors and methods on `quotes.reflect.Tree`s.
+`import quotes.reflect.*` will provide all extractors and methods on `quotes.reflect.Tree`s.
 For example the `Literal(_)` extractor used below.
 
 ```scala
 def natConstImpl(x: Expr[Int])(using Quotes): Expr[Int] =
-   import quotes.reflect._
+   import quotes.reflect.*
    val tree: Term = x.asTerm
    tree match
       case Inlined(_, _, Literal(IntConstant(n))) =>
@@ -78,7 +78,7 @@ expansion point.
 
 ```scala
 def macroImpl()(quotes: Quotes): Expr[Unit] =
-   import quotes.reflect._
+   import quotes.reflect.*
    val pos = Position.ofMacroExpansion
 
    val path = pos.sourceFile.jpath.toString

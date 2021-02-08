@@ -1,5 +1,5 @@
 class Test {
-  import MyEnum._
+  import MyEnum.*
 
   def f(e: MyEnum) = e match {
     case ONE => println("one")
@@ -7,7 +7,7 @@ class Test {
     // missing case --> exhaustivity warning!
   }
 
-  import MySecondEnum._
+  import MySecondEnum.*
   def g(e: MySecondEnum) = e match {
     case RED => println("red")
     // missing case --> exhaustivity warning!

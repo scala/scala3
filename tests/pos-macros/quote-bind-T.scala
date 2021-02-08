@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
   def matchX[T](x: Expr[T])(using Type[T], Quotes): Expr[T] = '{

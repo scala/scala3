@@ -49,7 +49,7 @@ object logs {
 }
 
 object Test {
-  import logs._
+  import logs.*
   val l = Logarithm(2.0)
   val d: Double = l       // error: found: Logarithm, required: Double
   val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm

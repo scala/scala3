@@ -1,7 +1,7 @@
 
 
 
-import scala.collection._
+import scala.collection.*
 
 
 

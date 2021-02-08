@@ -1,7 +1,7 @@
 package test
 
 import annotation.{tailrec, switch}
-import collection.mutable._
+import collection.mutable.*
 
 object typers {
 

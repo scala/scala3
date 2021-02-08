@@ -899,18 +899,6 @@ trait Checking {
     }
   }
 
-  /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
-  def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
-    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
-      tpt.tpe.widenTermRefExpr.dealias.normalized match
-        case tp: ConstantType =>
-          if !(exprPurity(tree) >= Pure) then
-            report.error(em"inline value must be pure", tree.srcPos)
-        case _ =>
-          val pos = if tpt.span.isZeroExtent then tree.srcPos else tpt.srcPos
-          report.error(em"inline value must have a literal constant type", pos)
-  }
-
   /** A hook to exclude selected symbols from double declaration check */
   def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean = false
 
@@ -1306,7 +1294,6 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
-  override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt

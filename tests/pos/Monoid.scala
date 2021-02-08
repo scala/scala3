@@ -49,7 +49,7 @@ object Test {
   }
 
   import Monoid.ops._ // works in dotty, fails in scalac
-  import Ring.ops._
+  import Ring.ops.*
   "abc" |+| "def"
   "abc" |+| StringMonoid.id
   StringMonoid.id |+| "abc"

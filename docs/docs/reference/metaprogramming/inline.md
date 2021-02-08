@@ -284,6 +284,23 @@ transparent inline def zero: Int = 0
 val one: 1 = zero + 1
 ```
 
+### Transparent vs. non-transparent inline
+As we already discussed, transparent inline methods may influence type checking at call site.
+Technically this implies that transparent inline methods must be expanded during type checking of the program.
+Other inline methods are inlined later after the program is fully typed.
+
+For example, the following two functions will be typed the same way but will be inlined at different times.
+```scala
+inline def f1: T = ...
+transparent inline def f2: T = (...): T
+```
+
+A noteworthy difference is the behavior of `transparent inline given`.
+If there is an error reported when inlining that definition, it will be considered as an implicit search mismatch and the search will continue.
+A `transparent inline given` can add a type ascription in its RHS (as in `f2` from the previous example) to avoid the precise type but keep the search behavior.
+On the other hand, `inline given` be taken as the implicit and then inlined after typing.
+Any error will be emitted as usual.
+
 ## Inline Conditionals
 
 An if-then-else expression whose condition is a constant expression can be simplified to
@@ -312,6 +329,8 @@ below:
    |   is not a constant value
    | This location is in code that was inlined at ...
 ```
+
+In a transparent inline, an `inline if` will force the inlining of any inline definition in its condition during type checking.
 
 ## Inline Matches
 
@@ -486,8 +505,8 @@ primitive operations on singleton types. For example,
 singleton types, the compiler can evaluate the result of the operation.
 
 ```scala
-import scala.compiletime.ops.int._
-import scala.compiletime.ops.boolean._
+import scala.compiletime.ops.int.*
+import scala.compiletime.ops.boolean.*
 
 val conjunction: true && true = true
 val multiplication: 3 * 5 = 15
@@ -499,7 +518,7 @@ Since type aliases have the same precedence rules as their term-level
 equivalents, the operations compose with the expected precedence rules:
 
 ```scala
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 val x: 1 + 2 * 3 = 7
 ```
 
@@ -510,7 +529,7 @@ concatenation. To use both and distinguish the two types from each other, a
 match type can dispatch to the correct implementation:
 
 ```scala
-import scala.compiletime.ops._
+import scala.compiletime.ops.*
 
 import scala.annotation.infix
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 enum Num { // TODO derive a quoted.FromExpr
   case One

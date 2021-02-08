@@ -18,7 +18,7 @@ object Library {
 }
 
 object Test extends App {
-  import Library._
+  import Library.*
 
   val x = Nat(3)
   val y = Nat(4)

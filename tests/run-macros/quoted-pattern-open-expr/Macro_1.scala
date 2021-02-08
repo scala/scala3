@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def test(inline e: Int): String = ${testExpr('e)}
 

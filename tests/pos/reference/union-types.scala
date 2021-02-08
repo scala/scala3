@@ -20,7 +20,7 @@ object t1 {
 }
 
 object t2 {
-  import t1._
+  import t1.*
 
   trait Admin
   trait UserData

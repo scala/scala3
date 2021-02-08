@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 /* Test that the constructor of a trait has the StableRealizable trait if and
  * only if the trait has NoInits. This is used by the TASTy reader in Scala 2
@@ -53,7 +53,7 @@ class TestInspector() extends Inspector:
     var foundSimple: Boolean = false
 
     def inspectClass(using Quotes)(tree: quotes.reflect.Tree): Unit =
-      import quotes.reflect._
+      import quotes.reflect.*
       tree match
         case t: PackageClause =>
           t.stats.foreach(inspectClass(_))

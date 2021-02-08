@@ -122,21 +122,7 @@ class FrontEnd extends Phase {
     unitContexts.foreach(javaCheck(using _)) // after typechecking to avoid cycles
 
     val newUnits = unitContexts.map(_.compilationUnit).filterNot(discardAfterTyper)
-    val suspendedUnits = ctx.run.suspendedUnits
-    if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
-      val where =
-        if suspendedUnits.size == 1 then i"in ${suspendedUnits.head}."
-        else i"""among
-                |
-                |  ${suspendedUnits.toList}%, %
-                |"""
-      val enableXprintSuspensionHint =
-        if ctx.settings.XprintSuspension.value then ""
-        else "\n\nCompiling with  -Xprint-suspension   gives more information."
-      report.error(em"""Cyclic macro dependencies $where
-                    |Compilation stopped since no further progress can be made.
-                    |
-                    |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")
+    ctx.run.checkSuspendedUnits(newUnits)
     newUnits
 
   def run(using Context): Unit = unsupported("run")

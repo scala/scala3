@@ -1,4 +1,4 @@
-import scala.deriving._
+import scala.deriving.*
 
 trait FunctorK[F[_[_]]]
 object FunctorK {

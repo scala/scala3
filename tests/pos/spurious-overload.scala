@@ -24,7 +24,7 @@ object Test extends App {
       }
     }
 
-    import lazyLib._
+    import lazyLib.*
 
     val s: Susp[Int] = delay { println("evaluating..."); 3 }
     println("2 + s = " + (2 + s)) // implicit call to force()

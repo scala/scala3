@@ -1,5 +1,5 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 @js.native @JSGlobal
 case class A1(x: Int) extends js.Object // error

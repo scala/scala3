@@ -33,7 +33,7 @@ object Test {
   }
 
   def testThroughImport(): Unit = {
-    import Enclosing1._
+    import Enclosing1.*
     println(InnerObject.foo)
     println(new InnerClass(5).foo)
   }

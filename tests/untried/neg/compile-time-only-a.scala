@@ -41,7 +41,7 @@ object Test extends App {
   new C4(2)
   C4(2)
 
-  import pkg._
+  import pkg.*
   2.ext
   C5(2)
 

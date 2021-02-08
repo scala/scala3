@@ -1,5 +1,5 @@
 
-import Macros._
+import Macros.*
 
 object Test {
   final val y = 5

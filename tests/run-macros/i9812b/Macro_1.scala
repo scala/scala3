@@ -1,5 +1,5 @@
-import quoted._
-import SomeEnum._
+import quoted.*
+import SomeEnum.*
 
 trait Liftable[T] {
   /** Lift a value into an expression containing the construction of that value */
@@ -28,7 +28,7 @@ case object NIL extends Lst[Nothing]
 
 given IntLiftable[T <: Int]: Liftable[T] with
   def toExpr(x: T): Quotes ?=> Expr[T] = qctx ?=> {
-    import quotes.reflect._
+    import quotes.reflect.*
     Literal(IntConstant(x)).asExpr.asInstanceOf[Expr[T]]
   }
 

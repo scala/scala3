@@ -76,6 +76,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   object reflect extends reflectModule:
 
+    object CompilationInfo extends CompilationInfoModule:
+      def isWhileTyping: Boolean = !ctx.isAfterTyper
+    end CompilationInfo
+
     extension (expr: Expr[Any])
       def asTerm: Term =
         val exprImpl = expr.asInstanceOf[ExprImpl]

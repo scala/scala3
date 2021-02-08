@@ -4,12 +4,12 @@ abstract class Coroutine[+T] {
 
 object Macros {
 
- import scala.quoted._
+ import scala.quoted.*
 
  inline def coroutine[T](inline body: Any): Coroutine[T] = ${ coroutineImpl('{body}) }
 
  def coroutineImpl[T: Type](expr: Expr[_ <: Any])(using Quotes): Expr[Coroutine[T]] = {
-   import quotes.reflect._
+   import quotes.reflect.*
 
    '{
      new Coroutine[T] {

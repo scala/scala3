@@ -1,6 +1,6 @@
 
 object Test {
-  import Macro._
+  import Macro.*
 
   def main(args: Array[String]): Unit = {
     println(ff(arg1 = foo(1), arg2 = foo(2)))

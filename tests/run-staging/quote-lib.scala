@@ -1,12 +1,12 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
-import liftable.Units._
-import liftable.Lets._
-import liftable.Loops._
-import liftable.Lists._
-import liftable.Exprs._
+import liftable.Units.*
+import liftable.Lets.*
+import liftable.Loops.*
+import liftable.Lists.*
+import liftable.Exprs.*
 
 object Test {
   given Compiler = Compiler.make(getClass.getClassLoader)

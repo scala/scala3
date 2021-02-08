@@ -101,7 +101,7 @@ object X4 {
 }
 
 object Test {
-  import Exists._
+  import Exists.*
 
   def main(args: Array[String]): Unit = {
     val source: Vector[X4[Int, String, Double, Boolean]] =

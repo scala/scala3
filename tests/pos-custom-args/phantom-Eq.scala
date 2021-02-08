@@ -1,5 +1,5 @@
 object PhantomEq {
-  import EqUtil._
+  import EqUtil.*
 
   "ghi" === "jkl"
   3 === 4

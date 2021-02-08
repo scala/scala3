@@ -1,5 +1,5 @@
 object A {
-  inline def summon[T] = compiletime.summonFrom {
+  transparent inline def summon[T] = compiletime.summonFrom {
     case t: T => t
   }
 }

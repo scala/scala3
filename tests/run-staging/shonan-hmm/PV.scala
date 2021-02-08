@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 sealed trait PV[T]
 

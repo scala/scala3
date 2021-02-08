@@ -1,4 +1,4 @@
-import scala.compiletime._
+import scala.compiletime.*
 
 object Test1 {
   type Foo[F[_]]

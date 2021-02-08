@@ -22,7 +22,7 @@ object Library {
 }
 
 object Test extends App {
-  import Library._
+  import Library.*
   //import Library.Set.setContravariant if this is imported the program will run correctly
 
   val F = implicitly[Contravariant[Set]]

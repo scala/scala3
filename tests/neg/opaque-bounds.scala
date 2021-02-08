@@ -36,7 +36,7 @@ object Access {
 }
 
 object User {
-  import Access._
+  import Access.*
 
   case class Item(rights: Permissions)
 

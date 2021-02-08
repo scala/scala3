@@ -9,7 +9,7 @@ object Test1 {
 }
 
 object Test2 {
-  import Day._
+  import Day.*
   val day: Day = ???
 
   day match {

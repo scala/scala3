@@ -28,6 +28,6 @@ object Functors {
 }
 
 object Main {
-  import Functors._
+  import Functors.*
   val cf = Cat.compose[List,Option].Functor
 }

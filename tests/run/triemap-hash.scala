@@ -13,7 +13,7 @@ object Test {
   }
 
   def hashing(): Unit = {
-    import collection._
+    import collection.*
 
     val tm = new concurrent.TrieMap[String, String](Hashing.fromFunction(x => x.length + x(0).toInt), Equiv.universal)
     tm.put("a", "b")
@@ -27,7 +27,7 @@ object Test {
   }
 
   def equality(): Unit = {
-    import collection._
+    import collection.*
 
     val tm = new concurrent.TrieMap[String, String](Hashing.fromFunction(x => x(0).toInt), Equiv.fromFunction(_(0) == _(0)))
     tm.put("a", "b")

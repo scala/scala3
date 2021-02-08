@@ -7,7 +7,7 @@ object Test {
   }
 
   def app(peano: Peano): Unit = {
-    import peano._
+    import peano.*
     def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] = {
       n match {
         case Zero => None
