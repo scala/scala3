@@ -38,6 +38,7 @@ object Scaladoc:
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
     externalMappings: List[ExternalDocLink] = Nil,
+    socialLinks: List[SocialLinks] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
     rootDocPath: Option[String] = None
