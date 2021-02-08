@@ -122,4 +122,9 @@ object Mode {
 
   /** Are we enforcing null safety */
   val SafeNulls = newMode(28, "SafeNulls")
+
+  /** We are typing the body of the condition of an `inline if` or the scrutinee of an `inline match`
+   *  This mode forces expansion of inline calls in those positions even during typing.
+   */
+  val ForceInline: Mode = newMode(29, "ForceInline")
 }

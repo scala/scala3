@@ -5,9 +5,10 @@ import scala.concurrent._
 
 trait CB[T]
 
-given myConversion[T]: Conversion[Future[T],CB[T]] = (ft => ???)
 
 object O {
+
+  given myConversion[T]: Conversion[Future[T],CB[T]] = (ft => ???)
 
   def main(argvs: Array[String]): Unit = {
     val p = Promise[Int]()

@@ -865,9 +865,9 @@ class Typer extends Namer
      */
     val arg1 = pt match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
-        tryAlternatively { typed(tree.arg, pt) } { 
+        tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
-            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt) 
+            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt)
         }
       case _ => typed(tree.arg, pt)
     }
@@ -2024,7 +2024,6 @@ class Typer extends Namer
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     checkSignatureRepeatedParam(sym)
-    checkInlineConformant(tpt1, rhs1, sym)
     vdef1.setDefTree
   }
 
@@ -3407,13 +3406,12 @@ class Typer extends Namer
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
+        else if Inliner.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
           val inlined = Inliner.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
-        }
         else if (tree.symbol.isScala2Macro &&
                 // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
                 tree.symbol != defn.StringContext_raw &&
@@ -3731,8 +3729,8 @@ class Typer extends Namer
     }
   }
 
-  // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = ctx.isAfterTyper
+  /** True if this inline typer has already issued errors */
+  def hasInliningErrors(using Context): Boolean = false
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

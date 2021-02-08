@@ -88,7 +88,7 @@ class PickleQuotes extends MacroTransform {
     }
 
   override def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run(using freshStagingContext)
+    if (ctx.compilationUnit.needsQuotePickling) super.run(using freshStagingContext)
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =

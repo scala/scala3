@@ -1,6 +1,6 @@
 import scala.quoted._
 
-inline def foo[T:Type]: Int = 10
+inline def foo[T<:AnyKind:Type]: Int = 10
 
 def main(using Quotes) = {
   type S = Int

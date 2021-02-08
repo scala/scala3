@@ -50,6 +50,7 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
+    List(new Inlining) ::           // Inline and execute macros
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
@@ -61,6 +62,7 @@ class Compiler {
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
+         new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments

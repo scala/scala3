@@ -1,6 +1,6 @@
-compile-time: 4:Int
+compile-time: Macros.betaReduce[Int, Int](Test.dummy1)(3)
 run-time: 4
-compile-time: 1:Int
+compile-time: Macros.betaReduce[Int, Int](Test.dummy2)(1)
 run-time: 1
 run-time: 5
 run-time: 7
