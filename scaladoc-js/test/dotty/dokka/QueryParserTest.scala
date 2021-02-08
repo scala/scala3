@@ -1,4 +1,4 @@
-package dotty.dokka
+package dotty.tools.scaladoc
 
 import org.junit.{Test, Assert}
 import org.junit.Assert._

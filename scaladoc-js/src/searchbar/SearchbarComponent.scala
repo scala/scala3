@@ -107,7 +107,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         else if e.keyCode == 38 then handleArrowUp()
         else if e.keyCode == 13 then handleEnter()
     })
-    element.id = "scala3doc-searchbar"
+    element.id = "scaladoc-searchbar"
     element.appendChild(input)
     element.appendChild(resultsDiv)
     element
