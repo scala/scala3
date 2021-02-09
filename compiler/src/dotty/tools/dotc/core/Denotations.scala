@@ -582,11 +582,23 @@ object Denotations {
      */
     def prefix: Type = NoPrefix
 
+    /** Either the Scala or Java signature of the info, depending on where the
+     *  symbol is defined.
+     *
+     *  Invariants:
+     *  - Before erasure, the signature of a denotation is always equal to the
+     *    signature of its corresponding initial denotation.
+     *  - Two distinct overloads will have SymDenotations with distinct
+     *    signatures (the SELECTin tag in Tasty relies on this to refer to an
+     *    overload unambiguously). Note that this only applies to
+     *    SymDenotations, in general we cannot assume that distinct
+     *    SingleDenotations will have distinct signatures (cf #9050).
+     */
     final def signature(using Context): Signature =
-      if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
+      if (isType) Signature.NotAMethod // don't force info if this is a type denotation
       else info match {
-        case info: MethodicType =>
-          try info.signature
+        case info: MethodOrPoly =>
+          try info.signature(isJava = symbol.is(JavaDefined))
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
               report.echo(s"cannot take signature of $info")

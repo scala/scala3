@@ -3405,12 +3405,12 @@ object Types {
         mySignature
     end signature
 
+    /** The Scala signature of this method. Note that two distinct Java method
+     *  overloads may have the same Scala signature, the other overload of
+     *  `signature` can be used to avoid ambiguity if necessary.
+     */
     final override def signature(using Context): Signature =
-      def isJava(tp: Type): Boolean = tp match
-        case tp: PolyType => isJava(tp.resultType)
-        case tp: MethodType => tp.isJavaMethod
-        case _ => false
-      signature(isJava = isJava(this))
+      signature(isJava = false)
 
     final override def hashCode: Int = System.identityHashCode(this)
 
