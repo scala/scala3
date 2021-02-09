@@ -2467,7 +2467,7 @@ class Typer extends Namer
   /** Translate infix operation expression `l op r` to
    *
    *    l.op(r)   			        if `op` is left-associative
-   *    { val x = l; r.op(l) }  if `op` is right-associative call-by-value and `l` is impure
+   *    { val x = l; r.op(x) }  if `op` is right-associative call-by-value and `l` is impure
    *    r.op(l)                 if `op` is right-associative call-by-name or `l` is pure
    *
    *  Translate infix type    `l op r` to `op[l, r]`
