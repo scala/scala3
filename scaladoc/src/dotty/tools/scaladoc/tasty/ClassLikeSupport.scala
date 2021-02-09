@@ -144,7 +144,7 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
-        Some(parseTypeDef(td))
+        Some(parseTypeDef(c, td))
 
       case vd: ValDef if !isSyntheticField(vd.symbol)
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
@@ -292,7 +292,7 @@ trait ClassLikeSupport:
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef)
+    }.toList.map(parseTypeDef(classDef, _))
 
     val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
@@ -378,22 +378,23 @@ trait ClassLikeSupport:
       if  argument.symbol.flags.is(Flags.Covariant) then "+"
       else if argument.symbol.flags.is(Flags.Contravariant) then "-"
       else ""
+
     val name = argument.symbol.normalizedName
+    val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     TypeParameter(
       argument.symbol.getAnnotations(),
       variancePrefix,
-      name,
+      normalizedName,
       argument.symbol.dri,
       memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
     )
 
-  def parseTypeDef(typeDef: TypeDef): Member =
+  def parseTypeDef(c: ClassDef, typeDef: TypeDef): Member =
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
-
     val (generics, tpeTree) = typeDef.rhs match
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
       case tpe => (Nil, tpe)
