@@ -85,7 +85,7 @@ object Main:
         println("COMMAND is one of: publish doc")
         println("Available projects are:")
         allProjects.foreach { k =>
-          println(s"\t$k")
+          println(s"\t${k.project}")
         }
         sys.exit(1)
 

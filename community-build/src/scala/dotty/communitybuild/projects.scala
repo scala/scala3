@@ -160,10 +160,9 @@ final case class SbtCommunityProject(
     """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
     ++ s"$baseCommand$sbtTestCommand"
 
-  override val publishCommand = if sbtPublishCommand eq null then null else
-    val disableDocCommand =
-      if sbtDocCommand eq null then "" else "set every useScaladoc := false;"
-    s"$baseCommand$disableDocCommand$sbtPublishCommand"
+  override val publishCommand =
+    if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
@@ -627,7 +626,7 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest)
   )
-  
+
   lazy val perspective = SbtCommunityProject(
     project = "perspective",
     // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
