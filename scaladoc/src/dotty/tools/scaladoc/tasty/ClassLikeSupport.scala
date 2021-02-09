@@ -48,7 +48,6 @@ trait ClassLikeSupport:
     signatureOnly: Boolean = false,
     modifiers: Seq[Modifier] = classDef.symbol.getExtraModifiers(),
   ): Member =
-
     def unpackTreeToClassDef(tree: Tree): ClassDef = tree match
       case tree: ClassDef => tree
       case TypeDef(_, tbt: TypeBoundsTree) => unpackTreeToClassDef(tbt.tpe.typeSymbol.tree)
@@ -73,14 +72,15 @@ trait ClassLikeSupport:
     }
     val selfSiangture: DSignature = typeForClass(classDef).asSignature
 
-    val graph = HierarchyGraph.withEdges(getSupertypesGraph(classDef,
-      LinkToType(selfSiangture, classDef.symbol.dri, bareClasslikeKind(classDef.symbol))))
+    val graph = HierarchyGraph.withEdges(
+      getSupertypesGraph(classDef, LinkToType(selfSiangture, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)))
+    )
 
     val baseMember = mkMember(classDef.symbol, kindForClasslike(classDef), selfSiangture)(
-        modifiers = modifiers,
-        graph = graph,
-        deprecated = classDef.symbol.isDeprecated()
-      )
+      modifiers = modifiers,
+      graph = graph,
+      deprecated = classDef.symbol.isDeprecated()
+    )
 
     if signatureOnly then baseMember else baseMember.copy(
         members = classDef.extractPatchedMembers,

@@ -95,7 +95,3 @@ class HierarchyTest extends ScaladocTest("hierarchy"):
         x.graph.edges.map((a, b) => (a.signature.getName, b.signature.getName)).toSet
       )
     case _ =>
-
-
-
-
