@@ -92,7 +92,7 @@ The purpose of the `infix` modifier is to achieve consistency across a code base
     can be applied using infix syntax, i.e. `A op B`.
 
  5. To smooth migration to Scala 3.0, alphanumeric operators will only be deprecated from Scala 3.1 onwards,
-or if the `-source 3.1` option is given in Dotty/Scala 3.
+or if the `-source future` option is given in Dotty/Scala 3.
 
 ## The `@targetName` Annotation
 

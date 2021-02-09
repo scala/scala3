@@ -53,7 +53,7 @@ a type pattern `_: C` it is required that the selector type conforms
 to `Matchable`. If that's not the case a warning is issued. For instance when compiling the example at the start of this section we get:
 
 ```
-> sc ../new/test.scala -source 3.1
+> sc ../new/test.scala -source future
 -- Warning: ../new/test.scala:4:12 ---------------------------------------------
 4 |    case a: Array[Int] => a(0) = 0
   |            ^^^^^^^^^^
@@ -62,7 +62,7 @@ to `Matchable`. If that's not the case a warning is issued. For instance when co
 ```
 
 To allow migration from Scala 2 and cross-compiling
-between Scala 2 and 3 the warning is turned on only for `-source 3.1-migration` or higher.
+between Scala 2 and 3 the warning is turned on only for `-source future-migration` or higher.
 
 `Matchable` is a universal trait with `Any` as its parent class. It is
 extended by both `AnyVal` and `AnyRef`. Since `Matchable` is a supertype of every concrete value or reference class it means that instances of such classes can be matched as before. However, match selectors of the following types will produce a warning:
