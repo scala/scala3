@@ -491,7 +491,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.0.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.1.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.15.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.15.0",
