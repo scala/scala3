@@ -1,5 +1,6 @@
 #!/usr/bin/env scala
-export STUFF=nada
+# comment
+STUFF=nada
 !#
 
 def main(args: Array[String]): Unit =
@@ -10,9 +11,7 @@ def main(args: Array[String]): Unit =
     val result = new java.io.StringWriter()
     new RuntimeException("stack").printStackTrace(new java.io.PrintWriter(result))
     val stack = result.toString.split("[\r\n]+").toList
-    for( s <- stack ){
-      System.err.printf("[%s]\n",s)
-    }
+    //for( s <- stack ){ System.err.printf("[%s]\n",s) }
     stack.filter { str => str.contains(".main(") }.map {
       _.replaceAll(".*[(]","").
       replaceAll("[:)].*","")
