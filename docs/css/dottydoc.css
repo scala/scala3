@@ -73,12 +73,12 @@ h5:hover a.anchor:hover {
   color: var(--secondary);
 }
 
-
-/* footer */
-footer {
-  color: grey;
+/* blog footer */
+.blog-author {
+  color: gray;
 }
-footer img#author-img {
+
+.blog-author img#author-img {
   width: auto;
   height: auto;
   max-width:100px;
