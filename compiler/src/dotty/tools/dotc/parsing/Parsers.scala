@@ -1563,7 +1563,7 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          if sourceVersion.isAtLeast(`3.1`) then
+          if sourceVersion.isAtLeast(future) then
             deprecationWarning(DeprecatedWithOperator(), withOffset)
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
@@ -1613,7 +1613,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if sourceVersion.isAtLeast(`3.1`) then
+        if sourceVersion.isAtLeast(future) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
         val start = in.skipToken()
@@ -2080,11 +2080,11 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            if sourceVersion.isAtLeast(`3.1`) then
+            if sourceVersion.isAtLeast(future) then
               report.errorOrMigrationWarning(
-                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("3.1")}",
+                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("future")}",
                 in.sourcePos(uscoreStart))
-            if sourceVersion == `3.1-migration` then
+            if sourceVersion == `future-migration` then
               patch(source, Span(t.span.end, in.lastOffset), " *")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
@@ -2158,15 +2158,15 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if sourceVersion.isAtLeast(`3.1`) then
+            if sourceVersion.isAtLeast(future) then
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("3.1")}",
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("future")}",
                 source.atSpan(Span(start, in.lastOffset)))
             in.nextToken()
             val t = infixType()
-            if (sourceVersion == `3.1-migration`) {
+            if (sourceVersion == `future-migration`) {
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
             }
@@ -2482,7 +2482,7 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if (casePat) GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(`3.1`) then GenCheckMode.Check
+          else if sourceVersion.isAtLeast(future) then GenCheckMode.Check
           else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2655,7 +2655,7 @@ object Parsers {
         p
 
     private def warnStarMigration(p: Tree) =
-      if sourceVersion.isAtLeast(`3.1`) then
+      if sourceVersion.isAtLeast(future) then
         report.errorOrMigrationWarning(
           em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
           in.sourcePos(startOffset(p)))
@@ -2790,8 +2790,8 @@ object Parsers {
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if in.token == THIS then
-            if sourceVersion.isAtLeast(`3.1`) then
-              deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
+            if sourceVersion.isAtLeast(future) then
+              deprecationWarning("The [this] qualifier will be deprecated in the future; it should be dropped.")
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
@@ -3111,7 +3111,7 @@ object Parsers {
 
       /** ‘*' | ‘_' */
       def wildcardSelector() =
-        if in.token == USCORE && sourceVersion.isAtLeast(`3.1`) then
+        if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("3.1")}",
             in.sourcePos())
@@ -3129,7 +3129,7 @@ object Parsers {
       /** id [‘as’ (id | ‘_’) */
       def namedSelector(from: Ident) =
         if in.token == ARROW || isIdent(nme.as) then
-          if in.token == ARROW && sourceVersion.isAtLeast(`3.1`) then
+          if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
               em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("3.1")}",
               in.sourcePos())
@@ -3226,7 +3226,7 @@ object Parsers {
     /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
      *            |  Pattern2 [‘:’ Type] ‘=’ Expr
      *  VarDef  ::=  PatDef
-     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.1)
+     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      *  ValDcl  ::=  id {`,' id} `:' Type
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
@@ -3253,7 +3253,7 @@ object Parsers {
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
-              if sourceVersion.isAtLeast(`3.1`) then
+              if sourceVersion.isAtLeast(future) then
                 deprecationWarning(
                   em"""`= _` has been deprecated; use `= uninitialized` instead.
                       |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)

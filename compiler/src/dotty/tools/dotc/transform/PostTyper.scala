@@ -159,7 +159,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if sym.isScala2Macro && !ctx.settings.XignoreScala2Macros.value then
             if !sym.owner.unforcedDecls.exists(p => !p.isScala2Macro && p.name == sym.name && p.signature == sym.signature)
                // Allow scala.reflect.materializeClassTag to be able to compile scala/reflect/package.scala
-               // This should be removed on Scala 3.1
+               // This should be removed on Scala 3.x
                && sym.owner != defn.ReflectPackageClass
             then
               report.error("No Scala 3 implementation found for this Scala 2 macro.", tree.srcPos)

@@ -1227,7 +1227,7 @@ class Namer { typer: Typer =>
             else if pclazz.isEffectivelySealed && pclazz.associatedFile != cls.associatedFile then
               if pclazz.is(Sealed) then
                 report.error(UnableToExtendSealedClass(pclazz), cls.srcPos)
-              else if sourceVersion.isAtLeast(`3.1`) then
+              else if sourceVersion.isAtLeast(future) then
                 checkFeature(nme.adhocExtensions,
                   i"Unless $pclazz is declared 'open', its extension in a separate file",
                   cls.topLevelClass,

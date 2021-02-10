@@ -848,7 +848,7 @@ class Typer extends Namer
       val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
           .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
           .getOrElse(tree)
-      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
+      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.future) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
     case _ => tree
@@ -1442,7 +1442,7 @@ class Typer extends Namer
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `3.1-migration`)
+                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
                   if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
                   else patch(Span(pat.span.start), "case ")
 
@@ -2444,7 +2444,7 @@ class Typer extends Namer
         }
     }
     nestedCtx.typerState.commit()
-    if sourceVersion.isAtLeast(`3.1`) then
+    if sourceVersion.isAtLeast(future) then
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
@@ -2456,7 +2456,7 @@ class Typer extends Namer
         if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
         else s"use `$prefix<function>$suffix` instead"
       report.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
-                                     |you can $remedy""", tree.srcPos, `3.1`)
+                                     |you can $remedy""", tree.srcPos, future)
       if sourceVersion.isMigrating then
         patch(Span(tree.span.start), prefix)
         patch(Span(qual.span.end, tree.span.end), suffix)
@@ -3164,8 +3164,8 @@ class Typer extends Namer
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false
-          if sourceVersion == `3.1-migration` && isContextBoundParams
-          then // Under 3.1-migration, don't infer implicit arguments yet for parameters
+          if sourceVersion == `future-migration` && isContextBoundParams
+          then // Under future-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
             report.migrationWarning(
               em"""Context bounds will map to context parameters.
