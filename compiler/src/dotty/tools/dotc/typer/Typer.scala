@@ -3680,14 +3680,6 @@ class Typer extends Namer
               tpd.Typed(tree, TypeTree(gadtApprox))
             else tree
           else tree // other adaptations for selections are handled in typedSelect
-        case _ if unsafeNullsEnabled && false
-                && pt.isValueType
-                && (wtp.isNullableAfterErasure && pt.isRef(defn.ObjectClass)
-                  || wtp.isNullType && pt.isNullableAfterErasure) =>
-          // This is a special conversion for unsafe nulls, which allows
-          // a reference type casting to Object type and Null casting to
-          // any reference types.
-          tree.cast(pt)
         case _ if ctx.mode.is(Mode.ImplicitsEnabled) && tree.tpe.isValueType =>
           checkConversionsSpecific(pt, tree.srcPos)
           inferView(tree, pt) match
