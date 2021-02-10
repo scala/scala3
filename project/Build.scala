@@ -1151,7 +1151,7 @@ object Build {
   lazy val `scala3-bench-bootstrapped` = project.in(file("bench")).asDottyBench(Bootstrapped)
   lazy val `scala3-bench-run` = project.in(file("bench-run")).asDottyBench(Bootstrapped)
 
-  val testcasesOutputDir = taskKey[String]("Root directory where tests classses are generated")
+  val testcasesOutputDir = taskKey[Seq[String]]("Root directory where tests classses are generated")
   val testcasesSourceRoot = taskKey[String]("Root directory where tests sources are generated")
   val testDocumentationRoot = taskKey[String]("Root directory where tests documentation are stored")
   val generateSelfDocumentation = taskKey[Unit]("Generate example documentation")
@@ -1512,13 +1512,13 @@ object Build {
         }
 
       def joinProducts(products: Seq[java.io.File]): String =
-        products.iterator.map(_.getAbsolutePath).map(p => s"'$p'").mkString(" ")
+        products.iterator.map(_.getAbsolutePath).mkString(" ")
 
       val flexmarkVersion = "0.42.12"
 
       scaladocBasic(Bootstrapped).settings(
         Test / test := (Test / test).dependsOn(compile.in(Compile).in(`scaladoc-testcases`)).value,
-        testcasesOutputDir.in(Test) := joinProducts((`scaladoc-testcases`/Compile/products).value),
+        testcasesOutputDir.in(Test) := (`scaladoc-testcases`/Compile/products).value.map(_.getAbsolutePath),
         testcasesSourceRoot.in(Test) := (baseDirectory.in(`scaladoc-testcases`).value / "src").getAbsolutePath.toString,
         baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
         generateSelfDocumentation := Def.taskDyn {
@@ -1588,7 +1588,7 @@ object Build {
 
         generateTestcasesDocumentation := Def.taskDyn {
           generateDocumentation(
-            Build.testcasesOutputDir.in(Test).value :: Nil,
+            Build.testcasesOutputDir.in(Test).value,
             "scaladoc testcases",
             "scaladoc/output/testcases",
             "master")
