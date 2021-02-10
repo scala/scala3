@@ -19,10 +19,34 @@ object Main:
         e.printStackTrace()
         Nil
 
+  def withProjects[T](names: Seq[String], opName: String)(op: CommunityProject => Unit): Unit =
+    val missing = names.filterNot(projectMap.contains)
+    if missing.nonEmpty then
+      println(s"Missing projects: ${missing.mkString(", ")}. All projects: ${allProjects.mkString(", ")}")
+      sys.exit(1)
+
+    val failed = names.flatMap( o =>
+      try
+        op(projectMap(o))
+        None
+      catch case e: Throwable =>
+        e.printStackTrace()
+        Some(o)
+    )
+
+    if failed.nonEmpty then
+      println(s"$opName failed for ${failed.mkString(", ")}")
+      sys.exit(1)
+
   /** Allows running various commands on community build projects. */
   def main(args: Array[String]): Unit =
     args.toList match
-      case "publish" :: name :: Nil =>
+      case "publish" :: names  =>
+        withProjects(names, "Publishing")(_.publish())
+
+      case "build" :: names =>
+        withProjects(names, "Build")(_.build())
+
       case "doc" :: "all" :: destStr :: Nil =>
         val dest = Paths.get(destStr)
         Seq("rm", "-rf", destStr).!
@@ -82,7 +106,7 @@ object Main:
 
       case args =>
         println("USAGE: <COMMAND> <PROJECT NAME>")
-        println("COMMAND is one of: publish doc")
+        println("COMMAND is one of: publish doc run")
         println("Available projects are:")
         allProjects.foreach { k =>
           println(s"\t${k.project}")

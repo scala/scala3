@@ -84,6 +84,10 @@ sealed trait CommunityProject:
     if exitCode != 0 then
       throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
 
+  final def build(): Int = exec(projectDir, binaryName, buildCommands: _*)
+
+  final def buildCommands = runCommandsArgs :+ testCommand
+
 end CommunityProject
 
 final case class MillCommunityProject(
