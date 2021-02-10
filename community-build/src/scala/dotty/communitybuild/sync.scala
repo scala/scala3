@@ -25,6 +25,8 @@ private case class Inputs(
   diffUrl: String)
 
 def syncAll(): Unit =
+  println("Sync all...")
+
   implicit val cs: ContextShift[IO] = IO.contextShift(global)
   val blockingPool = Executors.newSingleThreadExecutor()
   val blocker = Blocker.liftExecutorService(blockingPool)
@@ -32,21 +34,27 @@ def syncAll(): Unit =
 
   getInputs().foreach(inputs => {
     val gitHub = new GitHub(inputs.token)
+
     val diff = httpClient.expect[String](inputs.diffUrl).unsafeRunSync()
+    println(s"diff:\n$diff")
+
     getSubmoduleDiffs(diff)
-      .filter(submoduleDiff => projectMap.get(submoduleDiff.repo).map(project => project.sync).getOrElse(false))
+      .filter(submoduleDiff =>
+        println(s"submoduleDiff: $submoduleDiff")
+        projectMap.get(submoduleDiff.repo).map(project => project.sync).getOrElse(false)
+      )
       .foreach(submoduleDiff => syncSubmodule(gitHub, inputs, submoduleDiff))
   })
 
 private def getInputs(): Option[Inputs] =
   for {
-    login <- sys.env.get("LOGIN")
-    token <- sys.env.get("TOKEN")
-    name <- sys.env.get("NAME")
-    email <- sys.env.get("EMAIL")
-    prBranch <- sys.env.get("PR_BRANCH")
-    prTitle <- sys.env.get("PR_TITLE")
-    diffUrl <- sys.env.get("DIFF_URL")
+    login <- getEnv("LOGIN")
+    token <- getEnv("TOKEN")
+    name <- getEnv("NAME")
+    email <- getEnv("EMAIL")
+    prBranch <- getEnv("PR_BRANCH")
+    prTitle <- getEnv("PR_TITLE")
+    diffUrl <- getEnv("DIFF_URL")
   } yield Inputs(
     login,
     token,
@@ -56,13 +64,25 @@ private def getInputs(): Option[Inputs] =
     prTitle,
     diffUrl)
 
+private def getEnv(key: String): Option[String] = sys.env.get(key) match {
+  case Some(value) =>
+    println(s"$key: $value")
+    Some(value)
+  case None =>
+    println(s"$key: <<none>>")
+    None
+}
 
 def syncSubmodule(gitHub: GitHub, inputs: Inputs, submoduleDiff: SubmoduleDiff): Unit = {
   println(s"Syncing: ${submoduleDiff.repo}")
 
   val wd = pwd / up
+  println(s"wd: $wd")
   val remoteUrl = git.remoteUrl(wd / submoduleDiff.repoDir)
+  println(s"remoteUrl: $remoteUrl")
   val (owner, repoName) = getRepoFullName(remoteUrl)
+  println(s"owner: $owner, repoName: $repoName")
+
   val repo = gitHub.repos.get(owner, repoName)
   val parent = repo.getParent
   git.configure(wd / submoduleDiff.repoDir, repo.getOwner.getLogin, repo.getName, inputs.email, inputs.name, git.Auth(inputs.login, inputs.token))
