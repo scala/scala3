@@ -818,6 +818,7 @@ trait Checking {
   def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit =
     val tree1 = if Nullables.unsafeNullsEnabled then
       // If unsafeNulls is enabled, a cast and a closure could be added to the original tree
+      // !!! TODO: We need a test for that. Right now everything passes even if this case is commented out.
       stripCast(closureBody(tree))
     else tree
     val sym = tree1.symbol

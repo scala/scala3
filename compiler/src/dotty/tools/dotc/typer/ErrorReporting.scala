@@ -161,6 +161,7 @@ object ErrorReporting {
           case fail: Implicits.NoMatchingImplicits => // do nothing
           case _ => attempts += ((failure.tree, ""))
       if foundWithoutNull then
+        // !!! TODO: The need a test that tests this error message with a check file
         i""".
           |Since explicit-nulls is enabled, the selection is rejected because
           |${qualType.widen} could be null at runtime.
