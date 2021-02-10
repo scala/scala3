@@ -1496,20 +1496,23 @@ object Build {
     }
 
     def asScaladoc: Project = {
-      def generateDocumentation(targets: String, name: String, outDir: String, ref: String, params: String = "") = Def.taskDyn {
+      def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
+        Def.taskDyn {
+          val distLocation = pack.in(dist).value
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
           val scala3version = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library -source-links:github://lampepfl/dotty"
-          val revision = s"-revision $ref -project-version $projectVersion"
-          val cmd = s""" -d $outDir -project "$name" $sourceLinks $revision $params $targets"""
-          run.in(Compile).toTask(cmd)
-      }
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library-source-links:github://lampepfl/dotty"
+          val revision = Seq("-revision", ref, "-project-version", projectVersion)
+          val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ revision ++ params ++ targets
+          import _root_.scala.sys.process._
+          Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
+        }
 
       def joinProducts(products: Seq[java.io.File]): String =
-        products.iterator.map(_.getAbsolutePath.toString).mkString(" ")
+        products.iterator.map(_.getAbsolutePath).map(p => s"'$p'").mkString(" ")
 
       val flexmarkVersion = "0.42.12"
 
@@ -1520,12 +1523,16 @@ object Build {
         baseDirectory.in(run) := baseDirectory.in(ThisBuild).value,
         generateSelfDocumentation := Def.taskDyn {
           generateDocumentation(
-            classDirectory.in(Compile).value.getAbsolutePath,
+            classDirectory.in(Compile).value.getAbsolutePath :: Nil,
             "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
-            "-siteroot scaladoc/documentation -project-logo scaladoc/documentation/logo.svg " +
-            "-external-mappings:" +
-              ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
-              ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+            Seq(
+              "-siteroot", "scaladoc/documentation",
+              "-project-logo", "scaladoc/documentation/logo.svg",
+              "-external-mappings:" +
+                ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+                ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
+            )
+
           )
         }.value,
         generateScalaDocumentation := Def.inputTaskDyn {
@@ -1539,7 +1546,7 @@ object Build {
             (`tasty-core-bootstrapped`/Compile/products).value,
           ).flatten
 
-          val roots = joinProducts(dottyJars)
+          val roots = dottyJars.map(_.getAbsolutePath)
 
           val managedSources =
             (`stdlib-bootstrapped`/Compile/sourceManaged).value / "scala-library-src"
@@ -1555,27 +1562,36 @@ object Build {
             IO.write(dest / "CNAME", "dotty.epfl.ch")
           }.dependsOn(generateDocumentation(
             roots, "Scala 3", dest.getAbsolutePath, "master",
-            // contains special definitions which are "transplanted" elsewhere
-            // and which therefore confuse Scaladoc when accessed from this pkg
-            "-skip-by-id:scala.runtime.stdLibPatches " +
-            // MatchCase is a special type that represents match type cases,
-            // Reflect doesn't expect to see it as a standalone definition
-            // and therefore it's easier just not to document it
-            "-skip-by-id:scala.runtime.MatchCase " +
-            "-skip-by-regex:.+\\.internal($|\\..+) " +
-            "-skip-by-regex:.+\\.impl($|\\..+) " +
-            "-comment-syntax wiki -siteroot docs -project-logo docs/logo.svg " +
-            "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
-            "-social-links:github::https://github.com/lampepfl/dotty," +
-            "gitter::https://gitter.im/scala/scala," +
-            "twitter::https://twitter.com/scala_lang " +
-            s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library " +
-            s"-doc-root-content $docRootFile"
-            ))
+            Seq(
+              // contains special definitions which are "transplanted" elsewhere
+              // and which therefore confuse Scaladoc when accessed from this pkg
+              "-skip-by-id:scala.runtime.stdLibPatches",
+              // MatchCase is a special type that represents match type cases,
+              // Reflect doesn't expect to see it as a standalone definition
+              // and therefore it's easier just not to document it
+              "-skip-by-id:scala.runtime.MatchCase",
+              "-skip-by-regex:.+\\.internal($|\\..+)",
+              "-skip-by-regex:.+\\.impl($|\\..+)",
+              "-comment-syntax", "wiki",
+              "-siteroot", "docs",
+              "-project-logo", "docs/logo.svg",
+              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+              "-social-links:" +
+                "github::https://github.com/lampepfl/dotty," +
+                "gitter::https://gitter.im/scala/scala," +
+                "twitter::https://twitter.com/scala_lang",
+              s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library",
+              "-doc-root-content", docRootFile.toString
+            )
+          ))
         }.evaluated,
 
         generateTestcasesDocumentation := Def.taskDyn {
-          generateDocumentation(Build.testcasesOutputDir.in(Test).value, "scaladoc testcases", "scaladoc/output/testcases", "master")
+          generateDocumentation(
+            Build.testcasesOutputDir.in(Test).value :: Nil,
+            "scaladoc testcases",
+            "scaladoc/output/testcases",
+            "master")
         }.value,
 
         buildInfoKeys in Test := Seq[BuildInfoKey](
