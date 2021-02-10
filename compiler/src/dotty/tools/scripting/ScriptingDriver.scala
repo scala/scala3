@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.Settings.Setting._
 import sys.process._
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(): Unit =
+  def compileAndRun(pack:(Path, String, String) => Unit = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
     val (toCompile, rootCtx) = setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh)
     given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
@@ -26,7 +26,14 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
     if doCompile(newCompiler, toCompile).hasErrors then
       throw ScriptingException("Errors encountered during compilation")
 
-    try detectMainMethod(outDir, ctx.settings.classpath.value).invoke(null, scriptArgs)
+    try
+      val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, ctx.settings.classpath.value, scriptFile)
+      Option(pack) match
+        case Some(func) =>
+          func(outDir, ctx.settings.classpath.value, mainClass)
+        case None =>
+      end match
+      mainMethod.invoke(null, scriptArgs)
     catch
       case e: java.lang.reflect.InvocationTargetException =>
         throw e.getCause
@@ -41,12 +48,13 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
     target.delete()
   end deleteFile
 
-  private def detectMainMethod(outDir: Path, classpath: String): Method =
+  private def detectMainClassAndMethod(outDir: Path, classpath: String,
+      scriptFile: File): (String, Method) =
     val outDirURL = outDir.toUri.toURL
-    val classpathUrls = classpath.split(":").map(File(_).toURI.toURL)
+    val classpathUrls = classpath.split(pathsep).map(File(_).toURI.toURL)
     val cl = URLClassLoader(classpathUrls :+ outDirURL)
 
-    def collectMainMethods(target: File, path: String): List[Method] =
+    def collectMainMethods(target: File, path: String): List[(String, Method)] =
       val nameWithoutExtension = target.getName.takeWhile(_ != '.')
       val targetPath =
         if path.nonEmpty then s"${path}.${nameWithoutExtension}"
@@ -61,7 +69,7 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
         val cls = cl.loadClass(targetPath)
         try
           val method = cls.getMethod("main", classOf[Array[String]])
-          if Modifier.isStatic(method.getModifiers) then List(method) else Nil
+          if Modifier.isStatic(method.getModifiers) then List((cls.getName, method)) else Nil
         catch
           case _: java.lang.NoSuchMethodException => Nil
       else Nil
@@ -74,13 +82,16 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
 
     candidates match
       case Nil =>
-        throw ScriptingException("No main methods detected in your script")
+        throw ScriptingException(s"No main methods detected in script ${scriptFile}")
       case _ :: _ :: _ =>
         throw ScriptingException("A script must contain only one main method. " +
           s"Detected the following main methods:\n${candidates.mkString("\n")}")
       case m :: Nil => m
     end match
-  end detectMainMethod
+  end detectMainClassAndMethod
+
+  def pathsep = sys.props("path.separator")
+
 end ScriptingDriver
 
 case class ScriptingException(msg: String) extends RuntimeException(msg)

@@ -22,19 +22,35 @@ object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
+  /** Return true if has a script header */
+  def hasScriptHeader(content: Array[Char]): Boolean = {
+    headerStarts exists (content startsWith _)
+  }
+
   def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
     /** Length of the script header from the given content, if there is one.
-     *  The header begins with "#!" or "::#!" and ends with a line starting
-     *  with "!#" or "::!#".
+     *  The header begins with "#!" or "::#!" and is either a single line,
+     *  or it ends with a line starting with "!#" or "::!#", if present.
      */
     val headerLength =
       if (headerStarts exists (content startsWith _)) {
         val matcher = headerPattern matcher content.mkString
         if (matcher.find) matcher.end
-        else throw new IOException("script file does not close its header with !# or ::!#")
+        else content.indexOf('\n') // end of first line
       }
       else 0
-    new SourceFile(file, content drop headerLength) {
+
+    // overwrite hash-bang lines with all spaces
+    val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
+    if hashBangLines.nonEmpty then
+      for i <- 0 until headerLength do
+        content(i) match {
+        case '\r' | '\n' =>
+        case _ =>
+          content(i) = ' '
+        }
+
+    new SourceFile(file, content) {
       override val underlying = new SourceFile(this.file, this.content)
     }
   }
@@ -245,6 +261,24 @@ object SourceFile {
       else
         sourcePath.toString
   }
+
+  /** Return true if file is a script:
+   *  if filename extension is not .scala and has a script header.
+   */
+  def isScript(file: AbstractFile, content: Array[Char]): Boolean =
+    if file.hasExtension(".scala") then
+      false
+    else
+      ScriptSourceFile.hasScriptHeader(content)
+
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
+    // see note above re: Files.exists is remarkably slow
+    val chars = try new String(file.toByteArray, codec.charSet).toCharArray
+    catch case _: java.nio.file.NoSuchFileException => Array[Char]()
+    if isScript(file, chars) then
+      ScriptSourceFile(file, chars)
+    else
+      new SourceFile(file, chars)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

@@ -45,6 +45,7 @@ execute_script=false
 with_compiler=false
 class_path_count=0
 CLASS_PATH=""
+save_compiled=false
 
 # Little hack to check if all arguments are options
 all_params="$*"
@@ -72,6 +73,15 @@ while [[ $# -gt 0 ]]; do
       with_compiler=true
       shift
       ;;
+    @*|-color:*)
+      addDotcOptions "${1}"
+      shift
+      ;;
+    -save|-savecompiled)
+      save_compiled=1
+      addDotcOptions "${1}"
+      shift
+      ;;
     -d)
       DEBUG="$DEBUG_STR"
       shift
@@ -82,8 +92,10 @@ while [[ $# -gt 0 ]]; do
       shift ;;
     *)
       if [ $execute_script == false ]; then
-        if [[ "$1" == *.scala ]]; then
+        # is a script if extension .scala or .sc or if has scala hash bang
+        if [[ "$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'` ]]; then
           execute_script=true
+          [ -n "$SCALA_OPTS" ] && java_options+=($SCALA_OPTS)
           target_script="$1"
         else
           residual_args+=("$1")
@@ -101,7 +113,17 @@ if [ $execute_script == true ]; then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
-  eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+  target_jar="${target_script%.*}.jar"
+  jar_found=false
+  setScriptName="-Dscript.name=${target_script##*/}"
+  [[ $save_compiled == true && -f "$target_jar" ]] && jar_found=true
+  if [[ $jar_found == true && "$target_jar" -nt "$target_script" ]]; then
+    java $setScriptName -jar "$target_jar" "${script_args[@]}"
+  else
+    [[ $save_compiled == true && -f $target_jar ]] && rm -f $target_jar
+    residual_args+=($setScriptName)
+    eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+  fi
 elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
