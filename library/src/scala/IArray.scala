@@ -106,17 +106,17 @@ object opaques:
     genericArrayOps(arr).flatten
 
   /** Folds the elements of this array using the specified associative binary operator. */
-  extension [T](arr: IArray[T]) def fold[U >: T: ClassTag](z: U)(op: (U, U) => U): U =
+  extension [T](arr: IArray[T]) def fold[U >: T](z: U)(op: (U, U) => U): U =
     genericArrayOps(arr).fold(z)(op)
 
   /** Applies a binary operator to a start value and all elements of this array,
     * going left to right. */
-  extension [T](arr: IArray[T]) def foldLeft[U: ClassTag](z: U)(op: (U, T) => U): U =
+  extension [T](arr: IArray[T]) def foldLeft[U](z: U)(op: (U, T) => U): U =
     genericArrayOps(arr).foldLeft(z)(op)
 
   /** Applies a binary operator to all elements of this array and a start value,
     * going right to left. */
-  extension [T](arr: IArray[T]) def foldRight[U: ClassTag](z: U)(op: (T, U) => U): U =
+  extension [T](arr: IArray[T]) def foldRight[U](z: U)(op: (T, U) => U): U =
     genericArrayOps(arr).foldRight(z)(op)
 
   /** Tests whether a predicate holds for all elements of this array. */
@@ -219,7 +219,7 @@ object opaques:
 
   /** Sorts this array according to the Ordering which results from transforming
     * an implicitly given Ordering with a transformation function. */
-  extension [T](arr: IArray[T]) def sortBy[U: ClassTag](f: T => U)(using math.Ordering[U]): IArray[T] =
+  extension [T](arr: IArray[T]) def sortBy[U](f: T => U)(using math.Ordering[U]): IArray[T] =
     genericArrayOps(arr).sortBy(f)
 
   /** Sorts this array according to a comparison function. */
@@ -239,7 +239,7 @@ object opaques:
     genericArrayOps(arr).splitAt(n)
 
   /** Tests whether this array starts with the given array. */
-  extension [T](arr: IArray[T]) def startsWith[U >: T: ClassTag](that: IArray[U], offset: Int = 0): Boolean =
+  extension [T](arr: IArray[T]) def startsWith[U >: T](that: IArray[U], offset: Int = 0): Boolean =
     genericArrayOps(arr).startsWith(that)
 
   /** The rest of the array without its first element. */
@@ -269,7 +269,7 @@ object opaques:
   /** Returns an array formed from this array and another iterable collection
     * by combining corresponding elements in pairs.
     * If one of the two collections is longer than the other, its remaining elements are ignored. */
-  extension [T](arr: IArray[T]) def zip[U: ClassTag](that: IArray[U]): IArray[(T, U)] =
+  extension [T](arr: IArray[T]) def zip[U](that: IArray[U]): IArray[(T, U)] =
     genericArrayOps(arr).zip(that)
 
   /** Conversion from IArray to immutable.ArraySeq */
