@@ -1903,7 +1903,7 @@ trait Applications extends Compatibility {
       def skip(tp: Type): Type = tp match {
         case tp: PolyType =>
           val rt = skip(tp.resultType)
-          if (rt.exists) tp.derivedLambdaType(resType = rt) else rt
+          if rt.exists then tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten else rt
         case tp: MethodType =>
           tp.instantiate(argTypes)
         case _ =>
@@ -1974,7 +1974,7 @@ trait Applications extends Compatibility {
         None
     }
     val mapped = reverseMapping.map(_._1)
-    overload.println(i"resolve mapped: $mapped")
+    overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
     resolveOverloaded(mapped, pt).map(reverseMapping.toMap)
 
   /** Try to typecheck any arguments in `pt` that are function values missing a
