@@ -114,7 +114,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.explicitNulls && !config.Feature.enabled(nme.unsafeNulls) then
+      else if ctx.mode.is(Mode.SafeNulls) then
         // If explicit nulls is enabled, and unsafeNulls is not enabled,
         // we want to disallow comparison between Object and Null.
         // If a nullable value has a non-nullable type, we can still cast it to

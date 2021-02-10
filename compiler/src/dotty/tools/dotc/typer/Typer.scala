@@ -1345,27 +1345,26 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            val pt1 = pt.stripNull
-            pt1 match {
-              case SAMType(sam)
+            pt.stripNull match {
+              case pt @ SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
                 // since type arguments to `C`'s super constructor cannot be constructed.
                 def isWildcardClassSAM =
-                  !pt1.classSymbol.is(Trait) && pt1.argInfos.exists(_.isInstanceOf[TypeBounds])
+                  !pt.classSymbol.is(Trait) && pt.argInfos.exists(_.isInstanceOf[TypeBounds])
                 val targetTpe =
-                  if isFullyDefined(pt1, ForceDegree.all) && !isWildcardClassSAM then
-                    pt1
-                  else if pt1.isRef(defn.PartialFunctionClass) then
+                  if isFullyDefined(pt, ForceDegree.all) && !isWildcardClassSAM then
+                    pt
+                  else if pt.isRef(defn.PartialFunctionClass) then
                     // Replace the underspecified expected type by one based on the closure method type
                     defn.PartialFunctionOf(mt.firstParamTypes.head, mt.resultType)
                   else
-                    report.error(ex"result type of lambda is an underspecified SAM type $pt1", tree.srcPos)
-                    pt1
-                if (pt1.classSymbol.isOneOf(FinalOrSealed)) {
-                  val offendingFlag = pt1.classSymbol.flags & FinalOrSealed
-                  report.error(ex"lambda cannot implement $offendingFlag ${pt1.classSymbol}", tree.srcPos)
+                    report.error(ex"result type of lambda is an underspecified SAM type $pt", tree.srcPos)
+                    pt
+                if (pt.classSymbol.isOneOf(FinalOrSealed)) {
+                  val offendingFlag = pt.classSymbol.flags & FinalOrSealed
+                  report.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.srcPos)
                 }
                 TypeTree(targetTpe)
               case _ =>
@@ -3645,15 +3644,6 @@ class Typer extends Namer
         if target <:< pt then
           return readapt(tree.cast(target))
 
-      def tryUnsafeNullConver(fail: => Tree): Tree =
-        // In explcit-nulls, if first subtyping fails, the unsafe-nulls subtyping
-        // (where `Null` is subtype of all reference types) is used here to
-        // recheck the types.
-        if pt.isValueType && (wtp <:< pt) then
-          // If unsafe-nulls subtyping successes, we can cast the tree to `pt` directly
-          tree.cast(pt)
-        else fail
-
       def recover(failure: SearchFailureType) =
         if canDefineFurther(wtp) then readapt(tree)
         else err.typeMismatch(tree, pt, failure)
@@ -3682,18 +3672,16 @@ class Typer extends Namer
                 checkImplicitConversionUseOK(found)
                 withoutMode(Mode.ImplicitsEnabled)(readapt(found))
             case failure: SearchFailure =>
-              tryUnsafeNullConver {
-                if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
-                  // don't report the failure but return the tree unchanged. This
-                  // will cause a failure at the next level out, which usually gives
-                  // a better error message. To compensate, store the encountered failure
-                  // as an attachment, so that it can be reported later as an addendum.
-                  rememberSearchFailure(tree, failure)
-                  tree
-                else recover(failure.reason)
-              }
+              if (pt.isInstanceOf[ProtoType] && !failure.isAmbiguous) then
+                // don't report the failure but return the tree unchanged. This
+                // will cause a failure at the next level out, which usually gives
+                // a better error message. To compensate, store the encountered failure
+                // as an attachment, so that it can be reported later as an addendum.
+                rememberSearchFailure(tree, failure)
+                tree
+              else recover(failure.reason)
         case _ =>
-          tryUnsafeNullConver(recover(NoMatchingImplicits))
+          recover(NoMatchingImplicits)
     end adaptToSubType
 
     def adaptType(tp: Type): Tree = {
