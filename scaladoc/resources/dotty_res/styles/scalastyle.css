@@ -430,8 +430,9 @@ Same solution is already used in Dokka.
 /* Footer */
 footer {
   display: flex;
+  bottom: 0px;
   align-items: center;
-  position: relative;
+  position: fixed;
   margin-top: 1rem;
   margin-left: var(--side-width);
   width: calc(100% - var(--side-width));
@@ -666,6 +667,10 @@ footer .pull-right {
   margin-right: 5%;
 }
 
+footer {
+  color: grey;
+}
+
 footer .socials {
   margin-left: 10px;
   margin-right: 10px;
@@ -684,8 +689,7 @@ footer .socials {
 }
 
 #generated-by {
-  position: absolute;
-  right: 10px;
+  margin-right: 20px;
   display: flex;
   align-items: center;
 }
