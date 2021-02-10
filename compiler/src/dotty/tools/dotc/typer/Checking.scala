@@ -700,7 +700,7 @@ trait Checking {
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
+      !sourceVersion.isAtLeast(future) || // only for 3.x for now since mitigations work only after this PR
       pt.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {
@@ -844,7 +844,7 @@ trait Checking {
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
              !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(`3.1`) =>
+             sourceVersion.isAtLeast(future) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -1265,7 +1265,7 @@ trait Checking {
         if stat.isDef then seen += tname
 
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
-    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`3.1-migration`) then
+    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
       report.warning(
         em"""${kind} should be an instance of Matchable,

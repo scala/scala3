@@ -5,7 +5,7 @@ import util.HTML._
 
 object DotDiagramBuilder:
   def build(diagram: HierarchyGraph, renderer: SignatureRenderer)(using DocContext): String =
-    def getStyle(vertex: LinkToType) = vertex.kind match
+    def getStyle(kind: Kind) = kind match
       case _ : Kind.Class => "fill: #45AD7D;"
       case Kind.Object => "fill: #285577;"
       case _ : Kind.Trait => "fill: #1CAACF;"
@@ -14,8 +14,9 @@ object DotDiagramBuilder:
       case other => report.error(s"unexpected value: $other")
 
     val vWithId = diagram.verteciesWithId
+    val sealedNodes = diagram.sealedNodes
     val vertecies = vWithId.map { (vertex, id) =>
-      s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer)}", style="${getStyle(vertex)}"];\n"""
+      s"""node${id} [id=node${id}, label="${getHtmlLabel(vertex, renderer, sealedNodes)}", style="${getStyle(vertex.kind)}"];\n"""
     }.mkString
 
     val edges = diagram.edges.map { (from, to) =>
@@ -29,8 +30,9 @@ object DotDiagramBuilder:
     |}
     |""".stripMargin
 
-  private def getHtmlLabel(vertex: LinkToType, renderer: SignatureRenderer): String =
+  private def getHtmlLabel(vertex: LinkToType, renderer: SignatureRenderer, sealedNodes: Set[LinkToType]): String =
     span(style := "color: #FFFFFF;")(
+      if sealedNodes.contains(vertex) then "sealed " else "",
       vertex.kind.name,
       " ",
       vertex.signature.map(renderer.renderElementWith(_))

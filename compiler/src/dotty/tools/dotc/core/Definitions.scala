@@ -551,6 +551,10 @@ class Definitions {
     @tu lazy val ArrayConstructor: Symbol = ArrayClass.requiredMethod(nme.CONSTRUCTOR)
 
   @tu lazy val ArrayModule: Symbol = requiredModule("scala.Array")
+  def ArrayModuleClass: Symbol = ArrayModule.moduleClass
+
+  @tu lazy val IArrayModule: Symbol = requiredModule("scala.IArray")
+  def IArrayModuleClass: Symbol = IArrayModule.moduleClass
 
   @tu lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(using Context): ClassSymbol = UnitType.symbol.asClass

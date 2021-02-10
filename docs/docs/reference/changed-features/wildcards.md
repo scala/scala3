@@ -31,7 +31,7 @@ A step-by-step migration is made possible with the following measures:
  2. In Scala 3.1, `_` is deprecated in favor of `?` as a name for a wildcard. A `-rewrite` option is
     available to rewrite one to the other.
  3. In Scala 3.2, the meaning of `_` changes from wildcard to placeholder for type parameter.
- 4. The Scala 3.1 behavior is already available today under the `-source 3.1` setting.
+ 4. The Scala 3.1 behavior is already available today under the `-source future` setting.
 
 To smooth the transition for codebases that use kind-projector, we adopt the following measures under the command line
 option `-Ykind-projector`:

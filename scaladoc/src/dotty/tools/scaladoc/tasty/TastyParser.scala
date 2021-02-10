@@ -21,7 +21,7 @@ import java.nio.file.Files
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.tools.scaladoc.tasty.TastyParser]].
   */
-case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspector:
+case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspector:
 
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None
@@ -137,7 +137,7 @@ case class DokkaTastyInspector()(using ctx: DocContext) extends DocTastyInspecto
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(
   qctx: Quotes,
-  inspector: DokkaTastyInspector,
+  inspector: ScaladocTastyInspector,
 )(
   isSkipped: qctx.reflect.Symbol => Boolean
 )(

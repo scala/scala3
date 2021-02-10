@@ -946,7 +946,7 @@ object SymDenotations {
       is(Macro, butNot = Inline) && is(Erased)
       // Consider the macros of StringContext as plain Scala 2 macros when
       // compiling the standard library with Dotty.
-      // This should be removed on Scala 3.1
+      // This should be removed on Scala 3.x
       && owner.ne(defn.StringContextClass)
 
     /** An erased value or an erased inline method or field */

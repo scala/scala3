@@ -491,7 +491,7 @@ object Build {
 
       // get libraries onboard
       libraryDependencies ++= Seq(
-        "org.scala-lang.modules" % "scala-asm" % "9.0.0-scala-1", // used by the backend
+        "org.scala-lang.modules" % "scala-asm" % "9.1.0-scala-1", // used by the backend
         Dependencies.oldCompilerInterface, // we stick to the old version to avoid deprecation warnings
         "org.jline" % "jline-reader" % "3.15.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.15.0",
@@ -1622,7 +1622,7 @@ object Build {
               "-skip-by-id:scala.runtime.MatchCase " +
               "-skip-by-regex:.+\\.internal($|\\..+) " +
               "-skip-by-regex:.+\\.impl($|\\..+) " +
-              "-comment-syntax wiki -siteroot scaladoc/scala3-docs -project-logo scaladoc/scala3-docs/logo.svg " +
+              "-comment-syntax wiki -siteroot docs -project-logo docs/logo.svg " +
               "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/ " +
               "-social-links:github::https://github.com/lampepfl/dotty," +
               "gitter::https://gitter.im/scala/scala," +
