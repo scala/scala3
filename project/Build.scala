@@ -1160,6 +1160,8 @@ object Build {
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
   lazy val `scaladoc` = project.in(file("scaladoc")).asScaladoc
   lazy val `scaladoc-nonBootstrapped` = project.in(file("scaladoc")).scaladocBasic(NonBootstrapped).settings(
+    // Unit tests in scaladoc depends on scaladoc-testcases
+    // we do not want to just cross compile them with bootstrapped and unbootstrapped compiler
     sources.in(Test) := Nil
   )
 

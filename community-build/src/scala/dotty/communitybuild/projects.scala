@@ -93,11 +93,15 @@ end CommunityProject
 final case class MillCommunityProject(
     project: String,
     baseCommand: String,
-    dependencies: List[CommunityProject] = Nil) extends CommunityProject:
+    dependencies: List[CommunityProject] = Nil,
+    ignoreDocs: Boolean = false,
+    ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
   override val docCommand = null
+    // uncomment once mill is released
+    // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
 
 final case class SbtCommunityProject(
@@ -198,11 +202,13 @@ object projects:
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
+    ignoreDocs = true
   )
 
   lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
+    ignoreDocs = true
   )
 
   lazy val oslib = MillCommunityProject(
@@ -214,7 +220,8 @@ object projects:
   lazy val oslibWatch = MillCommunityProject(
     project = "os-lib",
     baseCommand = s"os.watch[$compilerVersion]",
-    dependencies = List(utest, sourcecode)
+    dependencies = List(utest, sourcecode),
+    ignoreDocs = true
   )
 
   lazy val ujson = MillCommunityProject(
@@ -244,13 +251,15 @@ object projects:
   lazy val fansi = MillCommunityProject(
     project = "fansi",
     baseCommand = s"fansi.jvm[$compilerVersion]",
-    dependencies = List(utest, sourcecode)
+    dependencies = List(utest, sourcecode),
+    ignoreDocs = true
   )
 
   lazy val pprint = MillCommunityProject(
     project = "PPrint",
     baseCommand = s"pprint.jvm[$compilerVersion]",
-    dependencies = List(fansi)
+    dependencies = List(fansi),
+    ignoreDocs = true
   )
 
   lazy val requests = MillCommunityProject(
@@ -705,4 +714,4 @@ def allProjects = List(
   projects.perspective,
 )
 
-lazy val projectMap = allProjects.map(p => p.project -> p).toMap
+lazy val projectMap = allProjects.groupBy(_.project)
