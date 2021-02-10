@@ -64,11 +64,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
+  /** Used to elide output in replStringOf. TODO: Implement setting scala.repl.maxprintstring as in Scala 2 */
+  private[repl] def truncate(str: String): String =
+    if str.length > MaxStringElements then (str take MaxStringElements - 3) + "..."
+    else str
+
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String = {
+
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    myReplStringOf(value)
+    truncate(myReplStringOf(value))
   }
 
   /** Load the value of the symbol using reflection.
