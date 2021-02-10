@@ -263,10 +263,6 @@ object Types {
      *  a non-bottom subclass of `cls`.
      */
     final def derivesFrom(cls: Symbol)(using Context): Boolean = {
-      def isLowerBottomType(tp: Type) =
-        tp.isBottomType
-        && (tp.hasClassSymbol(defn.NothingClass)
-            || cls != defn.NothingClass && !cls.isValueClass)
       def loop(tp: Type): Boolean = tp match {
         case tp: TypeRef =>
           val sym = tp.symbol
@@ -283,6 +279,10 @@ object Types {
           // If the type is `T | Null` or `T | Nothing`, the class is != Nothing,
           // and `T` derivesFrom the class, then the OrType derivesFrom the class.
           // Otherwise, we need to check both sides derivesFrom the class.
+          def isLowerBottomType(tp: Type) =
+            tp.isBottomType
+            && (tp.hasClassSymbol(defn.NothingClass)
+                || cls != defn.NothingClass && !cls.isValueClass)
           if isLowerBottomType(tp.tp1) then
             loop(tp.tp2)
           else if isLowerBottomType(tp.tp2) then
@@ -485,42 +485,38 @@ object Types {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = {
-      def loop(tp:Type): Symbol = tp match {
-        case tp: TypeRef =>
-          val sym = tp.symbol
-          if (sym.isClass) sym else loop(tp.superType)
-        case tp: TypeProxy =>
-          loop(tp.underlying)
-        case tp: ClassInfo =>
-          tp.cls
-        case AndType(l, r) =>
-          val lsym = loop(l)
-          val rsym = loop(r)
-          if (lsym isSubClass rsym) lsym
-          else if (rsym isSubClass lsym) rsym
-          else NoSymbol
-        case tp: OrType =>
-          if tp.tp1.hasClassSymbol(defn.NothingClass) then
-            loop(tp.tp2)
-          else if tp.tp2.hasClassSymbol(defn.NothingClass) then
-            loop(tp.tp1)
+    final def classSymbol(using Context): Symbol = this match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        if (sym.isClass) sym else tp.superType.classSymbol
+      case tp: TypeProxy =>
+        tp.underlying.classSymbol
+      case tp: ClassInfo =>
+        tp.cls
+      case AndType(l, r) =>
+        val lsym = l.classSymbol
+        val rsym = r.classSymbol
+        if (lsym isSubClass rsym) lsym
+        else if (rsym isSubClass lsym) rsym
+        else NoSymbol
+      case tp: OrType =>
+        if tp.tp1.hasClassSymbol(defn.NothingClass) then
+          tp.tp2.classSymbol
+        else if tp.tp2.hasClassSymbol(defn.NothingClass) then
+          tp.tp1.classSymbol
+        else
+          def tp1Null = tp.tp1.hasClassSymbol(defn.NullClass)
+          def tp2Null = tp.tp2.hasClassSymbol(defn.NullClass)
+          if ctx.erasedTypes && (tp1Null || tp2Null) then
+            val otherSide = if tp1Null then tp.tp2.classSymbol else tp.tp1.classSymbol
+            if otherSide.isValueClass then defn.AnyClass else otherSide
           else
-            val tp1Null = tp.tp1.hasClassSymbol(defn.NullClass)
-            val tp2Null = tp.tp2.hasClassSymbol(defn.NullClass)
-            if ctx.erasedTypes && (tp1Null || tp2Null) then
-              val otherSide = if tp1Null then loop(tp.tp2) else loop(tp.tp1)
-              if otherSide.isValueClass then defn.AnyClass else otherSide
-            else
-              loop(tp.join)
-        case _: JavaArrayType =>
-          defn.ArrayClass
-        case _ =>
-          NoSymbol
-      }
+            tp.join.classSymbol
+      case _: JavaArrayType =>
+        defn.ArrayClass
+      case _ =>
+        NoSymbol
 
-      loop(this)
-    }
     /** The least (wrt <:<) set of symbols satisfying the `include` predicate of which this type is a subtype
      */
     final def parentSymbols(include: Symbol => Boolean)(using Context): List[Symbol] = this match {

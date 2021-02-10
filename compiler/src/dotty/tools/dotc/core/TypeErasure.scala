@@ -11,7 +11,6 @@ import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.ContextFunctionResults._
 import Decorators._
-import NullOpsDecorator._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 

@@ -10,10 +10,8 @@ import Decorators._
 import util.Stats._
 import Names._
 import NameOps._
-import NullOpsDecorator._
 import Flags.Module
 import Variances.variancesConform
-import typer.Nullables
 import dotty.tools.dotc.config.Config
 
 object TypeApplications {

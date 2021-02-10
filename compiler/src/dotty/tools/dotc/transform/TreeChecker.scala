@@ -13,7 +13,6 @@ import core.NameKinds.{DocArtifactName, OuterSelectName}
 import core.Decorators._
 import core.Phases._
 import core.Mode
-import core.NullOpsDecorator._
 import typer._
 import typer.ErrorReporting._
 import reporting._
