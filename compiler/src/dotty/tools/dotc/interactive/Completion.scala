@@ -16,9 +16,10 @@ import dotty.tools.dotc.core.NameOps._
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol, TermSymbol, defn, newSymbol}
 import dotty.tools.dotc.core.Scopes
 import dotty.tools.dotc.core.StdNames.{nme, tpnme}
+import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.core.TypeComparer
 import dotty.tools.dotc.core.TypeError
-import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NamedType, NoType, PolyType, Type}
+import dotty.tools.dotc.core.Types.{ExprType, MethodOrPoly, NameFilter, NamedType, NoType, PolyType, TermRef, Type}
 import dotty.tools.dotc.printing.Texts._
 import dotty.tools.dotc.util.{NameTransformer, NoSourcePosition, SourcePosition}
 
@@ -117,15 +118,14 @@ object Completion {
     val offset = completionOffset(path)
     val buffer = completionBuffer(path, pos)
 
-    if (buffer.mode != Mode.None)
-      path match {
-        case Select(qual, _) :: _                              => buffer.addSelectionCompletions(path, qual)
-        case Import(expr, _) :: _                              => buffer.addMemberCompletions(expr) // TODO: distinguish given from plain imports
-        case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => buffer.addMemberCompletions(expr)
-        case _                                                 => buffer.addScopeCompletions
+    val scope = path match {
+        case Select(qual, _) :: _                              => buffer.selectionCompletions(path, qual)
+        case Import(expr, _) :: _                              => buffer.directMemberCompletions(expr)
+        case (_: untpd.ImportSelector) :: Import(expr, _) :: _ => buffer.directMemberCompletions(expr)
+        case _                                                 => buffer.scopeCompletions
       }
 
-    val completionList = buffer.getCompletions
+    val completionList = scope.getCompletions
 
     interactiv.println(i"""completion with pos     = $pos,
                           |                prefix  = ${buffer.prefix},
@@ -135,161 +135,166 @@ object Completion {
     (offset, completionList)
   }
 
+  /**
+   * A description for completion result that represents `symbols`.
+   *
+   * If `denots` contains a single denotation, show its full name in case it's a type, or its type if
+   * it's a term.
+   *
+   * When there are multiple denotations, show their kinds.
+   */
+  private def description(denots: List[SingleDenotation])(using Context): String =
+    denots match {
+      case denot :: Nil =>
+        if (denot.isType) denot.symbol.showFullName
+        else denot.info.widenTermRefExpr.show
+
+      case denot :: _ =>
+        denots.map(den => ctx.printer.kindString(den.symbol)).distinct.mkString("", " and ", s" ${denot.symbol.name.stripModuleClassSuffix.show}")
+
+      case Nil =>
+        ""
+    }
+
   private class CompletionBuffer(val mode: Mode, val prefix: String, pos: SourcePosition) {
-
-    private val completions = new RenameAwareScope
-
-    /**
-     * Return the list of symbols that should be included in completion results.
-     *
-     * If several symbols share the same name, the type symbols appear before term symbols inside
-     * the same `Completion`.
+    /** Completions for terms and types that are currently in scope:
+     *  the members of the current class and the symbols that have been imported, recursively adding completions from outer scopes
      */
-    def getCompletions(using Context): List[Completion] = {
-      val nameToSymbols = completions.mappings.toList
-      nameToSymbols.map { case (name, symbols) =>
-        val typesFirst = symbols.sortWith((s1, s2) => s1.isType && !s2.isType)
-        val desc = description(typesFirst)
-        Completion(name.show, desc, typesFirst)
+    def scopeCompletions(using Context): CompletionScope = {
+      extension[A, K](elems: Seq[A])
+        def orderedGroupBy(f: A => K): Seq[(K, Seq[A])] =
+          val keys = elems.map(f).distinct
+          val grouped = elems.groupBy(f)
+          keys.map(key => key -> grouped(key))
+
+      val grouped = ctx.outersIterator.toList.reverse.orderedGroupBy(_.owner).filter(_._1.exists)
+      val imported = grouped.map { (owner, contexts) =>
+        contexts.collect { case context if context.isImportContext =>
+          importedCompletions(using context)
+        }.foldLeft(CompletionScope.empty)(_.mergeDiscardingAmbiguities(_))
+      }
+      val members = grouped.map { (owner, _) =>
+        if owner.isClass then
+          CompletionScope.from(accessibleMembers(owner.thisType))
+        else CompletionScope.empty
+      }
+
+      (imported ++ members).foldLeft(CompletionScope.empty)(_.mergeShadowedBy(_))
+    }
+
+    def selectionCompletions(path: List[Tree], qual: Tree)(using Context): CompletionScope =
+      implicitConversionMemberCompletions(qual)
+        .mergeShadowedBy(extensionCompletions(path, qual))
+        .mergeShadowedBy(directMemberCompletions(qual))
+
+    /** Completions for members of `qual`'s type.
+     *  These include inherited definitions but not members added by extensions or implicit conversions
+     */
+    def directMemberCompletions(qual: Tree)(using Context): CompletionScope =
+      if qual.tpe.widenDealias.isExactlyNothing then
+        CompletionScope.empty
+      else
+        CompletionScope.from(accessibleMembers(qual.tpe))
+
+    /** Completions introduced by imports directly in this context.
+     *  Completions from outer contexts are not included.
+     */
+    private def importedCompletions(using Context): CompletionScope = {
+      val imp = ctx.importInfo
+      if imp == null then
+        CompletionScope.empty
+      else {
+        def fromImport(name: TermName, nameInScope: TermName) =
+          val terms = imp.site.member(name).alternatives.map(denot => nameInScope -> denot)
+          val types = imp.site.member(name.toTypeName).alternatives.map(denot => nameInScope.toTypeName -> denot)
+          CompletionScope.fromNamed(terms ++ types)
+
+        val givenImports = CompletionScope.fromNamed(imp.importedImplicits.map(x => (x.implicitName, x.underlyingRef.denot.asSingleDenotation)))
+
+        val wildcardMembers =
+          if imp.selectors.exists(_.imported.name == nme.WILDCARD) then
+            val denots = accessibleMembers(imp.site)
+              .filter(mbr => !mbr.symbol.is(Given) && !imp.excluded.contains(mbr.name.toTermName))
+            CompletionScope.from(denots)
+          else
+            CompletionScope.empty
+        val explicitMembers =
+          imp.reverseMapping.toList.collect {
+            case (nameInScope, original) if original != nameInScope || !imp.excluded.contains(original) =>
+              fromImport(original, nameInScope)
+          }.foldLeft(CompletionScope.empty)(_.mergeDiscardingAmbiguities(_))
+
+        givenImports
+          .mergeShadowedBy(wildcardMembers)
+          .mergeShadowedBy(explicitMembers)
       }
     }
 
-    /**
-     * A description for completion result that represents `symbols`.
-     *
-     * If `symbols` contains a single symbol, show its full name in case it's a type, or its type if
-     * it's a term.
-     *
-     * When there are multiple symbols, show their kinds.
-     */
-    private def description(symbols: List[Symbol])(using Context): String =
-      symbols match {
-        case sym :: Nil =>
-          if (sym.isType) sym.showFullName
-          else sym.info.widenTermRefExpr.show
+    private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionScope =
+      if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
+        CompletionScope.empty
+      else
+        val membersFromConversion =
+          implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState()).flatMap(accessibleMembers)
+        CompletionScope.from(membersFromConversion.toSeq)
 
-        case sym :: _ =>
-          symbols.map(ctx.printer.kindString).mkString("", " and ", s" ${sym.name.show}")
-
-        case Nil =>
-          ""
-      }
-
-    /**
-     * Add symbols that are currently in scope to `info`: the members of the current class and the
-     * symbols that have been imported.
-     */
-    def addScopeCompletions(using Context): Unit = {
-      if (ctx.owner.isClass) {
-        addAccessibleMembers(ctx.owner.thisType)
-        ctx.owner.asClass.classInfo.selfInfo match {
-          case selfSym: Symbol => add(selfSym, selfSym.name)
-          case _ =>
-        }
-      }
-      else if (ctx.scope != null) ctx.scope.foreach(s => add(s, s.name))
-
-      addImportCompletions
-
-      var outer = ctx.outer
-      while ((outer.owner `eq` ctx.owner) && (outer.scope `eq` ctx.scope)) {
-        addImportCompletions(using outer)
-        outer = outer.outer
-      }
-      if (outer `ne` NoContext) addScopeCompletions(using outer)
-    }
-
-    /**
-     * Find all the members of `qual` and add the ones that pass the include filters to `info`.
-     *
-     * If `info.mode` is `Import`, the members added via implicit conversion on `qual` are not
-     * considered.
-     */
-    def addMemberCompletions(qual: Tree)(using Context): Unit =
-      if (!qual.tpe.widenDealias.isExactlyNothing) {
-        addAccessibleMembers(qual.tpe)
-        if (!mode.is(Mode.Import) && !qual.tpe.isNullType)
-          // Implicit conversions do not kick in when importing
-          // and for `NullClass` they produce unapplicable completions (for unclear reasons)
-          implicitConversionTargets(qual)(using ctx.fresh.setExploreTyperState())
-            .foreach(addAccessibleMembers)
-      }
-
-    def addExtensionCompletions(path: List[Tree], qual: Tree)(using Context): Unit =
+    private def extensionCompletions(path: List[Tree], qual: Tree)(using Context): CompletionScope =
       def asDefLikeType(tpe: Type): Type = tpe match
         case _: MethodOrPoly => tpe
         case _ => ExprType(tpe)
 
-      def tryApplyingReceiver(methodSym: TermSymbol): Option[TermSymbol] =
-        ctx.typer.tryApplyingReceiver(methodSym, qual)
+      def tryApplyingReceiver(termRef: TermRef): Option[SingleDenotation] =
+        ctx.typer.tryApplyingReceiver(termRef, qual)
           .map { tree =>
             val tpe = asDefLikeType(tree.tpe.dealias)
-            newSymbol(owner = qual.symbol, methodSym.name, methodSym.flags, tpe)
+            termRef.denot.asSingleDenotation.mapInfo(_ => tpe)
           }
 
       val matchingNamePrefix = completionPrefix(path, pos)
 
-      def extractDefinedExtensionMethods(types: Seq[Type]) =
-        types
-          .flatMap(_.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags))
-          .collect{ denot =>
-            denot.name match {
-              case name: TermName if name.startsWith(matchingNamePrefix) => (denot.symbol.asTerm, name)
-            }
-          }
+      def extractMemberExtensionMethods(types: Seq[Type]): Seq[(TermRef, TermName)] =
+        object DenotWithMatchingName:
+          def unapply(denot: SingleDenotation): Option[(SingleDenotation, TermName)] =
+            denot.name match
+              case name: TermName if name.startsWith(matchingNamePrefix) => Some((denot, name))
+              case _ => None
+
+        types.flatMap{ tpe =>
+          tpe.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags)
+            .collect { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
+        }
 
       // There are four possible ways for an extension method to be applicable
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
-      val extMethodsInScope =
-        val buf = completionBuffer(path, pos)
-        buf.addScopeCompletions
-        buf.completions.mappings.toList.flatMap {
-          case (termName, symbols) => symbols.map(s => (s.asTerm, termName))
-        }
+      val extMethodsInScope = scopeCompletions.nameToDenots.toList.flatMap {
+        case (name, denots) => denots.collect { case d: SymDenotation => (d.termRef, name.asTermName) }
+      }
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
       val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)
-      val extMethodsFromGivensInScope = extractDefinedExtensionMethods(givensInScope)
+      val extMethodsFromGivensInScope = extractMemberExtensionMethods(givensInScope)
 
       // 3. The reference is of the form r.m and the extension method is defined in the implicit scope of the type of r.
       val implicitScopeCompanions = ctx.run.implicitScope(qual.tpe).companionRefs.showAsList
-      val extMethodsFromImplicitScope = extractDefinedExtensionMethods(implicitScopeCompanions)
+      val extMethodsFromImplicitScope = extractMemberExtensionMethods(implicitScopeCompanions)
 
       // 4. The reference is of the form r.m and the extension method is defined in some given instance in the implicit scope of the type of r.
-      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = Given, excluded = EmptyFlags)).map(_.symbol.info)
-      val extMethodsFromGivensInImplicitScope = extractDefinedExtensionMethods(givensInImplicitScope)
+      val givensInImplicitScope = implicitScopeCompanions.flatMap(_.membersBasedOnFlags(required = Given, excluded = EmptyFlags)).map(_.info)
+      val extMethodsFromGivensInImplicitScope = extractMemberExtensionMethods(givensInImplicitScope)
 
       val availableExtMethods = extMethodsFromGivensInImplicitScope ++ extMethodsFromImplicitScope ++ extMethodsFromGivensInScope ++ extMethodsInScope
-
       val extMethodsWithAppliedReceiver = availableExtMethods.flatMap {
-        case (symbol, termName) =>
-          if symbol.is(ExtensionMethod) && !qual.tpe.isBottomType then
-            tryApplyingReceiver(symbol).map(_.copy(name = termName))
+        case (termRef, termName) =>
+          if termRef.symbol.is(ExtensionMethod) && !qual.tpe.isBottomType then
+            val applied = tryApplyingReceiver(termRef)
+            applied.map{ denot =>
+              val sym = denot.symbol.asTerm.copy(name = termName)
+              denot.derivedSingleDenotation(sym, denot.info)
+            }
           else None
       }
-
-      for (symbol <- extMethodsWithAppliedReceiver) do add(symbol, symbol.name)
-
-    def addSelectionCompletions(path: List[Tree], qual: Tree)(using Context): Unit =
-      addExtensionCompletions(path, qual)
-      addMemberCompletions(qual)
-
-    /**
-     * If `sym` exists, no symbol with the same name is already included, and it satisfies the
-     * inclusion filter, then add it to the completions.
-     */
-    private def add(sym: Symbol, nameInScope: Name)(using Context) =
-      if (sym.exists &&
-          completionsFilter(NoType, nameInScope) &&
-          !completions.lookup(nameInScope).exists &&
-          include(sym, nameInScope))
-        completions.enter(sym, nameInScope)
-
-    /** Lookup members `name` from `site`, and try to add them to the completion list. */
-    private def addMember(site: Type, name: Name, nameInScope: Name)(using Context) =
-      if (!completions.lookup(nameInScope).exists)
-        for (alt <- site.member(name).alternatives) add(alt.symbol, nameInScope)
+      CompletionScope.from(extMethodsWithAppliedReceiver)
 
     /** Include in completion sets only symbols that
      *   1. start with given name prefix, and
@@ -304,6 +309,8 @@ object Completion {
      */
     private def include(sym: Symbol, nameInScope: Name)(using Context): Boolean =
       nameInScope.startsWith(prefix) &&
+      sym.exists &&
+      completionsFilter(NoType, nameInScope) &&
       !sym.isAbsent() &&
       !sym.isPrimaryConstructor &&
       sym.sourceSymbol.exists &&
@@ -316,53 +323,26 @@ object Completion {
         || (mode.is(Mode.Type) && (sym.isType || sym.isStableMember))
       )
 
-    /**
-     * Find all the members of `site` that are accessible and which should be included in `info`.
-     *
-     * @param site The type to inspect.
-     * @return The members of `site` that are accessible and pass the include filter of `info`.
+    /** @param site The type to inspect.
+     *  @return The members of `site` that are accessible and pass the include filter.
      */
-    private def accessibleMembers(site: Type)(using Context): Seq[Symbol] = site match {
+    private def accessibleMembers(site: Type)(using Context): Seq[SingleDenotation] = site match {
       case site: NamedType if site.symbol.is(Package) =>
         extension (tpe: Type)
-          def accessibleSymbols = tpe.decls.toList.filter(sym => sym.isAccessibleFrom(site, superAccess = false))
+          def accessibleMembers = tpe.allMembers.toList.filter(denot => denot.symbol.isAccessibleFrom(site, superAccess = false))
 
-        val packageDecls = site.accessibleSymbols
-        val packageObjectsDecls = packageDecls.filter(_.isPackageObject).flatMap(_.thisType.accessibleSymbols)
+        val packageDecls = site.accessibleMembers
+        val packageObjectsDecls = packageDecls.filter(_.symbol.isPackageObject).flatMap(_.symbol.thisType.accessibleMembers)
+
         packageDecls ++ packageObjectsDecls
       case _ =>
         def appendMemberSyms(name: Name, buf: mutable.Buffer[SingleDenotation]): Unit =
           try buf ++= site.member(name).alternatives
           catch { case ex: TypeError => }
         site.memberDenots(completionsFilter, appendMemberSyms).collect {
-          case mbr if include(mbr.symbol, mbr.symbol.name) => mbr.accessibleFrom(site, superAccess = true).symbol
-          case _ => NoSymbol
-        }.filter(_.exists)
-    }
-
-    /** Add all the accessible members of `site` in `info`. */
-    private def addAccessibleMembers(site: Type)(using Context): Unit =
-      for (mbr <- accessibleMembers(site)) addMember(site, mbr.name, mbr.name)
-
-    /**
-     * Add in `info` the symbols that are imported by `ctx.importInfo`. If this is a wildcard import,
-     * all the accessible members of the import's `site` are included.
-     */
-    private def addImportCompletions(using Context): Unit = {
-      val imp = ctx.importInfo
-      if (imp != null) {
-        def addImport(name: TermName, nameInScope: TermName) = {
-          addMember(imp.site, name, nameInScope)
-          addMember(imp.site, name.toTypeName, nameInScope.toTypeName)
+          case mbr if include(mbr.symbol, mbr.symbol.name)
+                      && mbr.symbol.isAccessibleFrom(site, superAccess = true) => mbr
         }
-        imp.reverseMapping.foreachBinding { (nameInScope, original) =>
-          if (original != nameInScope || !imp.excluded.contains(original))
-            addImport(original, nameInScope)
-        }
-        if (imp.isWildcardImport)
-          for (mbr <- accessibleMembers(imp.site) if !imp.excluded.contains(mbr.name.toTermName))
-            addMember(imp.site, mbr.name, mbr.name)
-      }
     }
 
     /**
@@ -386,6 +366,28 @@ object Completion {
         !name.isConstructorName && name.toTermName.info.kind == SimpleNameKind
       def isStable = true
     }
+
+    extension (scope: CompletionScope)
+      private def withDenots(denotations: Seq[SingleDenotation], name: Name)(using Context): CompletionScope = {
+        val denots = denotations.filter(denot => include(denot.symbol, name))
+        val shortName = name.stripModuleClassSuffix
+
+        if denots.nonEmpty then
+          CompletionScope(scope.nameToDenots + (shortName -> denots.toList))
+        else
+          scope
+      }
+
+    extension (scope: CompletionScope.type)
+      private def from(denots: Seq[SingleDenotation])(using Context): CompletionScope = {
+        val mappings = denots.filter(den => include(den.symbol, den.name)).toList.groupBy(_.name).map( (name, denots) => name.stripModuleClassSuffix -> denots)
+        CompletionScope(mappings)
+      }
+
+      private def fromNamed(namedDenots: Seq[(Name, SingleDenotation)])(using Context): CompletionScope = {
+        val mappings = namedDenots.filter((name, den) => include(den.symbol, name)).toList.groupBy(_._1).map( (name, namedDens) => name.stripModuleClassSuffix -> namedDens.map(_._2))
+        CompletionScope(mappings)
+      }
   }
 
   /**
@@ -410,23 +412,34 @@ object Completion {
     val Import: Mode = new Mode(4) | Term | Type
   }
 
-  /** A scope that tracks renames of the entered symbols.
-   *  Useful for providing completions for renamed symbols
-   *  in the REPL and the IDE.
-   */
-  private class RenameAwareScope extends Scopes.MutableScope {
-    private val nameToSymbols: mutable.Map[TermName, List[Symbol]] = mutable.Map.empty
+  private object CompletionScope  {
+    val empty = CompletionScope()
+  }
 
-    /** Enter the symbol `sym` in this scope, recording a potential renaming. */
-    def enter[T <: Symbol](sym: T, name: Name)(using Context): T = {
-      val termName = name.stripModuleClassSuffix.toTermName
-      nameToSymbols += termName -> (sym :: nameToSymbols.getOrElse(termName, Nil))
-      newScopeEntry(name, sym)
-      sym
+  private case class CompletionScope(nameToDenots: Map[Name, List[SingleDenotation]] = Map.empty) {
+    def mergeShadowedBy(that: CompletionScope) = CompletionScope(this.nameToDenots ++ that.nameToDenots)
+
+    def mergeDiscardingAmbiguities(that: CompletionScope) =
+      val mappings = (this.nameToDenots.toList ++ that.nameToDenots.toList)
+        .groupBy(_._1)
+        .collect {
+          case (name, (_, denots) :: Nil)  => name -> denots
+        }
+      CompletionScope(mappings)
+
+    /**
+     * Return the list of symbols that should be included in completion results.
+     *
+     * If several symbols share the same name, the type symbols appear before term symbols inside
+     * the same `Completion`.
+     */
+    def getCompletions(using Context): List[Completion] = {
+      nameToDenots.toList.groupBy(_._1.toTermName.show).map { (name, namedDenots) =>
+        val typesFirst = namedDenots.flatMap(_._2).sortWith((s1, s2) => s1.isType && !s2.isType)
+        val desc = description(typesFirst)
+        Completion(name, desc, typesFirst.map(_.symbol))
+      }.toList
     }
-
-    /** Get the names that are known in this scope, along with the list of symbols they refer to. */
-    def mappings: Map[TermName, List[Symbol]] = nameToSymbols.toMap
   }
 }
 

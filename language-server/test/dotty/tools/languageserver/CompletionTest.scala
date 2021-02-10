@@ -19,7 +19,7 @@ class CompletionTest {
       .completion(m1, Set(
         ("print", Method, "(x: Any): Unit"),
         ("printf", Method, "(text: String, xs: Any*): Unit"),
-        ("println", Method, "(x: Any): Unit")
+        ("println", Method, "method println")
       ))
   }
 
@@ -183,6 +183,13 @@ class CompletionTest {
       .completion(m1, Set(("FileDescriptor", Class, "class and object FileDescriptor")))
   }
 
+  @Test def importGivenByType: Unit = {
+    code"""trait Foo
+           object Bar
+           import Bar.{given Fo$m1}""".withSource
+      .completion(m1, Set(("Foo", Class, "Foo")))
+  }
+
   @Test def markDeprecatedSymbols: Unit = {
     code"""object Foo {
              @deprecated
@@ -274,10 +281,144 @@ class CompletionTest {
                           ("MyHashMap3", Class, "class and object HashMap")))
   }
 
+  @Test def completeFromWildcardImports: Unit = {
+    code"""object Foo {
+          |  val fooFloat: Float = 1.0
+          |  val fooLong: Long = 0L
+          |  given fooInt: Int = 0
+          |  given fooString: String = ""
+          |}
+          |object Test1 { import Foo.{fooFloat => _, _}; foo$m1 }
+          |object Test2 { import Foo.given; foo$m2 }
+          |object Test3 { import Foo.{given String}; foo$m3 }
+          |object Test4 { import Foo.{_, given String}; foo$m4 }
+          |object Test5 { import Foo.{fooFloat, given}; foo$m5 }
+          |object Test6 { import Foo.{fooInt => _, fooString => fooStr, given}; foo$m6 }
+          |object Test7 { import Foo.{fooLong => fooInt, given Int}; foo$m7 }
+          """.withSource
+      .completion(m1, Set(("fooLong", Field, "Long")))
+      .completion(m2, Set(("fooInt", Field, "Int"),
+                          ("fooString", Field, "String")))
+      .completion(m3, Set(("fooString", Field, "String")))
+      .completion(m4, Set(("fooLong", Field, "Long"),
+                          ("fooFloat", Field, "Float"),
+                          ("fooString", Field, "String")))
+      .completion(m5, Set(("fooFloat", Field, "Float"),
+                          ("fooInt", Field, "Int"),
+                          ("fooString", Field, "String")))
+      .completion(m6, Set(("fooStr", Field, "String")))
+      .completion(m7, Set(("fooInt", Field, "Long")))
+  }
+
+  @Test def collectNamesImportedInNestedScopes: Unit = {
+    code"""object Foo {
+          |  val xxxx1 = 1
+          |}
+          |object Bar {
+          |  val xxxx2 = 2
+          |}
+          |object Baz {
+          |  val xxxx3 = 3
+          |}
+          |object Test {
+          |  import Foo.xxxx1
+          |  locally {
+          |    import Bar.xxxx2
+          |    locally {
+          |      import Baz.xxxx3
+          |      val x = xx$m1
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx1", Field, "Int"), ("xxxx2", Field, "Int"), ("xxxx3", Field, "Int")))
+  }
+
+  @Test def completeBothMembersForEqualNestingLevels: Unit = {
+    code"""trait Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |trait Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test extends Foo, Bar {
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "method xxxx")))
+  }
+
+  @Test def dontCompleteAmbiguousImportsForEqualNestingLevels: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  import Bar.xxxx
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def preferMemberToImportForEqualNestingLevels: Unit = {
+    code"""object Foo {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  def xxxx(s: String): String = s
+          |  import Foo.xxxx
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedMember: Unit = {
+    code"""object Test {
+          |  def xxxx(i: Int): Int = i
+          |  object Inner {
+          |    def xxxx(s: String): String = s
+          |    val x = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedImport: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  locally {
+          |    import Bar.xxxx
+          |    val x: String = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedMemberToImport: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  object Inner {
+          |    def xxxx(s: String): String = s
+          |    val x: String = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
   @Test def completionClassAndMethod: Unit = {
     code"""object Foo {
           |  class bar
-          |  def bar = 0
+          |  def bar(i: Int) = 0
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Class, "class and method bar")))
@@ -449,6 +590,15 @@ class CompletionTest {
           |}
           |object Main extends FooOps { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodWithoutLosingTypeParametersFromGivenInstance: Unit = {
+    code"""trait ListOps[A] {
+          |  extension (xs: List[A]) def xxxx = xs
+          |}
+          |given ListOps[Int] with {}
+          |object Main { List(1, 2, 3).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> List[Int]")))
   }
 
   @Test def completeRenamedExtensionMethod: Unit = {

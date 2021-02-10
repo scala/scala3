@@ -2133,15 +2133,29 @@ trait Applications extends Compatibility {
     }
   }
 
-  private def tryApplyingReceiverToTruncatedExtMethod(methodSym: TermSymbol, receiver: Tree)(using Context): scala.util.Try[Tree] =
-    // Drop all parameters sections of an extension method following the receiver to prevent them from being inferred by the typer
-    def truncateExtension(tp: Type): Type = tp match
-      case poly: PolyType => poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
-      case meth: MethodType if meth.isContextualMethod => meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
-      case meth: MethodType => meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
+  /** Assuming methodRef is a reference to an extension method defined e.g. as
+   *
+   *  extension [T1, T2](using A)(using B, C)(receiver: R)(using D)
+   *    def foo[T3](using E)(f: F): G = ???
+   *
+   *  return the tree representing methodRef partially applied to the receiver and all the implicit parameters preceding it (A, B, C)
+   *  with the type parameters of the extension (T1, T2) inferred.
+   *  A failure is returned if the implicit search fails for any of the leading implicit parameters or if the receiver has a wrong type
+   *  (note that in general the type of the receiver might depend on the exact types of the found instances of the proceding implicits).
+   *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
+   */
+  private def applyWithoutPostreceiverImplicits(methodRef: TermRef, receiver: Tree)(using Context): scala.util.Try[Tree] =
+      // Drop all parameters sections of an extension method following the receiver; the return type after truncation is not important
+    def truncateExtension(tp: Type)(using Context): Type = tp match
+      case poly: PolyType =>
+        poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
+      case meth: MethodType if meth.isContextualMethod =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
+      case meth: MethodType =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
 
-    val truncatedSym = methodSym.copy(owner = defn.RootPackage, name = Names.termName(""), info = truncateExtension(methodSym.info))
-    val truncatedRef = ref(truncatedSym).withSpan(Span(0, 0)) // Fake span needed to make this work in REPL
+    val truncatedSym = methodRef.symbol.asTerm.copy(owner = defn.RootPackage, name = Names.termName(""), info = truncateExtension(methodRef.info))
+    val truncatedRef = ref(truncatedSym).withSpan(receiver.span)
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
     scala.util.Try {
       inContext(newCtx) {
@@ -2150,17 +2164,17 @@ trait Applications extends Compatibility {
       }
     }.filter(tree => tree.tpe.exists && !tree.tpe.isError)
 
-  def tryApplyingReceiver(methodSym: TermSymbol, receiver: Tree)(using Context): Option[Tree] =
-    def replaceAppliedRef(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
-      case Apply(fun, args) => Apply(replaceAppliedRef(fun, replacement), args)
-      case TypeApply(fun, args) => TypeApply(replaceAppliedRef(fun, replacement), args)
+  def tryApplyingReceiver(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
+    def replaceCallee(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
+      case Apply(fun, args) => Apply(replaceCallee(fun, replacement), args)
+      case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
       case _: Ident => replacement
 
-    tryApplyingReceiverToTruncatedExtMethod(methodSym, receiver)
+    applyWithoutPostreceiverImplicits(methodRef, receiver)
       .toOption
-      .map(tree => replaceAppliedRef(tree, ref(methodSym)))
+      .map(tree => replaceCallee(tree, ref(methodRef)))
 
-  def isApplicableExtensionMethod(ref: TermRef, receiverType: Type)(using Context) =
-    ref.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
-      tryApplyingReceiverToTruncatedExtMethod(ref.symbol.asTerm, Typed(EmptyTree, TypeTree(receiverType))).isSuccess
+  def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
+    methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
+      applyWithoutPostreceiverImplicits(methodRef, Typed(EmptyTree, TypeTree(receiverType))).isSuccess
 }
