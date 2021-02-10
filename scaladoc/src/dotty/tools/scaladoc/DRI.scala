@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import java.nio.file.Path
+import dotty.tools.scaladoc.util.Escape._
 
 val staticFileSymbolUUID = "___staticFile___"
 
@@ -17,7 +18,7 @@ final case class DRI(
 
   def isStaticFile = symbolUUID == staticFileSymbolUUID
 
-  def asFileLocation: String = location.replace(".","/")
+  def asFileLocation: String = escapeUrl(location).replace(".", "/")
 
 object DRI:
   def forPath(path: Path) =
