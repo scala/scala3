@@ -2,21 +2,17 @@ package dotty.tools.scripting
 
 import java.nio.file.{ Files, Path }
 import java.io.File
-import java.net.{ URL, URLClassLoader }
 import java.lang.reflect.{ Modifier, Method }
 
 import scala.jdk.CollectionConverters._
 
-import dotty.tools.dotc.{ Driver, Compiler }
-import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ContextBase, ctx }
-import dotty.tools.dotc.config.CompilerCommand
+import dotty.tools.dotc.{ Driver }
+import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ctx }
 import dotty.tools.io.{ PlainDirectory, Directory }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.config.Settings.Setting._
 import dotty.tools.dotc.util.ScriptSourceFile
 import dotty.tools.io.AbstractFile
-
-import sys.process._
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
   def compileAndRun(pack:(Path, String) => Unit = null): Unit =

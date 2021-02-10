@@ -1,18 +1,16 @@
 package dotty.tools.scripting
 
 import java.io.File
-import java.nio.file.{Files, Paths, Path}
-import dotty.tools.dotc.util.SourceFile
-import java.net.{ URL, URLClassLoader }
+import java.nio.file.Path
+import java.net.URLClassLoader
 import java.lang.reflect.{ Modifier, Method }
-
 
 /** Main entry point to the Scripting execution engine */
 object Main:
   /** All arguments before -script <target_script> are compiler arguments.
       All arguments afterwards are script arguments.*/
   private def distinguishArgs(args: Array[String]): (Array[String], File, Array[String], Boolean) =
-    // NOTE: if -script is required but not present, quit with error.
+    // NOTE: if -script <scriptName> not present, quit with error.
     val (leftArgs, rest) = args.splitAt(args.indexOf("-script"))
     if( rest.size < 2 ) then
       sys.error(s"missing: -script <scriptName>")
@@ -38,7 +36,7 @@ object Main:
       case list => list
       }
 
-      val (mainClassName, mainMethod) = detectMainMethod(outDir, classpath, scriptFile)
+      val (mainClassName, mainMethod) = detectMainClassAndMethod(outDir, classpath, scriptFile)
 
       if saveJar then
         // write a standalone jar to the script parent directory
@@ -58,13 +56,12 @@ object Main:
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpath:String, mainClassName: String): Unit =
-    import java.net.{URI, URL}
     val jarTargetDir: Path = Option(scriptFile.toPath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
       case Some(parent) => parent
     }
 
-    val scriptBasename = scriptFile.getName.takeWhile(_!='.')
+    def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
 
     val cpPaths = classpath.split(pathsep).map {
@@ -87,7 +84,7 @@ object Main:
     writer.writeAllFrom(Directory(outDir))
   end writeJarfile
 
-  private def detectMainMethod(outDir: Path, classpath: String,
+  private def detectMainClassAndMethod(outDir: Path, classpath: String,
       scriptFile: File): (String, Method) =
     val outDirURL = outDir.toUri.toURL
     val classpathUrls = classpath.split(pathsep).map(File(_).toURI.toURL)
@@ -127,7 +124,7 @@ object Main:
           s"Detected the following main methods:\n${candidates.mkString("\n")}")
       case m :: Nil => m
     end match
-  end detectMainMethod
+  end detectMainClassAndMethod
 
   def pathsep = sys.props("path.separator")
 
