@@ -115,7 +115,7 @@ if [ $execute_script == true ]; then
   fi
   target_jar="${target_script%.*}.jar"
   jar_found=false
-  setScriptName="-Dscript.name=${target_script##*/}"
+  setScriptName="-Dscript.path=$target_script"
   [[ $save_compiled == true && -f "$target_jar" ]] && jar_found=true
   if [[ $jar_found == true && "$target_jar" -nt "$target_script" ]]; then
     java $setScriptName -jar "$target_jar" "${script_args[@]}"

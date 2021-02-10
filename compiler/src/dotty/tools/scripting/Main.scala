@@ -65,7 +65,7 @@ object Main:
     import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
     val manifestAttributes:Seq[(Name, String)] = Seq(
-      (Name.MANIFEST_VERSION, "1.0.0"),
+      (Name.MANIFEST_VERSION, "1.0"),
       (Name.MAIN_CLASS, mainClassName),
       (Name.CLASS_PATH, cpString),
     )
