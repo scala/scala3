@@ -408,7 +408,7 @@ object projects:
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
     // Hardcode the version to avoid having to deal with something set by sbt-dynver
     sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
-    sbtDocCommand   = "munitJVM/doc",
+    sbtDocCommand   = "junit/doc; munitJVM/doc",
     dependencies = List(scalacheck)
   )
 

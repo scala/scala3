@@ -123,7 +123,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     val filePaths = ctx.args.tastyFiles.map(_.getAbsolutePath).toList
     val classpath = ctx.args.classpath.split(java.io.File.pathSeparator).toList
 
-    inspectFilesInContext(classpath, filePaths)
+    if filePaths.nonEmpty then inspectFilesInContext(classpath, filePaths)
 
     val all = topLevels.result()
     all.groupBy(_._1).map { case (pckName, members) =>
