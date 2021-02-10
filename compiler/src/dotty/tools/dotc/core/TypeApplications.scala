@@ -407,19 +407,22 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match {
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if self.derivesFrom(from) then
         def elemType(tp: Type): Type = tp.widenDealias match
+          case tp: OrType =>
+            if tp.tp1.isBottomType then elemType(tp.tp2)
+            else if tp.tp2.isBottomType then elemType(tp.tp1)
+            else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
           case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)
       else self
-  }
 
   /** If this is a repeated parameter `*T`, translate it to either `Seq[T]` or
    *  `Array[? <: T]` depending on the value of `toArray`.
