@@ -66,7 +66,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
   /** Used to elide output in replStringOf. TODO: Implement setting scala.repl.maxprintstring as in Scala 2 */
   private[repl] def truncate(str: String): String =
-    if str.length > MaxStringElements then (str take MaxStringElements - 3) + "..."
+    if str.length > MaxStringElements then str.take(MaxStringElements - 3) + "..."
     else str
 
   /** Return a String representation of a value we got from `classLoader()`. */
