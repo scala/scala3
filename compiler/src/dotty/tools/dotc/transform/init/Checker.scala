@@ -52,6 +52,7 @@ class Checker extends MiniPhase {
         thisClass = cls,
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
+        safePromoted = mutable.Set.empty,
         env = baseEnv.withCtx(ctx.withOwner(cls))
       )
 

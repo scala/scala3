@@ -35,6 +35,7 @@ object Checking {
     thisClass: ClassSymbol,                    // the concrete class of `this`
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
+    safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
     env: Env
   ) {
 
@@ -161,40 +162,7 @@ object Checking {
       implicit val state2: State = state.withVisited(eff)
 
       eff match {
-        case Promote(pot) =>
-          pot match {
-            case pot: ThisRef =>
-              // If we have all fields initialized, then we can promote This to hot.
-              val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
-              val allFieldsInited = classRef.fields.forall { denot =>
-                val sym = denot.symbol
-                sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
-              }
-              if (allFieldsInited)
-                Errors.empty
-              else
-                PromoteThis(pot, eff.source, state2.path).toErrors
-            case _: Cold =>
-              PromoteCold(eff.source, state2.path).toErrors
-
-            case pot @ Warm(cls, outer) =>
-              val errors = state.test { check(Promote(outer)(eff.source)) }
-              if (errors.isEmpty) Errors.empty
-              else PromoteWarm(pot, eff.source, state2.path).toErrors
-
-            case Fun(pots, effs) =>
-              val errs1 = state.test { effs.flatMap { check(_) } }
-              val errs2 = state.test { pots.flatMap { pot => check(Promote(pot)(eff.source))(state.copy(path = Vector.empty)) } }
-              if (errs1.nonEmpty || errs2.nonEmpty)
-                UnsafePromotion(pot, eff.source, state2.path, errs1 ++ errs2).toErrors
-              else
-                Errors.empty
-
-            case pot =>
-              val (pots, effs) = expand(pot)
-              val effs2 = pots.map(Promote(_)(eff.source))
-              (effs2 ++ effs).flatMap(check(_))
-          }
+        case Promote(pot) => checkPromote(pot, eff.source)
 
         case FieldAccess(pot, field) =>
 
@@ -278,6 +246,47 @@ object Checking {
           }
       }
     }
+
+  private def checkPromote(pot: Potential, source: Tree)(implicit state: State): Errors =
+    if (state.safePromoted.contains(pot)) Errors.empty
+    else
+      val errs = pot match {
+        case pot: ThisRef =>
+          // If we have all fields initialized, then we can promote This to hot.
+          val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
+          val allFieldsInited = classRef.fields.forall { denot =>
+            val sym = denot.symbol
+            sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
+          }
+          if (allFieldsInited)
+            Errors.empty
+          else
+            PromoteThis(pot, source, state.path).toErrors
+        case _: Cold =>
+          PromoteCold(source, state.path).toErrors
+
+        case pot @ Warm(cls, outer) =>
+          val errors = state.test { checkPromote(outer, source) }
+          if (errors.isEmpty) Errors.empty
+          else PromoteWarm(pot, source, state.path).toErrors
+
+        case Fun(pots, effs) =>
+          val errs1 = state.test { effs.flatMap { check(_) } }
+          val errs2 = state.test { pots.flatMap { pot => checkPromote(pot, source)(state.copy(path = Vector.empty)) } }
+          if (errs1.nonEmpty || errs2.nonEmpty)
+            UnsafePromotion(pot, source, state.path, errs1 ++ errs2).toErrors
+          else
+            Errors.empty
+
+        case pot =>
+          val (pots, effs) = expand(pot)
+          val effs2 = pots.map(Promote(_)(source))
+          (effs2 ++ effs).flatMap(check(_))
+      }
+      // If we can safely promote, then we don't need to check again
+      if (errs.isEmpty)
+        state.safePromoted += pot
+      errs
 
   private def expand(pot: Potential)(implicit state: State): Summary = trace("expand " + pot.show, init, sum => Summary.show(sum.asInstanceOf[Summary])) {
     pot match {
