@@ -49,15 +49,6 @@ object NullOpsDecorator:
       val stripped = self.stripNull
       stripped ne self
     }
-
-    /** Types nullable after erasure are:
-     *    - Null itself
-     *    - Any type that is a subtype of `Object`, excluding `Nothing`
-     */
-    def isNullableAfterErasure(using Context): Boolean =
-      self.isNullType
-      || !self.isNothingType
-        && self.stripNull.derivesFrom(defn.ObjectClass)
   end extension
 
   import ast.tpd._
