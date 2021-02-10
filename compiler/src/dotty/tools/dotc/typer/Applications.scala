@@ -1897,7 +1897,8 @@ trait Applications extends Compatibility {
     }
 
     /** The type of alternative `alt` after instantiating its first parameter
-     *  clause with `argTypes`.
+     *  clause with `argTypes`. In addition, if the resulting type is a PolyType
+     *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
      */
     def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
       def skip(tp: Type): Type = tp match {
