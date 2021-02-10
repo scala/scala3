@@ -403,45 +403,38 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Translate a type of the form From[T] to either To[T] or To[? <: T] (if `wildcardArg` is set).
-   *  Ff `withOrNull` is true, the elemTp will become nullable.
    *  Keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false, withOrNull: Boolean = false)(using Context): Type = self match {
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
-    case OrNull(tp) =>
-      tp.translateParameterized(from, to, wildcardArg, withOrNull)
     case _ =>
       if self.derivesFrom(from) then
         def elemType(tp: Type): Type = tp.widenDealias match
           case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         val arg = elemType(self)
-        val arg1 = if withOrNull && arg.isNullableAfterErasure then OrNull(arg) else arg
-        val arg2 = if (wildcardArg) TypeBounds.upper(arg1) else arg1
-        to.typeRef.appliedTo(arg2)
+        val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
+        to.typeRef.appliedTo(arg1)
       else self
   }
 
   /** If this is a repeated parameter `*T`, translate it to either `Seq[T]` or
    *  `Array[? <: T]` depending on the value of `toArray`.
    *  Additionally, if `translateWildcard` is true, a wildcard type
-   *  will be translated to `*<?>`, and if `withOrNull` is true, the elemTp
-   *  will become nullable.
-   *  Other types are kept as-is.
+   *  will be translated to `*<?>`. Other types are kept as-is.
    */
-  def translateFromRepeated(toArray: Boolean, translateWildcard: Boolean = false, withOrNull: Boolean = false)(using Context): Type =
+  def translateFromRepeated(toArray: Boolean, translateWildcard: Boolean = false)(using Context): Type =
     val seqClass = if (toArray) defn.ArrayClass else defn.SeqClass
-    val tp = if translateWildcard && self.isInstanceOf[WildcardType] then
+    if translateWildcard && self.isInstanceOf[WildcardType] then
       seqClass.typeRef.appliedTo(WildcardType)
     else if self.isRepeatedParam then
       // We want `Array[? <: T]` because arrays aren't covariant until after
       // erasure. See `tests/pos/i5140`.
-      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = toArray, withOrNull = withOrNull)
+      translateParameterized(defn.RepeatedParamClass, seqClass, wildcardArg = toArray)
     else self
-    if withOrNull then OrNull(tp) else tp
 
   /** Translate a `From[T]` into a `*T`. */
   def translateToRepeated(from: ClassSymbol)(using Context): Type =

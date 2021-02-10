@@ -802,17 +802,10 @@ class Typer extends Namer
         val ptArg =
           // FIXME(#8680): Quoted patterns do not support Array repeated arguments
           if (ctx.mode.is(Mode.QuotedPattern))
-            if unsafeNulls then
-              pt.translateFromRepeated(toArray = false, translateWildcard = true, withOrNull = true)
-            else
-              pt.translateFromRepeated(toArray = false, translateWildcard = true)
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
           else
-            if unsafeNulls then
-                pt.translateFromRepeated(toArray = false, translateWildcard = true, withOrNull = true) |
-                pt.translateFromRepeated(toArray = true,  translateWildcard = true, withOrNull = true)
-            else
-              pt.translateFromRepeated(toArray = false, translateWildcard = true) |
-              pt.translateFromRepeated(toArray = true,  translateWildcard = true)
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
+            | pt.translateFromRepeated(toArray = true,  translateWildcard = true)
         val expr0 = typedExpr(tree.expr, ptArg)
         val expr1 = if ctx.explicitNulls && (!ctx.mode.is(Mode.Pattern)) then
             if expr0.tpe.isNullType then
