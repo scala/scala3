@@ -1824,12 +1824,14 @@ object SymDenotations {
       )
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
-      derivesFrom(base) ||
-        base.isClass && (
-          (symbol eq defn.NothingClass) ||
-            (!ctx.explicitNulls || ctx.phase.erasedTypes)
-            && (symbol eq defn.NullClass)
-            && (base ne defn.NothingClass))
+      derivesFrom(base)
+      || base.isClass
+         && (
+          (symbol eq defn.NothingClass)
+          || (symbol eq defn.NullClass)
+              && (!ctx.mode.is(Mode.SafeNulls) || ctx.phase.erasedTypes)
+              && (base ne defn.NothingClass)
+        )
 
     /** Is it possible that a class inherits both `this` and `that`?
      *
