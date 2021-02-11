@@ -100,6 +100,9 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
 
     val b = new StringBuilder
     b ++= "SMAP\n"
+    b ++= cunit.source.name
+    b += '\n'
+    b ++= "Scala\n"
     scalaStratum.write(b)
     debugStratum.write(b)
     b.toString
