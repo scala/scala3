@@ -15,7 +15,7 @@ import Decorators._
 object TastyPickler {
 
   private val versionStringBytes = {
-    val compilerString = s"Scala compiler ${config.Properties.versionString}"
+    val compilerString = s"Scala ${config.Properties.simpleVersionString}"
     compilerString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
   }
 

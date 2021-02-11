@@ -12,35 +12,35 @@ class TastyHeaderUnpicklerTest {
   import TastyHeaderUnpicklerTest._
 
   @Test def vanilla: Unit = {
-    runTest(MajorVersion, MinorVersion, ExperimentalVersion, "Scala compiler 3.0.0-M4-bin-SNAPSHOT-git-12345")
+    runTest(MajorVersion, MinorVersion, ExperimentalVersion, "Scala 3.0.0-M4-bin-SNAPSHOT-git-12345")
   }
 
   @Test def failBumpExperimental: Unit = {
-    (runTest(MajorVersion, MinorVersion, ExperimentalVersion + 1, "Scala compiler 3.0.0-M4-bin-SNAPSHOT-git-12345"))
+    (runTest(MajorVersion, MinorVersion, ExperimentalVersion + 1, "Scala 3.0.0-M4-bin-SNAPSHOT-git-12345"))
   }
 
   @Test def failBumpMinor: Unit = {
-    (runTest(MajorVersion, MinorVersion + 1, ExperimentalVersion, "Scala compiler 3.1.0-RC1"))
+    (runTest(MajorVersion, MinorVersion + 1, ExperimentalVersion, "Scala 3.1.0-RC1"))
   }
 
   @Test def failBumpMajor: Unit = {
-    (runTest(MajorVersion + 1, MinorVersion, ExperimentalVersion, "Scala compiler 4.0.0-M1"))
+    (runTest(MajorVersion + 1, MinorVersion, ExperimentalVersion, "Scala 4.0.0-M1"))
   }
 
   @Test def failBumpMajorFinal: Unit = {
-    (runTest(MajorVersion + 1, MinorVersion, 0, "Scala compiler 4.0.0"))
+    (runTest(MajorVersion + 1, MinorVersion, 0, "Scala 4.0.0"))
   }
 
   @Test def okSubtractExperimental: Unit = {
-    (runTest(MajorVersion, MinorVersion, ExperimentalVersion - 1, "Scala compiler 3.0.0"))
+    (runTest(MajorVersion, MinorVersion, ExperimentalVersion - 1, "Scala 3.0.0"))
   }
 
   @Test def okSubtractMinor: Unit = {
-    (runTest(MajorVersion, MinorVersion - 1, ExperimentalVersion, "Scala compiler 3.0.0-M4-bin-SNAPSHOT-git-12345"))
+    (runTest(MajorVersion, MinorVersion - 1, ExperimentalVersion, "Scala 3.0.0-M4-bin-SNAPSHOT-git-12345"))
   }
 
   @Test def failSubtractMajor: Unit = {
-    (runTest(MajorVersion - 1, MinorVersion, ExperimentalVersion, "Scala compiler 3.0.0-M4-bin-SNAPSHOT-git-12345"))
+    (runTest(MajorVersion - 1, MinorVersion, ExperimentalVersion, "Scala 3.0.0-M4-bin-SNAPSHOT-git-12345"))
   }
 
 }

@@ -66,49 +66,13 @@ class TastyVersionFormatTest {
 object TastyVersionFormatTest {
 
   case class TastyVersion(major: Int, minor: Int, experimental: Int) { file =>
-
-    /**if `file <:< compiler` then tasty file is valid to be read.
-     *
-     * Follows the given algorithm:
-     * ```
-     * if file.major != compiler.major then
-     *   return incompatible
-     * if compiler.experimental == 0 then
-     *   if file.experimental != 0 then
-     *     return incompatible
-     *   if file.minor > compiler.minor then
-     *     return incompatible
-     *   else
-     *     return compatible
-     * else invariant[compiler.experimental != 0]
-     *   if file.experimental == compiler.experimental then
-     *     if file.minor == compiler.minor then
-     *       return compatible (all fields equal)
-     *     else
-     *       return incompatible
-     *   else if file.experimental == 0,
-     *     if file.minor < compiler.minor then
-     *       return compatible (an experimental version can read a previous released version)
-     *     else
-     *       return incompatible (an experimental version cannot read its own minor version or any later version)
-     *   else invariant[file.experimental is non-0 and different than compiler.experimental]
-     *     return incompatible
-     * ```
-     */
-    def <:<(compiler: TastyVersion): Boolean = (
-      file.major == compiler.major && (
-        if (file.experimental == compiler.experimental) {
-          if (compiler.experimental == 0) {
-            file.minor <= compiler.minor
-          }
-          else {
-            file.minor == compiler.minor
-          }
-        }
-        else {
-          file.experimental == 0 && file.minor < compiler.minor
-        }
-      )
+    def <:<(compiler: TastyVersion): Boolean = TastyFormat.isVersionCompatible(
+      fileMajor            = file.major,
+      fileMinor            = file.minor,
+      fileExperimental     = file.experimental,
+      compilerMajor        = compiler.major,
+      compilerMinor        = compiler.minor,
+      compilerExperimental = compiler.experimental
     )
 
     /**if `file unrelated compiler` then tasty file must be rejected.*/
