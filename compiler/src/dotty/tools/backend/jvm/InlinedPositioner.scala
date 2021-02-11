@@ -60,13 +60,11 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
         b ++= "*E\n"
 
   private val requests = mutable.ListBuffer.empty[Request]
-  private val allocatedLines = mutable.Map.empty[SourcePosition, Int]
   private var lastLine = cunit.tpdTree.sourcePos.endLine
 
   private def allocate(origPos: SourcePosition): Int =
     val line = lastLine + 1
     lastLine += origPos.lines.length
-    allocatedLines += (origPos -> line)
     line
 
   private class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
@@ -74,7 +72,7 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
       if tree.source != enclosingFile then
         tree.getAttachment(InliningPosition) match
           case Some(targetPos) =>
-            val firstFakeLine = allocatedLines.applyOrElse(tree.sourcePos, allocate)
+            val firstFakeLine = allocate(tree.sourcePos)
             requests += Request(targetPos, tree.sourcePos, firstFakeLine)
             RequestCollector(tree.source).traverseChildren(tree)
           case None =>
@@ -88,7 +86,7 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
   def debugExtension: Option[String] = Option.when(requests.nonEmpty) {
     val scalaStratum =
       val files = cunit.source :: requests.map(_.origPos.source).distinct.filter(_ != cunit.source).toList
-      val mappings = requests.distinctBy(_.firstFakeLine).map { case Request(_, origPos, firstFakeLine) =>
+      val mappings = requests.map { case Request(_, origPos, firstFakeLine) =>
         Mapping(origPos.startLine, files.indexOf(origPos.source) + 1, origPos.lines.length, firstFakeLine, 1)
       }.toList
       Stratum("Scala", files.zipWithIndex.map { case (f, n) => File(n + 1, f.name, None) }, Mapping(0, 1, cunit.tpdTree.sourcePos.lines.length, 0, 1) +: mappings)
