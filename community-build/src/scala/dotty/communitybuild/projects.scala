@@ -175,7 +175,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.4.4",
+      "-sbt-version", "1.4.7",
        "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
