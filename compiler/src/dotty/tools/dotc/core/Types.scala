@@ -3367,7 +3367,7 @@ object Types {
           case tp: ExprType => tp.signature
           case tp =>
             if tp.isRef(defn.UnitClass) then Signature(Nil, defn.UnitClass.fullName.asTypeName)
-            else Signature(tp, isJava = false)
+            else Signature(tp, isJava)
         this match
           case tp: MethodType =>
             val params = if (isErasedMethod) Nil else tp.paramInfos
