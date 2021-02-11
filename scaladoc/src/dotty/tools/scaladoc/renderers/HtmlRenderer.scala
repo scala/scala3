@@ -28,6 +28,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
   private val args = summon[DocContext].args
   val staticSite = summon[DocContext].staticSiteContext
 
+  val effectiveMembers = members.filter( (dri, member) => member.origin == Origin.RegularlyDefined && member.inheritedFrom.isEmpty)
+
   private def needsOwnPage(member: Member): Boolean =
     def properKind(kind: Kind): Boolean = kind match
       case Kind.Package => true
