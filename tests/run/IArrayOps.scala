@@ -1,11 +1,6 @@
 @main def Test: Unit =
   val iarr1 = IArray(1, 2, 3)
   val iarr2 = IArray(5, 4, 5, 6)
-  // val iarr3 = IArray(
-  //   IArray(1, 2, 3),
-  //   IArray(4, 5, 6),
-  //   IArray(7, 8, 9)
-  // )
 
   println(iarr1.toSeq)
   println(iarr1.contains(1))

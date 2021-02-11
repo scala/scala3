@@ -17,12 +17,12 @@ sealed abstract class IArrayBuilder[T]
   def clear(): Unit = arrayBuilder.clear()
 
   /** Add all elements of an array */
-  def addAll(xs: IArray[T]): this.type =
+  def addAll(xs: IArray[T] | Array[_ <: T]): this.type =
     arrayBuilder.addAll(xs.asInstanceOf[Array[T]])
     this
 
   /** Add a slice of an array */
-  def addAll(xs: IArray[T], offset: Int, length: Int): this.type =
+  def addAll(xs: IArray[T] | Array[_ <: T], offset: Int, length: Int): this.type =
     arrayBuilder.addAll(xs.asInstanceOf[Array[T]], offset, length)
     this
 
