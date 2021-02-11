@@ -131,6 +131,9 @@ object IArray:
 
   /** Finds index of first occurrence of some value in this array after or at some start index. */
   extension [T](arr: IArray[T]) def indexOf(elem: T, from: Int = 0): Int =
+    // `asInstanceOf` needed because `elem` does not have type `arr.T`
+    // We could use `arr.iterator.indexOf(elem, from)` or `arr.indexWhere(_ == elem, from)`
+    // but these would incur some overhead.
     genericArrayOps(arr).indexOf(elem.asInstanceOf, from)
 
   /** Finds index of the first element satisfying some predicate after or at some start index. */
@@ -163,6 +166,7 @@ object IArray:
 
   /** Finds index of last occurrence of some value in this array before or at a given end index. */
   extension [T](arr: IArray[T]) def lastIndexOf(elem: T, end: Int = arr.length - 1): Int =
+    // see: same issue in `indexOf`
     genericArrayOps(arr).lastIndexOf(elem.asInstanceOf, end)
 
   /** Finds index of last element satisfying some predicate before or at given end index. */
@@ -299,6 +303,8 @@ object IArray:
     def tapEach[U](f: (T) => U): IArray[T] =
       arr.toSeq.foreach(f)
       arr
+    def transpose[U](implicit asArray: T => IArray[U]): IArray[IArray[U]] =
+      genericArrayOps(arr).transpose(using asArray.asInstanceOf[T => Array[U]])
     def unzip[T1, T2](using asPair: T => (T1, T2), ct1: ClassTag[T1], ct2: ClassTag[T2]): (IArray[T1], IArray[T2]) = genericArrayOps(arr).unzip
     def unzip3[T1, T2, T3](using asTriple: T => (T1, T2, T3), ct1: ClassTag[T1], ct2: ClassTag[T2], ct3: ClassTag[T3]): (IArray[T1], IArray[T2], IArray[T3]) = genericArrayOps(arr).unzip3
     def updated[U >: T: ClassTag](index: Int, elem: U): IArray[U] = genericArrayOps(arr).updated(index, elem)
@@ -309,11 +315,6 @@ object IArray:
     def zipAll[T1 >: T, U](that: IArray[U], thisElem: T1, thatElem: U): IArray[(T1, U)] = genericArrayOps(arr).zipAll(that, thisElem, thatElem)
     def zipAll[T1 >: T, U](that: Iterable[U], thisElem: T1, thatElem: U): IArray[(T1, U)] = genericArrayOps(arr).zipAll(that, thisElem, thatElem)
     def zipWithIndex: IArray[(T, Int)] = genericArrayOps(arr).zipWithIndex
-  end extension
-
-  extension [T](arr: IArray[T])
-    def transpose[U](implicit asArray: T => IArray[U]): IArray[IArray[U]] =
-      genericArrayOps(arr).transpose(using asArray.asInstanceOf[T => Array[U]])
 
   extension [T, U >: T: ClassTag](prefix: IterableOnce[T])
     def ++:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
@@ -442,6 +443,9 @@ object IArray:
    *  @return   the array created from concatenating `xss`
    */
   def concat[T: ClassTag](xss: IArray[T]*): IArray[T] =
+    // `Array.concat` should arguably take in a `Seq[Array[_ <: T]]`,
+    // but since it currently takes a `Seq[Array[T]]` we have to perform a cast,
+    // knowing tacitly that `concat` is not going to do the wrong thing.
     Array.concat[T](xss.asInstanceOf[immutable.Seq[Array[T]]]: _*)
 
   /** Returns an immutable array that contains the results of some element computation a number
