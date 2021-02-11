@@ -326,48 +326,53 @@ object IArray:
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def genericWrapArray[T](arr: IArray[T]): scala.collection.immutable.ArraySeq[T] =
-    scala.collection.immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[T]])
+  implicit def genericWrapArray[T](arr: IArray[T]): immutable.ArraySeq[T] =
+    if arr eq null then null else immutable.ArraySeq.unsafeWrapArray(arr)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): scala.collection.immutable.ArraySeq[T] =
-    scala.collection.immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): immutable.ArraySeq.ofRef[T] =
+    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
+    // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
+    // unique ones by way of this implicit, let's share one.
+    if (arr eq null) null
+    else if (arr.length == 0) immutable.ArraySeq.empty[AnyRef].asInstanceOf[immutable.ArraySeq.ofRef[T]]
+    else immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapIntArray(arr: IArray[Int]): scala.collection.immutable.ArraySeq[Int] =
-    scala.collection.immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]])
+  implicit def wrapIntArray(arr: IArray[Int]): immutable.ArraySeq.ofInt =
+    if (arr ne null) new immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapDoubleIArray(arr: IArray[Double]): collection.immutable.ArraySeq[Double] =
-    scala.collection.immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]])
+  implicit def wrapDoubleIArray(arr: IArray[Double]): immutable.ArraySeq.ofDouble =
+    if (arr ne null) new immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapLongIArray(arr: IArray[Long]): collection.immutable.ArraySeq[Long] =
-    scala.collection.immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]])
+  implicit def wrapLongIArray(arr: IArray[Long]): immutable.ArraySeq.ofLong =
+    if (arr ne null) new immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapFloatIArray(arr: IArray[Float]): collection.immutable.ArraySeq[Float] =
-    scala.collection.immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]])
+  implicit def wrapFloatIArray(arr: IArray[Float]): immutable.ArraySeq.ofFloat =
+    if (arr ne null) new immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapCharIArray(arr: IArray[Char]): collection.immutable.ArraySeq[Char] =
-    scala.collection.immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]])
+  implicit def wrapCharIArray(arr: IArray[Char]): immutable.ArraySeq.ofChar =
+    if (arr ne null) new immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapByteIArray(arr: IArray[Byte]): collection.immutable.ArraySeq[Byte] =
-    scala.collection.immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]])
+  implicit def wrapByteIArray(arr: IArray[Byte]): immutable.ArraySeq.ofByte =
+    if (arr ne null) new immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapShortIArray(arr: IArray[Short]): collection.immutable.ArraySeq[Short] =
-    scala.collection.immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]])
+  implicit def wrapShortIArray(arr: IArray[Short]): immutable.ArraySeq.ofShort =
+    if (arr ne null) new immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapBooleanIArray(arr: IArray[Boolean]): collection.immutable.ArraySeq[Boolean] =
-    scala.collection.immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]])
+  implicit def wrapBooleanIArray(arr: IArray[Boolean]): immutable.ArraySeq.ofBoolean =
+    if (arr ne null) new immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapUnitIArray(arr: IArray[Unit]): collection.immutable.ArraySeq[Unit] =
-    scala.collection.immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]])
+  implicit def wrapUnitIArray(arr: IArray[Unit]): immutable.ArraySeq.ofUnit =
+    if (arr ne null) new immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]) else null
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will
