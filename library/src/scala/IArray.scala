@@ -1,7 +1,8 @@
 package scala
 import reflect.ClassTag
 
-import scala.collection._
+import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.IArrayBuilder
 
 opaque type IArray[+T] = Array[_ <: T]
@@ -276,8 +277,8 @@ object IArray:
     def startsWith[U >: T](that: IterableOnce[U], offset: Int): Boolean = genericArrayOps(arr).startsWith(that, offset)
     def endsWith[U >: T](that: IArray[U]): Boolean = genericArrayOps(arr).endsWith(that)
     def endsWith[U >: T](that: Iterable[U]): Boolean = genericArrayOps(arr).endsWith(that)
-    def groupBy[K](f: T => K): immutable.Map[K, IArray[T]] = genericArrayOps(arr).groupBy(f)
-    def groupMap[K, U: ClassTag](key: T => K)(f: T => U): immutable.Map[K, IArray[U]] = genericArrayOps(arr).groupMap(key)(f)
+    def groupBy[K](f: T => K): Map[K, IArray[T]] = genericArrayOps(arr).groupBy(f)
+    def groupMap[K, U: ClassTag](key: T => K)(f: T => U): Map[K, IArray[U]] = genericArrayOps(arr).groupMap(key)(f)
     def grouped(size: Int): Iterator[IArray[T]] = genericArrayOps(arr).grouped(size)
     def inits: Iterator[IArray[T]] = genericArrayOps(arr).inits
     def intersect[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).intersect(that)
@@ -326,53 +327,53 @@ object IArray:
     def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def genericWrapArray[T](arr: IArray[T]): immutable.ArraySeq[T] =
-    if arr eq null then null else immutable.ArraySeq.unsafeWrapArray(arr)
+  implicit def genericWrapArray[T](arr: IArray[T]): ArraySeq[T] =
+    if arr eq null then null else ArraySeq.unsafeWrapArray(arr)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): immutable.ArraySeq.ofRef[T] =
+  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): ArraySeq.ofRef[T] =
     // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
     // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
     // unique ones by way of this implicit, let's share one.
     if (arr eq null) null
-    else if (arr.length == 0) immutable.ArraySeq.empty[AnyRef].asInstanceOf[immutable.ArraySeq.ofRef[T]]
-    else immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+    else if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+    else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapIntArray(arr: IArray[Int]): immutable.ArraySeq.ofInt =
-    if (arr ne null) new immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]) else null
+  implicit def wrapIntArray(arr: IArray[Int]): ArraySeq.ofInt =
+    if (arr ne null) new ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapDoubleIArray(arr: IArray[Double]): immutable.ArraySeq.ofDouble =
-    if (arr ne null) new immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]) else null
+  implicit def wrapDoubleIArray(arr: IArray[Double]): ArraySeq.ofDouble =
+    if (arr ne null) new ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapLongIArray(arr: IArray[Long]): immutable.ArraySeq.ofLong =
-    if (arr ne null) new immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]) else null
+  implicit def wrapLongIArray(arr: IArray[Long]): ArraySeq.ofLong =
+    if (arr ne null) new ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapFloatIArray(arr: IArray[Float]): immutable.ArraySeq.ofFloat =
-    if (arr ne null) new immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]) else null
+  implicit def wrapFloatIArray(arr: IArray[Float]): ArraySeq.ofFloat =
+    if (arr ne null) new ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapCharIArray(arr: IArray[Char]): immutable.ArraySeq.ofChar =
-    if (arr ne null) new immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]) else null
+  implicit def wrapCharIArray(arr: IArray[Char]): ArraySeq.ofChar =
+    if (arr ne null) new ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapByteIArray(arr: IArray[Byte]): immutable.ArraySeq.ofByte =
-    if (arr ne null) new immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]) else null
+  implicit def wrapByteIArray(arr: IArray[Byte]): ArraySeq.ofByte =
+    if (arr ne null) new ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapShortIArray(arr: IArray[Short]): immutable.ArraySeq.ofShort =
-    if (arr ne null) new immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]) else null
+  implicit def wrapShortIArray(arr: IArray[Short]): ArraySeq.ofShort =
+    if (arr ne null) new ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapBooleanIArray(arr: IArray[Boolean]): immutable.ArraySeq.ofBoolean =
-    if (arr ne null) new immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]) else null
+  implicit def wrapBooleanIArray(arr: IArray[Boolean]): ArraySeq.ofBoolean =
+    if (arr ne null) new ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  implicit def wrapUnitIArray(arr: IArray[Unit]): immutable.ArraySeq.ofUnit =
-    if (arr ne null) new immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]) else null
+  implicit def wrapUnitIArray(arr: IArray[Unit]): ArraySeq.ofUnit =
+    if (arr ne null) new ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]) else null
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will
@@ -451,7 +452,7 @@ object IArray:
     // `Array.concat` should arguably take in a `Seq[Array[_ <: T]]`,
     // but since it currently takes a `Seq[Array[T]]` we have to perform a cast,
     // knowing tacitly that `concat` is not going to do the wrong thing.
-    Array.concat[T](xss.asInstanceOf[immutable.Seq[Array[T]]]: _*)
+    Array.concat[T](xss.asInstanceOf[Seq[Array[T]]]: _*)
 
   /** Returns an immutable array that contains the results of some element computation a number
    *  of times. Each element is determined by a separate computation.
