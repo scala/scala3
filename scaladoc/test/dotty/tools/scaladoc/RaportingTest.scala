@@ -34,11 +34,6 @@ class ReportingTest:
   }
 
   @Test
-  def noClassesErors = checkReportedDiagnostics(_.copy(tastyFiles = Nil)){ diag =>
-    assertMessagesAbout(diag.errorMsgs)("classes should no be empty")
-  }
-
-  @Test
   def errorsInCaseOfIncompletClasspath =
     val notTasty = Files.createTempFile("broken", ".notTasty")
     try

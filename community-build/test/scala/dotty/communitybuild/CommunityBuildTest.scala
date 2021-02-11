@@ -22,7 +22,7 @@ abstract class CommunityBuildTest:
    */
   extension (self: CommunityProject) def run()(using suite: CommunityBuildTest) =
     self.dependencies.foreach(_.publish())
-    suite.test(self.project, self.binaryName, self.runCommandsArgs :+ self.testCommand)
+    suite.test(self)
 
   /** Build the given project with the published local compiler and sbt plugin.
    *
@@ -34,10 +34,14 @@ abstract class CommunityBuildTest:
    *                    a build tool like SBT or Mill
    *  @param arguments  Arguments to pass to the testing program
    */
-  def test(project: String, command: String, arguments: Seq[String]): Unit = {
+  def test(projectDef: CommunityProject): Unit = {
+    val project = projectDef.project
+    val command = projectDef.binaryName
+    val arguments = projectDef.buildCommands
+
     @annotation.tailrec
-    def execTimes(task: => Int, timesToRerun: Int): Boolean =
-      val exitCode = task
+    def execTimes(task: () => Int, timesToRerun: Int): Boolean =
+      val exitCode = task()
       if exitCode == 0
       then true
       else if timesToRerun == 0
@@ -60,7 +64,7 @@ abstract class CommunityBuildTest:
         |""".stripMargin)
     }
 
-    val testsCompletedSuccessfully = execTimes(exec(projectDir, command, arguments: _*), 3)
+    val testsCompletedSuccessfully = execTimes(projectDef.build, 3)
 
     if (!testsCompletedSuccessfully) {
       fail(s"""

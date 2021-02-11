@@ -8,8 +8,6 @@ object TestUtils {
     import java.io.File
     import scala.collection.mutable.ListBuffer
 
-    val classRoot = new File(BuildInfo.test_testcasesOutputDir)
-
     def go(bld: ListBuffer[String])(file: File): Unit =
       file.listFiles.foreach { f =>
         if f.isFile() then
@@ -17,11 +15,17 @@ object TestUtils {
         else go(bld)(f)
       }
 
-    if classRoot.isDirectory then
-      val bld = new ListBuffer[String]
-      go(bld)(classRoot)
-      bld.result
-    else
-      sys.error(s"Class root could not be found: $classRoot")
+    def listEntry(entry: String): List[String] =
+      val classRoot = File(entry)
+      if classRoot.isDirectory then
+        val bld = new ListBuffer[String]
+        go(bld)(classRoot)
+        bld.result
+      else
+        sys.error(s"Class root could not be found: $classRoot")
+
+    val files = BuildInfo.test_testcasesOutputDir.flatMap(listEntry).toList
+    assert(files.nonEmpty, "Provided list of root directories is empty")
+    files
   }
 }

@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+if [ -z "$PROG_HOME" ] ; then
+  ## resolve links - $0 may be a link to PROG_HOME
+  PRG="$0"
+
+  # need this for relative symlinks
+  while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+      PRG="$link"
+    else
+      PRG="`dirname "$PRG"`/$link"
+    fi
+  done
+
+  saveddir=`pwd`
+
+  PROG_HOME=`dirname "$PRG"`/..
+
+  # make it fully qualified
+  PROG_HOME=`cd "$PROG_HOME" && pwd`
+
+  cd "$saveddir"
+fi
+
+source "$PROG_HOME/bin/common"
+
+default_java_opts="-Xmx768m -Xms768m"
+withCompiler=true
+
+CompilerMain=dotty.tools.dotc.Main
+DecompilerMain=dotty.tools.dotc.decompiler.Main
+ReplMain=dotty.tools.repl.Main
+ScriptingMain=dotty.tools.scripting.Main
+
+PROG_NAME=$CompilerMain
+
+addJava () {
+  java_args+=("'$1'")
+}
+addScala () {
+  scala_args+=("'$1'")
+}
+addResidual () {
+  residual_args+=("'$1'")
+}
+addScripting () {
+  scripting_args+=("'$1'")
+}
+
+classpathArgs () {
+  CLASS_PATH=""
+  CLASS_PATH+="$(find_lib "*scaladoc*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-compiler*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-interfaces*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-library*")$PSEP"
+  CLASS_PATH+="$(find_lib "*tasty-core*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala3-tasty-inspector*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-0*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-html-parser*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-anchorlink*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-autolink*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-emoji*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-strikethrough*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-tables*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-gfm-tasklist*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-wikilink*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-yaml-front-matter*")$PSEP"
+  CLASS_PATH+="$(find_lib "*liqp*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jsoup*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jackson-dataformat-yaml*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala-asm*")$PSEP"
+  CLASS_PATH+="$(find_lib "*compiler-interface*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jline-reader*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jline-terminal-3*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jline-terminal-jna*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-util*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-formatter*")$PSEP"
+  CLASS_PATH+="$(find_lib "*autolink-0.6*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-jira-converter*")$PSEP"
+  CLASS_PATH+="$(find_lib "*antlr-3*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jackson-annotations*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jackson-core*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jackson-databind*")$PSEP"
+  CLASS_PATH+="$(find_lib "*snakeyaml*")$PSEP"
+  CLASS_PATH+="$(find_lib "*scala-library*")$PSEP"
+  CLASS_PATH+="$(find_lib "*protobuf-java*")$PSEP"
+  CLASS_PATH+="$(find_lib "*util-interface*")$PSEP"
+  CLASS_PATH+="$(find_lib "*jna-5*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-tables*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-ins*")$PSEP"
+  CLASS_PATH+="$(find_lib "*flexmark-ext-superscript*")$PSEP"
+  CLASS_PATH+="$(find_lib "*antlr-runtime*")$PSEP"
+  CLASS_PATH+="$(find_lib "*ST4*")"
+
+  jvm_cp_args="-classpath \"$CLASS_PATH\""
+}
+
+in_scripting_args=false
+while [[ $# -gt 0 ]]; do
+case "$1" in
+           --) shift; for arg; do addResidual "$arg"; done; set -- ;;
+     -h|-help) help=true && shift ;;
+  -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
+       -debug) DEBUG="$DEBUG_STR" && shift ;;
+    -q|-quiet) quiet=true && shift ;;
+
+      -colors) colors=true && shift ;;
+   -no-colors) unset colors && shift ;;
+          # break out -D and -J options and add them to java_args so
+          # they reach the JVM in time to do some good. The -D options
+          # will be available as system properties.
+          -D*) addJava "$1" && shift ;;
+          -J*) addJava "${1:2}" && shift ;;
+            *) if [ $in_scripting_args == false ]; then
+                addResidual "$1"
+               else
+                addScripting "$1"
+               fi
+               shift
+               ;;
+  esac
+done
+
+classpathArgs
+
+eval exec "\"$JAVACMD\"" \
+     ${JAVA_OPTS:-$default_java_opts} \
+     "$DEBUG" \
+     "${java_args[@]}" \
+     "$jvm_cp_args" \
+     "dotty.tools.scaladoc.Main"  \
+     "${scala_args[@]}" \
+     "${residual_args[@]}" \
+     "$scripting_string"
+exit $?
