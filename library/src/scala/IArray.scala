@@ -2,7 +2,7 @@ package scala
 import reflect.ClassTag
 
 import scala.collection._
-import scala.collection.mutable.Buffer
+import scala.collection.mutable.ArrayBuilder
 
 opaque type IArray[+T] = Array[_ <: T]
 
@@ -674,54 +674,25 @@ object IArray:
   sealed abstract class IArrayBuilder[T]
     extends mutable.ReusableBuilder[T, IArray[T]]
       with Serializable {
-    protected[this] var capacity: Int = 0
-    protected[this] def elems: Array[T]
-    protected var size: Int = 0
 
-    def length: Int = size
+    protected[this] val arrayBuilder: ArrayBuilder[T]
 
-    override def knownSize: Int = size
-
-    protected[this] final def ensureSize(size: Int): Unit = {
-      if (capacity < size || capacity == 0) {
-        var newsize = if (capacity == 0) 16 else capacity * 2
-        while (newsize < size) newsize *= 2
-        resize(newsize)
-      }
-    }
-
-    override final def sizeHint(size: Int): Unit =
-      if (capacity < size) resize(size)
-
-    def clear(): Unit = size = 0
-
-    protected[this] def resize(size: Int): Unit
+    override final def sizeHint(size: Int): Unit = arrayBuilder.sizeHint(size)
+    def clear(): Unit = arrayBuilder.clear()
 
     /** Add all elements of an array */
-    def addAll(xs: IArray[T]): this.type = addAll(xs, 0, xs.length)
+    def addAll(xs: IArray[T]): this.type =
+      arrayBuilder.addAll(xs.asInstanceOf[Array[T]])
+      this
 
     /** Add a slice of an array */
-    def addAll(xs: IArray[T], offset: Int, length: Int): this.type = {
-      ensureSize(this.size + length)
-      Array.copy(xs.asInstanceOf[Array[T]], offset, elems, this.size, length)
-      size += length
+    def addAll(xs: IArray[T], offset: Int, length: Int): this.type =
+      arrayBuilder.addAll(xs.asInstanceOf[Array[T]], offset, length)
       this
-    }
 
-    override def addAll(xs: IterableOnce[T]): this.type = {
-      val k = xs.knownSize
-      if (k > 0) {
-        ensureSize(this.size + k)
-        // IterableOnce.copyElemsToArray(xs, elems, this.size)
-        // manually inlined as
-        xs match {
-          case src: Iterable[T] => src.copyToArray[T](elems, this.size, Int.MaxValue)
-          case src              => src.iterator.copyToArray[T](elems, this.size, Int.MaxValue)
-        }
-        size += k
-      } else if (k < 0) super.addAll(xs)
+    override def addAll(xs: IterableOnce[T]): this.type =
+      arrayBuilder.addAll(xs)
       this
-    }
   }
 
   /** A companion object for array builders.
@@ -757,421 +728,130 @@ object IArray:
     */
     @SerialVersionUID(3L)
     final class ofRef[T <: AnyRef](implicit ct: ClassTag[T]) extends IArrayBuilder[T] {
-
-      protected var elems: Array[T] = _
-
-      private def mkArray(size: Int): Array[T] = {
-        if (capacity == this.size && capacity > 0) elems
-        else if (elems eq null) new Array[T](size)
-        else java.util.Arrays.copyOf[T](elems, size)
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: T): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[T] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
-      override def clear(): Unit = {
-        super.clear()
-        if(elems ne null) java.util.Arrays.fill(elems.asInstanceOf[Array[AnyRef]], null)
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[T] = new ArrayBuilder.ofRef
+      def addOne(elem: T): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[T] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofRef[_] => (this.size == x.size) && (elems == x.elems)
+        case x: ofRef[_] => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofRef"
     }
 
     /** A class for array builders for arrays of `byte`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofByte extends IArrayBuilder[Byte] {
-
-      protected var elems: Array[Byte] = _
-
-      private def mkArray(size: Int): Array[Byte] = {
-        val newelems = new Array[Byte](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Byte): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Byte] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Byte] = new ArrayBuilder.ofByte
+      def addOne(elem: Byte): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Byte] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofByte => (this.size == x.size) && (elems == x.elems)
+        case x: ofByte => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofByte"
     }
 
     /** A class for array builders for arrays of `short`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofShort extends IArrayBuilder[Short] {
-
-      protected var elems: Array[Short] = _
-
-      private def mkArray(size: Int): Array[Short] = {
-        val newelems = new Array[Short](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Short): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Short] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Short] = new ArrayBuilder.ofShort
+      def addOne(elem: Short): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Short] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofShort => (this.size == x.size) && (elems == x.elems)
+        case x: ofShort => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofShort"
     }
 
     /** A class for array builders for arrays of `char`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofChar extends IArrayBuilder[Char] {
-
-      protected var elems: Array[Char] = _
-
-      private def mkArray(size: Int): Array[Char] = {
-        val newelems = new Array[Char](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Char): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Char] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Char] = new ArrayBuilder.ofChar
+      def addOne(elem: Char): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Char] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofChar => (this.size == x.size) && (elems == x.elems)
+        case x: ofChar => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofChar"
     }
 
     /** A class for array builders for arrays of `int`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofInt extends IArrayBuilder[Int] {
-
-      protected var elems: Array[Int] = _
-
-      private def mkArray(size: Int): Array[Int] = {
-        val newelems = new Array[Int](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Int): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Int] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Int] = new ArrayBuilder.ofInt
+      def addOne(elem: Int): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Int] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofInt => (this.size == x.size) && (elems == x.elems)
+        case x: ofInt => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofInt"
     }
 
     /** A class for array builders for arrays of `long`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofLong extends IArrayBuilder[Long] {
-
-      protected var elems: Array[Long] = _
-
-      private def mkArray(size: Int): Array[Long] = {
-        val newelems = new Array[Long](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Long): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Long] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Long] = new ArrayBuilder.ofLong
+      def addOne(elem: Long): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Long] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofLong => (this.size == x.size) && (elems == x.elems)
+        case x: ofLong => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofLong"
     }
 
     /** A class for array builders for arrays of `float`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofFloat extends IArrayBuilder[Float] {
-
-      protected var elems: Array[Float] = _
-
-      private def mkArray(size: Int): Array[Float] = {
-        val newelems = new Array[Float](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Float): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Float] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Float] = new ArrayBuilder.ofFloat
+      def addOne(elem: Float): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Float] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofFloat => (this.size == x.size) && (elems == x.elems)
+        case x: ofFloat => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofFloat"
     }
 
     /** A class for array builders for arrays of `double`s. It can be reused. */
     @SerialVersionUID(3L)
     final class ofDouble extends IArrayBuilder[Double] {
-
-      protected var elems: Array[Double] = _
-
-      private def mkArray(size: Int): Array[Double] = {
-        val newelems = new Array[Double](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Double): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Double] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Double] = new ArrayBuilder.ofDouble
+      def addOne(elem: Double): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Double] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofDouble => (this.size == x.size) && (elems == x.elems)
+        case x: ofDouble => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofDouble"
     }
 
     /** A class for array builders for arrays of `boolean`s. It can be reused. */
     @SerialVersionUID(3L)
     class ofBoolean extends IArrayBuilder[Boolean] {
-
-      protected var elems: Array[Boolean] = _
-
-      private def mkArray(size: Int): Array[Boolean] = {
-        val newelems = new Array[Boolean](size)
-        if (this.size > 0) Array.copy(elems, 0, newelems, 0, this.size)
-        newelems
-      }
-
-      protected[this] def resize(size: Int): Unit = {
-        elems = mkArray(size)
-        capacity = size
-      }
-
-      def addOne(elem: Boolean): this.type = {
-        ensureSize(this.size + 1)
-        elems(this.size) = elem
-        this.size += 1
-        this
-      }
-
-      def result(): IArray[Boolean] = {
-        if (capacity != 0 && capacity == this.size) {
-          capacity = 0
-          val res = elems
-          elems = null
-          IArray.unsafeFromArray(res)
-        }
-        else IArray.unsafeFromArray(mkArray(this.size))
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Boolean] = new ArrayBuilder.ofBoolean
+      def addOne(elem: Boolean): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Boolean] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofBoolean => (this.size == x.size) && (elems == x.elems)
+        case x: ofBoolean => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
       override def toString = "IArrayBuilder.ofBoolean"
     }
 
     /** A class for array builders for arrays of `Unit` type. It can be reused. */
     @SerialVersionUID(3L)
     final class ofUnit extends IArrayBuilder[Unit] {
-
-      protected def elems: Array[Unit] = throw new UnsupportedOperationException()
-
-      def addOne(elem: Unit): this.type = {
-        this.size += 1
-        this
-      }
-
-      override def addAll(xs: IterableOnce[Unit]): this.type = {
-        this.size += xs.iterator.size
-        this
-      }
-
-      override def addAll(xs: IArray[Unit], offset: Int, length: Int): this.type = {
-        this.size += length
-        this
-      }
-
-      def result(): IArray[Unit] = {
-        val ans = new Array[Unit](this.size)
-        var i = 0
-        while (i < this.size) { ans(i) = (); i += 1 }
-        IArray.unsafeFromArray(ans)
-      }
-
+      protected[this] val arrayBuilder: ArrayBuilder[Unit] = new ArrayBuilder.ofUnit
+      def addOne(elem: Unit): this.type = { arrayBuilder.addOne(elem); this }
+      def result(): IArray[Unit] = IArray.unsafeFromArray(arrayBuilder.result())
       override def equals(other: Any): Boolean = other match {
-        case x: ofUnit => (this.size == x.size)
+        case x: ofUnit => this.arrayBuilder == x.arrayBuilder
         case _ => false
       }
-
-      protected[this] def resize(size: Int): Unit = ()
-
       override def toString = "IArrayBuilder.ofUnit"
     }
   }
