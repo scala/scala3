@@ -4,7 +4,7 @@ package ast
 
 import core._
 import Types._, Names._, NameOps._, Flags._, util.Spans._, Contexts._, Constants._
-import typer.ProtoTypes
+import typer.{ ConstFold, ProtoTypes }
 import SymDenotations._, Symbols._, Denotations._, StdNames._, Comments._
 import language.higherKinds
 import collection.mutable.ListBuffer
@@ -408,6 +408,13 @@ object Trees {
   case class Select[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name)(implicit @constructorOnly src: SourceFile)
     extends RefTree[T] {
     type ThisTree[-T >: Untyped] = Select[T]
+
+    override def denot(using Context): Denotation = typeOpt match
+      case ConstantType(_) if ConstFold.foldedUnops.contains(name) =>
+        // Recover the denotation of a constant-folded selection
+        qualifier.typeOpt.member(name).atSignature(Signature.NotAMethod, name)
+      case _ =>
+        super.denot
   }
 
   class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)(implicit @constructorOnly src: SourceFile)

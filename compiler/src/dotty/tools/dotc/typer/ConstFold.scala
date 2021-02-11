@@ -23,7 +23,7 @@ object ConstFold:
     nme.LT, nme.GT, nme.LE, nme.GE, nme.LSL, nme.LSR, nme.ASR,
     nme.ADD, nme.SUB, nme.MUL, nme.DIV, nme.MOD)
 
-  private val foldedUnops = Set[Name](
+  val foldedUnops = Set[Name](
     nme.UNARY_!, nme.UNARY_~, nme.UNARY_+, nme.UNARY_-)
 
   def Apply[T <: Apply](tree: T)(using Context): T =
