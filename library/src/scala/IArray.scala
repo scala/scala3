@@ -3,7 +3,7 @@ import reflect.ClassTag
 
 import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
 import scala.collection.immutable.ArraySeq
-import scala.collection.mutable.IArrayBuilder
+import scala.collection.mutable.{ArrayBuilder, Builder}
 
 opaque type IArray[+T] = Array[_ <: T]
 
@@ -440,8 +440,8 @@ object IArray:
   def from[A : ClassTag](it: IterableOnce[A]): Array[A] =
     Array.from(it)
 
-  def newBuilder[T](using t: ClassTag[T]): IArrayBuilder[T] =
-    IArrayBuilder.make[T]
+  def newBuilder[T](using t: ClassTag[T]): Builder[T, IArray[T]] =
+    ArrayBuilder.make[T].mapResult(IArray.unsafeFromArray)
 
   /** Concatenates all arrays into a single immutable array.
    *
@@ -635,7 +635,7 @@ object IArray:
       *                `f` to each element of this array and collecting the results.
       */
     def map[U: ClassTag](f: T => U): IArray[U] = {
-      val b = IArrayBuilder.make[U]
+      val b = IArray.newBuilder[U]
       var i = 0
       while (i < xs.length) {
         val x = xs(i)
@@ -654,7 +654,7 @@ object IArray:
       *                `f` to each element of this array and concatenating the results.
       */
     def flatMap[U: ClassTag](f: T => IterableOnce[U]): IArray[U] = {
-      val b = IArrayBuilder.make[U]
+      val b = IArray.newBuilder[U]
       var i = 0
       while(i < xs.length) {
         val x = xs(i)
