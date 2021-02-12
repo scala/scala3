@@ -150,10 +150,19 @@ class ExtractDependencies extends Phase {
             builder.append(".")
           }
           val flatName = dep.to.flatName
-          // We create fake companion object symbols to hold the static members
-          // of Java classes, make sure to use the name of the actual Java class
-          // here.
-          val clsFlatName = if (dep.to.is(JavaDefined)) flatName.stripModuleClassSuffix else flatName
+          // Some companion objects are fake (that is, they're a compiler fiction
+          // that doesn't correspond to a class that exists at runtime), this
+          // can happen in two cases:
+          // - If a Java class has static members.
+          // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
+          //
+          // In both cases it's vital that we don't send the object name to
+          // zinc: when sbt is restarted, zinc will inspect the binary
+          // dependencies to see if they're still on the classpath, if it
+          // doesn't find them it will invalidate whatever referenced them, so
+          // any reference to a fake companion will lead to extra recompilations.
+          // Instead, use the class name since it's guaranteed to exist at runtime.
+          val clsFlatName = if (dep.to.isOneOf(JavaDefined | ConstructorProxy)) flatName.stripModuleClassSuffix else flatName
           builder.append(clsFlatName.mangledString)
           builder.toString
         }

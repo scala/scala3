@@ -84,16 +84,24 @@ sealed trait CommunityProject:
     if exitCode != 0 then
       throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
 
+  final def build(): Int = exec(projectDir, binaryName, buildCommands: _*)
+
+  final def buildCommands = runCommandsArgs :+ testCommand
+
 end CommunityProject
 
 final case class MillCommunityProject(
     project: String,
     baseCommand: String,
-    dependencies: List[CommunityProject] = Nil) extends CommunityProject:
+    dependencies: List[CommunityProject] = Nil,
+    ignoreDocs: Boolean = false,
+    ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
   override val publishCommand = s"$baseCommand.publishLocal"
   override val docCommand = null
+    // uncomment once mill is released
+    // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
 
 final case class SbtCommunityProject(
@@ -160,10 +168,9 @@ final case class SbtCommunityProject(
     """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
     ++ s"$baseCommand$sbtTestCommand"
 
-  override val publishCommand = if sbtPublishCommand eq null then null else
-    val disableDocCommand =
-      if sbtDocCommand eq null then "" else "set every useScaladoc := false;"
-    s"$baseCommand$disableDocCommand$sbtPublishCommand"
+  override val publishCommand =
+    if sbtPublishCommand eq null then null else s"$baseCommand$sbtPublishCommand"
+
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
@@ -175,7 +182,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.4.4",
+      "-sbt-version", "1.4.7",
        "-Dsbt.supershell=false",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
@@ -195,11 +202,13 @@ object projects:
   lazy val utest = MillCommunityProject(
     project = "utest",
     baseCommand = s"utest.jvm[$compilerVersion]",
+    ignoreDocs = true
   )
 
   lazy val sourcecode = MillCommunityProject(
     project = "sourcecode",
     baseCommand = s"sourcecode.jvm[$compilerVersion]",
+    ignoreDocs = true
   )
 
   lazy val oslib = MillCommunityProject(
@@ -211,7 +220,8 @@ object projects:
   lazy val oslibWatch = MillCommunityProject(
     project = "os-lib",
     baseCommand = s"os.watch[$compilerVersion]",
-    dependencies = List(utest, sourcecode)
+    dependencies = List(utest, sourcecode),
+    ignoreDocs = true
   )
 
   lazy val ujson = MillCommunityProject(
@@ -241,13 +251,15 @@ object projects:
   lazy val fansi = MillCommunityProject(
     project = "fansi",
     baseCommand = s"fansi.jvm[$compilerVersion]",
-    dependencies = List(utest, sourcecode)
+    dependencies = List(utest, sourcecode),
+    ignoreDocs = true
   )
 
   lazy val pprint = MillCommunityProject(
     project = "PPrint",
     baseCommand = s"pprint.jvm[$compilerVersion]",
-    dependencies = List(fansi)
+    dependencies = List(fansi),
+    ignoreDocs = true
   )
 
   lazy val requests = MillCommunityProject(
@@ -409,7 +421,7 @@ object projects:
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
     // Hardcode the version to avoid having to deal with something set by sbt-dynver
     sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
-    sbtDocCommand   = "munitJVM/doc",
+    sbtDocCommand   = "junit/doc; munitJVM/doc",
     dependencies = List(scalacheck)
   )
 
@@ -627,7 +639,7 @@ object projects:
     sbtPublishCommand = "publishLocal",
     dependencies = List(scalatest)
   )
-  
+
   lazy val perspective = SbtCommunityProject(
     project = "perspective",
     // No library with easy typeclasses to verify data against exist for Dotty, so no tests yet
@@ -702,4 +714,4 @@ def allProjects = List(
   projects.perspective,
 )
 
-lazy val projectMap = allProjects.map(p => p.project -> p).toMap
+lazy val projectMap = allProjects.groupBy(_.project)

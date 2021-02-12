@@ -1,7 +1,9 @@
 package scala
 import reflect.ClassTag
 
-import scala.collection.immutable
+import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
+import scala.collection.immutable.ArraySeq
+import scala.collection.mutable.{ArrayBuilder, Builder}
 
 opaque type IArray[+T] = Array[_ <: T]
 
@@ -39,15 +41,10 @@ object IArray:
   extension (arr: IArray[Object]) def length: Int = arr.asInstanceOf[Array[Object]].length
   extension [T](arr: IArray[T]) def length: Int = arr.asInstanceOf[Array[T]].length
 
-  /** Returns this array concatenated with the given array. */
-  extension [T](arr: IArray[T]) def ++ [U >: T: ClassTag](that: IArray[U]): IArray[U] =
-    genericArrayOps(arr) ++ that
 
   /** Tests whether this array contains a given value as an element. */
   extension [T](arr: IArray[T]) def contains(elem: T): Boolean =
-    // `genericArrayOps(arr).contains(elem)` does not work because `elem` does not have type `arr.T`
-    // but we can use `exists` instead, which is how `ArrayOps#contains` itself is implemented:
-    genericArrayOps(arr).exists(_ == elem)
+    genericArrayOps(arr).contains(elem.asInstanceOf)
 
   /** Copy elements of this array to another array. */
   extension [T](arr: IArray[T]) def copyToArray[U >: T](xs: Array[U]): Int =
@@ -100,7 +97,7 @@ object IArray:
 
   /** Flattens a two-dimensional array by concatenating all its rows
     * into a single array. */
-  extension [T](arr: IArray[T]) def flatten[U: ClassTag](using T => Iterable[U]): IArray[U] =
+  extension [T](arr: IArray[T]) def flatten[U](using asIterable: T => Iterable[U], ct: ClassTag[U]): IArray[U] =
     genericArrayOps(arr).flatten
 
   /** Folds the elements of this array using the specified associative binary operator. */
@@ -236,10 +233,6 @@ object IArray:
   extension [T](arr: IArray[T]) def splitAt(n: Int): (IArray[T], IArray[T]) =
     genericArrayOps(arr).splitAt(n)
 
-  /** Tests whether this array starts with the given array. */
-  extension [T](arr: IArray[T]) def startsWith[U >: T](that: IArray[U], offset: Int = 0): Boolean =
-    genericArrayOps(arr).startsWith(that)
-
   /** The rest of the array without its first element. */
   extension [T](arr: IArray[T]) def tail: IArray[T] =
     genericArrayOps(arr).tail
@@ -260,59 +253,127 @@ object IArray:
   extension [T](arr: IArray[T]) def toArray: Array[T] =
     arr.clone.asInstanceOf[Array[T]]
 
-  /** Converts an array of pairs into an array of first elements and an array of second elements. */
-  extension [U: ClassTag, V: ClassTag](arr: IArray[(U, V)]) def unzip: (IArray[U], IArray[V]) =
-    genericArrayOps(arr).unzip
+  extension [T](arr: IArray[T])
+    def ++[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) ++ suffix.toSeq
+    def ++[U >: T: ClassTag](suffix: IterableOnce[U]): IArray[U] = genericArrayOps(arr) ++ suffix
+    def :+ [U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr) :+ x
+    def :++ [U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr) :++ suffix
+    def :++ [U >: T: ClassTag](suffix: IterableOnce[U]): IArray[U] = genericArrayOps(arr) :++ suffix
+    def appended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).appended(x)
+    def appendedAll[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr).appendedAll(suffix)
+    def appendedAll[U >: T: ClassTag](suffix: IterableOnce[U]): IArray[U] = genericArrayOps(arr).appendedAll(suffix)
+    def collect[U: ClassTag](pf: PartialFunction[T, U]): IArray[U] = genericArrayOps(arr).collect(pf)
+    def collectFirst[U](f: PartialFunction[T, U]): Option[U] = genericArrayOps(arr).collectFirst(f)
+    def combinations(n: Int): Iterator[IArray[T]] = genericArrayOps(arr).combinations(n)
+    def concat[U >: T: ClassTag](suffix: IArray[U]): IArray[U] = genericArrayOps(arr).concat(suffix)
+    def concat[U >: T: ClassTag](suffix: IterableOnce[U]): IArray[U] = genericArrayOps(arr).concat(suffix)
+    def diff[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).diff(that.toSeq)
+    def diff[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).diff(that)
+    def distinct: IArray[T] = genericArrayOps(arr).distinct
+    def distinctBy[U](f: T => U): IArray[T] = genericArrayOps(arr).distinctBy(f)
+    def startsWith[U >: T](that: IArray[U]): Boolean = genericArrayOps(arr).startsWith(that, 0)
+    def startsWith[U >: T](that: IArray[U], offset: Int): Boolean = genericArrayOps(arr).startsWith(that, offset)
+    def startsWith[U >: T](that: IterableOnce[U]): Boolean = genericArrayOps(arr).startsWith(that, 0)
+    def startsWith[U >: T](that: IterableOnce[U], offset: Int): Boolean = genericArrayOps(arr).startsWith(that, offset)
+    def endsWith[U >: T](that: IArray[U]): Boolean = genericArrayOps(arr).endsWith(that)
+    def endsWith[U >: T](that: Iterable[U]): Boolean = genericArrayOps(arr).endsWith(that)
+    def groupBy[K](f: T => K): Map[K, IArray[T]] = genericArrayOps(arr).groupBy(f)
+    def groupMap[K, U: ClassTag](key: T => K)(f: T => U): Map[K, IArray[U]] = genericArrayOps(arr).groupMap(key)(f)
+    def grouped(size: Int): Iterator[IArray[T]] = genericArrayOps(arr).grouped(size)
+    def inits: Iterator[IArray[T]] = genericArrayOps(arr).inits
+    def intersect[U >: T](that: IArray[U]): IArray[T] = genericArrayOps(arr).intersect(that)
+    def intersect[U >: T](that: Seq[U]): IArray[T] = genericArrayOps(arr).intersect(that)
+    def lazyZip[U](that: IArray[U]): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
+    def lazyZip[U](that: Iterable[U]): LazyZip2[T, U, IArray[T]] = genericArrayOps(arr).lazyZip[U](that).asInstanceOf[LazyZip2[T, U, IArray[T]]]
+    def lengthCompare(len: Int): Int = genericArrayOps(arr).lengthCompare(len)
+    def padTo[U >: T: ClassTag](len: Int, elem: U): IArray[U] = genericArrayOps(arr).padTo(len, elem)
+    def partitionMap[T1: ClassTag, T2: ClassTag](f: T => Either[T1, T2]): (IArray[T1], IArray[T2]) = genericArrayOps(arr).partitionMap(f)
+    def patch[U >: T: ClassTag](from: Int, other: IterableOnce[U], replaced: Int): IArray[U] = genericArrayOps(arr).patch(from, other, replaced)
+    def permutations: Iterator[IArray[T]] = genericArrayOps(arr).permutations
+    def prepended[U >: T: ClassTag](x: U): IArray[U] = genericArrayOps(arr).prepended(x)
+    def prependedAll[U >: T: ClassTag](prefix: IterableOnce[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
+    def reverseIterator: Iterator[T] = genericArrayOps(arr).reverseIterator
+    def search[U >: T](elem: U)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem)
+    def search[U >: T](elem: U, from: Int, to: Int)(using Ordering[U]): Searching.SearchResult = arr.toSeq.search(elem, from, to)
+    def sizeCompare(that: IArray[Any]): Int = arr.toSeq.sizeCompare(that)
+    def sizeCompare(that: Iterable[_]): Int = arr.toSeq.sizeCompare(that)
+    def sizeCompare(otherSize: Int): Int = genericArrayOps(arr).sizeCompare(otherSize)
+    def sliding(size: Int, step: Int = 1): Iterator[IArray[T]] = genericArrayOps(arr).sliding(size, step)
+    def stepper[S <: Stepper[_]](using StepperShape[T, S]): S = genericArrayOps(arr).stepper[S]
+    def tails: Iterator[IArray[T]] = genericArrayOps(arr).tails
+    def tapEach[U](f: (T) => U): IArray[T] =
+      arr.toSeq.foreach(f)
+      arr
+    def transpose[U](implicit asArray: T => IArray[U]): IArray[IArray[U]] =
+      genericArrayOps(arr).transpose(using asArray.asInstanceOf[T => Array[U]])
+    def unzip[T1, T2](using asPair: T => (T1, T2), ct1: ClassTag[T1], ct2: ClassTag[T2]): (IArray[T1], IArray[T2]) = genericArrayOps(arr).unzip
+    def unzip3[T1, T2, T3](using asTriple: T => (T1, T2, T3), ct1: ClassTag[T1], ct2: ClassTag[T2], ct3: ClassTag[T3]): (IArray[T1], IArray[T2], IArray[T3]) = genericArrayOps(arr).unzip3
+    def updated[U >: T: ClassTag](index: Int, elem: U): IArray[U] = genericArrayOps(arr).updated(index, elem)
+    def view: SeqView[T] = genericArrayOps(arr).view
+    def withFilter(p: T => Boolean): WithFilter[T] = new WithFilter(p, arr)
+    def zip[U](that: IArray[U]): IArray[(T, U)] = genericArrayOps(arr).zip(that)
+    def zip[U](that: IterableOnce[U]): IArray[(T, U)] = genericArrayOps(arr).zip(that)
+    def zipAll[T1 >: T, U](that: IArray[U], thisElem: T1, thatElem: U): IArray[(T1, U)] = genericArrayOps(arr).zipAll(that, thisElem, thatElem)
+    def zipAll[T1 >: T, U](that: Iterable[U], thisElem: T1, thatElem: U): IArray[(T1, U)] = genericArrayOps(arr).zipAll(that, thisElem, thatElem)
+    def zipWithIndex: IArray[(T, Int)] = genericArrayOps(arr).zipWithIndex
 
-  /** Returns an array formed from this array and another iterable collection
-    * by combining corresponding elements in pairs.
-    * If one of the two collections is longer than the other, its remaining elements are ignored. */
-  extension [T](arr: IArray[T]) def zip[U](that: IArray[U]): IArray[(T, U)] =
-    genericArrayOps(arr).zip(that)
+  extension [T, U >: T: ClassTag](prefix: IterableOnce[T])
+    def ++:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
+
+  extension [T, U >: T: ClassTag](prefix: IArray[T])
+    def ++:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prependedAll(prefix)
+
+  extension [T, U >: T: ClassTag](x: T)
+    def +:(arr: IArray[U]): IArray[U] = genericArrayOps(arr).prepended(x)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension [T](arr: IArray[T]) def toSeq: immutable.ArraySeq[T] =
-    immutable.ArraySeq.unsafeWrapArray(arr.asInstanceOf[Array[T]])
+  implicit def genericWrapArray[T](arr: IArray[T]): ArraySeq[T] =
+    if arr eq null then null else ArraySeq.unsafeWrapArray(arr)
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension [T <: AnyRef](arr: IArray[T]) def toSeq: immutable.ArraySeq[T] =
-    immutable.ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
+  implicit def wrapRefArray[T <: AnyRef](arr: IArray[T]): ArraySeq.ofRef[T] =
+    // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
+    // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
+    // unique ones by way of this implicit, let's share one.
+    if (arr eq null) null
+    else if (arr.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
+    else ArraySeq.ofRef(arr.asInstanceOf[Array[T]])
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Int]) def toSeq: immutable.ArraySeq[Int] =
-    immutable.ArraySeq.ofInt(arr.asInstanceOf[Array[Int]])
+  implicit def wrapIntArray(arr: IArray[Int]): ArraySeq.ofInt =
+    if (arr ne null) new ArraySeq.ofInt(arr.asInstanceOf[Array[Int]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Double]) def toSeq: immutable.ArraySeq[Double] =
-    immutable.ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]])
+  implicit def wrapDoubleIArray(arr: IArray[Double]): ArraySeq.ofDouble =
+    if (arr ne null) new ArraySeq.ofDouble(arr.asInstanceOf[Array[Double]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Long]) def toSeq: immutable.ArraySeq[Long] =
-    immutable.ArraySeq.ofLong(arr.asInstanceOf[Array[Long]])
+  implicit def wrapLongIArray(arr: IArray[Long]): ArraySeq.ofLong =
+    if (arr ne null) new ArraySeq.ofLong(arr.asInstanceOf[Array[Long]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Float]) def toSeq: immutable.ArraySeq[Float] =
-    immutable.ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]])
+  implicit def wrapFloatIArray(arr: IArray[Float]): ArraySeq.ofFloat =
+    if (arr ne null) new ArraySeq.ofFloat(arr.asInstanceOf[Array[Float]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Char]) def toSeq: immutable.ArraySeq[Char] =
-    immutable.ArraySeq.ofChar(arr.asInstanceOf[Array[Char]])
+  implicit def wrapCharIArray(arr: IArray[Char]): ArraySeq.ofChar =
+    if (arr ne null) new ArraySeq.ofChar(arr.asInstanceOf[Array[Char]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Byte]) def toSeq: immutable.ArraySeq[Byte] =
-    immutable.ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]])
+  implicit def wrapByteIArray(arr: IArray[Byte]): ArraySeq.ofByte =
+    if (arr ne null) new ArraySeq.ofByte(arr.asInstanceOf[Array[Byte]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Short]) def toSeq: immutable.ArraySeq[Short] =
-    immutable.ArraySeq.ofShort(arr.asInstanceOf[Array[Short]])
+  implicit def wrapShortIArray(arr: IArray[Short]): ArraySeq.ofShort =
+    if (arr ne null) new ArraySeq.ofShort(arr.asInstanceOf[Array[Short]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Boolean]) def toSeq: immutable.ArraySeq[Boolean] =
-    immutable.ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]])
+  implicit def wrapBooleanIArray(arr: IArray[Boolean]): ArraySeq.ofBoolean =
+    if (arr ne null) new ArraySeq.ofBoolean(arr.asInstanceOf[Array[Boolean]]) else null
 
   /** Conversion from IArray to immutable.ArraySeq */
-  extension (arr: IArray[Unit]) def toSeq: immutable.ArraySeq[Unit] =
-    immutable.ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]])
+  implicit def wrapUnitIArray(arr: IArray[Unit]): ArraySeq.ofUnit =
+    if (arr ne null) new ArraySeq.ofUnit(arr.asInstanceOf[Array[Unit]]) else null
 
   /** Convert an array into an immutable array without copying, the original array
    *   must _not_ be mutated after this or the guaranteed immutablity of IArray will
@@ -363,6 +424,25 @@ object IArray:
   /** An immutable array with given elements. */
   def apply(x: Unit, xs: Unit*): IArray[Unit] = Array(x, xs: _*)
 
+  /** Build an array from the iterable collection.
+   *
+   *  {{{
+   *  scala> val a = Array.from(Seq(1, 5))
+   *  val a: Array[Int] = Array(1, 5)
+   *
+   *  scala> val b = Array.from(Range(1, 5))
+   *  val b: Array[Int] = Array(1, 2, 3, 4)
+   *  }}}
+   *
+   *  @param  it the iterable collection
+   *  @return    an array consisting of elements of the iterable collection
+   */
+  def from[A : ClassTag](it: IterableOnce[A]): Array[A] =
+    Array.from(it)
+
+  def newBuilder[T](using t: ClassTag[T]): Builder[T, IArray[T]] =
+    ArrayBuilder.make[T].mapResult(IArray.unsafeFromArray)
+
   /** Concatenates all arrays into a single immutable array.
    *
    *  @param xss the given immutable arrays
@@ -391,7 +471,6 @@ object IArray:
    *  @param   elem the element computation
    */
   def fill[T: ClassTag](n1: Int, n2: Int)(elem: => T): IArray[IArray[T]] =
-    // We cannot avoid a cast here as Array.fill creates inner arrays out of our control:
     Array.fill(n1, n2)(elem)
 
   /** Returns a three-dimensional immutable array that contains the results of some element computation a number
@@ -512,6 +591,17 @@ object IArray:
    */
   def iterate[T: ClassTag](start: T, len: Int)(f: T => T): IArray[T] = Array.iterate(start, len)(f)
 
+  /** Compare two arrays per element.
+   *
+   *  A more efficient version of `xs.sameElements(ys)`.
+   *
+   *  @param xs an array of AnyRef
+   *  @param ys an array of AnyRef
+   *  @return true if corresponding elements are equal
+   */
+   def equals(xs: IArray[AnyRef], ys: IArray[AnyRef]): Boolean =
+    Array.equals(xs.asInstanceOf[Array[AnyRef]], ys.asInstanceOf[Array[AnyRef]])
+
   /** Returns a decomposition of the array into a sequence. This supports
    *  a pattern match like `{ case IArray(x,y,z) => println('3 elements')}`.
    *
@@ -520,5 +610,66 @@ object IArray:
    */
   def unapplySeq[T](x: IArray[T]): Array.UnapplySeqWrapper[_ <: T] =
     Array.unapplySeq(x)
+
+  /** A lazy filtered array. No filtering is applied until one of `foreach`, `map` or `flatMap` is called. */
+  class WithFilter[T](p: T => Boolean, xs: IArray[T]):
+
+    /** Apply `f` to each element for its side effects.
+      * Note: [U] parameter needed to help scalac's type inference.
+      */
+    def foreach[U](f: T => U): Unit = {
+      val len = xs.length
+      var i = 0
+      while(i < len) {
+        val x = xs(i)
+        if(p(x)) f(x)
+        i += 1
+      }
+    }
+
+    /** Builds a new array by applying a function to all elements of this array.
+      *
+      *  @param f      the function to apply to each element.
+      *  @tparam U     the element type of the returned array.
+      *  @return       a new array resulting from applying the given function
+      *                `f` to each element of this array and collecting the results.
+      */
+    def map[U: ClassTag](f: T => U): IArray[U] = {
+      val b = IArray.newBuilder[U]
+      var i = 0
+      while (i < xs.length) {
+        val x = xs(i)
+        if(p(x)) b += f(x)
+        i = i + 1
+      }
+      b.result()
+    }
+
+    /** Builds a new array by applying a function to all elements of this array
+      * and using the elements of the resulting collections.
+      *
+      *  @param f      the function to apply to each element.
+      *  @tparam U     the element type of the returned array.
+      *  @return       a new array resulting from applying the given collection-valued function
+      *                `f` to each element of this array and concatenating the results.
+      */
+    def flatMap[U: ClassTag](f: T => IterableOnce[U]): IArray[U] = {
+      val b = IArray.newBuilder[U]
+      var i = 0
+      while(i < xs.length) {
+        val x = xs(i)
+        if(p(x)) b ++= f(xs(i))
+        i += 1
+      }
+      b.result()
+    }
+
+    def flatMap[BS, U](f: T => BS)(using asIterable: BS => Iterable[U], m: ClassTag[U]): IArray[U] =
+      flatMap[U](x => asIterable(f(x)))
+
+    /** Creates a new non-strict filter which combines this filter with the given predicate. */
+    def withFilter(q: T => Boolean): WithFilter[T] = new WithFilter[T](a => p(a) && q(a), xs)
+
+  end WithFilter
 
 end IArray

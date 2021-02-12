@@ -25,11 +25,14 @@ clear_out "$OUT"
 ./bin/scala -classpath "$OUT" "$MAIN" > "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
+# Test scaladoc based on compiled classes
+./bin/scaladoc -project Staging -d "$OUT1" "$OUT"
+clear_out "$OUT1"
+
 # check that `scalac` and `scala` works for staging
 clear_out "$OUT"
 ./bin/scalac tests/run-staging/i4044f.scala -d "$OUT"
 ./bin/scala -with-compiler -classpath "$OUT" Test > "$tmp"
-./bin/scalad -project Staging -siteroot "$OUT" "tests/run-staging/i4044f.scala"
 
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
@@ -51,6 +54,6 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 
 # echo ":quit" | ./dist/target/pack/bin/scala  # not supported by CI
 
-echo "testing ./bin/scalad"
-clear_out "$OUT"
-./bin/scalad -project Hello -siteroot "$OUT" "$SOURCE"
+echo "testing ./bin/scaladoc"
+clear_out "$OUT1"
+./bin/scaladoc -project Hello -d "$OUT1" "$OUT/out.jar"

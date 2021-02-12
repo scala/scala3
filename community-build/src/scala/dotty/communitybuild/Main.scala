@@ -19,10 +19,36 @@ object Main:
         e.printStackTrace()
         Nil
 
+  def withProjects[T](names: Seq[String], opName: String)(op: CommunityProject => T): Seq[T] =
+    val missing = names.filterNot(projectMap.contains)
+    if missing.nonEmpty then
+      val allNames = allProjects.map(_.project).mkString(", ")
+      println(s"Missing projects: ${missing.mkString(", ")}. All projects: $allNames")
+      sys.exit(1)
+
+    val (failed, completed) = names.flatMap(projectMap.apply).partitionMap( o =>
+      try
+        Right(op(o))
+      catch case e: Throwable =>
+        e.printStackTrace()
+        Left(o)
+    )
+
+    if failed.nonEmpty then
+      println(s"$opName failed for ${failed.mkString(", ")}")
+      sys.exit(1)
+
+    completed
+
   /** Allows running various commands on community build projects. */
   def main(args: Array[String]): Unit =
     args.toList match
-      case "publish" :: name :: Nil =>
+      case "publish" :: names if names.nonEmpty =>
+        withProjects(names, "Publishing")(_.publish())
+
+      case "build" :: names if names.nonEmpty =>
+        withProjects(names, "Build")(_.build())
+
       case "doc" :: "all" :: destStr :: Nil =>
         val dest = Paths.get(destStr)
         Seq("rm", "-rf", destStr).!
@@ -66,26 +92,23 @@ object Main:
           sys.exit(1)
 
       case "doc" :: names if names.nonEmpty =>
-        val missing = names.filterNot(projectMap.contains)
-        if missing.nonEmpty then
-          println(s"Missing projects: ${missing.mkString(", ")}. All projects: ${allProjects.mkString(", ")}")
-          sys.exit(1)
-
-        val failed = names.filter{ p =>
-          val docsRoots = generateDocs(projectMap(p))
+        val failed = withProjects(names, "Documenting"){ p =>
+          val docsRoots = generateDocs(p)
+          println(docsRoots)
           if docsRoots.nonEmpty then println(s"Docs for $p generated in $docsRoots")
-          docsRoots.isEmpty
-        }
+          if docsRoots.isEmpty then Some(p.project) else None
+        }.flatten
+
         if failed.nonEmpty then
           println(s"Documentation not found for ${failed.mkString(", ")}")
           sys.exit(1)
 
       case args =>
         println("USAGE: <COMMAND> <PROJECT NAME>")
-        println("COMMAND is one of: publish doc")
+        println("COMMAND is one of: publish doc run")
         println("Available projects are:")
         allProjects.foreach { k =>
-          println(s"\t$k")
+          println(s"\t${k.project}")
         }
         sys.exit(1)
 

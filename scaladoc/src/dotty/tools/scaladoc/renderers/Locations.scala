@@ -17,7 +17,7 @@ import scala.util.matching._
 val UnresolvedLocationLink = "#"
 
 trait Locations(using ctx: DocContext):
-  def members: Map[DRI, Member]
+  def effectiveMembers: Map[DRI, Member]
 
   var cache = new JHashMap[DRI, Seq[String]]()
 
@@ -48,7 +48,7 @@ trait Locations(using ctx: DocContext):
     UnresolvedLocationLink
 
   def pathToPage(from: DRI, to: DRI): String =
-    if to.isStaticFile || members.contains(to) then
+    if to.isStaticFile || effectiveMembers.contains(to) then
       val anchor = if to.anchor.isEmpty then "" else "#" + to.anchor
       pathToRaw(rawLocation(from), rawLocation(to)) +".html" + anchor
     else
@@ -63,6 +63,7 @@ trait Locations(using ctx: DocContext):
 
 
   def pathToRaw(from: Seq[String], to: Seq[String]): String =
+    import dotty.tools.scaladoc.util.Escape._
     val fromDir = from.dropRight(1)
     val commonPaths = to.zip(fromDir).takeWhile{ case (a, b) => a == b }.size
 
@@ -72,7 +73,7 @@ trait Locations(using ctx: DocContext):
         case Nil => to.lastOption.fold(Seq("index"))(".." :: _ :: Nil)
         case l => l
 
-    (contextPath ++ nodePath).mkString("/")
+    escapeUrl((contextPath ++ nodePath).mkString("/"))
 
   def resolveRoot(from: Seq[String], to: String): String =
     pathToRaw(from, to.split("/").toList)
