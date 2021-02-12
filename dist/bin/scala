@@ -109,12 +109,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ $execute_script == true ]; then
+  [ -n "$script_trace" ] && set -x
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
   if [ -n "$SCALA_OPTS" ]; then
     java_options+=($SCALA_OPTS)
-    if [ "${SCALA_OPTS##-save}" != "${SCALA_OPTS}" ]; then
+    if [ "${SCALA_OPTS##*-save}" != "${SCALA_OPTS}" ]; then
       save_compiled=true
     fi
   fi
