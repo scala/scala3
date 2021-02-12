@@ -1506,7 +1506,7 @@ object Build {
           val scala3version = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library-source-links:github://lampepfl/dotty"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
           val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ revision ++ params ++ targets
           import _root_.scala.sys.process._
