@@ -9,8 +9,7 @@ object Main:
       All arguments afterwards are script arguments.*/
   private def distinguishArgs(args: Array[String]): (Array[String], File, Array[String], Boolean) =
     val (leftArgs, rest) = args.splitAt(args.indexOf("-script"))
-    if( rest.size < 2 ) then
-      sys.error(s"missing: -script <scriptName>")
+    assert(rest.size >= 2,s"internal error: rest == Array(${rest.mkString(",")})")
 
     val file = File(rest(1))
     val scriptArgs = rest.drop(2)
