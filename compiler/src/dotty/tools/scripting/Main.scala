@@ -72,7 +72,10 @@ object Main:
     import dotty.tools.io.{Jar, Directory}
     val jar = new Jar(jarPath)
     val writer = jar.jarWriter(manifestAttributes:_*)
-    writer.writeAllFrom(Directory(outDir))
+    try
+      writer.writeAllFrom(Directory(outDir))
+    finally
+      writer.close()
   end writeJarfile
 
   def pathsep = sys.props("path.separator")

@@ -23,9 +23,8 @@ object ScriptSourceFile {
   private val headerStarts  = List("#!", "::#!")
 
   /** Return true if has a script header */
-  def hasScriptHeader(content: Array[Char]): Boolean = {
-    headerStarts exists (content startsWith _)
-  }
+  def hasScriptHeader(content: Array[Char]): Boolean =
+    headerStarts.exists(content.startsWith(_))
 
   def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
     /** Length of the script header from the given content, if there is one.
@@ -40,14 +39,14 @@ object ScriptSourceFile {
       }
       else 0
 
-    // overwrite hash-bang lines with all spaces
+    // overwrite hash-bang lines with all spaces to preserve line numbers
     val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
     if hashBangLines.nonEmpty then
       for i <- 0 until headerLength do
         content(i) match {
-        case '\r' | '\n' =>
-        case _ =>
-          content(i) = ' '
+          case '\r' | '\n' =>
+          case _ =>
+            content(i) = ' '
         }
 
     new SourceFile(file, content) {
@@ -266,15 +265,16 @@ object SourceFile {
    *  if filename extension is not .scala and has a script header.
    */
   def isScript(file: AbstractFile, content: Array[Char]): Boolean =
-    if file.hasExtension(".scala") then
-      false
-    else
-      ScriptSourceFile.hasScriptHeader(content)
+    ScriptSourceFile.hasScriptHeader(content)
 
   def apply(file: AbstractFile, codec: Codec): SourceFile =
     // see note above re: Files.exists is remarkably slow
-    val chars = try new String(file.toByteArray, codec.charSet).toCharArray
-    catch case _: java.nio.file.NoSuchFileException => Array[Char]()
+    val chars =
+    try
+      new String(file.toByteArray, codec.charSet).toCharArray
+    catch
+      case _: java.nio.file.NoSuchFileException => Array[Char]()
+
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else
