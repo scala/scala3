@@ -21,7 +21,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/soft-modifier.md
 ```
 
-[023]: #######################################################################
+[024]: #######################################################################
 
 \newpage
 # New Types [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/New%20Types/) {#new-types}
@@ -56,7 +56,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/new-types/polymorphic-function-types.md
 ```
 
-[058]: #######################################################################
+[059]: #######################################################################
 
 \newpage
 # Enums [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Enums/) {#enums-2}
@@ -76,7 +76,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/enums/desugarEnums.md
 ```
 
-[078]: #######################################################################
+[079]: #######################################################################
 
 \newpage
 # Contextual Abstractions [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Contextual Abstractions/) {#contextual-abstractions}
@@ -146,12 +146,12 @@ abstract: |
 ../out/pandoc/src_managed/reference/contextual/relationship-implicits.md
 ```
 
-## How to write a type class `derived` method using macros {#derivation-macro}
+## How to write a type class `derived` method using macros[![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/contextual/derivation-macro.html) {#derivation-macro}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/contextual/derivation-macro.md
 ``` 
 
-[153]: #######################################################################
+[154]: #######################################################################
 
 \newpage
 # Metaprogramming [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Metaprogramming/) {#metaprogramming}
@@ -196,7 +196,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/metaprogramming/simple-smp.md
 ```
 
-[207]: #######################################################################
+[199]: #######################################################################
 
 \newpage
 # Other New Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Other New Features/) {#other-new-features}
@@ -286,7 +286,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/other-new-features/type-test.md
 ```
 
-[297]: #######################################################################
+[289]: #######################################################################
 
 \newpage
 # Other Changed Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Other Changed Features/) {#other-changed-features}
@@ -341,9 +341,9 @@ abstract: |
 ../out/pandoc/src_managed/reference/changed-features/match-syntax.md
 ```
 
-## Vararg Patterns [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/vararg-patterns.html) {#vararg-patterns}
+## Vararg Splices [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/vararg-splices.html) {#vararg-splices}
 ```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/changed-features/vararg-patterns.md
+../out/pandoc/src_managed/reference/changed-features/vararg-splices.md
 ```
 
 ## Pattern Bindings [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/pattern-bindings.html) {#pattern-bindings}
@@ -381,7 +381,12 @@ abstract: |
 ../out/pandoc/src_managed/reference/changed-features/interpolation-escapes.md
 ```
 
-[383]: #######################################################################
+## Imports [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/imports.html) {#imports}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/changed-features/imports.md
+```
+
+[389]: #######################################################################
 
 \newpage
 # Dropped Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/Dropped Features/) {#dropped-features}
@@ -466,7 +471,12 @@ abstract: |
 ../out/pandoc/src_managed/reference/dropped-features/this-qualifier.md
 ```
 
-[468]: #######################################################################
+## Dropped: `Wildcard Initializer` [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/dropped-features/wildcard-init.html) {#wilcard-init}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/dropped-features/wildcard-init.md
+```
+
+[479]: #######################################################################
 
 \newpage
 # Scala 3 Syntax Summary [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/syntax.html) {#syntax}
@@ -474,7 +484,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/syntax.md
 ```
 
-[476]: #######################################################################
+[487]: #######################################################################
 
 \newpage
 # Appendix {#appendix}
