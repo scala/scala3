@@ -205,4 +205,13 @@ object Config {
 
   /** When in IDE, turn StaleSymbol errors into warnings instead of crashing */
   inline val ignoreStaleInIDE = true
+
+  /** If true, `Denotation#asSeenFrom` is allowed to return an existing
+   *  `SymDenotation` instead of allocating a new `SingleDenotation` if
+   *  the two would only differ in their `prefix` (SymDenotation always
+   *  have `NoPrefix` as their prefix).
+   *  This is done for performance reasons: when compiling Dotty itself this
+   *  reduces the number of allocated denotations by ~50%.
+   */
+  inline val reuseSymDenotations = true
 }

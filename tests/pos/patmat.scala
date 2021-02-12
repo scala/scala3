@@ -38,7 +38,7 @@ object Test {
     case Some[T](value: T) extends Option[T]
     case None
   }
-  import Option._
+  import Option.*
 
   val x: Option[String] = Some("abc")
 

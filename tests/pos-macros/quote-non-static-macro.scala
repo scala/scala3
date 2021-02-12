@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Foo {
   inline def foo: Unit = ${Foo.impl}

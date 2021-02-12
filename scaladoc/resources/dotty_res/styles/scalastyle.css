@@ -12,7 +12,7 @@
   --inactive-fg: #777;
   --title-fg: #00485E;
 
-  --link-sig-fd: #7c99a5;
+  --link-sig-fd: #2da0d1;
   --link-sig-hover-fd: #7c99a5;
 
   --leftbar-bg: #003048;
@@ -155,7 +155,9 @@ th {
 
 /* Navigation */
 #sideMenu2 {
-  overflow-y: auto;
+  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
   scrollbar-width: thin;
   height: 100%;
   font-size: var(--leftbar-font-size);
@@ -181,14 +183,20 @@ th {
 #sideMenu2 div.expanded>div {
   display: block;
 }
-
 /* always show top level entry*/
 #sideMenu2>div{
   display: block;
 }
 
+#sideMenu2 span.micon {
+  height: 16px;
+  width: 16px;
+  margin-right: 8px;
+}
+
 /* 'a's in side menu represent text of entry with link */
 #sideMenu2 a {
+  display: flex;
   align-items: center;
   flex: 1;
   overflow-x: hidden;
@@ -200,17 +208,10 @@ th {
   margin-top: 1px;
   margin-bottom: 1px;
   width: 100%;
-  display: block;
-  /* This trick adds selected bachground stratching to the lef side of screen */
+  /* This trick adds selected background stretching to the left side of screen */
   margin-left: calc(0px - var(--side-width));
   padding-left: var(--side-width);
   width: calc(2 * var(--side-width));
-}
-
-#sideMenu2 a::before {
-  margin-left: -12em;
-  width: 12em;
-  background: red;
 }
 
 #sideMenu2 a.selected {
@@ -224,7 +225,7 @@ th {
 }
 
 /* spans represent a expand button */
-#sideMenu2 span {
+#sideMenu2 span.ar {
   align-items: center;
   cursor: pointer;
   position: absolute;
@@ -233,7 +234,7 @@ th {
   padding: 4px;
 }
 
-#sideMenu2 span::before {
+#sideMenu2 span.ar::before {
   content: "\e903"; /* arrow down */
   font-family: "dotty-icons" !important;
   font-size: 20px;
@@ -244,11 +245,11 @@ th {
   align-items: center;
   justify-content: center;
 }
-#sideMenu2 .expanded>span::before {
+#sideMenu2 .expanded>span.ar::before {
   content: "\e905"; /* arrow up */
 }
 
-#sideMenu2 .div:hover>span::before {
+#sideMenu2 .div:hover>span.ar::before {
   color: var(--leftbar-current-bg);
 }
 
@@ -431,8 +432,9 @@ Same solution is already used in Dokka.
 /* Footer */
 footer {
   display: flex;
+  bottom: 0px;
   align-items: center;
-  position: relative;
+  position: fixed;
   margin-top: 1rem;
   margin-left: var(--side-width);
   width: calc(100% - var(--side-width));
@@ -490,7 +492,7 @@ footer .pull-right {
 }
 
 .documentableElement .signature {
-  color: gray;
+  color: #5a5a5a;
   display: table-cell;
   white-space: pre-wrap;
 }
@@ -613,6 +615,87 @@ footer .pull-right {
   position: relative;
 }
 
+.cover-header {
+  display: flex;
+  flex-direction: row;
+  padding-top: 1em;
+}
+
+.micon {
+  box-sizing: content-box;
+  height: 5.7em;
+  width: 5.7em;
+  color:transparent;
+}
+
+.micon.c {
+  content: url("../images/class.svg")
+}
+
+.micon.c-wc {
+  content: url("../images/class_comp.svg")
+}
+
+.micon.o {
+  content: url("../images/object.svg")
+}
+
+.micon.o-wc {
+  content: url("../images/object_comp.svg")
+}
+
+.micon.t {
+  content: url("../images/trait.svg")
+}
+
+.micon.t-wc {
+  content: url("../images/trait_comp.svg")
+}
+
+.micon.e {
+  content: url("../images/enum.svg")
+}
+
+.micon.e-wc {
+  content: url("../images/enum_comp.svg")
+}
+
+.micon.g {
+  content: url("../images/given.svg")
+}
+
+#leftColumn .socials {
+  margin-left: 5%;
+  margin-right: 5%;
+}
+
+footer {
+  color: grey;
+}
+
+footer .socials {
+  margin-left: 10px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.social-icon {
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.social-icon img {
+  height: 20px;
+  width: 20px;
+}
+
+#generated-by {
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+}
+
 /* Large Screens */
 @media(min-width: 1100px) {
   :root {
@@ -694,3 +777,6 @@ footer .pull-right {
   }
 }
 
+footer {
+  background-color: white;
+}

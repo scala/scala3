@@ -6,7 +6,7 @@ trait Context {
 }
 
 class MacroImpl(val c: Context) {
-  import c.universe._
+  import c.universe.*
   def mono: Literal = ???
 }
 

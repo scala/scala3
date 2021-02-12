@@ -1,7 +1,7 @@
 package i1202
 
 class Test() {
-  import Test._
+  import Test.*
   val myStatus = Unknown
 }
 object Test {

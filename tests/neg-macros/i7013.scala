@@ -1,4 +1,4 @@
-import quoted._
+import quoted.*
 
 def foo()(using Quotes) = {
   class C

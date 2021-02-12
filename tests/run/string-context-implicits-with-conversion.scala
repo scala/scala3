@@ -14,7 +14,7 @@ object Lib {
   given Show[String] = x => s"Str($x)"
 }
 object Test {
-  import Lib._
+  import Lib.*
   def main(args: Array[String]): Unit = {
     println(showMe"${1: Int} ${"abc": String}")
     println(showMe"${1} ${"abc"}")

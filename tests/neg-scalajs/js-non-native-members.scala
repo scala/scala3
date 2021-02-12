@@ -1,5 +1,5 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 class A extends js.Object {
   def apply(arg: Int): Int = arg // error

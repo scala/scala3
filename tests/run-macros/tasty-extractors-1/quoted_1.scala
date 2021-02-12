@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
@@ -6,7 +6,7 @@ object Macros {
     ${ impl('x) }
 
   def impl[T](x: Expr[T])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val tree = x.asTerm
     val treeStr = Expr(tree.show(using Printer.TreeStructure))

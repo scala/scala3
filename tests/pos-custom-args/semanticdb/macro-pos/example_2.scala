@@ -1,4 +1,4 @@
-import quoted._
+import quoted.*
 
 object TestImpl {
   transparent inline def fun (inline arg: String): String =

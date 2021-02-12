@@ -40,8 +40,8 @@ trait TypesSupport:
     extension (tpeTree: Tree)
       def asSignature: DocSignature =
         tpeTree match
-          case TypeBoundsTree(low, high) => typeBound(low.tpe, low = true) ++ typeBound(high.tpe, low = false)
-          case tpeTree: TypeTree =>  inner(tpeTree.tpe)
+          case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
+          case tpeTree: TypeTree => inner(tpeTree.tpe)
           case term:  Term => inner(term.tpe)
 
   given TypeSyntax: AnyRef with
@@ -95,9 +95,10 @@ trait TypesSupport:
       case AnnotatedType(tpe, _) =>
         inner(tpe)
       case tl @ TypeLambda(params, paramBounds, resType) =>
-        // println(params)
-        // println(paramBounds)
-        texts("[") ++ commas(params.zip(paramBounds).map( (name, typ) => texts(s"${name}") ++ inner(typ) )) ++ texts("]")
+        texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+          val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+          texts(normalizedName) ++ inner(typ)
+        }) ++ texts("]")
         ++ texts(" =>> ")
         ++ inner(resType)
 
@@ -184,7 +185,10 @@ trait TypesSupport:
               Nil
             case args =>
               texts("(") ++ commas(args.map(inner)) ++ texts(")")
-        else inner(tpe) ++ texts("[") ++ commas(typeList.map(inner)) ++ texts("]")
+        else inner(tpe) ++ texts("[") ++ commas(typeList.map { t => t match
+          case _: TypeBounds => texts("_") ++ inner(t)
+          case _ => inner(t)
+        }) ++ texts("]")
 
       case tp @ TypeRef(qual, typeName) =>
         qual match {
@@ -238,7 +242,7 @@ trait TypesSupport:
       // case _ => throw Exception("No match for type in conversion to Reference. This should not happen, please open an issue. " + tp)
       case TypeBounds(low, hi) =>
         if(low == hi) texts(" = ") ++ inner(low)
-        else typeBound(low, low = true) ++ typeBound(hi, low = false)
+        else typeBoundsTreeOfHigherKindedType(low, hi)
 
       case NoPrefix() => Nil
 
@@ -267,3 +271,16 @@ trait TypesSupport:
       case _ => Nil
     }
 
+  private def typeBoundsTreeOfHigherKindedType(low: TypeRepr, high: TypeRepr) =
+    def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
+      typeBound(low, low = true) ++ typeBound(high, low = false)
+    high.match
+      case TypeLambda(params, paramBounds, resType) =>
+        if resType.typeSymbol == defn.AnyClass then
+          texts("[") ++ commas(params.zip(paramBounds).map { (name, typ) =>
+            val normalizedName = if name.matches("_\\$\\d*") then "_" else name
+            texts(normalizedName) ++ inner(typ)
+          }) ++ texts("]")
+        else
+          regularTypeBounds(low, high)
+      case _ => regularTypeBounds(low, high)

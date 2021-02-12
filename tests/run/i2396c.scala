@@ -1,5 +1,5 @@
 class Bees {
-  import Test._
+  import Test.*
 
   def f: PartialFunction[Bee, Unit] = {
      case Test.Bee(_) => ""

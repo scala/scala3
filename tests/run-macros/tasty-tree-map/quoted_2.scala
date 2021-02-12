@@ -1,5 +1,5 @@
 
-import Macros._
+import Macros.*
 
 class Annot extends scala.annotation.Annotation
 
@@ -30,7 +30,7 @@ object Test {
     println(identityMaped({ def f(a: Int*): Int = a.sum; f(47, 1) }))
     println(identityMaped(((a: Int) => a)(49)))
     println(identityMaped({ type A = Int; 50: A }))
-    println(identityMaped({ import scala.{Int => I}; 51: I }))
+    println(identityMaped({ import scala.{Int as I}; 51: I }))
     println(identityMaped(52 match { case x => x }))
     println(identityMaped(53 match { case x: Int => x }))
     println(identityMaped((0: Any) match { case _: Int | _: Double => 54 }))

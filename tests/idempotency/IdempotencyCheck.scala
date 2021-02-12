@@ -1,9 +1,9 @@
 
-import java.io.{File => JFile}
-import java.nio.file.{ Files => JFiles, Path => JPath, Paths => JPaths }
-import java.util.stream.{ Stream => JStream }
+import java.io.File as JFile
+import java.nio.file.{ Files as JFiles, Path as JPath, Paths as JPaths }
+import java.util.stream.Stream as JStream
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.*
 
 object IdempotencyCheck {
   val blacklisted = Set(

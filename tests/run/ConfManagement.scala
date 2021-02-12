@@ -26,7 +26,7 @@ object ConfManagement:
   end Conference
 end ConfManagement
 
-import ConfManagement._
+import ConfManagement.*
 
 val Smith = Person("Smith")
 val Peters = Person("Peters")

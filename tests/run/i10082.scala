@@ -5,7 +5,7 @@ object Kotlin:
   def it[T](using ctx: Ctx[T]) = ctx.x
 
 
-import Kotlin._
+import Kotlin.*
 
 @main def Test =
   val res = List(1).map(fun(it + 1))

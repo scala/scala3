@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 inline def rewrite[T](inline x: T): T = ${ rewriteMacro('x) }

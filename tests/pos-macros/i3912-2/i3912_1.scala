@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   inline def foo2(): Unit = ${ impl() }

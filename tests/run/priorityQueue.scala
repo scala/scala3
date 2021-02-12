@@ -100,7 +100,7 @@ object Test {
   // }
 
   // def assertPriorityDestructive[A](pq: PriorityQueue[A])(implicit ord: Ordering[A]) {
-  //   import ord._
+  //   import ord.*
   //   var prev: A = null.asInstanceOf[A]
   //   while (pq.nonEmpty) {
   //     val curr = pq.dequeue

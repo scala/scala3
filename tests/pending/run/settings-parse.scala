@@ -1,6 +1,6 @@
 
 import scala.language.postfixOps
-import scala.tools.nsc._
+import scala.tools.nsc.*
 
 object Test {
   val tokens        = List("", "-deprecation", "foo.scala")

@@ -173,7 +173,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         val size = tpes.size
         if (size == 0)
           // Array.emptyObjectArray
-          ref(defn.ArrayModule).select("emptyObjectArray".toTermName).ensureApplied
+          ref(defn.ArrayModule).select("emptyObjectArray".toTermName).ensureApplied.withSpan(tree.span)
         else if (size <= MaxTupleArity)
           // scala.runtime.Tuples.productToArray(tup.asInstanceOf[Product])
           ref(defn.RuntimeTuples_productToArray).appliedTo(tup.asInstance(defn.ProductClass.typeRef))

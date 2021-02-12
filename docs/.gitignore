@@ -1,6 +1,0 @@
-# Jekyll specific ignores
-vendor/
-.bundle/
-Gemfile.lock
-_site/
-.sass-cache/

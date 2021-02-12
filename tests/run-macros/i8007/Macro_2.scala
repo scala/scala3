@@ -1,5 +1,5 @@
-import scala.deriving._
-import scala.quoted._
+import scala.deriving.*
+import scala.quoted.*
 
 
 object Macro2 {
@@ -21,7 +21,7 @@ object Macro2 {
         }
 
     def derived[T: Type](ev: Expr[Mirror.Of[T]])(using Quotes): Expr[JsonEncoder[T]] = {
-      import quotes.reflect._
+      import quotes.reflect.*
 
       val fields = ev match {
         case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = labels } } =>
@@ -43,7 +43,7 @@ object Macro2 {
   inline def test2[T](value: =>T): Unit = ${ test2Impl('value) }
 
   def test2Impl[T: Type](value: Expr[T])(using Quotes): Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val mirrorTpe = Type.of[Mirror.Of[T]]
     val mirrorExpr = Expr.summon(using mirrorTpe).get

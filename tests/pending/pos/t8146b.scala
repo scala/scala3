@@ -42,7 +42,7 @@ object syntax {
 
 class HListBench {
 
-  import syntax._
+  import syntax.*
 
   implicit def columnShape[T, Level <: ShapeLevel]: Shape[Level, Column[T], T, Column[T]] = ???
   implicit def provenShape[T, P](implicit shape: Shape[_ <: FlatShapeLevel, T, _, P]): Shape[FlatShapeLevel, ProvenShape[T], T, P] = ???

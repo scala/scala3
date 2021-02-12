@@ -1,5 +1,5 @@
 object Test {
-  import Dsl._
+  import Dsl.*
 
   // inline def entity = makeEnt // This case breaks to
   //inline def input = Input(entity)

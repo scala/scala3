@@ -2,7 +2,7 @@ object Test {
   enum EQ[A, B] {
     case Refl[T]() extends EQ[T, T]
   }
-  import EQ._
+  import EQ.*
 
   object A {
     type Foo[+X] = (X, X)

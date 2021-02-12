@@ -1,4 +1,4 @@
-import scala.language.{ existentials }
+import scala.language.existentials
 import collection.View
 
 object Test extends App {

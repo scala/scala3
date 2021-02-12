@@ -79,6 +79,10 @@ object language:
 
   object unsafeNulls
 
+  object future
+
+  object `future-migration`
+
   /** Set source version to 3.0-migration.
     *
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
@@ -91,6 +95,7 @@ object language:
     */
   object `3.0`
 
+/* This can be added when we go to 3.1
   /** Set source version to 3.1-migration.
     *
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
@@ -102,4 +107,5 @@ object language:
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
     */
   object `3.1`
+*/
 end language

@@ -1,7 +1,7 @@
 class TreeAccumulator2 {
 
   def foo(reflect: Reflection2)(tree: Any): Unit = {
-    import reflect._
+    import reflect.*
     tree match {
       case A() =>
       case B() =>

@@ -9,7 +9,7 @@ object Test {
   }
 
   def test(numbers: Numbers) = {
-    import numbers._
+    import numbers.*
 
     val zero: Nat = Zero()
     val one: Nat = Succ(zero)

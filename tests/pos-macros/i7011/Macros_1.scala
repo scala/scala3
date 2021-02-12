@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def mcr(body: => Any): Unit = ${mcrImpl('body)}
 
 def mcrImpl[T](body: Expr[Any])(using Quotes) : Expr[Any] = {
-  import quotes.reflect._
+  import quotes.reflect.*
 
   val bTree = body.asTerm
   val under = bTree.underlyingArgument

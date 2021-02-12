@@ -100,7 +100,7 @@ object Test {
 
   def runSeqs() = {
     for (s1f <- seqMakers ; s2f <- seqMakers ; testData <- List(test1)) {
-      import testData._
+      import testData.*
       val scrut = s1f(seq)
 
       for (Method(f, (trueList, falseList), descr) <- methodList) {

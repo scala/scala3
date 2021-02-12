@@ -7,7 +7,7 @@ package org.scalajs.testsuite.compiler
 
 import scala.reflect.Selectable.reflectiveSelectable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 object ReflectiveCallTestScala3 {
@@ -128,7 +128,7 @@ object ReflectiveCallTestScala3 {
 }
 
 class ReflectiveCallTestScala3 {
-  import ReflectiveCallTestScala3._
+  import ReflectiveCallTestScala3.*
 
   @Test def testBasic1(): Unit = basic(new Foo1)
   @Test def testCurrying1(): Unit = currying(new Foo1)

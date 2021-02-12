@@ -7,7 +7,7 @@ object boop {
 
   type BarF = { def f(): Int }
 
-  var x: BarF = _
+  var x: BarF = compiletime.uninitialized
   x = xs.head
   x.f
 

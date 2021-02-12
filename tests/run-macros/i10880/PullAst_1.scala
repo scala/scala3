@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object PullAst {
   def applyImpl(quoted: Expr[MyQuoted])(using qctx: Quotes): Expr[String] =

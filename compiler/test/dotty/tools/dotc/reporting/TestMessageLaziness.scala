@@ -26,5 +26,5 @@ class TestMessageLaziness extends DottyTest {
     report.error(LazyError())
 
   @Test def assureLazyExtendMessage =
-    report.errorOrMigrationWarning(LazyError(), from = config.SourceVersion.`3.1`)
+    report.errorOrMigrationWarning(LazyError(), from = config.SourceVersion.future)
 }

@@ -10,6 +10,6 @@ object Outer {
 
 }
 
-import Outer._
+import Outer.*
 
 val wrapBar = new Wrap.Bar()

@@ -1,4 +1,4 @@
-import scala.collection.immutable._
+import scala.collection.immutable.*
 object Test {
   def main(args : Array[String]) : Unit = {
     var words = "a" :: "b" :: "cd" :: "de" :: "fg" :: "ef" ::

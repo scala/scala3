@@ -22,7 +22,7 @@ object Test {
   }
 
   def f5: Unit = {
-    import scala.collection.mutable._
+    import scala.collection.mutable.*
     List(1,2,3,4,5).scanRight(0)(_+_)
   }
 }

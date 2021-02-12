@@ -7,7 +7,7 @@ object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
   class ReflectedClass(labelsStr: String) {
-    import ReflectedClass._
+    import ReflectedClass.*
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
     def mirror(ordinal: Int, product: Product): Mirror =
@@ -130,7 +130,7 @@ enum Lst[+T] { // derives Eq, Pickler, Show
 
 object Lst {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
@@ -165,7 +165,7 @@ case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
 object Pair {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
@@ -191,7 +191,7 @@ case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
 object Either {
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[L, R] = Shape.Cases[(
     Shape.Case[Left[L], L *: EmptyTuple],
@@ -225,7 +225,7 @@ trait Eq[T] {
 
 object Eq {
   import scala.compiletime.{erasedValue, error, summonFrom}
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryEql[T](x: T, y: T) = summonInline[Eq[T]].eql(x, y)
 
@@ -282,7 +282,7 @@ trait Pickler[T] {
 
 object Pickler {
   import scala.compiletime.{erasedValue, constValue, error, summonInline}
-  import TypeLevel._
+  import TypeLevel.*
 
   def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -374,7 +374,7 @@ trait Show[T] {
 }
 object Show {
   import scala.compiletime.{erasedValue, error, summonFrom}
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -427,7 +427,7 @@ object Show {
 
 // Tests
 object Test extends App {
-  import TypeLevel._
+  import TypeLevel.*
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(11, Lst.Cons(22, Lst.Cons(33, Lst.Nil)))
   val ys = Lst.Cons(11, Lst.Cons(22, Lst.Nil))

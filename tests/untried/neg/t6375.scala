@@ -1,4 +1,4 @@
-import scala.annotation.meta._
+import scala.annotation.meta.*
 
 class Bippy extends scala.annotation.StaticAnnotation
 

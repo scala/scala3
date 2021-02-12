@@ -7,12 +7,12 @@ object Test {
   }
 
   def posTests() = {
-    import Foo._
+    import Foo.*
     assertEquals(foo"abc${"123"}def", "abc123def")
   }
 
   def negTests() = {
-    import TestFooErrors._
+    import TestFooErrors.*
     assertEquals(foo"a#c${"123"}def", List((0, 256, 259, "Cannot use #")))
     assertEquals(foo"abc${"123"}#ef", List((1, 342, 345, "Cannot use #")))
     assertEquals(foo"a#c${"123"}#ef", List((0, 406, 409, "Cannot use #"), (1, 417, 420, "Cannot use #")))

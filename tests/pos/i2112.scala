@@ -1,4 +1,4 @@
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.*
 
 object Test {
   def test(x: Any): Unit = {

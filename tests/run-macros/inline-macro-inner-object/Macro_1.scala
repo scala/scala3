@@ -1,6 +1,6 @@
 package blah
 
-import scala.quoted._
+import scala.quoted.*
 
 object A {
   inline def f: Unit = ${impl}

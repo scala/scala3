@@ -1,5 +1,5 @@
 // compile with -Ycheck:reifyQuotes -Ystop-after:reifyQuotes
-import quoted._
+import quoted.*
 
 sealed abstract class SomeEnum
 object SomeEnum:

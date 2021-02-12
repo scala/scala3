@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 inline def power(x: Double, inline n: Int) = ${ powerCode1('x, 'n) }
 

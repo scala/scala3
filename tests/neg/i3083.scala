@@ -10,7 +10,7 @@
       }
 
       def expression(adder: Addition) = {
-        import adder._
+        import adder.*
         add(num(1), num(2)) // error // error (not found: num)
         }
       }

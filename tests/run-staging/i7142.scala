@@ -1,6 +1,6 @@
-import scala.quoted._
-import scala.quoted.staging._
-import scala.util.control.NonLocalReturns._
+import scala.quoted.*
+import scala.quoted.staging.*
+import scala.util.control.NonLocalReturns.*
 
 object Test {
   given Compiler = Compiler.make(getClass.getClassLoader)

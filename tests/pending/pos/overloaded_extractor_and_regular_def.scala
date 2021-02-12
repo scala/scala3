@@ -24,7 +24,7 @@ class Universe extends TreesApi {
 
 object Test extends App {
   def foo(tapi: TreesApi): Unit = {
-    import tapi._
+    import tapi.*
     def bar(tree: Tree): Unit = {
       val Apply(x) = tree
     }

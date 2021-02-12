@@ -1,6 +1,6 @@
 object Test {
 
-  import Macros._
+  import Macros.*
 
   def main(args: Array[String]): Unit = {
     val x = 1

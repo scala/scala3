@@ -1,4 +1,4 @@
-import scala.annotation._
+import scala.annotation.*
 
 trait C[@specialized U] {
   @unspecialized

@@ -1,4 +1,4 @@
-import scala.{Tuple => STuple}
+import scala.Tuple as STuple
 
 enum Datatype[T] {
   case Tuple[T <: STuple](elems: STuple.Map[T, Datatype]) extends Datatype[T]

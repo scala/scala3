@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class MatchFactory1[T, S[_]] {
   def f: Int = 2

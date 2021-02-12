@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Lib {
   inline def sum(inline args: Int*): Int = ${ impl('args) }

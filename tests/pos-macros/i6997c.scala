@@ -1,6 +1,6 @@
 package playground
 
-import scala.quoted._
+import scala.quoted.*
 
 inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 

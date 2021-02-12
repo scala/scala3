@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 import scala.reflect.ClassTag
 
 object Arrays {
@@ -16,7 +16,7 @@ object Arrays {
 object Test {
   given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = withQuotes {
-    import Arrays._
+    import Arrays.*
     implicit val ct: Expr[ClassTag[Int]] = '{ClassTag.Int}
     val arr: Expr[Array[List[Int]]] = Expr(Array[List[Int]](List(1, 2, 3)))
     println(arr.show)

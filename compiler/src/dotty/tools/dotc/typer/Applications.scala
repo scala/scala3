@@ -1897,13 +1897,19 @@ trait Applications extends Compatibility {
     }
 
     /** The type of alternative `alt` after instantiating its first parameter
-     *  clause with `argTypes`.
+     *  clause with `argTypes`. In addition, if the resulting type is a PolyType
+     *  and `typeArgs` matches its parameter list, instantiate the result with `typeArgs`.
      */
-    def skipParamClause(argTypes: List[Type])(alt: TermRef): Type =
+    def skipParamClause(argTypes: List[Type], typeArgs: List[Type])(alt: TermRef): Type =
       def skip(tp: Type): Type = tp match {
         case tp: PolyType =>
-          val rt = skip(tp.resultType)
-          if (rt.exists) tp.derivedLambdaType(resType = rt) else rt
+          skip(tp.resultType) match
+            case NoType =>
+              NoType
+            case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
+              tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
+            case rt =>
+              tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
         case tp: MethodType =>
           tp.instantiate(argTypes)
         case _ =>
@@ -1926,9 +1932,14 @@ trait Applications extends Compatibility {
       else
         val deepPt = pt.deepenProto
         deepPt match
+          case pt @ FunProto(_, PolyProto(targs, resType)) =>
+            // try to narrow further with snd argument list and following type params
+            resolveMapped(candidates,
+              skipParamClause(pt.typedArgs().tpes, targs.tpes), resType)
           case pt @ FunProto(_, resType: FunOrPolyProto) =>
             // try to narrow further with snd argument list
-            resolveMapped(candidates, skipParamClause(pt.typedArgs().tpes), resType)
+            resolveMapped(candidates,
+              skipParamClause(pt.typedArgs().tpes, Nil), resType)
           case _ =>
             // prefer alternatives that need no eta expansion
             val noCurried = alts.filter(!resultIsMethod(_))
@@ -1974,7 +1985,7 @@ trait Applications extends Compatibility {
         None
     }
     val mapped = reverseMapping.map(_._1)
-    overload.println(i"resolve mapped: $mapped")
+    overload.println(i"resolve mapped: ${mapped.map(_.widen)}%, % with $pt")
     resolveOverloaded(mapped, pt).map(reverseMapping.toMap)
 
   /** Try to typecheck any arguments in `pt` that are function values missing a

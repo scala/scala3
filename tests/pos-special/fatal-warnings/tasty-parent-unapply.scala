@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
 
   def impl(using Quotes): Unit = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

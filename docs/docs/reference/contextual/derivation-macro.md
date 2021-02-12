@@ -41,7 +41,7 @@ from the signature. The body of the `derived` method is shown below:
 
 ```scala
 given derived[T: Type](using Quotes): Expr[Eq[T]] =
-   import quotes.reflect._
+   import quotes.reflect.*
 
    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
@@ -135,8 +135,8 @@ enum Opt[+T]:
 The full code is shown below:
 
 ```scala
-import scala.deriving._
-import scala.quoted._
+import scala.deriving.*
+import scala.quoted.*
 
 
 trait Eq[T]:
@@ -165,7 +165,7 @@ object Eq:
          case '[EmptyTuple]     => Nil
 
    given derived[T: Type](using q: Quotes): Expr[Eq[T]] =
-      import quotes.reflect._
+      import quotes.reflect.*
 
       val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 

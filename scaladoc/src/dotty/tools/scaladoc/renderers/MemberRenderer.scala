@@ -140,6 +140,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       span(cls := "signature")(signature.map(renderElement)),
     )
 
+  def memberIcon(member: Member) = member.kind match {
+    case Kind.Package => Nil
+    case _ =>
+      val withCompanion = member.companion.fold("")(_ => "-wc")
+      val iconSpan = span(cls := s"micon ${member.kind.name.head}$withCompanion")()
+      Seq(member.companion.flatMap(link(_)).fold(iconSpan)(link => a(href := link)(iconSpan)))
+  }
+
   def annotations(member: Member) =
    val rawBuilder = InlineSignatureBuilder().annotationsBlock(member)
    val signatures = rawBuilder.asInstanceOf[InlineSignatureBuilder].names.reverse
@@ -165,16 +173,19 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       )
     )
 
-  private case class MGroup(header: AppliedTag, members: Seq[Member])
+  private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
     div(cls := "documentableList")(
       h3(cls:="groupHeader")(name),
-      members.map {
+      members.sortBy {
+        case m: Member => m.name
+        case MGroup(_, _, name) => name
+      }.map {
         case element: Member =>
           member(element)
-        case MGroup(header, members) =>
+        case MGroup(header, members, _) =>
           div(
             header,
             members.map(member)
@@ -247,7 +258,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.collect {
         case (Some(on), members) =>
           val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
-          MGroup(span(sig.map(renderElement)), members.toSeq)
+          MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
     div(cls := "membersList")(renderTabs(
@@ -345,8 +356,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       case Kind.RootPackage =>Seq(h1(summon[DocContext].args.name))
       case _ =>
         Seq(
-          h1(m.name),
-          div(cls:= "header monospace")(annotations(m), memberSingnature(m))
+          div(cls := "cover-header")(
+            memberIcon(m),
+            h1(m.name)
+          ),
+          div(cls := "signature monospace")(
+            annotations(m),
+            memberSingnature(m)
+          )
         )
 
     div(

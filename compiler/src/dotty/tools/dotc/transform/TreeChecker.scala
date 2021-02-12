@@ -380,6 +380,17 @@ class TreeChecker extends Phase with SymTransformer {
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
       assert(tree.isTerm || !ctx.isAfterTyper, tree.show + " at " + ctx.phase)
       val tpe = tree.typeOpt
+
+      // Polymorphic apply methods stay structural until Erasure
+      val isPolyFunctionApply = (tree.name eq nme.apply) && (tree.qualifier.typeOpt <:< defn.PolyFunctionType)
+      // Outer selects are pickled specially so don't require a symbol
+      val isOuterSelect = tree.name.is(OuterSelectName)
+      val isPrimitiveArrayOp = ctx.erasedTypes && nme.isPrimitiveName(tree.name)
+      if !(tree.isType || isPolyFunctionApply || isOuterSelect || isPrimitiveArrayOp) then
+        val denot = tree.denot
+        assert(denot.exists, i"Selection $tree with type $tpe does not have a denotation")
+        assert(denot.symbol.exists, i"Denotation $denot of selection $tree with type $tpe does not have a symbol")
+
       val sym = tree.symbol
       val symIsFixed = tpe match {
         case tpe: TermRef => ctx.erasedTypes || !tpe.isMemberRef
@@ -387,7 +398,7 @@ class TreeChecker extends Phase with SymTransformer {
       }
       if (sym.exists && !sym.is(Private) &&
           !symIsFixed &&
-          !tree.name.is(OuterSelectName)) { // outer selects have effectively fixed symbols
+          !isOuterSelect) { // outer selects have effectively fixed symbols
         val qualTpe = tree.qualifier.typeOpt
         val member =
           if (sym.is(Private)) qualTpe.member(tree.name)
@@ -403,6 +414,7 @@ class TreeChecker extends Phase with SymTransformer {
                    |qualifier type      : ${tree.qualifier.typeOpt}
                    |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
       }
+
       checkNotRepeated(super.typedSelect(tree, pt))
     }
 

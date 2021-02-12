@@ -1,6 +1,6 @@
 package tests.externalJavadoc
 
-import java.util._
+import java.util.*
 
 class Test {
   def a: Map.Entry[String, String] = ???

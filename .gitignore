@@ -89,5 +89,9 @@ community-build/sbt-scalajs-sbt
 *.check.out
 !/dist/bin/
 
+# semanticdb test output files
+*.expect.scala.out
+*.expect.out
+
 # Bloop
 .bsp

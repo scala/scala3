@@ -226,8 +226,9 @@ class Definitions {
   @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
     @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageObject.requiredMethod("codeOf")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
+    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageObject.requiredMethod("uninitialized")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
-    @tu lazy val Compiletime_requireConst: Symbol = CompiletimePackageObject.requiredMethod("requireConst")
+    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageObject.requiredMethod("requireConst")
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
@@ -550,6 +551,10 @@ class Definitions {
     @tu lazy val ArrayConstructor: Symbol = ArrayClass.requiredMethod(nme.CONSTRUCTOR)
 
   @tu lazy val ArrayModule: Symbol = requiredModule("scala.Array")
+  def ArrayModuleClass: Symbol = ArrayModule.moduleClass
+
+  @tu lazy val IArrayModule: Symbol = requiredModule("scala.IArray")
+  def IArrayModuleClass: Symbol = IArrayModule.moduleClass
 
   @tu lazy val UnitType: TypeRef = valueTypeRef("scala.Unit", java.lang.Void.TYPE, UnitEnc, nme.specializedTypeNames.Void)
   def UnitClass(using Context): ClassSymbol = UnitType.symbol.asClass

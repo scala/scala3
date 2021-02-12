@@ -3,7 +3,7 @@ object O {
   val b = 1
 }
 
-import O.{a => b}
+import O.{a as b}
 import O.b
 
 object test {

@@ -1,5 +1,5 @@
 class Foo[@specialized T] {
-  var v: T = _
+  var v: T = compiletime.uninitialized
 
   def foo(x: T): T = x
 

@@ -45,7 +45,7 @@ type stealer:
 ```bash
 $ sbt
 > repl
-scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
+scala> import dotty.tools.DottyTypeStealer.*; import dotty.tools.dotc.core.*; import Contexts.*,Types.*
 ```
 
 Now, you can define types and access their representation. For example:

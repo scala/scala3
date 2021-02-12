@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Q {
   inline def f(inline f: Any): Any = ${ Q2.fExpr('f) }

@@ -1,6 +1,6 @@
 object Test {
   def main(args: Array[String]): Unit = {
-    import collection.immutable._
+    import collection.immutable.*
 
     val intmap = IntMap(1 -> 1, 2 -> 2)
     val intres = intmap.map { case (a, b) => (a, b.toString) }

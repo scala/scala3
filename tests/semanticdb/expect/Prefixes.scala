@@ -23,11 +23,11 @@ object Test {
   val c: C = ???
   def m2: c.T = ???
   def k2: c.N.U = ???
-  import c.N._
+  import c.N.*
   def k3: U = ???
 
   def n2: M.T = ???
 
-  import M._
+  import M.*
   def n3: T = ???
 }

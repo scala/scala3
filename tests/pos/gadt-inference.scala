@@ -3,7 +3,7 @@ object `gadt-inference` {
     case StrLit(s: String) extends Expr[String]
     case IntLit(i: Int) extends Expr[Int]
   }
-  import Expr._
+  import Expr.*
 
   def eval[T](e: Expr[T]) =
     e match {

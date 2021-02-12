@@ -1,7 +1,7 @@
 
 object Test {
   def main(args: Array[String]): Unit = {
-    import Foo._
+    import Foo.*
     println(foo)
   }
 }

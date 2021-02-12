@@ -27,7 +27,7 @@ object UnimportedExtensions:
 object NotAnEnum // object without a companion class
 
 def Test: Unit =
-  import Tag._, ListLike._, TypeCtorsK._, Extensions._
+  import Tag._, ListLike._, TypeCtorsK._, Extensions.*
 
   val tags: Array[Tag[?]]              = Tag.values // error
   val listlikes: Array[ListLike[?]]    = ListLike.values // error

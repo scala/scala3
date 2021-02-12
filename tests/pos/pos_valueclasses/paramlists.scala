@@ -23,7 +23,7 @@ object Test {
     m1.two2(11)(12)
 
     {
-      import m1._
+      import m1.*
 
       zero
       zero2

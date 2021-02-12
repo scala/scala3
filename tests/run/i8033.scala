@@ -21,7 +21,7 @@ object Test {
   }
 
   def roundTrip[A](a: A): A = {
-    import java.io._
+    import java.io.*
 
     val aos = new ByteArrayOutputStream()
     val oos = new ObjectOutputStream(aos)

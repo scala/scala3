@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Test(using Quotes) {
   def step(k: (String => Expr[Unit])): Expr[Unit] = '{}

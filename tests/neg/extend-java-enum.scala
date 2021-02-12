@@ -1,4 +1,4 @@
-import java.{lang => jl}
+import java.{lang as jl}
 
 class C1 extends jl.Enum[C1] // error: class C1 cannot extend java.lang.Enum
 

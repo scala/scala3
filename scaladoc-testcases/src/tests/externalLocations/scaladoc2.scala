@@ -1,6 +1,6 @@
 package tests.externalScaladoc2
 
-import scala.util.matching._
+import scala.util.matching.*
 
 class Test {
   def a: String = ???

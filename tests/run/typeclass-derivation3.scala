@@ -2,7 +2,7 @@ import scala.collection.mutable
 import scala.annotation.tailrec
 
 object datatypes {
-  import typeclasses._
+  import typeclasses.*
 
   // An algebraic datatype
   enum Lst[+T] derives Eq, Pickler, Show {
@@ -32,8 +32,8 @@ object typeclasses {
 
   object Eq {
     import scala.compiletime.{erasedValue, summonFrom}
-    import compiletime._
-    import scala.deriving._
+    import compiletime.*
+    import scala.deriving.*
 
     inline def tryEql[TT](x: TT, y: TT): Boolean = summonFrom {
       case eq: Eq[TT] => eq.eql(x, y)
@@ -48,7 +48,7 @@ object typeclasses {
           true
       }
 
-    inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
+    transparent inline def eqlCases[Alts](n: Int)(x: Any, y: Any, ord: Int): Boolean =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -61,7 +61,7 @@ object typeclasses {
           false
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Eq[T] = new Eq[T] {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Eq[T] = new Eq[T] {
       def eql(x: T, y: T): Boolean =
         inline ev match {
           case m: Mirror.SumOf[T] =>
@@ -85,8 +85,8 @@ object typeclasses {
 
   object Pickler {
     import scala.compiletime.{erasedValue, constValue, summonFrom}
-    import compiletime._
-    import deriving._
+    import compiletime.*
+    import deriving.*
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -102,7 +102,7 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def pickleCases[Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any, ord: Int): Unit =
+    transparent inline def pickleCases[Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], x: Any, ord: Int): Unit =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -125,7 +125,7 @@ object typeclasses {
         case _: EmptyTuple =>
       }
 
-    inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: Mirror.ProductOf[T]): T = {
+    transparent inline def unpickleCase[T, Elems <: Tuple](buf: mutable.ListBuffer[Int], m: Mirror.ProductOf[T]): T = {
       inline val size = constValue[Tuple.Size[Elems]]
       inline if (size == 0)
         m.fromProduct(EmptyTuple)
@@ -140,7 +140,7 @@ object typeclasses {
       }
     }
 
-    inline def unpickleCases[T, Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
+    transparent inline def unpickleCases[T, Alts <: Tuple](n: Int)(buf: mutable.ListBuffer[Int], ord: Int): T =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n)
@@ -153,7 +153,7 @@ object typeclasses {
           throw new IndexOutOfBoundsException(s"unexpected ordinal number: $ord")
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Pickler[T] = new {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Pickler[T] = new {
       def pickle(buf: mutable.ListBuffer[Int], x: T): Unit =
         inline ev match {
           case m: Mirror.SumOf[T] =>
@@ -185,8 +185,8 @@ object typeclasses {
   }
   object Show {
     import scala.compiletime.{erasedValue, summonInline}
-    import compiletime._
-    import deriving._
+    import compiletime.*
+    import deriving.*
 
     inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -203,7 +203,7 @@ object typeclasses {
           Nil
     }
 
-    inline def showCase[T](x: Any, m: Mirror.ProductOf[T]): String = {
+    transparent inline def showCase[T](x: Any, m: Mirror.ProductOf[T]): String = {
       val label = constValue[m.MirroredLabel]
       inline m match {
         case m: Mirror.Singleton => label
@@ -211,7 +211,7 @@ object typeclasses {
       }
     }
 
-    inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
+    transparent inline def showCases[Alts <: Tuple](n: Int)(x: Any, ord: Int): String =
       inline erasedValue[Alts] match {
         case _: (alt *: alts1) =>
           if (ord == n) showCase(x, summonInline[Mirror.ProductOf[`alt`]])
@@ -220,7 +220,7 @@ object typeclasses {
           throw new MatchError(x)
       }
 
-    inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
+    transparent inline def derived[T](implicit ev: Mirror.Of[T]): Show[T] = new {
       def show(x: T): String =
         inline ev match {
           case m: Mirror.SumOf[T] =>
@@ -236,8 +236,8 @@ object typeclasses {
     }
   }
 }
-import datatypes._
-import typeclasses._
+import datatypes.*
+import typeclasses.*
 
 // Tests
 object Test extends App {

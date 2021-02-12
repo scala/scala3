@@ -848,7 +848,7 @@ class Typer extends Namer
       val tag = withTag(defn.TypeTestClass.typeRef.appliedTo(pt, tref))
           .orElse(withTag(defn.ClassTagClass.typeRef.appliedTo(tref)))
           .getOrElse(tree)
-      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.`3.1`) then
+      if tag.symbol.owner == defn.ClassTagClass && config.Feature.sourceVersion.isAtLeast(config.SourceVersion.future) then
         report.warning("Use of `scala.reflect.ClassTag` for type testing may be unsound. Consider using `scala.reflect.TypeTest` instead.", tree.srcPos)
       tag
     case _ => tree
@@ -865,9 +865,9 @@ class Typer extends Namer
      */
     val arg1 = pt match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
-        tryAlternatively { typed(tree.arg, pt) } { 
+        tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
-            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt) 
+            typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt)
         }
       case _ => typed(tree.arg, pt)
     }
@@ -1442,7 +1442,7 @@ class Typer extends Namer
             tree.selector.removeAttachment(desugar.CheckIrrefutable) match {
               case Some(checkMode) =>
                 val isPatDef = checkMode == desugar.MatchCheck.IrrefutablePatDef
-                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `3.1-migration`)
+                if (!checkIrrefutable(sel, pat, isPatDef) && sourceVersion == `future-migration`)
                   if (isPatDef) patch(Span(tree.selector.span.end), ": @unchecked")
                   else patch(Span(pat.span.start), "case ")
 
@@ -2024,7 +2024,6 @@ class Typer extends Namer
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
     checkSignatureRepeatedParam(sym)
-    checkInlineConformant(tpt1, rhs1, sym)
     vdef1.setDefTree
   }
 
@@ -2339,19 +2338,36 @@ class Typer extends Namer
         .asInstanceOf[untpd.ImportSelector]
     }
 
-  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import = {
-    val expr1 = typedExpr(imp.expr, AnySelectionProto)
+  def typedImportQualifier(imp: untpd.Import, typd: (untpd.Tree, Type) => Tree)(using Context): Tree =
+    if imp.expr == untpd.EmptyTree then
+      assert(imp.selectors.length == 1, imp)
+      val from = imp.selectors.head.imported
+      val sel = tryAlternatively
+          (typedIdent(from, WildcardType))
+          (typedIdent(cpy.Ident(from)(from.name.toTypeName), WildcardType))
+
+      sel.tpe match
+        case TermRef(prefix: SingletonType, _)  =>
+          singleton(prefix).withSpan(from.span)
+        case TypeRef(prefix: SingletonType, _)  =>
+          singleton(prefix).withSpan(from.span)
+        case _ =>
+          errorTree(from,
+            em"""Illegal import selector: $from
+                |The selector is not a member of an object or package.""")
+    else typd(imp.expr, AnySelectionProto)
+
+  def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import =
+    val expr1 = typedImportQualifier(imp, typedExpr)
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
-  }
 
-  def typedExport(exp: untpd.Export)(using Context): Export = {
+  def typedExport(exp: untpd.Export)(using Context): Export =
     val expr1 = typedExpr(exp.expr, AnySelectionProto)
     // already called `checkLegalExportPath` in Namer
     val selectors1 = typedSelectors(exp.selectors)
     assignType(cpy.Export(exp)(expr1, selectors1))
-  }
 
   def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
     val pid1 = withMode(Mode.InPackageClauseName)(typedExpr(tree.pid, AnySelectionProto))
@@ -2428,7 +2444,7 @@ class Typer extends Namer
         }
     }
     nestedCtx.typerState.commit()
-    if sourceVersion.isAtLeast(`3.1`) then
+    if sourceVersion.isAtLeast(future) then
       lazy val (prefix, suffix) = res match {
         case Block(mdef @ DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
           val arity = vparams.length
@@ -2440,7 +2456,7 @@ class Typer extends Namer
         if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
         else s"use `$prefix<function>$suffix` instead"
       report.errorOrMigrationWarning(i"""The syntax `<function> _` is no longer supported;
-                                     |you can $remedy""", tree.srcPos, `3.1`)
+                                     |you can $remedy""", tree.srcPos, future)
       if sourceVersion.isMigrating then
         patch(Span(tree.span.start), prefix)
         patch(Span(qual.span.end, tree.span.end), suffix)
@@ -2451,7 +2467,7 @@ class Typer extends Namer
   /** Translate infix operation expression `l op r` to
    *
    *    l.op(r)   			        if `op` is left-associative
-   *    { val x = l; r.op(l) }  if `op` is right-associative call-by-value and `l` is impure
+   *    { val x = l; r.op(x) }  if `op` is right-associative call-by-value and `l` is impure
    *    r.op(l)                 if `op` is right-associative call-by-name or `l` is pure
    *
    *  Translate infix type    `l op r` to `op[l, r]`
@@ -3148,8 +3164,8 @@ class Typer extends Namer
           def isContextBoundParams = wtp.stripPoly match
             case MethodType(EvidenceParamName(_) :: _) => true
             case _ => false
-          if sourceVersion == `3.1-migration` && isContextBoundParams
-          then // Under 3.1-migration, don't infer implicit arguments yet for parameters
+          if sourceVersion == `future-migration` && isContextBoundParams
+          then // Under future-migration, don't infer implicit arguments yet for parameters
                // coming from context bounds. Issue a warning instead and offer a patch.
             report.migrationWarning(
               em"""Context bounds will map to context parameters.
@@ -3407,13 +3423,12 @@ class Typer extends Namer
         val meth = methPart(tree).symbol
         if meth.isAllOf(DeferredInline) && !Inliner.inInlineMethod then
           errorTree(tree, i"Deferred inline ${meth.showLocated} cannot be invoked")
-        else if (Inliner.isInlineable(tree) && !suppressInline && StagingContext.level == 0) {
+        else if Inliner.needsInlining(tree) then
           tree.tpe <:< wildApprox(pt)
           val errorCount = ctx.reporter.errorCount
           val inlined = Inliner.inlineCall(tree)
           if ((inlined ne tree) && errorCount == ctx.reporter.errorCount) readaptSimplified(inlined)
           else inlined
-        }
         else if (tree.symbol.isScala2Macro &&
                 // `raw`, `f` and `s` are eliminated by the StringInterpolatorOpt phase
                 tree.symbol != defn.StringContext_raw &&
@@ -3731,8 +3746,8 @@ class Typer extends Namer
     }
   }
 
-  // Overridden in InlineTyper
-  def suppressInline(using Context): Boolean = ctx.isAfterTyper
+  /** True if this inline typer has already issued errors */
+  def hasInliningErrors(using Context): Boolean = false
 
   /** Does the "contextuality" of the method type `methType` match the one of the prototype `pt`?
    *  This is the case if

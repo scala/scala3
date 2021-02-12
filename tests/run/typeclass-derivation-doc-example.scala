@@ -1,4 +1,4 @@
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
@@ -51,7 +51,7 @@ enum Opt[+T] derives Eq {
 }
 
 object Test extends App {
-  import Opt._
+  import Opt.*
   val eqoi = summon[Eq[Opt[Int]]]
   assert(eqoi.eqv(Sm(23), Sm(23)))
   assert(!eqoi.eqv(Sm(23), Sm(13)))

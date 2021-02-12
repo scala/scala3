@@ -57,7 +57,7 @@ object Ref {
 
 
 class Resource[F[_], A] {
-  import ApplicativeSyntax._
+  import ApplicativeSyntax.*
 
   implicit def asyncForResource[F[_]](implicit F0: Async[F]): Async[[X] =>> Resource[F, X]] = ???
 

@@ -51,7 +51,7 @@ object Main {
     case Even[N <: BinNat](n: N)
   }
 
-  import BinNat._
+  import BinNat.*
 
   type Inc[N <: BinNat] <: BinNat =
     N match {

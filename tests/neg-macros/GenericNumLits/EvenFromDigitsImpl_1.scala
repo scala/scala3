@@ -1,7 +1,7 @@
 import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
-import scala.quoted._
-import Even._
+import scala.quoted.*
+import Even.*
 
 object EvenFromDigitsImpl:
   def apply(digits: Expr[String])(using Quotes): Expr[Even] = digits.value match {

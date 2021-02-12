@@ -1,10 +1,10 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait App[F[_],CT]:
   this: Base[F,CT] =>
 
-  import quotes.reflect._
+  import quotes.reflect.*
 
   trait AA
 

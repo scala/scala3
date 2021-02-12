@@ -1,4 +1,4 @@
-import scala.annotation._
+import scala.annotation.*
 
 class CompatVargs {
   @varargs

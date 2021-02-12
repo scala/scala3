@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 class Index[K]
 object Index {
   inline def succ[K]: Unit = ${

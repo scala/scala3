@@ -1,5 +1,5 @@
 
-import compiletime._
+import compiletime.*
 
 object Test extends App {
 

@@ -1,12 +1,12 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait VecROp[Idx, T, Unt] extends VecOp[Idx, Unt] {
   def reduce: ((T, T) => T, T, Vec[Idx, T]) => T
 }
 
 class StaticVecR[T](r: Ring[T]) extends VecSta with VecROp[Int, T, Unit] {
-  import r._
+  import r.*
   def reduce: ((T, T) => T, T, Vec[Int, T]) => T = { (plus, zero, vec) =>
     var sum = zero
     for (i <- 0 until vec.size)

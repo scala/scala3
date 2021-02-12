@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Companion {
   def fun(first: String): String = "anything"

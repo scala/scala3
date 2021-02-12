@@ -1,5 +1,5 @@
  @import url('https://fonts.googleapis.com/css?family=Lobster&display=swap');
- 
+
 body {
   height: 100%;
   width: 100%;
@@ -60,6 +60,12 @@ section.page {
   min-height: 100vh;
   width: 100%;
   padding: 0;
+  padding-bottom: 2em;
+}
+
+section.page strong {
+  font-weight: bold;
+  color: rgba(255,255,255,0.6);
 }
 
 section .container {

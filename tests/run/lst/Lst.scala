@@ -3,6 +3,7 @@ package lst
 import collection.mutable.{ListBuffer, StringBuilder}
 import collection.immutable.Map
 import reflect.ClassTag
+import compiletime.uninitialized
 
 /** A lightweight class for lists, optimized for short and medium lengths.
  *  A list is represented at runtime as
@@ -13,7 +14,7 @@ import reflect.ClassTag
  *    Otherwise:                         an Array[Any] containing the elements
  */
 class Lst[+T](val elems: Any) extends AnyVal { self =>
-  import Lst._
+  import Lst.*
 
   inline def locally[T](body: => T): T = body
 
@@ -563,8 +564,8 @@ object Lst {
 
   class Buffer[T] {
     private var len = 0
-    private var elem: Any = _
-    private var elems: Arr = _
+    private var elem: Any = uninitialized
+    private var elems: Arr = uninitialized
 
     def size = len
 

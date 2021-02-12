@@ -3,7 +3,7 @@ package generic
 import java.io.{DataInputStream,DataOutputStream}
 import scala.collection.IterableFactory
 import scala.collection.mutable.ArrayBuffer
-import Shapes._
+import Shapes.*
 
 object Serialization {
 

@@ -1,12 +1,12 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait CB[T]
 
 inline def shift : Unit = ${ shiftTerm }
 
 def shiftTerm(using Quotes): Expr[Unit] = {
-  import quotes.reflect._
+  import quotes.reflect.*
   val nTree = '{ ??? : CB[Int] }.asTerm
   val tp1 = TypeRepr.of[CB[Int]]
   val tp2 = TypeRepr.of[([X] =>> CB[X])[Int]]

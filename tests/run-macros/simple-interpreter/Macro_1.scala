@@ -13,7 +13,7 @@ object Schema {
  *  Assumes that all instances of schema come from `object Schema`
  */
 object SchemaInterpreter {
-  import scala.quoted._
+  import scala.quoted.*
 
   def interpretSchemaType[T: Type](schema: Expr[SchemaType[T]])(using Quotes): Option[SchemaType[T]] =
     schema match {
@@ -39,7 +39,7 @@ object SchemaInterpreter {
 }
 
 object Macro {
-  import scala.quoted._
+  import scala.quoted.*
 
   inline def useSchema[T](using inline schema: Schema[T]): String =
     ${ useSchemaExpr[T]('schema) }

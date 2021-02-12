@@ -19,7 +19,7 @@ object Test {
     assert(Fun.ConstNullSimple.f == null)
   }
 
-  import Fun._
+  import Fun.*
 
   def f[T, U >: Null](f: Fun[T, U]): T => U = f match {
     case Identity(g) => g

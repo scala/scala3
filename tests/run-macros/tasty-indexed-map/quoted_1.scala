@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 class MyMap[Keys](private val underlying: Array[Int]) extends AnyVal {
   def get[K <: String](implicit i: Index[K, Keys]): Int = underlying(i.index)
@@ -25,7 +25,7 @@ object Index {
   implicit inline def succ[K, H, T](implicit prev: => Index[K, T]): Index[K, (H, T)] = ${succImpl[K, H, T]}
 
   def succImpl[K, H, T](implicit qctx: Quotes, k: Type[K], h: Type[H], t: Type[T]): Expr[Index[K, (H, T)]] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def name(tp: TypeRepr): String = tp match {
       case ConstantType(StringConstant(str)) => str

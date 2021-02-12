@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def matches[A, B]: Unit = ${ matchesExpr[A, B] }
 
   private def matchesExpr[A, B](using a: Type[A], b: Type[B])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val res = quotes.asInstanceOf[scala.quoted.runtime.QuoteMatching].TypeMatch.unapply[Tuple, Tuple](a)(using b).map { tup =>
       tup.toArray.toList.map {

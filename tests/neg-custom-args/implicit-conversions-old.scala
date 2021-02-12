@@ -15,7 +15,7 @@ object D {
 }
 
 object Test {
-  import D._
+  import D.*
 
   val x1: A = new B
   val x2: B = new A  // ok, since it's an old-style comversion

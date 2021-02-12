@@ -1,5 +1,5 @@
 object Deriving {
-  import scala.compiletime._
+  import scala.compiletime.*
 
   sealed trait Shape
 
@@ -79,7 +79,7 @@ object Deriving {
 }
 
 object Test extends App {
-  import Deriving._
+  import Deriving.*
   val eq = implicitly[Eq[Lst[Int]]]
   val xs = Lst.Cons(1, Lst.Cons(2, Lst.Cons(3, Lst.Nil)))
   val ys = Lst.Cons(1, Lst.Cons(2, Lst.Nil))

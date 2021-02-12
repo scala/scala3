@@ -1,7 +1,7 @@
 import scala.annotation.switch
 
 class Test {
-  import Test._
+  import Test.*
 
   def test1(x: Int): Int = (x: @switch) match {
     case 1 => 1

@@ -858,10 +858,7 @@ class TreeUnpickler(reader: TastyReader,
                 rhs.tpe.typeParams
             }
             sym.info = sym.opaqueToBounds(
-              rhs.tpe match {
-                case _: TypeBounds | _: ClassInfo => checkNonCyclic(sym, rhs.tpe, reportErrors = false)
-                case _ => rhs.tpe.toBounds
-              },
+              checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false),
               rhs, rhs.tpe.typeParams)
             if sym.isOpaqueAlias then sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             sym.resetFlag(Provisional)

@@ -1,7 +1,7 @@
 
-import Term._
-import Pattern._
-import Type._
+import Term.*
+import Pattern.*
+import Type.*
 
 type Gamma = Set[EnvVar]
 type Delta = Set[EnvVar]

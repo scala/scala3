@@ -18,7 +18,7 @@ class C(x: String) {
 }
 
 object Test extends App {
-  import A.B._
+  import A.B.*
   val c = new C("OK")
   val i = new c.Inner
   val s: String = i
@@ -40,7 +40,7 @@ object TestPriority {
     implicit def Int2D(x: Int): D = new D(x)
   }
 
-  import impl._
+  import impl.*
 
   val x: C = 2
   val y: D = 2

@@ -20,7 +20,7 @@ trait Prefix {
 }
 
 class TestPrefix(val p: Prefix) {
-  import p._
+  import p.*
   def test(b: Bar) = b match {
     case b: Bar =>
     case b: BarOne =>   // unreachable

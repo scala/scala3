@@ -1,5 +1,5 @@
 import scala.util.control.NonFatal
-import scala.util.control.NonLocalReturns._
+import scala.util.control.NonLocalReturns.*
 
 object lib {
   extension [T](op: => T) inline def rescue (fallback: => T) =
@@ -18,7 +18,7 @@ object lib {
     }
 }
 
-import lib._
+import lib.*
 
 @main def Test = {
   assert((9 / 1 rescue 1) == 9)

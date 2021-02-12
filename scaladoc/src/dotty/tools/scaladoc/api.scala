@@ -126,8 +126,9 @@ extension (s: Signature)
   def join(a: Signature): Signature = s ++ a
 
 case class LinkToType(signature: Signature, dri: DRI, kind: Kind)
-case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)]):
-  private def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
+
+case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)], sealedNodes: Set[LinkToType] = Set.empty):
+  def vertecies: Seq[LinkToType] = edges.flatten((a, b) => Seq(a, b)).distinct
   def verteciesWithId: Map[LinkToType, Int] = vertecies.zipWithIndex.toMap
   def +(edge: (LinkToType, LinkToType)): HierarchyGraph = HierarchyGraph((edges :+ edge).distinct)
   def ++(edges: Seq[(LinkToType, LinkToType)]): HierarchyGraph = edges.foldLeft(this) {
@@ -136,7 +137,6 @@ case class HierarchyGraph(edges: Seq[(LinkToType, LinkToType)]):
 object HierarchyGraph:
   def empty = HierarchyGraph(Seq.empty)
   def withEdges(edges: Seq[(LinkToType, LinkToType)]) = HierarchyGraph.empty ++ edges
-
 
 case class Member(
   name: String,

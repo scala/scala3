@@ -4,13 +4,13 @@ object A {
   def foo(using TC) = ()
 }
 object B {
-  import A._
+  import A.*
   foo             // error: no implicit argument was found
   foo(using tc)   // error: not found: tc
   foo(using A.tc) // ok
 }
 object C {
-  import A._
+  import A.*
   import A.tc
   foo            // ok
   foo(using tc)  // ok

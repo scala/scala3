@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def testDefinitions(): Unit = ${testDefinitionsImpl}
 
   def testDefinitionsImpl(using q: Quotes) : Expr[Unit] = {
-    import q.reflect._
+    import q.reflect.*
 
     val buff = List.newBuilder[String]
     def printout(x: => String): Unit = {

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def f(x: Expr[Int])(using Quotes) = x match {
   case '{ ${f}($a: Int): Int } =>

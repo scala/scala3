@@ -1,4 +1,4 @@
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 def test() = {
   // only OK since the defaultOptions in the TestConfiguration includes -language:postfixOps

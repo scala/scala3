@@ -17,9 +17,10 @@ Otherwise, soft keywords are treated specially in the following situations:
  - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression)
  - `extension`, if it appears at the start of a statement and is followed by `(` or `[`.
  - `using`, if it appears at the start of a parameter or argument list.
+ - `as`, in a renaming import clause
  - `|`, if it separates two patterns in an alternative.
  - `+`, `-`, if they appear in front of a type parameter.
- - `*`, if it follows the type of a parameter or if it appears in
-   a vararg type ascription `x: _*`.
+ - `*`, in a wildcard import, or it follows the type of a parameter, or if it appears in
+   a vararg splice `x*`.
 
 Everywhere else a soft keyword is treated as a normal identifier.

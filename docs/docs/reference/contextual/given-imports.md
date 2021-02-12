@@ -12,18 +12,18 @@ object A:
    def f(using TC) = ???
 
 object B:
-   import A._
+   import A.*
    import A.given
    ...
 ```
 
-In the code above, the `import A._` clause in object `B` imports all members
+In the code above, the `import A.*` clause in object `B` imports all members
 of `A` _except_ the given instance `tc`. Conversely, the second import `import A.given` will import _only_ that given instance.
 The two import clauses can also be merged into one:
 
 ```scala
 object B:
-   import A.{given, _}
+   import A.{given, *}
    ...
 ```
 
@@ -44,7 +44,7 @@ There are two main benefits arising from these rules:
 Since givens can be anonymous it is not always practical to import them by their name, and wildcard imports are typically used instead. By-type imports provide a more specific alternative to wildcard imports, which makes it clearer what is imported. Example:
 
 ```scala
-import A.{given TC}
+import A.given TC
 ```
 
 This imports any given in `A` that has a type which conforms to `TC`. Importing givens of several types `T1,...,Tn`
@@ -104,14 +104,13 @@ given instances once their user base has migrated.
 
 ```
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  StableId ‘.’ ImportSpec
-ImportSpec        ::=  id
-                    |  ‘_’
-                    |  ‘given’
-                    |  ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘_'
-                    |  ‘given’ [InfixType]
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+ImportSpec        ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```

@@ -1,4 +1,4 @@
-import java.{lang => jl}
+import java.{lang as jl}
 
 import language.`3.0-migration`
 

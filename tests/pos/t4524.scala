@@ -1,5 +1,5 @@
 object test {
-  import A._
+  import A.*
   class A(b: B = new A.B())
   object A {
     class B

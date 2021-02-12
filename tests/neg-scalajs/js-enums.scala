@@ -1,5 +1,5 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 enum MyEnum extends js.Object: // error
   case Foo

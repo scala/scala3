@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Macros {
 
@@ -31,7 +31,7 @@ class Test {
 
   run {
     val program = '{
-      import Macros._
+      import Macros.*
 
       val x = 1
       assert(x != 0)

@@ -1,6 +1,5 @@
 package scala
-
-import scala.quoted._
+import annotation.compileTimeOnly
 
 package object compiletime {
 
@@ -17,6 +16,17 @@ package object compiletime {
    *  the branches.
    */
   erased def erasedValue[T]: T = ???
+
+  /** Used as the initializer of a mutable class or object field, like this:
+   *
+   *    var x: T = uninitialized
+   *
+   *  This signifies that the field is not initialized on its own. It is still initialized
+   *  as part of the bulk initialization of the object it belongs to, which assigns zero
+   *  values such as `null`, `0`, `0.0`, `false` to all object fields.
+   */
+  @compileTimeOnly("`uninitialized` can only be used as the right hand side of a mutable field definition")
+  def uninitialized: Nothing = ???
 
   /** The error method is used to produce user-defined compile errors during inline expansion.
    *  If an inline expansion results in a call error(msgStr) the compiler produces an error message containing the given msgStr.
@@ -74,14 +84,14 @@ package object compiletime {
    *  cannot be constructed from the provided type. Otherwise returns
    *  that value wrapped in `Some`.
    */
-  inline def constValueOpt[T]: Option[T] =
+  transparent inline def constValueOpt[T]: Option[T] =
     // implemented in dotty.tools.dotc.typer.Inliner
     error("Compiler bug: `constValueOpt` was not evaluated by the compiler")
 
   /** Given a constant, singleton type `T`, convert it to a value
    *  of the same singleton type. For example: `assert(constValue[1] == 1)`.
    */
-  inline def constValue[T]: T =
+  transparent inline def constValue[T]: T =
     // implemented in dotty.tools.dotc.typer.Inliner
     error("Compiler bug: `constValue` was not evaluated by the compiler")
 

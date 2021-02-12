@@ -89,7 +89,7 @@ class NonLocalReturns extends MiniPhase {
 
   override def transformReturn(tree: Return)(using Context): Tree =
     if isNonLocalReturn(tree) then
-      if sourceVersion.isAtLeast(`3.1`) then
+      if sourceVersion.isAtLeast(future) then
         report.errorOrMigrationWarning("Non local returns are no longer supported; use scala.util.control.NonLocalReturns instead", tree.srcPos)
       nonLocalReturnThrow(tree.expr, tree.from.symbol).withSpan(tree.span)
     else tree

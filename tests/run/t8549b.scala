@@ -1,4 +1,4 @@
-import java.lang.reflect.Modifier._
+import java.lang.reflect.Modifier.*
 
 @SerialVersionUID(42)
 class C extends Serializable

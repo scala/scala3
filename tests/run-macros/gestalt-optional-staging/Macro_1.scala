@@ -1,7 +1,7 @@
 // Port of https://github.com/liufengyun/gestalt/blob/master/macros/src/main/scala/gestalt/macros/Optional.scala
 // using staging macros (only quotes and splices)
 
-import scala.quoted._
+import scala.quoted.*
 
 final class Optional[+A >: Null](val value: A) extends AnyVal {
   def get: A = value

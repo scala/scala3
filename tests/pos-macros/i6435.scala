@@ -1,5 +1,5 @@
 class Foo {
-  import scala.quoted._
+  import scala.quoted.*
 
   def f(sc: quoted.Expr[StringContext])(using Quotes): Unit = {
 

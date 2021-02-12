@@ -13,11 +13,11 @@ object DepBug {
     val b = a mkB
   }
   def useDep(d: Dep) {  // error: procedure syntax
-    import d._
+    import d.*
     a m (b)
   }
   {
-    import dep._
+    import dep.*
     a m (b) // error: not found: a
   }
   dep.a m (dep b) // error (follow on)

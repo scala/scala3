@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   given Compiler = Compiler.make(getClass.getClassLoader)
@@ -8,7 +8,7 @@ object Test {
     case Int2(x: Int)
     case Add(e1: Exp, e2: Exp)
   }
-  import Exp._
+  import Exp.*
 
   def evalTest(e: Exp)(using Quotes): Expr[Option[Int]] = e match {
     case Int2(x) => '{ Some(${Expr(x)}) }

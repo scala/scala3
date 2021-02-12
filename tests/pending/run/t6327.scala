@@ -1,4 +1,4 @@
-import language._
+import language.*
 
 object Test extends App {
 

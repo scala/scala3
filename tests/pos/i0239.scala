@@ -18,7 +18,7 @@ object test1 {
 
   def compute[A](implicit m: M[A]): A = ???
 
-  import p._
+  import p.*
   val v = compute
   val v1: String = v
 }

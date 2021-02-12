@@ -1,4 +1,4 @@
-import scala.{specialized => spec}
+import scala.{specialized as spec}
 
 class C1A[
   @spec(Double, Int, AnyRef) A,

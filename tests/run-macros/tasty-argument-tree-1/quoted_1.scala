@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def inspect[T](x: T): Unit = ${ impl('x) }
 
   def impl[T](x: Expr[T])(using q: Quotes) : Expr[Unit] = {
-    import q.reflect._
+    import q.reflect.*
     val tree = x.asTerm
     given Printer[Tree] = Printer.TreeStructure
     '{

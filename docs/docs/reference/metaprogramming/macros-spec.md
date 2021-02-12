@@ -90,7 +90,7 @@ Separator     *  ::=  '
 The two environment combinators are both associative with left and
 right identity `()`.
 
-### Operational semantics:
+### Operational semantics
 
 We define a small step reduction relation `-->` with the following rules:
 ```
@@ -111,6 +111,7 @@ splice evaluation context `e_s` are defined syntactically as follows:
 Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
 Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 ```
+
 ### Typing rules
 
 Typing judgments are of the form `Es |- t: T`. There are two
@@ -172,7 +173,7 @@ For instance, here is a version of `power` that generates the multiplications
 directly if the exponent is statically known and falls back to the dynamic
 implementation of `power` otherwise.
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 inline def power(x: Double, n: Int): Double =
    ${ powerExpr('x, 'n) }

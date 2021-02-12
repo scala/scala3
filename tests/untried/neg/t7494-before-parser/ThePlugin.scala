@@ -7,7 +7,7 @@ import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
 
 class ThePlugin(val global: Global) extends Plugin {
-  import global._
+  import global.*
 
   val name = "beforeparser"
   val description = "Declares one plugin that wants to be before the parser phase"

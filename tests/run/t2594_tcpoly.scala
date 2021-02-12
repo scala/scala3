@@ -1,5 +1,5 @@
 
-import scala.language.{ higherKinds }
+import scala.language.higherKinds
 
 trait Monad[M[_]] {
   def foo[A](a: M[A]): M[A]

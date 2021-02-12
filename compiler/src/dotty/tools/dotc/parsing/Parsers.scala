@@ -1563,7 +1563,7 @@ object Parsers {
         if in.token == LBRACE || in.token == INDENT then
           t
         else
-          if sourceVersion.isAtLeast(`3.1`) then
+          if sourceVersion.isAtLeast(future) then
             deprecationWarning(DeprecatedWithOperator(), withOffset)
           atSpan(startOffset(t)) { makeAndType(t, withType()) }
       else t
@@ -1613,7 +1613,7 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if sourceVersion.isAtLeast(`3.1`) then
+        if sourceVersion.isAtLeast(future) then
           deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
           patch(source, Span(in.offset, in.offset + 1), "?")
         val start = in.skipToken()
@@ -2080,11 +2080,11 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            if sourceVersion.isAtLeast(`3.1`) then
+            if sourceVersion.isAtLeast(future) then
               report.errorOrMigrationWarning(
-                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("3.1")}",
+                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("future")}",
                 in.sourcePos(uscoreStart))
-            if sourceVersion == `3.1-migration` then
+            if sourceVersion == `future-migration` then
               patch(source, Span(t.span.end, in.lastOffset), " *")
           else if opStack.nonEmpty then
             report.errorOrMigrationWarning(
@@ -2158,15 +2158,15 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if sourceVersion.isAtLeast(`3.1`) then
+            if sourceVersion.isAtLeast(future) then
                 // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
                 // is not supported by Scala2.x
               report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("3.1")}",
+                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("future")}",
                 source.atSpan(Span(start, in.lastOffset)))
             in.nextToken()
             val t = infixType()
-            if (sourceVersion == `3.1-migration`) {
+            if (sourceVersion == `future-migration`) {
               patch(source, Span(start), "(")
               patch(source, Span(in.lastOffset), ")")
             }
@@ -2482,7 +2482,7 @@ object Parsers {
       atSpan(startOffset(pat), accept(LARROW)) {
         val checkMode =
           if (casePat) GenCheckMode.FilterAlways
-          else if sourceVersion.isAtLeast(`3.1`) then GenCheckMode.Check
+          else if sourceVersion.isAtLeast(future) then GenCheckMode.Check
           else GenCheckMode.FilterNow  // filter for now, to keep backwards compat
         GenFrom(pat, subExpr(), checkMode)
       }
@@ -2655,7 +2655,7 @@ object Parsers {
         p
 
     private def warnStarMigration(p: Tree) =
-      if sourceVersion.isAtLeast(`3.1`) then
+      if sourceVersion.isAtLeast(future) then
         report.errorOrMigrationWarning(
           em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
           in.sourcePos(startOffset(p)))
@@ -2790,8 +2790,8 @@ object Parsers {
           syntaxError(DuplicatePrivateProtectedQualifier())
         inBrackets {
           if in.token == THIS then
-            if sourceVersion.isAtLeast(`3.1`) then
-              deprecationWarning("The [this] qualifier is deprecated in Scala 3.1; it should be dropped.")
+            if sourceVersion.isAtLeast(future) then
+              deprecationWarning("The [this] qualifier will be deprecated in the future; it should be dropped.")
             in.nextToken()
             mods | Local
           else mods.withPrivateWithin(ident().toTypeName)
@@ -3066,8 +3066,8 @@ object Parsers {
 
     type ImportConstr = (Tree, List[ImportSelector]) => Tree
 
-    /** Import  ::= `import' [`given'] [ImportExpr {`,' ImportExpr}
-     *  Export  ::= `export' [`given'] [ImportExpr {`,' ImportExpr}
+    /** Import  ::= `import' ImportExpr {‘,’ ImportExpr}
+     *  Export  ::= `export' ImportExpr {‘,’ ImportExpr}
      */
     def importClause(leading: Token, mkTree: ImportConstr): List[Tree] = {
       val offset = accept(leading)
@@ -3097,48 +3097,62 @@ object Parsers {
             ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
       Import(tree, selectors)
 
-    /**  ImportExpr ::= SimpleRef {‘.’ id} ‘.’ ImportSpec
-     *   ImportSpec  ::=  id
-     *                 | ‘_’
-     *                 | ‘given’
-     *                 | ‘{’ ImportSelectors) ‘}’
+    /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+     *                     |  SimpleRef ‘as’ id
+     *  ImportSpec       ::=  NamedSelector
+     *                     |  WildcardSelector
+     *                     | ‘{’ ImportSelectors ‘}’
+     *  ImportSelectors  ::=  NamedSelector [‘,’ ImportSelectors]
+     *                     |  WildCardSelector {‘,’ WildCardSelector}
+     *  NamedSelector    ::=  id [‘as’ (id | ‘_’)]
+     *  WildCardSelector ::=  ‘*' | ‘given’ [InfixType]
      */
-    def importExpr(mkTree: ImportConstr): () => Tree = {
+    def importExpr(mkTree: ImportConstr): () => Tree =
 
-      /** '_' */
-      def wildcardSelectorId() = atSpan(in.skipToken()) { Ident(nme.WILDCARD) }
-      def givenSelectorId(start: Offset) = atSpan(start) { Ident(nme.EMPTY) }
+      /** ‘*' | ‘_' */
+      def wildcardSelector() =
+        if in.token == USCORE && sourceVersion.isAtLeast(future) then
+          report.errorOrMigrationWarning(
+            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("3.1")}",
+            in.sourcePos())
+          patch(source, Span(in.offset, in.offset + 1), "*")
+        ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
 
-      /** ImportSelectors  ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-       *                     |  WildCardSelector {‘,’ WildCardSelector}
-       *  WildCardSelector ::=  ‘given’ [InfixType]
-       *                     |  ‘_'
-       */
+      /** 'given [InfixType]' */
+      def givenSelector() =
+        ImportSelector(
+          atSpan(in.skipToken()) { Ident(nme.EMPTY) },
+          bound =
+            if canStartTypeTokens.contains(in.token) then rejectWildcardType(infixType())
+            else EmptyTree)
+
+      /** id [‘as’ (id | ‘_’) */
+      def namedSelector(from: Ident) =
+        if in.token == ARROW || isIdent(nme.as) then
+          if in.token == ARROW && sourceVersion.isAtLeast(future) then
+            report.errorOrMigrationWarning(
+              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("3.1")}",
+              in.sourcePos())
+            patch(source, Span(in.offset, in.offset + 2),
+                if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
+                else " as ")
+          atSpan(startOffset(from), in.skipToken()) {
+            val to = if in.token == USCORE then wildcardIdent() else termIdent()
+            ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
+          }
+        else ImportSelector(from)
+
       def importSelectors(idOK: Boolean): List[ImportSelector] =
-        val isWildcard = in.token == USCORE || in.token == GIVEN
+        val isWildcard = in.token == USCORE || in.token == GIVEN || isIdent(nme.raw.STAR)
         val selector = atSpan(in.offset) {
           in.token match
-            case USCORE =>
-              ImportSelector(wildcardSelectorId())
-            case GIVEN =>
-              val start = in.skipToken()
-              if in.token == USCORE then
-                deprecationWarning(em"`given _` is deprecated in imports; replace with just `given`", start)
-                in.nextToken()
-                ImportSelector(givenSelectorId(start)) // Let the selector span all of `given`; needed for -Ytest-pickler
-              else if canStartTypeTokens.contains(in.token) then
-                ImportSelector(givenSelectorId(start), bound = rejectWildcardType(infixType()))
-              else
-                ImportSelector(givenSelectorId(start))
+            case USCORE => wildcardSelector()
+            case GIVEN => givenSelector()
             case _ =>
-              val from = termIdent()
-              if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
-              if in.token == ARROW then
-                atSpan(startOffset(from), in.skipToken()) {
-                  val to = if in.token == USCORE then wildcardIdent() else termIdent()
-                  ImportSelector(from, if to.name == nme.ERROR then EmptyTree else to)
-                }
-              else ImportSelector(from)
+              if isIdent(nme.raw.STAR) then wildcardSelector()
+              else
+                if !idOK then syntaxError(i"named imports cannot follow wildcard imports")
+                namedSelector(termIdent())
         }
         val rest =
           if in.token == COMMA then
@@ -3149,26 +3163,36 @@ object Parsers {
         selector :: rest
 
       def importSelection(qual: Tree): Tree =
-        accept(DOT)
-        in.token match
-          case USCORE =>
-            mkTree(qual, ImportSelector(wildcardSelectorId()) :: Nil)
-          case GIVEN =>
-            mkTree(qual, ImportSelector(givenSelectorId(in.skipToken())) :: Nil)
-          case LBRACE =>
-            mkTree(qual, inBraces(importSelectors(idOK = true)))
-          case _ =>
-            val start = in.offset
-            val name = ident()
-            if in.token == DOT then
-              importSelection(atSpan(startOffset(qual), start) { Select(qual, name) })
-            else
-              atSpan(startOffset(qual)) {
-                mkTree(qual, ImportSelector(atSpan(start) { Ident(name) }) :: Nil)
-              }
+        if in.isIdent(nme.as) && qual.isInstanceOf[RefTree] then
+          qual match
+            case Select(qual1, name) =>
+              val from = Ident(name).withSpan(Span(qual.span.point, qual.span.end, 0))
+              mkTree(qual1, namedSelector(from) :: Nil)
+            case qual: Ident =>
+              mkTree(EmptyTree, namedSelector(qual) :: Nil)
+        else
+          accept(DOT)
+          in.token match
+            case USCORE =>
+              mkTree(qual, wildcardSelector() :: Nil)
+            case GIVEN =>
+              mkTree(qual, givenSelector() :: Nil)
+            case LBRACE =>
+              mkTree(qual, inBraces(importSelectors(idOK = true)))
+            case _ =>
+              if isIdent(nme.raw.STAR) then
+                mkTree(qual, wildcardSelector() :: Nil)
+              else
+                val start = in.offset
+                val name = ident()
+                if in.token == DOT then
+                  importSelection(atSpan(startOffset(qual), start) { Select(qual, name) })
+                else
+                  mkTree(qual, namedSelector(atSpan(start) { Ident(name) }) :: Nil)
+      end importSelection
 
-      () => importSelection(simpleRef())
-    }
+      () => atSpan(in.offset) { importSelection(simpleRef()) }
+    end importExpr
 
     /** Def      ::= val PatDef
      *             | var VarDef
@@ -3201,7 +3225,8 @@ object Parsers {
 
     /** PatDef  ::=  ids [‘:’ Type] ‘=’ Expr
      *            |  Pattern2 [‘:’ Type] ‘=’ Expr
-     *  VarDef  ::=  PatDef | id {`,' id} `:' Type `=' `_'
+     *  VarDef  ::=  PatDef
+     *            | id {`,' id} `:' Type `=' `_' (deprecated in 3.x)
      *  ValDcl  ::=  id {`,' id} `:' Type
      *  VarDcl  ::=  id {`,' id} `:' Type
      */
@@ -3224,9 +3249,14 @@ object Parsers {
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
+          val rhsOffset = in.offset
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
                 && !tpt.isEmpty && mods.is(Mutable) && lhs.forall(_.isInstanceOf[Ident]) =>
+              if sourceVersion.isAtLeast(future) then
+                deprecationWarning(
+                  em"""`= _` has been deprecated; use `= uninitialized` instead.
+                      |`uninitialized` can be imported with `scala.compiletime.uninitialized`.""", rhsOffset)
               placeholderParams = placeholderParams.tail
               atSpan(rhs0.span) { Ident(nme.WILDCARD) }
             case rhs0 => rhs0

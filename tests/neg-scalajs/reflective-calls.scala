@@ -1,4 +1,4 @@
-import scala.reflect.{ClassTag, Selectable => ReflectSel}
+import scala.reflect.{ClassTag, Selectable as ReflectSel}
 import ReflectSel.reflectiveSelectable
 
 object Test {

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
   def foo(using Quotes): Expr[Option[String]] = '{None}

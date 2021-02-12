@@ -27,7 +27,7 @@ object Foo {
 }
 
 object Test {
- import Foo._
+ import Foo.*
  def main(args: Array[String]): Unit = {
    method + field + mutable + accessor
  }

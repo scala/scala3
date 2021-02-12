@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Test {
   def test(x: quoted.Expr[Int])(using Quotes) = x match {
     case '{ poly[${Foo(t)}]($x); 4 } => ??? // error

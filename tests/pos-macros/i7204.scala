@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
   def impl(using Quotes) : Unit = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val Select(_, _) = (??? : Term)
   }
 }

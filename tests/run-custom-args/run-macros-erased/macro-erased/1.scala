@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
   inline def foo1(i: Int) = $ { case1('{ i }) }

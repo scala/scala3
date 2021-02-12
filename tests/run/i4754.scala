@@ -5,7 +5,7 @@ object Foo {
 }
 
 class Foo {
-  import Foo._
+  import Foo.*
   inline def foo = x + Foo.x + y + Foo.y + z + Foo.z
 }
 

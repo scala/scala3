@@ -18,12 +18,12 @@ through the TASTy reflect API.
 To inspect the trees of a TASTy file a consumer can be defined in the following way.
 
 ```scala
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 class MyInspector extends Inspector:
     def inspect(using Quotes)(tastys: List[Tasty[quotes.type]]): Unit =
-      import quotes.reflect._
+      import quotes.reflect.*
       for tasty <- tastys do
         val tree = tasty.ast
         // Do something with the tree

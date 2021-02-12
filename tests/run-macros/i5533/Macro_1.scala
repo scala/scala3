@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
@@ -8,7 +8,7 @@ object scalatest {
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
   def assertImpl(condition: Expr[Boolean])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val tree = condition.asTerm
 

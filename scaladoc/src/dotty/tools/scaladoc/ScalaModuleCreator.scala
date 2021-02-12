@@ -1,6 +1,6 @@
 package dotty.tools.scaladoc
 
-import dotty.tools.scaladoc.tasty.DokkaTastyInspector
+import dotty.tools.scaladoc.tasty.ScaladocTastyInspector
 import collection.JavaConverters._
 import transformers._
 
@@ -8,7 +8,7 @@ case class Module(rootPackage: Member, members: Map[DRI, Member])
 
 object ScalaModuleProvider:
   def mkModule()(using ctx: DocContext): Module =
-    val (result, rootDoc) = DokkaTastyInspector().result()
+    val (result, rootDoc) = ScaladocTastyInspector().result()
     val (rootPck, rest) = result.partition(_.name == "API")
     val packageMembers = (rest ++ rootPck.flatMap(_.members))
       .filter(p => p.members.nonEmpty || p.docs.nonEmpty).sortBy(_.name)
@@ -22,6 +22,7 @@ object ScalaModuleProvider:
 
     val transformers = List(
       ImplicitMembersExtensionTransformer(),
-      InheritanceInformationTransformer()
+      InheritanceInformationTransformer(),
+      SealedMarksGraphTransformer()
     )
     transformers.foldLeft(original)((module, transformer) => transformer.apply(module))

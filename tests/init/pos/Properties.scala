@@ -11,7 +11,7 @@ package scala
 package util
 
 import java.io.{ IOException, PrintWriter }
-import java.util.jar.Attributes.{ Name => AttributeName }
+import java.util.jar.Attributes.Name as AttributeName
 
 private[scala] trait PropertiesTrait {
   protected def propCategory: String      // specializes the remainder of the values

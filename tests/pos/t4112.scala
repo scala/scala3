@@ -1,6 +1,6 @@
 
 
-import collection.immutable._
+import collection.immutable.*
 
 
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 package x {
   class CExprResult1[T]

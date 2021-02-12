@@ -1,9 +1,9 @@
 object Macros {
-  import scala.quoted._
+  import scala.quoted.*
 
   inline def go[T](inline t: T) = ${ impl('t) }
   def impl[T](expr: Expr[T])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val tree = expr.asTerm
 

@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def natConst(x: Int): Int = ${ natConstImpl('x) }
 
   def natConstImpl(x: Expr[Int])(using Quotes) : Expr[Int] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     val xTree: Term = x.asTerm
     xTree match {
       case Inlined(_, _, Literal(IntConstant(n))) =>

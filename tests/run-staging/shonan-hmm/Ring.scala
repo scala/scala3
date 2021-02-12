@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait Ring[T] {
   def zero: T
@@ -34,7 +34,7 @@ class RingIntExpr(using Quotes) extends Ring[Expr[Int]] {
 }
 
 case class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
-  import u._
+  import u.*
   val zero = Complex(u.zero, u.zero)
   val one  = Complex(u.one, u.zero)
   val add = (x, y) => Complex(x.re + y.re, x.im + y.im)
@@ -47,8 +47,8 @@ case class RingPV[U: ToExpr](staRing: Ring[U], dynRing: Ring[Expr[U]])(using Quo
   type T = PV[U]
 
   val dyn = Dyns.dyn[U]
-  import staRing._
-  import dynRing._
+  import staRing.*
+  import dynRing.*
 
   val zero: T = Sta(staRing.zero)
   val one: T = Sta(staRing.one)

@@ -34,9 +34,9 @@ ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’
 ## Compatibility considerations
 
 To enable cross compilation between Scala 2 and Scala 3, the compiler will
-accept both the old and the new syntax. Under the `-source 3.1` setting, an error
+accept both the old and the new syntax. Under the `-source future` setting, an error
 will be emitted when the old syntax is encountered. An automatic rewrite from old
-to new syntax is offered under `-source 3.1-migration`.
+to new syntax is offered under `-source future-migration`.
 
 
 

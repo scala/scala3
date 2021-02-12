@@ -101,10 +101,26 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
    */
   def units: List[CompilationUnit] = myUnits
 
-  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
-
   private def units_=(us: List[CompilationUnit]): Unit =
     myUnits = us
+
+  var suspendedUnits: mutable.ListBuffer[CompilationUnit] = mutable.ListBuffer()
+
+  def checkSuspendedUnits(newUnits: List[CompilationUnit])(using Context): Unit =
+    if newUnits.isEmpty && suspendedUnits.nonEmpty && !ctx.reporter.errorsReported then
+      val where =
+        if suspendedUnits.size == 1 then i"in ${suspendedUnits.head}."
+        else i"""among
+                |
+                |  ${suspendedUnits.toList}%, %
+                |"""
+      val enableXprintSuspensionHint =
+        if ctx.settings.XprintSuspension.value then ""
+        else "\n\nCompiling with  -Xprint-suspension   gives more information."
+      report.error(em"""Cyclic macro dependencies $where
+                    |Compilation stopped since no further progress can be made.
+                    |
+                    |To fix this, place macros in one set of files and their callers in another.$enableXprintSuspensionHint""")
 
   /** The files currently being compiled (active or suspended).
    *  This may return different results over time.

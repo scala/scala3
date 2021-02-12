@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class A
 class B extends A
@@ -7,7 +7,7 @@ class C extends B
 inline def test(): Unit = ${ testExpr }
 
 def testExpr(using Quotes): Expr[Unit] = {
-  import quotes.reflect._
+  import quotes.reflect.*
 
   '{
     println(${Expr(TypeRepr.of[Object].baseClasses.toString)})

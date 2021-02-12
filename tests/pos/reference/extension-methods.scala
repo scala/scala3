@@ -115,7 +115,7 @@ object ExtMethods:
       require(exponent > 0)
       if exponent == 0 then 1 else x * (x ** (exponent - 1))
 
-  import DoubleOps.{**}
+  import DoubleOps.**
   assert(2.0 ** 3 == **(2.0)(3))
 
 end ExtMethods

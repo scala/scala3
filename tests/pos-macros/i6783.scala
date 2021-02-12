@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def testImpl(f: Expr[(Int, Int) => Int])(using Quotes): Expr[Int] = Expr.betaReduce('{$f(1, 2)})
 

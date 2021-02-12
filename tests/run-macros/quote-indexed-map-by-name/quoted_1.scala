@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Index[K, Keys](val index: Int) extends AnyVal
 object Index {

@@ -104,7 +104,7 @@ expression at runtime. Within the scope of `staging.run` we can also invoke `sho
 to get a source-like representation of the expression.
 
 ```scala
-import scala.quoted._
+import scala.quoted.*
 
 // make available the necessary compiler for runtime code generation
 given staging.Compiler = staging.Compiler.make(getClass.getClassLoader)

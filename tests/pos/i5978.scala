@@ -21,7 +21,7 @@ package p1 {
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import TextParser.{given, _}
+      import TextParser.{given, *}
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
       val tp_i = summon[TokenParser[Char, Position[CharSequence]]]
@@ -45,7 +45,7 @@ package p2 {
 
   object Testcase {
     def main(args: Array[String]): Unit = {
-      import TextParser.{given, _}
+      import TextParser.{given, *}
 
       val tp_v: TokenParser[Char, Position[CharSequence]] = TextParser.TP
       val tp_i = summon[TokenParser[Char, Position[CharSequence]]]

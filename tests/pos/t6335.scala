@@ -16,7 +16,7 @@ trait Z {
 }
 
 object Test {
-    import E._
+    import E.*
     0.xx
 
     "".yy

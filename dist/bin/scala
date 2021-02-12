@@ -62,7 +62,7 @@ while [[ $# -gt 0 ]]; do
       execute_run=true
       shift
       ;;
-    -classpath)
+    -cp | -classpath)
       CLASS_PATH="$2"
       class_path_count+=1
       shift

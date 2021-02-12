@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 import scala.quoted.staging.{run, withQuotes, Compiler}
 
 object Test {

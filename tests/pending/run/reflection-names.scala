@@ -1,8 +1,8 @@
-import scala.tools.nsc._
+import scala.tools.nsc.*
 
 object Test {
   val global = new Global(new Settings())
-  import global._
+  import global.*
 
   val x1 = "abc" drop 1                    // "bc": String
   val x2 = TermName("abc") drop 1          // "bc": TermName

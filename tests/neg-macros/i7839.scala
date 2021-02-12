@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def transform(using dummyImplicit: DummyImplicit): Unit =
   ${ transformImpl } // error

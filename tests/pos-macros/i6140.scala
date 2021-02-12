@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 sealed trait Trait[T] {
   type t = T
 }

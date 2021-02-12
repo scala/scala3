@@ -1,10 +1,11 @@
+import compiletime.uninitialized
 object Test {
 
   class C[T](private val x: T) {
 
     private def foo[Z](z: Z): T = x
 
-    private var y: T = _
+    private var y: T = uninitialized
 
     inline def get1 = x
     inline def get2[U](c: C[U]) = c.x

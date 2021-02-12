@@ -1,4 +1,4 @@
-import scala.collection.immutable._
+import scala.collection.immutable.*
 
 object Test extends App {
   val res0 = TreeSet(1, 2, 3, 4, 5, 6)

@@ -1,4 +1,4 @@
-import Specializable._
+import Specializable.*
 
 class A[@specialized(Primitives) T](x: T) {
   def f1[@specialized(Primitives) U](x: T, y: U) = ((x, y))

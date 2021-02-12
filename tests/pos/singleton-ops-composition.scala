@@ -1,5 +1,5 @@
-import scala.compiletime.ops.boolean._
-import scala.compiletime.ops.int.{^ => ^^,_} // must rename int.^ or get clash with boolean.^
+import scala.compiletime.ops.boolean.*
+import scala.compiletime.ops.int.{^ as ^^,_} // must rename int.^ or get clash with boolean.^
 
 object Test {
   val t0: 1 + 2 * 3 = 7

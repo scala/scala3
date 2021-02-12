@@ -13,7 +13,7 @@ object A {
 }
 
 object Test extends App {
-  import A._
+  import A.*
   import A.{t, given B, given D[_]}
 
   val x1: B = b

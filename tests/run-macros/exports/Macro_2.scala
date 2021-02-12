@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def visitExportsTreeAccumulator[T](inline x: T)(inline f: String => Any): Any = ${ traverseExportsImpl('x, 'f) }
 inline def visitExportsTreeMap[T](inline x: T)(inline f: T => Any): Any = ${ visitExportsTreeMapImpl('x, 'f) }
@@ -12,16 +12,16 @@ private def visitExportsExprMapImpl[T: Type](e: Expr[T], f: Expr[T => Any])(usin
   '{$f(${IdempotentExprMap.transform(e)})}
 
 private def visitExportsTreeMapImpl[T: Type](e: Expr[T], f: Expr[T => Any])(using Quotes): Expr[Any] =
-  import quotes.reflect._
+  import quotes.reflect.*
   object m extends TreeMap
   '{$f(${m.transformTerm(e.asTerm)(Symbol.spliceOwner).asExprOf})}
 
 private def visitExportsShowImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
-  import quotes.reflect._
+  import quotes.reflect.*
   '{println(${Expr(e.asTerm.show)})}
 
 private def visitExportsShowExtractImpl[T: Type](e: Expr[T])(using Quotes): Expr[Any] =
-  import quotes.reflect._
+  import quotes.reflect.*
   '{println(${Expr(e.asTerm.show(using Printer.TreeStructure))})}
 
 private object IdempotentExprMap extends ExprMap {
@@ -32,7 +32,7 @@ private object IdempotentExprMap extends ExprMap {
 }
 
 private def traverseExportsImpl(e: Expr[Any], f: Expr[String => Any])(using Quotes): Expr[Any] = {
-  import quotes.reflect._
+  import quotes.reflect.*
   import collection.mutable
 
   object ExportAccumulator extends TreeAccumulator[mutable.Buffer[String]] {

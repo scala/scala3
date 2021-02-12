@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
   inline def assert(x: => Any): Unit = ${ assertImpl('x) }
 
   def assertImpl(x: Expr[Any])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     x.asTerm.underlyingArgument
     '{ () }
   }

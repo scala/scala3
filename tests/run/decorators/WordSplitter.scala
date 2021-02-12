@@ -3,7 +3,7 @@ class WordSplitter(str: String, start: Int = 0, isSeparator: Char => Boolean = _
 extends Iterator[String]:
   private var idx: Int = start
   private var lastIdx: Int = start
-  private var word: String = _
+  private var word: String = compiletime.uninitialized
 
   private def skipSeparators() =
     while idx < str.length && isSeparator(str(idx)) do

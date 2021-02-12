@@ -11,7 +11,7 @@ trait Universe {
 
 object Test extends App {
   val universe: Universe = null
-  import universe._
+  import universe.*
   def select: Select = ???
   def ident: Ident = ???
   List(select, ident)

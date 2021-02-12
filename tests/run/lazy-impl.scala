@@ -89,7 +89,7 @@
  *
  *   - lazy vals of primitive types are boxed
  */
-import sun.misc.Unsafe._
+import sun.misc.Unsafe.*
 
 class C {
   def init(name: String) = {
@@ -97,7 +97,7 @@ class C {
     println(s"initialize $name"); "result"
   }
 
-  @volatile private[this] var _x: AnyRef = _
+  @volatile private[this] var _x: AnyRef = compiletime.uninitialized
 
   // Expansion of:  lazy val x: String = init("x")
 

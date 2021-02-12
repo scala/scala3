@@ -112,7 +112,7 @@ object fallback4 {
 
 def test4 = {
   import Impl4.given
-  import fallback4._
+  import fallback4.*
   assert(withFallback[String].str == "string")  // t1 is applicable
   assert(withFallback[Int].str == "fallback")   // No applicable instances, pick the default
 

@@ -1,10 +1,10 @@
 object Macros {
-  import scala.quoted._
+  import scala.quoted.*
 
   inline def debug: Unit = ${Macros.debugImpl}
 
   def debugImpl(using Quotes): Expr[Unit] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def nearestEnclosingDef(owner: Symbol): Symbol =
       if owner.isClassDef then owner

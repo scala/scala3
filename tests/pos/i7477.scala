@@ -7,10 +7,10 @@ class Test1 {
 }
 package X {
 
-  import scala.concurrent._
-  import scala.concurrent.duration._
+  import scala.concurrent.*
+  import scala.concurrent.duration.*
 
-  import scala.concurrent.ExecutionContext.Implicits._
+  import scala.concurrent.ExecutionContext.Implicits.*
 
   class Test1 {
 

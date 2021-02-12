@@ -3,7 +3,7 @@ object WhatsYourTypeIsMyType {
 
   class Foo {
     val tc = new TypeCheat[Foo]
-    var x: tc.MyType = _
+    var x: tc.MyType = compiletime.uninitialized
     def setX() = x = new Foo
   }
   class Bar extends Foo {

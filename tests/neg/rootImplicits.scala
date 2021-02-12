@@ -1,6 +1,6 @@
 package test
 
-import Predef.{any2stringadd => _, StringAdd => _, _}
+import Predef.{any2stringadd as _, StringAdd as _, *}
 
 object rootImplicits {
 

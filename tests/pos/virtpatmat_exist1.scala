@@ -1,4 +1,4 @@
-import annotation.unchecked.{uncheckedVariance => uV}
+import annotation.unchecked.uncheckedVariance as uV
 import scala.collection.{IterableFactory, StrictOptimizedIterableOps, mutable}
 import scala.collection.immutable.{ListMap, ListSet}
 import scala.collection.mutable.{AbstractSet, HashMap, HashSet, Set, SetOps}
@@ -29,7 +29,7 @@ object Test {
     }
 
     // without type ascription for the one in the body of the last flatmap of each alternative, type inference borks on the existentials
-    // def splitArray[T >: Nothing <: Any](ad: Array[Iterable[T]]): Any = { import OptionMatching._
+    // def splitArray[T >: Nothing <: Any](ad: Array[Iterable[T]]): Any = { import OptionMatching.*
     //   runOrElse(ad.apply(0))(((x1: Iterable[T]) => (
     //     or(((x4: Iterable[T]) => one(null)),
     //       guard(x1.isInstanceOf[Iterable[T] with Test.HashMapCollision1[_,_]], x1.asInstanceOf[Iterable[T] with Test.HashMapCollision1[_,_]]).flatMap(((x2: Iterable[T] with Test.HashMapCollision1[_,_]) => one(x2))),

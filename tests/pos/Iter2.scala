@@ -163,7 +163,7 @@ object Iter2 {
   }
 
   case class ArrayIterator[+A](elems: Array[AnyRef], len: Int) extends Iterator[A] {
-    import ArrayIterator._
+    import ArrayIterator.*
 
     private def elem(i: Int) = elems(i).asInstanceOf[A]
 

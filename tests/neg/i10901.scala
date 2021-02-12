@@ -36,7 +36,7 @@ object BugExp4Point2D {
 
   case class Point2D[T1:Numeric, T2:Numeric](x:T1, y:T2)
 
-  import dsl._
+  import dsl.*
 
   def main(args: Array[String]): Unit = {
     val x = IntT

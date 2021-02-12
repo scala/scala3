@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def test[T: Type](x: Expr[Any])(using Quotes): Unit =
 

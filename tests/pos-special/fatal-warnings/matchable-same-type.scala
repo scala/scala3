@@ -1,4 +1,4 @@
-import scala.language.`3.1-migration`
+import scala.language.`future-migration`
 
 type X
 def x: X = ???

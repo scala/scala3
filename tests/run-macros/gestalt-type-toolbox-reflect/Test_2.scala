@@ -1,6 +1,6 @@
 
 object Test {
-  import TypeToolbox._
+  import TypeToolbox.*
 
   type Age = Int
 

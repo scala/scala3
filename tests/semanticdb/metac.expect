@@ -3309,10 +3309,10 @@ Occurrences:
 [3:7..3:11): Nats <- recursion/Nats.
 [4:15..4:18): Nat <- recursion/Nats.Nat#
 [5:4..5:4): <- recursion/Nats.Nat#`<init>`().
-[5:15..5:17): ++ <- recursion/Nats.Nat#`++`().
-[5:20..5:24): Succ -> recursion/Nats.Succ#
-[5:38..5:42): Succ -> recursion/Nats.Succ.
-[5:42..5:42): -> recursion/Nats.Succ.apply().
+[5:27..5:29): ++ <- recursion/Nats.Nat#`++`().
+[5:32..5:36): Succ -> recursion/Nats.Succ#
+[5:50..5:54): Succ -> recursion/Nats.Succ.
+[5:54..5:54): -> recursion/Nats.Succ.apply().
 [7:27..7:28): + <- recursion/Nats.Nat#`+`().
 [7:36..7:40): that <- recursion/Nats.Nat#`+`().(that)
 [7:42..7:45): Nat -> recursion/Nats.Nat#

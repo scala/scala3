@@ -1,7 +1,7 @@
 object OpaqueEscape{
   opaque type Wrapped = Int
 }
-import OpaqueEscape._
+import OpaqueEscape.*
 abstract class EscaperBase {
 def unwrap(i:Wrapped):Int
   def wrap(i:Int):Wrapped

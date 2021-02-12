@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Inspect {
   inline def inspect[T <: AnyKind]: String = ${ inspectTpe[T] }

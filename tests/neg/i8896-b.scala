@@ -1,4 +1,4 @@
-import scala.language.`3.1`
+import scala.language.future
 
 trait Foo[A]
 

@@ -12,7 +12,7 @@
 
  package scala
 
- import java.lang.{ StringBuilder => JLSBuilder }
+ import java.lang.StringBuilder as JLSBuilder
  import scala.annotation.tailrec
 
  /** This class provides the basic mechanism to do String Interpolation.
@@ -56,7 +56,7 @@
   */
  case class StringContext(parts: String*) {
 
-   import StringContext.{checkLengths => scCheckLengths, glob, standardInterpolator => scStandardInterpolator}
+   import StringContext.{checkLengths as scCheckLengths, glob, standardInterpolator as scStandardInterpolator}
 
    @deprecated("use same-named method on StringContext companion object", "2.13.0")
    def checkLengths(args: scala.collection.Seq[Any]): Unit = scCheckLengths(args, parts)

@@ -1,7 +1,7 @@
 import scala.language.dynamics
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 // AnyRef as direct parent, invalid for non-native JS types, except traits
 

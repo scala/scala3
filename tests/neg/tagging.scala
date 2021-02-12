@@ -38,7 +38,7 @@ object tagging {
   trait Fathom
 }
 object test {
-  import tagging._
+  import tagging.*
 
   val x: Double @@ Meter = (1e7).tag[Meter]
   val y: Double @@ Foot = (123.0).tag[Foot]

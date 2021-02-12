@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 enum Exp {
   case Num(n: Int)
@@ -9,7 +9,7 @@ enum Exp {
 }
 
 object Test {
-  import Exp._
+  import Exp.*
 
   def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(using Quotes): Expr[Int] = {
     def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {

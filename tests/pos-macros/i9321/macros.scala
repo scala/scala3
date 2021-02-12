@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 type Foo
 type F[X]

@@ -179,7 +179,7 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case _ => false
   }
 
-  /** Is this argument node of the form <expr> : _*, or is it a reference to
+  /** Is this argument node of the form <expr> *, or is it a reference to
    *  such an argument ? The latter case can happen when an argument is lifted.
    */
   def isWildcardStarArg(tree: Tree)(using Context): Boolean = unbind(tree) match {

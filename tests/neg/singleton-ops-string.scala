@@ -1,4 +1,4 @@
-import scala.compiletime.ops.string._
+import scala.compiletime.ops.string.*
 
 object Test {
   val t0: "Hello " + "world" = "Hello world"

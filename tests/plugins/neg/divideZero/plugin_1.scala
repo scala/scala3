@@ -1,15 +1,15 @@
-import dotty.tools.dotc._
-import core._
+import dotty.tools.dotc.*
+import core.*
 import Contexts.Context
-import plugins._
+import plugins.*
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
-import Decorators._
+import Decorators.*
 import Symbols.{Symbol, requiredClass}
 import Constants.Constant
 import transform.{Pickler, PickleQuotes}
-import StdNames._
+import StdNames.*
 
 class DivideZero extends PluginPhase with StandardPlugin {
   val name: String = "divideZero"

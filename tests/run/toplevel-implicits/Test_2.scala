@@ -1,5 +1,5 @@
 object Test extends App {
-  import implicits._
+  import implicits.*
 
   val c = new C
   val c2 = c.pair(c)

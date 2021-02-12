@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   implicit class AnyOps(x: String) extends AnyVal {
     def *(y: String): String = x + ", " + y

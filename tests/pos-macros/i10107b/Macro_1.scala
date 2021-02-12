@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def isTrue: Boolean = ${ isTrueImpl }
 def isTrueImpl(using Quotes) = {

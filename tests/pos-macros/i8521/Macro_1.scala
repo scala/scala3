@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
   inline def foo[T <: AnyKind]: String = ${ bar[T] }
 
   def bar[T <: AnyKind : Type](using Quotes): Expr[String] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def packageToName(sym: Symbol): Unit = {
       if sym.isPackageDef then

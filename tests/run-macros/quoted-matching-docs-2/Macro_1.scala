@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 def sum(args: Int*): Int = args.sum

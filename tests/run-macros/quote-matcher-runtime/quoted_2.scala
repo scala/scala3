@@ -1,7 +1,7 @@
 
-import Macros._
+import Macros.*
 
-import scala.quoted.runtime.Patterns._
+import scala.quoted.runtime.Patterns.*
 
 object Test {
 

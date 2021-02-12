@@ -1,6 +1,6 @@
 
 object Test {
-  import TypeToolbox._
+  import TypeToolbox.*
   def main(args: Array[String]): Unit = {
     val x = 5
     assert(show[x.type] == "x.type")

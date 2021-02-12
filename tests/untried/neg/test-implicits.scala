@@ -14,8 +14,8 @@ object Sub extends Super {
 }
 
 object Test {
-  import Super._
-  import Sub._
+  import Super.*
+  import Sub.*
   val p = new Pos
   def f(x: Int): Int = x
   f(p + 1)
@@ -67,7 +67,7 @@ class Test3 {
     val a = 0
 
     {
-      import X._
+      import X.*
       a
     }
   }

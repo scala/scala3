@@ -80,6 +80,6 @@ package example {
 }
 
 
-import example.TastyFlags._
+import example.TastyFlags.*
 
 @main def Test = assert((Open | Given | Inline | Erased).debug == "Erased | Inline | Given | Open")

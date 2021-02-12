@@ -53,7 +53,7 @@ package test {
       def jj = "shadowed $j"  // no warn
     }
   }
-  import annotation._
+  import annotation.*
   @implicitNotFound("No Z in ${A}")   // no warn
   class Z[A]
 }

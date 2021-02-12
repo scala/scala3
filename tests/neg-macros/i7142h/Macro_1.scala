@@ -1,5 +1,5 @@
 package macros
-import scala.quoted._
+import scala.quoted.*
 
 var saved = Option.empty[Expr[Int]]
 

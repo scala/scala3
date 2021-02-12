@@ -4,7 +4,7 @@ object test:
     case Some[T](x: T) extends Option[T]
     case None
 
-  import Option._
+  import Option.*
 
   var x = Some(1)
   val y: Some[Int] = Some(2)
@@ -16,6 +16,6 @@ object test:
   enum Nat:
     case Z
     case S[N <: Z.type | S[_]](pred: N)
-  import Nat._
+  import Nat.*
 
   val two = S(S(Z))

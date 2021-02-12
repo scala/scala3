@@ -1,6 +1,6 @@
 package generic
 
-import Shapes._
+import Shapes.*
 
 /** enum Tree[T] {
  *    case True extends Tree[Boolean]

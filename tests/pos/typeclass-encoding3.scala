@@ -62,7 +62,7 @@ object Test {
 
   trait SemiGroup {
     val common: SemiGroup.Common
-    import common._
+    import common.*
 
     def combine(that: This): This
   }
@@ -76,7 +76,7 @@ object Test {
 
   trait Monoid extends SemiGroup {
     val common: Monoid.Common
-    import common._
+    import common.*
   }
   object Monoid {
     trait Common extends SemiGroup.Common { self =>
@@ -157,7 +157,7 @@ object Test {
 
   trait Ord {
     val common: Ord.Common
-    import common._
+    import common.*
 
     def compareTo(that: This): Int
     def < (that: This) = compareTo(that) < 0
@@ -242,7 +242,7 @@ object Test {
 
   trait Functor[A] {
     val common: Functor.Common
-    import common._
+    import common.*
 
     def map[B](f: A => B): This[B]
   }
@@ -257,7 +257,7 @@ object Test {
 
   trait Monad[A] extends Functor[A] { self =>
     val common: Monad.Common
-    import common._
+    import common.*
 
     def flatMap[B](f: A => This[B]): This[B]
     def map[B](f: A => B): This[B] = flatMap(f `andThen` pure)

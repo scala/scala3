@@ -1,4 +1,4 @@
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 def test() = {
   1 second // error: usage of postfix operator

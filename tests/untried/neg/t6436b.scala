@@ -4,6 +4,6 @@ object quasiquotes {
 }
 
 object Test extends App {
-  import quasiquotes._
+  import quasiquotes.*
   println(StringContext("a").q())
 }

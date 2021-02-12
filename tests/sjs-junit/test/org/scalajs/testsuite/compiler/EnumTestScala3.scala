@@ -1,13 +1,13 @@
 package org.scalajs.testsuite.compiler
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class EnumTestScala3:
-  import EnumTestScala3._
+  import EnumTestScala3.*
 
   @Test def testColor1(): Unit =
-    import EnumTestScala3.{Color1 => Color}
+    import EnumTestScala3.{Color1 as Color}
 
     def code(c: Color): Character = c match
       case Color.Red   => 'R'
@@ -35,7 +35,7 @@ class EnumTestScala3:
   end testColor1
 
   @Test def testColor2(): Unit =  // copied from `color1`
-    import EnumTestScala3.{Color2 => Color}
+    import EnumTestScala3.{Color2 as Color}
 
     def code(c: Color): Character = c match
       case Color.Red   => 'R'
@@ -63,7 +63,7 @@ class EnumTestScala3:
   end testColor2
 
   @Test def testCurrency1(): Unit =
-    import EnumTestScala3.{Currency1 => Currency}
+    import EnumTestScala3.{Currency1 as Currency}
 
     def code(c: Currency): String = c match
       case Currency.Dollar    => "USD"
@@ -95,7 +95,7 @@ class EnumTestScala3:
   end testCurrency1
 
   @Test def testCurrency2(): Unit = // copied from `testCurrency1`
-    import EnumTestScala3.{Currency2 => Currency}
+    import EnumTestScala3.{Currency2 as Currency}
 
     def code(c: Currency): String = c match
       case Currency.Dollar    => "USD"

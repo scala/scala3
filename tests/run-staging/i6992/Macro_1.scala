@@ -1,6 +1,6 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 
 object macros {
@@ -14,12 +14,12 @@ object macros {
 
 package scala {
   object MyTest {
-    import macros._
+    import macros.*
 
    given Compiler = Compiler.make(getClass.getClassLoader)
 
     def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] = {
-      import ctx.reflect._
+      import ctx.reflect.*
       try {
         body match {
           case '{$x: Foo} => Expr(run(x).x)

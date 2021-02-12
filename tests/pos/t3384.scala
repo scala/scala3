@@ -8,7 +8,7 @@ package object po {
   type A = p.A
 }
 
-import po._
+import po.*
 class C {
   val a = new A() //p.A.init$default$1)
 }

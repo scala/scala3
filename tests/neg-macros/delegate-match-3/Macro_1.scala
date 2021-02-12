@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 inline def f: Any = ${ fImpl }
 
 private def fImpl(using Quotes) : Expr[Unit] = {
-  import quotes.reflect._
+  import quotes.reflect.*
   Implicits.search(TypeRepr.of[A]) match {
     case x: ImplicitSearchSuccess =>
       '{}

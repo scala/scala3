@@ -1,6 +1,6 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
-import scala.scalajs.js.annotation.internal._
+import scala.scalajs.js.annotation.*
+import scala.scalajs.js.annotation.internal.*
 
 @JSType trait A // error
 @JSType class B { // error

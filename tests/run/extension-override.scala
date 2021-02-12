@@ -7,6 +7,6 @@ object B extends A:
     override def len: Int = s.length + 1
 
 @main def Test =
-  import B._
+  import B.*
   assert("abc".len == 4)
 

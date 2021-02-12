@@ -20,7 +20,7 @@ object Transaction {
 }
 
 class Transaction {
-  var status: Int = _
+  var status: Int = compiletime.uninitialized
 
   var id: Long = _  // only for real transactions
 

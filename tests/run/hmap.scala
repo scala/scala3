@@ -70,7 +70,7 @@ object syntax {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    import syntax.hmap._
+    import syntax.hmap.*
 
     val map1 =
       TCons(HEntry[K = "name"]("foo"),

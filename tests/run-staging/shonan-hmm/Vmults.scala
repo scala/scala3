@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Vmult[Idx, T, Unt](tring: Ring[T], vec: VecOp[Idx, Unt]) {
   private[this] val blas = new Blas1(tring, vec)
-  import blas._
+  import blas.*
   def vmult(vout: OVec[Idx, T, Unt], v1: Vec[Idx, T], v2: Vec[Idx, T]): Unt = vout := v1 `*.` v2
   override def toString(): String = s"Vmult($tring, $vec)"
 }

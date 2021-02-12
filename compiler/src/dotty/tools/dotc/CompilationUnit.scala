@@ -38,15 +38,26 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   val freshNames: FreshNameCreator = new FreshNameCreator.Default
 
+  /** Will be set to `true` if there are inline call that must be inlined after typer.
+   *  The information is used in phase `Inlining` in order to avoid traversing trees that need no transformations.
+   */
+  var needsInlining: Boolean = false
+
   /** Will be set to `true` if contains `Quote`.
    *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
    */
   var needsStaging: Boolean = false
 
+  /** Will be set to `true` if contains `Quote` that needs to be pickled
+   *  The information is used in phase `PickleQuotes` in order to avoid traversing trees that need no transformations.
+   */
+  var needsQuotePickling: Boolean = false
+
   /** A structure containing a temporary map for generating inline accessors */
   val inlineAccessors: InlineAccessors = new InlineAccessors
 
   var suspended: Boolean = false
+  var suspendedAtInliningPhase: Boolean = false
 
   /** Can this compilation unit be suspended */
   def isSuspendable: Boolean = true
@@ -61,6 +72,8 @@ class CompilationUnit protected (val source: SourceFile) {
         report.echo(i"suspended: $this")
       suspended = true
       ctx.run.suspendedUnits += this
+      if ctx.phase == Phases.inliningPhase then
+        suspendedAtInliningPhase = true
     throw CompilationUnit.SuspendException()
 
   private var myAssignmentSpans: Map[Int, List[Span]] = null
@@ -90,7 +103,9 @@ object CompilationUnit {
     if (forceTrees) {
       val force = new Force
       force.traverse(unit1.tpdTree)
-      unit1.needsStaging = force.needsStaging
+      unit1.needsStaging = force.containsQuote
+      unit1.needsQuotePickling = force.containsQuote
+      unit1.needsInlining = force.containsInline
     }
     unit1
   }
@@ -116,10 +131,13 @@ object CompilationUnit {
 
   /** Force the tree to be loaded */
   private class Force extends TreeTraverser {
-    var needsStaging = false
+    var containsQuote = false
+    var containsInline = false
     def traverse(tree: Tree)(using Context): Unit = {
       if (tree.symbol.isQuote)
-        needsStaging = true
+        containsQuote = true
+      if tree.symbol.is(Flags.Inline) then
+        containsInline = true
       traverseChildren(tree)
     }
   }

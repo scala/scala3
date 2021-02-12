@@ -8,7 +8,7 @@ import org.junit.Test
 import org.junit.experimental.categories.Category
 
 /** Runs all tests contained in `staging/test-resources/repl-staging` */
-class StagingScriptedReplTests extends ReplTest(withStaging = true) {
+class StagingScriptedReplTests extends ReplTest(ReplTest.withStagingOptions) {
 
   @Category(Array(classOf[BootstrappedOnlyTests]))
   @Test def replStagingTests = scripts("/repl-staging").foreach(testFile)

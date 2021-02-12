@@ -4,7 +4,7 @@ def i1(i2: String)(i3: String): String = ???
 }
 class i4() {
 def apply(i1: Int): Int = i2 match { case _: Throwable
-import scala.annotation.i1._
+import scala.annotation.i1.*
 type i2 = i0 { type i1 }
 trait i3 {
 type i1 <: i0

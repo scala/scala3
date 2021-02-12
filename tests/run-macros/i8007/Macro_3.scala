@@ -1,5 +1,5 @@
-import scala.deriving._
-import scala.quoted._
+import scala.deriving.*
+import scala.quoted.*
 
 
 trait Eq[T] {
@@ -33,7 +33,7 @@ object Eq {
   }
 
   given derived[T: Type](using q: Quotes): Expr[Eq[T]] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type.of[Mirror.Of[T]]).get
 

@@ -46,8 +46,8 @@ package b {
     protected def proprint = Console.print("<<<")
   }
 }
-import a._
-import _root_.b._
+import a.*
+import _root_.b.*
 object Test extends App {
 
   {

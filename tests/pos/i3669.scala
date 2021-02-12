@@ -1,4 +1,4 @@
-import java.nio.file._
+import java.nio.file.*
 
 class Test {
   def test(xs: Array[String]) = {

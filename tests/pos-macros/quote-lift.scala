@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Test(using Quotes) {
 
   '{ ${implicitly[ToExpr[Int]].apply(1)} }
 
   {
-    import ToExpr._
+    import ToExpr.*
 
     '{ ${summon[ToExpr[Int]].apply(1)} }
 

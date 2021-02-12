@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 import language.experimental.namedTypeArguments
 
 /**
@@ -65,7 +65,7 @@ object Test {
     case AtMost1
     case Many
   }
-  import Cardinality._
+  import Cardinality.*
 
   trait StagedStream[A]
   case class Linear[A](producer: Producer[A]) extends StagedStream[A]

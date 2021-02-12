@@ -9,7 +9,7 @@ object LazyList {
   }
 }
 
-import LazyList._
+import LazyList.*
 
 final class Test {
   lazy val a: LazyList[Int] = 5 #:: b

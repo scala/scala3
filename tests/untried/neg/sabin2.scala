@@ -2,7 +2,7 @@ object Test extends App
  {
    abstract class Base {
      type T
-     var x: T = _
+     var x: T = compiletime.uninitialized
      class Inner {
        def set(y: T) = x = y
        def get() = x

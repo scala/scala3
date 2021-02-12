@@ -113,7 +113,7 @@ Using `ClassTag` instances was unsound since classtags can check only the class 
 Given the following abstract definition of Peano numbers that provides two given instances of types `TypeTest[Nat, Zero]` and `TypeTest[Nat, Succ]`
 
 ```scala
-import scala.reflect._
+import scala.reflect.*
 
 trait Peano:
    type Nat
@@ -127,9 +127,9 @@ trait Peano:
    val Succ: SuccExtractor
    trait SuccExtractor:
       def apply(nat: Nat): Succ
-      def unapply(nat: Succ): Option[Nat]
+      def unapply(succ: Succ): Some[Nat]
 
-   given typeTestOfZero: TypeTest[Nat, Zero] 
+   given typeTestOfZero: TypeTest[Nat, Zero]
    given typeTestOfSucc: TypeTest[Nat, Succ]
 ```
 
@@ -147,7 +147,7 @@ object PeanoInt extends Peano:
 
    val Succ: SuccExtractor = new:
       def apply(nat: Nat): Succ = nat + 1
-      def unapply(nat: Succ) = Some(nat - 1)
+      def unapply(succ: Succ) = Some(succ - 1)
 
    def typeTestOfZero: TypeTest[Nat, Zero] = new:
       def unapply(x: Nat): Option[x.type & Zero] =
@@ -162,7 +162,7 @@ it is possible to write the following program
 
 ```scala
 @main def test =
-   import PeanoInt._
+   import PeanoInt.*
 
    def divOpt(m: Nat, n: Nat): Option[(Nat, Nat)] =
       n match

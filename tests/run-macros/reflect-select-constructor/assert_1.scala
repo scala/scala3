@@ -1,12 +1,12 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition, '{""}) }
 
   def assertImpl(cond: Expr[Boolean], clue: Expr[Any])(using Quotes) : Expr[Unit] = {
-    import quotes.reflect._
-    import util._
+    import quotes.reflect.*
+    import util.*
 
     def isImplicitMethodType(tp: TypeRepr): Boolean = tp match
       case tp: MethodType => tp.isImplicit

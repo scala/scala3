@@ -8,7 +8,7 @@ object A {
 }
 
 object Test extends App {
-  import A._
+  import A.*
   import A.{given B}
 
   val x: B = b // OK

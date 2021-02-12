@@ -63,7 +63,7 @@ conversion from `Int` to `java.lang.Integer` can be defined as follows:
          given fromFuture    : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
          given fromStatusCode: Conversion[Future[StatusCode], CompletionArg]   = Status(_)
       end CompletionArg
-      import CompletionArg._
+      import CompletionArg.*
 
       def complete[T](arg: CompletionArg) = arg match
          case Error(s) => ...

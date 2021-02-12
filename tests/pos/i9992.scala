@@ -1,4 +1,4 @@
-  import scala.concurrent._
+  import scala.concurrent.*
 
 @main def test(): Unit =
   def test = ()

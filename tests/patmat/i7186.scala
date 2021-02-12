@@ -1,4 +1,4 @@
-import MIPS._
+import MIPS.*
 
 import deriving.Mirror.SumOf
 
@@ -79,14 +79,14 @@ enum PseudoUnary {
 case class Comment(msg: String)
 
 object printMips {
-  import MIPS._
-  import Misc._
-  import PseudoZero._
-  import PseudoUnary._
-  import ZeroAddr._
-  import OneAddr._
-  import TwoAddr._
-  import ThreeAddr._
+  import MIPS.*
+  import Misc.*
+  import PseudoZero.*
+  import PseudoUnary.*
+  import ZeroAddr.*
+  import OneAddr.*
+  import TwoAddr.*
+  import ThreeAddr.*
 
   private val endl = System.lineSeparator
 

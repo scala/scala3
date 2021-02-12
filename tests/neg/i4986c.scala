@@ -1,6 +1,6 @@
 package pkg
 
-import annotation._
+import annotation.*
 
 class myAnnot extends StaticAnnotation
 

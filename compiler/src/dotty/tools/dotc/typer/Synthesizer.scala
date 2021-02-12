@@ -39,7 +39,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
               if defn.SpecialClassTagClasses.contains(sym) then
                 classTag.select(sym.name.toTermName)
               else
-                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
+                val clsOfType = erasure(tp) match
+                  case JavaArrayType(elemType) => defn.ArrayOf(elemType)
+                  case etp => etp
+                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
             tag.withSpan(span)
           case tp => EmptyTree
       case _ => EmptyTree

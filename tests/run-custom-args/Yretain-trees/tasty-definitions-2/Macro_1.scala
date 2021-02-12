@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
 
@@ -6,7 +6,7 @@ object Foo {
     ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(using Quotes) : Expr[String] = {
-    import quotes.reflect._
+    import quotes.reflect.*
     x.asTerm match {
       case Inlined(None, Nil, arg) => Expr(arg.symbol.tree.show(using Printer.TreeStructure))
       case arg => Expr(arg.symbol.tree.show(using Printer.TreeStructure)) // TODO should all by name parameters be in an inline node?

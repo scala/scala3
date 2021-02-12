@@ -1,8 +1,8 @@
 
-import UnrolledExpr._
+import UnrolledExpr.*
 
 import scala.reflect.ClassTag
-import scala.quoted._
+import scala.quoted.*
 
 object Lifters {
   implicit def LiftedClassTag[T: Type: ClassTag] (using Quotes): Expr[ClassTag[T]] = {

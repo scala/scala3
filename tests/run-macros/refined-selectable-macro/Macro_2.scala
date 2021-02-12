@@ -1,6 +1,6 @@
 
-import scala.quoted._
-import Macro._
+import scala.quoted.*
+import Macro.*
 
 object Macro2 {
   // TODO should elems of `new Record` and `Record.fromUntypedTuple` be IArray[Object]
@@ -12,7 +12,7 @@ object Macro2 {
   }
 
   object Record extends SelectableRecordCompanion[Record] {
-    import scala.quoted._
+    import scala.quoted.*
 
     inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl[R]('elems) }
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 extension (sc: StringContext) inline def showMe(inline args: Any*): String = ${ showMeExpr('sc, 'args) }
@@ -26,5 +26,6 @@ trait Show[-T] {
   def show(x: T): String
 }
 
-given Show[Int] = x => s"Int($x)"
-given Show[String] = x => s"Str($x)"
+object Show:
+  given Show[Int] = x => s"Int($x)"
+  given Show[String] = x => s"Str($x)"

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object C {
   inline def m: Any = ${ mExpr }

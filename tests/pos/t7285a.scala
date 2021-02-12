@@ -80,7 +80,7 @@ object Test4 {
     }
 
   }
-  import Test4.Base._
+  import Test4.Base.*
   locally {
   (d1: Base, d2: Base) =>
     (d1, d2) match {

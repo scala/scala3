@@ -1,4 +1,4 @@
-import scala.reflect._
+import scala.reflect.*
 
 object Test:
   def main(args: Array[String]): Unit =

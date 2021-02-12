@@ -1,5 +1,5 @@
 
-import scala.language.{ postfixOps }
+import scala.language.postfixOps
 
 object Test {
 

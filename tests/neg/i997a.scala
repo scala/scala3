@@ -9,7 +9,7 @@ class C {
     private implicit class D(x: Int) extends Super
   }
 
-  import O._
+  import O.*
 
   println(O.CC(1)) // error: CC cannot be accessed
 

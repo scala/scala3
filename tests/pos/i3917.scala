@@ -17,11 +17,11 @@ object C extends A {
     this.a = true
     C.this.a = true
 
-    import B._
+    import B.*
     b = true
 
     val c0 = new C
-    import c0._
+    import c0.*
     c = true
   }
 }

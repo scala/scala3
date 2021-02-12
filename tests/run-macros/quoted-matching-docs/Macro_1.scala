@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def sum(args: Int*): Int = ${ sumExpr('args) }
 
@@ -22,6 +22,6 @@ private def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes) : Expr[Int] = {
 
 object UnsafeExpr {
   def underlyingArgument[T](expr: Expr[T])(using Quotes): Expr[T] =
-    import quotes.reflect._
+    import quotes.reflect.*
     expr.asTerm.underlyingArgument.asExpr.asInstanceOf[Expr[T]]
 }

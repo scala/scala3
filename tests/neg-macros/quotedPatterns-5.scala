@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Test {
   def test(x: quoted.Expr[Int])(using Quotes): Unit = x match {
     case '{ type t; 4 } => Type.of[t]

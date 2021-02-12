@@ -15,8 +15,8 @@ enum Expr {
 }
 
 object Interpreter:
-    import Expr._
-    import TokenType._
+    import Expr.*
+    import TokenType.*
 
     def eval(expr: Expr): String | Int | Double | Boolean | Unit =
         expr match

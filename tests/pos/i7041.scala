@@ -1,4 +1,4 @@
-import scala.util.control.NonLocalReturns._
+import scala.util.control.NonLocalReturns.*
 
 extension [T, E <: Throwable](op: => T)
   inline def rescue (fallback: PartialFunction[E, T]) =

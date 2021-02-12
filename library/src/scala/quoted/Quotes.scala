@@ -217,6 +217,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    */
   trait reflectModule { self: reflect.type =>
 
+    /** Module object of `type CompilationInfo`  */
+    val CompilationInfo: CompilationInfoModule
+
+    /** Methods of the module object `val CompilationInfo` */
+    trait CompilationInfoModule { this: CompilationInfo.type =>
+      /** Are we expanding a `inline` macro while typing the program?
+       *
+       *  This will be true when the macro is used in a transparent inline.
+       */
+      def isWhileTyping: Boolean
+    }
+
+
     /** Returns the `Term` representation this expression */
     extension (expr: Expr[Any])
       def asTerm: Term

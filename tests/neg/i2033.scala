@@ -1,5 +1,5 @@
-import java.io._
-import collection._
+import java.io.*
+import collection.*
 object Test {
   def check(obj: AnyRef): Unit = {
     val bos = new ByteArrayOutputStream()

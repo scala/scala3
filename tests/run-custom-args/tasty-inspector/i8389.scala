@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.tasty.inspector._
+import scala.quoted.*
+import scala.tasty.inspector.*
 
 @main def Test = {
   // Artefact of the current test infrastructure

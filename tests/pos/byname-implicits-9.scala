@@ -68,6 +68,6 @@ object Show {
 }
 
 object Test {
-  import ListInstances._
+  import ListInstances.*
   implicitly[Show[List[Int]]]
 }

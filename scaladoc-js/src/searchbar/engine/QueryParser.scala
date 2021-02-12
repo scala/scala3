@@ -21,8 +21,8 @@ class QueryParser:
   val escapedRegex = raw"`(.*)`".r
 
   def parse(query: String): List[Matchers] = query match {
-    case escapedRegex(rest) => List(Matchers.ByName(rest))
-    case kindRegex(kind, rest) => List(Matchers.ByKind(kind)) ++ parse(rest)
-    case restRegex(name) => List(Matchers.ByName(name))
+    case escapedRegex(rest) => List(ByName(rest))
+    case kindRegex(kind, rest) => List(ByKind(kind)) ++ parse(rest)
+    case restRegex(name) => List(ByName(name))
     case _ => List()
   }

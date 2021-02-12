@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object PowerMacro {
   def power2(x: Expr[Double])(using Quotes) = '{

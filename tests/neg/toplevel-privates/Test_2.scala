@@ -1,6 +1,6 @@
 package q
 
-import p._
+import p.*
 
 val x1 = x    // error: not found
 

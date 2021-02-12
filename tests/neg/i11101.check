@@ -1,0 +1,8 @@
+-- Error: tests/neg/i11101.scala:16:22 ---------------------------------------------------------------------------------
+16 |  summon[TC[FailHere]] // error: blow up here
+   |                      ^
+   |                      blow up here
+-- Error: tests/neg/i11101.scala:17:16 ---------------------------------------------------------------------------------
+17 |  TC.mkDefaultTC[FailHere] // error: blow up here
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |  blow up here

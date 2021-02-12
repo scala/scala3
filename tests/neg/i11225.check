@@ -1,0 +1,45 @@
+-- Error: tests/neg/i11225.scala:5:16 ----------------------------------------------------------------------------------
+5 |  val x1: Int = uninitialized // error
+  |                ^^^^^^^^^^^^^
+  |                `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:6:28 ----------------------------------------------------------------------------------
+6 |  var x2: Int = if ??? then uninitialized else uninitialized // error // error
+  |                            ^^^^^^^^^^^^^
+  |                            `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:6:47 ----------------------------------------------------------------------------------
+6 |  var x2: Int = if ??? then uninitialized else uninitialized // error // error
+  |                                               ^^^^^^^^^^^^^
+  |                             `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:9:28 ----------------------------------------------------------------------------------
+9 |  var x5: () => Int = () => uninitialized // error
+  |                            ^^^^^^^^^^^^^
+  |                            `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:10:18 ---------------------------------------------------------------------------------
+10 |  var x6: Int = { uninitialized } // error
+   |                  ^^^^^^^^^^^^^
+   |                  `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:13:22 ---------------------------------------------------------------------------------
+13 |    var cached: Int = uninitialized   // error
+   |                      ^^^^^^^^^^^^^
+   |                      `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:14:30 ---------------------------------------------------------------------------------
+14 |    cached = if x then 1 else uninitialized  // error
+   |                              ^^^^^^^^^^^^^
+   |                           `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:17:4 ----------------------------------------------------------------------------------
+17 |    uninitialized // error
+   |    ^^^^^^^^^^^^^
+   |    `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:18:4 ----------------------------------------------------------------------------------
+18 |    uninitialized // error
+   |    ^^^^^^^^^^^^^
+   |    `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:23:4 ----------------------------------------------------------------------------------
+23 |    uninitialized // error
+   |    ^^^^^^^^^^^^^
+   |    `uninitialized` can only be used as the right hand side of a mutable field definition
+-- Error: tests/neg/i11225.scala:30:16 ---------------------------------------------------------------------------------
+30 |  var x7: Int = uni  // error
+   |                ^^^
+   |                `uninitialized` can only be used as the right hand side of a mutable field definition
+   | This location contains code that was inlined from i11225.scala:25

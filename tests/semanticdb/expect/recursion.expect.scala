@@ -3,7 +3,7 @@ package recursion
 
 object Nats/*<-recursion::Nats.*/ {
   sealed trait Nat/*<-recursion::Nats.Nat#*/ {
-    inline def ++/*<-recursion::Nats.Nat#`++`().*/ : Succ/*->recursion::Nats.Succ#*/[this.type] = Succ/*->recursion::Nats.Succ.*//*->recursion::Nats.Succ.apply().*/(this)
+    transparent inline def ++/*<-recursion::Nats.Nat#`++`().*/ : Succ/*->recursion::Nats.Succ#*/[this.type] = Succ/*->recursion::Nats.Succ.*//*->recursion::Nats.Succ.apply().*/(this)
 
     transparent inline def +/*<-recursion::Nats.Nat#`+`().*/(inline that/*<-recursion::Nats.Nat#`+`().(that)*/: Nat/*->recursion::Nats.Nat#*/): Nat/*->recursion::Nats.Nat#*/ =
       inline this match {

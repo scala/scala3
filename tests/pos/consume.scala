@@ -5,8 +5,8 @@ object Test1:
 
 object Test2 {
   import scala.math.Numeric
-  import scala.math.Numeric.Implicits._
-  import scala.math.Ordering.Implicits._
+  import scala.math.Numeric.Implicits.*
+  import scala.math.Ordering.Implicits.*
 
   def consume[T: Numeric](xs: List[T], limit: T): List[T] =
     val zero = implicitly[Numeric[T]].zero

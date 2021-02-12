@@ -74,7 +74,7 @@ object Tiark3 {
       def brand(x: Any): p.L = x // error: underlying not concrete
     }
     trait V extends U {
-      type X = B with A
+      type X = B & A
       def p2: X = ???
     }
     val v = new V {}

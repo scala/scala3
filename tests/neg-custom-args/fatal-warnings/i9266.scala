@@ -1,3 +1,3 @@
-import language.`3.1-migration`
+import language.`future-migration`
 
 def test = { implicit x: Int => x + x } // error

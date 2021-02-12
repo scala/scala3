@@ -1,11 +1,11 @@
-import Nat._
+import Nat.*
 
  inline def toIntMacro(inline nat: Nat): Int = ${ Macros.toIntImpl('nat) }
  inline def ZeroMacro: Zero.type = ${ Macros.natZero }
  transparent inline def toNatMacro(inline int: Int): Nat = ${ Macros.toNatImpl('int) }
 
  object Macros:
-   import quoted._
+   import quoted.*
 
    def toIntImpl(nat: Expr[Nat])(using Quotes): Expr[Int] =
 

@@ -88,7 +88,7 @@ semi             ::=  ‘;’ |  nl {nl}
 
 ## Optional Braces
 
-The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features-indentation.html)
+The lexical analyzer also inserts `indent` and `outdent` tokens that represent regions of indented code [at certain points](../reference/other-new-features/indentation.md)
 
 In the context-free productions below we use the notation `<<< ts >>>`
 to indicate a token sequence `ts` that is either enclosed in a pair of braces `{ ts }` or that constitutes an indented region `indent ts outdent`. Analogously, the
@@ -120,7 +120,7 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
+as  derives  end  extension  infix  inline  opaque  open  transparent  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](./soft-modifier.md) for additional
@@ -258,8 +258,7 @@ ArgumentExprs     ::=  ParArgumentExprs
 BlockExpr         ::=  <<< (CaseClauses | Block) >>>
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
-                    |  {Annotation {nl}} [‘implicit’ | ‘lazy’] Def
-                    |  {Annotation {nl}} {LocalModifier} TmplDef
+                    |  {Annotation {nl}} {LocalModifier} Def
                     |  Extension
                     |  Expr1
                     |  EndMarker
@@ -353,16 +352,16 @@ AccessQualifier   ::=  ‘[’ id ‘]’
 Annotation        ::=  ‘@’ SimpleType1 {ParArgumentExprs}                         Apply(tpe, args)
 
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
-ImportSpec        ::=  id
-                    | ‘_’
-                    | ‘given’
-                    | ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘given’ [InfixType]
-                    |  ‘_'
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec                          Import(expr, sels)
+                    |  SimpleRef ‘as’ id                                          Import(EmptyTree, ImportSelector(ref, id))
+ImportSpec        ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
 
 EndMarker         ::=  ‘end’ EndMarkerTag    -- when followed by EOL
 EndMarkerTag      ::=  id | ‘if’ | ‘while’ | ‘for’ | ‘match’ | ‘try’
@@ -384,14 +383,12 @@ TypeDcl           ::=  id [TypeParamClause] {FunParamClause} TypeBounds         
                        [‘=’ Type]
 
 Def               ::=  ‘val’ PatDef
-                    |  ‘var’ VarDef
+                    |  ‘var’ PatDef
                     |  ‘def’ DefDef
                     |  ‘type’ {nl} TypeDcl
                     |  TmplDef
 PatDef            ::=  ids [‘:’ Type] ‘=’ Expr
-                    |  Pattern2 [‘:’ Type] ‘=’ Expr                            PatDef(_, pats, tpe?, expr)
-VarDef            ::=  PatDef
-                    |  ids ‘:’ Type ‘=’ ‘_’
+                    |  Pattern2 [‘:’ Type] ‘=’ Expr                             PatDef(_, pats, tpe?, expr)
 DefDef            ::=  DefSig [‘:’ Type] ‘=’ Expr                               DefDef(_, name, tparams, vparamss, tpe, expr)
                     |  ‘this’ DefParamClause DefParamClauses ‘=’ ConstrExpr     DefDef(_, <init>, Nil, vparamss, EmptyTree, expr | Block)
 

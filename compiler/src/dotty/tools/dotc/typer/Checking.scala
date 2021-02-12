@@ -700,7 +700,7 @@ trait Checking {
     def check(pat: Tree, pt: Type): Boolean = (pt <:< pat.tpe) || fail(pat, pt)
 
     def recur(pat: Tree, pt: Type): Boolean =
-      !sourceVersion.isAtLeast(`3.1`) || // only for 3.1 for now since mitigations work only after this PR
+      !sourceVersion.isAtLeast(future) || // only for 3.x for now since mitigations work only after this PR
       pt.hasAnnotation(defn.UncheckedAnnot) || {
         patmatch.println(i"check irrefutable $pat: ${pat.tpe} against $pt")
         pat match {
@@ -844,7 +844,7 @@ trait Checking {
              !meth.isDeclaredInfix &&
              !meth.maybeOwner.is(Scala2x) &&
              !infixOKSinceFollowedBy(tree.right) &&
-             sourceVersion.isAtLeast(`3.1`) =>
+             sourceVersion.isAtLeast(future) =>
             val (kind, alternative) =
               if (ctx.mode.is(Mode.Type))
                 ("type", (n: Name) => s"prefix syntax $n[...]")
@@ -897,18 +897,6 @@ trait Checking {
       case _ =>
         tp
     }
-  }
-
-  /** Check that `tree` can be right hand-side or argument to `inline` value or parameter. */
-  def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = {
-    if sym.is(Inline, butNot = DeferredOrTermParamOrAccessor) && !ctx.erasedTypes && !Inliner.inInlineMethod then
-      tpt.tpe.widenTermRefExpr.dealias.normalized match
-        case tp: ConstantType =>
-          if !(exprPurity(tree) >= Pure) then
-            report.error(em"inline value must be pure", tree.srcPos)
-        case _ =>
-          val pos = if tpt.span.isZeroExtent then tree.srcPos else tpt.srcPos
-          report.error(em"inline value must have a literal constant type", pos)
   }
 
   /** A hook to exclude selected symbols from double declaration check */
@@ -1277,7 +1265,7 @@ trait Checking {
         if stat.isDef then seen += tname
 
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
-    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`3.1-migration`) then
+    if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
       report.warning(
         em"""${kind} should be an instance of Matchable,
@@ -1306,7 +1294,6 @@ trait NoChecking extends ReChecking {
   override def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit = ()
   override def checkFeasibleParent(tp: Type, pos: SrcPos, where: => String = "")(using Context): Type = tp
   override def checkAnnotArgs(tree: Tree)(using Context): tree.type = tree
-  override def checkInlineConformant(tpt: Tree, tree: Tree, sym: Symbol)(using Context): Unit = ()
   override def checkNoTargetNameConflict(stats: List[Tree])(using Context): Unit = ()
   override def checkParentCall(call: Tree, caller: ClassSymbol)(using Context): Unit = ()
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt

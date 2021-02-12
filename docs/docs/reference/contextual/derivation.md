@@ -231,7 +231,7 @@ def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
 Pulling this all together we have the following complete implementation,
 
 ```scala
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] =
@@ -280,7 +280,7 @@ enum Opt[+T] derives Eq:
    case Nn
 
 @main def test =
-   import Opt._
+   import Opt.*
    val eqoi = summon[Eq[Opt[Int]]]
    assert(eqoi.eqv(Sm(23), Sm(23)))
    assert(!eqoi.eqv(Sm(23), Sm(13)))

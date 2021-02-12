@@ -1,4 +1,4 @@
-import scala.{specialized => sp}
+import scala.{specialized as sp}
 
 // NOTE: `{ val c = caller; print(""); c }` is used instead of a simple `caller`,
 //       because we want to prevent tail-call optimization from eliding the stack-

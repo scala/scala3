@@ -4,7 +4,7 @@ trait That2[A, R <: That2[A, R]]
 trait T[A, This >: Null <: That1[A] with T[A, This]] extends That2[A, This] {
   self: This =>
 
-  private var next: This = _
+  private var next: This = compiletime.uninitialized
   def isEmpty = next eq null
 
   def length: Int = {

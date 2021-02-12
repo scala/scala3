@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def f(a: Expr[Int])(using q: Quotes): Unit =
 

@@ -3,7 +3,7 @@ class Pouring(capacity: Vector[Int]) {
   type Content = Vector[Int]
 
   sealed trait Move {
-    import Move._
+    import Move.*
     def apply(content: Content): Content = this match {
       case Empty(g) => content.updated(g, 0)
       case Fill(g) => content.updated(g, capacity(g))

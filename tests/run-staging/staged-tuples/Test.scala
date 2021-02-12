@@ -1,5 +1,5 @@
 import scala.quoted.staging.run
-import scala.internal.StagedTuple._
+import scala.internal.StagedTuple.*
 
 object Test {
 

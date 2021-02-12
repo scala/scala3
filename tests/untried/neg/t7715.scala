@@ -1,6 +1,6 @@
 
 import PartialFunction.cond
-import util._
+import util.*
 
 object Test extends App {
   val days = (1 to 12).toList

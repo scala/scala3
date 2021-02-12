@@ -1,0 +1,35 @@
+---
+layout: main
+---
+<main class="container">
+    <header>
+        <h1>{{ page.title }}</h1>
+        <div class="byline">
+            <time class="date">
+                <i class="far fa-calendar-alt"></i>
+                {{ page.date | date: "%Y-%m-%d" }}
+            </time>
+            <span class="author">
+                <i class="fas fa-pen-nib"></i>
+                {{ page.author }}
+            </span>
+        </div>
+        {% if page.subTitle %}
+        <div class="subtitle">
+            {{ page.subTitle }}
+        </div>
+        {% endif %}
+    </header>
+
+    {{ content }}
+
+    {% if page.author and page.authorImg %}
+    <hr/>
+    <div class="blog-author">
+        <img id="author-img" src="{{ site.baseurl }}{{ page.authorImg }}">
+        <span id="author-signature">
+            {{ page.author }}
+        </span>
+    </div>
+    {% endif %}
+</main>

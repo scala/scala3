@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 def test(using Quotes): Unit = {
   def f = {
     {

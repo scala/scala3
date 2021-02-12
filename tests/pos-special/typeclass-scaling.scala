@@ -19,7 +19,7 @@ import scala.annotation.tailrec
 // user	1m6.337s
 // sys	0m1.344s
 object datatypes {
-  import typeclasses._
+  import typeclasses.*
 
   enum E1[T] derives Eq, Pickler {
     case C1(x1: T)
@@ -215,8 +215,8 @@ object typeclasses {
 
   object Eq {
     import scala.compiletime.erasedValue
-    import compiletime._
-    import scala.deriving._
+    import compiletime.*
+    import scala.deriving.*
 
     inline def tryEql[TT](x: TT, y: TT): Boolean = summonInline[Eq[TT]].eql(x, y)
 
@@ -266,8 +266,8 @@ object typeclasses {
 
   object Pickler {
     import scala.compiletime.{erasedValue, constValue}
-    import compiletime._
-    import deriving._
+    import compiletime.*
+    import deriving.*
 
     def nextInt(buf: mutable.ListBuffer[Int]): Int = try buf.head finally buf.trimStart(1)
 
@@ -356,8 +356,8 @@ object typeclasses {
     }
   }
 }
-import datatypes._
-import typeclasses._
+import datatypes.*
+import typeclasses.*
 
 // Tests
 object Test extends App {

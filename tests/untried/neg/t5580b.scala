@@ -1,5 +1,5 @@
 import scala.collection.mutable.WeakHashMap
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.*
 
 class bar { }
 

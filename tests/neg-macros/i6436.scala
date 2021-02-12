@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 def f(sc: quoted.Expr[StringContext]): Unit = {
   sc match {

@@ -13,7 +13,7 @@ object Foo {
   def foo(a: A|Null): Unit = {
     println("foo(A) called")
   }
-  
+
   def foo(b: B|Null): Unit = {
     println("foo(B) called")
   }
@@ -45,7 +45,7 @@ object Foo {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    import Foo._
+    import Foo.*
     foo(new A)
     foo(new B)
     foo(new C)

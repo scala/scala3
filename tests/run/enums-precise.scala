@@ -8,8 +8,8 @@ enum Ast:
   case Ident(name: String)
   case Apply(fn: Ast, args: NonEmptyList[Ast])
 
-import NonEmptyList._
-import Ast._
+import NonEmptyList.*
+import Ast.*
 
 // This example showcases the widening when inferring enum case types.
 // With scala 2 case class hierarchies, if One.apply(1) returns One[Int] and Many.apply(2, One(3)) returns Many[Int]

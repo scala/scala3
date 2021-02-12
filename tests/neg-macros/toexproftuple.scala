@@ -1,4 +1,4 @@
-import scala.quoted._, scala.deriving._
+import scala.quoted._, scala.deriving.*
 
 inline def mcr: Any = ${mcrImpl}
 def mcrImpl(using ctx: Quotes): Expr[Any] = {

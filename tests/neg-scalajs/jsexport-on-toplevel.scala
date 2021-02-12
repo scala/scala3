@@ -1,5 +1,5 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 @JSExport // error
 class A1

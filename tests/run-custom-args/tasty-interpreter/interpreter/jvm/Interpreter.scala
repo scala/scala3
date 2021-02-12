@@ -1,11 +1,11 @@
 package scala.tasty.interpreter
 package jvm
 
-import scala.quoted._
+import scala.quoted.*
 import scala.tasty.interpreter.jvm.JVMReflection
 
 class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[Q] {
-  import q.reflect._
+  import q.reflect.*
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any
@@ -20,7 +20,7 @@ class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[
         sym.tree match
           case tree: ClassDef =>
             val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
-            import java.lang.reflect._
+            import java.lang.reflect.*
             val handler: InvocationHandler = new InvocationHandler() {
               def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
                 if (LOG) {

@@ -1,5 +1,5 @@
 object Enums:
-  import <:<._
+  import <:<.*
 
   enum Colour:
     import Colour.Red

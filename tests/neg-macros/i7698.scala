@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 trait Show[T] {
   def show(x: T): String
 }
 
 def showInterpolatorImpl(sc: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes): Expr[String] =
-  import quotes.reflect._
+  import quotes.reflect.*
   argsExpr.asTerm match
     case '{ $arg: $t } => // error
     case '[ Int ] => // error

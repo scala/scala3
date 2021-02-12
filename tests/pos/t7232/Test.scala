@@ -1,5 +1,5 @@
 object Test {
-  import pack._
+  import pack.*
   Foo.okay().size()
   Foo.wrong().size()
 }

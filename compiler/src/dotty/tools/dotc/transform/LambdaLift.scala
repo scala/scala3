@@ -556,6 +556,8 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // The Lifter updates the type of symbols using `installAfter` to give them a
     // new `SymDenotation`, but that doesn't affect non-sym denotations, so we
     // reload them manually here.
+    // Note: If you tweak this code, make sure to test your changes with
+    // `Config.reuseSymDenotations` set to false to exercise this path more.
     if denot.isInstanceOf[NonSymSingleDenotation] && lifter.free.contains(sym) then
       tree.qualifier.select(sym).withSpan(tree.span)
     else tree

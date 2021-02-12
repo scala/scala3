@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def wildcard: Map[String, Class[?]] = ${ wildcardMacro }
 inline def noWildcard: Map[String, Class[Int]] = ${ noWildcardMacro }

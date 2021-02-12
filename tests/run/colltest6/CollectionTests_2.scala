@@ -1,9 +1,9 @@
-import Predef.{augmentString => _, wrapString => _, intArrayOps => _, booleanArrayOps => _, genericArrayOps => _, refArrayOps => _, wrapIntArray => _, wrapBooleanArray => _, wrapRefArray => _, genericWrapArray => _, _}
+import Predef.{augmentString as _, wrapString as _, intArrayOps as _, booleanArrayOps as _, genericArrayOps as _, refArrayOps as _, wrapIntArray as _, wrapBooleanArray as _, wrapRefArray as _, genericWrapArray as _, *}
 import scala.reflect.ClassTag
 
 object Test {
-  import colltest6.strawman.collections._
-  import CollectionStrawMan6._
+  import colltest6.strawman.collections.*
+  import CollectionStrawMan6.*
 
   def seqOps(xs: Seq[Int]) = {
     val x1 = xs.foldLeft("")(_ + _)

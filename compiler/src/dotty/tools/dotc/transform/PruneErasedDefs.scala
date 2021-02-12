@@ -10,6 +10,7 @@ import Symbols._
 import Types._
 import typer.RefChecks
 import MegaPhase.MiniPhase
+import StdNames.nme
 import ast.tpd
 
 /** This phase makes all erased term members of classes private so that they cannot
@@ -18,6 +19,10 @@ import ast.tpd
  *  The phase also replaces all expressions that appear in an erased context by
  *  default values. This is necessary so that subsequent checking phases such
  *  as IsInstanceOfChecker don't give false negatives.
+ *  Finally, the phase replaces `compiletime.uninitialized` on the right hand side
+ *  of a mutable field definition by `_`. This avoids a "is declared erased, but is
+ *  in fact used" error in Erasure and communicates to Constructors that the
+ *  variable does not have an initializer.
  */
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
@@ -38,10 +43,25 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
       cpy.Apply(tree)(tree.fun, tree.args.map(trivialErasedTree))
     else tree
 
+  private def hasUninitializedRHS(tree: ValOrDefDef)(using Context): Boolean =
+    def recur(rhs: Tree): Boolean = rhs match
+      case rhs: RefTree =>
+        rhs.symbol == defn.Compiletime_uninitialized
+        && tree.symbol.is(Mutable) && tree.symbol.owner.isClass
+      case closureDef(ddef) if defn.isContextFunctionType(tree.tpt.tpe.dealias) =>
+        recur(ddef.rhs)
+      case _ =>
+        false
+    recur(tree.rhs)
+
   override def transformValDef(tree: ValDef)(using Context): Tree =
-    if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)
+    val sym = tree.symbol
+    if tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty then
       cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
-    else tree
+    else if hasUninitializedRHS(tree) then
+      cpy.ValDef(tree)(rhs = cpy.Ident(tree.rhs)(nme.WILDCARD).withType(tree.tpt.tpe))
+    else
+      tree
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     if (tree.symbol.isEffectivelyErased && !tree.rhs.isEmpty)

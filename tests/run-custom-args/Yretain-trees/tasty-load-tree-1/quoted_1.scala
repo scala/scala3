@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 
 object Foo {
@@ -7,7 +7,7 @@ object Foo {
     ${ inspectBodyImpl('i) }
 
   def inspectBodyImpl(x: Expr[Int])(using Quotes) : Expr[String] = {
-    import quotes.reflect._
+    import quotes.reflect.*
 
     def definitionString(sym: Symbol): Expr[String] =
       if sym.isClassDef || sym.isDefDef || sym.isValDef then Expr(sym.tree.show(using Printer.TreeStructure))

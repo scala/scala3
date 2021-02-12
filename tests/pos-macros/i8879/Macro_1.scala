@@ -2,12 +2,12 @@ case class Foo[A](a: A)
 
 object Test {
 
-  import scala.quoted._
+  import scala.quoted.*
 
   def impl[T](t: T)(using Quotes, Type[T]): Expr[Any] = {
 
-    import quotes.reflect._
-    import util._
+    import quotes.reflect.*
+    import util.*
 
     val foo = TypeRepr.of[Foo[String]]
     val symbol = foo.typeSymbol.memberField("a")

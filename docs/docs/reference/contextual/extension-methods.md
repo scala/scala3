@@ -189,7 +189,7 @@ object IntOpsEx extends IntOps:
       else Some(i / x)
 
 trait SafeDiv:
-   import IntOpsEx._ // brings safeDiv and safeMod into scope
+   import IntOpsEx.* // brings safeDiv and safeMod into scope
 
    extension (i: Int) def divide(d: Int): Option[(Int, Int)] =
       // extension methods imported and thus in scope

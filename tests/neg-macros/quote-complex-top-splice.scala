@@ -1,6 +1,6 @@
 import Test.impl
 
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
 

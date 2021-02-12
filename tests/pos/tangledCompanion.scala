@@ -1,6 +1,6 @@
 object Test {
 
-  import Coll._
+  import Coll.*
   import LazyList.#::
 
   val xs = LazyList.Empty

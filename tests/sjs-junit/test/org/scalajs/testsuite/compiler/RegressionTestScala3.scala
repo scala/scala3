@@ -1,12 +1,12 @@
 package org.scalajs.testsuite.compiler
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.scalajs.js
 
 class RegressionTestScala3 {
-  import RegressionTestScala3._
+  import RegressionTestScala3.*
 
   @Test def testRegressionDoubleDefinitionOfOuterPointerIssue10177(): Unit = {
     assertEquals(6, new OuterClassIssue10177().foo(5))

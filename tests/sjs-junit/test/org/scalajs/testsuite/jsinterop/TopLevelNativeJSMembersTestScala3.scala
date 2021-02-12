@@ -1,10 +1,10 @@
 package org.scalajs.testsuite.jsinterop
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 @js.native
 @JSGlobal("interoperabilityTestGlobalValDefConstant")

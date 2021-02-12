@@ -1,4 +1,4 @@
-import quoted._
+import quoted.*
 
 class Foo {
   class Bar

@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.deriving._
+import scala.quoted.*
+import scala.deriving.*
 
 
 object Macros {

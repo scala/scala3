@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 object Test
   def run(using q: Quotes)(tree: q.reflect.Tree): Unit =
     def makeExpr(tree: q.reflect.Tree): Expr[Int] = ???

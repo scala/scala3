@@ -1,4 +1,4 @@
-import scala.collection.mutable._
+import scala.collection.mutable.*
 
 trait SB[A] extends Buffer[A] {
   abstract override def insertAll(n: Int, iter: IterableOnce[A]): Unit = synchronized {

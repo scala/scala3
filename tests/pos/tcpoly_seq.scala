@@ -53,7 +53,7 @@ trait HOSeq {
 
   final class ListBuffer[A] {
     private var start: List[A] = Nil
-    private var last: ::[A] = _
+    private var last: ::[A] = compiletime.uninitialized
     private var exported: Boolean = false
 
     /** Appends a single element to this buffer.

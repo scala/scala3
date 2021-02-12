@@ -198,6 +198,7 @@ object Phases {
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
+    private var myInliningPhase: Phase = _
     private var myPickleQuotesPhase: Phase = _
     private var myFirstTransformPhase: Phase = _
     private var myCollectNullableFieldsPhase: Phase = _
@@ -218,6 +219,7 @@ object Phases {
     final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
+    final def inliningPhase: Phase = myInliningPhase
     final def pickleQuotesPhase: Phase = myPickleQuotesPhase
     final def firstTransformPhase: Phase = myFirstTransformPhase
     final def collectNullableFieldsPhase: Phase = myCollectNullableFieldsPhase
@@ -241,6 +243,7 @@ object Phases {
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
+      myInliningPhase = phaseOfClass(classOf[Inlining])
       myPickleQuotesPhase = phaseOfClass(classOf[PickleQuotes])
       myFirstTransformPhase = phaseOfClass(classOf[FirstTransform])
       myCollectNullableFieldsPhase = phaseOfClass(classOf[CollectNullableFields])
@@ -406,6 +409,7 @@ object Phases {
   def postTyperPhase(using Context): Phase              = ctx.base.postTyperPhase
   def sbtExtractDependenciesPhase(using Context): Phase = ctx.base.sbtExtractDependenciesPhase
   def picklerPhase(using Context): Phase                = ctx.base.picklerPhase
+  def inliningPhase(using Context): Phase               = ctx.base.inliningPhase
   def pickleQuotesPhase(using Context): Phase           = ctx.base.pickleQuotesPhase
   def firstTransformPhase(using Context): Phase         = ctx.base.firstTransformPhase
   def refchecksPhase(using Context): Phase              = ctx.base.refchecksPhase
