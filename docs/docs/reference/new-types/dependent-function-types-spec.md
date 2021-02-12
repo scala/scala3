@@ -7,7 +7,7 @@ Initial implementation in [PR #3464](https://github.com/lampepfl/dotty/pull/3464
 
 ## Syntax
 
-```
+```ebnf
 FunArgTypes       ::=  InfixType
                     |  ‘(’ [ FunArgType {',' FunArgType } ] ‘)’
                     |  ‘(’ TypedFunParam {',' TypedFunParam } ‘)’
@@ -15,7 +15,7 @@ TypedFunParam     ::=  id ‘:’ Type
 ```
 
 Dependent function types associate to the right, e.g.
-`(s: S) ⇒ (t: T) ⇒ U` is the same as `(s: S) ⇒ ((t: T) ⇒ U)`.
+`(s: S) => (t: T) => U` is the same as `(s: S) => ((t: T) => U)`.
 
 ## Implementation
 
@@ -25,7 +25,7 @@ refinement types of `scala.FunctionN`. A dependent function type
 `(x1: K1, ..., xN: KN) => R` of arity `N` translates to:
 
 ```scala
-FunctionN[K1, ..., Kn, R'] with
+FunctionN[K1, ..., Kn, R']:
    def apply(x1: K1, ..., xN: KN): R
 ```
 
