@@ -12,7 +12,7 @@
   --inactive-fg: #777;
   --title-fg: #00485E;
 
-  --link-sig-fd: #7c99a5;
+  --link-sig-fd: #2da0d1;
   --link-sig-hover-fd: #7c99a5;
 
   --leftbar-bg: #003048;
@@ -155,7 +155,9 @@ th {
 
 /* Navigation */
 #sideMenu2 {
-  overflow-y: auto;
+  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
   scrollbar-width: thin;
   height: 100%;
   font-size: var(--leftbar-font-size);
@@ -206,7 +208,7 @@ th {
   margin-top: 1px;
   margin-bottom: 1px;
   width: 100%;
-  /* This trick adds selected bachground stratching to the lef side of screen */
+  /* This trick adds selected background stretching to the left side of screen */
   margin-left: calc(0px - var(--side-width));
   padding-left: var(--side-width);
   width: calc(2 * var(--side-width));
@@ -490,7 +492,7 @@ footer .pull-right {
 }
 
 .documentableElement .signature {
-  color: gray;
+  color: #5a5a5a;
   display: table-cell;
   white-space: pre-wrap;
 }
@@ -775,3 +777,6 @@ footer .socials {
   }
 }
 
+footer {
+  background-color: white;
+}
