@@ -95,9 +95,7 @@ while [[ $# -gt 0 ]]; do
         # is a script if extension .scala or .sc or if has scala hash bang
         if [[ -e "$1" && ("$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
           execute_script=true
-          [ -n "$SCALA_OPTS" ] && java_options+=($SCALA_OPTS)
           target_script="$1"
-          if [ ! -f $target_script
         else
           residual_args+=("$1")
         fi
@@ -114,14 +112,18 @@ if [ $execute_script == true ]; then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
+  if [ -n "$SCALA_OPTS" ]; then
+    java_options+=($SCALA_OPTS)
+    if [ "${SCALA_OPTS##-save}" != "${SCALA_OPTS}" ]; then
+      save_compiled=true
+    fi
+  fi
   setScriptName="-Dscript.path=$target_script"
   target_jar="${target_script%.*}.jar"
-  jar_found=false
-  [[ $save_compiled == true && -f "$target_jar" ]] && jar_found=true
-  if [[ $jar_found == true && "$target_jar" -nt "$target_script" ]]; then
+  if [[ $save_compiled == true && "$target_jar" -nt "$target_script" ]]; then
     java $setScriptName -jar "$target_jar" "${script_args[@]}"
   else
-    [[ $save_compiled == true && -f $target_jar ]] && rm -f $target_jar
+    [[ $save_compiled == true ]] && rm -f $target_jar
     residual_args+=($setScriptName)
     eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
   fi
