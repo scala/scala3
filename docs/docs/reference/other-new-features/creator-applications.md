@@ -3,7 +3,7 @@ layout: doc-page
 title: "Universal Apply Methods"
 ---
 
-Scala case classes generate apply methods, so that values of case classes can be created using simple
+Scala 2 case classes generate apply methods, so that values of case classes can be created using simple
 function application, without needing to write `new`.
 
 Scala 3 generalizes this scheme to all concrete classes. Example:
