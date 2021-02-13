@@ -2207,7 +2207,9 @@ object SymDenotations {
       if !myCompanion.exists then
         ensureCompleted()
       myCompanion
-    override def registeredCompanion_=(c: Symbol) = { myCompanion = c }
+
+    override def registeredCompanion_=(c: Symbol) = 
+      myCompanion = c 
 
     private var myNestingLevel = -1
 
@@ -2458,6 +2460,7 @@ object SymDenotations {
       || owner.isRefinementClass
       || owner.is(Scala2x)
       || owner.unforcedDecls.contains(denot.name, denot.symbol)
+      || (denot.is(Synthetic) && denot.is(ModuleClass) && stillValidInOwner(denot.companionClass))
       || denot.isSelfSym
       || denot.isLocalDummy)
   catch case ex: StaleSymbol => false
