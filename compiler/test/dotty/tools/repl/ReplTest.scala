@@ -16,19 +16,8 @@ import dotty.tools.dotc.reporting.MessageRendering
 import org.junit.{After, Before}
 import org.junit.Assert._
 
-
-class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new ByteArrayOutputStream) extends ReplDriver(
-  Array(
-    "-classpath",
-    if (withStaging)
-      TestConfiguration.withStagingClasspath
-    else
-      TestConfiguration.basicClasspath,
-    "-color:never",
-    "-Yerased-terms",
-  ),
-  new PrintStream(out, true, StandardCharsets.UTF_8.name)
-) with MessageRendering {
+class ReplTest(options: Array[String] = ReplTest.defaultOptions, out: ByteArrayOutputStream = new ByteArrayOutputStream)
+extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
     val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
@@ -103,3 +92,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     end if
   }
 }
+
+object ReplTest:
+  val commonOptions = Array("-color:never", "-Yerased-terms")
+  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.basicClasspath)
+  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.withStagingClasspath)

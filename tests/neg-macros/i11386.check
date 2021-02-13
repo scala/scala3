@@ -1,0 +1,13 @@
+
+-- Error: tests/neg-macros/i11386/Test_2.scala:6:10 --------------------------------------------------------------------
+6 |    dummy(0) // error
+  |          ^
+  |          test
+  | This location contains code that was inlined from Test_2.scala:6
+  | This location contains code that was inlined from Macro_1.scala:7
+-- Error: tests/neg-macros/i11386/Test_2.scala:8:20 --------------------------------------------------------------------
+8 |    dummy(int2String(0)) // error
+  |          ^^^^^^^^^^^^^
+  |          test
+  | This location contains code that was inlined from Test_2.scala:8
+  | This location contains code that was inlined from Macro_1.scala:7

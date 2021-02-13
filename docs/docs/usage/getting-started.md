@@ -38,13 +38,13 @@ Start using the Dotty IDE in any Dotty project by following the
 ### Standalone installation
 Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
 of the Dotty repository. Releases include three executables: `scalac` the Dotty compiler,
-`scalad` the [Dotty Documentation tool](./dottydoc.md) and `scala` the Dotty REPL.
+`scaladoc` the [Scaladoc](scaladoc.md) and `scala` the Dotty REPL.
 
 ```
 .
 └── bin
     ├── scalac
-    ├── scalad
+    ├── scaladoc
     └── scala
 ```
 

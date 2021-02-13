@@ -31,7 +31,7 @@ class BaseHtmlTest:
       try
         val args = Scaladoc.Args(
             name = projectName,
-            tastyFiles = pcks.flatMap(tastyFiles),
+            tastyFiles = pcks.flatMap(tastyFiles(_)),
             output = dest.toFile,
             docsRoot = docsRoot,
             projectVersion = Some(projectVersion),

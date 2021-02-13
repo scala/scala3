@@ -16,7 +16,7 @@ class SymOps[Q <: Quotes](val q: Q):
     def className: Option[String] =
       if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
         Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
-      )
+      ).filterNot(_.contains("package$"))
       else if (sym.isPackageDef) None
       else sym.maybeOwner.className
 
@@ -117,8 +117,8 @@ class SymOps[Q <: Quotes](val q: Q):
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
             Option(csym.associatedFile).fold("")(_.path)
         }
-        // We want package object to point to package
-        val className = sym.className.filter(_ != "package$")
+
+        val className = sym.className
 
         DRI(
           className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),

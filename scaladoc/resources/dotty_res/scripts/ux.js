@@ -9,8 +9,9 @@ window.addEventListener("DOMContentLoaded", () => {
   var elements = document.getElementsByClassName("documentableElement")
   if (elements) {
     for (i = 0; i < elements.length; i++) {
-      elements[i].onclick = function(){
-        this.classList.toggle("expand")
+      elements[i].onclick = function(e) {
+        if(!$(e.target).is("a"))
+          this.classList.toggle("expand")
       }
     }
   }

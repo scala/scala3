@@ -8,7 +8,7 @@ import dotty.tools.scaladoc.util.HTML._
 class LocationTests:
   given DocContext = testDocContext()
   object locations extends Locations:
-    val members = Map.empty
+    val effectiveMembers = Map.empty
 
   @Test
   def testPathToRoot() =

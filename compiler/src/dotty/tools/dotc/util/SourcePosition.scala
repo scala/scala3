@@ -86,6 +86,8 @@ extends SrcPos, interfaces.SourcePosition, Showable {
 
 /** A sentinel for a non-existing source position */
 @sharable object NoSourcePosition extends SourcePosition(NoSource, NoSpan, null) {
+  override def line: Int = -1
+  override def column: Int = -1
   override def toString: String = "?"
   override def withOuter(outer: SourcePosition): SourcePosition = outer
 }

@@ -13,6 +13,7 @@ object NameKinds {
     type ThisInfo = Info
     val info: Info = new Info
     println(info.kind)                     // error
+    val n = 10
   }
 }
 

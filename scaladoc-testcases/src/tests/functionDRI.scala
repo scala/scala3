@@ -31,3 +31,9 @@ class E:
     def b = 10
   object F:
     def b = 11
+
+object #:: {
+  def #:: = 10
+}
+
+

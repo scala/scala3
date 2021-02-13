@@ -248,7 +248,7 @@ class CompilationTests {
           //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           ))(libGroup)
 
-    val tastyCoreSources = sources(Paths.get("tasty/src")) ++ sources(Paths.get("tasty/src-bootstrapped"))
+    val tastyCoreSources = sources(Paths.get("tasty/src"))
     val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
 
     val compilerSources = sources(Paths.get("compiler/src")) ++ sources(Paths.get("compiler/src-bootstrapped"))

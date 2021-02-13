@@ -106,7 +106,7 @@ object ScaladocArgs:
     )
 
     def defaultDest(): File =
-      report.error("Destenation is missing, please provide '-d' parameter pointing to directory here docs should be created")
+      report.error("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
       File("output")
 
     val parseSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>

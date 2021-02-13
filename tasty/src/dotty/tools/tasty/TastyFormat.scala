@@ -19,10 +19,11 @@ Micro-syntax:
 
 Macro-format:
 
-  File          = Header majorVersion_Nat minorVersion_Nat UUID
+  File          = Header majorVersion_Nat minorVersion_Nat experimentalVersion_Nat VersionString UUID
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
   UUID          = Byte*16                 -- random UUID
+  VersionString = Length UTF8-CodePoint*  -- string that represents the compiler that produced the TASTy
 
   Section       = NameRef Length Bytes
   Length        = Nat                     -- length of rest of entry in bytes
@@ -262,9 +263,100 @@ Standard Section: "Comments" Comment*
 
 object TastyFormat {
 
+  /** The first four bytes of a TASTy file, followed by four values:
+    * - `MajorVersion: Int` - see definition in `TastyFormat`
+    * - `MinorVersion: Int` - see definition in `TastyFormat`
+    * - `ExperimentalVersion: Int` - see definition in `TastyFormat`
+    * - `ToolingVersion: String` - arbitrary length string representing the tool that produced the TASTy.
+    */
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 27
-  val MinorVersion: Int = 0
+
+  /**Natural number. Each increment of the `MajorVersion` begins a
+   * new series of backward compatible TASTy versions.
+   *
+   * A TASTy file in either the preceeding or succeeding series is
+   * incompatible with the current value.
+   */
+  final val MajorVersion: Int = 28
+
+  /**Natural number. Each increment of the `MinorVersion`, within
+   * a series declared by the `MajorVersion`, breaks forward
+   * compatibility, but remains backwards compatible, with all
+   * preceeding `MinorVersion`.
+   */
+  final val MinorVersion: Int = 0
+
+  /**Natural Number. The `ExperimentalVersion` allows for
+   * experimentation with changes to TASTy without committing
+   * to any guarantees of compatibility.
+   *
+   * A zero value indicates that the TASTy version is from a
+   * stable, final release.
+   *
+   * A strictly positive value indicates that the TASTy
+   * version is experimental. An experimental TASTy file
+   * can only be read by a tool with the same version.
+   * However, tooling with an experimental TASTy version
+   * is able to read final TASTy documents if the file's
+   * `MinorVersion` is strictly less than the current value.
+   */
+  final val ExperimentalVersion: Int = 1
+
+  /**This method implements a binary relation (`<:<`) between two TASTy versions.
+   * We label the lhs `file` and rhs `compiler`.
+   * if `file <:< compiler` then the TASTy file is valid to be read.
+   *
+   * TASTy versions have a partial order,
+   * for example `a <:< b` and `b <:< a` are both false if `a` and `b` have different major versions.
+   *
+   * We follow the given algorithm:
+   * ```
+   * if file.major != compiler.major then
+   *   return incompatible
+   * if compiler.experimental == 0 then
+   *   if file.experimental != 0 then
+   *     return incompatible
+   *   if file.minor > compiler.minor then
+   *     return incompatible
+   *   else
+   *     return compatible
+   * else invariant[compiler.experimental != 0]
+   *   if file.experimental == compiler.experimental then
+   *     if file.minor == compiler.minor then
+   *       return compatible (all fields equal)
+   *     else
+   *       return incompatible
+   *   else if file.experimental == 0,
+   *     if file.minor < compiler.minor then
+   *       return compatible (an experimental version can read a previous released version)
+   *     else
+   *       return incompatible (an experimental version cannot read its own minor version or any later version)
+   *   else invariant[file.experimental is non-0 and different than compiler.experimental]
+   *     return incompatible
+   * ```
+   */
+  def isVersionCompatible(
+    fileMajor: Int,
+    fileMinor: Int,
+    fileExperimental: Int,
+    compilerMajor: Int,
+    compilerMinor: Int,
+    compilerExperimental: Int
+  ): Boolean = (
+    fileMajor == compilerMajor && (
+      if (fileExperimental == compilerExperimental) {
+        if (compilerExperimental == 0) {
+          fileMinor <= compilerMinor
+        }
+        else {
+          fileMinor == compilerMinor
+        }
+      }
+      else {
+        fileExperimental == 0 && fileMinor < compilerMinor
+      }
+    )
+  )
 
   final val ASTsSection = "ASTs"
   final val PositionsSection = "Positions"

@@ -60,7 +60,7 @@ def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporte
 
 def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)
 
-def tastyFiles(name: String) =
+def tastyFiles(name: String, allowEmpty: Boolean = false) =
   def listFilesSafe(dir: File) = Option(dir.listFiles).getOrElse {
     throw AssertionError(s"$dir not found. The test name is incorrect or scaladoc-testcases were not recompiled.")
   }
@@ -69,4 +69,7 @@ def tastyFiles(name: String) =
       case f if f.getName endsWith ".tasty" => f :: Nil
       case _ => Nil
     }
-  collectFiles(File(s"${BuildInfo.test_testcasesOutputDir}/tests/$name"))
+  val files = BuildInfo.test_testcasesOutputDir.flatMap(p => collectFiles(File(s"$p/tests/$name")))
+  assert(files.nonEmpty || allowEmpty)
+  files.toSeq
+

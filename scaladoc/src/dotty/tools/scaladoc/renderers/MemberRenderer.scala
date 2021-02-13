@@ -173,16 +173,19 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       )
     )
 
-  private case class MGroup(header: AppliedTag, members: Seq[Member])
+  private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
     div(cls := "documentableList")(
       h3(cls:="groupHeader")(name),
-      members.map {
+      members.sortBy {
+        case m: Member => m.name
+        case MGroup(_, _, name) => name
+      }.map {
         case element: Member =>
           member(element)
-        case MGroup(header, members) =>
+        case MGroup(header, members, _) =>
           div(
             header,
             members.map(member)
@@ -255,7 +258,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.collect {
         case (Some(on), members) =>
           val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
-          MGroup(span(sig.map(renderElement)), members.toSeq)
+          MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
     div(cls := "membersList")(renderTabs(
