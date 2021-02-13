@@ -64,7 +64,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
-  /** Used to elide output in replStringOf. TODO: Implement setting scala.repl.maxprintstring as in Scala 2 */
+  /** Used to elide output in replStringOf.
+   * TODO: Perhaps implement setting scala.repl.maxprintstring as in Scala 2, but
+   * then this bug will surface, so perhaps better not?
+   * https://github.com/scala/bug/issues/12337
+   */
   private[repl] def truncate(str: String): String =
     if str.length > MaxStringElements then str.take(MaxStringElements - 3) + "..."
     else str
