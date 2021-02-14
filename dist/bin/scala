@@ -53,6 +53,8 @@ truncated_params="${*#-}"
 # options_indicator != 0 if at least one parameter is not an option
 options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
+[ -n "$SCALA_OPTS" ] && set -- "$@" $SCALA_OPTS
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -repl)
@@ -73,7 +75,7 @@ while [[ $# -gt 0 ]]; do
       with_compiler=true
       shift
       ;;
-    @*|-color:*)
+    @*|-color:*|-compile-only)
       addDotcOptions "${1}"
       shift
       ;;
@@ -112,12 +114,6 @@ if [ $execute_script == true ]; then
   [ -n "$script_trace" ] && set -x
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
-  fi
-  if [ -n "$SCALA_OPTS" ]; then
-    java_options+=($SCALA_OPTS)
-    if [ "${SCALA_OPTS##*-save}" != "${SCALA_OPTS}" ]; then
-      save_compiled=true
-    fi
   fi
   setScriptName="-Dscript.path=$target_script"
   target_jar="${target_script%.*}.jar"

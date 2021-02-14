@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.Settings.Setting._
 import sys.process._
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(pack:(Path, String, String) => Unit = null): Unit =
+  def compileAndRun(pack:(Path, String, String) => Boolean = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
     val (toCompile, rootCtx) = setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh)
     given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
@@ -28,12 +28,14 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
 
     try
       val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, ctx.settings.classpath.value, scriptFile)
-      Option(pack) match
-        case Some(func) =>
-          func(outDir, ctx.settings.classpath.value, mainClass)
-        case None =>
-      end match
-      mainMethod.invoke(null, scriptArgs)
+      val invokeMain: Boolean =
+        Option(pack) match
+          case Some(func) =>
+            func(outDir, ctx.settings.classpath.value, mainClass)
+          case None =>
+            true
+        end match
+      if invokeMain then mainMethod.invoke(null, scriptArgs)
     catch
       case e: java.lang.reflect.InvocationTargetException =>
         throw e.getCause
