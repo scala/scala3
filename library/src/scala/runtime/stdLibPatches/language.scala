@@ -77,8 +77,6 @@ object language:
    */
   object adhocExtensions
 
-  object unsafeNulls
-
   object future
 
   object `future-migration`
@@ -108,4 +106,10 @@ object language:
     */
   object `3.1`
 */
+  /** Unsafe Nulls fot Explicit Nulls
+    * Inside the "unsafe" scope, `Null` is considered as a subtype of all reference types.
+    *
+    * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
+    */
+  object unsafeNulls
 end language

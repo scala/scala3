@@ -14,6 +14,7 @@ import Decorators._
 import Denotations._, SymDenotations._
 import TypeErasure.erasure
 import DenotTransformers._
+import NullOpsDecorator._
 
 object ElimRepeated {
   val name: String = "elimRepeated"

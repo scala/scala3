@@ -210,7 +210,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
         case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
-          val pinfo = if (ctx.explicitNulls) m.paramInfos.head.stripUncheckedNull else m.paramInfos.head
+          val head = m.paramInfos.head
+          val pinfo = head.stripNull
           pinfo == defn.StringType
         case _ => false
       }

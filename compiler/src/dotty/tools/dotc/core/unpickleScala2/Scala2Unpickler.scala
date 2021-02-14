@@ -18,6 +18,7 @@ import printing.Printer
 import io.AbstractFile
 import util.common._
 import typer.Checking.checkNonCyclic
+import typer.Nullables._
 import transform.SymUtils._
 import PickleBuffer._
 import PickleFormat._
@@ -778,7 +779,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
-        TypeBounds(readTypeRef(), readTypeRef())
+        val lo = readTypeRef()
+        val hi = readTypeRef()
+        createNullableTypeBounds(lo, hi)
       case REFINEDtpe =>
         val clazz = readSymbolRef().asClass
         val decls = symScope(clazz)
@@ -1257,7 +1260,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case TYPEBOUNDStree =>
         val lo = readTreeRef()
         val hi = readTreeRef()
-        TypeBoundsTree(lo, hi)
+        createNullableTypeBoundsTree(lo, hi)
 
       case EXISTENTIALTYPEtree =>
         val tpt = readTreeRef()

@@ -15,6 +15,7 @@ import TreeInfo._
 import ProtoTypes._
 import Scopes._
 import CheckRealizable._
+import NullOpsDecorator._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
@@ -815,16 +816,20 @@ trait Checking {
    *  enabled.
    */
   def checkImplicitConversionUseOK(tree: Tree)(using Context): Unit =
-    val sym = tree.symbol
+    val tree1 = if Nullables.unsafeNullsEnabled then
+      // If unsafeNulls is enabled, a cast and a closure could be added to the original tree
+      stripCast(closureBody(tree))
+    else tree
+    val sym = tree1.symbol
     if sym.name == nme.apply
        && sym.owner.derivesFrom(defn.ConversionClass)
        && !sym.info.isErroneous
     then
-      def conv = methPart(tree) match
+      def conv = methPart(tree1) match
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
         case _ => sym.owner
       checkFeature(nme.implicitConversions,
-        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
+        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree1.srcPos)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true

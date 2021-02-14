@@ -1,4 +1,3 @@
-
 class Foo {
   val x: String = null // error: String is non-nullable
 

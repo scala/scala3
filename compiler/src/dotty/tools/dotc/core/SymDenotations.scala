@@ -797,7 +797,8 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
+      then symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -1826,7 +1827,9 @@ object SymDenotations {
       derivesFrom(base) ||
         base.isClass && (
           (symbol eq defn.NothingClass) ||
-            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+            (!ctx.explicitNulls || ctx.phase.erasedTypes)
+            && (symbol eq defn.NullClass)
+            && (base ne defn.NothingClass))
 
     /** Is it possible that a class inherits both `this` and `that`?
      *
