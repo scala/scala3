@@ -217,11 +217,13 @@ object ExplicitOuter {
      cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
-  /** Class is always instantiated in the compilation unit where it is defined */
+  /** Class is only instantiated in the compilation unit where it is defined */
   private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.isTerm || cls.is(Private, butNot = Module) || (cls.is(Module) && !cls.owner.is(Trait))
+    cls.ownersIterator.takeWhile(!_.isStatic).exists(_.isTerm)
+    || cls.is(Private, butNot = Module)
+    || cls.is(Module) && !cls.owner.is(Trait)
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
