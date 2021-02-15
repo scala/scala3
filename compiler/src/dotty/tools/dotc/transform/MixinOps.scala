@@ -42,7 +42,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   /** Is `sym` a member of implementing class `cls`?
    *  The test is performed at phase `thisPhase`.
    */
-  def isCurrent(sym: Symbol): Boolean =
+  def isInImplementingClass(sym: Symbol): Boolean =
     atPhase(thisPhase) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
@@ -71,7 +71,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
     (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
      generateJUnitForwarder || generateSerializationForwarder) &&
-    isCurrent(meth)
+    isInImplementingClass(meth)
   }
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
