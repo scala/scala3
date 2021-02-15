@@ -92,13 +92,13 @@ By contrast, type arguments matching type parameters following `extension` can b
 only if the method is referenced as a regular method:
 
 ```scala
-List[String]("a", "bb", "ccc").sumBy(_.length)
+sumBy[String](List("a", "bb", "ccc"))(_.length)
 ```
 
 or, passing, both type arguments
 
 ```scala
-List[String]("a", "bb", "ccc").sumBy[Int](_.length)
+sumBy[String](List("a", "bb", "ccc"))[Int](_.length)
 ```
 
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
