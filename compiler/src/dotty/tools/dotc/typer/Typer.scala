@@ -3696,8 +3696,12 @@ class Typer extends Namer
       val Select(qual, nme.apply) = tree; @unchecked
       val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
       val tpt = qual match
-        case Ident(name) => cpy.Ident(qual)(name.toTypeName)
-        case Select(pre, name) => cpy.Select(qual)(pre, name.toTypeName)
+        case Ident(name) =>
+          cpy.Ident(qual)(name.toTypeName)
+        case Select(pre, name) =>
+          cpy.Select(qual)(pre, name.toTypeName)
+        case qual: This if qual.symbol.is(ModuleClass) =>
+          cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),
