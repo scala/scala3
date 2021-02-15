@@ -108,5 +108,10 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
     b.toString
   }
 
+  def lineFor(sourcePos: SourcePosition): Int =
+    val request = requests.find(_.origPos.contains(sourcePos)).get
+    val offset = sourcePos.startLine - request.origPos.startLine
+    request.firstFakeLine + offset + 1
+
 
 
