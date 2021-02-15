@@ -64,18 +64,23 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
-  /** Used to elide output in replStringOf.
+  /** Used to elide long output in replStringOf.
+   *
    * TODO: Perhaps implement setting scala.repl.maxprintstring as in Scala 2, but
    * then this bug will surface, so perhaps better not?
    * https://github.com/scala/bug/issues/12337
    */
   private[repl] def truncate(str: String): String =
-    if str.length > MaxStringElements then str.take(MaxStringElements - 3) + "..."
+    def adjust(s: String): String = // to not cut a Unicode character in half
+      if s.nonEmpty && s.last.isUnicodeIdentifierStart then s.dropRight(1)
+      else s
+
+    if str.length > MaxStringElements then adjust(str.take(MaxStringElements - 3)) + "..."
     else str
+  end truncate
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String = {
-
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
     truncate(myReplStringOf(value))
