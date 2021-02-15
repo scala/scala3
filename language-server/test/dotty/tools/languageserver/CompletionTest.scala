@@ -107,8 +107,7 @@ class CompletionTest {
            }""".withSource
       .completion(
         m1,
-        Set(("clone", Method, "(): Object"),
-            ("copy", Method, "(foobar: Int): MyCaseClass"),
+        Set(("copy", Method, "(foobar: Int): MyCaseClass"),
             ("canEqual", Method, "(that: Any): Boolean")))
   }
 
@@ -169,6 +168,14 @@ class CompletionTest {
   @Test def importJavaStaticField: Unit = {
     code"""import java.lang.System.ou${m1}""".withSource
       .completion(m1, Set(("out", Field, "java.io.PrintStream")))
+  }
+
+  @Test def importFromExplicitAndSyntheticPackageObject: Unit = {
+    withSources(
+      code"package foo.bar; trait XXXX1",
+      code"package foo; package object bar { trait XXXX2 }",
+      code"object Main { import foo.bar.XX${m1} }"
+    ) .completion(m1, Set(("XXXX1", Class, "foo.bar.XXXX1"), ("XXXX2", Class, "foo.bar.XXXX2")))
   }
 
   @Test def completeJavaModuleClass: Unit = {
@@ -431,6 +438,32 @@ class CompletionTest {
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Field, "type and lazy value bar")))
+  }
+
+  @Test def completeRespectingAccessModifiers: Unit = {
+    code"""trait Foo {
+          |  def xxxx1 = ""
+          |  protected def xxxx2 = ""
+          |  private def xxxx3 = ""
+          |}
+          |object Test1 extends Foo {
+          |  xx$m1
+          |}
+          |object Test2 {
+          |  val foo = new Foo {}
+          |  foo.xx$m2
+          |}""".withSource
+      .completion(m1, Set(("xxxx1", Method, "=> String"), ("xxxx2", Method, "=> String")))
+      .completion(m2, Set(("xxxx1", Method, "=> String")))
+  }
+
+  @Test def completeFromPackageObjectWithInheritance: Unit = {
+    code"""trait Foo[A] { def xxxx(a: A) = a }
+          |package object foo extends Foo[Int] {}
+          |object Test {
+          |  foo.xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(a: Int): Int")))
   }
 
   @Test def completeExtensionMethodWithoutParameter: Unit = {

@@ -107,7 +107,7 @@ class TabcompleteTests extends ReplTest {
   @Test def `null` = fromInitialState { implicit s =>
     val comp = tabComplete("null.")
     assertEquals(
-      List("!=", "##", "==", "asInstanceOf", "clone", "eq", "equals", "finalize", "getClass", "hashCode",
+      List("!=", "##", "==", "asInstanceOf", "eq", "equals", "getClass", "hashCode",
           "isInstanceOf", "ne", "notify", "notifyAll", "synchronized", "toString", "wait"),
       comp.distinct.sorted)
   }
@@ -115,7 +115,7 @@ class TabcompleteTests extends ReplTest {
   @Test def anyRef = fromInitialState { implicit s =>
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
-      List("!=", "##", "->", "==", "asInstanceOf", "clone", "ensuring", "eq", "equals", "finalize", "formatted",
+      List("!=", "##", "->", "==", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
           "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "synchronized", "toString", "wait", "→"),
       comp.distinct.sorted)
   }
