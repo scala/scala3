@@ -9,6 +9,8 @@ import dotty.tools.scaladoc.tasty.util._
 
 class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
+  given DocContext = testDocContext()
+
   def testAll(): Unit = {
     testOwnerlessLookup()
     testOwnedLookup()

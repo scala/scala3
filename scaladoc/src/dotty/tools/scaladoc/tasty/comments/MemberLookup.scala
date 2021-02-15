@@ -5,12 +5,12 @@ import scala.quoted._
 
 trait MemberLookup {
 
-  def lookup(using Quotes)(
+  def lookup(using Quotes, DocContext)(
     query: Query,
     owner: quotes.reflect.Symbol,
   ): Option[(quotes.reflect.Symbol, String)] = lookupOpt(query, Some(owner))
 
-  def lookupOpt(using Quotes)(
+  def lookupOpt(using Quotes, DocContext)(
     query: Query,
     ownerOpt: Option[quotes.reflect.Symbol],
   ): Option[(quotes.reflect.Symbol, String)] =
@@ -79,8 +79,8 @@ trait MemberLookup {
     catch
       case e: Exception =>
         // TODO (https://github.com/lampepfl/scala3doc/issues/238): proper reporting
-        println(s"[WARN] Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}")
-        e.printStackTrace()
+        val msg = s"Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}"
+        report.warn(msg, e)
         None
 
   private def hackMembersOf(using Quotes)(rsym: quotes.reflect.Symbol) = {
