@@ -6,6 +6,7 @@ import dotc.CompilationUnit
 import dotc.ast.tpd._
 import dotc.util.{ SourcePosition, SourceFile }
 import dotc.core.Contexts._
+import dotc.report
 import dotc.typer.Inliner.InliningPosition
 import collection.mutable
 
@@ -108,10 +109,14 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
     b.toString
   }
 
-  def lineFor(sourcePos: SourcePosition): Int =
-    val request = requests.find(_.origPos.contains(sourcePos)).get
-    val offset = sourcePos.startLine - request.origPos.startLine
-    request.firstFakeLine + offset + 1
+  def lineFor(sourcePos: SourcePosition): Option[Int] =
+    requests.find(_.origPos.contains(sourcePos)) match
+      case Some(request) =>
+        val offset = sourcePos.startLine - request.origPos.startLine
+        Some(request.firstFakeLine + offset + 1)
+      case None =>
+        report.inform(s"${sourcePos.show} was supposed to be inlined in ${cunit.source} but it cannot be found.")
+        None
 
 
 

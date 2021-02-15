@@ -545,18 +545,17 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = if (tree.source != cunit.source) inlinedsPositioner.lineFor(tree.sourcePos) else ctx.source.offsetToLine(tree.span.point) + 1
-
-      if (nr != lastEmittedLineNr) {
-        lastEmittedLineNr = nr
-        lastInsn match {
-          case lnn: asm.tree.LineNumberNode =>
-            // overwrite previous landmark as no instructions have been emitted for it
-            lnn.line = nr
-          case _ =>
-            mnode.visitLineNumber(nr, currProgramPoint())
-        }
-      }
+      val nr = if (tree.source != cunit.source) inlinedsPositioner.lineFor(tree.sourcePos) else Some(ctx.source.offsetToLine(tree.span.point) + 1)
+      nr match
+        case Some(nr) if nr != lastEmittedLineNr =>
+          lastEmittedLineNr = nr
+          lastInsn match
+            case lnn: asm.tree.LineNumberNode =>
+              // overwrite previous landmark as no instructions have been emitted for it
+              lnn.line = nr
+            case _ =>
+              mnode.visitLineNumber(nr, currProgramPoint())
+        case _ => ()
     }
 
     // on entering a method
