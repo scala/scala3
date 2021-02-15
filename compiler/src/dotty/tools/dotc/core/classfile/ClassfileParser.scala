@@ -349,13 +349,19 @@ class ClassfileParser(
       val tag = sig(index); index += 1
       (tag: @switch) match {
         case 'L' =>
-          def processInner(tp: Type): Type = tp match {
-            case tp: TypeRef if !tp.symbol.owner.is(Flags.ModuleClass) =>
-              TypeRef(processInner(tp.prefix.widen), tp.symbol.asType)
-            case _ =>
-              tp
-          }
-          def processClassType(tp: Type): Type = tp match {
+          /** A type representation where inner classes become `A#B` instead of `A.this.B` (like with `typeRef`)
+           *
+           *  Note: the symbol must not be nested in a generic class.
+           */
+          def innerType(symbol: Symbol): Type =
+            if symbol.is(Flags.Package) then
+              symbol.thisType
+            else if symbol.isType then
+              TypeRef(innerType(symbol.owner), symbol)
+            else
+              throw new RuntimeException("unexpected term symbol " + symbol)
+
+          def processTypeArgs(tp: Type): Type = tp match {
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
@@ -388,13 +394,13 @@ class ClassfileParser(
           }
 
           val classSym = classNameToSymbol(subName(c => c == ';' || c == '<'))
-          val classTpe = if (classSym eq defn.ObjectClass) defn.FromJavaObjectType else classSym.typeRef
-          var tpe = processClassType(processInner(classTpe))
+          val classTpe = if (classSym eq defn.ObjectClass) defn.FromJavaObjectType else innerType(classSym)
+          var tpe = processTypeArgs(classTpe)
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
-            val clazz = tpe.member(name).symbol
-            tpe = processClassType(processInner(TypeRef(tpe, clazz)))
+            val tp = tpe.select(name)
+            tpe = processTypeArgs(tp)
           }
           accept(';')
           tpe
@@ -432,15 +438,15 @@ class ClassfileParser(
             paramtypes += {
               if isRepeatedParam(index) then
                 index += 1
-                val elemType = sig2type(tparams, skiptvs)
+                val elemType = sig2type(tparams, skiptvs = false)
                 // `ElimRepeated` is responsible for correctly erasing this.
                 defn.RepeatedParamType.appliedTo(elemType)
               else
-                sig2type(tparams, skiptvs)
+                sig2type(tparams, skiptvs = false)
             }
 
           index += 1
-          val restype = sig2type(tparams, skiptvs)
+          val restype = sig2type(tparams, skiptvs = false)
           JavaMethodType(paramnames.toList, paramtypes.toList, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
