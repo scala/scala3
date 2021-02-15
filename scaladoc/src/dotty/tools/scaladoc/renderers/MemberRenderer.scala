@@ -29,7 +29,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
-    case Some(InheritedFrom(name, dri)) => tableRow("Inhertied from", signatureRenderer.renderLink(name, dri))
+    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from", signatureRenderer.renderLink(name, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -161,7 +161,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
-      a(href:=link(member.dri).getOrElse("#"), cls := "documentableAnchor"),
+      a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
       div(annotations(member)),
       div(cls := "header monospace")(memberSingnature(member)),
       div(cls := "docs")(
