@@ -80,6 +80,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
+    var inlinedsPositioner: InlinedsPositioner = null
+
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
     def paramTKs(app: Apply, take: Int = -1): List[BType] = app match {
@@ -278,7 +280,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(cunit.source.file.name, InlinedsPositioner(cunit).debugExtension.orNull)
+        inlinedsPositioner = InlinedsPositioner(cunit)
+        cnode.visitSource(cunit.source.file.name, inlinedsPositioner.debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
@@ -542,7 +545,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.offsetToLine(tree.span.point) + 1
+      val nr = if (tree.source != cunit.source) inlinedsPositioner.lineFor(tree.sourcePos) else ctx.source.offsetToLine(tree.span.point) + 1
+
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
