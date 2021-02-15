@@ -184,7 +184,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    */
   def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
-      case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
+      case tp: ClassInfo =>
+        // true
+        tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
       case _ => false
     }
