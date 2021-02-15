@@ -70,14 +70,12 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    * then this bug will surface, so perhaps better not?
    * https://github.com/scala/bug/issues/12337
    */
-  private[repl] def truncate(str: String): String =
-    def adjust(s: String): String = // to not cut a Unicode character in half
-      if s.nonEmpty && s.last.isUnicodeIdentifierStart then s.dropRight(1)
-      else s
-
-    if str.length > MaxStringElements then adjust(str.take(MaxStringElements - 3)) + "..."
+  private[repl] def truncate(str: String): String = {
+    val ncp = str.codePointCount(0, str.length) // to not cut inside code point
+    if ncp > MaxStringElements && ncp > 3 then
+      str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 3)) + "..."
     else str
-  end truncate
+  }
 
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String = {
