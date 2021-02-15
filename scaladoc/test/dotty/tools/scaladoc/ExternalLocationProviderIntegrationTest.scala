@@ -33,7 +33,7 @@ class Scaladoc3ExternalLocationProviderIntegrationTest extends ExternalLocationP
   List(".*scala.*::scaladoc3::https://dotty.epfl.ch/api/"),
   List(
     "https://dotty.epfl.ch/api/scala/collection/immutable/Map.html",
-    "https://dotty.epfl.ch/api/scala/Predef$.html#String",
+    "https://dotty.epfl.ch/api/scala/Predef$.html#String-0",
     "https://dotty.epfl.ch/api/scala/util/matching/Regex$$Match.html"
   )
 )

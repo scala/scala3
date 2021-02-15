@@ -85,7 +85,11 @@ class A {
 }
 
 /** Companion object to test linking */
-object A
+object A {
+  /** Apparently this should work: [[A.bar]]. */
+  def foo() = 0
+  def bar() = 0
+}
 
 /** = An important Wiki test class =
   *
@@ -149,6 +153,14 @@ class C extends A {
 }
 class D[T]
 class E[T] extends D[T]
+
+package inner {
+  object A
+  class B {
+    /** This resolves: [[A]]. */
+    def foo() = ()
+  }
+}
 
 /** A class with a semi-non-trivial constructor.
   *

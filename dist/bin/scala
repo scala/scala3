@@ -45,12 +45,15 @@ execute_script=false
 with_compiler=false
 class_path_count=0
 CLASS_PATH=""
+save_compiled=false
 
 # Little hack to check if all arguments are options
 all_params="$*"
 truncated_params="${*#-}"
 # options_indicator != 0 if at least one parameter is not an option
 options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
+
+[ -n "$SCALA_OPTS" ] && set -- "$@" $SCALA_OPTS
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -72,6 +75,15 @@ while [[ $# -gt 0 ]]; do
       with_compiler=true
       shift
       ;;
+    @*|-color:*|-compile-only)
+      addDotcOptions "${1}"
+      shift
+      ;;
+    -save|-savecompiled)
+      save_compiled=true
+      addDotcOptions "${1}"
+      shift
+      ;;
     -d)
       DEBUG="$DEBUG_STR"
       shift
@@ -82,7 +94,8 @@ while [[ $# -gt 0 ]]; do
       shift ;;
     *)
       if [ $execute_script == false ]; then
-        if [[ "$1" == *.scala ]]; then
+        # is a script if extension .scala or .sc or if has scala hash bang
+        if [[ -e "$1" && ("$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
           execute_script=true
           target_script="$1"
         else
@@ -98,10 +111,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ $execute_script == true ]; then
+  [ -n "$script_trace" ] && set -x
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
-  eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+  setScriptName="-Dscript.path=$target_script"
+  target_jar="${target_script%.*}.jar"
+  if [[ $save_compiled == true && "$target_jar" -nt "$target_script" ]]; then
+    java $setScriptName -jar "$target_jar" "${script_args[@]}"
+  else
+    [[ $save_compiled == true ]] && rm -f $target_jar
+    residual_args+=($setScriptName)
+    eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+  fi
 elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""

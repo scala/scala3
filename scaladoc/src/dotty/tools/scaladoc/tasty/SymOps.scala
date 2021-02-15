@@ -21,7 +21,15 @@ class SymOps[Q <: Quotes](val q: Q):
       else sym.maybeOwner.className
 
     def anchor: Option[String] =
-      if (!sym.isClassDef && !sym.isPackageDef) Some(sym.name)
+      if (!sym.isClassDef && !sym.isPackageDef) {
+        val params = sym.signature.paramSigs.map {
+          case s: String => s
+          case i: Int => i.toString
+        }
+        val result = sym.signature.resultSig
+        val hash = ((params.mkString + result).hashCode % 4096).toHexString
+        Some(s"${sym.name}-$hash")
+      }
       else None
     //TODO: Retrieve string that will match scaladoc anchors
 

@@ -188,10 +188,22 @@ trait ClassLikeSupport:
   }
 
   private def parseInheritedMember(c: ClassDef)(s: Tree): Option[Member] =
-    def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.owner.dri))
+    def inheritance = Some(InheritedFrom(s.symbol.owner.normalizedName, s.symbol.dri))
     processTreeOpt(s)(s match
       case c: ClassDef if c.symbol.shouldDocumentClasslike && !c.symbol.isGiven => Some(parseClasslike(c, signatureOnly = true))
-      case other => parseMember(c)(other)
+      case c: ClassDef if c.symbol.owner.memberMethod(c.name).exists(_.flags.is(Flags.Given)) => Some(parseGivenClasslike(c))
+      case other => {
+        val parsed = parseMember(c)(other)
+        parsed.map(p =>
+          val parentDRI = c.symbol.dri
+          p.copy(
+            dri = p.dri.copy(
+              location = parentDRI.location,
+              origin = parentDRI.origin
+            )
+          )
+        )
+      }
     ).map(_.copy(inheritedFrom = inheritance))
 
   extension (c: ClassDef)
