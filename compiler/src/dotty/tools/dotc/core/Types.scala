@@ -5343,14 +5343,11 @@ object Types {
     def isExpandingBounds: Boolean = expandingBounds
 
     protected def expandBounds(tp: TypeBounds): Type =
-      if expandingBounds then tp
-      else {
-        val saved = expandingBounds
-        expandingBounds = true
-        val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
-        expandingBounds = saved
-        res
-      }
+      val saved = expandingBounds
+      expandingBounds = true
+      val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      expandingBounds = saved
+      res
 
     /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
      *  The possible cases are listed inline in the code.
