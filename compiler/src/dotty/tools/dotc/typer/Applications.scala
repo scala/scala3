@@ -509,14 +509,22 @@ trait Applications extends Compatibility {
       if (success) formals match {
         case formal :: formals1 =>
 
+          def checkNoVarArg(arg: Arg) =
+            if !ctx.isAfterTyper && isVarArg(arg) then
+              val addendum =
+                if formal.isRepeatedParam then
+                  i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
+                else
+                  i"the corresponding parameter has type $formal which is not a repeated parameter type"
+              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum", arg)
+
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent
            *           this means substituting the actual argument type for the current formal parameter
            *           in the remaining formal parameters.
            */
-          def addTyped(arg: Arg, formal: Type): List[Type] =
-            if !ctx.isAfterTyper && isVarArg(arg) && !formal.isRepeatedParam then
-              fail(i"Sequence argument type annotation `: _*` cannot be used here: the corresponding parameter has type $formal which is not a repeated parameter type", arg)
+          def addTyped(arg: Arg): List[Type] =
+            if !formal.isRepeatedParam then checkNoVarArg(arg)
             addArg(typedArg(arg, formal), formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
@@ -553,9 +561,9 @@ trait Applications extends Compatibility {
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if !defaultArg.isEmpty then
-              matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
+              matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
             else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
-              matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
+              matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
           }
@@ -563,13 +571,18 @@ trait Applications extends Compatibility {
           if (formal.isRepeatedParam)
             args match {
               case arg :: Nil if isVarArg(arg) =>
-                addTyped(arg, formal)
+                addTyped(arg)
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
-                addTyped(arg, formal)
+                addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
                 val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal)(args.map(typedArg(_, elemFormal)))
+                  harmonic(harmonizeArgs, elemFormal) {
+                    args.map { arg =>
+                      checkNoVarArg(arg)
+                      typedArg(arg, elemFormal)
+                    }
+                  }
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -577,7 +590,7 @@ trait Applications extends Compatibility {
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
-              matchArgs(args1, addTyped(arg, formal), n + 1)
+              matchArgs(args1, addTyped(arg), n + 1)
             case nil =>
               tryDefault(n, args)
           }
