@@ -7,7 +7,7 @@ import javax.management.{Notification, NotificationEmitter, NotificationListener
 class Foo {
 
   def bar(): Unit = {
-    val listener = new NotificationListener() { // error: object creation impossible
+    val listener = new NotificationListener() {
       override def handleNotification(n: Notification|Null, emitter: Object): Unit = { // error: method handleNotification overrides nothing
       }
     }
@@ -17,7 +17,7 @@ class Foo {
       }
     }
 
-    val listener3 = new NotificationListener() { // error: object creation impossible
+    val listener3 = new NotificationListener() {
       override def handleNotification(n: Notification, emitter: Object|Null): Unit = { // error: method handleNotification overrides nothing
       }
     }
