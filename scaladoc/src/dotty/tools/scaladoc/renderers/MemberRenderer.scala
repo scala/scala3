@@ -68,7 +68,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source", a(href := link)("(source)"))
+      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
@@ -202,22 +202,34 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case m: Member => m.inheritedFrom.nonEmpty
     case g: MGroup => g.members.exists(isInherited)
 
+  private def isAbstract(m: Member | MGroup): Boolean = m match
+    case m: Member => m.modifiers.contains(Modifier.Abstract)
+    case g: MGroup => g.members.exists(isAbstract)
+
   private type SubGroup = (String, Seq[Member | MGroup])
   private def buildGroup(name: String, subgroups: Seq[SubGroup]): Tab =
     val all = subgroups.map { case (name, members) =>
       val (allInherited, allDefined) = members.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
-      (
-        actualGroup(name, defined),
-        actualGroup(s"Deprecated ${name.toLowerCase}", depDefined),
-        actualGroup(s"Inherited ${name.toLowerCase}", inherited),
-        actualGroup(s"Deprecated and Inherited ${name.toLowerCase}", depInherited)
+      val normalizedName = name.toLowerCase
+      val definedWithGroup = if Set("methods", "fields").contains(normalizedName) then
+          val (abstr, concr) = defined.partition(isAbstract)
+          Seq(
+            actualGroup(s"Abstract ${normalizedName}", abstr),
+            actualGroup(s"Concrete ${normalizedName}", concr)
+          )
+        else
+          Seq(actualGroup(name, defined))
+
+      definedWithGroup ++ List(
+        actualGroup(s"Deprecated ${normalizedName}", depDefined),
+        actualGroup(s"Inherited ${normalizedName}", inherited),
+        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited)
       )
     }
 
-    val children =
-      all.flatMap(_._1) ++ all.flatMap(_._2) ++ all.flatMap(_._3) ++ all.flatMap(_._4)
+    val children = all.flatten.flatten
     if children.isEmpty then emptyTab
     else Tab(name, name, h2(tabAttr(name))(name) +: children, "selected")
 

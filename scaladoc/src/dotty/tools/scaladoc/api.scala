@@ -146,7 +146,7 @@ case class Member(
   modifiers: Seq[Modifier] = Nil,
   annotations: List[Annotation] = Nil,
   signature: Signature = Signature(),
-  sources: Option[TastyDocumentableSource] = None,
+  sources: Option[TastyMemberSource] = None,
   origin: Origin = Origin.RegularlyDefined,
   inheritedFrom: Option[InheritedFrom] = None,
   graph: HierarchyGraph = HierarchyGraph.empty,
@@ -231,4 +231,4 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyDocumentableSource(val path: String, val lineNumber: Int)
+case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)
