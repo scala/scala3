@@ -176,7 +176,7 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     B.f         // OK
     val a: A = B
-    a.f         // error: cannot inline f() in A.
+    a.f         // error: cannot inline f in A.
     ```
 
 ### Relationship to `@inline`
