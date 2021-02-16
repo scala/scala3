@@ -158,7 +158,8 @@ class Typer extends Namer
      */
     def qualifies(denot: Denotation): Boolean =
       reallyExists(denot)
-      && !(pt.isInstanceOf[UnapplySelectionProto] && denot.symbol.is(Method, butNot = Accessor))
+      && (!pt.isInstanceOf[UnapplySelectionProto]
+          || denot.hasAltWith(sd => !sd.symbol.is(Method, butNot = Accessor)))
       && !denot.symbol.is(PackageClass)
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
