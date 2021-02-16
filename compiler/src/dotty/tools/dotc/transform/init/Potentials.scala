@@ -155,7 +155,15 @@ object Potentials {
 
   extension (pot: Potential) def toPots: Potentials = Potentials.empty + pot
 
-  extension (ps: Potentials) def select (symbol: Symbol, source: Tree, selectEffect: Boolean = true)(using Context): Summary =
+  /** Selection on a set of potentials
+   *
+   *  @param ignoreSelectEffect Where selection effects should be ignored
+   *
+   *  During expansion of potentials, we ignore select effects and only care
+   *  about promotion effects. This is because the selection effects have
+   *  already been checked.
+   */
+  extension (ps: Potentials) def select (symbol: Symbol, source: Tree, ignoreSelectEffect: Boolean = true)(using Context): Summary =
     ps.foldLeft(Summary.empty) { case (summary, pot) =>
       // max potential length
       // TODO: it can be specified on a project basis via compiler options
@@ -163,15 +171,15 @@ object Potentials {
         summary + Promote(pot)(pot.source)
       else if (symbol.isConstructor)
         val res = summary + pot
-        if selectEffect then res + MethodCall(pot, symbol)(source)
+        if ignoreSelectEffect then res + MethodCall(pot, symbol)(source)
         else res
       else if (symbol.isOneOf(Flags.Method | Flags.Lazy))
         val res = summary + MethodReturn(pot, symbol)(source)
-        if selectEffect then res + MethodCall(pot, symbol)(source)
+        if ignoreSelectEffect then res + MethodCall(pot, symbol)(source)
         else res
       else
         val res = summary + FieldReturn(pot, symbol)(source)
-        if selectEffect then res + FieldAccess(pot, symbol)(source)
+        if ignoreSelectEffect then res + FieldAccess(pot, symbol)(source)
         else res
     }
 
