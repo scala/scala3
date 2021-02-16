@@ -76,30 +76,38 @@ extension [T: Numeric](x: T)
 
 Type parameters on extensions can also be combined with type parameters on the methods
 themselves:
+
 ```scala
 extension [T](xs: List[T])
    def sumBy[U](f: T => U)(using Numeric[U]): U = ...
 ```
 
 Type arguments matching method type parameters are passed as usual:
+
 ```scala
 List("a", "bb", "ccc").sumBy[Int](_.length)
 ```
+
 By contrast, type arguments matching type parameters following `extension` can be passed
 only if the method is referenced as a regular method:
+
 ```scala
 List[String]("a", "bb", "ccc").sumBy(_.length)
 ```
+
 or, passing, both type arguments
+
 ```scala
 List[String]("a", "bb", "ccc").sumBy[Int](_.length)
 ```
+
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
 
 ```scala
 extension [T](x: T)(using n: Numeric[T])
    def + (y: T): T = n.plus(x, y)
 ```
+
 ### Collective Extensions
 
 Sometimes, one wants to define several extension methods that share the same
@@ -214,7 +222,7 @@ class List[T]:
 object List:
    ...
    extension [T](xs: List[List[T]])
-      def flatten: List[T] = xs.foldLeft(Nil: List[T])(_ ++ _)
+      def flatten: List[T] = xs.foldLeft(List.empty[T])(_ ++ _)
 
    given [T: Ordering]: Ordering[List[T]] with
       extension (xs: List[T])
@@ -276,7 +284,7 @@ def position(s: String)(ch: Char, n: Int): Int =
 Here are the syntax changes for extension methods and collective extensions relative
 to the [current syntax](../syntax.md).
 
-```
+```ebnf
 BlockStat         ::=  ... | Extension
 TemplateStat      ::=  ... | Extension
 TopStat           ::=  ... | Extension
