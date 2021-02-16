@@ -653,6 +653,21 @@ object Checking {
        || to.isRef(defn.ObjectClass, skipRefined = false)
     then
       report.error(em"the result of an implicit conversion must be more specific than $to", pos)
+
+  def checkValue(tree: Tree)(using Context): Unit =
+    val sym = tree.tpe.termSymbol
+    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+      report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
+
+  def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
+    tree match
+      case tree: RefTree
+      if tree.name.isTermName
+         && !proto.isInstanceOf[SelectionProto]
+         && !proto.isInstanceOf[FunOrPolyProto] =>
+        checkValue(tree)
+      case _ =>
+    tree
 }
 
 trait Checking {
