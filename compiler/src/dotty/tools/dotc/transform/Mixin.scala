@@ -258,7 +258,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
            && !wasOneOf(getter, Deferred)
            && !getter.isConstExprFinalVal
       yield
-        if (isCurrent(getter) || getter.name.is(ExpandedName)) {
+        if (isInImplementingClass(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
@@ -271,6 +271,9 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
+        else if wasOneOf(getter, ParamAccessor) then
+          // mixin parameter field is defined by an override; evaluate the argument and throw it away
+          nextArgument()
         else EmptyTree
     }
 

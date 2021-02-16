@@ -134,7 +134,7 @@ object Foo:
    given fooTagged[A](using Tagged[A]): Foo[A] = Foo(true)
    given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
 
-@main def test() =
+@main def test(): Unit =
    given Tagged[Int] with {}
    assert(summon[Foo[Int]].value) // fooTagged is found
    assert(!summon[Foo[String]].value) // fooNotTagged is found
@@ -150,7 +150,7 @@ is created for each reference.
 
 Here is the syntax for given instances:
 
-```
+```ebnf
 TmplDef             ::=  ...
                      |   ‘given’ GivenDef
 GivenDef            ::=  [GivenSig] StructuralInstance

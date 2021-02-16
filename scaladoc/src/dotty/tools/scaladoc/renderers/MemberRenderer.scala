@@ -83,10 +83,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val message = named.find(_.name.get == "message")
     val since = named.find(_.name.get == "since")
 
-    val content = Seq(
-      since.map(s => code("[Since version ", parameter(s), "] ")),
-      message.map(m => parameter(m)),
-      m.docs.map(_.deprecated.toSeq.map(renderDocPart)):_*
+    val content = (
+      Seq(
+        since.map(s => code("[Since version ", parameter(s), "] ")),
+        message.map(m => parameter(m)))
+      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
     ).flatten
     Seq(dt("Deprecated"), dd(content:_*))
   }

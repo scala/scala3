@@ -21,6 +21,7 @@ import typer.{NoChecking, LiftErased}
 import typer.Inliner
 import typer.ProtoTypes._
 import typer.ErrorReporting.errorTree
+import typer.Checking.checkValue
 import core.TypeErasure._
 import core.Decorators._
 import dotty.tools.dotc.ast.{tpd, untpd}
@@ -569,18 +570,6 @@ object Erasure {
 
     /** Check that Java statics and packages can only be used in selections.
       */
-    private def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
-      if (!proto.isInstanceOf[SelectionProto] && !proto.isInstanceOf[ApplyingProto]) then
-        checkValue(tree)
-      tree
-
-    private def checkValue(tree: Tree)(using Context): Unit =
-      val sym = tree.tpe.termSymbol
-      if (sym is Flags.Package)
-         || (sym.isAllOf(Flags.JavaModule) && !ctx.isJava)
-      then
-        report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
-
     private def checkNotErased(tree: Tree)(using Context): tree.type = {
       if (!ctx.mode.is(Mode.Type)) {
         if (isErased(tree))
@@ -644,7 +633,7 @@ object Erasure {
         super.typedLiteral(tree)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      checkValue(checkNotErased(super.typedIdent(tree, pt)), pt)
+      checkNotErased(super.typedIdent(tree, pt))
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
@@ -772,7 +761,7 @@ object Erasure {
         }
       }
 
-      checkValue(checkNotErased(recur(qual1)), pt)
+      checkNotErased(recur(qual1))
     }
 
     override def typedThis(tree: untpd.This)(using Context): Tree =

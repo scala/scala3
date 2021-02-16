@@ -31,7 +31,7 @@ addJvmOptions () {
   jvm_options+=("'$1'")
 }
 
-addDotcOptions () {
+addScalacOptions () {
   java_options+=("'$1'")
 }
 
@@ -53,7 +53,7 @@ truncated_params="${*#-}"
 # options_indicator != 0 if at least one parameter is not an option
 options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
-[ -n "$SCALA_OPTS" ] && set -- "$@" $SCALA_OPTS
+[ -n "$SCALA_OPTS" ] && set -- $SCALA_OPTS "$@"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -75,13 +75,17 @@ while [[ $# -gt 0 ]]; do
       with_compiler=true
       shift
       ;;
-    @*|-color:*|-compile-only)
-      addDotcOptions "${1}"
+    @*|-color:*)
+      addScalacOptions "${1}"
       shift
       ;;
     -save|-savecompiled)
       save_compiled=true
-      addDotcOptions "${1}"
+      scala_script_options+=("$1")
+      shift
+      ;;
+    -compile-only)
+      scala_script_options+=("$1")
       shift
       ;;
     -d)
@@ -90,7 +94,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -J*)
       addJvmOptions "${1:2}"
-      addDotcOptions "${1}"
+      addScalacOptions "${1}"
       shift ;;
     *)
       if [ $execute_script == false ]; then
@@ -115,10 +119,11 @@ if [ $execute_script == true ]; then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
+  java_options+=(${scala_script_options})
   setScriptName="-Dscript.path=$target_script"
   target_jar="${target_script%.*}.jar"
   if [[ $save_compiled == true && "$target_jar" -nt "$target_script" ]]; then
-    java $setScriptName -jar "$target_jar" "${script_args[@]}"
+    eval exec "\"$JAVACMD\"" $setScriptName -jar "$target_jar" "${script_args[@]}"
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
     residual_args+=($setScriptName)

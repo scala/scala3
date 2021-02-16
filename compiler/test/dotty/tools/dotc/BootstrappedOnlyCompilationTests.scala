@@ -28,6 +28,7 @@ class BootstrappedOnlyCompilationTests {
       compileFilesInDir("tests/pos-macros", defaultOptions),
       compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
       compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
+      compileDir("tests/pos-special/i11331.1", defaultOptions),
     ).checkCompile()
   }
 

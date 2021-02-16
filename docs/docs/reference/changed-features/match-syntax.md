@@ -11,9 +11,9 @@ The syntactical precedence of match expressions has been changed.
     ```scala
     xs match {
        case Nil => "empty"
-       case x :: xs1 => "nonempty"
+       case _   => "nonempty"
     } match {
-       case "empty" => 0
+       case "empty"    => 0
        case "nonempty" => 1
     }
     ```
@@ -23,7 +23,7 @@ The syntactical precedence of match expressions has been changed.
     ```scala
     xs match
        case Nil => "empty"
-       case x :: xs1 => "nonempty"
+       case _   => "nonempty"
     match
        case "empty" => 0
        case "nonempty" => 1
@@ -34,7 +34,7 @@ The syntactical precedence of match expressions has been changed.
      ```scala
      if xs.match
         case Nil => false
-        case _ => true
+        case _   => true
      then "nonempty"
      else "empty"
      ```
@@ -46,7 +46,7 @@ The syntactical precedence of match expressions has been changed.
 
 The new syntax of match expressions is as follows.
 
-```
+```ebnf
 InfixExpr    ::=  ...
                |  InfixExpr MatchClause
 SimpleExpr   ::=  ...
