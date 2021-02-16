@@ -93,39 +93,68 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
-      val upcasted: Type = scrut match {
-        case scrut: TypeRef if scrut.symbol.isClass =>
-          // we do not infer constraints following from all parents for performance reasons
-          // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
-          scrut.firstParent
+    def constrainUpcasted(scrut: Type): Boolean = trace.force(i"constrainUpcasted($scrut)", gadts) {
+      scrut match {
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
+          println(s"scrutinee type: $scrut")
           val patClassSym = pat.classSymbol
-          // as above, we do not consider all parents for performance reasons
-          def firstParentSharedWithPat(tp: Type, tpClassSym: ClassSymbol): Symbol = {
+          // function for obtaining all shared parents between scrut and pat
+          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
             var parents = tpClassSym.info.parents
-            parents match {
-              case first :: rest =>
-                if (first.classSymbol == defn.ObjectClass) parents = rest
-              case _ => ;
-            }
-            parents match {
-              case first :: _ =>
-                val firstClassSym = first.classSymbol.asClass
-                val res = if (patClassSym.derivesFrom(firstClassSym)) firstClassSym
-                else firstParentSharedWithPat(first, firstClassSym)
-                res
-              case _ => NoSymbol
+            if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
+              parents = parents.tail
+            parents flatMap { tp =>
+              val sym = tp.classSymbol.asClass
+              if patClassSym.derivesFrom(sym) then List(sym)
+              else allParentsSharedWithPat(tp, sym)
             }
           }
-          val sym = firstParentSharedWithPat(tycon, tycon.symbol.asClass)
-          if (sym.exists) scrut.baseType(sym) else NoType
-        case scrut: TypeProxy => scrut.superType
-        case _ => NoType
+          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          println(s"all shared parent symbols: $allSyms")
+          val baseClasses = allSyms map scrut.baseType
+          println(s"all shared parent classes: $allSyms")
+          def buildAndType(xs: List[Type]): Type = xs match {
+            case Nil => NoType
+            case x :: Nil => x
+            case x :: xs => AndType(x, buildAndType(xs))
+          }
+          val baseType = buildAndType(baseClasses)
+          println(s"built and type: $baseType")
+          constrainPatternType(pat, baseType)
+        case _ =>
+          val upcasted: Type = scrut match {
+            case scrut: TypeRef if scrut.symbol.isClass =>
+              // we do not infer constraints following from all parents for performance reasons
+              // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
+              scrut.firstParent
+            // case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
+            //   val patClassSym = pat.classSymbol
+            //   // as above, we do not consider all parents for performance reasons
+            //   def firstParentSharedWithPat(tp: Type, tpClassSym: ClassSymbol): Symbol = {
+            //     var parents = tpClassSym.info.parents
+            //     parents match {
+            //       case first :: rest =>
+            //         if (first.classSymbol == defn.ObjectClass) parents = rest
+            //       case _ => ;
+            //     }
+            //     parents match {
+            //       case first :: _ =>
+            //         val firstClassSym = first.classSymbol.asClass
+            //         val res = if (patClassSym.derivesFrom(firstClassSym)) firstClassSym
+            //         else firstParentSharedWithPat(first, firstClassSym)
+            //         res
+            //       case _ => NoSymbol
+            //     }
+            //   }
+            //   val sym = firstParentSharedWithPat(tycon, tycon.symbol.asClass)
+            //   if (sym.exists) scrut.baseType(sym) else NoType
+            case scrut: TypeProxy => scrut.superType
+            case _ => NoType
+          }
+          if (upcasted.exists)
+            constrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+          else true
       }
-      if (upcasted.exists)
-        constrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-      else true
     }
 
     scrut.dealias match {
