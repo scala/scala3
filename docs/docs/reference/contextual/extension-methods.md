@@ -79,7 +79,7 @@ themselves:
 
 ```scala
 extension [T](xs: List[T])
-   def sumBy[U](f: T => U)(using Numeric[U]): U = ...
+   def sumBy[U: Numeric](f: T => U): U = ...
 ```
 
 Type arguments matching method type parameters are passed as usual:
