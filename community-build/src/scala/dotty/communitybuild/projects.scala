@@ -312,7 +312,8 @@ object projects:
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
-    sbtDocCommand = forceDoc("typeable", "deriving", "data")
+    sbtDocCommand = forceDoc("typeable", "deriving", "data"),
+    scalacOptions = Nil // disable -Ycheck-init, due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -472,7 +473,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = Nil // disabble -Ycheck-init
+    scalacOptions = Nil // disable -Ycheck-init
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
