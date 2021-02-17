@@ -275,6 +275,40 @@ object Checking {
       case _ => false
     }
 
+  /// Check the Promotion of a Warm object, according to "Rule 2":
+  //
+  // Rule 2: Promote(pot)
+  //
+  // for all concrete methods `m` of D
+  //    pot.m!, Promote(pot.m)
+  //
+  // for all concrete fields `f` of D
+  //    Promote(pot.f)
+  //
+  // for all inner classes `F` of D
+  //    Warm[F, pot].init!, Promote(Warm[F, pot])
+  private def checkPromoteWarm(warm: Warm, eff: Effect)(using state: State): Errors =
+    val Warm(cls, outer) = warm
+    // Errors.empty
+    val classRef = cls.info.asInstanceOf[ClassInfo].appliedRef
+    // All members of class must be promotable.
+    val memberErrs = classRef.allMembers.flatMap { denot =>
+      val sym = denot.symbol
+      val summary = warm.toPots.select(sym, warm.source, true)
+      (summary.effs ++ summary.pots.map(Promote(_)(warm.source)).toList)
+    }.flatMap(check(_))
+
+    // All inner classes of classRef must be promotable.
+    // TODO: Implement this
+    val innerClassesErrs = Errors.empty
+
+    val errs = memberErrs ++ innerClassesErrs
+    if errs.isEmpty then {
+      Errors.empty
+    } else {
+      UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
+    }
+
   private def checkPromote(eff: Promote)(using state: State): Errors =
     if (state.safePromoted.contains(eff.potential)) Errors.empty
     else {
@@ -290,8 +324,7 @@ object Checking {
           PromoteCold(eff.source, state.path).toErrors
 
         case pot @ Warm(cls, outer) =>
-          // TODO: Implement Rule 2
-          PromoteWarm(pot, eff.source, state.path).toErrors
+          checkPromoteWarm(pot, eff)
 
         case Fun(pots, effs) =>
           val errs1 = state.test {
