@@ -86,6 +86,7 @@ end CommunityBuildTest
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA extends CommunityBuildTest:
+  @Test def akka = projects.akka.run()
   @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
