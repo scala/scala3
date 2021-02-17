@@ -298,7 +298,7 @@ if s != null then
 
 // s: String|Null
 
-assert(x != null)
+assert(s != null)
 // s: String
 ```
 
