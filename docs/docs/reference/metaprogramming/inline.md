@@ -176,7 +176,7 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     B.f         // OK
     val a: A = B
-    a.f         // error: cannot inline f() in A.
+    a.f         // error: cannot inline f in A.
     ```
 
 ### Relationship to `@inline`
@@ -285,11 +285,13 @@ val one: 1 = zero + 1
 ```
 
 ### Transparent vs. non-transparent inline
+
 As we already discussed, transparent inline methods may influence type checking at call site.
 Technically this implies that transparent inline methods must be expanded during type checking of the program.
 Other inline methods are inlined later after the program is fully typed.
 
 For example, the following two functions will be typed the same way but will be inlined at different times.
+
 ```scala
 inline def f1: T = ...
 transparent inline def f2: T = (...): T
@@ -298,7 +300,7 @@ transparent inline def f2: T = (...): T
 A noteworthy difference is the behavior of `transparent inline given`.
 If there is an error reported when inlining that definition, it will be considered as an implicit search mismatch and the search will continue.
 A `transparent inline given` can add a type ascription in its RHS (as in `f2` from the previous example) to avoid the precise type but keep the search behavior.
-On the other hand, `inline given` be taken as the implicit and then inlined after typing.
+On the other hand, an `inline given` is taken as an implicit and then inlined after typing.
 Any error will be emitted as usual.
 
 ## Inline Conditionals

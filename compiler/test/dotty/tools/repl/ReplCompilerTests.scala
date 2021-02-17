@@ -233,3 +233,31 @@ object ReplCompilerTests {
   }
 
 }
+
+class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Xprint:typer") {
+  @Test def i9111 = fromInitialState { implicit state =>
+    run("""|enum E {
+           |  case A
+           |}""".stripMargin)
+    assert(storedOutput().trim().endsWith("// defined class E"))
+  }
+
+  @Test def i10883 = fromInitialState { implicit state =>
+    run("val a = 42")
+    assert(storedOutput().trim().endsWith("val a: Int = 42"))
+  }
+}
+
+class ReplVerboseTests extends ReplTest(ReplTest.defaultOptions :+ "-verbose") {
+  @Test def i9111 = fromInitialState { implicit state =>
+    run("""|enum E {
+           |  case A
+           |}""".stripMargin)
+    assert(storedOutput().trim().endsWith("// defined class E"))
+  }
+
+  @Test def i10883 = fromInitialState { implicit state =>
+    run("val a = 42")
+    assert(storedOutput().trim().endsWith("val a: Int = 42"))
+  }
+}

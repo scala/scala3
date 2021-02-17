@@ -648,6 +648,13 @@ object projects:
     dependencies = List(cats)
   )
 
+  lazy val akka = SbtCommunityProject(
+    project = "akka",
+    extraSbtArgs = List(s"-Dakka.build.scalaVersion=$compilerVersion"),
+    sbtTestCommand = "set every targetSystemJdk := true; akka-actor-tests/Test/compile",
+    dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
+  )
+
 end projects
 
 def allProjects = List(
@@ -712,6 +719,7 @@ def allProjects = List(
   projects.scissLucre,
   projects.izumiReflect,
   projects.perspective,
+  projects.akka,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

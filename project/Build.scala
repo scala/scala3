@@ -55,17 +55,17 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-RC1-bin-20210122-6947b0f-NIGHTLY"
+  val referenceVersion = "3.0.0-RC1"
 
-  val baseVersion = "3.0.0-M4"
-  val baseSbtDottyVersion = "0.5.3"
+  val baseVersion = "3.0.0-RC2"
+  val baseSbtDottyVersion = "0.5.4"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.5.2"
+  val publishedSbtDottyVersion = "0.5.3"
 
   /** scala-library version required to compile Dotty.
    *
@@ -1506,7 +1506,7 @@ object Build {
           val scala3version = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library-source-links:github://lampepfl/dotty"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
           val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ revision ++ params ++ targets
           import _root_.scala.sys.process._

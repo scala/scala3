@@ -29,7 +29,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
-    case Some(InheritedFrom(name, dri)) => tableRow("Inhertied from", signatureRenderer.renderLink(name, dri))
+    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from", signatureRenderer.renderLink(name, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -83,10 +83,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val message = named.find(_.name.get == "message")
     val since = named.find(_.name.get == "since")
 
-    val content = Seq(
-      since.map(s => code("[Since version ", parameter(s), "] ")),
-      message.map(m => parameter(m)),
-      m.docs.map(_.deprecated.toSeq.map(renderDocPart)):_*
+    val content = (
+      Seq(
+        since.map(s => code("[Since version ", parameter(s), "] ")),
+        message.map(m => parameter(m)))
+      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
     ).flatten
     Seq(dt("Deprecated"), dd(content:_*))
   }
@@ -161,7 +162,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
-      a(href:=link(member.dri).getOrElse("#"), cls := "documentableAnchor"),
+      a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
       div(annotations(member)),
       div(cls := "header monospace")(memberSingnature(member)),
       div(cls := "docs")(
@@ -173,16 +174,19 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       )
     )
 
-  private case class MGroup(header: AppliedTag, members: Seq[Member])
+  private case class MGroup(header: AppliedTag, members: Seq[Member], groupName: String)
 
   private def actualGroup(name: String, members: Seq[Member | MGroup]): Seq[AppliedTag] =
     if members.isEmpty then Nil else
     div(cls := "documentableList")(
       h3(cls:="groupHeader")(name),
-      members.map {
+      members.sortBy {
+        case m: Member => m.name
+        case MGroup(_, _, name) => name
+      }.map {
         case element: Member =>
           member(element)
-        case MGroup(header, members) =>
+        case MGroup(header, members, _) =>
           div(
             header,
             members.map(member)
@@ -255,7 +259,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       }.collect {
         case (Some(on), members) =>
           val sig = Signature(s"extension (${on.name}: ") ++ on.signature ++ Signature(")")
-          MGroup(span(sig.map(renderElement)), members.toSeq)
+          MGroup(span(sig.map(renderElement)), members.sortBy(_.name).toSeq, on.name)
       }.toSeq
 
     div(cls := "membersList")(renderTabs(

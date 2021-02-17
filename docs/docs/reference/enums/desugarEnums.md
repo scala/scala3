@@ -127,7 +127,6 @@ map into `case class`es or `val`s.
    starting from 0. The anonymous class also
    implements the abstract `Product` methods that it inherits from `Enum`.
 
-
    It is an error if a value case refers to a type parameter of the enclosing `enum`
    in a type argument of `<parents>`.
 
@@ -198,6 +197,7 @@ Even though translated enum cases are located in the enum's companion object, re
 this object or its members via `this` or a simple identifier is also illegal. The compiler typechecks enum cases in the scope of the enclosing companion object but flags any such illegal accesses as errors.
 
 ### Translation of Java-compatible enums
+
 A Java-compatible enum is an enum that extends `java.lang.Enum`. The translation rules are the same as above, with the reservations defined in this section.
 
 It is a compile-time error for a Java-compatible enum to have class cases.
@@ -206,9 +206,9 @@ Cases such as `case C` expand to a `@static val` as opposed to a `val`. This all
 
 ### Other Rules
 
- - A normal case class which is not produced from an enum case is not allowed to extend
-`scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
-explicitly declared in it.
+- A normal case class which is not produced from an enum case is not allowed to extend
+  `scala.reflect.Enum`. This ensures that the only cases of an enum are the ones that are
+  explicitly declared in it.
 
- - If an enum case has an `extends` clause, the enum class must be one of the
-   classes that's extended.
+- If an enum case has an `extends` clause, the enum class must be one of the
+  classes that's extended.

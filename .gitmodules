@@ -181,3 +181,6 @@
 	path = community-build/community-projects/perspective
 	url = https://github.com/dotty-staging/perspective.git
 	branch = dotty/nightly
+[submodule "community-build/community-projects/akka"]
+	path = community-build/community-projects/akka
+	url = https://github.com/dotty-staging/akka.git

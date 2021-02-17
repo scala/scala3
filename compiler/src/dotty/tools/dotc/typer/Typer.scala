@@ -158,7 +158,8 @@ class Typer extends Namer
      */
     def qualifies(denot: Denotation): Boolean =
       reallyExists(denot)
-      && !(pt.isInstanceOf[UnapplySelectionProto] && denot.symbol.is(Method, butNot = Accessor))
+      && (!pt.isInstanceOf[UnapplySelectionProto]
+          || denot.hasAltWith(sd => !sd.symbol.is(Method, butNot = Accessor)))
       && !denot.symbol.is(PackageClass)
 
     /** Find the denotation of enclosing `name` in given context `ctx`.
@@ -499,7 +500,7 @@ class Typer extends Namer
         case _ =>
           tree.withType(ownType)
       val tree2 = toNotNullTermRef(tree1, pt)
-      checkStableIdentPattern(tree2, pt)
+      checkLegalValue(tree2, pt)
       tree2
 
     def isLocalExtensionMethodRef: Boolean = rawType match
@@ -537,9 +538,12 @@ class Typer extends Namer
       errorTree(tree, MissingIdent(tree, kind, name))
   end typedIdent
 
-  /** Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
+  /** (1) If this reference is neither applied nor selected, check that it does
+   *      not refer to a package or Java companion object.
+   *  (2) Check that a stable identifier pattern is indeed stable (SLS 8.1.5)
    */
-  private def checkStableIdentPattern(tree: Tree, pt: Type)(using Context): Unit =
+  private def checkLegalValue(tree: Tree, pt: Type)(using Context): Unit =
+    checkValue(tree, pt)
     if ctx.mode.is(Mode.Pattern)
        && !tree.isType
        && !pt.isInstanceOf[ApplyingProto]
@@ -557,7 +561,7 @@ class Typer extends Namer
     if checkedType.exists then
       val select = toNotNullTermRef(assignType(tree, checkedType), pt)
       if selName.isTypeName then checkStable(qual.tpe, qual.srcPos, "type prefix")
-      checkStableIdentPattern(select, pt)
+      checkLegalValue(select, pt)
       ConstFold(select)
     else if couldInstantiateTypeVar(qual.tpe.widen) then
       // try again with more defined qualifier type
@@ -2343,7 +2347,7 @@ class Typer extends Namer
       assert(imp.selectors.length == 1, imp)
       val from = imp.selectors.head.imported
       val sel = tryAlternatively
-          (typedIdent(from, WildcardType))
+          (typedIdent(from, AnySelectionProto))
           (typedIdent(cpy.Ident(from)(from.name.toTypeName), WildcardType))
 
       sel.tpe match
@@ -3696,8 +3700,12 @@ class Typer extends Namer
       val Select(qual, nme.apply) = tree; @unchecked
       val tycon = tree.tpe.widen.finalResultType.underlyingClassRef(refinementOK = false)
       val tpt = qual match
-        case Ident(name) => cpy.Ident(qual)(name.toTypeName)
-        case Select(pre, name) => cpy.Select(qual)(pre, name.toTypeName)
+        case Ident(name) =>
+          cpy.Ident(qual)(name.toTypeName)
+        case Select(pre, name) =>
+          cpy.Select(qual)(pre, name.toTypeName)
+        case qual: This if qual.symbol.is(ModuleClass) =>
+          cpy.Ident(qual)(qual.symbol.name.sourceModuleName.toTypeName)
       typed(
         untpd.Select(
           untpd.New(untpd.TypedSplice(tpt.withType(tycon))),

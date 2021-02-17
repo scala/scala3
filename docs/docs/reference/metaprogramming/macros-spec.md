@@ -90,7 +90,7 @@ Separator     *  ::=  '
 The two environment combinators are both associative with left and
 right identity `()`.
 
-### Operational semantics:
+### Operational semantics
 
 We define a small step reduction relation `-->` with the following rules:
 ```
@@ -111,6 +111,7 @@ splice evaluation context `e_s` are defined syntactically as follows:
 Eval context    e    ::=  [ ]  |  e t  |  v e  |  'e_s[${e}]
 Splice context  e_s  ::=  [ ]  |  (x: T) => e_s  |  e_s t  |  u e_s
 ```
+
 ### Typing rules
 
 Typing judgments are of the form `Es |- t: T`. There are two

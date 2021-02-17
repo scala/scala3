@@ -157,7 +157,18 @@ case class Member(
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
   deprecated: Option[Annotation] = None,
-)
+):
+  def needsOwnPage: Boolean =
+    def properKind(kind: Kind): Boolean = kind match
+      case Kind.Package => true
+      case _ if kind.isInstanceOf[Classlike] => true
+      case Kind.Given(inner, _, _) => properKind(inner)
+      case Kind.EnumCase(inner) => properKind(inner)
+      case _ => false
+
+    properKind(kind) &&
+      origin == Origin.RegularlyDefined &&
+      inheritedFrom.isEmpty
 
 object Member:
   def unapply(v: Member): Option[(String, DRI, Visibility, Kind, Origin)] =

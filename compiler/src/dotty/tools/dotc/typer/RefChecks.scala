@@ -474,14 +474,14 @@ object RefChecks {
        *    - matching names and types, but different target names
        */
       override def matches(sym1: Symbol, sym2: Symbol): Boolean =
-        sym1.isType
-        || {
+        !(sym1.owner.is(JavaDefined, butNot = Trait) && sym2.owner.is(JavaDefined, butNot = Trait)) && // javac already handles these checks
+        (sym1.isType || {
           val sd1 = sym1.asSeenFrom(clazz.thisType)
           val sd2 = sym2.asSeenFrom(clazz.thisType)
           sd1.matchesLoosely(sd2)
           && (sym1.hasTargetName(sym2.targetName)
              || compatibleTypes(sym1, sd1.info, sym2, sd2.info))
-        }
+        })
     end opc
 
     while opc.hasNext do
