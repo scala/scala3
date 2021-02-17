@@ -10,6 +10,7 @@ import transform.ExplicitOuter._
 import transform.ValueClasses._
 import transform.TypeUtils._
 import transform.ContextFunctionResults._
+import unpickleScala2.Scala2Erasure
 import Decorators._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
@@ -183,6 +184,10 @@ object TypeErasure {
    */
   def valueErasure(tp: Type)(using Context): Type =
     erasureFn(sourceLanguage = SourceLanguage.Scala3, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
+
+  /** The erasure that Scala 2 would use for this type. */
+  def scala2Erasure(tp: Type)(using Context): Type =
+    erasureFn(sourceLanguage = SourceLanguage.Scala2, semiEraseVCs = true, isConstructor = false, wildcardOK = false)(tp)(using preErasureCtx)
 
   /** Like value class erasure, but value classes erase to their underlying type erasure */
   def fullErasure(tp: Type)(using Context): Type =
@@ -502,8 +507,11 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       this(defn.FunctionType(paramss.head.length, isContextual = res.isImplicitMethod, isErased = res.isErasedMethod))
     case tp: TypeProxy =>
       this(tp.underlying)
-    case AndType(tp1, tp2) =>
-      erasedGlb(this(tp1), this(tp2), sourceLanguage.isJava)
+    case tp @ AndType(tp1, tp2) =>
+      if sourceLanguage.isScala2 then
+        this(Scala2Erasure.intersectionDominator(Scala2Erasure.flattenedParents(tp)))
+      else
+        erasedGlb(this(tp1), this(tp2), isJava = sourceLanguage.isJava)
     case OrType(tp1, tp2) =>
       TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
