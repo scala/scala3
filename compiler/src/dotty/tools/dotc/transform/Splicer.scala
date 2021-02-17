@@ -39,16 +39,17 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
+  def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
-        inContext(ctx.withOwner(macroOwner)) {
+        val sliceContext = SpliceScope.contextWithNewSpliceScope(splicePos.sourcePos).withOwner(macroOwner)
+        inContext(sliceContext) {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
           try {
-            val interpreter = new Interpreter(pos, classLoader)
+            val interpreter = new Interpreter(spliceExpansionPos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
             val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)
@@ -74,7 +75,7 @@ object Splicer {
                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
              """.stripMargin
-          report.error(msg, pos)
+          report.error(msg, spliceExpansionPos)
           ref(defn.Predef_undefined).withType(ErrorType(msg))
       }
   }
@@ -325,10 +326,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuotesImpl.scopeId)
+      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuotesImpl.scopeId, SpliceScope.getCurrent)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuotesImpl.scopeId)
+      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuotesImpl.scopeId, SpliceScope.getCurrent)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
