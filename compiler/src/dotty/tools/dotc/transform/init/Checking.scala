@@ -264,34 +264,44 @@ object Checking {
         val Summary(pots, effs) = expand(pot)
         val effs2 = pots.map(FieldAccess(_, field)(eff.source))
         (effs2 ++ effs).toList.flatMap(check(_))
-
     }
 
+  /// Check if we can just directly promote a potential.
+  /// A potential can be (currently) directly promoted if and only if:
+  /// - `pot == this` and all fields of this are initialized, or
+  /// - `pot == Warm(C, outer)` where `outer` can be directly promoted.
+  private def canDirectlyPromote(pot: Potential)(using state: State): Boolean =
+    if (state.safePromoted.contains(pot)) true
+    else pot match {
+      case pot: ThisRef =>
+        // If we have all fields initialized, then we can promote This to hot.
+        val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
+        classRef.fields.forall { denot =>
+          val sym = denot.symbol
+          sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
+        }
+      case Warm(cls, outer) =>
+        canDirectlyPromote(outer)
+      case _ => false
+    }
 
   private def checkPromote(eff: Promote)(using state: State): Errors =
     if (state.safePromoted.contains(eff.potential)) Errors.empty
     else {
       val pot = eff.potential
       val errs = pot match {
+        case pot if canDirectlyPromote(pot) =>
+          Errors.empty
+
         case pot: ThisRef =>
-          // If we have all fields initialized, then we can promote This to hot.
-          val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
-          val allFieldsInited = classRef.fields.forall { denot =>
-            val sym = denot.symbol
-            sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
-          }
-          if (allFieldsInited)
-            Errors.empty
-          else
             PromoteThis(pot, eff.source, state.path).toErrors
 
         case _: Cold =>
           PromoteCold(eff.source, state.path).toErrors
 
         case pot @ Warm(cls, outer) =>
-          val errors = state.test { checkPromote(Promote(outer)(eff.source)) }
-          if (errors.isEmpty) Errors.empty
-          else PromoteWarm(pot, eff.source, state.path).toErrors
+          // TODO: Implement Rule 2
+          PromoteWarm(pot, eff.source, state.path).toErrors
 
         case Fun(pots, effs) =>
           val errs1 = state.test {
