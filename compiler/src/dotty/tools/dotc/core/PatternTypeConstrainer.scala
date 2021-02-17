@@ -96,6 +96,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     }
 
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
+      // Fold a list of types into an AndType
       def buildAndType(xs: List[Type]): Type = {
         @tailrec def recur(acc: Type, rem: List[Type]): Type = rem match {
           case Nil => acc
@@ -109,6 +110,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
       scrut match {
         case scrut: TypeRef if scrut.symbol.isClass =>
+          // consider all parents
           val parents = scrut.parents
           val andType = trace(i"andType of scrut", gadts) {
             buildAndType(parents)
@@ -116,6 +118,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           constrainPatternType(pat, andType)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patClassSym = pat.classSymbol
+          // find all shared parents in the inheritance hierarchy between pat and scrut
           def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
             var parents = tpClassSym.info.parents
             if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
@@ -134,33 +137,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           constrainPatternType(pat, andType)
         case _ =>
           val upcasted: Type = scrut match {
-            // case scrut: TypeRef if scrut.symbol.isClass =>
-            //   // we do not infer constraints following from all parents for performance reasons
-            //   // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
-            //   val _ = trace.force(i"pat", gadts) { pat }
-            //   val _ = trace.force(i"$scrut.parents", gadts) { scrut.parents }
-            //   trace.force(i"$scrut.firstParent", gadts) { scrut.firstParent }
-            // case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
-            //   val patClassSym = pat.classSymbol
-            //   // as above, we do not consider all parents for performance reasons
-            //   def firstParentSharedWithPat(tp: Type, tpClassSym: ClassSymbol): Symbol = {
-            //     var parents = tpClassSym.info.parents
-            //     parents match {
-            //       case first :: rest =>
-            //         if (first.classSymbol == defn.ObjectClass) parents = rest
-            //       case _ => ;
-            //     }
-            //     parents match {
-            //       case first :: _ =>
-            //         val firstClassSym = first.classSymbol.asClass
-            //         val res = if (patClassSym.derivesFrom(firstClassSym)) firstClassSym
-            //         else firstParentSharedWithPat(first, firstClassSym)
-            //         res
-            //       case _ => NoSymbol
-            //     }
-            //   }
-            //   val sym = firstParentSharedWithPat(tycon, tycon.symbol.asClass)
-            //   if (sym.exists) scrut.baseType(sym) else NoType
             case scrut: TypeProxy => scrut.superType
             case _ => NoType
           }
