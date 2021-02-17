@@ -447,7 +447,7 @@ class ClassfileParser(
 
           index += 1
           val restype = sig2type(tparams, skiptvs = false)
-          JavaMethodType(paramnames.toList, paramtypes.toList, restype)
+          MethodType(paramnames.toList, paramtypes.toList, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1

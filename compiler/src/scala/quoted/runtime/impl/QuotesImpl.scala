@@ -385,7 +385,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def etaExpand(owner: Symbol): Term = self.tpe.widen match {
           case mtpe: Types.MethodType if !mtpe.isParamDependent =>
             val closureResType = mtpe.resType match {
-              case t: Types.MethodType => t.toFunctionType()
+              case t: Types.MethodType => t.toFunctionType(isJava = self.symbol.is(JavaDefined))
               case t => t
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)

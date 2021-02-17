@@ -77,9 +77,7 @@ object Types {
    *        +- GroundType -+- AndType
    *                       +- OrType
    *                       +- MethodOrPoly ---+-- PolyType
-   *                                          +-- MethodType ---+- ImplicitMethodType
-   *                                                            +- ContextualMethodType
-   *                       |                                    +- JavaMethodType
+   *                       |                  +-- MethodType
    *                       +- ClassInfo
    *                       |
    *                       +- NoType
@@ -399,9 +397,6 @@ object Types {
 
     /** Is this an alias TypeBounds? */
     final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
-
-    /** Is this a MethodType which is from Java? */
-    def isJavaMethod: Boolean = false
 
     /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
@@ -1725,34 +1720,21 @@ object Types {
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
      */
-    def toFunctionType(dropLast: Int = 0)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean, dropLast: Int = 0)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
-          case res: MethodType => res.toFunctionType()
+          case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
-          formals1 mapConserve (_.translateFromRepeated(toArray = mt.isJavaMethod)),
+          formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
           result1, isContextual, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
-
-    final def dropJavaMethod(using Context): Type = this match
-      case pt: PolyType => pt.derivedLambdaType(resType = pt.resType.dropJavaMethod)
-
-      case mt: MethodType =>
-        if mt.isJavaMethod then
-          MethodType.apply(mt.paramNames, mt.paramInfos, mt.resType.dropJavaMethod)
-        else
-          mt.derivedLambdaType(resType = mt.resType.dropJavaMethod)
-
-      case _ => this
-
-    end dropJavaMethod
 
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
@@ -1999,7 +1981,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType with ValueType with SignatureCachingType { self =>
+  abstract class NamedType extends CachedProxyType with ValueType { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -2015,11 +1997,13 @@ object Types {
     private var lastSymbol: Symbol = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
+    private var mySignature: Signature = _
+    private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
-    // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
-    // (2) lastDenotation != null    =>  lastSymbol != null
-    // (3) mySigRunId != NoRunId     =>  mySig != null
+    // (1) checkedPeriod != Nowhere     =>  lastDenotation != null
+    // (2) lastDenotation != null       =>  lastSymbol != null
+    // (3) mySignatureRunId != NoRunId  =>  mySignature != null
 
     def isType: Boolean = isInstanceOf[TypeRef]
     def isTerm: Boolean = isInstanceOf[TermRef]
@@ -2037,15 +2021,22 @@ object Types {
       case sym: Symbol => sym.originDenotation.name
     }
 
-    /** The signature computed from the last known denotation with `sigFromDenot`,
-     *  or if there is none, the signature of the symbol. Signatures are always
-     *  computed before erasure, since some symbols change their signature at erasure.
-     */
-    protected[dotc] def computeSignature(using Context): Signature =
-      val lastd = lastDenotation
-      if lastd != null then sigFromDenot(lastd)
-      else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
-      else symbol.asSeenFrom(prefix).signature
+    final override def signature(using Context): Signature =
+      /** The signature computed from the last known denotation with `sigFromDenot`,
+       *  or if there is none, the signature of the symbol. Signatures are always
+       *  computed before erasure, since some symbols change their signature at erasure.
+       */
+      def computeSignature(using Context): Signature =
+        val lastd = lastDenotation
+        if lastd != null then sigFromDenot(lastd)
+        else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
+        else symbol.asSeenFrom(prefix).signature
+
+      if ctx.runId != mySignatureRunId then
+        mySignature = computeSignature
+        if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+      mySignature
+    end signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
      *  known without forcing.
@@ -3219,39 +3210,11 @@ object Types {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  /** A trait that mixes in functionality for signature caching */
-  trait SignatureCachingType extends TermType {
-    protected var mySignature: Signature = _
-    protected var mySignatureRunId: Int = NoRunId
-
-    protected[dotc] def computeSignature(using Context): Signature
-
-    final override def signature(using Context): Signature = {
-      if (ctx.runId != mySignatureRunId) {
-        mySignature = computeSignature
-        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
-      }
-      mySignature
-    }
-  }
-
-  trait MethodicType extends TermType {
-    protected def resultSignature(using Context): Signature = try resultType match {
-      case rtp: MethodicType => rtp.signature
-      case tp =>
-        if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
-        else Signature(tp, isJava = false)
-    }
-    catch {
-      case ex: AssertionError =>
-        println(i"failure while taking result signature of $this: $resultType")
-        throw ex
-    }
-  }
+  trait MethodicType extends TermType
 
   /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(resType: Type)
-  extends CachedProxyType with TermType with MethodicType {
+  extends CachedProxyType with MethodicType {
     override def resultType(using Context): Type = resType
     override def underlying(using Context): Type = resType
 
@@ -3371,7 +3334,66 @@ object Types {
     final override def equals(that: Any): Boolean = equals(that, null)
   }
 
-  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType with SignatureCachingType {
+  /** The superclass of MethodType and PolyType. */
+  sealed abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+
+    // Invariants:
+    // (1) mySignatureRunId != NoRunId      =>  mySignature != null
+    // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
+
+    private var mySignature: Signature = _
+    private var mySignatureRunId: Int = NoRunId
+    private var myJavaSignature: Signature = _
+    private var myJavaSignatureRunId: Int = NoRunId
+
+    /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
+     *
+     *  This distinction is needed because the same method type
+     *  might be part of both a Java and Scala class and each language has
+     *  different type erasure rules.
+     *
+     *  Invariants:
+     *  - Two distinct method overloads defined in the same _Scala_ class will
+     *    have distinct _Scala_ signatures.
+     *  - Two distinct methods overloads defined in the same _Java_ class will
+     *    have distinct _Java_ signatures.
+     *
+     *  @see SingleDenotation#signature
+     */
+    def signature(isJava: Boolean)(using Context): Signature =
+      def computeSignature(isJava: Boolean)(using Context): Signature =
+        val resultSignature = resultType match
+          case tp: MethodOrPoly => tp.signature(isJava)
+          case tp: ExprType => tp.signature
+          case tp =>
+            if tp.isRef(defn.UnitClass) then Signature(Nil, defn.UnitClass.fullName.asTypeName)
+            else Signature(tp, isJava)
+        this match
+          case tp: MethodType =>
+            val params = if (isErasedMethod) Nil else tp.paramInfos
+            resultSignature.prependTermParams(params, isJava)
+          case tp: PolyType =>
+            resultSignature.prependTypeParams(tp.paramNames.length)
+
+      if isJava then
+        if ctx.runId != myJavaSignatureRunId then
+          myJavaSignature = computeSignature(isJava)
+          if !myJavaSignature.isUnderDefined then myJavaSignatureRunId = ctx.runId
+        myJavaSignature
+      else
+        if ctx.runId != mySignatureRunId then
+          mySignature = computeSignature(isJava)
+          if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+        mySignature
+    end signature
+
+    /** The Scala signature of this method. Note that two distinct Java method
+     *  overloads may have the same Scala signature, the other overload of
+     *  `signature` can be used to avoid ambiguity if necessary.
+     */
+    final override def signature(using Context): Signature =
+      signature(isJava = false)
+
     final override def hashCode: Int = System.identityHashCode(this)
 
     final override def equals(that: Any): Boolean = equals(that, null)
@@ -3518,7 +3540,6 @@ object Types {
 
     def companion: MethodTypeCompanion
 
-    final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
       companion.eq(ErasedImplicitMethodType) ||
@@ -3530,11 +3551,6 @@ object Types {
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
-
-    protected[dotc] def computeSignature(using Context): Signature = {
-      val params = if (isErasedMethod) Nil else paramInfos
-      resultSignature.prependTermParams(params, isJavaMethod)
-    }
 
     protected def prefixString: String = companion.prefixString
   }
@@ -3619,21 +3635,14 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
-      if (isJava) {
-        assert(!isImplicit)
-        assert(!isErased)
-        assert(!isContextual)
-        JavaMethodType
-      }
-      else if (isContextual)
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
+      if (isContextual)
         if (isErased) ErasedContextualMethodType else ContextualMethodType
       else if (isImplicit)
         if (isErased) ErasedImplicitMethodType else ImplicitMethodType
       else
         if (isErased) ErasedMethodType else MethodType
   }
-  object JavaMethodType extends MethodTypeCompanion("JavaMethodType")
   object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
   object ErasedContextualMethodType extends MethodTypeCompanion("ErasedContextualMethodType")
@@ -3765,9 +3774,6 @@ object Types {
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
-
-    protected[dotc] def computeSignature(using Context): Signature =
-      resultSignature.prependTypeParams(paramNames.length)
 
     override def isContextualMethod = resType.isContextualMethod
     override def isImplicitMethod = resType.isImplicitMethod

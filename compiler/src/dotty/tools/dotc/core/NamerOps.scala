@@ -39,7 +39,7 @@ object NamerOps:
         val (isContextual, isImplicit, isErased) =
           if params.isEmpty then (false, false, false)
           else (params.head.is(Given), params.head.is(Implicit), params.head.is(Erased))
-        val make = MethodType.companion(isJava = isJava, isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
+        val make = MethodType.companion(isContextual = isContextual, isImplicit = isImplicit, isErased = isErased)
         if isJava then
           for param <- params do
             if param.info.isDirectRef(defn.ObjectClass) then param.info = defn.AnyType

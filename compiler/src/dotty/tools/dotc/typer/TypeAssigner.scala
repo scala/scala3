@@ -375,7 +375,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Closure, meth: Tree, target: Tree)(using Context): Closure =
     tree.withType(
-      if (target.isEmpty) meth.tpe.widen.toFunctionType(tree.env.length)
+      if (target.isEmpty) meth.tpe.widen.toFunctionType(isJava = meth.symbol.is(JavaDefined), tree.env.length)
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {

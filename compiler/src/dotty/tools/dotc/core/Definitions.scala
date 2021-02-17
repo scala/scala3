@@ -122,7 +122,6 @@ class Definitions {
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
         val methodType = MethodType.companion(
-          isJava = false,
           isContextual = name.isContextFunction,
           isImplicit = false,
           isErased = name.isErasedFunction)
