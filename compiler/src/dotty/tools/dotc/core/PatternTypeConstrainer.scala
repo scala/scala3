@@ -11,6 +11,8 @@ import dotty.tools.dotc.reporting.trace
 import config.Feature.migrateTo3
 import config.Printers._
 
+import scala.annotation.tailrec
+
 trait PatternTypeConstrainer { self: TypeComparer =>
 
   /** Derive type and GADT constraints that necessarily follow from a pattern with the given type matching
@@ -93,12 +95,27 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
-    def constrainUpcasted(scrut: Type): Boolean = trace.force(i"constrainUpcasted($scrut)", gadts) {
+    def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
+      def buildAndType(xs: List[Type]): Type = {
+        @tailrec def recur(acc: Type, rem: List[Type]): Type = rem match {
+          case Nil => acc
+          case x :: rem => recur(AndType(acc, x), rem)
+        }
+        xs match {
+          case Nil => NoType
+          case x :: xs => recur(x, xs)
+        }
+      }
+
       scrut match {
+        case scrut: TypeRef if scrut.symbol.isClass =>
+          val parents = scrut.parents
+          val andType = trace(i"andType of scrut", gadts) {
+            buildAndType(parents)
+          }
+          constrainPatternType(pat, andType)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
-          println(s"scrutinee type: $scrut")
           val patClassSym = pat.classSymbol
-          // function for obtaining all shared parents between scrut and pat
           def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
             var parents = tpClassSym.info.parents
             if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
@@ -110,23 +127,19 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             }
           }
           val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
-          println(s"all shared parent symbols: $allSyms")
           val baseClasses = allSyms map scrut.baseType
-          println(s"all shared parent classes: $allSyms")
-          def buildAndType(xs: List[Type]): Type = xs match {
-            case Nil => NoType
-            case x :: Nil => x
-            case x :: xs => AndType(x, buildAndType(xs))
+          val andType = trace(i"andType of scrut", gadts) {
+            buildAndType(baseClasses)
           }
-          val baseType = buildAndType(baseClasses)
-          println(s"built and type: $baseType")
-          constrainPatternType(pat, baseType)
+          constrainPatternType(pat, andType)
         case _ =>
           val upcasted: Type = scrut match {
-            case scrut: TypeRef if scrut.symbol.isClass =>
-              // we do not infer constraints following from all parents for performance reasons
-              // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
-              scrut.firstParent
+            // case scrut: TypeRef if scrut.symbol.isClass =>
+            //   // we do not infer constraints following from all parents for performance reasons
+            //   // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
+            //   val _ = trace.force(i"pat", gadts) { pat }
+            //   val _ = trace.force(i"$scrut.parents", gadts) { scrut.parents }
+            //   trace.force(i"$scrut.firstParent", gadts) { scrut.firstParent }
             // case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
             //   val patClassSym = pat.classSymbol
             //   // as above, we do not consider all parents for performance reasons
