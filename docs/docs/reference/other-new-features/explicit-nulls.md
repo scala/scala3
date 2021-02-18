@@ -298,7 +298,7 @@ if s != null then
 
 // s: String|Null
 
-assert(x != null)
+assert(s != null)
 // s: String
 ```
 
@@ -382,7 +382,7 @@ while xs != null do
 When dealing with local mutable variables, there are two questions:
 
 1. Whether to track a local mutable variable during flow typing.
-   We track a local mutable variable iff the variable is not assigned in a closure.
+   We track a local mutable variable if the variable is not assigned in a closure.
    For example, in the following code `x` is assigned to by the closure `y`, so we do not
    do flow typing on `x`.
 
