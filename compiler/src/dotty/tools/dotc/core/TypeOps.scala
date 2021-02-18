@@ -401,6 +401,7 @@ object TypeOps:
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
     val widenMap = new ApproximatingTypeMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
+      val locals = util.HashSet[Type]()
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
 
@@ -429,8 +430,8 @@ object TypeOps:
             case _ =>
               emptyRange // should happen only in error cases
           }
-        case tp: ThisType if toAvoid(tp.cls) =>
-          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
+        case tp: ThisType =>
+          tp
         case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
@@ -438,8 +439,13 @@ object TypeOps:
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
-        case tp: LazyRef if isExpandingBounds =>
-          emptyRange
+        case tp: LazyRef =>
+          if locals.contains(tp.ref) then tp
+          else if isExpandingBounds then emptyRange
+          else mapOver(tp)
+        case tl: HKTypeLambda =>
+          locals ++= tl.paramRefs
+          mapOver(tl)
         case _ =>
           mapOver(tp)
       }
