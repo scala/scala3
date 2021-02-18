@@ -111,9 +111,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       scrut match {
         case scrut: TypeRef if scrut.symbol.isClass =>
           // consider all parents
-          val parents = scrut.parents
           val andType = trace(i"andType of scrut", gadts) {
-            buildAndType(parents)
+            buildAndType(scrut.parents)
           }
           constrainPatternType(pat, andType)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
@@ -125,15 +124,19 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               parents = parents.tail
             parents flatMap { tp =>
               val sym = tp.classSymbol.asClass
-              if patClassSym.derivesFrom(sym) then List(sym)
+              if trace(i"$patClassSym.derivesFrom($sym)", gadts) { patClassSym.derivesFrom(sym) } then List(sym)
               else allParentsSharedWithPat(tp, sym)
             }
           }
-          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          def allDirectParents(tp: Type): List[Symbol] =
+            tp.classSymbol.asClass.info.parents match {
+              case p :: ps if p.classSymbol == defn.ObjectClass => ps
+              case parents => parents
+            } map (_.classSymbol.asClass)
+          // val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          val allSyms = allDirectParents(tycon)
           val baseClasses = allSyms map scrut.baseType
-          val andType = trace(i"andType of scrut", gadts) {
-            buildAndType(baseClasses)
-          }
+          val andType = trace.force(i"andType of $scrut", gadts, res => i"$res") { buildAndType(baseClasses) }
           constrainPatternType(pat, andType)
         case _ =>
           val upcasted: Type = scrut match {
