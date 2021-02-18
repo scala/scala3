@@ -407,6 +407,7 @@ object projects:
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
     sbtDocCommand = "sconfigJVM/doc",
+    dependencies = List(scalaCollectionCompat)
   )
 
   lazy val zio = SbtCommunityProject(
