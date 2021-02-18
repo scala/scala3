@@ -1296,7 +1296,7 @@ object Parsers {
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL || in.token == WITH then
+      if in.token == COLONEOL then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
@@ -2333,7 +2333,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApps(commaOK = false)
+        else constrApps(exclude = COMMA)
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -3536,7 +3536,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true)
+          constrApps()
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3670,15 +3670,15 @@ object Parsers {
 
     /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
-    def constrApps(commaOK: Boolean): List[Tree] =
+    def constrApps(exclude: Token = EMPTY): List[Tree] =
       val t = constrApp()
       val ts =
-        if in.token == WITH || commaOK && in.token == COMMA then
+        val tok = in.token
+        if (tok == WITH || tok == COMMA) && tok != exclude then
           in.nextToken()
-          constrApps(commaOK)
+          constrApps(exclude = if tok == WITH then COMMA else WITH)
         else Nil
       t :: ts
-
 
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
@@ -3704,7 +3704,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true)
+          else constrApps()
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3758,8 +3758,7 @@ object Parsers {
 
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
-      if in.token != WITH then syntaxError(em"`with` expected")
-      possibleTemplateStart() // consumes a WITH token
+      accept(WITH)
       val (self, stats) = templateBody()
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
