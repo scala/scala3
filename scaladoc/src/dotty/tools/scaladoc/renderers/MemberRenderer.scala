@@ -123,7 +123,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
   }
 
-  def memberSingnature(member: Member) =
+  def memberSignature(member: Member) =
     val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
     val nameClasses = cls := s"documentableName $depStyle"
 
@@ -164,7 +164,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     div(topLevelAttr:_*)(
       a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
       div(annotations(member)),
-      div(cls := "header monospace")(memberSingnature(member)),
+      div(cls := "header monospace")(memberSignature(member)),
       div(cls := "docs")(
         span(cls := "modifiers"), // just to have padding on left
         div(
@@ -203,7 +203,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case g: MGroup => g.members.exists(isInherited)
 
   private def isAbstract(m: Member | MGroup): Boolean = m match
-    case m: Member => m.modifiers.contains(Modifier.Abstract)
+    case m: Member => m.modifiers.exists(Set(Modifier.Abstract, Modifier.Deferred).contains)
     case g: MGroup => g.members.exists(isAbstract)
 
   private type SubGroup = (String, Seq[Member | MGroup])
@@ -375,7 +375,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           ),
           div(cls := "signature monospace")(
             annotations(m),
-            memberSingnature(m)
+            memberSignature(m)
           )
         )
 

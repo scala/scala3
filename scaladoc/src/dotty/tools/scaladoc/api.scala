@@ -28,6 +28,7 @@ enum VisibilityScope:
 
 enum Modifier(val name: String, val prefix: Boolean):
   case Abstract extends Modifier("abstract", true)
+  case Deferred extends Modifier("", true)
   case Final extends Modifier("final", true)
   case Empty extends Modifier("", true)
   case Sealed extends Modifier("sealed", true)
