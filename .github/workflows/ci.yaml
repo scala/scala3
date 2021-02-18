@@ -5,6 +5,7 @@ on:
   pull_request:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
+  workflow_dispatch:
 
 env:
   DOTTY_CI_RUN: true
@@ -317,7 +318,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'"
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
