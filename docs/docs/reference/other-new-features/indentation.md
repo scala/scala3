@@ -209,11 +209,11 @@ The rules allow to write `match` expressions where cases are not indented themse
 
 ```scala
 x match
-   case 1 => print("I")
-   case 2 => print("II")
-   case 3 => print("III")
-   case 4 => print("IV")
-   case 5 => print("V")
+case 1 => print("I")
+case 2 => print("II")
+case 3 => print("III")
+case 4 => print("IV")
+case 5 => print("V")
 
 println(".")
 ```
