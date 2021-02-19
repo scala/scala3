@@ -119,7 +119,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   // @Test def scissAsyncFile  = projects.scissAsyncFile .run()
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scalaSTM        = projects.scalaSTM       .run()
-  // @Test def scissLucre      = projects.scissLucre     .run()
+  @Test def scissLucre      = projects.scissLucre     .run()
 
 end CommunityBuildTestA
 
