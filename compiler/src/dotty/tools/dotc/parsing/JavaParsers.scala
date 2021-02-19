@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.FlagSet
 
-
 import JavaTokens._
 import JavaScanners._
 import Scanners.Offset
