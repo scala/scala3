@@ -244,8 +244,8 @@ object Settings {
       }
     }
 
-    def processArguments(arguments: List[String], processAll: Boolean)(using Context): ArgsSummary =
-      processArguments(ArgsSummary(ctx.settingsState, arguments, Nil, Nil), processAll, Nil)
+    def processArguments(arguments: List[String], settingsState: SettingsState, processAll: Boolean): ArgsSummary =
+      processArguments(ArgsSummary(settingsState, arguments, Nil, Nil), processAll, Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] = {
       val setting = settingf(_allSettings.length)

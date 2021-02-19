@@ -62,7 +62,7 @@ public class CompilerBridgeDriver extends Driver {
 
       Contexts.Context context = setup(args, initialCtx)._2;
 
-      if (CompilerCommand.shouldStopWithInfo(context)) {
+      if (CompilerCommand.shouldStopWithInfo(context.settings(), context.settingsState())) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);
       }
 

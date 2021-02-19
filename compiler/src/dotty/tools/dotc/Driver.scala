@@ -66,7 +66,7 @@ class Driver {
 
   def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
     val ictx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(using ictx)
+    val summary = CompilerCommand.distill(args, config.ScalaSettings(), ictx.settingsState)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
@@ -74,7 +74,7 @@ class Driver {
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
-      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
+      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
       val files = fileNames.map(ctx.getFile)
       (files, fromTastySetup(files))
     }
