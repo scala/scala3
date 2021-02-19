@@ -1,6 +1,9 @@
+package tests
+package listindocstring
+
 /**
  * These are useful methods that exist for both $some and $none.
- *  * [[isDefined]] — True if not empty
+ *  - [[isDefined]] — True if not empty
  *  - [[isEmpty]] — True if empty
  *  - [[nonEmpty]] — True if not empty
  *  - [[orElse]] — Evaluate and return alternate optional value if empty
