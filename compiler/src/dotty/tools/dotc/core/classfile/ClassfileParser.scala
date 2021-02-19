@@ -385,7 +385,7 @@ class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (skiptvs) tp else tp.appliedTo(argsBuf.toList)
+                if (skiptvs) tp else AppliedType(tp, argsBuf.toList)
               }
               else tp
             case tp =>
