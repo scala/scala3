@@ -133,10 +133,10 @@ trait PatternTypeConstrainer { self: TypeComparer =>
               case p :: ps if p.classSymbol == defn.ObjectClass => ps
               case parents => parents
             } map (_.classSymbol.asClass)
-          // val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
-          val allSyms = allDirectParents(tycon)
+          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          // val allSyms = allDirectParents(tycon)
           val baseClasses = allSyms map scrut.baseType
-          val andType = trace.force(i"andType of $scrut", gadts, res => i"$res") { buildAndType(baseClasses) }
+          val andType = trace(i"andType of $scrut", gadts, res => i"$res") { buildAndType(baseClasses) }
           constrainPatternType(pat, andType)
         case _ =>
           val upcasted: Type = scrut match {
