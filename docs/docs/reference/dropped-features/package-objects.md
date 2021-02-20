@@ -33,13 +33,14 @@ The compiler generates synthetic objects that wrap top-level definitions falling
 
 If a source file `src.scala` contains such top-level definitions, they will be put in a synthetic object named `src$package`. The wrapping is transparent, however. The definitions in `src` can still be accessed as members of the enclosing package.
 
-**Note 1:** This means that the name of a source file containing wrapped top-level definitions is relevant for binary compatibility. If the name changes, so does the name of the generated object and its class.
+**Note:** This means that
+1. The name of a source file containing wrapped top-level definitions is relevant for binary compatibility. If the name changes, so does the name of the generated object and its class.
 
-**Note 2:** A top-level main method `def main(args: Array[String]): Unit = ...` is wrapped as any other method. If it appears
+2. A top-level main method `def main(args: Array[String]): Unit = ...` is wrapped as any other method. If it appears
 in a source file `src.scala`, it could be invoked from the command line using a command like `scala src$package`. Since the
 "program name" is mangled it is recommended to always put `main` methods in explicitly named objects.
 
-**Note 3:** The notion of `private` is independent of whether a definition is wrapped or not. A `private` top-level definition is always visible from everywhere in the enclosing package.
+3. The notion of `private` is independent of whether a definition is wrapped or not. A `private` top-level definition is always visible from everywhere in the enclosing package.
 
-**Note 4:** If several top-level definitions are overloaded variants with the same name,
+4. If several top-level definitions are overloaded variants with the same name,
 they must all come from the same source file.

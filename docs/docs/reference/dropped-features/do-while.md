@@ -36,7 +36,5 @@ do print(".")
 
 ### Why Drop The Construct?
 
- - `do-while` is used relatively rarely and it can expressed faithfully using just      `while`. So there seems to be little point in having it as a separate syntax          construct.
- - Under the [new syntax rules](../other-new-features/control-syntax.md) `do` is used
-   as a statement continuation, which would clash with its meaning as a statement
-   introduction.
+ - `do-while` is used relatively rarely and it can be expressed faithfully using just `while`. So there seems to be little point in having it as a separate syntax construct.
+ - Under the [new syntax rules](../other-new-features/control-syntax.md) `do` is used as a statement continuation, which would clash with its meaning as a statement introduction.
