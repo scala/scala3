@@ -50,7 +50,10 @@ case "`uname`" in
            ;;
 esac
 
+unset CYGPATHCMD
 if [[ ($cygwin||$mingw||$msys) ]]; then
+  # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
+  CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
     rxvt* | xterm* | cygwin*)
       stty -icanon min 1 -echo
@@ -102,16 +105,12 @@ CLASSPATH_SUFFIX=""
 # Path separator used in EXTRA_CLASSPATH
 PSEP=":"
 
-# cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
-has_cygpath=false
-if `which cygpath >/dev/null 2>&1`; then has_cygpath=true; fi
-
 # if  $has_cypath, translate paths to Windows-mixed format before running java
-if $has_cygpath; then
+if [ -n "$CYGPATHCMD" ]; then
   [ -n "$PROG_HOME" ] &&
-    PROG_HOME=`cygpath -am "$PROG_HOME"`
+    PROG_HOME=`"$CYGPATHCMD" -am "$PROG_HOME"`
   [ -n "$JAVA_HOME" ] &&
-    JAVA_HOME=`cygpath -am "$JAVA_HOME"`
+    JAVA_HOME=`"$CYGPATHCMD" -am "$JAVA_HOME"`
   CLASSPATH_SUFFIX=";"
   PSEP=";"
 elif ($mingw || $msys); then
@@ -130,8 +129,8 @@ fi
 
 find_lib () {
   local lib=$(find $PROG_HOME/lib/ -name "$1")
-  if $has_cygpath; then
-    cygpath -am $lib
+  if [ -n "$CYGPATHCMD" ]; then
+    $CYGPATHCMD -am $lib
   elif ($mingw || $msys); then
     echo $lib | sed 's|/|\\\\|g'
   else
