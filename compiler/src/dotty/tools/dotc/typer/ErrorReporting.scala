@@ -118,12 +118,7 @@ object ErrorReporting {
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type): String = {
-      val found1 = found.dropJavaMethod
-      val expected1 = expected.dropJavaMethod
-      if ((found1 eq found) != (expected eq expected1) && (found1 <:< expected1))
-        i"""
-           |(Note that Scala's and Java's representation of this type differs)"""
-      else if (ctx.settings.explainTypes.value)
+      if (ctx.settings.explainTypes.value)
         i"""
            |${ctx.typerState.constraint}
            |${TypeComparer.explained(_.isSubType(found, expected))}"""

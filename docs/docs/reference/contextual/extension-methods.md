@@ -92,13 +92,13 @@ By contrast, type arguments matching type parameters following `extension` can b
 only if the method is referenced as a regular method:
 
 ```scala
-List[String]("a", "bb", "ccc").sumBy(_.length)
+sumBy[String](List("a", "bb", "ccc"))(_.length)
 ```
 
 or, passing, both type arguments
 
 ```scala
-List[String]("a", "bb", "ccc").sumBy[Int](_.length)
+sumBy[String](List("a", "bb", "ccc"))[Int](_.length)
 ```
 
 Extensions can also take using clauses. For instance, the `+` extension above could equivalently be written with a using clause:
@@ -290,8 +290,14 @@ TemplateStat      ::=  ... | Extension
 TopStat           ::=  ... | Extension
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause} ExtMethods
-ExtMethods        ::=  ExtMethod | [nl] ‘{’ ExtMethod {semi ExtMethod ‘}’
+ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>
 ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
+```
+
+In the above the notation `<<< ts >>>` in the production rule `ExtMethods` is defined as follows :
+
+```
+<<< ts >>>        ::=  ‘{’ ts ‘}’ | indent ts outdent
 ```
 
 `extension` is a soft keyword. It is recognized as a keyword only if it appears

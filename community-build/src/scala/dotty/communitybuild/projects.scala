@@ -46,6 +46,7 @@ object Versions:
   val munit = "0.7.19+DOTTY-SNAPSHOT"
   val scodecBits = "1.1+DOTTY-SNAPSHOT"
   val simulacrumScalafix = "0.5.1-SNAPSHOT"
+  val scalaCollectionCompat = "2.3.0+DOTTY-SNAPSHOT"
 
 sealed trait CommunityProject:
   private var published = false
@@ -123,6 +124,7 @@ final case class SbtCommunityProject(
     s""""org.scalacheck" %% "scalacheck_sjs1" % "${Versions.scalacheck}"""",
     s""""org.scalatest" %% "scalatest" % "${Versions.scalatest}"""",
     s""""org.scalatest" %% "scalatest_sjs1" % "${Versions.scalatest}"""",
+    s""""org.scalatestplus" %% "junit-4-13" % "${Versions.scalatest}.0"""",
     s""""org.scalameta" %% "munit" % "${Versions.munit}"""",
     s""""org.scalameta" %% "munit_sjs1" % "${Versions.munit}"""",
     s""""org.scalameta" %% "munit-scalacheck" % "${Versions.munit}"""",
@@ -157,6 +159,7 @@ final case class SbtCommunityProject(
     s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
     s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
     s""""dev.zio" %% "izumi-reflect" % "${Versions.izumiReflect}"""",
+    s""""org.scala-lang.modules" %% "scala-collection-compat" % "${Versions.scalaCollectionCompat}"""",
   )
 
   private val baseCommand =
@@ -407,6 +410,7 @@ object projects:
     project       = "sconfig",
     sbtTestCommand   = "sconfigJVM/test",
     sbtDocCommand = "sconfigJVM/doc",
+    dependencies = List(scalaCollectionCompat)
   )
 
   lazy val zio = SbtCommunityProject(
@@ -505,6 +509,7 @@ object projects:
   lazy val scalaCollectionCompat = SbtCommunityProject(
     project        = "scala-collection-compat",
     sbtTestCommand = "compat30/test",
+    sbtPublishCommand = s"""set every version := "${Versions.scalaCollectionCompat}"; compat30/publishLocal""",
   )
 
   lazy val verify = SbtCommunityProject(

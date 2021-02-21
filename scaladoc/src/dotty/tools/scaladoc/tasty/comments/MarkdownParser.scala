@@ -36,7 +36,7 @@ object MarkdownParser {
     ) ++ additionalExtensions
 
     new MutableDataSet()
-      .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+      .setFrom(ParserEmulationProfile.COMMONMARK.getOptions)
       .set(Parser.EXTENSIONS, Arrays.asList(extArray:_*))
       .set(EmojiExtension.ROOT_IMAGE_PATH,
         "https://github.global.ssl.fastly.net/images/icons/emoji/")

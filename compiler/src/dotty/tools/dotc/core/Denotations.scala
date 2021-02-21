@@ -582,11 +582,30 @@ object Denotations {
      */
     def prefix: Type = NoPrefix
 
+    /** Either the Scala or Java signature of the info, depending on where the
+     *  symbol is defined.
+     *
+     *  Invariants:
+     *  - Before erasure, the signature of a denotation is always equal to the
+     *    signature of its corresponding initial denotation.
+     *  - Two distinct overloads will have SymDenotations with distinct
+     *    signatures (the SELECTin tag in Tasty relies on this to refer to an
+     *    overload unambiguously). Note that this only applies to
+     *    SymDenotations, in general we cannot assume that distinct
+     *    SingleDenotations will have distinct signatures (cf #9050).
+     */
     final def signature(using Context): Signature =
-      if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
+      signature(isJava = !isType && symbol.is(JavaDefined))
+
+    /** Overload of `signature` which lets the caller pick between the Java and
+     *  Scala signature of the info. Useful to match denotations defined in
+     *  different classes (see `matchesLoosely`).
+     */
+    def signature(isJava: Boolean)(using Context): Signature =
+      if (isType) Signature.NotAMethod // don't force info if this is a type denotation
       else info match {
-        case info: MethodicType =>
-          try info.signature
+        case info: MethodOrPoly =>
+          try info.signature(isJava)
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
               report.echo(s"cannot take signature of $info")
@@ -992,34 +1011,45 @@ object Denotations {
       symbol.hasTargetName(other.symbol.targetName)
       && matchesLoosely(other)
 
-    /** matches without a target name check */
+    /** `matches` without a target name check.
+     *
+     *  We consider a Scala method and a Java method to match if they have
+     *  matching Scala signatures. This allows us to override some Java
+     *  definitions even if they have a different erasure (see i8615b,
+     *  i9109b), Erasure takes care of adding any necessary bridge to make
+     *  this work at runtime.
+     */
     def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
-      val d = signature.matchDegree(other.signature)
-      d match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          !ctx.erasedTypes && {
-            val isJava = symbol.is(JavaDefined)
-            val otherIsJava = other.symbol.is(JavaDefined)
-            // A Scala zero-parameter method and a Scala non-method always match.
-            if !isJava && !otherIsJava then
-              true
-            // Java allows defining both a field and a zero-parameter method with the same name,
-            // so they must not match.
-            else if isJava && otherIsJava then
-              false
-            // A Java field never matches a Scala method.
-            else if isJava then
-              symbol.is(Method)
-            else // otherIsJava
-              other.symbol.is(Method)
-          }
-        case ParamMatch =>
-          // The signatures do not tell us enough to be sure about matching
-          !ctx.erasedTypes && info.matches(other.info)
-        case noMatch =>
-          false
+      if isType then true
+      else
+        val isJava = symbol.is(JavaDefined)
+        val otherIsJava = other.symbol.is(JavaDefined)
+        val useJavaSig = isJava && otherIsJava
+        val sig = signature(isJava = useJavaSig)
+        val otherSig = other.signature(isJava = useJavaSig)
+        sig.matchDegree(otherSig) match
+          case FullMatch =>
+            true
+          case MethodNotAMethodMatch =>
+            !ctx.erasedTypes && {
+              // A Scala zero-parameter method and a Scala non-method always match.
+              if !isJava && !otherIsJava then
+                true
+              // Java allows defining both a field and a zero-parameter method with the same name,
+              // so they must not match.
+              else if isJava && otherIsJava then
+                false
+              // A Java field never matches a Scala method.
+              else if isJava then
+                symbol.is(Method)
+              else // otherIsJava
+                other.symbol.is(Method)
+            }
+          case ParamMatch =>
+            // The signatures do not tell us enough to be sure about matching
+            !ctx.erasedTypes && info.matches(other.info)
+          case noMatch =>
+            false
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation =
       if hasUniqueSym && prevDenots.containsSym(symbol) then NoDenotation

@@ -224,6 +224,7 @@ object PrepareInlineable {
     finally
       if ctx.reporter.errorCount != initialErrorCount then
         sym.resetFlag(Inline)
+        sym.resetFlag(Transparent)
         sym.removeAnnotation(defn.BodyAnnot)
 
   /** Register inline info for given inlineable method `sym`.

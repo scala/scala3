@@ -65,6 +65,7 @@ class SymOps[Q <: Quotes](val q: Q):
         Flags.Sealed -> Modifier.Sealed,
         Flags.Erased -> Modifier.Erased,
         Flags.Abstract -> Modifier.Abstract,
+        Flags.Deferred -> Modifier.Deferred,
         Flags.Implicit -> Modifier.Implicit,
         Flags.Inline -> Modifier.Inline,
         Flags.Lazy -> Modifier.Lazy,

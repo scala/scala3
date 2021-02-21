@@ -28,6 +28,7 @@ enum VisibilityScope:
 
 enum Modifier(val name: String, val prefix: Boolean):
   case Abstract extends Modifier("abstract", true)
+  case Deferred extends Modifier("", true)
   case Final extends Modifier("final", true)
   case Empty extends Modifier("", true)
   case Sealed extends Modifier("sealed", true)
@@ -146,7 +147,7 @@ case class Member(
   modifiers: Seq[Modifier] = Nil,
   annotations: List[Annotation] = Nil,
   signature: Signature = Signature(),
-  sources: Option[TastyDocumentableSource] = None,
+  sources: Option[TastyMemberSource] = None,
   origin: Origin = Origin.RegularlyDefined,
   inheritedFrom: Option[InheritedFrom] = None,
   graph: HierarchyGraph = HierarchyGraph.empty,
@@ -231,4 +232,4 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyDocumentableSource(val path: String, val lineNumber: Int)
+case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)

@@ -628,7 +628,7 @@ trait Applications extends Compatibility {
         false
       case argtpe =>
         def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType()
+          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
           case _ => false
         }
         isCompatible(argtpe, formal) || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK

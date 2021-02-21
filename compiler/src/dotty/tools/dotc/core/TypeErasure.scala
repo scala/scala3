@@ -249,8 +249,7 @@ object TypeErasure {
       !classify(tp).derivesFrom(defn.ObjectClass) &&
       !tp.symbol.is(JavaDefined)
     case tp: TypeParamRef =>
-      !classify(tp).derivesFrom(defn.ObjectClass) &&
-      !tp.binder.resultType.isJavaMethod
+      !classify(tp).derivesFrom(defn.ObjectClass)
     case tp: TypeAlias => isUnboundedGeneric(tp.alias)
     case tp: TypeBounds =>
       val upper = classify(tp.hi)
@@ -474,7 +473,7 @@ class TypeErasure(isJava: Boolean, semiEraseVCs: Boolean, isConstructor: Boolean
       TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
-        erasureFn(tp.isJavaMethod, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
+        erasureFn(isJava, semiEraseVCs, isConstructor, wildcardOK)(tpToErase)
       val (names, formals0) = if (tp.isErasedMethod) (Nil, Nil) else (tp.paramNames, tp.paramInfos)
       val formals = formals0.mapConserve(paramErasure)
       eraseResult(tp.resultType) match {

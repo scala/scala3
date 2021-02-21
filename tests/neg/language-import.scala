@@ -1,4 +1,4 @@
-object a with
+object a:
   val l = _root_.scala.language
   import l.noAutoTupling     // error
   import l.experimental.genericNumberLiterals  // error
@@ -7,16 +7,16 @@ object a with
   val language = b
   import language.experimental.genericNumberLiterals // error
 
-object b with
+object b:
   val strictEquality = 22
-  object experimental with
+  object experimental:
     val genericNumberLiterals = 22
 
-object c with
+object c:
   val language = b
   import b.strictEquality
 
-object d with
+object d:
   import language.experimental.genericNumberLiterals // ok
   import scala.language.noAutoTupling  // ok
   import _root_.scala.language.strictEquality // ok

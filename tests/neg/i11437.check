@@ -1,0 +1,6 @@
+-- [E006] Not Found Error: tests/neg/i11437.scala:1:29 -----------------------------------------------------------------
+1 |transparent inline def foo = error // error
+  |                             ^^^^^
+  |                             Not found: error
+
+longer explanation available when compiling with `-explain`

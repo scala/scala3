@@ -5,6 +5,7 @@ on:
   pull_request:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
+  workflow_dispatch:
 
 env:
   DOTTY_CI_RUN: true
@@ -42,6 +43,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
     steps:
       - name: Set JDK 15 as default
@@ -82,6 +87,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip test]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
 
     steps:
@@ -174,6 +183,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip community_build]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
 
     steps:
@@ -210,6 +223,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip community_build]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
 
     steps:
@@ -246,6 +263,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && !contains(github.event.pull_request.body, '[skip test_sbt]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
 
     steps:
@@ -284,6 +305,10 @@ jobs:
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
            && contains(github.event.pull_request.body, '[test_java8]')
+         )
+         || (
+           github.event_name == 'workflow_dispatch'
+           && github.repository == 'lampepfl/dotty'
          )"
 
     steps:
@@ -317,7 +342,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, community_build_a, community_build_b, test_sbt, test_java8]
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'"
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
@@ -352,7 +377,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_nightly]
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'"
+    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
     env:
       NIGHTLYBUILD: yes
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:

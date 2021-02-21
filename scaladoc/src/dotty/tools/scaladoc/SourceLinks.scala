@@ -122,7 +122,7 @@ case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
     else resolveRelativePath(rawPath)
 
   def pathTo(member: Member): Option[String] =
-    member.sources.flatMap(s => pathTo(Paths.get(s.path), member.name, Option(s.lineNumber).map(_ + 1)))
+    member.sources.flatMap(s => pathTo(s.path, member.name, Option(s.lineNumber).map(_ + 1)))
 
 object SourceLinks:
 

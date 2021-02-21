@@ -90,22 +90,13 @@ class TreeChecker extends Phase with SymTransformer {
     // Signatures are used to disambiguate overloads and need to stay stable
     // until erasure, see the comment above `Compiler#phases`.
     if (ctx.phaseId <= erasurePhase.id) {
-      val cur = symd.info
-      val initial = symd.initial.info
-      val curSig = cur match {
-        case cur: SignatureCachingType =>
-          // Bypass the signature cache, it might hide a signature change
-          cur.computeSignature
-        case _ =>
-          cur.signature
-      }
-      assert(curSig == initial.signature,
+      val initial = symd.initial
+      assert(symd.signature == initial.signature,
         i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
-           |Initial info: ${initial}
+           |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
-           |Current info: ${cur}
-           |Current sig : ${curSig}
-           |Current cached sig: ${cur.signature}""")
+           |Current info: ${symd.info}
+           |Current sig : ${symd.signature}""")
     }
 
     symd
