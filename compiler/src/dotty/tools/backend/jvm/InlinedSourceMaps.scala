@@ -130,8 +130,8 @@ object InlinedSourceMaps:
       b.toString
     }
 
-    def lineFor(sourcePos: SourcePosition): Option[Int] =
-      requests.find(_.origPos.contains(sourcePos)) match
+    def lineFor(sourcePos: SourcePosition, lastRealNr: Int): Option[Int] =
+      requests.find(r => r.origPos.contains(sourcePos) && r.targetPos.endLine + 1 >= lastRealNr) match
         case Some(request) =>
           val offset = sourcePos.startLine - request.origPos.startLine
           Some(request.firstFakeLine + offset + 1)

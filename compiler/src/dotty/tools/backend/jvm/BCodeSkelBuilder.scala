@@ -377,6 +377,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var shouldEmitCleanup          = false
     // line numbers
     var lastEmittedLineNr          = -1
+    // by real line number we mean line number that is not pointing to virtual lines added by inlined calls
+    var lastRealLineNr             = -1
 
     object bc extends JCodeMethodN {
       override def jmethod = PlainSkelBuilder.this.mnode
@@ -545,19 +547,27 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case labnode: asm.tree.LabelNode => (labnode.getLabel == lbl);
         case _ => false } )
     }
+
+    def emitNr(nr: Int): Unit =
+      if nr != lastEmittedLineNr then
+        lastEmittedLineNr = nr
+        lastInsn match
+          case lnn: asm.tree.LineNumberNode =>
+            // overwrite previous landmark as no instructions have been emitted for it
+            lnn.line = nr
+          case _ =>
+            mnode.visitLineNumber(nr, currProgramPoint())
+
     def lineNumber(tree: Tree): Unit = {
-      if (!emitLines || !tree.span.exists) return;
-      val nr = if (tree.source != cunit.source) sourceMap.lineFor(tree.sourcePos) else Some(ctx.source.offsetToLine(tree.span.point) + 1)
-      nr match
-        case Some(nr) if nr != lastEmittedLineNr =>
-          lastEmittedLineNr = nr
-          lastInsn match
-            case lnn: asm.tree.LineNumberNode =>
-              // overwrite previous landmark as no instructions have been emitted for it
-              lnn.line = nr
-            case _ =>
-              mnode.visitLineNumber(nr, currProgramPoint())
-        case _ => ()
+      if !emitLines || !tree.span.exists then return;
+      if tree.source != cunit.source then
+        sourceMap.lineFor(tree.sourcePos, lastRealLineNr) match
+          case Some(nr) => emitNr(nr)
+          case None => ()
+      else
+        val nr = ctx.source.offsetToLine(tree.span.point) + 1
+        lastRealLineNr = nr
+        emitNr(nr)
     }
 
     // on entering a method
