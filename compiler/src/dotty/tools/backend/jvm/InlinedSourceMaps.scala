@@ -67,7 +67,7 @@ object InlinedSourceMaps:
 
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
-        if tree.source != enclosingFile then
+        if tree.source != enclosingFile && tree.source != cunit.source then
           tree.getAttachment(InliningPosition) match
             case Some(targetPos) =>
               val firstFakeLine = allocate(tree.sourcePos)
