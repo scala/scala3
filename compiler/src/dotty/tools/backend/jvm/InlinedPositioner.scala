@@ -68,6 +68,8 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
     lastLine += origPos.lines.length
     line
 
+// if (source.name contains "Tuple.sca") && startLine == 35 && endLine == 35 then
+
   private class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
     override def traverse(tree: Tree)(using Context): Unit =
       if tree.source != enclosingFile then
@@ -115,8 +117,5 @@ class InlinedsPositioner(cunit: CompilationUnit)(using Context):
         val offset = sourcePos.startLine - request.origPos.startLine
         Some(request.firstFakeLine + offset + 1)
       case None =>
-        report.inform(s"${sourcePos.show} was supposed to be inlined in ${cunit.source} but it cannot be found.")
+        report.warning(s"${sourcePos.show} was inlined in ${cunit.source} but its inlining position was not recorded.")
         None
-
-
-
