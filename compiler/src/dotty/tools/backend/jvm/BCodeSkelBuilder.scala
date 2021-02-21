@@ -25,6 +25,8 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 
+import InlinedSourceMaps._
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -80,7 +82,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
-    var inlinedsPositioner: InlinedsPositioner = null
+    var sourceMap: InlinedSourceMap = null
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
@@ -280,8 +282,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        inlinedsPositioner = InlinedsPositioner(cunit)
-        cnode.visitSource(cunit.source.file.name, inlinedsPositioner.debugExtension.orNull)
+        sourceMap = sourceMapFor(cunit)
+        cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
@@ -545,7 +547,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = if (tree.source != cunit.source) inlinedsPositioner.lineFor(tree.sourcePos) else Some(ctx.source.offsetToLine(tree.span.point) + 1)
+      val nr = if (tree.source != cunit.source) sourceMap.lineFor(tree.sourcePos) else Some(ctx.source.offsetToLine(tree.span.point) + 1)
       nr match
         case Some(nr) if nr != lastEmittedLineNr =>
           lastEmittedLineNr = nr
