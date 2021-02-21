@@ -11,7 +11,27 @@ import dotc.report
 import dotc.typer.Inliner.InliningPosition
 import collection.mutable
 
+/**
+ * Tool for generating virtual lines for inlined calls and keeping track of them.
 
+ * How it works:
+ * - For every inlined call it assumes that empty lines are appended to the source file. These
+ *   lines are not added anywhere in physical form. We only assume that they exist only to be used
+ *   by `LineNumberTable` and `SourceDebugExtension`. The number of these virtual lines is every
+ *   time equal to the size of line range of the expansion of inlined call.
+ * - It generates SMAP (as defined by JSR-45) containing two strata. The first stratum (`Scala`)
+ *   is describing the mapping from the real source files to the real and virtual lines in our
+ *   assumed source. The second stratum (`ScalaDebug`) is mapping from virtual lines to
+ *   corresponding inlined calls.
+ * - Generated SMAP is written to the bytecode in `SourceDebugExtension`
+ * - During the generation of the bytecode backed is asking `InlinedSourceMap` about position of
+ *   all trees that have source different from the main source of given compilation unit.
+ *   The response to that request is number of the virtual line that is corresponding to particular
+ *   line from the other source.
+ * - Debuggers can use information stored in `LineNumberTable` and `SourceDebugExtension` to
+ *   correctly guess which line of inlined method is currently executed. They can also construct
+ *   stack frames for inlined calls.
+ **/
 object InlinedSourceMaps:
   private case class Request(targetPos: SourcePosition, origPos: SourcePosition, firstFakeLine: Int)
 
