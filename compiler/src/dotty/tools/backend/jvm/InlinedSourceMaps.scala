@@ -6,11 +6,11 @@ import dotc.CompilationUnit
 import dotc.ast.tpd._
 import dotc.util.{ SourcePosition, SourceFile }
 import dotc.core.Contexts._
+import dotc.core.Symbols.Symbol
 import dotc.report
 import dotc.typer.Inliner.InliningPosition
 import collection.mutable
 
-import scala.collection.mutable.StringBuilder
 
 object InlinedSourceMaps:
   private case class Request(targetPos: SourcePosition, origPos: SourcePosition, firstFakeLine: Int)
@@ -61,17 +61,26 @@ object InlinedSourceMaps:
         b ++= "*E\n"
   end Stratum
 
-  def sourceMapFor(cunit: CompilationUnit)(using Context): InlinedSourceMap =
+  def sourceMapFor(cunit: CompilationUnit)(internalNameProvider: Symbol => String)(using Context): InlinedSourceMap =
     val requests = mutable.ListBuffer.empty[Request]
     var lastLine = cunit.tpdTree.sourcePos.endLine
+    var internalNames = Map.empty[SourceFile, String]
 
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         if tree.source != enclosingFile && tree.source != cunit.source then
           tree.getAttachment(InliningPosition) match
-            case Some(targetPos) =>
+            case Some(InliningPosition(targetPos, cls)) =>
               val firstFakeLine = allocate(tree.sourcePos)
               requests += Request(targetPos, tree.sourcePos, firstFakeLine)
+              cls match
+                case Some(symbol) if !internalNames.isDefinedAt(tree.source) =>
+                  internalNames += (tree.source -> internalNameProvider(symbol))
+                  // We are skipping any internal name info if we already have one stored in our map
+                  // because a debugger will use internal name only to localize matching source.
+                  // Both old and new internal names are associated with the same source file
+                  // so it doesn't matter if internal name is not matching used symbol.
+                case _ => ()
               RequestCollector(tree.source).traverseChildren(tree)
             case None =>
               // Not exactly sure in which cases it is happening. Should we report warning?
@@ -85,17 +94,24 @@ object InlinedSourceMaps:
       line
 
     RequestCollector(cunit.source).traverse(cunit.tpdTree)
-    InlinedSourceMap(cunit, requests.toList)
+    InlinedSourceMap(cunit, requests.toList, internalNames)
   end sourceMapFor
 
-  class InlinedSourceMap private[InlinedSourceMaps] (cunit: CompilationUnit, requests: List[Request])(using Context):
+  class InlinedSourceMap private[InlinedSourceMaps] (
+    cunit: CompilationUnit,
+    requests: List[Request],
+    internalNames: Map[SourceFile, String])(using Context):
+
     def debugExtension: Option[String] = Option.when(requests.nonEmpty) {
       val scalaStratum =
         val files = cunit.source :: requests.map(_.origPos.source).distinct.filter(_ != cunit.source)
         val mappings = requests.map { case Request(_, origPos, firstFakeLine) =>
           Mapping(origPos.startLine, files.indexOf(origPos.source) + 1, origPos.lines.length, firstFakeLine, 1)
         }
-        Stratum("Scala", files.zipWithIndex.map { case (f, n) => File(n + 1, f.name, None) }, Mapping(0, 1, cunit.tpdTree.sourcePos.lines.length, 0, 1) +: mappings)
+        Stratum("Scala",
+          files.zipWithIndex.map { case (f, n) => File(n + 1, f.name, internalNames.get(f)) },
+          Mapping(0, 1, cunit.tpdTree.sourcePos.lines.length, 0, 1) +: mappings
+        )
 
       val debugStratum =
         val mappings = requests.map { case Request(targetPos, origPos, firstFakeLine) =>
