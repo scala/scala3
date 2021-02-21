@@ -141,7 +141,7 @@ object ErrorReporting {
          |${fail.whyFailed.message.indented(8)}"""
 
     def selectErrorAddendum
-      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
+      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String, foundWithoutNull: Boolean = false)
       (using Context): String =
 
       val attempts = mutable.ListBuffer[(Tree, String)]()
@@ -155,7 +155,13 @@ object ErrorReporting {
           case fail: FailedExtension => attempts += ((failure.tree, whyFailedStr(fail)))
           case fail: Implicits.NoMatchingImplicits => // do nothing
           case _ => attempts += ((failure.tree, ""))
-      if qualType.derivesFrom(defn.DynamicClass) then
+      if foundWithoutNull then
+        i""".
+          |Since explicit-nulls is enabled, the selection is rejected because
+          |${qualType.widen} could be null at runtime.
+          |If you want to select ${tree.name} without checking for a null value,
+          |insert a .nn before .${tree.name} or import scala.language.unsafeNulls."""
+      else if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
         val attemptStrings =

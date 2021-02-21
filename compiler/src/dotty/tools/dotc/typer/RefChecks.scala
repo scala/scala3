@@ -22,6 +22,7 @@ import config.Printers.refcheck
 import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
+import NullOpsDecorator._
 
 object RefChecks {
   import tpd.{Tree, MemberDef, NamedArg, Literal, Template, DefDef}
@@ -249,9 +250,14 @@ object RefChecks {
               jointBounds.lo frozen_<:< jointBounds.hi
             })
         else
-          member.name.is(DefaultGetterName) || // default getters are not checked for compatibility
-          memberTp.overrides(otherTp,
-              member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)
+          // releaxed override check for explicit nulls if one of the symbols is Java defined,
+          // force `Null` being a subtype of reference types during override checking
+          val relaxedCtxForNulls =
+            if ctx.explicitNulls && (member.is(JavaDefined) || other.is(JavaDefined)) then
+              ctx.retractMode(Mode.SafeNulls)
+            else ctx
+          member.name.is(DefaultGetterName) // default getters are not checked for compatibility
+          || memberTp.overrides(otherTp, member.matchNullaryLoosely || other.matchNullaryLoosely || fallBack)(using relaxedCtxForNulls)
       catch case ex: MissingType =>
         // can happen when called with upwardsSelf as qualifier of memberTp and otherTp,
         // because in that case we might access types that are not members of the qualifier.

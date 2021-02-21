@@ -12,6 +12,7 @@ import transform.TypeUtils._
 import transform.ContextFunctionResults._
 import unpickleScala2.Scala2Erasure
 import Decorators._
+import NullOpsDecorator._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -277,26 +278,33 @@ object TypeErasure {
       case _ => tp
     }
 
-  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`, `AnyVal`,
+  /** Is `tp` an abstract type or polymorphic type parameter that has `Any`, `AnyVal`, `Null`,
    *  or a universal trait as upper bound and that is not Java defined? Arrays of such types are
    *  erased to `Object` instead of `Object[]`.
    */
-  def isUnboundedGeneric(tp: Type)(using Context): Boolean = tp.dealias match {
-    case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
-      !tp.symbol.isClass &&
-      !classify(tp).derivesFrom(defn.ObjectClass) &&
-      !tp.symbol.is(JavaDefined)
-    case tp: TypeParamRef =>
-      !classify(tp).derivesFrom(defn.ObjectClass)
-    case tp: TypeAlias => isUnboundedGeneric(tp.alias)
-    case tp: TypeBounds =>
-      val upper = classify(tp.hi)
-      !upper.derivesFrom(defn.ObjectClass) &&
-      !upper.isPrimitiveValueType
-    case tp: TypeProxy => isUnboundedGeneric(tp.translucentSuperType)
-    case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
-    case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
-    case _ => false
+  def isUnboundedGeneric(tp: Type)(using Context): Boolean = {
+    def isBoundedType(t: Type): Boolean = t match {
+      case t: OrType => isBoundedType(t.tp1) && isBoundedType(t.tp2)
+      case _ => t.derivesFrom(defn.ObjectClass) || t.isNullType
+    }
+
+    tp.dealias match {
+      case tp: TypeRef if !tp.symbol.isOpaqueAlias =>
+        !tp.symbol.isClass &&
+        !isBoundedType(classify(tp)) &&
+        !tp.symbol.is(JavaDefined)
+      case tp: TypeParamRef =>
+        !isBoundedType(classify(tp))
+      case tp: TypeAlias => isUnboundedGeneric(tp.alias)
+      case tp: TypeBounds =>
+        val upper = classify(tp.hi)
+        !isBoundedType(upper) &&
+        !upper.isPrimitiveValueType
+      case tp: TypeProxy => isUnboundedGeneric(tp.translucentSuperType)
+      case tp: AndType => isUnboundedGeneric(tp.tp1) && isUnboundedGeneric(tp.tp2)
+      case tp: OrType => isUnboundedGeneric(tp.tp1) || isUnboundedGeneric(tp.tp2)
+      case _ => false
+    }
   }
 
   /** Is `tp` an abstract type or polymorphic type parameter, or another unbounded generic type? */
@@ -558,6 +566,9 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp
+    // println(elemtp.show)
+    // println(isUnboundedGeneric(elemtp))
+    // println()
     if (classify(elemtp).derivesFrom(defn.NullClass)) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp) && !sourceLanguage.isJava) defn.ObjectType
     else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))

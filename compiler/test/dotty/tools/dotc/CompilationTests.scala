@@ -295,7 +295,8 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings")
+      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions),
     )
   }.checkExpectedErrors()
 
@@ -303,7 +304,8 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions)
+      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
     )
   }.checkCompile()
 
