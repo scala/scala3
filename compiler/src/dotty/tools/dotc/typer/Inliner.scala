@@ -37,7 +37,8 @@ import quoted.QuoteUtils
 object Inliner {
   import tpd._
 
-  val InliningPosition = new Property.StickyKey[SourcePosition]
+  object InliningPosition extends Property.StickyKey[InliningPosition]
+  case class InliningPosition(sourcePos: SourcePosition, topLevelSymbol: Option[Symbol])
 
   /** `sym` is an inline method with a known body to inline.
    */
@@ -226,12 +227,15 @@ object Inliner {
 
   /** Replace `Inlined` node by a block that contains its bindings and expansion */
   def dropInlined(inlined: Inlined)(using Context): Tree =
-    // In case that bindings are present we are adding SourcePosition attachement both to the resulting block and to the expansion
+    val topLevelClass = Some(inlined.call.symbol.topLevelClass).filter(_.exists)
+    val inliningPosition = InliningPosition(inlined.sourcePos, topLevelClass)
+
+    // In case that bindings are present we are adding InliningPosition attachement both to the resulting block and to the expansion
     // as in some cases the block is removed in one of later phases and attachment is lost.
     val tree1 =
       if inlined.bindings.isEmpty then inlined.expansion
-      else cpy.Block(inlined)(inlined.bindings, inlined.expansion.withAttachment(InliningPosition, inlined.sourcePos))
-    tree1.withAttachment(InliningPosition, inlined.sourcePos)
+      else cpy.Block(inlined)(inlined.bindings, inlined.expansion.withAttachment(InliningPosition, inliningPosition))
+    tree1.withAttachment(InliningPosition, inliningPosition)
 
   /** Leave only a call trace consisting of
    *  - a reference to the top-level class from which the call was inlined,

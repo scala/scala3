@@ -282,7 +282,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        sourceMap = sourceMapFor(cunit)
+        sourceMap = sourceMapFor(cunit)(s => classBTypeFromSymbol(s).internalName)
         cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 
