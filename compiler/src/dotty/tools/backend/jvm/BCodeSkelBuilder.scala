@@ -24,6 +24,8 @@ import dotty.tools.dotc.util.Spans._
 import dotty.tools.dotc.report
 import dotty.tools.dotc.transform.SymUtils._
 
+import InlinedSourceMaps._
+
 /*
  *
  *  @author  Miguel Garcia, http://lamp.epfl.ch/~magarcia/ScalaCompilerCornerReloaded/
@@ -91,7 +93,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     var isCZParcelable             = false
     var isCZStaticModule           = false
 
-    var inlinedsPositioner: InlinedsPositioner = null
+    var sourceMap: InlinedSourceMap = null
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
@@ -278,8 +280,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        inlinedsPositioner = InlinedsPositioner(cunit)
-        cnode.visitSource(cunit.source.file.name, inlinedsPositioner.debugExtension.orNull)
+        sourceMap = sourceMapFor(cunit)
+        cnode.visitSource(cunit.source.file.name, sourceMap.debugExtension.orNull)
       }
 
       enclosingMethodAttribute(claszSymbol, internalName, asmMethodType(_).descriptor) match {
