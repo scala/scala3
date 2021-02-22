@@ -2994,7 +2994,7 @@ class Typer extends Namer
         SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
 
     // try an implicit conversion or given extension
-    if ctx.mode.is(Mode.ImplicitsEnabled) && tree.name != nme.CONSTRUCTOR && qual.tpe.isValueType then
+    if ctx.mode.is(Mode.ImplicitsEnabled) && !tree.name.isConstructorName && qual.tpe.isValueType then
       trace(i"try insert impl on qualifier $tree $pt") {
         val selProto = selectionProto
         inferView(qual, selProto) match
