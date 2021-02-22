@@ -104,14 +104,14 @@ object RefChecks {
           report.error(DoesNotConformToSelfType(category, cinfo.selfType, cls, otherSelf, relation, other),
             cls.srcPos)
       }
-      val parents = cinfo.classParents
-      for (parent <- parents)
-        checkSelfConforms(parent.classSymbol.asClass, "illegal inheritance", "parent")
+      val psyms = cls.asClass.parentSyms
+      for (psym <- psyms)
+        checkSelfConforms(psym.asClass, "illegal inheritance", "parent")
       for (reqd <- cinfo.cls.givenSelfType.classSymbols)
         checkSelfConforms(reqd, "missing requirement", "required")
 
       def isClassExtendingJavaEnum =
-        !cls.isOneOf(Enum | Trait) && parents.exists(_.classSymbol == defn.JavaEnumClass)
+        !cls.isOneOf(Enum | Trait) && psyms.contains(defn.JavaEnumClass)
 
       // Prevent wrong `extends` of java.lang.Enum
       if isClassExtendingJavaEnum then
