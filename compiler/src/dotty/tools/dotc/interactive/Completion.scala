@@ -197,18 +197,18 @@ object Completion {
       while ctx ne NoContext do
         if ctx.isImportContext then
           importedCompletions(using ctx).foreach { (name, denots) =>
-            addMapping(name, ScopedDenotations(denots, ctx.scope, isFromImport = true))
+            addMapping(name, ScopedDenotations(denots, ctx))
           }
         else if ctx.owner.isClass then
           accessibleMembers(ctx.owner.thisType)
             .groupByName.foreach { (name, denots) =>
-              addMapping(name, ScopedDenotations(denots, ctx.scope, isFromImport = false))
+              addMapping(name, ScopedDenotations(denots, ctx))
             }
         else if ctx.scope != null then
           ctx.scope.toList.filter(symbol => include(symbol, symbol.name))
             .flatMap(_.alternatives)
             .groupByName.foreach { (name, denots) =>
-              addMapping(name, ScopedDenotations(denots, ctx.scope, isFromImport = false))
+              addMapping(name, ScopedDenotations(denots, ctx))
             }
 
         ctx = ctx.outer
@@ -218,13 +218,13 @@ object Completion {
 
       mappings.foreach { (name, denotss) =>
         val first = denotss.head
-        denotss.find(!_.isFromImport) match {
+        denotss.find(!_.ctx.isImportContext) match {
           // most deeply nested member or local definition if not shadowed by an import
-          case Some(ScopedDenotations(denots, scope, _)) if scope == first.scope =>
-            resultMappings += name -> denots
+          case Some(local) if local.ctx.scope == first.ctx.scope =>
+            resultMappings += name -> local.denots
 
           // most deeply nested import if not shadowed by another import
-          case None if denotss.length < 2 || (denotss(1).scope ne first.scope) =>
+          case None if denotss.length < 2 || (denotss(1).ctx.scope ne first.ctx.scope) =>
             resultMappings += name -> first.denots
 
           case _ =>
@@ -436,11 +436,7 @@ object Completion {
   /** Temporary data structure representing denotations with the same name introduced in a given scope
    *  as a member of a type, by a local definition or by an import clause
    */
-  private case class ScopedDenotations(
-    denots: Seq[SingleDenotation],
-    scope: Scope,
-    isFromImport: Boolean
-  )
+  private case class ScopedDenotations(denots: Seq[SingleDenotation], ctx: Context)
 
   /**
    * The completion mode: defines what kinds of symbols should be included in the completion
