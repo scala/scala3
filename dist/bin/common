@@ -105,7 +105,7 @@ CLASSPATH_SUFFIX=""
 # Path separator used in EXTRA_CLASSPATH
 PSEP=":"
 
-# if  $has_cypath, translate paths to Windows-mixed format before running java
+# translate paths to Windows-mixed format before running java
 if [ -n "$CYGPATHCMD" ]; then
   [ -n "$PROG_HOME" ] &&
     PROG_HOME=`"$CYGPATHCMD" -am "$PROG_HOME"`
@@ -114,7 +114,7 @@ if [ -n "$CYGPATHCMD" ]; then
   CLASSPATH_SUFFIX=";"
   PSEP=";"
 elif ($mingw || $msys); then
-  # For Mingw / Msys, convert paths to UNIX format before anything is touched
+  # For Mingw / Msys, convert paths from UNIX format before anything is touched
   [ -n "$PROG_HOME" ] &&
     PROG_HOME="`(cd "$PROG_HOME"; pwd -W | sed 's|/|\\\\|g')`"
   [ -n "$JAVA_HOME" ] &&
@@ -150,7 +150,7 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-JNA=$(find_lib "*jna-5*")
+[[ ($mingw||$msys) ]] || JNA=$(find_lib "*jna-5*")
 
 # debug
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
