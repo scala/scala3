@@ -2140,14 +2140,17 @@ trait Applications extends Compatibility {
    *  extension [T1, T2](using A)(using B, C)(receiver: R)(using D)
    *    def foo[T3](using E)(f: F): G = ???
    *
-   *  return the tree representing methodRef partially applied to the receiver and all the implicit parameters preceding it (A, B, C)
+   *  return the tree representing methodRef partially applied to the receiver
+   *  and all the implicit parameters preceding it (A, B, C)
    *  with the type parameters of the extension (T1, T2) inferred.
-   *  None is returned if the implicit search fails for any of the leading implicit parameters or if the receiver has a wrong type
-   *  (note that in general the type of the receiver might depend on the exact types of the found instances of the proceding implicits).
+   *  None is returned if the implicit search fails for any of the leading implicit parameters
+   *  or if the receiver has a wrong type (note that in general the type of the receiver
+   *  might depend on the exact types of the found instances of the proceding implicits).
    *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
    */
   def tryApplyingExtensionMethod(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
-      // Drop all parameters sections of an extension method following the receiver; the return type after truncation is not important
+    // Drop all parameters sections of an extension method following the receiver.
+    // The return type after truncation is not important
     def truncateExtension(tp: Type)(using Context): Type = tp match
       case poly: PolyType =>
         poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
@@ -2159,19 +2162,24 @@ trait Applications extends Compatibility {
     def replaceCallee(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
       case Apply(fun, args) => Apply(replaceCallee(fun, replacement), args)
       case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
-      case _: Ident => replacement
+      case _ => replacement
 
-    val truncatedSym = methodRef.symbol.asTerm.copy(owner = defn.RootPackage, name = Names.termName(""), info = truncateExtension(methodRef.info))
-    val truncatedRef = ref(truncatedSym).withSpan(receiver.span)
+    val methodRefTree = ref(methodRef)
+    val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
+    val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
     val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
 
     try
       val appliedTree = inContext(newCtx) {
-        ctx.enter(truncatedSym)
-        ctx.typer.extMethodApply(truncatedRef, receiver, WildcardType)
+        // Introducing an auxiliary symbol in a temporary scope.
+        // Entering the symbol indirectly by `newCtx.enter`
+        // could instead add the symbol to the enclosing class
+        // which could break the REPL.
+        newCtx.scope.openForMutations.enter(truncatedSym)
+        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
       }
       if appliedTree.tpe.exists && !appliedTree.tpe.isError then
-        Some(replaceCallee(appliedTree, ref(methodRef)))
+        Some(replaceCallee(appliedTree, methodRefTree))
       else
         None
     catch
@@ -2179,5 +2187,5 @@ trait Applications extends Compatibility {
 
   def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
     methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
-      tryApplyingExtensionMethod(methodRef, Typed(EmptyTree, TypeTree(receiverType))).nonEmpty
+      tryApplyingExtensionMethod(methodRef, nullLiteral.asInstance(receiverType)).nonEmpty
 }

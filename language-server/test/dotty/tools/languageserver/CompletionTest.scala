@@ -317,6 +317,18 @@ class CompletionTest {
       .completion(m7, Set(("fooInt", Field, "Long")))
   }
 
+  @Test def dontCompleteFromAmbiguousImportsFromSameSite: Unit = {
+    code"""object Foo {
+          |  val i = 0
+          |  val j = 1
+          |}
+          |object Test {
+          |  import Foo.{i => xxxx, j => xxxx}
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
   @Test def collectNamesImportedInNestedScopes: Unit = {
     code"""object Foo {
           |  val xxxx1 = 1
@@ -340,7 +352,14 @@ class CompletionTest {
       .completion(m1, Set(("xxxx1", Field, "Int"), ("xxxx2", Field, "Int"), ("xxxx3", Field, "Int")))
   }
 
-  @Test def completeBothMembersForEqualNestingLevels: Unit = {
+  @Test def completeEnclosingObject: Unit = {
+    code"""object Test {
+          |  def x = Tes$m1
+          |}""".withSource
+      .completion(m1, Set(("Test", Module, "Test$")))
+  }
+
+  @Test def completeBothDefinitionsForEqualNestingLevels: Unit = {
     code"""trait Foo {
           |  def xxxx(i: Int): Int = i
           |}
@@ -350,10 +369,10 @@ class CompletionTest {
           |object Test extends Foo, Bar {
           |  val x = xx$m1
           |}""".withSource
-      .completion(m1, Set(("xxxx", Method, "method xxxx")))
+      .completion(m1, Set(("xxxx", Method, "method xxxx"))) // 2 different signatures are merged into one generic description
   }
 
-  @Test def dontCompleteAmbiguousImportsForEqualNestingLevels: Unit = {
+  @Test def dontCompleteFromAmbiguousImportsForEqualNestingLevels: Unit = {
     code"""object Foo {
           |  def xxxx(i: Int): Int = i
           |}
@@ -368,7 +387,7 @@ class CompletionTest {
       .completion(m1, Set())
   }
 
-  @Test def preferMemberToImportForEqualNestingLevels: Unit = {
+  @Test def preferLocalDefinitionToImportForEqualNestingLevels: Unit = {
     code"""object Foo {
           |  val xxxx = 1
           |}
@@ -380,7 +399,7 @@ class CompletionTest {
       .completion(m1, Set(("xxxx", Method, "(s: String): String")))
   }
 
-  @Test def preferMoreDeeplyNestedMember: Unit = {
+  @Test def preferMoreDeeplyNestedDefinition: Unit = {
     code"""object Test {
           |  def xxxx(i: Int): Int = i
           |  object Inner {
@@ -408,7 +427,7 @@ class CompletionTest {
       .completion(m1, Set(("xxxx", Method, "(s: String): String")))
   }
 
-  @Test def preferMoreDeeplyNestedMemberToImport: Unit = {
+  @Test def preferMoreDeeplyNestedLocalDefinitionToImport: Unit = {
     code"""object Foo {
           |  def xxxx(i: Int): Int = i
           |}
@@ -420,6 +439,41 @@ class CompletionTest {
           |  }
           |}""".withSource
       .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def dontCompleteLocalDefinitionShadowedByImport: Unit = {
+    code"""object XXXX {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  locally {
+          |    val xxxx = ""
+          |    locally {
+          |      import XXXX.xxxx // import conflicts with val from outer scope
+          |      val y = xx$m1
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def completeFromLocalDefinitionIgnoringLessDeeplyNestedAmbiguities: Unit = {
+    code"""object XXXX {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  locally {
+          |    val xxxx = ""
+          |    locally {
+          |      import XXXX.xxxx // import conflicts with val from outer scope
+          |      locally {
+          |        val xxxx = 'a' // shadows both the import and the val from outer scope
+          |        val y = xx$m1
+          |      }
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Field, "Char")))
   }
 
   @Test def completionClassAndMethod: Unit = {
@@ -438,6 +492,21 @@ class CompletionTest {
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Field, "type and lazy value bar")))
+  }
+
+  @Test def keepTrackOfTermsAndTypesSeparately: Unit = {
+    code"""object XXXX {
+          |  object YYYY
+          |  type YYYY = YYYY.type
+          |}
+          |object Test {
+          |  import XXXX._
+          |  val YYYY = Int
+          |  val ZZZZ = YY$m1
+          |  type ZZZZ = YY$m2
+          |}""".withSource
+      .completion(m1, Set(("YYYY", Field, "Int$")))
+      .completion(m2, Set(("YYYY", Field, "type and value YYYY")))
   }
 
   @Test def completeRespectingAccessModifiers: Unit = {
