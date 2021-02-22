@@ -762,9 +762,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (ctx.definitions.isTupleType(tp))
           params(tp).map(_ => "_").mkString("(", ", ", ")")
         else if (scalaListType.isRef(sym))
-          if (flattenList) "_: _*" else "_: List"
+          if (flattenList) "_*" else "_: List"
         else if (scalaConsType.isRef(sym))
-          if (flattenList) "_, _: _*"  else "List(_, _: _*)"
+          if (flattenList) "_, _*"  else "List(_, _*)"
         else if (tp.classSymbol.is(Sealed) && tp.classSymbol.hasAnonymousChild)
           "_: " + showType(tp) + " (anonymous)"
         else if (tp.classSymbol.is(CaseClass) && !hasCustomUnapply(tp.classSymbol))
