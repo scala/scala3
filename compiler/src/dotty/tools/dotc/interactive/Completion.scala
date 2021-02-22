@@ -134,14 +134,14 @@ object Completion {
    * If several denotations share the same name, the type denotations appear before term denotations inside
    * the same `Completion`.
    */
-  private def describeCompletions(completions: Map[Name, Seq[SingleDenotation]])(using Context): List[Completion] = {
+  private def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
     completions
       .toList.groupBy(_._1.toTermName) // don't distinguish between names of terms and types
       .toList.map { (name, namedDenots) =>
-      val denots = namedDenots.flatMap(_._2)
-      val typesFirst = denots.sortWith((d1, d2) => d1.isType && !d2.isType)
-      val desc = description(typesFirst)
-      Completion(name.show, desc, typesFirst.map(_.symbol))
+        val denots = namedDenots.flatMap(_._2)
+        val typesFirst = denots.sortWith((d1, d2) => d1.isType && !d2.isType)
+        val desc = description(typesFirst)
+        Completion(name.show, desc, typesFirst.map(_.symbol))
     }
   }
 
@@ -188,7 +188,7 @@ object Completion {
      *    (even if the import follows it syntactically)
      *  - a more deeply nested import shadowing a member or a local definition causes an ambiguity
      */
-    def scopeCompletions(using context: Context): Map[Name, Seq[SingleDenotation]] = {
+    def scopeCompletions(using context: Context): CompletionMap = {
       val mappings = collection.mutable.Map.empty[Name, List[ScopedDenotations]].withDefaultValue(List.empty)
       def addMapping(name: Name, denots: ScopedDenotations) =
         mappings(name) = mappings(name) :+ denots
@@ -238,7 +238,7 @@ object Completion {
      *  Direct members take priority over members from extensions
      *  and so do members from extensions over members from implicit conversions
      */
-    def selectionCompletions(qual: Tree)(using Context): Map[Name, Seq[SingleDenotation]] =
+    def selectionCompletions(qual: Tree)(using Context): CompletionMap =
       implicitConversionMemberCompletions(qual) ++
         extensionCompletions(qual) ++
         directMemberCompletions(qual)
@@ -246,7 +246,7 @@ object Completion {
     /** Completions for members of `qual`'s type.
      *  These include inherited definitions but not members added by extensions or implicit conversions
      */
-    def directMemberCompletions(qual: Tree)(using Context): Map[Name, Seq[SingleDenotation]] =
+    def directMemberCompletions(qual: Tree)(using Context): CompletionMap =
       if qual.tpe.widenDealias.isExactlyNothing then
         Map.empty
       else
@@ -255,7 +255,7 @@ object Completion {
     /** Completions introduced by imports directly in this context.
      *  Completions from outer contexts are not included.
      */
-    private def importedCompletions(using Context): Map[Name, Seq[SingleDenotation]] = {
+    private def importedCompletions(using Context): CompletionMap = {
       val imp = ctx.importInfo
 
       def fromImport(name: Name, nameInScope: Name): Seq[(Name, SingleDenotation)] =
@@ -293,7 +293,7 @@ object Completion {
     }
 
     /** Completions from implicit conversions including old style extensions using implicit classes */
-    private def implicitConversionMemberCompletions(qual: Tree)(using Context): Map[Name, Seq[SingleDenotation]] =
+    private def implicitConversionMemberCompletions(qual: Tree)(using Context): CompletionMap =
       if qual.tpe.widenDealias.isExactlyNothing || qual.tpe.isNullType then
         Map.empty
       else
@@ -302,7 +302,7 @@ object Completion {
         membersFromConversion.toSeq.groupByName
 
     /** Completions from extension methods */
-    private def extensionCompletions(qual: Tree)(using Context): Map[Name, Seq[SingleDenotation]] =
+    private def extensionCompletions(qual: Tree)(using Context): CompletionMap =
       def asDefLikeType(tpe: Type): Type = tpe match
         case _: MethodOrPoly => tpe
         case _ => ExprType(tpe)
@@ -424,12 +424,14 @@ object Completion {
     }
 
     extension (denotations: Seq[SingleDenotation])
-      def groupByName(using Context): Map[Name, Seq[SingleDenotation]] = denotations.groupBy(_.name)
+      def groupByName(using Context): CompletionMap = denotations.groupBy(_.name)
 
     extension [N <: Name](namedDenotations: Seq[(N, SingleDenotation)])
       @annotation.targetName("groupByNameTupled")
-      def groupByName: Map[N, Seq[SingleDenotation]] = namedDenotations.groupMap((name, denot) => name)((name, denot) => denot)
+      def groupByName: CompletionMap = namedDenotations.groupMap((name, denot) => name)((name, denot) => denot)
   }
+
+  private type CompletionMap = Map[Name, Seq[SingleDenotation]]
 
   /** Temporary data structure representing denotations with the same name introduced in a given scope
    *  as a member of a type, by a local definition or by an import clause
