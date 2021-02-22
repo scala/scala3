@@ -38,6 +38,8 @@ import Constants.{Constant, IntTag, LongTag}
 import Denotations.SingleDenotation
 import annotation.{constructorOnly, threadUnsafe}
 
+import scala.util.control.NonFatal
+
 object Applications {
   import tpd._
 
@@ -2157,8 +2159,57 @@ trait Applications extends Compatibility {
     }
   }
 
-  def isApplicableExtensionMethod(ref: TermRef, receiver: Type)(using Context) =
-    ref.symbol.is(ExtensionMethod)
-    && !receiver.isBottomType
-    && isApplicableMethodRef(ref, receiver :: Nil, WildcardType)
+  /** Assuming methodRef is a reference to an extension method defined e.g. as
+   *
+   *  extension [T1, T2](using A)(using B, C)(receiver: R)(using D)
+   *    def foo[T3](using E)(f: F): G = ???
+   *
+   *  return the tree representing methodRef partially applied to the receiver
+   *  and all the implicit parameters preceding it (A, B, C)
+   *  with the type parameters of the extension (T1, T2) inferred.
+   *  None is returned if the implicit search fails for any of the leading implicit parameters
+   *  or if the receiver has a wrong type (note that in general the type of the receiver
+   *  might depend on the exact types of the found instances of the proceding implicits).
+   *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
+   */
+  def tryApplyingExtensionMethod(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
+    // Drop all parameters sections of an extension method following the receiver.
+    // The return type after truncation is not important
+    def truncateExtension(tp: Type)(using Context): Type = tp match
+      case poly: PolyType =>
+        poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
+      case meth: MethodType if meth.isContextualMethod =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
+      case meth: MethodType =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
+
+    def replaceCallee(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
+      case Apply(fun, args) => Apply(replaceCallee(fun, replacement), args)
+      case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
+      case _ => replacement
+
+    val methodRefTree = ref(methodRef)
+    val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
+    val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
+    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+
+    try
+      val appliedTree = inContext(newCtx) {
+        // Introducing an auxiliary symbol in a temporary scope.
+        // Entering the symbol indirectly by `newCtx.enter`
+        // could instead add the symbol to the enclosing class
+        // which could break the REPL.
+        newCtx.scope.openForMutations.enter(truncatedSym)
+        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
+      }
+      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+        Some(replaceCallee(appliedTree, methodRefTree))
+      else
+        None
+    catch
+      case NonFatal(_) => None
+
+  def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
+    methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
+      tryApplyingExtensionMethod(methodRef, nullLiteral.asInstance(receiverType)).nonEmpty
 }
