@@ -2523,19 +2523,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(matchTypeSuperType(tp1), tp2) || provablyDisjoint(tp1, matchTypeSuperType(tp2))
+        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(matchTypeSuperType(tp1), tp2)
+        provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, matchTypeSuperType(tp2))
+        provablyDisjoint(tp1, tp2.superType)
       case _ =>
         false
     }
   }
-
-  /** Restores the buggy match type reduction under -Yunsound-match-types. */
-  private def matchTypeSuperType(tp: TypeProxy): Type =
-    if ctx.settings.YunsoundMatchTypes.value then tp.underlying else tp.superType
 
   protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)

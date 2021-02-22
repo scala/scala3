@@ -215,7 +215,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val YerasedTerms: Setting[Boolean] = BooleanSetting("-Yerased-terms", "Allows the use of erased terms.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ycheck-init", "Check initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
-  val YunsoundMatchTypes: Setting[Boolean] = BooleanSetting("-Yunsound-match-types", "Use unsound match type reduction algorithm.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")
