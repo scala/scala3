@@ -46,34 +46,38 @@ object Scaladoc:
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
-    val (parsedArgs, ctx) = extract(args, rootContext)
+    val (parsedArgsOrNone, ctx) = extract(args, rootContext)
 
-    given CompilerContext = ctx
+    parsedArgsOrNone.map { parsedArgs =>
+      given CompilerContext = ctx
 
-    def listTastyFiles(f: File): Seq[File] =
-      val (files, dirs) = Option(f.listFiles()).toArray.flatten.partition(_.isFile)
-      ArraySeq.unsafeWrapArray(
-        files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
-      )
-    val tastyFiles = parsedArgs.tastyFiles ++ parsedArgs.tastyDirs.flatMap(listTastyFiles)
+      def listTastyFiles(f: File): Seq[File] =
+        val (files, dirs) = Option(f.listFiles()).toArray.flatten.partition(_.isFile)
+        ArraySeq.unsafeWrapArray(
+          files.filter(_.getName.endsWith(".tasty")) ++ dirs.flatMap(listTastyFiles)
+        )
+      val tastyFiles = parsedArgs.tastyFiles ++ parsedArgs.tastyDirs.flatMap(listTastyFiles)
 
-    if !ctx.reporter.hasErrors then
-      val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
+      if !ctx.reporter.hasErrors then
+        val updatedArgs = parsedArgs.copy(tastyDirs = Nil, tastyFiles = tastyFiles)
 
-      if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
+        if (parsedArgs.output.exists()) util.IO.delete(parsedArgs.output)
 
-      run(updatedArgs)
-      report.inform("Done")
-    else report.error("Failure")
+        run(updatedArgs)
+        report.inform("Done")
+      else report.error("Failure")
+
+    }
     ctx.reporter
 
-  def extract(args: Array[String], rootCtx: CompilerContext): (Scaladoc.Args, CompilerContext) =
+
+  def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
     val newContext = rootCtx.fresh
     given CompilerContext = newContext
     val ss = ScaladocSettings()
     import ss._
     val summary = ScaladocCommand.distill(args, ss, ss.defaultState)
-    val argumentFiles = ScaladocCommand.checkUsage(summary, true)(using ss)(using summary.sstate)
+    val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using summary.sstate)
 
     extension[T](arg: Setting[T])
       def get = arg.valueIn(summary.sstate)
@@ -97,78 +101,80 @@ object Scaladoc:
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 
-    val inFiles = argumentFiles.map(File(_)).filter(_.getName != "___fake___.scala")
-    val (existing, nonExisting) = inFiles.partition(_.exists)
+    argumentFilesOrNone.fold((None, newContext)) { argumentFiles =>
+      val inFiles = argumentFiles.map(File(_)).filter(_.getName != "___fake___.scala")
+      val (existing, nonExisting) = inFiles.partition(_.exists)
 
-    if nonExisting.nonEmpty then report.warning(
-      s"scaladoc will ignore following non-existent paths: ${nonExisting.mkString(", ")}"
-    )
-
-    val (dirs, files) = existing.partition(_.isDirectory)
-    val (validFiles, other) = files.partition(f =>
-      f.getName.endsWith(".tasty") || f.getName.endsWith(".jar")
-    )
-
-    if other.nonEmpty then report.warning(
-      s"scaladoc suports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
-    )
-
-    def defaultDest(): File =
-      report.warning("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
-      File("output")
-
-    val parseSyntax: CommentSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>
-      CommentSyntax.parse(str).getOrElse{
-        report.error(s"unrecognized value for -syntax option: $str")
-        CommentSyntax.default
-      }
-    }
-    val externalMappings =
-      externalDocumentationMappings.get.flatMap( s =>
-          ExternalDocLink.parse(s).fold(left => {
-            report.warning(left)
-            None
-          }, right => Some(right)
-        )
+      if nonExisting.nonEmpty then report.warning(
+        s"scaladoc will ignore following non-existent paths: ${nonExisting.mkString(", ")}"
       )
 
-    val socialLinksParsed =
-      socialLinks.get.flatMap { s =>
-        SocialLinks.parse(s).fold(left => {
-          report.warning(left)
-          None
-        },right => Some(right))
+      val (dirs, files) = existing.partition(_.isDirectory)
+      val (validFiles, other) = files.partition(f =>
+        f.getName.endsWith(".tasty") || f.getName.endsWith(".jar")
+      )
+
+      if other.nonEmpty then report.warning(
+        s"scaladoc suports only .tasty and .jar files, following files will be ignored: ${other.mkString(", ")}"
+      )
+
+      def defaultDest(): File =
+        report.warning("Destination is not provided, please provide '-d' parameter pointing to directory where docs should be created")
+        File("output")
+
+      val parseSyntax: CommentSyntax = syntax.nonDefault.fold(CommentSyntax.default){ str =>
+        CommentSyntax.parse(str).getOrElse{
+          report.error(s"unrecognized value for -syntax option: $str")
+          CommentSyntax.default
+        }
       }
+      val externalMappings =
+        externalDocumentationMappings.get.flatMap( s =>
+            ExternalDocLink.parse(s).fold(left => {
+              report.warning(left)
+              None
+            }, right => Some(right)
+          )
+        )
 
-    unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
-      report.warning(s"Setting ${s.name} is currently not supported.")
+      val socialLinksParsed =
+        socialLinks.get.flatMap { s =>
+          SocialLinks.parse(s).fold(left => {
+            report.warning(left)
+            None
+          },right => Some(right))
+        }
+
+      unsupportedSettings.filter(s => s.get != s.default).foreach { s =>
+        report.warning(s"Setting ${s.name} is currently not supported.")
+      }
+      val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
+      val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
+      report.inform(
+        s"Generating documenation $printableProjectName in $destFile")
+
+      if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
+
+      val docArgs = Args(
+        projectName.withDefault("root"),
+        dirs,
+        validFiles,
+        classpath.get,
+        destFile,
+        siteRoot.nonDefault,
+        projectVersion.nonDefault,
+        projectLogo.nonDefault,
+        parseSyntax,
+        sourceLinks.get,
+        revision.nonDefault,
+        externalMappings,
+        socialLinksParsed,
+        skipById.get ++ deprecatedSkipPackages.get,
+        skipByRegex.get,
+        docRootContent.nonDefault
+      )
+      (Some(docArgs), newContext)
     }
-    val destFile = outputDir.nonDefault.fold(defaultDest())(_.file)
-    val printableProjectName = projectName.nonDefault.fold("")("for " + _ )
-    report.inform(
-      s"Generating documenation $printableProjectName in $destFile")
-
-    if deprecatedSkipPackages.get.nonEmpty then report.warning(deprecatedSkipPackages.description)
-
-    val docArgs = Args(
-      projectName.withDefault("root"),
-      dirs,
-      validFiles,
-      classpath.get,
-      destFile,
-      siteRoot.nonDefault,
-      projectVersion.nonDefault,
-      projectLogo.nonDefault,
-      parseSyntax,
-      sourceLinks.get,
-      revision.nonDefault,
-      externalMappings,
-      socialLinksParsed,
-      skipById.get ++ deprecatedSkipPackages.get,
-      skipByRegex.get,
-      docRootContent.nonDefault
-    )
-    (docArgs, newContext)
 
   private [scaladoc] def run(args: Args)(using ctx: CompilerContext): DocContext =
     given docContext: DocContext = new DocContext(args, ctx)

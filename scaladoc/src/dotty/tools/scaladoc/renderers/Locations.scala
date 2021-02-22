@@ -34,7 +34,8 @@ trait Locations(using ctx: DocContext):
           case dri =>
             val loc = dri.location
             val fqn = loc.split(Array('.')).toList match
-              case List("<empty>") => List("index")
+              case "<empty>" :: Nil  => "index"   :: Nil
+              case "<empty>" :: tail => "_empty_" :: tail
               case other => other
 
             Seq("api") ++ fqn

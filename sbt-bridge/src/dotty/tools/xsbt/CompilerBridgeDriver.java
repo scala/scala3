@@ -7,7 +7,7 @@ package dotty.tools.xsbt;
 
 import dotty.tools.dotc.Compiler;
 import dotty.tools.dotc.Driver;
-import dotty.tools.dotc.config.CompilerCommand;
+import dotty.tools.dotc.ScalacCommand;
 import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
 import dotty.tools.io.AbstractFile;
@@ -62,7 +62,7 @@ public class CompilerBridgeDriver extends Driver {
 
       Contexts.Context context = setup(args, initialCtx)._2;
 
-      if (CompilerCommand.shouldStopWithInfo(context.settings(), context.settingsState())) {
+      if (ScalacCommand.isHelpFlag(context.settings(), context.settingsState())) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);
       }
 

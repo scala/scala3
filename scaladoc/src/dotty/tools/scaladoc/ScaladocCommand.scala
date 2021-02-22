@@ -22,9 +22,9 @@ object ScaladocCommand extends CliCommand:
   override def versionMsg: String = s"Scaladoc $versionString -- $copyrightString"
   override def ifErrorsMsg: String = "  scaladoc -help  gives more information"
 
-  def infoMessage(using settings: ScaladocSettings)(using SettingsState)(using Context): String =
+  def helpMsg(using settings: ScaladocSettings)(using SettingsState, Context): String =
     if (settings.help.value) usageMessage
     else ""
 
-  def shouldStopWithInfo(using settings: ScaladocSettings)(using SettingsState): Boolean =
+  def isHelpFlag(using settings: ScaladocSettings)(using SettingsState): Boolean =
     Set(settings.help) exists (_.value)

@@ -9,13 +9,10 @@ import Properties._
 
 import scala.collection.JavaConverters._
 
-object CompilerCommand extends CliCommand:
-  type ConcreteSettings = ScalaSettings
-  override def cmdName: String = "scalac"
-  override def versionMsg: String = s"Scala compiler $versionString -- $copyrightString"
-  override def ifErrorsMsg: String = "  scalac -help  gives more information"
+abstract class CompilerCommand extends CliCommand:
+  final type ConcreteSettings = ScalaSettings
 
-  def infoMessage(using settings: ScalaSettings)(using SettingsState)(using Context): String =
+  final def helpMsg(using settings: ScalaSettings)(using SettingsState, Context): String =
     if (settings.help.value) usageMessage
     else if (settings.Xhelp.value) xusageMessage
     else if (settings.Yhelp.value) yusageMessage
@@ -23,5 +20,5 @@ object CompilerCommand extends CliCommand:
     else if (settings.XshowPhases.value) phasesMessage
     else ""
 
-  def shouldStopWithInfo(using settings: ScalaSettings)(using SettingsState): Boolean =
+  final def isHelpFlag(using settings: ScalaSettings)(using SettingsState): Boolean =
     Set(settings.help, settings.Xhelp, settings.Yhelp, settings.showPlugins, settings.XshowPhases) exists (_.value)

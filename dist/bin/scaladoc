@@ -102,7 +102,6 @@ in_scripting_args=false
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
-     -h|-help) help=true && shift ;;
   -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
        -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;

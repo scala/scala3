@@ -64,9 +64,12 @@ class Driver {
 
   protected def sourcesRequired: Boolean = true
 
-  def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
+  protected def command: CompilerCommand = ScalacCommand
+
+  def setup(args: Array[String], rootCtx: Context): (Option[List[AbstractFile]], Context) = {
     val ictx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args, config.ScalaSettings(), ictx.settingsState)
+    val settings = config.ScalaSettings()
+    val summary = command.distill(args, settings, settings.defaultState)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
@@ -74,9 +77,11 @@ class Driver {
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
-      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      val files = fileNames.map(ctx.getFile)
-      (files, fromTastySetup(files))
+      val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
+      fileNamesOrNone.fold((None, ictx)) { fileNames =>
+        val files = fileNames.map(ctx.getFile)
+        (Some(files), fromTastySetup(files))
+      }
     }
   }
 
@@ -183,7 +188,9 @@ class Driver {
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
     val (files, compileCtx) = setup(args, rootCtx)
-    doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+    files.fold(compileCtx.reporter) {
+      doCompile(newCompiler(using compileCtx), _)(using compileCtx)
+    }
   }
 
   def main(args: Array[String]): Unit = {

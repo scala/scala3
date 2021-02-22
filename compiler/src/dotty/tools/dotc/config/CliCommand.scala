@@ -13,8 +13,16 @@ trait CliCommand:
 
   type ConcreteSettings <: CommonScalaSettings with Settings.SettingGroup
 
+  def versionMsg: String
+
+  def ifErrorsMsg: String
+
   /** The name of the command */
   def cmdName: String
+
+  def isHelpFlag(using settings: ConcreteSettings)(using SettingsState): Boolean
+
+  def helpMsg(using settings: ConcreteSettings)(using SettingsState, Context): String
 
   private def explainAdvanced = """
     |-- Notes on option parsing --
@@ -30,14 +38,6 @@ trait CliCommand:
     |           This is useful because during the tree transform of phase X, we often
     |           already are in phase X + 1.
   """
-
-  def shortUsage: String = s"Usage: $cmdName <options> <source files>"
-
-  def versionMsg: String = s"Scala $versionString -- $copyrightString"
-
-  def ifErrorsMsg: String = "  -help  gives more information"
-
-  def shouldStopWithInfo(using settings: ConcreteSettings)(using SettingsState): Boolean
 
   /** Distill arguments into summary detailing settings, errors and files to main */
   def distill(args: Array[String], sg: Settings.SettingGroup, ss: SettingsState): ArgsSummary =
@@ -64,11 +64,8 @@ trait CliCommand:
 
     sg.processArguments(expandedArguments, ss, processAll = true)
 
-
-  def infoMessage(using settings: ConcreteSettings)(using SettingsState)(using Context): String
-
   /** Creates a help message for a subset of options based on cond */
-  def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
     val ss                  = (settings.allSettings filter cond).toList sortBy (_.name)
     val width               = (ss map (_.name.length)).max
     def format(s: String)   = ("%-" + width + "s") format s
@@ -90,8 +87,9 @@ trait CliCommand:
 
     ss.map(helpStr).mkString("", "\n", s"\n${format("@<file>")} A text file containing compiler arguments (options and source files).\n")
 
+  protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
-  def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def createUsageMsg(label: String, shouldExplain: Boolean, cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
     val prefix = List(
       Some(shortUsage),
       Some(explainAdvanced) filter (_ => shouldExplain),
@@ -100,16 +98,22 @@ trait CliCommand:
 
     prefix + "\n" + availableOptionsMsg(cond)
 
-  def isStandard(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean = !isAdvanced(s) && !isPrivate(s)
-  def isAdvanced(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean = s.name.startsWith("-X") && s.name != "-X"
-  def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean  = s.name.startsWith("-Y") && s.name != "-Y"
+  protected def isStandard(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    !isAdvanced(s) && !isPrivate(s)
+  protected def isAdvanced(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    s.name.startsWith("-X") && s.name != "-X"
+  protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
+    s.name.startsWith("-Y") && s.name != "-Y"
 
   /** Messages explaining usage and options */
-  def usageMessage(using settings: ConcreteSettings)(using SettingsState)    = createUsageMsg("where possible standard", shouldExplain = false, isStandard)
-  def xusageMessage(using settings: ConcreteSettings)(using SettingsState)   = createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
-  def yusageMessage(using settings: ConcreteSettings)(using SettingsState)   = createUsageMsg("Possible private", shouldExplain = true, isPrivate)
+  protected def usageMessage(using settings: ConcreteSettings)(using SettingsState) =
+    createUsageMsg("where possible standard", shouldExplain = false, isStandard)
+  protected def xusageMessage(using settings: ConcreteSettings)(using SettingsState) =
+    createUsageMsg("Possible advanced", shouldExplain = true, isAdvanced)
+  protected def yusageMessage(using settings: ConcreteSettings)(using SettingsState) =
+    createUsageMsg("Possible private", shouldExplain = true, isPrivate)
 
-  def phasesMessage: String =
+  protected def phasesMessage: String =
     (new Compiler()).phases.map {
       case List(single) => single.phaseName
       case more => more.map(_.phaseName).mkString("{", ", ", "}")
@@ -117,25 +121,27 @@ trait CliCommand:
 
   /** Provide usage feedback on argument summary, assuming that all settings
    *  are already applied in context.
-   *  @return  The list of files passed as arguments.
+   *  @return  Either Some list of files passed as arguments or None if further processing should be interrupted.
    */
-  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState)(using Context): List[String] =
+  def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[List[String]] =
     // Print all warnings encountered during arguments parsing
     summary.warnings.foreach(report.warning(_))
 
     if summary.errors.nonEmpty then
       summary.errors foreach (report.error(_))
       report.echo(ifErrorsMsg)
-      Nil
+      None
     else if settings.version.value then
       report.echo(versionMsg)
-      Nil
-    else if shouldStopWithInfo then
-      report.echo(infoMessage)
-      Nil
+      None
+    else if isHelpFlag then
+      report.echo(helpMsg)
+      None
+    else if (sourcesRequired && summary.arguments.isEmpty)
+      report.echo(usageMessage)
+      None
     else
-      if (sourcesRequired && summary.arguments.isEmpty) report.echo(usageMessage)
-      summary.arguments
+      Some(summary.arguments)
 
   extension [T](setting: Setting[T])
     protected def value(using ss: SettingsState): T = setting.valueIn(ss)
