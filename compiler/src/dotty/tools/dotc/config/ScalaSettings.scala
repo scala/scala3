@@ -11,6 +11,18 @@ import Settings.Setting
 trait CommonScalaSettings { self: Settings.SettingGroup =>
   protected def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
+  protected def defaultPageWidth: Int = {
+    val defaultWidth = 80
+    val columnsVar = System.getenv("COLUMNS")
+    if columnsVar != null then columnsVar.toInt
+    else if Properties.isWin then
+      val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
+      if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
+        ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
+      else defaultWidth
+    else defaultWidth
+  }
+
   /** Path related settings */
   val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
   val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
@@ -25,6 +37,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val color: Setting[String] = ChoiceSetting("-color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
   val verbose: Setting[Boolean] = BooleanSetting("-verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting("-version", "Print product version and exit.", aliases = List("--version"))
+  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help"))
   val pageWidth: Setting[Int] = IntSetting("-pagewidth", "Set page width", 80, aliases = List("--page-width"))
   val silentWarnings: Setting[Boolean] = BooleanSetting("-nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
 
@@ -93,7 +106,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.", aliases = List("--explain-types"))
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
-  val help: Setting[Boolean] = BooleanSetting("-help", "Print a synopsis of standard options.", aliases = List("--help"))
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", supportedReleaseVersions, "", aliases = List("--release"))
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
   val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
