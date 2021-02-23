@@ -657,6 +657,7 @@ class ClassfileParser(
     var constant: Constant = null
     var exceptions: List[NameOrString] = Nil
     var annotations: List[Annotation] = Nil
+    var namedParams: Map[Int, TermName] = Map.empty
     def complete(tp: Type, isVarargs: Boolean = false)(using Context): Type = {
       val updatedType =
         if sig == null then tp
@@ -680,7 +681,14 @@ class ClassfileParser(
         sym.addAnnotation(ThrowsAnnotation(cls.asClass))
       }
 
-      cook.apply(newType)
+      def fillInParamNames(t: Type): Type = t match
+        case mt @ MethodType(oldp) if namedParams.nonEmpty =>
+          mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
+        case pt: PolyType if namedParams.nonEmpty =>
+          pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
+        case _ => t
+
+      cook.apply(fillInParamNames(newType))
     }
   }
 
@@ -713,6 +721,14 @@ class ClassfileParser(
           val c = pool.getConstant(in.nextChar)
           if (c ne null) res.constant = c
           else report.warning(s"Invalid constant in attribute of ${sym.showLocated} while parsing ${classfile}")
+
+        case tpnme.MethodParametersATTR =>
+          val paramCount = in.nextByte
+          for i <- 0 until paramCount do
+            val name = pool.getName(in.nextChar)
+            val flags = in.nextChar
+            if (flags & JAVA_ACC_SYNTHETIC) == 0 then
+              res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil))
