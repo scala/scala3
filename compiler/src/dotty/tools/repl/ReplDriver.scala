@@ -68,10 +68,14 @@ class ReplDriver(settings: Array[String],
   private def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    val (files, ictx) = setup(settings, rootCtx)
-    shouldStart = files.isDefined
-    ictx.base.initialize()(using ictx)
-    ictx
+    setup(settings, rootCtx) match
+      case Some((files, ictx)) =>
+        shouldStart = true
+        ictx.base.initialize()(using ictx)
+        ictx
+      case None =>
+        shouldStart = false
+        rootCtx
   }
 
   /** the initial, empty state of the REPL session */
@@ -105,11 +109,9 @@ class ReplDriver(settings: Array[String],
 
   /** Try to run REPL if there is nothing that prevents us doing so.
    *
-   * Possible reason for unsuccessful run are raised flags in CLI like --help or --version
+   *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
    */
-  final def tryRunning = if shouldStart then
-    println("Starting scala3 REPL...")
-    runUntilQuit()
+  final def tryRunning = if shouldStart then runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *

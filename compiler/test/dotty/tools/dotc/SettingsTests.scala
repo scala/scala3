@@ -47,7 +47,7 @@ class SettingsTests {
 
     inContext {
       val args = List("-foo", "b", "-bar", "1")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
       given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
@@ -65,7 +65,7 @@ class SettingsTests {
 
     inContext {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
       given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
@@ -75,7 +75,7 @@ class SettingsTests {
 
     inContext {
       val args = List("-foo:b")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
       given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
@@ -83,7 +83,7 @@ class SettingsTests {
 
     inContext {
       val args = List("-foo", "c", "-bar", "3", "-baz", "-1")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
         "c is not a valid choice for -foo",
         "3 is not a valid choice for -bar",
@@ -94,14 +94,14 @@ class SettingsTests {
 
     inContext {
       val args = List("-foo:c")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       val expectedErrors = List("c is not a valid choice for -foo")
       assertEquals(expectedErrors, summary.errors)
     }
 
     inContext {
       val args = List("-quux", "a", "-quuz", "0")
-      val summary = Settings.processArguments(args, Settings.defaultState, true)
+      val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
         "a is not a valid choice for -quux",
         "0 is not a valid choice for -quuz",

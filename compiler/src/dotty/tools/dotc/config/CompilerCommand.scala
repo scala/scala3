@@ -10,7 +10,7 @@ import Properties._
 import scala.collection.JavaConverters._
 
 abstract class CompilerCommand extends CliCommand:
-  final type ConcreteSettings = ScalaSettings
+  type ConcreteSettings = ScalaSettings
 
   final def helpMsg(using settings: ScalaSettings)(using SettingsState, Context): String =
     if (settings.help.value) usageMessage

@@ -76,7 +76,7 @@ object Scaladoc:
     given CompilerContext = newContext
     val ss = ScaladocSettings()
     import ss._
-    val summary = ScaladocCommand.distill(args, ss, ss.defaultState)
+    val summary = ScaladocCommand.distill(args, ss)()
     val argumentFilesOrNone = ScaladocCommand.checkUsage(summary, true)(using ss)(using summary.sstate)
 
     extension[T](arg: Setting[T])

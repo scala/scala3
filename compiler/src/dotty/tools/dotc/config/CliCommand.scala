@@ -40,7 +40,7 @@ trait CliCommand:
   """
 
   /** Distill arguments into summary detailing settings, errors and files to main */
-  def distill(args: Array[String], sg: Settings.SettingGroup, ss: SettingsState): ArgsSummary =
+  def distill(args: Array[String], sg: Settings.SettingGroup)(ss: SettingsState = sg.defaultState)(using Context): ArgsSummary =
     /**
      * Expands all arguments starting with @ to the contents of the
      * file named like each argument.
@@ -49,12 +49,12 @@ trait CliCommand:
       def stripComment(s: String) = s takeWhile (_ != '#')
       val path = Paths.get(arg stripPrefix "@")
       if (!Files.exists(path))
-        throw new java.io.FileNotFoundException("argument file %s could not be found" format path.getFileName)
-
-      val lines = Files.readAllLines(path) // default to UTF-8 encoding
-
-      val params = lines.asScala map stripComment mkString " "
-      CommandLineParser.tokenize(params)
+        report.error(s"Argument file ${path.getFileName} could not be found")
+        Nil
+      else
+        val lines = Files.readAllLines(path) // default to UTF-8 encoding
+        val params = lines.asScala map stripComment mkString " "
+        CommandLineParser.tokenize(params)
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
@@ -62,7 +62,7 @@ trait CliCommand:
       case x                      => List(x)
     }
 
-    sg.processArguments(expandedArguments, ss, processAll = true)
+    sg.processArguments(expandedArguments, processAll = true, settingsState = ss)
 
   /** Creates a help message for a subset of options based on cond */
   protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =

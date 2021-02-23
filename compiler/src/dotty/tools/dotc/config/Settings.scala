@@ -244,7 +244,7 @@ object Settings {
       }
     }
 
-    def processArguments(arguments: List[String], settingsState: SettingsState, processAll: Boolean): ArgsSummary =
+    def processArguments(arguments: List[String], processAll: Boolean, settingsState: SettingsState = defaultState): ArgsSummary =
       processArguments(ArgsSummary(settingsState, arguments, Nil, Nil), processAll, Nil)
 
     def publish[T](settingf: Int => Setting[T]): Setting[T] = {

@@ -60,7 +60,7 @@ public class CompilerBridgeDriver extends Driver {
         .setReporter(reporter)
         .setSbtCallback(callback);
 
-      Contexts.Context context = setup(args, initialCtx)._2;
+      Contexts.Context context = setup(args, initialCtx).map(t -> t._2).getOrElse(() -> initialCtx);
 
       if (ScalacCommand.isHelpFlag(context.settings(), context.settingsState())) {
         throw new InterfaceCompileFailed(args, new Problem[0], StopInfoError);

@@ -40,21 +40,21 @@ class Resident extends Driver {
 
   final override def process(args: Array[String], rootCtx: Context): Reporter = {
     @tailrec def loop(args: Array[String], prevCtx: Context): Reporter = {
-      var (possibleFiles, ctx) = setup(args, prevCtx)
-      if possibleFiles.isDefined then
-        inContext(ctx) {
-          doCompile(residentCompiler, possibleFiles.get) // using more complex constructs like fold or map instead of get will make @tailrec complain
-        }
-        var nextCtx = ctx
-        var line = getLine()
-        while (line == reset) {
-          nextCtx = rootCtx
-          line = getLine()
-        }
-        if (line.startsWith(quit)) ctx.reporter
-        else loop(line split "\\s+", nextCtx)
-      else
-        ctx.reporter
+      setup(args, prevCtx) match
+        case Some((files, ctx)) =>
+          inContext(ctx) {
+            doCompile(residentCompiler, files)
+          }
+          var nextCtx = ctx
+          var line = getLine()
+          while (line == reset) {
+            nextCtx = rootCtx
+            line = getLine()
+          }
+          if (line.startsWith(quit)) ctx.reporter
+          else loop(line split "\\s+", nextCtx)
+        case None =>
+          prevCtx.reporter
     }
     loop(args, rootCtx)
   }

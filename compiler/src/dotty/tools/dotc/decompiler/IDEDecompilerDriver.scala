@@ -19,7 +19,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
     val rootCtx = initCtx.fresh.addMode(Mode.Interactive | Mode.ReadPositions | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.fromTasty, true)
-    val ctx = setup(settings.toArray :+ "dummy.scala", rootCtx)._2
+    val ctx = setup(settings.toArray :+ "dummy.scala", rootCtx).get._2
     ctx.initialize()(using ctx)
     ctx
   }
