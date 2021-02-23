@@ -27,27 +27,6 @@ def exec(projectDir: Path, binary: String, arguments: String*): Int =
   exitCode
 
 
-/** Versions of published projects, needs to be updated when a project in the build is updated.
- *
- *  TODO: instead of harcoding these numbers, we could get them from the
- *  projects themselves. This likely requires injecting a custom task in the
- *  projects to output the version number to a file.
- */
-object Versions:
-  val cats = "2.3.1-SNAPSHOT"
-  val catsMtl = "1.1+DOTTY-SNAPSHOT"
-  val coop = "1.0+DOTTY-SNAPSHOT"
-  val discipline = "1.1.3-SNAPSHOT"
-  val disciplineMunit = "1.0.3+DOTTY-SNAPSHOT"
-  val disciplineSpecs2 = "1.1.3-SNAPSHOT"
-  val izumiReflect = "1.0.0-SNAPSHOT"
-  val scalacheck = "1.15.2-SNAPSHOT"
-  val scalatest = "3.2.3"
-  val munit = "0.7.19+DOTTY-SNAPSHOT"
-  val scodecBits = "1.1+DOTTY-SNAPSHOT"
-  val simulacrumScalafix = "0.5.1-SNAPSHOT"
-  val scalaCollectionCompat = "2.3.0+DOTTY-SNAPSHOT"
-
 sealed trait CommunityProject:
   private var published = false
 
@@ -115,56 +94,8 @@ final case class SbtCommunityProject(
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
-  // A project in the community build can depend on an arbitrary version of
-  // another project in the build, so we force the use of the version that is
-  // actually in the community build.
-  val dependencyOverrides = List(
-    // dependencyOverrides doesn't seem to understand `%%%`
-    s""""org.scalacheck" %% "scalacheck" % "${Versions.scalacheck}"""",
-    s""""org.scalacheck" %% "scalacheck_sjs1" % "${Versions.scalacheck}"""",
-    s""""org.scalatest" %% "scalatest" % "${Versions.scalatest}"""",
-    s""""org.scalatest" %% "scalatest_sjs1" % "${Versions.scalatest}"""",
-    s""""org.scalatestplus" %% "junit-4-13" % "${Versions.scalatest}.0"""",
-    s""""org.scalameta" %% "munit" % "${Versions.munit}"""",
-    s""""org.scalameta" %% "munit_sjs1" % "${Versions.munit}"""",
-    s""""org.scalameta" %% "munit-scalacheck" % "${Versions.munit}"""",
-    s""""org.scalameta" %% "munit-scalacheck_sjs1" % "${Versions.munit}"""",
-    s""""org.scalameta" %% "junit-interface" % "${Versions.munit}"""",
-    s""""org.scodec" %% "scodec-bits" % "${Versions.scodecBits}"""",
-    s""""org.scodec" %% "scodec-bits_sjs1" % "${Versions.scodecBits}"""",
-    s""""org.typelevel" %% "discipline-core" % "${Versions.discipline}"""",
-    s""""org.typelevel" %% "discipline-core_sjs1" % "${Versions.discipline}"""",
-    s""""org.typelevel" %% "discipline-munit" % "${Versions.disciplineMunit}"""",
-    s""""org.typelevel" %% "discipline-munit_sjs1" % "${Versions.disciplineMunit}"""",
-    s""""org.typelevel" %% "discipline-specs2" % "${Versions.disciplineSpecs2}"""",
-    s""""org.typelevel" %% "discipline-specs2_sjs1" % "${Versions.disciplineSpecs2}"""",
-    s""""org.typelevel" %% "simulacrum-scalafix-annotations" % "${Versions.simulacrumScalafix}"""",
-    s""""org.typelevel" %% "simulacrum-scalafix-annotations_sjs1" % "${Versions.simulacrumScalafix}"""",
-    s""""org.typelevel" %% "cats-core" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-core_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-free" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-free_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-kernel" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-kernel_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-kernel-laws" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-kernel-laws_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-laws" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-laws_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-testkit" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-testkit_sjs1" % "${Versions.cats}"""",
-    s""""org.typelevel" %% "cats-mtl" % "${Versions.catsMtl}"""",
-    s""""org.typelevel" %% "cats-mtl_sjs1" % "${Versions.catsMtl}"""",
-    s""""org.typelevel" %% "cats-mtl-laws" % "${Versions.catsMtl}"""",
-    s""""org.typelevel" %% "cats-mtl-laws_sjs1" % "${Versions.catsMtl}"""",
-    s""""org.typelevel" %% "coop" % "${Versions.coop}"""",
-    s""""org.typelevel" %% "coop_sjs1" % "${Versions.coop}"""",
-    s""""dev.zio" %% "izumi-reflect" % "${Versions.izumiReflect}"""",
-    s""""org.scala-lang.modules" %% "scala-collection-compat" % "${Versions.scalaCollectionCompat}"""",
-  )
-
   private val baseCommand =
     "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
-    ++ s"""set dependencyOverrides in ThisBuild ++= ${dependencyOverrides.mkString("Seq(", ", ", ")")}; """
     ++ s"++$compilerVersion!; "
 
   override val testCommand =
@@ -186,7 +117,8 @@ final case class SbtCommunityProject(
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
       "-sbt-version", "1.4.7",
-       "-Dsbt.supershell=false",
+      "-Dsbt.supershell=false",
+      s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
 
@@ -423,8 +355,7 @@ object projects:
   lazy val munit = SbtCommunityProject(
     project = "munit",
     sbtTestCommand  = "testsJVM/test;testsJS/test;",
-    // Hardcode the version to avoid having to deal with something set by sbt-dynver
-    sbtPublishCommand   = s"""set every version := "${Versions.munit}"; munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal""",
+    sbtPublishCommand = "munitJVM/publishLocal; munitJS/publishLocal; munitScalacheckJVM/publishLocal; munitScalacheckJS/publishLocal; junit/publishLocal",
     sbtDocCommand   = "junit/doc; munitJVM/doc",
     dependencies = List(scalacheck)
   )
@@ -432,8 +363,7 @@ object projects:
   lazy val scodecBits = SbtCommunityProject(
     project          = "scodec-bits",
     sbtTestCommand   = "coreJVM/test;coreJS/test",
-    // Hardcode the version to avoid having to deal with something set by sbt-git
-    sbtPublishCommand = s"""set every version := "${Versions.scodecBits}"; coreJVM/publishLocal;coreJS/publishLocal""",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit)
   )
@@ -509,7 +439,7 @@ object projects:
   lazy val scalaCollectionCompat = SbtCommunityProject(
     project        = "scala-collection-compat",
     sbtTestCommand = "compat30/test",
-    sbtPublishCommand = s"""set every version := "${Versions.scalaCollectionCompat}"; compat30/publishLocal""",
+    sbtPublishCommand = "compat30/publishLocal",
   )
 
   lazy val verify = SbtCommunityProject(
@@ -528,7 +458,7 @@ object projects:
   lazy val disciplineMunit = SbtCommunityProject(
     project = "discipline-munit",
     sbtTestCommand = "test",
-    sbtPublishCommand = s"""set every version := "${Versions.disciplineMunit}";coreJVM/publishLocal;coreJS/publishLocal""",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline, munit)
   )
 
@@ -555,14 +485,14 @@ object projects:
   lazy val catsMtl = SbtCommunityProject(
     project = "cats-mtl",
     sbtTestCommand = "testsJVM/test;testsJS/test",
-    sbtPublishCommand = s"""set every version := "${Versions.catsMtl}";coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal""",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal;lawsJVM/publishLocal;lawsJS/publishLocal",
     dependencies = List(cats, disciplineMunit)
   )
 
   lazy val coop = SbtCommunityProject(
     project = "coop",
     sbtTestCommand = "test",
-    sbtPublishCommand = s"""set every version := "${Versions.coop}";coreJVM/publishLocal;coreJS/publishLocal""",
+    sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(cats, catsMtl)
   )
 
