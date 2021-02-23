@@ -2628,13 +2628,19 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern3    ::=  InfixPattern [‘*’]
+    /**  Pattern3    ::=  InfixPattern
+     *                 |  PatVar ‘*’
      */
     def pattern3(): Tree =
       val p = infixPattern()
       if followingIsVararg() then
         atSpan(in.skipToken()) {
-          Typed(p, Ident(tpnme.WILDCARD_STAR))
+          p match
+            case p @ Ident(name) if name.isVarPattern =>
+              Typed(p, Ident(tpnme.WILDCARD_STAR))
+            case _ =>
+              syntaxError(em"`*` must follow pattern variable")
+              p
         }
       else p
 
@@ -2726,7 +2732,7 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
       inParens(patternsOpt(Location.InPatternArgs))
