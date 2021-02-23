@@ -1609,10 +1609,8 @@ object Build {
         Compile / resourceGenerators += Def.task {
           val cssDesitnationFile = (Compile / resourceManaged).value / "dotty_res" / "styles" / "scaladoc-searchbar.css"
           val cssSourceFile = (resourceDirectory in Compile in `scaladoc-js`).value / "scaladoc-searchbar.css"
-          FileFunction.cached(streams.value.cacheDirectory / "css-cache") { (in: Set[File]) =>
-            in.headOption.map(sbt.IO.copyFile(_, cssDesitnationFile))
-            Set(cssDesitnationFile)
-          }.apply(Set(cssSourceFile)).toSeq
+          sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
+          Seq(cssDesitnationFile)
         }.taskValue,
         testDocumentationRoot := (baseDirectory.value / "test-documentations").getAbsolutePath,
         buildInfoPackage in Test := "dotty.tools.scaladoc.test",
