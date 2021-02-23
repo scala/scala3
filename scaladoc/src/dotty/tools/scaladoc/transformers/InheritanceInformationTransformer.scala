@@ -17,10 +17,12 @@ class InheritanceInformationTransformer(using DocContext) extends (Module => Mod
   private def bareClasslikeKind(kind: Kind): Kind = kind match
     case _: Kind.Trait => Kind.Trait(Nil, Nil)
     case _: Kind.Class => Kind.Class(Nil, Nil)
+    case e if e.isInstanceOf[Kind.Enum] => Kind.Enum(Nil, Nil)
+    case ec if ec.isInstanceOf[Kind.EnumCase] => Kind.EnumCase(Kind.Object)
     case o => o
 
   private def getSupertypes(c: Member): Seq[(DRI, LinkToType)] =
     val selfMapping =
-      if !c.kind.isInstanceOf[Classlike] then Nil
-      else c.directParents.map(_._2 -> c.asLink)
+      if !c.kind.isInstanceOf[Classlike] && !c.kind.isInstanceOf[Kind.EnumCase] then Nil
+      else c.directParents.map(p => p.dri -> c.asLink)
     c.members.flatMap(getSupertypes) ++ selfMapping

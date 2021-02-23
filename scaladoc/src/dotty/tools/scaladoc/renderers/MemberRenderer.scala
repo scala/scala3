@@ -283,7 +283,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       buildGroup("Type members", Seq(
         ("Classlikes", rest.filter(m => m.kind.isInstanceOf[Classlike])),
         ("Types", rest.filter(_.kind.isInstanceOf[Kind.Type])),
-        ("Enum entries", rest.filter(_.kind == Kind.EnumCase)),
+        ("Enum entries", rest.filter(_.kind.isInstanceOf[Kind.EnumCase])),
       )),
       buildGroup("Value members", Seq(
         ("Constructors", rest.filter(_.kind.isInstanceOf[Kind.Constructor])),
