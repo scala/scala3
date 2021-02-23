@@ -598,11 +598,8 @@ class Typer extends Namer
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
-      if !qual.symbol.is(JavaDefined) && tree.name.endsWith("$")
-      then
-        val nameOrig = tree.name.asSimpleName
-        val nameSemantic = nameOrig.slice(0, nameOrig.length - 1).moduleClassName
-        val tree2 = untpd.cpy.Select(tree)(qual, nameSemantic)
+      if !qual.symbol.is(JavaDefined) then
+        val tree2 = untpd.cpy.Select(tree)(qual, tree.name.unmangleClassName)
         assignType(tree2, qual)
       else
         assignType(cpy.Select(tree)(qual, tree.name), qual)
