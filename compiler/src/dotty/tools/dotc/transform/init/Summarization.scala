@@ -335,16 +335,13 @@ object Summarization {
     }
 
     if (cls.defTree.isEmpty)
-      cls.info match {
-        case cinfo: ClassInfo =>
-          val source = {
-            implicit val ctx2: Context = theCtx.withSource(cls.source(using theCtx))
-            TypeTree(cls.typeRef).withSpan(cls.span)
-          }
+        val source = {
+          implicit val ctx2: Context = theCtx.withSource(cls.source(using theCtx))
+          TypeTree(cls.typeRef).withSpan(cls.span)
+        }
 
-          val parentOuter =  cinfo.classParents.map { extractParentOuters(_, source) }.toMap
-          ClassSummary(cls, parentOuter)
-      }
+        val parentOuter = cls.info.parents.map { extractParentOuters(_, source) }.toMap
+        ClassSummary(cls, parentOuter)
     else {
       val tpl = cls.defTree.asInstanceOf[TypeDef]
       val parents = tpl.rhs.asInstanceOf[Template].parents

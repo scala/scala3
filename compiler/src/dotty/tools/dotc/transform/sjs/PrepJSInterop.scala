@@ -291,7 +291,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
     /** Performs checks and rewrites specific to classes / objects extending `js.Any`. */
     private def transformJSClassDef(classDef: TypeDef)(using Context): Tree = {
-      val sym = classDef.symbol
+      val sym = classDef.symbol.asClass
       val isJSNative = sym.hasAnnotation(jsdefn.JSNativeAnnot)
 
       sym.addAnnotation(jsdefn.JSTypeAnnot)
@@ -315,8 +315,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       }
 
       // Check the parents
-      for (parent <- sym.info.parents) {
-        parent.typeSymbol match {
+      for (parentSym <- sym.parentSyms) {
+        parentSym match {
           case parentSym if parentSym == defn.ObjectClass =>
             // AnyRef is valid, except for non-native JS classes and objects
             if (!isJSNative && !sym.is(Trait)) {

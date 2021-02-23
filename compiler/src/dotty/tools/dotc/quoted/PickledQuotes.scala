@@ -140,7 +140,7 @@ object PickledQuotes {
         class ReplaceSplicedTyped extends TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tp: ClassInfo =>
-              tp.derivedClassInfo(classParents = tp.classParents.map(apply))
+              tp.derivedClassInfo(declaredParents = tp.declaredParents.map(apply))
             case tp: TypeRef =>
               typeSpliceMap.get(tp.symbol) match
                 case Some(t) if tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) => mapOver(t)

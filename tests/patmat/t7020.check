@@ -1,4 +1,4 @@
-3: Pattern Match Exhaustivity: List(_, _: _*)
-10: Pattern Match Exhaustivity: List(_, _: _*)
-17: Pattern Match Exhaustivity: List(_, _: _*)
-24: Pattern Match Exhaustivity: List(_, _: _*)
+3: Pattern Match Exhaustivity: List(_, _*)
+10: Pattern Match Exhaustivity: List(_, _*)
+17: Pattern Match Exhaustivity: List(_, _*)
+24: Pattern Match Exhaustivity: List(_, _*)

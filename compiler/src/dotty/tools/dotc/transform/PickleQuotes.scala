@@ -455,7 +455,7 @@ class PickleQuotes extends MacroTransform {
             apply(tp.dealias)
           case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
             val hiBound = tp.typeSymbol.info match
-              case info @ ClassInfo(_, _, classParents, _, _) => classParents.reduce(_ & _)
+              case info: ClassInfo => info.parents.reduce(_ & _)
               case info => info.hiBound
             apply(hiBound)
           case tp =>

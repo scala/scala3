@@ -92,6 +92,14 @@ while [[ $# -gt 0 ]]; do
       DEBUG="$DEBUG_STR"
       shift
       ;;
+    -version)
+      # defer to scalac, then exit
+      addScalacOptions "${1}"
+      shift
+      eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]}"
+      scala_exit_status=$?
+      onExit
+      ;;
     -J*)
       addJvmOptions "${1:2}"
       addScalacOptions "${1}"
@@ -115,7 +123,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ $execute_script == true ]; then
-  [ -n "$script_trace" ] && set -x
+  [ -n "${script_trace-}" ] && set -x
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
@@ -123,18 +131,21 @@ if [ $execute_script == true ]; then
   setScriptName="-Dscript.path=$target_script"
   target_jar="${target_script%.*}.jar"
   if [[ $save_compiled == true && "$target_jar" -nt "$target_script" ]]; then
-    eval exec "\"$JAVACMD\"" $setScriptName -jar "$target_jar" "${script_args[@]}"
+    eval "\"$JAVACMD\"" $setScriptName -jar "$target_jar" "${script_args[@]}"
+    scala_exit_status=$?
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
     residual_args+=($setScriptName)
-    eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+    eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+    scala_exit_status=$?
   fi
 elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
   echo "Starting scala3 REPL..."
-  eval "\"$PROG_HOME/bin/scalac\" $cp_arg ${java_options[@]} -repl ${residual_args[@]}"
+  eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} -repl ${residual_args[@]}"
+  scala_exit_status=$?
 elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
@@ -148,7 +159,10 @@ elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
   if [ $with_compiler == true ]; then
     cp_arg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
-  eval exec "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
+  # exec here would prevent onExit from being called, leaving terminal in unusable state
+  eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
+  scala_exit_status=$?
 else
-    echo "warning: command option is not correct."
+  echo "warning: command option is not correct."
 fi
+onExit

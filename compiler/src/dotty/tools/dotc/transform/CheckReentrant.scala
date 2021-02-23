@@ -73,8 +73,8 @@ class CheckReentrant extends MiniPhase {
               scanning(sym) {
                 sym.info.widenExpr.classSymbols.foreach(addVars)
               }
-        for (parent <- cls.classInfo.classParents)
-          addVars(parent.classSymbol.asClass)
+        for (parent <- cls.parentSyms)
+          addVars(parent.asClass)
       }
     }
 

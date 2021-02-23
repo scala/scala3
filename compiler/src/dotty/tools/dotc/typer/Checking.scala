@@ -576,8 +576,8 @@ object Checking {
           }
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
-            classParents =
-              tp.parents.map(p => transformedParent(apply(p)))
+            declaredParents =
+              tp.declaredParents.map(p => transformedParent(apply(p)))
             )
         case _ =>
           mapOver(tp)
@@ -1180,7 +1180,7 @@ trait Checking {
         report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
         cls.info match
           case info: ClassInfo =>
-            cls.info = info.derivedClassInfo(classParents = enumCls.typeRefApplied :: info.classParents)
+            cls.info = info.derivedClassInfo(declaredParents = enumCls.typeRefApplied :: info.declaredParents)
           case _ =>
 
     val enumCase =

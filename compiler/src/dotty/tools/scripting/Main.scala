@@ -1,7 +1,7 @@
 package dotty.tools.scripting
 
 import java.io.File
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin 
 
 /** Main entry point to the Scripting execution engine */
@@ -60,7 +60,7 @@ object Main:
     def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
 
-    val cpPaths = runtimeClasspath.split(pathsep).map(_.absPath)
+    val cpPaths = runtimeClasspath.split(pathsep).map(_.toUrl)
 
     import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
@@ -80,16 +80,11 @@ object Main:
 
   def pathsep = sys.props("path.separator")
 
-
-  extension(file: File){
-    def norm: String = file.toString.norm
-  }
-
   extension(path: String) {
     // Normalize path separator, convert relative path to absolute
     def norm: String =
       path.replace('\\', '/') match {
-        case s if s.secondChar == ":" => s.drop(2)
+        case s if s.secondChar == ":" => s
         case s if s.startsWith("./") => s.drop(2)
         case s => s
       }
@@ -97,12 +92,14 @@ object Main:
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
       case str if str.isAbsolute => norm
-      case _ => s"/${sys.props("user.dir").norm}/$norm"
+      case _ => Paths.get(userDir,norm).toString.norm
 
-    def absFile: File = File(path.absPath)
+    def toUrl: String = Paths.get(absPath).toUri.toURL.toString
 
     // Treat norm paths with a leading '/' as absolute.
     // Windows java.io.File#isAbsolute treats them as relative.
     def isAbsolute = path.norm.startsWith("/") || (isWin && path.secondChar == ":")
     def secondChar: String = path.take(2).drop(1).mkString("")
   }
+
+  lazy val userDir = sys.props("user.dir").norm

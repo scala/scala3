@@ -9,12 +9,12 @@ def Test = {
   val c_any: C[_] = c_string
   val any: Any = c_string
 
-  // Case 1: error, tested in tests/neg/i5077.scala
-  // c_string match {
-  //   case C(IsInt, _) => println(s"An Int") // Can't possibly happen!
-  //   case C(IsString, s) => println(s"A String with length ${s.length}")
-  //   case _ => println("No match")
-  // }
+  // Case 1: error
+  c_string match {
+    case C(IsInt, _) => println(s"An Int") // error
+    case C(IsString, s) => println(s"A String with length ${s.length}")
+    case _ => println("No match")
+  }
 
   // Case 2: Should match the second case and print the length of the string
   c_any match {

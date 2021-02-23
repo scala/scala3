@@ -2248,7 +2248,7 @@ class Typer extends Namer
         report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
       }
 
-      checkNonCyclicInherited(cls.thisType, cls.classParents, cls.info.decls, cdef.srcPos)
+      checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
 
       // check value class constraints
       checkDerivedValueClass(cls, body1)
@@ -2297,7 +2297,7 @@ class Typer extends Namer
     def realClassParent(cls: Symbol): ClassSymbol =
       if (!cls.isClass) defn.ObjectClass
       else if (!cls.is(Trait)) cls.asClass
-      else cls.asClass.classParents match {
+      else cls.info.parents match {
         case parentRef :: _ => realClassParent(parentRef.typeSymbol)
         case nil => defn.ObjectClass
       }
@@ -3784,11 +3784,32 @@ class Typer extends Namer
         withMode(Mode.GadtConstraintInference) {
           TypeComparer.constrainPatternType(tree.tpe, pt)
         }
-        val cmp =
-          untpd.Apply(
-            untpd.Select(untpd.TypedSplice(tree), nme.EQ),
-            untpd.TypedSplice(dummyTreeOfType(pt)))
-        typedExpr(cmp, defn.BooleanType)
+
+        // approximate type params with bounds
+        def approx = new ApproximatingTypeMap {
+          def apply(tp: Type) = tp.dealias match
+            case tp: TypeRef if !tp.symbol.isClass =>
+              expandBounds(tp.info.bounds)
+            case _ =>
+              mapOver(tp)
+        }
+
+        if tree.symbol.is(Module)
+           && !(tree.tpe frozen_<:< pt) // fast track
+           && !(tree.tpe frozen_<:< approx(pt))
+        then
+          // We could check whether `equals` is overriden.
+          // Reasons for not doing so:
+          // - it complicates the protocol
+          // - such code patterns usually implies hidden errors in the code
+          // - it's safe/sound to reject the code
+          report.error(TypeMismatch(tree.tpe, pt, "\npattern type is incompatible with expected type"), tree.srcPos)
+        else
+          val cmp =
+            untpd.Apply(
+              untpd.Select(untpd.TypedSplice(tree), nme.EQ),
+              untpd.TypedSplice(dummyTreeOfType(pt)))
+          typedExpr(cmp, defn.BooleanType)
       case _ =>
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol)(using Context): Unit =

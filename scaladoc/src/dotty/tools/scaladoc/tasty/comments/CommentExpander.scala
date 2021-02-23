@@ -382,7 +382,7 @@ object CommentExpander {
       case Some(cmt) if !cmt.isExpanded =>
         expandComment(sym.owner)
         if sym.isClass then
-          for ptype <- sym.info.asInstanceOf[Types.ClassInfo].classParents do
+          for ptype <- sym.info.parents do
             expandComment(ptype.classSymbol)
         Some(expandComment(sym, sym.owner, cmt))
       case _ =>
