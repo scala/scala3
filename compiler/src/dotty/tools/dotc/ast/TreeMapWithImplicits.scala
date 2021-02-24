@@ -5,6 +5,7 @@ import Trees._
 import core.Contexts._
 import core.ContextOps.enter
 import core.Flags._
+import core.NameOps._
 import core.Symbols._
 import core.TypeError
 
@@ -69,8 +70,17 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     importScopeCtx(stats)(using nestedCtx)
   }
 
-  private def nestedPackageScopeCtx(tree: PackageDef)(using Context): Context =
-    importScopeCtx(tree.stats)(using ctx.withOwner(tree.symbol))
+  private def nestedPackageScopeCtx(tree: PackageDef)(using Context): Context = {
+    val nestedCtx = ctx.withOwner(tree.symbol).fresh.setNewScope
+    for
+      packageDecl <- tree.symbol.moduleClass.asClass.info.decls.toList
+      if packageDecl.isTerm && packageDecl.name.isPackageObjectName
+      decl <- packageDecl.info.decls.toList
+      if decl.isTerm && decl.isOneOf(GivenOrImplicit)
+    do
+      nestedCtx.enter(decl)
+    importScopeCtx(tree.stats)(using nestedCtx)
+  }
 
   private def importScopeCtx(stats: List[Tree])(using Context): Context =
     stats.foldLeft(ctx) {
