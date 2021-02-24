@@ -596,13 +596,27 @@ class Typer extends Namer
         .withSpan(tree.span)
         .computeNullable()
 
-    def typeSelectOnType(qual: untpd.Tree)(using Context) =
-      typedSelect(untpd.cpy.Select(tree)(qual, tree.name.toTypeName), pt)
+    def javaSelectOnType(qual: Tree)(using Context) =
+      // semantic name conversion for `O$` in java code
+      if !qual.symbol.is(JavaDefined) then
+        val tree2 = untpd.cpy.Select(tree)(qual, tree.name.unmangleClassName)
+        assignType(tree2, qual)
+      else
+        assignType(cpy.Select(tree)(qual, tree.name), qual)
 
     def tryJavaSelectOnType(using Context): Tree = tree.qualifier match {
-      case Select(qual, name) => typeSelectOnType(untpd.Select(qual, name.toTypeName))
-      case Ident(name)        => typeSelectOnType(untpd.Ident(name.toTypeName))
-      case _                  => errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
+      case sel @ Select(qual, name) =>
+        val qual1 = untpd.cpy.Select(sel)(qual, name.toTypeName)
+        val qual2 = typedType(qual1, WildcardType)
+        javaSelectOnType(qual2)
+
+      case id @ Ident(name) =>
+        val qual1 = untpd.cpy.Ident(id)(name.toTypeName)
+        val qual2 = typedType(qual1, WildcardType)
+        javaSelectOnType(qual2)
+
+      case _ =>
+        errorTree(tree, "cannot convert to type selection") // will never be printed due to fallback
     }
 
     def selectWithFallback(fallBack: Context ?=> Tree) =
