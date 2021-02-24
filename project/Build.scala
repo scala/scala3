@@ -496,6 +496,8 @@ object Build {
         }
       }.evaluated,
 
+      Compile / mainClass := Some("dotty.tools.dotc.Main"),
+
       scala := {
         val args: List[String] = spaceDelimited("<arg>").parsed.toList
         val externalDeps = externalCompilerClasspathTask.value
