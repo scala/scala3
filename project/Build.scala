@@ -1167,6 +1167,11 @@ object Build {
     sources.in(Test) := Nil
   )
 
+  def scalaDoc(implicit mode: Mode): Project = mode match {
+    case NonBootstrapped => `scaladoc-nonBootstrapped`
+    case Bootstrapped => scaladoc
+  }
+
   lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).asScaladocTestcases
 
   lazy val `scaladoc-js` = project.in(file("scaladoc-js")).asScaladocJs
@@ -1459,7 +1464,7 @@ object Build {
 
     // FIXME: we do not aggregate `bin` because its tests delete jars, thus breaking other tests
     def asDottyRoot(implicit mode: Mode): Project = project.withCommonSettings.
-      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, scaladoc, `scala3-sbt-bridge`).
+      aggregate(`scala3-interfaces`, dottyLibrary, dottyCompiler, tastyCore, `scaladoc-nonBootstrapped`, `scala3-sbt-bridge`).
       bootstrappedAggregate(`scala3-language-server`, `scala3-staging`, `scala3-tasty-inspector`,
         `scala3-library-bootstrappedJS`, scaladoc).
       dependsOn(tastyCore).
@@ -1681,7 +1686,7 @@ object Build {
     def asDist(implicit mode: Mode): Project = project.
       enablePlugins(PackPlugin).
       withCommonSettings.
-      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scaladoc).
+      dependsOn(`scala3-interfaces`, dottyCompiler, dottyLibrary, tastyCore, `scala3-staging`, `scala3-tasty-inspector`, scalaDoc).
       settings(commonDistSettings).
       bootstrappedSettings(
         target := baseDirectory.value / "target" // override setting in commonBootstrappedSettings
