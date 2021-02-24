@@ -1355,12 +1355,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  for equality would give the wrong result, so we should not use the sets
      *  for comparisons.
      */
-    def canCompare(ts: Set[Type]) = ctx.phase.isTyper || {
-      val hasSkolems = new ExistsAccumulator(_.isInstanceOf[SkolemType]) {
-        override def stopAtStatic = true
-      }
-      !ts.exists(hasSkolems(false, _))
-    }
+    def canCompare(ts: Set[Type]) =
+      ctx.phase.isTyper
+      || !ts.exists(_.existsPart(_.isInstanceOf[SkolemType], stopAtStatic = true))
+
     def verified(result: Boolean): Boolean =
       if Config.checkAtomsComparisons then
         try
