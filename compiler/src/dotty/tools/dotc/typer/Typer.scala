@@ -1217,7 +1217,7 @@ class Typer extends Namer
      *  @post: If result exists, `paramIndex` is defined for the name of
      *         every parameter in `params`.
      */
-    lazy val calleeType: Type = untpd.stripAnnotated(fnBody) match {
+    lazy val calleeType: Type = untpd.stripAnnotated(untpd.unsplice(fnBody)) match {
       case ident: untpd.Ident if isContextual =>
         val ident1 = typedIdent(ident, WildcardType)
         val tp = ident1.tpe.widen
@@ -2714,7 +2714,7 @@ class Typer extends Namer
     // see tests/pos/i7778b.scala
 
     val paramTypes = {
-      val hasWildcard = formals.exists(_.isInstanceOf[WildcardType])
+      val hasWildcard = formals.exists(_.existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true))
       if hasWildcard then formals.map(_ => untpd.TypeTree())
       else formals.map(untpd.TypeTree)
     }
