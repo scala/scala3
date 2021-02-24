@@ -30,6 +30,7 @@ import collection.mutable
 import reporting.trace
 import util.Spans.Span
 import dotty.tools.dotc.transform.{Splicer, TreeMapWithStages}
+import quoted.QuoteUtils
 
 object Inliner {
   import tpd._
@@ -520,7 +521,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, rhs).withSpan(selfSym.span).setDefTree
+      val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span).setDefTree
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
