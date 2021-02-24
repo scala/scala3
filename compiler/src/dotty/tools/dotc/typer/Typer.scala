@@ -3803,7 +3803,7 @@ class Typer extends Namer
               mapOver(tp)
         }
 
-        if tree.symbol.is(Module)
+        if tree.symbol.isOneOf(Module | Enum)
            && !(tree.tpe frozen_<:< pt) // fast track
            && !(tree.tpe frozen_<:< approx(pt))
         then
