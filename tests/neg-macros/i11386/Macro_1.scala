@@ -11,7 +11,7 @@ object test {
   inline def notNull(inline i: Int): Unit = ${notNullImpl('i)}
 
   def notNullImpl(expr: Expr[Int])(using quotes: Quotes): Expr[Unit] = {
-    println(expr.show)
+    expr.show
     expr.value.foreach(i => if(i == 0) quotes.reflect.report.error("test"))
     '{()}
   }
