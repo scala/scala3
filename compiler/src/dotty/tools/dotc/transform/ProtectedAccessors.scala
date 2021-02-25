@@ -6,6 +6,7 @@ import core.NameKinds._
 import core.Symbols._
 import core.Flags._
 import core.Decorators._
+import core.Names.TermName
 import MegaPhase.MiniPhase
 import config.Printers.transforms
 
@@ -51,7 +52,7 @@ class ProtectedAccessors extends MiniPhase {
 
   object Accessors extends AccessProxies {
     val insert: Insert = new Insert {
-      def accessorNameKind = ProtectedAccessorName
+      def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName = ProtectedAccessorName(name)
       def needsAccessor(sym: Symbol)(using Context) = ProtectedAccessors.needsAccessor(sym)
 
       override def ifNoHost(reference: RefTree)(using Context): Tree = {
