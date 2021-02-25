@@ -49,8 +49,9 @@ esac
 
 unset CYGPATHCMD
 if [[ $cygwin || $mingw || $msys ]]; then
-  # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
+  # ConEmu terminal is incompatible with jna-5.*.jar
   [[ ($CONEMUANSI || $ConEmuANSI) ]] && conemu=true
+  # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
   CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
     rxvt* | xterm* | cygwin*)
@@ -148,8 +149,8 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-# ConEmu must not define
 [[ $conemu ]] || JNA=$(find_lib "*jna-5*")
+
 # debug
 
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
