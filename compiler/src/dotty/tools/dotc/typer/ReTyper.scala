@@ -115,7 +115,9 @@ class ReTyper extends Typer with ReChecking {
   }
 
   override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
-    try super.typedUnadapted(tree, pt, locked)
+    try super.typedUnadapted(tree, pt, locked) match
+      case member: MemberDef => member.setDefTree
+      case tree => tree
     catch {
       case NonFatal(ex) =>
         if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase then

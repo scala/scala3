@@ -64,9 +64,18 @@ class Driver {
 
   protected def sourcesRequired: Boolean = true
 
-  def setup(args: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
+  protected def command: CompilerCommand = ScalacCommand
+
+  /** Setup context with initialized settings from CLI arguments, then check if there are any settings that
+   *  would change the default behaviour of the compiler.
+   *
+   *  @return If there is no setting like `-help` preventing us from continuing compilation,
+   *  this method returns a list of files to compile and an updated Context.
+   *  If compilation should be interrupted, this method returns None.
+   */
+  def setup(args: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
     val ictx = rootCtx.fresh
-    val summary = CompilerCommand.distill(args)(using ictx)
+    val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
     MacroClassLoader.init(ictx)
     Positioned.init(using ictx)
@@ -74,9 +83,11 @@ class Driver {
     inContext(ictx) {
       if !ctx.settings.YdropComments.value || ctx.mode.is(Mode.ReadComments) then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
-      val fileNames = CompilerCommand.checkUsage(summary, sourcesRequired)
-      val files = fileNames.map(ctx.getFile)
-      (files, fromTastySetup(files))
+      val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
+      fileNamesOrNone.map { fileNames =>
+        val files = fileNames.map(ctx.getFile)
+        (files, fromTastySetup(files))
+      }
     }
   }
 
@@ -182,8 +193,11 @@ class Driver {
    *                    if compilation succeeded.
    */
   def process(args: Array[String], rootCtx: Context): Reporter = {
-    val (files, compileCtx) = setup(args, rootCtx)
-    doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+    setup(args, rootCtx) match
+      case Some((files, compileCtx)) =>
+        doCompile(newCompiler(using compileCtx), files)(using compileCtx)
+      case None =>
+        rootCtx.reporter
   }
 
   def main(args: Array[String]): Unit = {

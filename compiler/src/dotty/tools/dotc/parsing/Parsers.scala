@@ -3119,7 +3119,7 @@ object Parsers {
       def wildcardSelector() =
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
-            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("3.1")}",
+            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("future")}",
             in.sourcePos())
           patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
@@ -3137,7 +3137,7 @@ object Parsers {
         if in.token == ARROW || isIdent(nme.as) then
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
-              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("3.1")}",
+              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("future")}",
               in.sourcePos())
             patch(source, Span(in.offset, in.offset + 2),
                 if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"

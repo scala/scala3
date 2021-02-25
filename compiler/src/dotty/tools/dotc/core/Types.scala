@@ -33,7 +33,7 @@ import config.Config
 import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
-import config.Printers.{core, typr}
+import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 
@@ -422,8 +422,8 @@ object Types {
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean, forceLazy: Boolean = true)(using Context): Boolean =
-      new ExistsAccumulator(p, forceLazy).apply(false, this)
+    final def existsPart(p: Type => Boolean, stopAtStatic: Boolean = false, forceLazy: Boolean = true)(using Context): Boolean =
+      new ExistsAccumulator(p, stopAtStatic, forceLazy).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
@@ -4495,7 +4495,7 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", typr, show = true) {
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               try cmp.matchCases(scrutinee.normalized, cases)
               catch case ex: Throwable =>
@@ -5686,11 +5686,12 @@ object Types {
     protected def traverseChildren(tp: Type): Unit = foldOver((), tp)
   }
 
-  class ExistsAccumulator(p: Type => Boolean, forceLazy: Boolean = true)(using Context) extends TypeAccumulator[Boolean] {
-    override def stopAtStatic: Boolean = false
+  class ExistsAccumulator(
+      p: Type => Boolean,
+      override val stopAtStatic: Boolean,
+      forceLazy: Boolean)(using Context) extends TypeAccumulator[Boolean]:
     def apply(x: Boolean, tp: Type): Boolean =
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
-  }
 
   class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(using Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)

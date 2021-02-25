@@ -64,11 +64,24 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
+  /** Used to elide long output in replStringOf.
+   *
+   * TODO: Perhaps implement setting scala.repl.maxprintstring as in Scala 2, but
+   * then this bug will surface, so perhaps better not?
+   * https://github.com/scala/bug/issues/12337
+   */
+  private[repl] def truncate(str: String): String = {
+    val showTruncated = " ... large output truncated, print value to show all"
+    val ncp = str.codePointCount(0, str.length) // to not cut inside code point
+    if ncp <= MaxStringElements then str
+    else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + showTruncated
+  }
+
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    myReplStringOf(value)
+    truncate(myReplStringOf(value))
   }
 
   /** Load the value of the symbol using reflection.

@@ -107,7 +107,7 @@ class CommentPicklingTest {
   private class UnpicklingDriver extends Driver {
     override def initCtx = super.initCtx.addMode(Mode.ReadComments)
     def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
-      implicit val (_, ctx: Context) = setup(args, initCtx)
+      implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
         val unpickler = new DottyUnpickler(f.toByteArray())

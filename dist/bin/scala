@@ -143,7 +143,6 @@ elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indic
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
-  echo "Starting scala3 REPL..."
   eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} -repl ${residual_args[@]}"
   scala_exit_status=$?
 elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then

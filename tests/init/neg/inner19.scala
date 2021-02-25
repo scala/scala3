@@ -14,6 +14,6 @@ class A {
 
 class B extends A {
   println((new O.B).f)
-  O.C(4)                // error: leak due to potential length limit
+  O.C(4)                // error
   override val n = 50   // error
 }

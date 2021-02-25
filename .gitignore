@@ -84,6 +84,7 @@ vscode-dotty/.vscode-test
 community-build/scala3-bootstrapped.version
 community-build/sbt-dotty-sbt
 community-build/sbt-scalajs-sbt
+community-build/dotty-community-build-deps
 
 # Vulpix output files
 *.check.out

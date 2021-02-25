@@ -22,6 +22,7 @@ import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
+import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
 import org.jline.reader._
 
@@ -67,9 +68,14 @@ class ReplDriver(settings: Array[String],
   private def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    val ictx = setup(settings, rootCtx)._2
-    ictx.base.initialize()(using ictx)
-    ictx
+    setup(settings, rootCtx) match
+      case Some((files, ictx)) =>
+        shouldStart = true
+        ictx.base.initialize()(using ictx)
+        ictx
+      case None =>
+        shouldStart = false
+        rootCtx
   }
 
   /** the initial, empty state of the REPL session */
@@ -91,12 +97,21 @@ class ReplDriver(settings: Array[String],
   }
 
   private var rootCtx: Context = _
+  private var shouldStart: Boolean = _
   private var compiler: ReplCompiler = _
   private var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
   resetToInitial()
+
+  override protected def command: CompilerCommand = ReplCommand
+
+  /** Try to run REPL if there is nothing that prevents us doing so.
+   *
+   *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
+   */
+  final def tryRunning = if shouldStart then runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *

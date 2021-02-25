@@ -1,0 +1,10 @@
+> deleteDepsFile
+> reload
+
+> a/publishLocal
+
+-> b/update
+
+> reload
+
+> b/update

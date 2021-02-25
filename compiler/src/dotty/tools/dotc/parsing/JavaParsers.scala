@@ -6,7 +6,6 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.FlagSet
 
-
 import JavaTokens._
 import JavaScanners._
 import Scanners.Offset
@@ -278,6 +277,7 @@ object JavaParsers {
       }
 
     def typ(): Tree =
+      annotations()
       optArrayBrackets {
         if (in.token == FINAL) in.nextToken()
         if (in.token == IDENTIFIER) {
@@ -516,6 +516,7 @@ object JavaParsers {
 
     def typeParam(flags: FlagSet): TypeDef =
       atSpan(in.offset) {
+        annotations()
         val name = identForType()
         val hi = if (in.token == EXTENDS) { in.nextToken() ; bound() } else javaLangObject()
         TypeDef(name, TypeBoundsTree(EmptyTree, hi)).withMods(Modifiers(flags))

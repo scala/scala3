@@ -541,11 +541,11 @@ object RefChecks {
         || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
 
       def isImplemented(mbr: Symbol) =
-        val mbrType = clazz.thisType.memberInfo(mbr)
+        val mbrDenot = mbr.asSeenFrom(clazz.thisType)
         def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
         clazz.nonPrivateMembersNamed(mbr.name)
           .filterWithPredicate(
-            impl => isConcrete(impl.symbol) && mbrType.matchesLoosely(impl.info))
+            impl => isConcrete(impl.symbol) && mbrDenot.matchesLoosely(impl))
           .exists
 
       /** The term symbols in this class and its baseclasses that are
@@ -602,8 +602,10 @@ object RefChecks {
         }
 
         for (member <- missing) {
+          def showDclAndLocation(sym: Symbol) =
+            s"${sym.showDcl} in ${sym.owner.showLocated}"
           def undefined(msg: String) =
-            abstractClassError(false, s"${member.showDcl} is not defined $msg")
+            abstractClassError(false, s"${showDclAndLocation(member)} is not defined $msg")
           val underlying = member.underlyingSymbol
 
           // Give a specific error message for abstract vars based on why it fails:
@@ -641,13 +643,13 @@ object RefChecks {
                     val abstractSym = pa.typeSymbol
                     val concreteSym = pc.typeSymbol
                     def subclassMsg(c1: Symbol, c2: Symbol) =
-                      s": ${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
+                      s"${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
                     val addendum =
                       if (abstractSym == concreteSym)
                         (pa.typeConstructor, pc.typeConstructor) match {
                           case (TypeRef(pre1, _), TypeRef(pre2, _)) =>
-                            if (pre1 =:= pre2) ": their type parameters differ"
-                            else ": their prefixes (i.e. enclosing instances) differ"
+                            if (pre1 =:= pre2) "their type parameters differ"
+                            else "their prefixes (i.e. enclosing instances) differ"
                           case _ =>
                             ""
                         }
@@ -657,18 +659,22 @@ object RefChecks {
                         subclassMsg(concreteSym, abstractSym)
                       else ""
 
-                    undefined(s"\n(Note that ${pa.show} does not match ${pc.show}$addendum)")
+                    undefined(s"""
+                                 |(Note that
+                                 | parameter ${pa.show} in ${showDclAndLocation(underlying)} does not match
+                                 | parameter ${pc.show} in ${showDclAndLocation(concrete.symbol)}
+                                 | $addendum)""".stripMargin)
                   case xs =>
                     undefined(
                       if concrete.symbol.is(AbsOverride) then
-                        s"\n(The class implements ${concrete.showDcl} but that definition still needs an implementation)"
+                        s"\n(The class implements ${showDclAndLocation(concrete.symbol)} but that definition still needs an implementation)"
                       else
-                        s"\n(The class implements a member with a different type: ${concrete.showDcl})")
+                        s"\n(The class implements a member with a different type: ${showDclAndLocation(concrete.symbol)})")
                 }
               case Nil =>
                 undefined("")
               case concretes =>
-                undefined(s"\n(The class implements members with different types: ${concretes.map(_.showDcl)}%\n  %)")
+                undefined(s"\n(The class implements members with different types: ${concretes.map(c => showDclAndLocation(c.symbol))}%\n  %)")
             }
           }
           else undefined("")
