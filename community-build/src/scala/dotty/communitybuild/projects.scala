@@ -90,12 +90,17 @@ final case class SbtCommunityProject(
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null,
-    sbtDocCommand: String = null
+    sbtDocCommand: String = null,
+    scalacOptions: List[String] = List("-Ycheck-init")
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
+  private def scalacOptionsString: String =
+    scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
+
   private val baseCommand =
     "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
+    ++ (if scalacOptions.isEmpty then "" else s"""set scalacOptions in Global ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
   override val testCommand =
@@ -307,7 +312,8 @@ object projects:
   lazy val shapeless = SbtCommunityProject(
     project       = "shapeless",
     sbtTestCommand   = "test",
-    sbtDocCommand = forceDoc("typeable", "deriving", "data")
+    sbtDocCommand = forceDoc("typeable", "deriving", "data"),
+    scalacOptions = Nil // disable -Ycheck-init, due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -466,7 +472,8 @@ object projects:
     project = "discipline-specs2",
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    dependencies = List(discipline)
+    dependencies = List(discipline),
+    scalacOptions = Nil // disable -Ycheck-init
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
@@ -479,7 +486,8 @@ object projects:
     project = "cats",
     sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
-    dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations)
+    dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
+    scalacOptions = Nil  // disable -Ycheck-init, due to -Xfatal-warning
   )
 
   lazy val catsMtl = SbtCommunityProject(
