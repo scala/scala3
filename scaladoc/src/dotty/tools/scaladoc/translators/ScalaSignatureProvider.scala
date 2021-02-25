@@ -26,7 +26,9 @@ object ScalaSignatureProvider:
         givenPropertySignature(documentable, builder)
       case cls: Kind.Class =>
         classSignature(documentable, cls, builder)
-      case Kind.Object | Kind.Enum =>
+      case enm: Kind.Enum =>
+        enumSignature(documentable, enm, builder)
+      case Kind.Object =>
         objectSignature(documentable, builder)
       case trt: Kind.Trait =>
         traitSignature(documentable, trt, builder)
@@ -44,7 +46,7 @@ object ScalaSignatureProvider:
   private def enumEntrySignature(member: Member, cls: Kind.Class, bdr: SignatureBuilder): SignatureBuilder =
     val withPrefixes: SignatureBuilder = bdr
       .text("case ")
-      .memberName(member.name, member.dri)
+      .name(member.name, member.dri)
       .generics(cls.typeParams)
 
     val withParameters = withPrefixes.functionParameters(cls.argsLists)
@@ -99,6 +101,15 @@ object ScalaSignatureProvider:
     parentsSignature(clazz, selfSignature)
 
   private def traitSignature(clazz: Member, cls: Kind.Trait, builder: SignatureBuilder): SignatureBuilder =
+    val selfSignature = builder
+      .modifiersAndVisibility(clazz, clazz.kind.name)
+      .name(clazz.name, clazz.dri)
+      .generics(cls.typeParams)
+      .functionParameters(cls.argsLists)
+
+    parentsSignature(clazz, selfSignature)
+
+  private def enumSignature(clazz: Member, cls: Kind.Enum, builder: SignatureBuilder): SignatureBuilder =
     val selfSignature = builder
       .modifiersAndVisibility(clazz, clazz.kind.name)
       .name(clazz.name, clazz.dri)

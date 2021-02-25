@@ -11,7 +11,8 @@ trait ClassLikeSupport:
   private def bareClasslikeKind(symbol: Symbol): Kind =
      if symbol.flags.is(Flags.Module) then Kind.Object
         else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
-        else if symbol.flags.is(Flags.Enum) then Kind.Enum
+        else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
+        else if symbol.flags.is(Flags.Enum) && symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Object)
         else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
@@ -39,7 +40,8 @@ trait ClassLikeSupport:
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
     else if classDef.symbol.flags.is(Flags.Trait) then
       Kind.Trait(typeArgs, args)
-    else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum
+    else if classDef.symbol.flags.is(Flags.Enum) && classDef.symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Class(typeArgs, args))
+    else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
 
   def mkClass(classDef: ClassDef)(
@@ -284,7 +286,7 @@ trait ClassLikeSupport:
 
   def parseClasslike(classDef: ClassDef, signatureOnly: Boolean = false): Member = classDef match
     case c: ClassDef if classDef.symbol.flags.is(Flags.Module) => parseObject(c, signatureOnly)
-    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) => parseEnum(c, signatureOnly)
+    case c: ClassDef if classDef.symbol.flags.is(Flags.Enum) && !classDef.symbol.flags.is(Flags.Case) => parseEnum(c, signatureOnly)
     case clazz => mkClass(classDef)(signatureOnly = signatureOnly)
 
   def parseObject(classDef: ClassDef, signatureOnly: Boolean = false): Member =
@@ -310,13 +312,15 @@ trait ClassLikeSupport:
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
     }.flatten
 
-    val classlikie = mkClass(classDef)(modifiers = extraModifiers, signatureOnly = signatureOnly)
-    val cases =
-      enumNested.map(_.withKind(Kind.EnumCase(Kind.Object))) ++
-      enumTypes.map(et => et.withKind(Kind.EnumCase(et.kind.asInstanceOf[Kind.Type]))) ++
-      enumVals.map(_.withKind(Kind.EnumCase(Kind.Val)))
+    val enumClass = mkClass(classDef)(modifiers = extraModifiers, signatureOnly = signatureOnly)
 
-    classlikie.withNewMembers(cases)
+    val cases = (
+      enumNested ++
+      enumTypes ++
+      enumVals.map(m => m.copy(dri = m.dri.copy(location = enumClass.dri.location)))
+    )
+
+    enumClass.withMembers(cases)
 
   def parseMethod(
       c: ClassDef,
@@ -411,7 +415,9 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_)), body)
       case tpe => (Nil, tpe)
 
-    val kind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics)
+    val defaultKind = Kind.Type(!isTreeAbstract(typeDef.rhs), typeDef.symbol.isOpaque, generics).asInstanceOf[Kind.Type]
+    val kind = if typeDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
+      else defaultKind
     mkMember(typeDef.symbol, kind, tpeTree.asSignature)(deprecated = typeDef.symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
@@ -419,6 +425,7 @@ trait ClassLikeSupport:
     val memberInfo = unwrapMemberInfo(c, valDef.symbol)
     val kind = if valDef.symbol.flags.is(Flags.Implicit) then
         Kind.Implicit(Kind.Val, extractImplicitConversion(valDef.tpt.tpe))
+        else if valDef.symbol.flags.is(Flags.Enum) then Kind.EnumCase(Kind.Val)
         else defaultKind
 
     mkMember(valDef.symbol, kind, memberInfo.res.asSignature)(deprecated = valDef.symbol.isDeprecated())

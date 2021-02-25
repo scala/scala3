@@ -43,7 +43,7 @@ class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures"
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
-// class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
+class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
 
 class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.members)
 

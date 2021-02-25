@@ -54,8 +54,8 @@ enum Kind(val name: String){
   case Object extends Kind("object") with Classlike
   case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("trait") with Classlike
-  case Enum extends Kind("enum") with Classlike
-  case EnumCase(kind: Object.type | Type | Val.type) extends Kind("case")
+  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
+  case EnumCase(kind: Object.type | Type | Val.type | Class) extends Kind("case")
   case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
