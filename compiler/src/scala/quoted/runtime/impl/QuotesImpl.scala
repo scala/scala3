@@ -592,11 +592,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
+        yCheckArgs(args)
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
+        yCheckArgs(args)
         tpd.cpy.Apply(original)(fun, args)
       def unapply(x: Apply): (Term, List[Term]) =
         (x.fun, x.args)
+      private def yCheckArgs(args: List[Term]): Unit =
+        if yCheck then args.foreach(yCheckValidExpr)
     end Apply
 
     given ApplyMethods: ApplyMethods with
@@ -2873,6 +2877,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           Extractors.showConstant(using QuotesImpl.this)(const)
 
     end Printer
+
+    private def yCheckValidExpr(term: Term): Unit =
+      if yCheck then
+        assert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
+          "Reference to a method must be eta-expanded before it is used as an expression: " + term.show)
+
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
