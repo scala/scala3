@@ -120,7 +120,7 @@ if [ "$PROG_NAME" == "$ScriptingMain" ]; then
   scripting_string="-script $target_script ${scripting_args[@]}"
 fi
 
-eval exec "\"$JAVACMD\"" \
+eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${DEBUG-}" \
      "${java_args[@]}" \

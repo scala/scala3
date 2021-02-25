@@ -24,12 +24,9 @@ function onExit() {
 }
 
 # to reenable echo if we are interrupted before completing.
-trap onExit INT TERM
+trap onExit INT TERM EXIT
 
-cygwin=false
-mingw=false
-msys=false
-darwin=false
+unset cygwin mingw msys darwin conemu
 case "`uname`" in
   CYGWIN*) cygwin=true
           ;;
@@ -51,8 +48,9 @@ case "`uname`" in
 esac
 
 unset CYGPATHCMD
-if [[ ($cygwin||$mingw||$msys) ]]; then
+if [[ $cygwin || $mingw || $msys ]]; then
   # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
+  [[ ($CONEMUANSI || $ConEmuANSI) ]] && conemu=true
   CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
     rxvt* | xterm* | cygwin*)
@@ -113,7 +111,7 @@ if [ -n "$CYGPATHCMD" ]; then
     JAVA_HOME=`"$CYGPATHCMD" -am "$JAVA_HOME"`
   CLASSPATH_SUFFIX=";"
   PSEP=";"
-elif ($mingw || $msys); then
+elif [[ $mingw || $msys ]]; then
   # For Mingw / Msys, convert paths from UNIX format before anything is touched
   [ -n "$PROG_HOME" ] &&
     PROG_HOME="`(cd "$PROG_HOME"; pwd -W | sed 's|/|\\\\|g')`"
@@ -131,7 +129,7 @@ find_lib () {
   local lib=$(find $PROG_HOME/lib/ -name "$1")
   if [ -n "$CYGPATHCMD" ]; then
     $CYGPATHCMD -am $lib
-  elif ($mingw || $msys); then
+  elif [[ $mingw ||  $msys ]]; then
     echo $lib | sed 's|/|\\\\|g'
   else
     echo $lib
@@ -150,7 +148,8 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-[[ ($mingw||$msys) ]] || JNA=$(find_lib "*jna-5*")
-
+# ConEmu must not define
+[[ $conemu ]] || JNA=$(find_lib "*jna-5*")
 # debug
+
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
