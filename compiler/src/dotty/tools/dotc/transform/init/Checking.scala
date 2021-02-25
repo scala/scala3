@@ -260,7 +260,7 @@ object Checking {
   /// A potential can be (currently) directly promoted if and only if:
   /// - `pot == this` and all fields of this are initialized, or
   /// - `pot == Warm(C, outer)` where `outer` can be directly promoted.
-  private def canDirectlyPromote(pot: Potential)(using state: State): Boolean =
+  private def canDirectlyPromote(pot: Potential)(using state: State): Boolean = trace("checking direct promotion of " + pot.show, init) {
     if (state.safePromoted.contains(pot)) true
     else pot match {
       case pot: ThisRef =>
@@ -272,8 +272,13 @@ object Checking {
         }
       case Warm(cls, outer) =>
         canDirectlyPromote(outer)
-      case _ => false
+      case _ =>
+        val summary = expand(pot)
+        if (!summary.effs.isEmpty)
+          false // max depth of expansion reached
+        else summary.pots.forall(canDirectlyPromote)
     }
+  }
 
   /// Check the Promotion of a Warm object, according to "Rule 2":
   //
