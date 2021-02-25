@@ -11,7 +11,7 @@ import collection.mutable
 import util.Stats
 import config.Config
 import config.Feature.migrateTo3
-import config.Printers.{constr, subtyping, gadts, noPrinter}
+import config.Printers.{constr, subtyping, gadts, matchTypes, noPrinter}
 import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications._
 import Variances.{Variance, variancesConform}
@@ -2406,7 +2406,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  property that in all possible contexts, the same match type expression
    *  is either stuck or reduces to the same case.
    */
-  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = {
+  def provablyDisjoint(tp1: Type, tp2: Type)(using Context): Boolean = trace(i"provable disjoint $tp1, $tp2", matchTypes) {
     // println(s"provablyDisjoint(${tp1.show}, ${tp2.show})")
 
     def isEnumValueOrModule(ref: TermRef): Boolean =
@@ -2450,7 +2450,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
-      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if tycon1 == tycon2 =>
+      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2))
+      if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
         // It is possible to conclude that two types applies are disjoint by
         // looking at covariant type parameters if the said type parameters
         // are disjoin and correspond to fields.
@@ -2766,7 +2767,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
      *           None         if the match fails and we should consider the following cases
      *                        because scrutinee and pattern do not overlap
      */
-    def matchCase(cas: Type): Option[Type] = {
+    def matchCase(cas: Type): Option[Type] = trace(i"match case $cas vs $scrut", matchTypes) {
       val cas1 = cas match {
         case cas: HKTypeLambda =>
           caseLambda = constrained(cas)
