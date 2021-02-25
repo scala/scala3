@@ -289,20 +289,36 @@ object Checking {
   //    Warm[F, pot].init!, Promote(Warm[F, pot])
   private def checkPromoteWarm(warm: Warm, eff: Effect)(using state: State): Errors =
     val Warm(cls, outer) = warm
+    val source = eff.source
     // Errors.empty
     val classRef = cls.info.asInstanceOf[ClassInfo].appliedRef
     // All members of class must be promotable.
-    val memberErrs = classRef.allMembers.flatMap { denot =>
-      val sym = denot.symbol
-      val summary = warm.toPots.select(sym, warm.source, true)
-      (summary.effs ++ summary.pots.map(Promote(_)(warm.source)).toList)
-    }.flatMap(check(_))
+    val buffer = new mutable.ArrayBuffer[Effect]
+    val excludedFlags = Flags.Deferred | Flags.Private | Flags.Protected
 
-    // All inner classes of classRef must be promotable.
-    // TODO: Implement this
-    val innerClassesErrs = Errors.empty
+    classRef.fields.foreach { denot =>
+      val f = denot.symbol
+      if !f.isOneOf(excludedFlags) && f.hasSource then
+        buffer += Promote(FieldReturn(warm, f)(source))(source)
+        buffer += FieldAccess(warm, f)(source)
+    }
 
-    val errs = memberErrs ++ innerClassesErrs
+    classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>
+      val m = denot.symbol
+      if !m.isConstructor && m.hasSource && !theEnv.canIgnoreMethod(m) then
+        buffer += MethodCall(warm, m)(source)
+        buffer += Promote(MethodReturn(warm, m)(source))(source)
+    }
+
+    classRef.memberClasses.foreach { denot =>
+      val cls = denot.symbol.asClass
+      if cls.hasSource then
+        val potInner = Potentials.asSeenFrom(Warm(cls, ThisRef()(source))(source), warm)
+        buffer += MethodCall(potInner, cls.primaryConstructor)(source)
+        buffer += Promote(potInner)(source)
+    }
+
+    val errs = buffer.toList.flatMap(eff => check(eff))
     if errs.isEmpty then {
       Errors.empty
     } else {
