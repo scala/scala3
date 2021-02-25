@@ -33,7 +33,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           new VirtualDirectory("<quote compilation output>")
     end outDir
 
-    val (_, ctx0: Context) = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh)
+    val ctx0 = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh).get._2
     val ctx = setCompilerSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
 
     new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match

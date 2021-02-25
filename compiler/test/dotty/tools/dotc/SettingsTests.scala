@@ -49,6 +49,7 @@ class SettingsTests {
       val args = List("-foo", "b", "-bar", "1")
       val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
+      given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
       assertEquals(1, Settings.bar.value)
     }
@@ -66,6 +67,7 @@ class SettingsTests {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
       val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
+      given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
       assertEquals(1, Settings.bar.value)
       assertEquals(5, Settings.baz.value)
@@ -75,6 +77,7 @@ class SettingsTests {
       val args = List("-foo:b")
       val summary = Settings.processArguments(args, true)
       assertTrue(summary.errors.isEmpty)
+      given SettingsState = summary.sstate
       assertEquals("b", Settings.foo.value)
     }
 
@@ -107,4 +110,7 @@ class SettingsTests {
     }
 
   private def inContext(f: Context ?=> Unit) = f(using (new ContextBase).initialCtx.fresh)
+
+  extension [T](setting: Setting[T])
+    private def value(using ss: SettingsState): T = setting.valueIn(ss)
 }
