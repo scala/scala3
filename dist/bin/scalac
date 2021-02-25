@@ -130,4 +130,5 @@ eval "\"$JAVACMD\"" \
      "${scala_args[@]}" \
      "${residual_args[@]}" \
      "${scripting_string-}"
-exit $?
+scala_exit_status=$?
+exit $scala_exit_status
