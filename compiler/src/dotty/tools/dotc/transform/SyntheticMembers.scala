@@ -92,7 +92,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     lazy val accessors =
       if (isDerivedValueClass(clazz)) clazz.paramAccessors.take(1) // Tail parameters can only be `erased`
       else clazz.caseAccessors
-    val isEnumValue = clazz.isAnonymousClass && clazz.classParents.head.classSymbol.is(Enum)
+    val isEnumValue = clazz.isAnonymousClass && clazz.info.parents.head.classSymbol.is(Enum)
     val isSimpleEnumValue = isEnumValue && !clazz.owner.isAllOf(EnumCase)
     val isJavaEnumValue = isEnumValue && clazz.derivesFrom(defn.JavaEnumClass)
     val isNonJavaEnumValue = isEnumValue && !isJavaEnumValue
@@ -428,7 +428,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   /** Is this an anonymous class deriving from an enum definition? */
   extension (cls: ClassSymbol) private def isEnumValueImplementation(using Context): Boolean =
-    cls.isAnonymousClass && cls.classParents.head.typeSymbol.is(Enum) // asserted in Typer
+    cls.isAnonymousClass && cls.info.parents.head.typeSymbol.is(Enum) // asserted in Typer
 
   /** If this is the class backing a serializable singleton enum value with base class `MyEnum`,
    *  and not deriving from `java.lang.Enum` add the method:
@@ -546,7 +546,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       newParents = newParents :+ TypeTree(parent)
       val oldClassInfo = clazz.classInfo
       val newClassInfo = oldClassInfo.derivedClassInfo(
-        classParents = oldClassInfo.classParents :+ parent)
+        declaredParents = oldClassInfo.declaredParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
     }
     def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {

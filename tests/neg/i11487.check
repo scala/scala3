@@ -1,0 +1,5 @@
+-- Error: tests/neg/i11487.scala:2:13 ----------------------------------------------------------------------------------
+2 |import scala._  // error
+  |             ^
+  |             `_` is no longer supported for a wildcard import; use `*` instead
+  |             This construct can be rewritten automatically under -rewrite -source future-migration.

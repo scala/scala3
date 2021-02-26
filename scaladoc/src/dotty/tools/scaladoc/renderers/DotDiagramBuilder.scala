@@ -9,8 +9,8 @@ object DotDiagramBuilder:
       case _ : Kind.Class => "fill: #45AD7D;"
       case Kind.Object => "fill: #285577;"
       case _ : Kind.Trait => "fill: #1CAACF;"
-      case Kind.Enum => "fill: #B66722;"
-      case _ : Kind.EnumCase => "fill: #B66722;"
+      case e if e.isInstanceOf[Kind.Enum] => "fill: #B66722;"
+      case e if e.isInstanceOf[Kind.EnumCase] => "fill: #B66722;"
       case other => report.error(s"unexpected value: $other")
 
     val vWithId = diagram.verteciesWithId

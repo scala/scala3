@@ -19,7 +19,7 @@ object Util {
     traceIndented(s"<== ${msg}", printer)
   }
 
-  extension (symbol: Symbol) def isInternal(using Context): Boolean =
+  extension (symbol: Symbol) def hasSource(using Context): Boolean =
     !symbol.defTree.isEmpty
 
   def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =

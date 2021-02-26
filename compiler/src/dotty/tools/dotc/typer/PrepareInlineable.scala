@@ -13,7 +13,7 @@ import Decorators._
 import NameKinds._
 import StdNames.nme
 import Contexts._
-import Names.Name
+import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
 import Annotations._
@@ -40,7 +40,9 @@ object PrepareInlineable {
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
-      def accessorNameKind: PrefixNameKind = InlineAccessorName
+      def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
+        val accName = InlineAccessorName(name)
+        if site.is(Trait) then accName.expandedName(site) else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented

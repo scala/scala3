@@ -19,28 +19,30 @@ import sys.process._
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
   def compileAndRun(pack:(Path, String, String) => Boolean = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
-    val (toCompile, rootCtx) = setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh)
-    given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
-      new PlainDirectory(Directory(outDir)))
+    setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh) match
+      case Some((toCompile, rootCtx)) =>
+        given Context = rootCtx.fresh.setSetting(rootCtx.settings.outputDir,
+          new PlainDirectory(Directory(outDir)))
 
-    if doCompile(newCompiler, toCompile).hasErrors then
-      throw ScriptingException("Errors encountered during compilation")
+        if doCompile(newCompiler, toCompile).hasErrors then
+          throw ScriptingException("Errors encountered during compilation")
 
-    try
-      val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, ctx.settings.classpath.value, scriptFile)
-      val invokeMain: Boolean =
-        Option(pack) match
-          case Some(func) =>
-            func(outDir, ctx.settings.classpath.value, mainClass)
-          case None =>
-            true
-        end match
-      if invokeMain then mainMethod.invoke(null, scriptArgs)
-    catch
-      case e: java.lang.reflect.InvocationTargetException =>
-        throw e.getCause
-    finally
-      deleteFile(outDir.toFile)
+        try
+          val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, ctx.settings.classpath.value, scriptFile)
+          val invokeMain: Boolean =
+            Option(pack) match
+              case Some(func) =>
+                func(outDir, ctx.settings.classpath.value, mainClass)
+              case None =>
+                true
+            end match
+          if invokeMain then mainMethod.invoke(null, scriptArgs)
+        catch
+          case e: java.lang.reflect.InvocationTargetException =>
+            throw e.getCause
+        finally
+          deleteFile(outDir.toFile)
+      case None =>
   end compileAndRun
 
   private def deleteFile(target: File): Unit =

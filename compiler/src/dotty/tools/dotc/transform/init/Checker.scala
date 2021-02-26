@@ -9,6 +9,7 @@ import ast.tpd
 import dotty.tools.dotc.core._
 import Contexts._
 import Types._
+import Symbols._
 
 import dotty.tools.dotc.transform._
 import MegaPhase._
@@ -45,7 +46,7 @@ class Checker extends MiniPhase {
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    if (instantiable) {
+    if (instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass) {
       implicit val state: Checking.State = Checking.State(
         visited = Set.empty,
         path = Vector.empty,

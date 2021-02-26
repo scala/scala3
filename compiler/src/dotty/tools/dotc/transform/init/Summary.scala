@@ -3,6 +3,7 @@ package transform
 package init
 
 import scala.collection.mutable
+import scala.annotation.targetName
 
 import core._
 import Contexts._
@@ -12,65 +13,80 @@ import config.Printers.init
 
 import Potentials._, Effects._, Util._
 
-object Summary {
-  type Summary = (Potentials, Effects)
-  val empty: Summary = (Potentials.empty, Effects.empty)
+case class Summary(pots: Potentials, effs: Effects) {
+  def union(summary2: Summary): Summary =
+    Summary(pots ++ summary2.pots, this.effs ++ summary2.effs)
 
-  /** Summary of class.
-   *
-   *  It makes ObjectPart construction easier with already established raw outer for parents.
-   */
-  case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
-    private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
+  def +(pot: Potential): Summary =
+    Summary(pots + pot, effs)
 
-    def cacheFor(member: Symbol, summary: Summary)(using Context): Unit = {
-      traceIndented("cache for " + member.show + ", summary = " + Summary.show(summary), init)
-      assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
-      summaryCache(member) = summary
-    }
+  def +(eff: Effect): Summary =
+    Summary(pots, effs + eff)
 
-    def summaryOf(member: Symbol)(implicit env: Env): Summary =
-      if (summaryCache.contains(member)) summaryCache(member)
-      else trace("summary for " + member.show, init, s => Summary.show(s.asInstanceOf[Summary])) {
-        implicit val env2 = env.withOwner(member)
-        val summary =
-          if (member.isConstructor)
-            Summarization.analyzeConstructor(member)
-          else if (member.is(Flags.Method))
-            Summarization.analyzeMethod(member)
-          else // field
-            Summarization.analyzeField(member)
+  def dropPotentials: Summary =
+    Summary(Potentials.empty, effs)
 
-        summaryCache(member) = summary
-        summary
-      }
+  @targetName("withPotentials")
+  def ++(pots: Potentials): Summary =
+    Summary(this.pots ++ pots, effs)
 
-    def effectsOf(member: Symbol)(implicit env: Env): Effects = summaryOf(member)._2
-    def potentialsOf(member: Symbol)(implicit env: Env): Potentials = summaryOf(member)._1
+  @targetName("withEffects")
+  def ++(effs: Effects): Summary =
+    Summary(pots, this.effs ++ effs)
 
-    def show(using Context): String =
-      "ClassSummary(" + currentClass.name.show +
-        ", parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
-  }
-
-  def show(summary: Summary)(using Context): String = {
-    val pots = Potentials.show(summary._1)
-    val effs = Effects.show(summary._2)
+  def show(using Context): String = {
+    val pots = Potentials.show(this.pots)
+    val effs = Effects.show(this.effs)
     s"([$pots], [$effs])"
   }
+}
 
-  extension (summary1: Summary) def union (summary2: Summary): Summary =
-    (summary1._1 ++ summary2._1, summary1._2 ++ summary2._2)
+object Summary {
+  val empty: Summary = Summary(Potentials.empty, Effects.empty)
 
-  extension (summary: Summary) def + (pot: Potential): Summary =
-    (summary._1 + pot, summary._2)
+  def apply(pots: Potentials): Summary = new Summary(pots, Effects.empty)
 
-  extension (summary: Summary) def + (eff: Effect): Summary =
-    (summary._1, summary._2 + eff)
+  @targetName("withEffects")
+  def apply(effs: Effects): Summary = new Summary(Potentials.empty, effs)
 
-  extension (summary: Summary) def withPots (pots: Potentials): Summary =
-    (summary._1 ++ pots, summary._2)
+  def apply(pot: Potential): Summary = new Summary(Potentials.empty + pot, Effects.empty)
 
-  extension (summary: Summary) def withEffs (effs: Effects): Summary =
-    (summary._1, summary._2 ++ effs)
+  def apply(eff: Effect): Summary = new Summary(Potentials.empty, Effects.empty + eff)
+}
+
+/** Summary of class.
+  *
+  *  It makes ObjectPart construction easier with already established raw outer for parents.
+  */
+case class ClassSummary(currentClass: ClassSymbol, parentOuter: Map[ClassSymbol, Potentials]) {
+  private val summaryCache: mutable.Map[Symbol, Summary] = mutable.Map.empty
+
+  def cacheFor(member: Symbol, summary: Summary)(using Context): Unit = {
+    traceIndented("cache for " + member.show + ", summary = " + summary.show, init)
+    assert(member.owner == currentClass, "owner = " + member.owner.show + ", current = " + currentClass.show)
+    summaryCache(member) = summary
+  }
+
+  def summaryOf(member: Symbol)(implicit env: Env): Summary =
+    if (summaryCache.contains(member)) summaryCache(member)
+    else trace("summary for " + member.show, init, s => s.asInstanceOf[Summary].show) {
+      implicit val env2 = env.withOwner(member)
+      val summary =
+        if (member.isConstructor)
+          Summarization.analyzeConstructor(member)
+        else if (member.is(Flags.Method))
+          Summarization.analyzeMethod(member)
+        else // field
+          Summarization.analyzeField(member)
+
+      summaryCache(member) = summary
+      summary
+    }
+
+  def effectsOf(member: Symbol)(implicit env: Env): Effects = summaryOf(member).effs
+  def potentialsOf(member: Symbol)(implicit env: Env): Potentials = summaryOf(member).pots
+
+  def show(using Context): String =
+    "ClassSummary(" + currentClass.name.show +
+      ", parents = " + parentOuter.map { case (k, v) => k.show + "->" + "[" + Potentials.show(v) + "]" }
 }

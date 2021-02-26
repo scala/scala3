@@ -19,7 +19,7 @@ class CompletionTest {
       .completion(m1, Set(
         ("print", Method, "(x: Any): Unit"),
         ("printf", Method, "(text: String, xs: Any*): Unit"),
-        ("println", Method, "(x: Any): Unit")
+        ("println", Method, "method println")
       ))
   }
 
@@ -107,8 +107,7 @@ class CompletionTest {
            }""".withSource
       .completion(
         m1,
-        Set(("clone", Method, "(): Object"),
-            ("copy", Method, "(foobar: Int): MyCaseClass"),
+        Set(("copy", Method, "(foobar: Int): MyCaseClass"),
             ("canEqual", Method, "(that: Any): Boolean")))
   }
 
@@ -171,6 +170,14 @@ class CompletionTest {
       .completion(m1, Set(("out", Field, "java.io.PrintStream")))
   }
 
+  @Test def importFromExplicitAndSyntheticPackageObject: Unit = {
+    withSources(
+      code"package foo.bar; trait XXXX1",
+      code"package foo; package object bar { trait XXXX2 }",
+      code"object Main { import foo.bar.XX${m1} }"
+    ) .completion(m1, Set(("XXXX1", Class, "foo.bar.XXXX1"), ("XXXX2", Class, "foo.bar.XXXX2")))
+  }
+
   @Test def completeJavaModuleClass: Unit = {
     code"""object O {
              val out = java.io.FileDesc${m1}
@@ -181,6 +188,13 @@ class CompletionTest {
   @Test def importRename: Unit = {
     code"""import java.io.{FileDesc${m1} => Foo}""".withSource
       .completion(m1, Set(("FileDescriptor", Class, "class and object FileDescriptor")))
+  }
+
+  @Test def importGivenByType: Unit = {
+    code"""trait Foo
+           object Bar
+           import Bar.{given Fo$m1}""".withSource
+      .completion(m1, Set(("Foo", Class, "Foo")))
   }
 
   @Test def markDeprecatedSymbols: Unit = {
@@ -274,10 +288,198 @@ class CompletionTest {
                           ("MyHashMap3", Class, "class and object HashMap")))
   }
 
+  @Test def completeFromWildcardImports: Unit = {
+    code"""object Foo {
+          |  val fooFloat: Float = 1.0
+          |  val fooLong: Long = 0L
+          |  given fooInt: Int = 0
+          |  given fooString: String = ""
+          |}
+          |object Test1 { import Foo.{fooFloat => _, _}; foo$m1 }
+          |object Test2 { import Foo.given; foo$m2 }
+          |object Test3 { import Foo.{given String}; foo$m3 }
+          |object Test4 { import Foo.{_, given String}; foo$m4 }
+          |object Test5 { import Foo.{fooFloat, given}; foo$m5 }
+          |object Test6 { import Foo.{fooInt => _, fooString => fooStr, given}; foo$m6 }
+          |object Test7 { import Foo.{fooLong => fooInt, given Int}; foo$m7 }
+          """.withSource
+      .completion(m1, Set(("fooLong", Field, "Long")))
+      .completion(m2, Set(("fooInt", Field, "Int"),
+                          ("fooString", Field, "String")))
+      .completion(m3, Set(("fooString", Field, "String")))
+      .completion(m4, Set(("fooLong", Field, "Long"),
+                          ("fooFloat", Field, "Float"),
+                          ("fooString", Field, "String")))
+      .completion(m5, Set(("fooFloat", Field, "Float"),
+                          ("fooInt", Field, "Int"),
+                          ("fooString", Field, "String")))
+      .completion(m6, Set(("fooStr", Field, "String")))
+      .completion(m7, Set(("fooInt", Field, "Long")))
+  }
+
+  @Test def dontCompleteFromAmbiguousImportsFromSameSite: Unit = {
+    code"""object Foo {
+          |  val i = 0
+          |  val j = 1
+          |}
+          |object Test {
+          |  import Foo.{i => xxxx, j => xxxx}
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def collectNamesImportedInNestedScopes: Unit = {
+    code"""object Foo {
+          |  val xxxx1 = 1
+          |}
+          |object Bar {
+          |  val xxxx2 = 2
+          |}
+          |object Baz {
+          |  val xxxx3 = 3
+          |}
+          |object Test {
+          |  import Foo.xxxx1
+          |  locally {
+          |    import Bar.xxxx2
+          |    locally {
+          |      import Baz.xxxx3
+          |      val x = xx$m1
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx1", Field, "Int"), ("xxxx2", Field, "Int"), ("xxxx3", Field, "Int")))
+  }
+
+  @Test def completeEnclosingObject: Unit = {
+    code"""object Test {
+          |  def x = Tes$m1
+          |}""".withSource
+      .completion(m1, Set(("Test", Module, "Test$")))
+  }
+
+  @Test def completeBothDefinitionsForEqualNestingLevels: Unit = {
+    code"""trait Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |trait Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test extends Foo, Bar {
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "method xxxx"))) // 2 different signatures are merged into one generic description
+  }
+
+  @Test def dontCompleteFromAmbiguousImportsForEqualNestingLevels: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  import Bar.xxxx
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def preferLocalDefinitionToImportForEqualNestingLevels: Unit = {
+    code"""object Foo {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  def xxxx(s: String): String = s
+          |  import Foo.xxxx
+          |  val x = xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedDefinition: Unit = {
+    code"""object Test {
+          |  def xxxx(i: Int): Int = i
+          |  object Inner {
+          |    def xxxx(s: String): String = s
+          |    val x = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedImport: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Bar {
+          |  def xxxx(s: String): String = s
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  locally {
+          |    import Bar.xxxx
+          |    val x: String = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def preferMoreDeeplyNestedLocalDefinitionToImport: Unit = {
+    code"""object Foo {
+          |  def xxxx(i: Int): Int = i
+          |}
+          |object Test {
+          |  import Foo.xxxx
+          |  object Inner {
+          |    def xxxx(s: String): String = s
+          |    val x: String = xx$m1
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(s: String): String")))
+  }
+
+  @Test def dontCompleteLocalDefinitionShadowedByImport: Unit = {
+    code"""object XXXX {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  locally {
+          |    val xxxx = ""
+          |    locally {
+          |      import XXXX.xxxx // import conflicts with val from outer scope
+          |      val y = xx$m1
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def completeFromLocalDefinitionIgnoringLessDeeplyNestedAmbiguities: Unit = {
+    code"""object XXXX {
+          |  val xxxx = 1
+          |}
+          |object Test {
+          |  locally {
+          |    val xxxx = ""
+          |    locally {
+          |      import XXXX.xxxx // import conflicts with val from outer scope
+          |      locally {
+          |        val xxxx = 'a' // shadows both the import and the val from outer scope
+          |        val y = xx$m1
+          |      }
+          |    }
+          |  }
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Field, "Char")))
+  }
+
   @Test def completionClassAndMethod: Unit = {
     code"""object Foo {
           |  class bar
-          |  def bar = 0
+          |  def bar(i: Int) = 0
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Class, "class and method bar")))
@@ -290,6 +492,47 @@ class CompletionTest {
           |}
           |import Foo.b$m1""".withSource
       .completion(m1, Set(("bar", Field, "type and lazy value bar")))
+  }
+
+  @Test def keepTrackOfTermsAndTypesSeparately: Unit = {
+    code"""object XXXX {
+          |  object YYYY
+          |  type YYYY = YYYY.type
+          |}
+          |object Test {
+          |  import XXXX._
+          |  val YYYY = Int
+          |  val ZZZZ = YY$m1
+          |  type ZZZZ = YY$m2
+          |}""".withSource
+      .completion(m1, Set(("YYYY", Field, "Int$")))
+      .completion(m2, Set(("YYYY", Field, "type and value YYYY")))
+  }
+
+  @Test def completeRespectingAccessModifiers: Unit = {
+    code"""trait Foo {
+          |  def xxxx1 = ""
+          |  protected def xxxx2 = ""
+          |  private def xxxx3 = ""
+          |}
+          |object Test1 extends Foo {
+          |  xx$m1
+          |}
+          |object Test2 {
+          |  val foo = new Foo {}
+          |  foo.xx$m2
+          |}""".withSource
+      .completion(m1, Set(("xxxx1", Method, "=> String"), ("xxxx2", Method, "=> String")))
+      .completion(m2, Set(("xxxx1", Method, "=> String")))
+  }
+
+  @Test def completeFromPackageObjectWithInheritance: Unit = {
+    code"""trait Foo[A] { def xxxx(a: A) = a }
+          |package object foo extends Foo[Int] {}
+          |object Test {
+          |  foo.xx$m1
+          |}""".withSource
+      .completion(m1, Set(("xxxx", Method, "(a: Int): Int")))
   }
 
   @Test def completeExtensionMethodWithoutParameter: Unit = {
@@ -308,38 +551,138 @@ class CompletionTest {
 
   @Test def completeExtensionMethodWithTypeParameter: Unit = {
     code"""object Foo
-          |extension [A](foo: Foo.type) def xxxx: Int = 1
+          |extension (foo: Foo.type) def xxxx[A]: Int = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "[A] => Int")))
   }
 
   @Test def completeExtensionMethodWithParameterAndTypeParameter: Unit = {
     code"""object Foo
-          |extension [A](foo: Foo.type) def xxxx(a: A) = a
+          |extension (foo: Foo.type) def xxxx[A](a: A) = a
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "[A](a: A): A")))
   }
 
-  @Test def completeExtensionMethodFromExtenionWithAUsingSection: Unit = {
+  @Test def completeExtensionMethodFromExtensionWithTypeParameter: Unit = {
+    code"""extension [A](a: A) def xxxx: A = a
+          |object Main { "abc".xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodWithResultTypeDependantOnReceiver: Unit = {
+    code"""trait Foo { type Out; def get: Out}
+          |object Bar extends Foo { type Out = String; def get: Out = "abc"}
+          |extension (foo: Foo) def xxxx: foo.Out = foo.get
+          |object Main { Bar.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithPrefixUsingSection: Unit = {
     code"""object Foo
           |trait Bar
           |trait Baz
-          |given Bar = new Bar {}
-          |given Baz = new Baz {}
+          |given Bar with {}
+          |given Baz with {}
+          |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithMultiplePrefixUsingSections: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
+          |extension (using Bar)(using Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def dontCompleteExtensionMethodFromExtenionWithMissingImplicitFromPrefixUsingSection: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Baz with {}
+          |extension (using Bar, Baz)(foo: Foo.type) def xxxx = 1
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set())
+  }
+
+  @Test def completeExtensionMethodForReceiverOfTypeDependentOnLeadingImplicits: Unit = {
+    code"""
+          |trait Foo:
+          |  type Out <: Bar
+          |
+          |given Foo with
+          |  type Out = Baz
+          |
+          |trait Bar:
+          |  type Out
+          |
+          |trait Baz extends Bar
+          |
+          |given Baz with
+          |  type Out = Quux
+          |
+          |class Quux
+          |
+          |object Quux:
+          |  extension (using foo: Foo)(using fooOut: foo.Out)(fooOutOut: fooOut.Out) def xxxx = "abc"
+          |
+          |object Main { (new Quux).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> String")))
+  }
+
+  @Test def completeExtensionMethodWithResultTypeDependentOnLeadingImplicit: Unit = {
+    code"""object Foo
+          |trait Bar { type Out; def get: Out }
+          |given Bar with { type Out = 123; def get: Out = 123 }
+          |extension (using bar: Bar)(foo: Foo.type) def xxxx: bar.Out = bar.get
+          |object Main { Foo.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> (123 : Int)")))
+  }
+
+  @Test def completeExtensionMethodFromExtenionWithPostfixUsingSection: Unit = {
+    code"""object Foo
+          |trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
           |extension (foo: Foo.type)(using Bar, Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "(using x$2: Bar, x$3: Baz): Int")))
   }
 
-  @Test def completeExtensionMethodFromExtenionWithMultipleUsingSections: Unit = {
+  @Test def completeExtensionMethodFromExtenionWithMultiplePostfixUsingSections: Unit = {
     code"""object Foo
           |trait Bar
           |trait Baz
-          |given Bar = new Bar {}
-          |given Baz = new Baz {}
+          |given Bar with {}
+          |given Baz with {}
           |extension (foo: Foo.type)(using Bar)(using Baz) def xxxx = 1
           |object Main { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "(using x$2: Bar)(using x$3: Baz): Int")))
+  }
+
+  @Test def completeExtensionMethodWithTypeParameterFromExtenionWithTypeParametersAndPrefixAndPostfixUsingSections: Unit = {
+    code"""trait Bar
+          |trait Baz
+          |given Bar with {}
+          |given Baz with {}
+          |extension [A](using bar: Bar)(a: A)(using baz: Baz) def xxxx[B]: Either[A, B] = Left(a)
+          |object Main { 123.xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "(using baz: Baz): [B] => Either[Int, B]")))
+  }
+
+  @Test def completeExtensionMethodWithTypeBounds: Unit = {
+    code"""trait Foo
+          |trait Bar extends Foo
+          |given Bar with {}
+          |extension [A >: Bar](a: A) def xxxx[B <: a.type]: Either[A, B] = Left(a)
+          |val foo = new Foo {}
+          |object Main { foo.xx${m1} }""".withSource
+          .completion(m1, Set(("xxxx", Method, "[B <: (foo : Foo)] => Either[Foo, B]")))
   }
 
   @Test def completeInheritedExtensionMethod: Unit = {
@@ -349,6 +692,15 @@ class CompletionTest {
           |}
           |object Main extends FooOps { Foo.xx${m1} }""".withSource
       .completion(m1, Set(("xxxx", Method, "=> Int")))
+  }
+
+  @Test def completeExtensionMethodWithoutLosingTypeParametersFromGivenInstance: Unit = {
+    code"""trait ListOps[A] {
+          |  extension (xs: List[A]) def xxxx = xs
+          |}
+          |given ListOps[Int] with {}
+          |object Main { List(1, 2, 3).xx${m1} }""".withSource
+      .completion(m1, Set(("xxxx", Method, "=> List[Int]")))
   }
 
   @Test def completeRenamedExtensionMethod: Unit = {
@@ -442,10 +794,9 @@ class CompletionTest {
       .completion(m1, Set(("xxxx", Method, "=> Int")))
   }
 
-  @Test def dontCompleteInapplicableExtensionMethod: Unit = {
-    code"""case class Foo[A](a: A)
-          |extension (foo: Foo[Int]) def xxxx = foo.a
-          |object Main { Foo("abc").xx${m1} }""".withSource
+  @Test def dontCompleteExtensionMethodWithMismatchedReceiverType: Unit = {
+    code"""extension (i: Int) def xxxx = i
+          |object Main { "abc".xx${m1} }""".withSource
       .completion(m1, Set())
   }
 }

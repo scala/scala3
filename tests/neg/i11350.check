@@ -1,0 +1,14 @@
+-- [E081] Type Error: tests/neg/i11350.scala:1:39 ----------------------------------------------------------------------
+1 |class A1[T](action: A1[T] ?=> String = "") // error
+  |                                       ^
+  |                                       Missing parameter type
+  |
+  |                                       I could not infer the type of the parameter evidence$1.
+  |                                       What I could infer was: A1[<?>]
+-- [E081] Type Error: tests/neg/i11350.scala:2:39 ----------------------------------------------------------------------
+2 |class A2[T](action: A1[T] ?=> String = summon[A1[T]]) // error
+  |                                       ^
+  |                                       Missing parameter type
+  |
+  |                                       I could not infer the type of the parameter evidence$2.
+  |                                       What I could infer was: A1[<?>]

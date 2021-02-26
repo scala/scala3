@@ -296,7 +296,7 @@ PatVar            ::=  varid
                     |  ‘_’
 Patterns          ::=  Pattern {‘,’ Pattern}
 ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’                                       Apply(fn, pats)
-                    |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
+                    |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
 ```
 
 ### Type and Value Parameters
