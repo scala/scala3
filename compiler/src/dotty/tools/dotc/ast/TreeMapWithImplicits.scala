@@ -69,6 +69,12 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     nestedCtx
   }
 
+  private def nestedPackageScopeCtx(tree: PackageDef)(using Context): Context =
+    tree.stats.foldLeft(ctx.withOwner(tree.symbol)) {
+      case (acc, stat: Import) => ctx.importContext(stat, stat.symbol)
+      case (acc, _) => acc
+    }
+
   private def patternScopeCtx(pattern: Tree)(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     new TreeTraverser {
@@ -100,8 +106,10 @@ class TreeMapWithImplicits extends tpd.TreeMap {
         }
       case EmptyValDef =>
         tree
-      case _: PackageDef | _: MemberDef =>
-        super.transform(tree)(using localCtx)
+      case tree: PackageDef =>
+        super.transform(tree)(using nestedPackageScopeCtx(tree))
+      case _: MemberDef =>
+          super.transform(tree)(using localCtx)
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
