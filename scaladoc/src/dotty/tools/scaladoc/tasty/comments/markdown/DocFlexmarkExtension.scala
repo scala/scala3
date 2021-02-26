@@ -66,4 +66,4 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
 object DocFlexmarkRenderer:
   def render(node: Node)(renderLink: (DocLink, String) => String) =
     val opts = MarkdownParser.mkMarkdownOptions(Seq(DocFlexmarkRenderer(renderLink)))
-    HtmlRenderer.builder(opts).build().render(node)
+    HtmlRenderer.builder(opts).escapeHtml(true).build().render(node)

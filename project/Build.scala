@@ -1182,17 +1182,6 @@ object Build {
   // Note: the two tasks below should be one, but a bug in Tasty prevents that
   val generateScalaDocumentation = inputKey[Unit]("Generate documentation for dotty lib")
   val generateTestcasesDocumentation  = taskKey[Unit]("Generate documentation for testcases, usefull for debugging tests")
-  lazy val `scaladoc-testcases` = project.in(file("scaladoc-testcases")).
-    dependsOn(`scala3-compiler-bootstrapped`).
-    settings(commonBootstrappedSettings)
-  lazy val `scaladoc-js` = project.in(file("scaladoc-js")).
-    enablePlugins(DottyJSPlugin).
-    dependsOn(`scala3-library-bootstrappedJS`).
-    settings(
-      Test / fork := false,
-      scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
-    )
 
   def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil) =
     Def.taskDyn {
@@ -1217,10 +1206,18 @@ object Build {
       Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
     }
 
+  val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
+
   lazy val scaladoc = project.in(file("scaladoc")).
+    configs(SourceLinksIntegrationTest).
     settings(commonBootstrappedSettings).
     dependsOn(`scala3-compiler-bootstrapped`).
     dependsOn(`scala3-tasty-inspector`).
+    settings(inConfig(SourceLinksIntegrationTest)(Defaults.testSettings)).
+    settings(
+      scalaSource in SourceLinksIntegrationTest := baseDirectory.value / "test-source-links",
+      test in SourceLinksIntegrationTest := ((test in SourceLinksIntegrationTest) dependsOn generateScalaDocumentation.toTask("")).value,
+    ).
     settings(
       Compile / resourceGenerators += Def.task {
         val jsDestinationFile = (Compile / resourceManaged).value / "dotty_res" / "scripts" / "searchbar.js"
