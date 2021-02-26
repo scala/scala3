@@ -393,7 +393,7 @@ object Inferencing {
   def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(using Context): List[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBound = new mutable.ListBuffer[Symbol]
+    val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
@@ -406,11 +406,17 @@ object Inferencing {
           // Instead, we simultaneously add them later on.
           val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
-          patternBound += wildCard
+          patternBindings += ((wildCard, tvar.origin))
         }
       }
     }
-    val res = patternBound.toList
+    val res = patternBindings.toList.map { (boundSym, _) =>
+      // substitute bounds of pattern bound variables to deal with possible F-bounds
+      for (wildCard, param) <- patternBindings do
+        boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
+      boundSym
+    }
+
     // We add the created symbols to GADT constraint here.
     if (res.nonEmpty) ctx.gadt.addToConstraint(res)
     res
