@@ -670,6 +670,7 @@ class TreeUnpickler(reader: TastyReader,
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
+          case INVISIBLE => addFlag(Invisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case PRIVATEqualified =>

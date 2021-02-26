@@ -211,7 +211,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
-                  OPEN                                                             -- an open class
+                  OPEN
+                  INVISIBLE                                                            -- an open class
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -284,7 +285,7 @@ object TastyFormat {
    * compatibility, but remains backwards compatible, with all
    * preceeding `MinorVersion`.
    */
-  final val MinorVersion: Int = 0
+  final val MinorVersion: Int = 1
 
   /**Natural Number. The `ExperimentalVersion` allows for
    * experimentation with changes to TASTy without committing
@@ -474,6 +475,7 @@ object TastyFormat {
   final val INFIX = 43
   final val EMPTYCLAUSE = 44
   final val SPLITCLAUSE = 45
+  final val INVISIBLE = 46
 
   // Cat. 2:    tag Nat
 
@@ -636,6 +638,7 @@ object TastyFormat {
        | PARAMalias
        | EXPORTED
        | OPEN
+       | INVISIBLE
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -698,6 +701,7 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
+    case INVISIBLE => "INVISIBLE"
     case PARAMalias => "PARAMalias"
     case EMPTYCLAUSE => "EMPTYCLAUSE"
     case SPLITCLAUSE => "SPLITCLAUSE"

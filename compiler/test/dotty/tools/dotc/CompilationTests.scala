@@ -109,7 +109,8 @@ class CompilationTests {
       compileFile("tests/pos/i0239.scala", defaultOptions),
       compileFile("tests/pos/anonClassSubtyping.scala", defaultOptions),
       compileFile("tests/pos/extmethods.scala", defaultOptions),
-      compileFile("tests/pos/companions.scala", defaultOptions)
+      compileFile("tests/pos/companions.scala", defaultOptions),
+      compileFile("tests/pos/main.scala", defaultOptions)
     ).times(2).checkCompile()
   }
 

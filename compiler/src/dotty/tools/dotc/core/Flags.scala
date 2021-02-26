@@ -369,6 +369,9 @@ object Flags {
   /** An infix method or type */
   val (Infix @ _, _, _) = newFlags(44, "infix")
 
+  /** Symbol cannot be found as a member during typer */
+  val (Invisible @ _, _, _) = newFlags(45, "<invisible>")
+
   // ------------ Flags following this one are not pickled ----------------------------------
 
   /** Symbol is not a member of its owner */
@@ -458,7 +461,7 @@ object Flags {
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
     Extension, NonMember, Implicit, Given, Permanent, Synthetic,
-    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy)
+    SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is
    *  a top-level class or object, when completing the denotation once the class
@@ -512,7 +515,7 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | ConstructorProxy
+    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
