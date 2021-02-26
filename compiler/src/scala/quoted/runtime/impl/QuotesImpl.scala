@@ -264,7 +264,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
-          yCheckedOwners(rhsFn(prefss), symbol).getOrElse(tpd.EmptyTree)
+          yCheckedOwners(yCheckValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
         ))
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
         tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
@@ -293,9 +293,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ValDef extends ValDefModule:
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-        tpd.ValDef(symbol.asTerm, yCheckedOwners(rhs, symbol).getOrElse(tpd.EmptyTree))
+        tpd.ValDef(symbol.asTerm, yCheckedOwners(yCheckValidExpr(rhs), symbol).getOrElse(tpd.EmptyTree))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
-        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(yCheckValidExpr(rhs), original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
@@ -568,9 +568,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object NamedArg extends NamedArgModule:
       def apply(name: String, arg: Term): NamedArg =
-        withDefaultPos(tpd.NamedArg(name.toTermName, arg))
+        withDefaultPos(tpd.NamedArg(name.toTermName, yCheckValidExpr(arg)))
       def copy(original: Tree)(name: String, arg: Term): NamedArg =
-        tpd.cpy.NamedArg(original)(name.toTermName, arg)
+        tpd.cpy.NamedArg(original)(name.toTermName, yCheckValidExpr(arg))
       def unapply(x: NamedArg): (String, Term) =
         (x.name.toString, x.value)
     end NamedArg
@@ -592,8 +592,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
+        yCheckValidExprs(args)
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
+        yCheckValidExprs(args)
         tpd.cpy.Apply(original)(fun, args)
       def unapply(x: Apply): (Term, List[Term]) =
         (x.fun, x.args)
@@ -665,9 +667,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Typed extends TypedModule:
       def apply(expr: Term, tpt: TypeTree): Typed =
-        withDefaultPos(tpd.Typed(expr, tpt))
+        withDefaultPos(tpd.Typed(yCheckValidExpr(expr), tpt))
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
-        tpd.cpy.Typed(original)(expr, tpt)
+        tpd.cpy.Typed(original)(yCheckValidExpr(expr), tpt)
       def unapply(x: Typed): (Term, TypeTree) =
         (x.expr, x.tpt)
     end Typed
@@ -689,9 +691,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Assign extends AssignModule:
       def apply(lhs: Term, rhs: Term): Assign =
-        withDefaultPos(tpd.Assign(lhs, rhs))
+        withDefaultPos(tpd.Assign(lhs, yCheckValidExpr(rhs)))
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign =
-        tpd.cpy.Assign(original)(lhs, rhs)
+        tpd.cpy.Assign(original)(lhs, yCheckValidExpr(rhs))
       def unapply(x: Assign): (Term, Term) =
         (x.lhs, x.rhs)
     end Assign
@@ -754,7 +756,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(rhsFn(meth, tss.head.map(withDefaultPos)), meth))
+        tpd.Closure(meth, tss => yCheckedOwners(yCheckValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
@@ -774,9 +776,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object If extends IfModule:
       def apply(cond: Term, thenp: Term, elsep: Term): If =
-        withDefaultPos(tpd.If(cond, thenp, elsep))
+        withDefaultPos(tpd.If(yCheckValidExpr(cond), yCheckValidExpr(thenp), yCheckValidExpr(elsep)))
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
-        tpd.cpy.If(original)(cond, thenp, elsep)
+        tpd.cpy.If(original)(yCheckValidExpr(cond), yCheckValidExpr(thenp), yCheckValidExpr(elsep))
       def unapply(tree: If): (Term, Term, Term) =
         (tree.cond, tree.thenp, tree.elsep)
     end If
@@ -800,10 +802,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Match extends MatchModule:
       def apply(selector: Term, cases: List[CaseDef]): Match =
-        withDefaultPos(tpd.Match(selector, cases))
+        withDefaultPos(tpd.Match(yCheckValidExpr(selector), cases))
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-        tpd.cpy.Match(original)(selector, cases)
+        tpd.cpy.Match(original)(yCheckValidExpr(selector), cases)
 
       def unapply(x: Match): (Term, List[CaseDef]) =
         (x.scrutinee, x.cases)
@@ -850,9 +852,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Try extends TryModule:
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(expr, cases, finalizer.getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Try(yCheckValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(expr, cases, finalizer.getOrElse(tpd.EmptyTree))
+        tpd.cpy.Try(original)(yCheckValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree))
       def unapply(x: Try): (Term, List[CaseDef], Option[Term]) =
         (x.body, x.cases, optional(x.finalizer))
     end Try
@@ -875,9 +877,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Return extends ReturnModule:
       def apply(expr: Term, from: Symbol): Return =
-        withDefaultPos(tpd.Return(expr, from))
+        withDefaultPos(tpd.Return(yCheckValidExpr(expr), from))
       def copy(original: Tree)(expr: Term, from: Symbol): Return =
-        tpd.cpy.Return(original)(expr, tpd.ref(from))
+        tpd.cpy.Return(original)(yCheckValidExpr(expr), tpd.ref(from))
       def unapply(x: Return): (Term, Symbol) =
         (x.expr, x.from.symbol)
     end Return
@@ -899,8 +901,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
+        yCheckValidExprs(elems)
         withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
+        yCheckValidExprs(elems)
         tpd.cpy.SeqLiteral(original)(elems, elemtpt)
       def unapply(x: Repeated): (List[Term], TypeTree) =
         (x.elems, x.elemtpt)
@@ -923,9 +927,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Inlined extends InlinedModule:
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, expansion))
+        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, yCheckValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], expansion)
+        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], yCheckValidExpr(expansion))
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
         (optional(x.call), x.bindings, x.body)
     end Inlined
@@ -978,9 +982,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object While extends WhileModule:
       def apply(cond: Term, body: Term): While =
-        withDefaultPos(tpd.WhileDo(cond, body))
+        withDefaultPos(tpd.WhileDo(yCheckValidExpr(cond), yCheckValidExpr(body)))
       def copy(original: Tree)(cond: Term, body: Term): While =
-        tpd.cpy.WhileDo(original)(cond, body)
+        tpd.cpy.WhileDo(original)(yCheckValidExpr(cond), yCheckValidExpr(body))
       def unapply(x: While): (Term, Term) =
         (x.cond, x.body)
     end While
@@ -2830,6 +2834,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => traverseChildren(t)
       }.traverse(tree)
 
+    private def yCheckValidExprs(terms: List[Term]): terms.type =
+      if yCheck then terms.foreach(yCheckValidExpr)
+      terms
+    private def yCheckValidExpr(termOpt: Option[Term]): termOpt.type =
+      if yCheck then termOpt.foreach(yCheckValidExpr)
+      termOpt
+    private def yCheckValidExpr(term: Term): term.type =
+      if yCheck then
+        assert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
+          "Reference to a method must be eta-expanded before it is used as an expression: " + term.show)
+      term
+
     object Printer extends PrinterModule:
 
       lazy val TreeCode: Printer[Tree] = new Printer[Tree]:
@@ -2873,6 +2889,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           Extractors.showConstant(using QuotesImpl.this)(const)
 
     end Printer
+
   end reflect
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
