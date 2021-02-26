@@ -23,8 +23,6 @@ import scala.reflect.TypeTest
 
 object QuotesImpl {
 
-  type ScopeId = Int
-
   def apply()(using Context): Quotes =
     new QuotesImpl
 
@@ -33,11 +31,6 @@ object QuotesImpl {
     val qctx: QuotesImpl = new QuotesImpl(using MacroExpansion.context(tree))
     if ctx.settings.color.value == "always" then TreeAnsiCode.show(tree)
     else TreeCode.show(tree)
-
-  // TODO Explore more fine grained scope ids.
-  //      This id can only differentiate scope extrusion from one compiler instance to another.
-  def scopeId(using Context): ScopeId =
-    ctx.outersIterator.toList.last.hashCode()
 
 }
 
@@ -81,10 +74,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end CompilationInfo
 
     extension (expr: Expr[Any])
-      def asTerm: Term =
-        val exprImpl = expr.asInstanceOf[ExprImpl]
-        exprImpl.checkScopeId(QuotesImpl.this.hashCode)
-        exprImpl.tree
+      def asTerm: Term = expr.asInstanceOf[ExprImpl].tree
     end extension
 
     type Tree = tpd.Tree
@@ -105,7 +95,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => false
         def asExpr: scala.quoted.Expr[Any] =
           if self.isExpr then
-            new ExprImpl(self, QuotesImpl.this.hashCode, SpliceScope.getCurrent)
+            new ExprImpl(self, SpliceScope.getCurrent)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
             case _ => throw new Exception("Expected a Term but was: " + self)
@@ -372,11 +362,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given TermMethods: TermMethods with
       extension (self: Term)
         def seal: scala.quoted.Expr[Any] =
-          if self.isExpr then new ExprImpl(self, QuotesImpl.this.hashCode, SpliceScope.getCurrent)
+          if self.isExpr then new ExprImpl(self, SpliceScope.getCurrent)
           else throw new Exception("Cannot seal a partially applied Term. Try eta-expanding the term first.")
 
         def sealOpt: Option[scala.quoted.Expr[Any]] =
-          if self.isExpr then Some(new ExprImpl(self, QuotesImpl.this.hashCode, SpliceScope.getCurrent))
+          if self.isExpr then Some(new ExprImpl(self, SpliceScope.getCurrent))
           else None
 
         def tpe: TypeRepr = self.tpe
@@ -1666,7 +1656,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def seal: scala.quoted.Type[_] = self.asType
 
         def asType: scala.quoted.Type[?] =
-          new TypeImpl(Inferred(self), QuotesImpl.this.hashCode, SpliceScope.getCurrent)
+          new TypeImpl(Inferred(self), SpliceScope.getCurrent)
 
         def =:=(that: TypeRepr): Boolean = self =:= that
         def <:<(that: TypeRepr): Boolean = self <:< that
@@ -2877,11 +2867,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, typeHole, termHole)
-    new ExprImpl(tree, hash, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
+    new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, typeHole, termHole)
-    new TypeImpl(tree, hash, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
+    new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: scala.quoted.Expr[Any])(using pattern: scala.quoted.Expr[Any]): Option[Tup] =
@@ -2947,8 +2937,5 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       }
     }
   }
-
-  private[this] val hash = QuotesImpl.scopeId(using ctx)
-  override def hashCode: Int = hash
 
 end QuotesImpl

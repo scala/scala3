@@ -326,10 +326,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), QuotesImpl.scopeId, SpliceScope.getCurrent)
+      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), SpliceScope.getCurrent)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), QuotesImpl.scopeId, SpliceScope.getCurrent)
+      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), SpliceScope.getCurrent)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]

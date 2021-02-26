@@ -41,7 +41,6 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced Tree */
   def quotedExprToTree[T](expr: quoted.Expr[T])(using Context): Tree = {
     val expr1 = expr.asInstanceOf[ExprImpl]
-    expr1.checkScopeId(QuotesImpl.scopeId)
     ScopeException.checkInCorrectScope(expr1.scope, SpliceScope.getCurrent, expr1.tree, "Expr")
     changeOwnerOfTree(expr1.tree, ctx.owner)
   }
@@ -49,7 +48,6 @@ object PickledQuotes {
   /** Transform the expression into its fully spliced TypeTree */
   def quotedTypeToTree(tpe: quoted.Type[?])(using Context): Tree = {
     val tpe1 = tpe.asInstanceOf[TypeImpl]
-    tpe1.checkScopeId(QuotesImpl.scopeId)
     ScopeException.checkInCorrectScope(tpe1.scope, SpliceScope.getCurrent, tpe1.typeTree, "Type")
     changeOwnerOfTree(tpe1.typeTree, ctx.owner)
   }
@@ -77,8 +75,8 @@ object PickledQuotes {
         case Hole(isTerm, idx, args) =>
           inContext(SpliceScope.contextWithNewSpliceScope(tree.sourcePos)) {
             val reifiedArgs = args.map { arg =>
-              if (arg.isTerm) (q: Quotes) ?=> new ExprImpl(arg, QuotesImpl.scopeId, SpliceScope.getCurrent)
-              else new TypeImpl(arg, QuotesImpl.scopeId, SpliceScope.getCurrent)
+              if (arg.isTerm) (q: Quotes) ?=> new ExprImpl(arg, SpliceScope.getCurrent)
+              else new TypeImpl(arg, SpliceScope.getCurrent)
             }
             if isTerm then
               val quotedExpr = termHole(idx, reifiedArgs, QuotesImpl())

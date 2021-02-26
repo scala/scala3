@@ -18,6 +18,9 @@ trait Scope {
   /** Is this is a outer scope of the given scope */
   def isOuterScopeOf(scope: Scope): Boolean =
     this.eq(scope) || (scope.ne(NoScope) && isOuterScopeOf(scope.outer))
+  /** Scope of he top level splice or staging `run` */
+  def root: Scope =
+    if outer.eq(NoScope) then this else outer.root
   /** Stack of locations where scopes where evaluated */
   def stack: List[String] =
     this.toString :: (if outer.eq(NoScope) then Nil else outer.stack)
@@ -27,6 +30,7 @@ trait Scope {
 
 /** Only used for outer scope of top level splice and staging `run` */
 object NoScope extends Scope:
+  override def root: Scope = this
   override def outer: Scope = throw UnsupportedOperationException("NoScope.outer")
 
 class SpliceScope(val pos: SourcePosition, override val outer: Scope) extends Scope:
@@ -57,6 +61,6 @@ object SpliceScope:
 
     /** Context with an incremented quotation level. */
   def getCurrent(using Context): Scope =
-      ctx.property(ScopeKey).getOrElse(null)
+      ctx.property(ScopeKey).getOrElse(NoScope)
 
 end SpliceScope
