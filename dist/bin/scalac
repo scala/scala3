@@ -131,4 +131,4 @@ eval "\"$JAVACMD\"" \
      "${residual_args[@]}" \
      "${scripting_string-}"
 scala_exit_status=$?
-exit $scala_exit_status
+onExit
