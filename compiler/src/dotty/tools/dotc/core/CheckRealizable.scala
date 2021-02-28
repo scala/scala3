@@ -32,8 +32,8 @@ object CheckRealizable {
   class HasProblemBaseArg(typ: Type, argBounds: TypeBounds)(using Context)
   extends Realizability(i" has a base type $typ with possibly conflicting parameter bounds ${argBounds.lo} <: ... <: ${argBounds.hi}")
 
-  class HasProblemBase(base1: Type, base2: Type)(using Context)
-  extends Realizability(i" has conflicting base types $base1 and $base2")
+  class HasProblemBase(base1: Type, base2: Type, argStr: String)(using Context)
+  extends Realizability(i" has conflicting base type${argStr}s $base1 and $base2")
 
   class HasProblemField(fld: SingleDenotation, problem: Realizability)(using Context)
   extends Realizability(i" has a member $fld which is not a legal path\nsince ${fld.symbol.name}: ${fld.info}${problem.msg}")
@@ -167,17 +167,30 @@ class CheckRealizable(using Context) {
         new HasProblemBounds(name, mbr.info)
     }
 
-    def baseTypeProblems(base: Type) = base match {
-      case AndType(base1, base2) =>
-        new HasProblemBase(base1, base2) :: Nil
-      case base =>
-        base.argInfos.collect {
-          case bounds @ TypeBounds(lo, hi) if !(lo <:< hi) =>
-            new HasProblemBaseArg(base, bounds)
+    def baseTypeProblems(base: Type, argStr: String): List[Realizability] = base match {
+      case base: AndType =>
+        def factors(tp: Type): List[Type] = tp match
+          case AndType(tp1, tp2) => factors(tp1) ++ factors(tp2)
+          case _ => tp :: Nil
+        for case AndType(base1, base2) <-
+            factors(base).groupBy(_.classSymbol).values.map(_.reduce(_ & _)).toList
+          // try to merge factors with common class symbols
+          // if we cannot, it's a conflict
+        yield HasProblemBase(base1, base2, argStr)
+      case base: AppliedType =>
+        base.argInfos.lazyZip(base.tycon.typeParams).flatMap { (arg, tparam) =>
+          arg match
+            case bounds @ TypeBounds(lo, hi) if !(lo <:< hi) =>
+              new HasProblemBaseArg(base, bounds) :: Nil
+            case arg if tparam.paramVarianceSign == 0 =>
+              baseTypeProblems(arg, " argument")
+            case _ =>
+              Nil
         }
+      case _ => Nil
     }
     val baseProblems =
-      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)
+      tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems(_, ""))
 
     baseProblems.foldLeft(
       refinementProblems.foldLeft(
