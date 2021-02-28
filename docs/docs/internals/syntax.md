@@ -194,7 +194,7 @@ ParamValueType    ::=  Type [‘*’]                                           
 TypeArgs          ::=  ‘[’ Types ‘]’                                            ts
 Refinement        ::=  ‘{’ [RefineDcl] {semi [RefineDcl]} ‘}’                   ds
 TypeBounds        ::=  [‘>:’ Type] [‘<:’ Type]                                  TypeBoundsTree(lo, hi)
-TypeParamBounds   ::=  TypeBounds {‘:’ Type}                                    ContextBounds(typeBounds, tps)
+TypeParamBounds   ::=  TypeBounds {‘<%’ Type} {‘:’ Type}                        ContextBounds(typeBounds, tps)
 Types             ::=  Type {‘,’ Type}
 ```
 

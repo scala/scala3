@@ -1819,9 +1819,6 @@ object Parsers {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
       case VIEWBOUND =>
-        report.errorOrMigrationWarning(
-          "view bounds `<%' are deprecated, use a context bound `:' instead",
-          in.sourcePos())
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)

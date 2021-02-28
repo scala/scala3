@@ -33,6 +33,15 @@ object Predef:
    */
   transparent inline def summon[T](using inline x: T): x.type = x
 
+  /** Apply a non-implicit conversion automatically.
+   *
+   *  @tparam T the type of the value to be converted
+   *  @return the converted value
+   */
+
+  extension [T](x: T)
+    inline def as[A](using c: T => A) = c(x)
+
   // Extension methods for working with explicit nulls
 
   /** Strips away the nullability from a value.
