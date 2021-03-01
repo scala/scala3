@@ -1779,7 +1779,6 @@ class Typer extends Namer
         tpt1.tpe.typeSymbol == defn.PolyFunctionClass && rsym.name == nme.apply
       if (!polymorphicRefinementAllowed && rsym.info.isInstanceOf[PolyType] && rsym.allOverriddenSymbols.isEmpty)
         report.error(PolymorphicMethodMissingTypeInParent(rsym, tpt1.symbol), refinement.srcPos)
-
       val member = refineCls.info.member(rsym.name)
       if (member.isOverloaded)
         report.error(OverloadInRefinement(rsym), refinement.srcPos)
@@ -3124,20 +3123,16 @@ class Typer extends Namer
               }
           }
         case ambiAlts =>
-          if (tree.tpe.isErroneous || pt.isErroneous) tree.withType(UnspecifiedErrorType)
-          else {
+          if tree.tpe.isErroneous || pt.isErroneous then tree.withType(UnspecifiedErrorType)
+          else
             val remainingDenots = altDenots.filter(denot => ambiAlts.contains(altRef(denot)))
             val addendum =
-              if ambiAlts.toSet.size != ambiAlts.size then
-                // Several variants have the same signature. This can happen for structural
-                // type selections. See i8736.scala
-                """|
-                   |
-                   |Note: this happens because two or more alternatives have the same erasure,
-                   |      so they cannot be distinguished by overloading resolution""".stripMargin
+              if ambiAlts.exists(!_.symbol.exists) then
+                i"""|
+                    |
+                    |Note: Overloaded definitions introduced by refinements cannot be resolved"""
               else ""
             errorTree(tree, AmbiguousOverload(tree, remainingDenots, pt, addendum))
-          }
       }
     }
 
