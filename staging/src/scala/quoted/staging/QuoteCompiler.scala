@@ -18,10 +18,10 @@ import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.transform.Splicer.checkEscapedVariables
 import dotty.tools.dotc.transform.{Inlining, PickleQuotes}
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.util.{SourceFile, NoSourcePosition}
 import dotty.tools.io.{Path, VirtualFile}
 
-import scala.quoted.runtime.impl.QuotesImpl
+import scala.quoted.runtime.impl._
 
 import scala.annotation.tailrec
 import scala.concurrent.Promise
@@ -49,6 +49,10 @@ private class QuoteCompiler extends Compiler:
 
   def outputClassName: TypeName = "Generated$Code$From$Quoted".toTypeName
 
+  class RunScope extends Scope {
+    override def toString: String = "scala.quoted.staging"
+  }
+
   /** Frontend that receives a scala.quoted.Expr or scala.quoted.Type as input */
   class QuotedFrontend extends Phase:
     import tpd._
@@ -58,7 +62,8 @@ private class QuoteCompiler extends Compiler:
     override def runOn(units: List[CompilationUnit])(implicit ctx: Context): List[CompilationUnit] =
       units.flatMap {
         case exprUnit: ExprCompilationUnit =>
-          implicit val unitCtx: Context = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)
+          val ctx1 = ctx.fresh.setPhase(this.start).setCompilationUnit(exprUnit)
+          implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 
           val pos = Span(0)
           val assocFile = new VirtualFile("<quote>")
