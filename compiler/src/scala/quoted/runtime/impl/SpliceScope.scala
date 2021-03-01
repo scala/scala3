@@ -5,20 +5,20 @@ import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.SourcePosition
 
-/** Unique identifier of the evaluation of a splice.
+/** A scope uniquely identifies the context for evaluating a splice
  *
- *  A nested splice gets a new Scope with the outer one as an owner.
+ *  A nested splice gets a new scope with the enclosing scope as its `outer`.
  *  This also applies for recursive splices.
  */
 trait Scope {
   /** Outer scope that was used to create the quote containing this splice.
-   *  NoScope if there is no scope
+   *  NoScope otherwise.
    */
   def outer: Scope = NoScope
   /** Is this is a outer scope of the given scope */
   def isOuterScopeOf(scope: Scope): Boolean =
     this.eq(scope) || (scope.ne(NoScope) && isOuterScopeOf(scope.outer))
-  /** Scope of he top level splice or staging `run` */
+  /** Scope of the top level splice or staging `run` */
   def root: Scope =
     if outer.eq(NoScope) then this else outer.root
   /** Stack of locations where scopes where evaluated */
