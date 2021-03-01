@@ -11,24 +11,27 @@ trait JavadocAnchorCreator:
   import self.q.reflect._
 
   private val javadocPrimitivesMap = Map(
-    "scala.Int" -> "int",
-    "scala.Float" -> "float",
-    "scala.Double" -> "double",
-    "scala.Long" -> "long",
-    "scala.Byte" -> "byte",
-    "scala.Boolean" -> "boolean",
-    "scala.Char" -> "char",
-    "scala.Short" -> "short",
-    "<special-ops>.<FromJavaObject>" -> "java.lang.Object"
+    defn.IntClass -> "int",
+    defn.FloatClass -> "float",
+    defn.DoubleClass -> "double",
+    defn.LongClass -> "long",
+    defn.ByteClass -> "byte",
+    defn.BooleanClass -> "boolean",
+    defn.CharClass -> "char",
+    defn.ShortClass -> "short",
+    defn.ObjectClass -> "java.lang.Object"
   )
 
-  private def transformPrimitiveType(s: String): String = javadocPrimitivesMap.getOrElse(s, s)
+  private def transformPrimitiveType(tpe: TypeRepr): String = tpe.classSymbol
+    .flatMap(javadocPrimitivesMap.get)
+    .filter(_ => !tpe.typeSymbol.isTypeParam)
+    .getOrElse(tpe.show)
 
   private def transformType(tpe: TypeRepr): String = tpe.simplified match {
-    case AppliedType(tpe, typeList) if tpe.show == "scala.Array" =>  transformType(typeList.head) + ":A"
-    case AppliedType(tpe, typeList) if tpe.show == "scala.<repeated>" => transformType(typeList.head) + "..."
-    case AppliedType(tpe, typeList) => transformPrimitiveType(tpe.show)
-    case other => transformPrimitiveType(other.show)
+    case AppliedType(tpe, typeList) if tpe.classSymbol.fold(false)(_ == defn.ArrayClass) => transformType(typeList.head) + ":A"
+    case AppliedType(tpe, typeList) if tpe.classSymbol.fold(false)(_ == defn.RepeatedParamClass) => transformType(typeList.head) + "..."
+    case AppliedType(tpe, typeList) => transformPrimitiveType(tpe)
+    case other => transformPrimitiveType(other)
   }
 
   def getJavadocType(s: TypeRepr) = transformType(s)

@@ -3,16 +3,24 @@ package tasty
 
 import scala.quoted._
 import dotty.tools.scaladoc.util.Escape._
+import scala.collection.mutable.{ Map => MMap }
+import dotty.tools.io.AbstractFile
 
 class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2AnchorCreator:
   import q.reflect._
 
   given Q = q
+
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+
   extension (sym: Symbol)
     def packageName: String = (
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
     )
+
+    def packageNameSplitted: Seq[String] =
+      sym.packageName.split('.').toList
 
     def className: Option[String] =
       if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
@@ -110,11 +118,11 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
         else termParamss(1).params(0)
       }
 
-    private def constructPath(location: String, anchor: Option[String], link: ExternalDocLink): String =
+    private def constructPath(location: Seq[String], anchor: Option[String], link: ExternalDocLink): String =
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
-        val l = "\\$+".r.replaceAllIn(location.replace(".","/"), _ => ".")
+        val l = "\\$+".r.replaceAllIn(location.mkString("/"), _ => ".")
         val javadocAnchor = if anchor.isDefined then {
           val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
             case v: ValDef => v.tpt.tpe
@@ -125,7 +133,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
       //TODO #263: Add anchor support
       def constructPathForScaladoc2: String =
-        val l = escapeUrl(location).replace(".", "/")
+        val l = escapeUrl(location.mkString("/"))
         val scaladoc2Anchor = if anchor.isDefined then {
           "#" + getScaladoc2Type(sym.tree)
         } else ""
@@ -133,7 +141,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
       // TODO Add tests for it!
       def constructPathForScaladoc3: String =
-        val base = docURL + escapeUrl(location).replace(".", "/") + extension
+        val base = docURL + escapeUrl(location.mkString("/")) + extension
         anchor.fold(base)(a => base + "#" + a)
 
       link.kind match {
@@ -154,7 +162,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
         val className = sym.className
 
-        val location = className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}")
+        val location = sym.packageNameSplitted ++ className
 
         val anchor = sym.anchor
 
@@ -163,13 +171,18 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            Option(csym.associatedFile).map(_.path).flatMap( path =>
-              dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
-            ).map(link => constructPath(location, anchor, link))
+            val extLink = if externalLinkCache.contains(csym.associatedFile) then externalLinkCache(csym.associatedFile)
+            else {
+              val calculatedLink = Option(csym.associatedFile).map(_.path).flatMap( path =>
+               dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path))))
+              externalLinkCache += (csym.associatedFile -> calculatedLink)
+              calculatedLink
+            }
+            extLink.map(link => constructPath(location, anchor, link))
         }
 
         DRI(
-          location,
+          location.mkString("."),
           anchor.getOrElse(""),
           externalLink = externalLink,
           // sym.show returns the same signature for def << = 1 and def >> = 2.
