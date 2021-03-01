@@ -13,7 +13,6 @@ import dotty.tools.languageserver.config.ProjectConfig
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import scala.collection.mutable.ListBuffer
-import DottyPlugin.autoImport._
 
 object DottyIDEPlugin extends AutoPlugin {
   object autoImport {

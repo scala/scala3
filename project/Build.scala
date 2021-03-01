@@ -15,8 +15,6 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
 
-import dotty.tools.sbtplugin.DottyPlugin.autoImport._
-import dotty.tools.sbtplugin.DottyPlugin.makeScalaInstance
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
@@ -51,7 +49,7 @@ abstract class DottyJSPlugin(settings: Seq[Setting[_]]) extends AutoPlugin {
       _.filter(!_.name.startsWith("junit-interface"))
     },
     libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").withDottyCompat(scalaVersion.value),
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
@@ -358,16 +356,17 @@ object Build {
       val dottyCompiler = (`scala3-compiler` / Compile / packageBin).value
       val scaladoc = (`scaladoc-nonBootstrapped` / Compile / packageBin).value
 
+      val allCompilerJars = Seq(tastyCore, dottyLibrary, dottyInterfaces, dottyCompiler) ++ externalNonBootstrappedDeps.map(_.data)
+      val allDocJars = Seq(scaladoc)
       val allJars = Seq(tastyCore, dottyLibrary, dottyInterfaces, dottyCompiler, scaladoc) ++ externalNonBootstrappedDeps.map(_.data)
 
-      makeScalaInstance(
-        state.value,
+      sbt.Bootstrap.makeScalaInstance(
         scalaVersion.value,
-        scalaLibrary,
-        dottyLibrary,
-        dottyCompiler,
-        allJars,
-        appConfiguration.value
+        Array(scalaLibrary, dottyLibrary),
+        allCompilerJars,
+        Seq(scaladoc),
+        state.value,
+        scalaInstanceTopLoader.value
       )
     },
     Compile / doc / scalacOptions ++= scalacOptionsDocSettings,
@@ -605,8 +604,8 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
-      (Compile / sourceGenerators) += Def.task {
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      Compile / sourceGenerators += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
         val trgDir = (Compile / sourceManaged).value / "scalajs-ir-src"
@@ -715,7 +714,7 @@ object Build {
     enablePlugins(NonBootstrappedDottyJSPlugin).
     settings(
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       unmanagedSourceDirectories in Compile :=
         (unmanagedSourceDirectories in (`scala3-library`, Compile)).value
     )
@@ -734,7 +733,7 @@ object Build {
     enablePlugins(BootstrappedDottyJSPlugin).
     settings(
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
@@ -1066,7 +1065,7 @@ object Build {
 
       // We need JUnit in the Compile configuration
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
 
       (Compile / sourceGenerators) += Def.task {
         import org.scalajs.linker.interface.CheckedBehavior
@@ -1732,7 +1731,7 @@ object Build {
       pr.settings(
         Test / fork := false,
         scalaJSUseMainModuleInitializer := true,
-        libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").withDottyCompat(scalaVersion.value)
+        libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
       )
     }
 
