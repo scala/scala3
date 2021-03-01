@@ -169,6 +169,7 @@ class ExtractSemanticDB extends Phase:
             tree match
               case tree: DefDef =>
                 tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
+              case tree: ValDef if tree.symbol.is(Given) => traverse(tree.tpt)
               case _ =>
             if !tree.symbol.isGlobal then
               localBodies(tree.symbol) = tree.rhs
