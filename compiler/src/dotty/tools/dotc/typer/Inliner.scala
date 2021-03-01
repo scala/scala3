@@ -465,7 +465,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       if (isByName) DefDef(boundSym, newArg)
       else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
-    bindingsBuf += binding.setDefTree
+    bindingsBuf += binding
     binding
   }
 
@@ -522,7 +522,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
-      val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span).setDefTree
+      val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span)
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
       lastSelf = selfSym
@@ -798,7 +798,12 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       bindingsBuf.mapInPlace { binding =>
         // Set trees to symbols allow macros to see the definition tree.
         // This is used by `underlyingArgument`.
-        reducer.normalizeBinding(binding)(using inlineCtx).setDefTree
+        val binding1 = reducer.normalizeBinding(binding)(using inlineCtx).setDefTree
+        binding1.foreachSubTree {
+          case tree: MemberDef => tree.setDefTree
+          case _ =>
+        }
+        binding1
       }
 
       // Run a typing pass over the inlined tree. See InlineTyper for details.
@@ -1383,6 +1388,10 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       if Inliner.needsInlining(tree) then Inliner.inlineCall(tree)
       else tree
 
+    override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
+      super.typedUnadapted(tree, pt, locked) match
+        case member: MemberDef => member.setDefTree
+        case tree => tree
   }
 
   /** Drop any side-effect-free bindings that are unused in expansion or other reachable bindings.
