@@ -7,6 +7,6 @@ object Test {
 }
 
 object Test2 {
-  def m[P <% ju.List[Int]](l: P) = { val a = l.as[ju.List[Int]] ; 1 }
+  def m[P <% ju.List[Int]](l: P) = { val a = l.convertTo[ju.List[Int]] ; 1 }
   m(List(1))
 }

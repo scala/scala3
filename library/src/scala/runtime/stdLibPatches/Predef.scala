@@ -40,7 +40,7 @@ object Predef:
    */
 
   extension [T](x: T)
-    inline def as[A](using c: T => A) = c(x)
+    inline def convertTo[A](using c: T => A) = c(x)
 
   // Extension methods for working with explicit nulls
 
