@@ -4,7 +4,7 @@ package tasty
 import scala.quoted._
 import dotty.tools.scaladoc.util.Escape._
 
-class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
+class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2AnchorCreator:
   import q.reflect._
 
   given Q = q
@@ -115,17 +115,21 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
         val l = "\\$+".r.replaceAllIn(location.replace(".","/"), _ => ".")
-        val javadocAnchor = {
+        val javadocAnchor = if anchor.isDefined then {
           val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
             case v: ValDef => v.tpt.tpe
           }.map(getJavadocType)
-          paramSigs.mkString("-","-","-")
-        }
-        docURL + l + extension + anchor.fold("")(a => "#" + sym.name + javadocAnchor)
+          "#" + sym.name + paramSigs.mkString("-","-","-")
+        } else ""
+        docURL + l + extension + javadocAnchor
 
       //TODO #263: Add anchor support
       def constructPathForScaladoc2: String =
-        docURL + escapeUrl(location).replace(".", "/") + extension
+        val l = escapeUrl(location).replace(".", "/")
+        val scaladoc2Anchor = if anchor.isDefined then {
+          "#" + getScaladoc2Type(sym.tree)
+        } else ""
+        docURL + l + extension + scaladoc2Anchor
 
       // TODO Add tests for it!
       def constructPathForScaladoc3: String =
