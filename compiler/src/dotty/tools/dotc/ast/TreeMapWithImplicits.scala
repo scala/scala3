@@ -60,17 +60,20 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     traverse(stats)
   }
 
-  private def nestedScopeCtx(defs: List[Tree])(using Context): Context = {
+  private def nestedScopeCtx(stats: List[Tree])(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
-    defs foreach {
+    stats.foreach {
       case d: DefTree if d.symbol.isOneOf(GivenOrImplicit) => nestedCtx.enter(d.symbol)
       case _ =>
     }
-    nestedCtx
+    importScopeCtx(stats)(using nestedCtx)
   }
 
   private def nestedPackageScopeCtx(tree: PackageDef)(using Context): Context =
-    tree.stats.foldLeft(ctx.withOwner(tree.symbol)) {
+    importScopeCtx(tree.stats)(using ctx.withOwner(tree.symbol))
+
+  private def importScopeCtx(stats: List[Tree])(using Context): Context =
+    stats.foldLeft(ctx) {
       case (acc, stat: Import) => ctx.importContext(stat, stat.symbol)
       case (acc, _) => acc
     }
