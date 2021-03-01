@@ -14,7 +14,12 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
   List(
     "https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.Builder.html",
     "https://docs.oracle.com/javase/8/docs/api/java/util/Map.Entry.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html"
+    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#toArray-T:A-",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
   )
 )
 

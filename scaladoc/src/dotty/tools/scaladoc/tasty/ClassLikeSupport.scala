@@ -201,7 +201,7 @@ trait ClassLikeSupport:
           p.copy(
             dri = p.dri.copy(
               location = parentDRI.location,
-              origin = parentDRI.origin
+              externalLink = None
             )
           )
         )

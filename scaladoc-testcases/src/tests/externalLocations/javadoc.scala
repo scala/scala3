@@ -10,3 +10,9 @@ class Test {
   def c: java.util.stream.Stream.Builder[String] = ???
 }
 
+class MyException extends java.lang.Exception
+
+class MyArrayList[T] extends java.util.ArrayList[T]
+
+trait MyPrintStream extends java.io.PrintStream
+

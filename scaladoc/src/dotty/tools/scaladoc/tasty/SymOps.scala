@@ -2,8 +2,9 @@ package dotty.tools.scaladoc
 package tasty
 
 import scala.quoted._
+import dotty.tools.scaladoc.util.Escape._
 
-class SymOps[Q <: Quotes](val q: Q):
+class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
   import q.reflect._
 
   given Q = q
@@ -109,8 +110,36 @@ class SymOps[Q <: Quotes](val q: Q):
         else termParamss(1).params(0)
       }
 
+    private def constructPath(location: String, anchor: Option[String], link: ExternalDocLink): String =
+      val extension = ".html"
+      val docURL = link.documentationUrl.toString
+      def constructPathForJavadoc: String =
+        val l = "\\$+".r.replaceAllIn(location.replace(".","/"), _ => ".")
+        val javadocAnchor = {
+          val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
+            case v: ValDef => v.tpt.tpe
+          }.map(getJavadocType)
+          paramSigs.mkString("-","-","-")
+        }
+        docURL + l + extension + anchor.fold("")(a => "#" + sym.name + javadocAnchor)
+
+      //TODO #263: Add anchor support
+      def constructPathForScaladoc2: String =
+        docURL + escapeUrl(location).replace(".", "/") + extension
+
+      // TODO Add tests for it!
+      def constructPathForScaladoc3: String =
+        val base = docURL + escapeUrl(location).replace(".", "/") + extension
+        anchor.fold(base)(a => base + "#" + a)
+
+      link.kind match {
+        case DocumentationKind.Javadoc => constructPathForJavadoc
+        case DocumentationKind.Scaladoc2 => constructPathForScaladoc2
+        case DocumentationKind.Scaladoc3 => constructPathForScaladoc3
+      }
+
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
-    def dri: DRI =
+    def dri(using dctx: DocContext): DRI =
       if sym == Symbol.noSymbol then topLevelDri
       else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
@@ -119,21 +148,27 @@ class SymOps[Q <: Quotes](val q: Q):
           else if (sym.maybeOwner.isDefDef) Some(sym.owner)
           else None
 
-        val originPath = {
+        val className = sym.className
+
+        val location = className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}")
+
+        val anchor = sym.anchor
+
+        val externalLink = {
             import q.reflect._
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            Option(csym.associatedFile).fold("")(_.path)
+            Option(csym.associatedFile).map(_.path).flatMap( path =>
+              dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+            ).map(link => constructPath(location, anchor, link))
         }
 
-        val className = sym.className
-
         DRI(
-          className.fold(sym.packageName)(cn => s"${sym.packageName}.${cn}"),
-          anchor = sym.anchor.getOrElse(""),
-          origin = originPath,
+          location,
+          anchor.getOrElse(""),
+          externalLink = externalLink,
           // sym.show returns the same signature for def << = 1 and def >> = 2.
           // For some reason it contains `$$$` instrad of symbol name
-          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]$originPath"
+          s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
