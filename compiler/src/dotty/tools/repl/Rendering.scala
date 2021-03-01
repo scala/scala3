@@ -58,25 +58,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
         // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
         // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
+        val renderer = "stringOf"  // was: replStringOf
         try {
-          val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int], classOf[Boolean])
+          val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
           val truly = java.lang.Boolean.TRUE
 
           (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements), truly).asInstanceOf[String]
         } catch {
           case _: NoSuchMethodException =>
-            val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
 
-            (value: Object) => {
-              val res = meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
-              val len = res.length()
-              if len == 0 || res.charAt(len-1) != '\n' then
-                res
-              else if len == 1 || res.charAt(0) != '\n' then
-                res.substring(0, len-1)
-              else
-                res.substring(1, len-1)
-            }
+            (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
         }
       }
       myClassLoader
@@ -99,7 +91,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    truncate(myReplStringOf(value))
+    val res = myReplStringOf(value)
+    if res == null then "null // non-null reference has null-valued toString" else truncate(res)
   }
 
   /** Load the value of the symbol using reflection.
