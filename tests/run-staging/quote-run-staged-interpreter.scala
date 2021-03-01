@@ -12,7 +12,7 @@ object Test {
   import Exp.*
 
   def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(using Quotes): Expr[Int] = {
-    def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+    def compileImpl(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match {
       case Num(n) => Expr(n)
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
       case Var(x) => env(x)
