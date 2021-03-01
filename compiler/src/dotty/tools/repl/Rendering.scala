@@ -55,11 +55,29 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
-        // `ScalaRunTime.replStringOf`.
+        // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
+        // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+        try {
+          val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int], classOf[Boolean])
+          val truly = java.lang.Boolean.TRUE
 
-        (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+          (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements), truly).asInstanceOf[String]
+        } catch {
+          case _: NoSuchMethodException =>
+            val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+
+            (value: Object) => {
+              val res = meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+              val len = res.length()
+              if len == 0 || res.charAt(len-1) != '\n' then
+                res
+              else if len == 1 || res.charAt(0) != '\n' then
+                res.substring(0, len-1)
+              else
+                res.substring(1, len-1)
+            }
+        }
       }
       myClassLoader
     }
@@ -95,7 +113,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map(replStringOf(_).trim)
+    val string = value.map(replStringOf(_))
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else
