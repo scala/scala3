@@ -338,6 +338,14 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     /*
      * must-single-thread
      */
+    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]) =
+      for param <- params do
+        var access = asm.Opcodes.ACC_FINAL
+        jmethod.visitParameter(param.name.mangledString, access)
+
+    /*
+     * must-single-thread
+     */
     def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
       val annotationss = pannotss map (_ filter shouldEmitAnnotation)
       if (annotationss forall (_.isEmpty)) return
