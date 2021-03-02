@@ -26,6 +26,11 @@ function onExit() {
 # to reenable echo if we are interrupted before completing.
 trap onExit INT TERM
 
+# COLUMNS is used together with command line option '-pageWidth'.
+if command -v tput >/dev/null 2>&1; then
+  export COLUMNS="$(tput -Tdumb cols)"
+fi
+
 cygwin=false
 mingw=false
 msys=false
