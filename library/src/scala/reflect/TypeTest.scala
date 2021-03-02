@@ -20,7 +20,7 @@ trait TypeTest[-S, T] extends Serializable:
    * `SomeExtractor(...)` is turned into `tt(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
    * is uncheckable, but we have an instance of `TypeTest[S, T]`.
    */
-  def unapply(x: S): Option[x.type & T]
+  def unapply(x: S): Option[x.type & T] @scala.annotation.covers[T]
 
 object TypeTest:
 

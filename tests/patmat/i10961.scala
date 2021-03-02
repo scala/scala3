@@ -34,12 +34,12 @@ object test2lib {
 
   type ParamClause = ValDefs | TypeDefs
 
-  object ValDefs with
+  object ValDefs:
     def unapply(pc: ParamClause): Option[ValDefs] @covers[ValDefs] = ??? // matches empty list and all lists of ValDefs
 
     def apply(vals: List[ValDef]): ValDefs = vals
 
-  object TypeDefs with
+  object TypeDefs:
     def unapply(pc: ParamClause): Option[TypeDefs] @covers[TypeDefs] = ??? // matches non-empty lists of TypeDefs
 
     def apply(tdefs: List[TypeDef]): TypeDefs =
@@ -64,7 +64,7 @@ object test3lib {
 
   type Num = Nat | Neg
 
-  object Nat with
+  object Nat:
     def unapply(x: Num): Option[Nat] @covers[Nat] =
       if x >= 0 then Some(x) else None
 
@@ -72,7 +72,7 @@ object test3lib {
       assert(x >= 0)
       x
 
-  object Neg with
+  object Neg:
     def unapply(x: Num): Option[Neg] @covers[Neg] =
       if x < 0 then Some(x) else None
 
@@ -88,4 +88,13 @@ object test3 {
     x match
     case Nat(x) =>
     case Neg(x) =>
+}
+
+object test4 {
+  import scala.reflect.TypeTest
+
+  def test[A](a: A | String)(using TypeTest[A | String, A]) =
+    a match
+    case a: A =>
+    case s: String =>
 }
