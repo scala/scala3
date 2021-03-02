@@ -257,6 +257,7 @@ object StdNames {
     final val DeprecatedATTR: N                   = "Deprecated"
     final val ExceptionsATTR: N                   = "Exceptions"
     final val InnerClassesATTR: N                 = "InnerClasses"
+    final val MethodParametersATTR: N             = "MethodParameters"
     final val LineNumberTableATTR: N              = "LineNumberTable"
     final val LocalVariableTableATTR: N           = "LocalVariableTable"
     final val RuntimeVisibleAnnotationATTR: N     = "RuntimeVisibleAnnotations"   // RetentionPolicy.RUNTIME

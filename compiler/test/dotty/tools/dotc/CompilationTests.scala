@@ -42,6 +42,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ycheck-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
+      compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
