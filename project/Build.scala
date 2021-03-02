@@ -1339,6 +1339,12 @@ object Build {
       version := sbtCommunityBuildVersion,
       organization := "ch.epfl.lamp",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
+
+      // hack to run the scripted tests on a nightly version of sbt
+      // see https://github.com/sbt/sbt/issues/6347
+      scriptedSbt := "1.4.7",
+      scriptedLaunchOpts ++= Seq("-Dsbt.version=1.5.0-bin-20210302T081602"),
+
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,

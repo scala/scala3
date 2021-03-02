@@ -17,7 +17,6 @@ lazy val aJS = project
   )
 
 lazy val bJVM = project
-  .settings(onlyThisTestResolverSettings)
   .settings(
     name := "b",
     libraryDependencies := Seq(organization.value %%% "a" % "0.5.0-SNAPSHOT"),
@@ -25,7 +24,6 @@ lazy val bJVM = project
 
 lazy val bJS = project
   .enablePlugins(ScalaJSPlugin)
-  .settings(onlyThisTestResolverSettings)
   .settings(
     name := "b",
     libraryDependencies := Seq(organization.value %%% "a" % "0.5.0-SNAPSHOT"),

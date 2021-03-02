@@ -9,14 +9,12 @@ lazy val a = project
   )
 
 lazy val b = project
-  .settings(onlyThisTestResolverSettings)
   .settings(
     name := "b",
     libraryDependencies := Seq(organization.value %% "a" % "0.4.0-SNAPSHOT"),
   )
 
 lazy val c = project
-  .settings(onlyThisTestResolverSettings)
   .settings(
     name := "c",
     libraryDependencies := Seq(),  // don't depend on scala-library

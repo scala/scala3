@@ -24,10 +24,4 @@ object ThisTestPlugin extends AutoPlugin {
       deleteDepsFile := IO.delete(file(sys.props("dotty.communitybuild.dir")) / "dotty-community-build-deps"),
     )
   }
-
-  object autoImport {
-    def onlyThisTestResolverSettings: Seq[Setting[_]] = Seq(
-      externalResolvers := thisTestResolver.value :: Nil
-    )
-  }
 }

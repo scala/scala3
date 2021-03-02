@@ -16,7 +16,6 @@ lazy val b = project
   )
 
 lazy val c = project
-  .settings(onlyThisTestResolverSettings)
   .settings(
     name := "c",
     libraryDependencies := Seq(organization.value %% "b" % "1.3.0-SNAPSHOT"),
