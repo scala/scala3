@@ -1245,6 +1245,10 @@ object Build {
       // ensure that sbt-dotty is built on sbt 1.4
       pluginCrossBuild / sbtVersion := "1.4.9",
 
+      // hack to run the scripted tests on sbt 1.5.0-bin-20210302T081602
+      // https://github.com/sbt/sbt/issues/6347
+      scriptedLaunchOpts ++= Seq("-Dsbt.version=1.5.0-bin-20210302T081602"),
+
       // The batch mode accidentally became the default with no way to disable
       // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
       // We enable it explicitly here to make it clear that we're using it.
