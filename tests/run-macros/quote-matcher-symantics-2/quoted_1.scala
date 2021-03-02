@@ -19,7 +19,7 @@ object Macros {
 
   private def impl[T: Type](sym: Symantics[T], a: Expr[DSL])(using Quotes): Expr[T] = {
 
-    def lift(e: Expr[DSL])(implicit env: Map[Int, Expr[T]]): Expr[T] = e match {
+    def lift(e: Expr[DSL])(using env: Map[Int, Expr[T]])(using Quotes): Expr[T] = e match {
 
       case '{ LitDSL(${Expr(c)}) } => sym.value(c)
 
@@ -32,7 +32,7 @@ object Macros {
       case '{ val x: DSL = $value; $bodyFn(x): DSL } =>
         UnsafeExpr.open(bodyFn) { (body1, close) =>
           val (i, nEnvVar) = freshEnvVar()
-          lift(close(body1)(nEnvVar))(env + (i -> lift(value)))
+          lift(close(body1)(nEnvVar))(using env + (i -> lift(value)))
         }
 
       case '{ envVar(${Expr(i)}) } => env(i)
@@ -43,12 +43,12 @@ object Macros {
         ???
     }
 
-    def liftFun(e: Expr[DSL => DSL])(implicit env: Map[Int, Expr[T]]): Expr[T => T] = e match {
+    def liftFun(e: Expr[DSL => DSL])(using env: Map[Int, Expr[T]])(using Quotes): Expr[T => T] = e match {
       case '{ (x: DSL) => $bodyFn(x): DSL } =>
         sym.lam((y: Expr[T]) =>
           UnsafeExpr.open(bodyFn) { (body1, close) =>
             val (i, nEnvVar) = freshEnvVar()
-            lift(close(body1)(nEnvVar))(env + (i -> y))
+            lift(close(body1)(nEnvVar))(using env + (i -> y))
           }
         )
       case _ =>
@@ -57,7 +57,7 @@ object Macros {
         ???
     }
 
-    lift(a)(Map.empty)
+    lift(a)(using Map.empty)
   }
 
 }
@@ -112,7 +112,7 @@ trait Symantics[Num] {
   def plus(x: Expr[Num], y: Expr[Num])(using Quotes): Expr[Num]
   def times(x: Expr[Num], y: Expr[Num])(using Quotes): Expr[Num]
   def app(f: Expr[Num => Num], x: Expr[Num])(using Quotes): Expr[Num]
-  def lam(body: Expr[Num] => Expr[Num])(using Quotes): Expr[Num => Num]
+  def lam(body: Quotes ?=> Expr[Num] => Expr[Num])(using Quotes): Expr[Num => Num]
 }
 
 object StringNum extends Symantics[String] {
@@ -120,7 +120,7 @@ object StringNum extends Symantics[String] {
   def plus(x: Expr[String], y: Expr[String])(using Quotes): Expr[String] = '{ s"${$x} + ${$y}" } // '{ x + " + " + y }
   def times(x: Expr[String], y: Expr[String])(using Quotes): Expr[String] = '{ s"${$x} * ${$y}" }
   def app(f: Expr[String => String], x: Expr[String])(using Quotes): Expr[String] = Expr.betaReduce('{ $f($x) })
-  def lam(body: Expr[String] => Expr[String])(using Quotes): Expr[String => String] = '{ (x: String) => ${body('x)} }
+  def lam(body: Quotes ?=> Expr[String] => Expr[String])(using Quotes): Expr[String => String] = '{ (x: String) => ${body('x)} }
 }
 
 object ComputeNum extends Symantics[Int] {
@@ -128,7 +128,7 @@ object ComputeNum extends Symantics[Int] {
   def plus(x: Expr[Int], y: Expr[Int])(using Quotes): Expr[Int] = '{ $x + $y }
   def times(x: Expr[Int], y: Expr[Int])(using Quotes): Expr[Int] = '{ $x * $y }
   def app(f: Expr[Int => Int], x: Expr[Int])(using Quotes): Expr[Int] = '{ $f($x) }
-  def lam(body: Expr[Int] => Expr[Int])(using Quotes): Expr[Int => Int] = '{ (x: Int) => ${body('x)} }
+  def lam(body: Quotes ?=> Expr[Int] => Expr[Int])(using Quotes): Expr[Int => Int] = '{ (x: Int) => ${body('x)} }
 }
 
 object ASTNum extends Symantics[ASTNum] {
@@ -136,7 +136,7 @@ object ASTNum extends Symantics[ASTNum] {
   def plus(x: Expr[ASTNum], y: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ PlusAST($x, $y) }
   def times(x: Expr[ASTNum], y: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ TimesAST($x, $y) }
   def app(f: Expr[ASTNum => ASTNum], x: Expr[ASTNum])(using Quotes): Expr[ASTNum] = '{ AppAST($f, $x) }
-  def lam(body: Expr[ASTNum] => Expr[ASTNum])(using Quotes): Expr[ASTNum => ASTNum] = '{ (x: ASTNum) => ${body('x)} }
+  def lam(body: Quotes ?=> Expr[ASTNum] => Expr[ASTNum])(using Quotes): Expr[ASTNum => ASTNum] = '{ (x: ASTNum) => ${body('x)} }
 }
 
 trait ASTNum

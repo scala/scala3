@@ -681,18 +681,18 @@ object Test {
 }
 
 sealed trait Var[T] {
-  def get(using Quotes): Expr[T]
-  def update(e: Expr[T])(using Quotes): Expr[Unit]
+  def get: Expr[T]
+  def update(e: Quotes ?=> Expr[T]): Expr[Unit]
 }
 
 object Var {
-  def apply[T: Type, U: Type](init: Expr[T])(body: Var[T] => Expr[U])(using Quotes): Expr[U] = '{
+  def apply[T: Type, U: Type](init: Expr[T])(body: Quotes ?=> Var[T] => Expr[U])(using Quotes): Expr[U] = '{
     var x = $init
     ${
       body(
         new Var[T] {
-          def get(using Quotes): Expr[T] = 'x
-          def update(e: Expr[T])(using Quotes): Expr[Unit] = '{ x = $e }
+          def get: Expr[T] = 'x
+          def update(e: Quotes ?=> Expr[T]): Expr[Unit] = '{ x = $e }
         }
       )
     }
