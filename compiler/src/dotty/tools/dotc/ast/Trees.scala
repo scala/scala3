@@ -415,6 +415,13 @@ object Trees {
         qualifier.typeOpt.member(name).atSignature(Signature.NotAMethod, name)
       case _ =>
         super.denot
+
+    def nameSpan(using Context): Span =
+      if span.exists then
+        val point = span.point
+        if span.isSynthetic || name.toTermName == nme.ERROR then Span(point)
+        else Span(point, span.end, point)
+      else span
   }
 
   class SelectWithSig[-T >: Untyped] private[ast] (qualifier: Tree[T], name: Name, val sig: Signature)(implicit @constructorOnly src: SourceFile)

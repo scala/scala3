@@ -10,9 +10,9 @@ object Givens/*<-a::b::Givens.*/:
     def sayGoodbye/*<-a::b::Givens.sayGoodbye().*/ = s"/*->scala::StringContext.apply().*/Goodbye, from $any/*->a::b::Givens.sayGoodbye().(any)*/"/*->scala::StringContext#s().*/
     def saySoLong/*<-a::b::Givens.saySoLong().*/ = s"/*->scala::StringContext.apply().*/So Long, from $any/*->a::b::Givens.saySoLong().(any)*/"/*->scala::StringContext#s().*/
 
-  val hello1/*<-a::b::Givens.hello1.*/ = /*->a::b::Givens.sayHello().*/1.sayHello
-  val goodbye1/*<-a::b::Givens.goodbye1.*/ = /*->a::b::Givens.sayGoodbye().*/1.sayGoodbye
-  val soLong1/*<-a::b::Givens.soLong1.*/ = /*->a::b::Givens.saySoLong().*/1.saySoLong
+  val hello1/*<-a::b::Givens.hello1.*/ = 1.sayHello/*->a::b::Givens.sayHello().*/
+  val goodbye1/*<-a::b::Givens.goodbye1.*/ = 1.sayGoodbye/*->a::b::Givens.sayGoodbye().*/
+  val soLong1/*<-a::b::Givens.soLong1.*/ = 1.saySoLong/*->a::b::Givens.saySoLong().*/
 
   trait Monoid/*<-a::b::Givens.Monoid#*/[A/*<-a::b::Givens.Monoid#[A]*/]:
     def empty/*<-a::b::Givens.Monoid#empty().*/: A/*->a::b::Givens.Monoid#[A]*/

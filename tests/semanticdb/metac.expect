@@ -966,11 +966,11 @@ Occurrences:
 [52:40..52:46): Option -> scala/Option#
 [52:47..52:48): B -> _empty_/Enums.unwrap().[B]
 [54:6..54:11): some1 <- _empty_/Enums.some1.
-[54:14..54:14): -> _empty_/Enums.unwrap().
 [54:14..54:18): Some -> scala/Some.
 [54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
 [54:23..54:23): -> scala/Some.apply().
+[54:28..54:34): unwrap -> _empty_/Enums.unwrap().
 [54:34..54:34): -> _empty_/Enums.`<:<`.given_T().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
 [56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
@@ -1103,6 +1103,33 @@ Occurrences:
 [9:24..9:32): classTag -> scala/reflect/package.classTag().
 [9:33..9:36): Int -> scala/Int#
 [9:37..9:37): -> scala/reflect/ClassTag.apply().
+
+expect/Extension.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Extension.scala
+Text => empty
+Language => Scala
+Symbols => 4 entries
+Occurrences => 8 entries
+
+Symbols:
+ext/Extension$package. => final package object ext
+ext/Extension$package.a. => val method a
+ext/Extension$package.foo(). => method foo
+ext/Extension$package.foo().(s) => param s
+
+Occurrences:
+[0:8..0:11): ext <- ext/
+[2:0..2:0): <- ext/Extension$package.
+[2:11..2:12): s <- ext/Extension$package.foo().(s)
+[2:14..2:20): String -> scala/Predef.String#
+[3:6..3:9): foo <- ext/Extension$package.foo().
+[3:11..3:14): Int -> scala/Int#
+[5:4..5:5): a <- ext/Extension$package.a.
+[5:14..5:17): foo -> ext/Extension$package.foo().
 
 expect/ForComprehension.scala
 -----------------------------
@@ -1288,11 +1315,11 @@ Occurrences:
 [10:37..10:40): any -> a/b/Givens.saySoLong().(any)
 [10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
-[12:15..12:15): -> a/b/Givens.sayHello().
+[12:17..12:25): sayHello -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
-[13:17..13:17): -> a/b/Givens.sayGoodbye().
+[13:19..13:29): sayGoodbye -> a/b/Givens.sayGoodbye().
 [14:6..14:13): soLong1 <- a/b/Givens.soLong1.
-[14:16..14:16): -> a/b/Givens.saySoLong().
+[14:18..14:27): saySoLong -> a/b/Givens.saySoLong().
 [16:8..16:14): Monoid <- a/b/Givens.Monoid#
 [16:14..16:14): <- a/b/Givens.Monoid#`<init>`().
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
