@@ -21,7 +21,7 @@ sbt:scala3> projects
 ...
 ```
 
-These duplicated projects can be confusing and cause issues IDEs.
+These duplicated projects can be confusing and cause issues in IDEs.
 
 When using Metals, the `-bootstrapped` projects are not exported.
 

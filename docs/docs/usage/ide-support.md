@@ -29,7 +29,7 @@ To communicate with the build tool (e.g., to import the project, trigger builds,
 Metals uses the [Build Server Protocol (BSP)](https://build-server-protocol.github.io/). The
 default BSP implementation used by metals is [Bloop](https://scalacenter.github.io/bloop/), which
 supports Scala 3 projects. Alternatively,
-[sbt can used as a BSP server](https://scalameta.org/metals/blog/2020/11/06/sbt-BSP-support.html)
+[sbt can be used as a BSP server](https://scalameta.org/metals/blog/2020/11/06/sbt-BSP-support.html)
 as it directly implements BSP since version 1.4.
 
 

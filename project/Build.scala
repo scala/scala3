@@ -424,7 +424,6 @@ object Build {
       (Compile / run / forkOptions) := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       // And when running the tests
       (Test / forkOptions) := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
-      (Test / testOnly / forkOptions) := (Test / testOnly / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
 
       test in Test := {
         // Exclude VulpixMetaTests
