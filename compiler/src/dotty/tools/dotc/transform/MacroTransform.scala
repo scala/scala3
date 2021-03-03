@@ -37,7 +37,7 @@ abstract class MacroTransform extends Phase {
       ctx.fresh.setTree(tree).setOwner(owner)
     }
 
-    def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
+    override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {
         case _: Import | _: DefTree => transform(stat)
         case _ => transform(stat)(using ctx.exprContext(stat, exprOwner))

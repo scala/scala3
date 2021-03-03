@@ -46,7 +46,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   /** The quotation level of the definition of the locally defined symbol */
   protected def levelOf(sym: Symbol): Int = levelOfMap.getOrElse(sym, 0)
 
-  /** Localy defined symbols seen so far by `StagingTransformer.transform` */
+  /** Locally defined symbols seen so far by `StagingTransformer.transform` */
   protected def localSymbols: List[Symbol] = enteredSyms
 
   /** If we are inside a quote or a splice */
@@ -74,7 +74,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
   /** Transform the expression splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree
 
-  /** Transform the typee splice `splice` which contains the spliced `body`. */
+  /** Transform the type splice `splice` which contains the spliced `body`. */
   protected def transformSpliceType(body: Tree, splice: Select)(using Context): Tree
 
   override def transform(tree: Tree)(using Context): Tree =
@@ -109,7 +109,7 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           try dropEmptyBlocks(quotedTree) match {
             case Spliced(t) =>
               // '{ $x } --> x
-              // and adapt the refinment of `Quotes { type tasty: ... } ?=> Expr[T]`
+              // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ => transformQuotation(quotedTree, tree)
           }
