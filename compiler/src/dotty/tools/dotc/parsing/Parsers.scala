@@ -28,7 +28,7 @@ import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled}
+import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -1193,17 +1193,17 @@ object Parsers {
             in.nextToken()
             Quote(t)
           }
-          else {
-            report.errorOrMigrationWarning(
-              em"""symbol literal '${in.name} is no longer supported,
-                  |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                  |or enclose in braces '{${in.name}} if you want a quoted expression.""",
-              in.sourcePos())
-            if migrateTo3 then
-              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
-              patch(source, Span(in.charOffset - 1), "\")")
+          else
+            if !symbolLiteralsEnabled(using languageImportContext) then
+              report.errorOrMigrationWarning(
+                em"""symbol literal '${in.name} is no longer supported,
+                    |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                    |or enclose in braces '{${in.name}} if you want a quoted expression.""",
+                in.sourcePos())
+              if migrateTo3 then
+                patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+                patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
-          }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)

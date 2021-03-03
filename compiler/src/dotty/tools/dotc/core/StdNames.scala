@@ -449,6 +449,7 @@ object StdNames {
     val definitions: N          = "definitions"
     val delayedInit: N          = "delayedInit"
     val delayedInitArg: N       = "delayedInit$body"
+    val deprecated: N           = "deprecated"
     val derived: N              = "derived"
     val derives: N              = "derives"
     val doubleHash: N           = "doubleHash"

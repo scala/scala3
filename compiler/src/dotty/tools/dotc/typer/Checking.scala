@@ -755,6 +755,7 @@ trait Checking {
       case Some(prefix) =>
         val required =
           if prefix == nme.experimental then defn.LanguageExperimentalModule
+          else if prefix == nme.deprecated then defn.LanguageDeprecatedModule
           else defn.LanguageModule
         if path.symbol != required then
           report.error(em"import looks like a language import, but refers to something else: ${path.symbol.showLocated}", path.srcPos)

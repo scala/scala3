@@ -16,10 +16,14 @@ object Feature:
   private def experimental(str: String): TermName =
     QualifiedName(nme.experimental, str.toTermName)
 
+  private def deprecated(str: String): TermName =
+    QualifiedName(nme.deprecated, str.toTermName)
+
   private val Xdependent = experimental("dependent")
   private val XnamedTypeArguments = experimental("namedTypeArguments")
   private val XgenericNumberLiterals = experimental("genericNumberLiterals")
   private val Xmacros = experimental("macros")
+  private val symbolLiterals: TermName = deprecated("symbolLiterals")
 
 /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -63,6 +67,8 @@ object Feature:
   def namedTypeArgsEnabled(using Context) = enabled(XnamedTypeArguments)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(XgenericNumberLiterals)
+
+  def symbolLiteralsEnabled(using Context) = enabled(symbolLiterals)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(Xmacros)
 
