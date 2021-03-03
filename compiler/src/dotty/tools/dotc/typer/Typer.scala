@@ -2720,7 +2720,7 @@ class Typer extends Namer
 
     val ifun = desugar.makeContextualFunction(paramTypes, tree, defn.isErasedFunctionType(pt))
     typr.println(i"make contextual function $tree / $pt ---> $ifun")
-    typed(ifun, pt)
+    typedFunctionValue(ifun, pt)
   }
 
   /** Typecheck and adapt tree, returning a typed tree. Parameters as for `typedUnadapted` */
