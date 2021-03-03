@@ -116,7 +116,7 @@ final case class SbtCommunityProject(
   override val docCommand =
     if sbtDocCommand eq null then null else
       val cmd = if sbtDocCommand.startsWith(";") then sbtDocCommand else s";$sbtDocCommand"
-      s"$baseCommand set every useScaladoc := true; set every doc/logLevel := Level.Warn $cmd "
+      s"$baseCommand set every doc/logLevel := Level.Warn $cmd "
 
   override val runCommandsArgs: List[String] =
     // Run the sbt command with the compiler version and sbt plugin set in the build
@@ -140,7 +140,7 @@ object projects:
 
   private def forceDoc(projects: String*) =
     projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
+      s""";set $project/Compile/doc/sources := ($project/Compile/sources).value ;$project/doc"""
     ).mkString(" ")
 
   private def aggregateDoc(in: String)(projects: String*) =
