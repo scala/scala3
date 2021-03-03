@@ -125,7 +125,7 @@ done
 
 classpathArgs
 
-eval exec "\"$JAVACMD\"" \
+eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "$DEBUG" \
      "${java_args[@]}" \
@@ -134,4 +134,5 @@ eval exec "\"$JAVACMD\"" \
      "${scala_args[@]}" \
      "${residual_args[@]}" \
      "$scripting_string"
-exit $?
+scala_exit_status=$?
+onExit
