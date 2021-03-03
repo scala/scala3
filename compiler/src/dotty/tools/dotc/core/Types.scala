@@ -2924,7 +2924,7 @@ object Types {
           tp match {
             case tp: TypeRef => apply(x, tp.prefix)
             case tp: RecThis => RecType.this eq tp.binder
-            case tp: LazyRef => true // To be safe, assume a reference exists
+            case tp: LazyRef => this(x, tp.ref)
             case _ => foldOver(x, tp)
           }
         }

@@ -52,7 +52,7 @@ object Main:
     val javaClasspath = sys.props("java.class.path")
     val runtimeClasspath = s"${classpath}$pathsep$javaClasspath"
 
-    val jarTargetDir: Path = Option(scriptFile.toPath.getParent) match {
+    val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
       case Some(parent) => parent
     }
