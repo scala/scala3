@@ -329,6 +329,32 @@ Occurrences:
 [18:6..18:9): foo <- example/Anonymous#foo.
 [18:16..18:19): Foo -> example/Anonymous#Foo#
 
+expect/AnonymousGiven.scala
+---------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => AnonymousGiven.scala
+Text => empty
+Language => Scala
+Symbols => 5 entries
+Occurrences => 6 entries
+
+Symbols:
+angiven/AnonymousGiven$package. => final package object angiven
+angiven/AnonymousGiven$package.bar(). => method bar
+angiven/AnonymousGiven$package.bar().(x$1) => implicit param x$1
+angiven/Foo# => trait Foo
+angiven/Foo#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:15): angiven <- angiven/
+[2:0..2:0): <- angiven/Foo#`<init>`().
+[2:6..2:9): Foo <- angiven/Foo#
+[4:0..4:0): <- angiven/AnonymousGiven$package.
+[4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
+[4:14..4:17): Foo -> angiven/Foo#
+
 expect/Classes.scala
 --------------------
 
