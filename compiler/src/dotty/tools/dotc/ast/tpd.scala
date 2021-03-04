@@ -565,6 +565,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else foldOver(sym, tree)
   }
 
+  /** The owner to be used in a local context when traversin a tree */
+  def localOwner(tree: Tree)(using Context): Symbol =
+    val sym = tree.symbol
+    (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
+
+  /** The local context to use when traversing trees */
+  def localCtx(tree: Tree)(using Context): Context = ctx.withOwner(localOwner(tree))
+
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     TypedTreeCopier()
 
