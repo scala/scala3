@@ -364,11 +364,15 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
+      def skipEmptyStats(): Unit =
+        while (in.token == SEMI || in.token == NEWLINE || in.token == NEWLINES) do in.nextToken()
+
       in.observeOutdented()
       in.token match
         case SEMI | NEWLINE | NEWLINES =>
-          in.nextToken()
+          skipEmptyStats()
           checkEndMarker(stats)
+          skipEmptyStats()
         case `altEnd` =>
         case _ =>
           if !isStatSeqEnd then
