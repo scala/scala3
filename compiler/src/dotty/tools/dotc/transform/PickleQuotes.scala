@@ -127,7 +127,7 @@ class PickleQuotes extends MacroTransform {
      *  `scala.quoted.Unpickler.unpickleExpr` that matches `tpe` with
      *  core and splices as arguments.
      */
-    override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
+    override protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree = {
       val isType = quote.symbol eq defn.QuotedTypeModule_of
       if (level > 0) {
         val body1 = nested(isQuote = true).transform(body)(using quoteContext)
@@ -139,14 +139,14 @@ class PickleQuotes extends MacroTransform {
           val body2 =
             if (body1.isType) body1
             else Inlined(Inliner.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body1)
-          pickledQuote(body2, splices, body.tpe, isType).withSpan(quote.span)
+          pickledQuote(quote, body2, splices, body.tpe, isType).withSpan(quote.span)
         }
         else
           body
       }
     }
 
-    private def pickledQuote(body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
+    private def pickledQuote(quote: Apply, body: Tree, splices: List[Tree], originalTp: Type, isType: Boolean)(using Context) = {
       /** Encode quote using Reflection.Literal
        *
        *  Generate the code
@@ -279,7 +279,7 @@ class PickleQuotes extends MacroTransform {
        *
        *  Generate the code
        *  ```scala
-       *    qctx => qctx.reflect.TypeReprMethods.asType(
+       *    qctx.reflect.TypeReprMethods.asType(
        *      qctx.reflect.TypeRepr.typeConstructorOf(classOf[<type>]])
        *    ).asInstanceOf[scala.quoted.Type[<type>]]
        *  ```
@@ -288,17 +288,13 @@ class PickleQuotes extends MacroTransform {
       def taggedType() =
         val typeType = defn.QuotedTypeClass.typeRef.appliedTo(body.tpe)
         val classTree = TypeApply(ref(defn.Predef_classOf.termRef), body :: Nil)
-        val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, typeType)
-        def callTypeConstructorOf(ts: List[Tree]) = {
-          val reflect = ts.head.select("reflect".toTermName)
-          val typeRepr = reflect.select("TypeRepr".toTermName).select("typeConstructorOf".toTermName).appliedTo(classTree)
-          reflect.select("TypeReprMethods".toTermName).select("asType".toTermName).appliedTo(typeRepr).asInstance(typeType)
-        }
-        Lambda(lambdaTpe, callTypeConstructorOf).withSpan(body.span)
+        val reflect = quote.args.head.select("reflect".toTermName)
+        val typeRepr = reflect.select("TypeRepr".toTermName).select("typeConstructorOf".toTermName).appliedTo(classTree)
+        reflect.select("TypeReprMethods".toTermName).select("asType".toTermName).appliedTo(typeRepr).asInstance(typeType)
 
       if (isType) {
         if (splices.isEmpty && body.symbol.isPrimitiveValueClass) taggedType()
-        else pickleAsTasty()
+        else pickleAsTasty().select(nme.apply).appliedTo(quote.args.head) // TODO do not create lambda
       }
       else getLiteral(body) match {
         case Some(lit) => pickleAsValue(lit)
@@ -485,9 +481,9 @@ class PickleQuotes extends MacroTransform {
         transform(tree)(using ctx.withSource(tree.source))
       else reporting.trace(i"Reifier.transform $tree at $level", show = true) {
         tree match {
-          case Apply(Select(TypeApply(fn, (body: RefTree) :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_of && isCaptured(body.symbol, level + 1) =>
-            // Optimization: avoid the full conversion when capturing `x`
-            // in '{ x } to '{ ${x$1} } and go directly to `x$1`
+          case Apply(TypeApply(fn, (body: RefTree) :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of && isCaptured(body.symbol, level + 1) =>
+            // Optimization: avoid the full conversion when capturing `X` with `x$1: Type[X$1]`
+            // in `Type.of[X]` to `Type.of[x$1.Underlying]` and go directly to `X$1`
             capturers(body.symbol)(body)
           case tree: RefTree if isCaptured(tree.symbol, level) =>
             val body = capturers(tree.symbol).apply(tree)
