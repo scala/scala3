@@ -393,7 +393,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     order(this, param1, param2).checkNonCyclic()
 
   def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): This =
-    val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
+    val bound1 = nonParamBounds(p1).substParam(p2, p1)
+    val bound2 = nonParamBounds(p2).substParam(p2, p1)
+    val p1Bounds = bound1 & bound2
     updateEntry(p1, p1Bounds).replace(p2, p1)
 
 // ---------- Replacements and Removals -------------------------------------
