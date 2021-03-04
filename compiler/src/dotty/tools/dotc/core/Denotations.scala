@@ -582,7 +582,9 @@ object Denotations {
      */
     def prefix: Type = NoPrefix
 
-    /** The symbol-specific signature of the info.
+    /** For SymDenotations, the language-specific signature of the info, depending on
+     *  where the symbol is defined. For non-SymDenotations, the Scala 3
+     *  signature.
      *
      *  Invariants:
      *  - Before erasure, the signature of a denotation is always equal to the
@@ -594,7 +596,7 @@ object Denotations {
      *    SingleDenotations will have distinct signatures (cf #9050).
      */
     final def signature(using Context): Signature =
-      signature(sourceLanguage = if isType then SourceLanguage.Scala3 else SourceLanguage(symbol))
+      signature(sourceLanguage = if isType || !this.isInstanceOf[SymDenotation] then SourceLanguage.Scala3 else SourceLanguage(symbol))
 
     /** Overload of `signature` which lets the caller pick the language used
      *  to compute the signature of the info. Useful to match denotations defined in
