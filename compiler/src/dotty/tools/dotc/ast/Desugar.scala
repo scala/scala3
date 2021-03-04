@@ -39,6 +39,9 @@ object desugar {
    */
   val MultiLineInfix: Property.Key[Unit] = Property.StickyKey()
 
+  /** An attachment for retaining information about the original span of the operator after desugaring it to Select. */
+  val OperatorSpan: Property.Key[Span] = Property.StickyKey()
+
   /** What static check should be applied to a Match? */
   enum MatchCheck {
     case None, Exhaustive, IrrefutablePatDef, IrrefutableGenFrom
@@ -1215,7 +1218,7 @@ object desugar {
       case _ => arg
     }
     def makeOp(fn: Tree, arg: Tree, selectPos: Span) =
-      val sel = Select(fn, op.name).withSpan(selectPos)
+      val sel = Select(fn, op.name).withSpan(selectPos).withAttachment(OperatorSpan, op.span)
       if (left.sourcePos.endLine < op.sourcePos.startLine)
         sel.pushAttachment(MultiLineInfix, ())
       arg match

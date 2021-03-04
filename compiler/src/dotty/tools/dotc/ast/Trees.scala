@@ -419,8 +419,10 @@ object Trees {
     def nameSpan(using Context): Span =
       if span.exists then
         val point = span.point
-        if span.isSynthetic || name.toTermName == nme.ERROR then Span(point)
-        else Span(point, span.end, point)
+        getAttachment(desugar.OperatorSpan) match
+          case Some(s) => s
+          case None if span.isSynthetic || name.toTermName == nme.ERROR => Span(point)
+          case None => Span(point, span.end, point)
       else span
   }
 
