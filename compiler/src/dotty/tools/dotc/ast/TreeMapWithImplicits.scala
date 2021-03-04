@@ -26,7 +26,7 @@ class TreeMapWithImplicits extends tpd.TreeMap {
    *   - be tail-recursive where possible
    *   - don't re-allocate trees where nothing has changed
    */
-  def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
+  override def transformStats(stats: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
 
     @tailrec def traverse(curStats: List[Tree])(using Context): List[Tree] = {
 
@@ -88,8 +88,14 @@ class TreeMapWithImplicits extends tpd.TreeMap {
     def localCtx =
       if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
     try tree match {
-      case tree: Block =>
-        super.transform(tree)(using nestedScopeCtx(tree.stats))
+      case Block(stats, expr) =>
+        inContext(nestedScopeCtx(stats)) {
+          if stats.exists(_.isInstanceOf[Import]) then
+            // need to transform stats and expr together to account for import visibility
+            val stats1 = transformStats(stats :+ expr, ctx.owner)
+            cpy.Block(tree)(stats1.init, stats1.last)
+          else super.transform(tree)
+        }
       case tree: DefDef =>
         inContext(localCtx) {
           cpy.DefDef(tree)(
@@ -100,8 +106,10 @@ class TreeMapWithImplicits extends tpd.TreeMap {
         }
       case EmptyValDef =>
         tree
-      case _: PackageDef | _: MemberDef =>
+      case _: MemberDef =>
         super.transform(tree)(using localCtx)
+      case _: PackageDef =>
+        super.transform(tree)(using ctx.withOwner(tree.symbol.moduleClass))
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),

@@ -130,7 +130,7 @@ class TreeTypeMap(
       }
   }
 
-  override def transformStats(trees: List[tpd.Tree])(using Context): List[Tree] =
+  override def transformStats(trees: List[tpd.Tree], exprOwner: Symbol)(using Context): List[Tree] =
     transformDefs(trees)._2
 
   def transformDefs[TT <: tpd.Tree](trees: List[TT])(using Context): (TreeTypeMap, List[TT]) = {
