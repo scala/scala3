@@ -106,8 +106,10 @@ class TreeMapWithImplicits extends tpd.TreeMap {
         }
       case EmptyValDef =>
         tree
-      case _: PackageDef | _: MemberDef =>
+      case _: MemberDef =>
         super.transform(tree)(using localCtx)
+      case _: PackageDef =>
+        super.transform(tree)(using ctx.withOwner(tree.symbol.moduleClass))
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
