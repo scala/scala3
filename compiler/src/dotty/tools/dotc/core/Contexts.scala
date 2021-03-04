@@ -538,11 +538,17 @@ object Contexts {
       case _ => new Typer
     }
 
-    override def toString: String = {
-      def iinfo(using Context) = if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
-      "Context(\n" +
-      (outersIterator.map(ctx => s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}").mkString("\n"))
-    }
+    override def toString: String =
+      def iinfo(using Context) =
+        if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
+      def cinfo(using Context) =
+        val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}"
+        if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
+          s"$core, implicits = ${ctx.implicits}"
+        else
+          core
+      s"""Context(
+         |${outersIterator.map(ctx => cinfo(using ctx)).mkString("\n\n")})""".stripMargin
 
     def settings: ScalaSettings            = base.settings
     def definitions: Definitions           = base.definitions

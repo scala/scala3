@@ -390,6 +390,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         def compareTypeParamRef =
           assumedTrue(tp1) ||
+          tp2.match {
+            case tp2: TypeParamRef => constraint.isLess(tp1, tp2)
+            case _ => false
+          } ||
           isSubTypeWhenFrozen(bounds(tp1).hi, tp2) || {
             if (canConstrain(tp1) && !approx.high)
               addConstraint(tp1, tp2, fromBelow = false) && flagNothingBound
@@ -540,11 +544,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // widening in `fourthTry` before adding to the constraint.
           if (frozenConstraint) recur(tp1, bounds(tp2).lo)
           else isSubTypeWhenFrozen(tp1, tp2)
-        alwaysTrue ||
-        frozenConstraint && (tp1 match {
-          case tp1: TypeParamRef => constraint.isLess(tp1, tp2)
-          case _ => false
-        }) || {
+        alwaysTrue || {
           if (canConstrain(tp2) && !approx.low)
             addConstraint(tp2, tp1.widenExpr, fromBelow = true)
           else fourthTry
@@ -2122,7 +2122,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
   private def andTypeGen(tp1: Type, tp2: Type, op: (Type, Type) => Type,
-      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"glb(${tp1.show}, ${tp2.show})", subtyping, show = true) {
+      original: (Type, Type) => Type = _ & _, isErased: Boolean = ctx.erasedTypes): Type = trace(s"andTypeGen(${tp1.show}, ${tp2.show})", subtyping, show = true) {
     val t1 = distributeAnd(tp1, tp2)
     if (t1.exists) t1
     else {

@@ -1332,7 +1332,7 @@ object Trees {
             case Assign(lhs, rhs) =>
               cpy.Assign(tree)(transform(lhs), transform(rhs))
             case Block(stats, expr) =>
-              cpy.Block(tree)(transformStats(stats), transform(expr))
+              cpy.Block(tree)(transformStats(stats, ctx.owner), transform(expr))
             case If(cond, thenp, elsep) =>
               cpy.If(tree)(transform(cond), transform(thenp), transform(elsep))
             case Closure(env, meth, tpt) =>
@@ -1398,13 +1398,13 @@ object Trees {
                 cpy.TypeDef(tree)(name, transform(rhs))
               }
             case tree @ Template(constr, parents, self, _) if tree.derived.isEmpty =>
-              cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body))
+              cpy.Template(tree)(transformSub(constr), transform(tree.parents), Nil, transformSub(self), transformStats(tree.body, tree.symbol))
             case Import(expr, selectors) =>
               cpy.Import(tree)(transform(expr), selectors)
             case Export(expr, selectors) =>
               cpy.Export(tree)(transform(expr), selectors)
             case PackageDef(pid, stats) =>
-              cpy.PackageDef(tree)(transformSub(pid), transformStats(stats)(using localCtx))
+              cpy.PackageDef(tree)(transformSub(pid), transformStats(stats, pid.symbol.moduleClass)(using localCtx))
             case Annotated(arg, annot) =>
               cpy.Annotated(tree)(transform(arg), transform(annot))
             case Thicket(trees) =>
@@ -1416,7 +1416,7 @@ object Trees {
         }
       }
 
-      def transformStats(trees: List[Tree])(using Context): List[Tree] =
+      def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
         transform(trees)
       def transform(trees: List[Tree])(using Context): List[Tree] =
         flatten(trees mapConserve (transform(_)))

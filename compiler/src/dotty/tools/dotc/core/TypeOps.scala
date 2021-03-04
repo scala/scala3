@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
-import Denotations._, SymDenotations._
+import SymDenotations._
 import util.Spans._
 import util.Stats
 import NameKinds.DepParamName
