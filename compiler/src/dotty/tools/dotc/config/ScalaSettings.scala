@@ -11,6 +11,18 @@ import Settings.Setting
 trait CommonScalaSettings { self: Settings.SettingGroup =>
   protected def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")
 
+  protected def defaultPageWidth: Int = {
+    val defaultWidth = 80
+    val columnsVar = System.getenv("COLUMNS")
+    if columnsVar != null then columnsVar.toInt
+    else if Properties.isWin then
+      val ansiconVar = System.getenv("ANSICON") // eg. "142x32766 (142x26)"
+      if ansiconVar != null && ansiconVar.matches("[0-9]+x.*") then
+        ansiconVar.substring(0, ansiconVar.indexOf("x")).toInt
+      else defaultWidth
+    else defaultWidth
+  }
+
   /** Path related settings */
   val bootclasspath: Setting[String] = PathSetting("-bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
   val extdirs: Setting[String] = PathSetting("-extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
