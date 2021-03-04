@@ -350,6 +350,25 @@ object Build {
         appConfiguration.value
       )
     },
+    Compile / doc / scalacOptions ++= Seq(
+      "-external-mappings:" +
+        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+        ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+      "-skip-by-regex:.+\\.internal($|\\..+)",
+      "-skip-by-regex:.+\\.impl($|\\..+)",
+      "-project-logo", "docs/logo.svg",
+      "-social-links:" +
+        "github::https://github.com/lampepfl/dotty," +
+        "gitter::https://gitter.im/scala/scala," +
+        "twitter::https://twitter.com/scala_lang",
+      // contains special definitions which are "transplanted" elsewhere
+      // and which therefore confuse Scaladoc when accessed from this pkg
+      "-skip-by-id:scala.runtime.stdLibPatches",
+      // MatchCase is a special type that represents match type cases,
+      // Reflect doesn't expect to see it as a standalone definition
+      // and therefore it's easier just not to document it
+      "-skip-by-id:scala.runtime.MatchCase",
+    ),
     // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
     doc / scalaInstance := scalaInstance.value,
   )
@@ -752,7 +771,6 @@ object Build {
     // when compiling a project that depends on scala3-staging (see sbt-dotty/sbt-test/sbt-dotty/quoted-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
@@ -763,7 +781,6 @@ object Build {
     // when compiling a project that depends on scala3-tasty-inspector (see sbt-dotty/sbt-test/sbt-dotty/tasty-inspector-example-project),
     // but we always need it to be present on the JVM classpath at runtime.
     dependsOn(dottyCompiler(Bootstrapped) % "provided; compile->runtime; test->test").
-    settings(commonBootstrappedSettings).
     settings(
       javaOptions := (`scala3-compiler-bootstrapped` / javaOptions).value
     )
@@ -1597,7 +1614,7 @@ object Build {
           val scala3version = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v$scala3version#src/library"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v${stdlibVersion(Bootstrapped)}}#src/library"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
           val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ revision ++ params ++ targets
           import _root_.scala.sys.process._
@@ -1618,14 +1635,6 @@ object Build {
           generateDocumentation(
             (Compile / classDirectory).value.getAbsolutePath :: Nil,
             "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
-            Seq(
-              "-siteroot", "scaladoc/documentation",
-              "-project-logo", "scaladoc/documentation/logo.svg",
-              "-external-mappings:" +
-                ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
-                ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/"
-            )
-
           )
         }.value,
         generateScalaDocumentation := Def.inputTaskDyn {
@@ -1661,29 +1670,10 @@ object Build {
           }.dependsOn(generateDocumentation(
             roots, "Scala 3", dest.getAbsolutePath, "master",
             Seq(
-              // contains special definitions which are "transplanted" elsewhere
-              // and which therefore confuse Scaladoc when accessed from this pkg
-              "-skip-by-id:scala.runtime.stdLibPatches",
-              // MatchCase is a special type that represents match type cases,
-              // Reflect doesn't expect to see it as a standalone definition
-              // and therefore it's easier just not to document it
-              "-skip-by-id:scala.runtime.MatchCase",
-              "-skip-by-regex:.+\\.internal($|\\..+)",
-              "-skip-by-regex:.+\\.impl($|\\..+)",
               "-comment-syntax", "wiki",
               "-siteroot", "docs",
-              "-project-logo", "docs/logo.svg",
-              "-external-mappings:.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
-              "-social-links:" +
-                "github::https://github.com/lampepfl/dotty," +
-                "gitter::https://gitter.im/scala/scala," +
-                "twitter::https://twitter.com/scala_lang",
-              s"-source-links:" +
-                s"$dottyLibRoot=github://lampepfl/dotty/master#library/src," +
-                s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
-                s"docs=github://lampepfl/dotty/master#docs",
-              "-doc-root-content", docRootFile.toString,
-              "-Ydocument-synthetic-types"
+              s"-source-links:docs=github://lampepfl/dotty/master#docs",
+              "-doc-root-content", docRootFile.toString
             )
           ))
         }.evaluated,
