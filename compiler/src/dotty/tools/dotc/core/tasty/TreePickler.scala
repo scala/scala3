@@ -528,10 +528,14 @@ class TreePickler(pickler: TastyPickler) {
             }
           }
         case Bind(name, body) =>
-          registerDef(tree.symbol)
+          val sym = tree.symbol
+          registerDef(sym)
           writeByte(BIND)
           withLength {
-            pickleName(name); pickleType(tree.symbol.info); pickleTree(body)
+            pickleName(name)
+            pickleType(sym.info)
+            pickleTree(body)
+            pickleFlags(sym.flags &~ Case, sym.isTerm)
           }
         case Alternative(alts) =>
           writeByte(ALTERNATIVE)

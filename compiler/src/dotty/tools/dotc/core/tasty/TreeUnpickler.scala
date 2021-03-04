@@ -1200,7 +1200,10 @@ class TreeUnpickler(reader: TastyReader,
               val sym = symAtAddr.getOrElse(start, forkAt(start).createSymbol())
               readName()
               readType()
-              Bind(sym, readTerm())
+              val body = readTerm()
+              val (givenFlags, _, _) = readModifiers(end)
+              sym.setFlag(givenFlags)
+              Bind(sym, body)
             case ALTERNATIVE =>
               Alternative(until(end)(readTerm()))
             case UNAPPLY =>
