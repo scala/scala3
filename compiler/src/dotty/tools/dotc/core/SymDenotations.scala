@@ -2209,8 +2209,8 @@ object SymDenotations {
         ensureCompleted()
       myCompanion
 
-    override def registeredCompanion_=(c: Symbol) = 
-      myCompanion = c 
+    override def registeredCompanion_=(c: Symbol) =
+      myCompanion = c
 
     private var myNestingLevel = -1
 
@@ -2397,6 +2397,7 @@ object SymDenotations {
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
+    override def asSeenFrom(pre: Type)(using Context): AsSeenFromResult = this
 
     override def matches(other: SingleDenotation)(using Context): Boolean = false
     override def targetName(using Context): Name = EmptyTermName
