@@ -1112,12 +1112,16 @@ Schema => SemanticDB v4
 Uri => Extension.scala
 Text => empty
 Language => Scala
-Symbols => 4 entries
-Occurrences => 8 entries
+Symbols => 8 entries
+Occurrences => 19 entries
 
 Symbols:
 ext/Extension$package. => final package object ext
+ext/Extension$package.`#*#`(). => method #*#
+ext/Extension$package.`#*#`().(i) => param i
+ext/Extension$package.`#*#`().(s) => param s
 ext/Extension$package.a. => val method a
+ext/Extension$package.c. => val method c
 ext/Extension$package.foo(). => method foo
 ext/Extension$package.foo().(s) => param s
 
@@ -1125,11 +1129,22 @@ Occurrences:
 [0:8..0:11): ext <- ext/
 [2:0..2:0): <- ext/Extension$package.
 [2:11..2:12): s <- ext/Extension$package.foo().(s)
+[2:11..2:12): s <- ext/Extension$package.`#*#`().(s)
 [2:14..2:20): String -> scala/Predef.String#
 [3:6..3:9): foo <- ext/Extension$package.foo().
 [3:11..3:14): Int -> scala/Int#
-[5:4..5:5): a <- ext/Extension$package.a.
-[5:14..5:17): foo -> ext/Extension$package.foo().
+[4:6..4:9): #*# <- ext/Extension$package.`#*#`().
+[4:11..4:12): i <- ext/Extension$package.`#*#`().(i)
+[4:14..4:17): Int -> scala/Int#
+[4:21..4:27): String -> scala/Predef.String#
+[4:29..4:32): Int -> scala/Int#
+[4:37..4:37): -> scala/Tuple2.apply().
+[4:37..4:38): s -> ext/Extension$package.`#*#`().(s)
+[4:40..4:41): i -> ext/Extension$package.`#*#`().(i)
+[6:4..6:5): a <- ext/Extension$package.a.
+[6:14..6:17): foo -> ext/Extension$package.foo().
+[8:4..8:5): c <- ext/Extension$package.c.
+[8:14..8:17): #*# -> ext/Extension$package.`#*#`().
 
 expect/ForComprehension.scala
 -----------------------------
