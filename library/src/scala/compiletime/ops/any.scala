@@ -8,6 +8,7 @@ object any:
    * val eq2: 1 == "1" = false
    * val eq3: "1" == "1" = true
    * ```
+   * @syntax markdown
    */
   type ==[X, Y] <: Boolean
 
@@ -17,5 +18,6 @@ object any:
    * val eq2: 1 != "1" = true
    * val eq3: "1" != "1" = false
    * ```
+   * @syntax markdown
    */
   type !=[X, Y] <: Boolean

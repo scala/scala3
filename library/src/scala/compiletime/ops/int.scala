@@ -6,6 +6,7 @@ object int:
    *  ```scala
    *  val sum: 2 + 2 = 4
    *  ```
+   *  @syntax markdown
    */
   type +[X <: Int, Y <: Int] <: Int
 
@@ -13,6 +14,7 @@ object int:
    *  ```scala
    *  val sub: 4 - 2 = 2
    *  ```
+   *  @syntax markdown
    */
   type -[X <: Int, Y <: Int] <: Int
 
@@ -20,6 +22,7 @@ object int:
    *  ```scala
    *  val mul: 4 * 2 = 8
    *  ```
+   *  @syntax markdown
    */
   type *[X <: Int, Y <: Int] <: Int
 
@@ -27,6 +30,7 @@ object int:
    *  ```scala
    *  val div: 5 / 2 = 2
    *  ```
+   *  @syntax markdown
    */
   type /[X <: Int, Y <: Int] <: Int
 
@@ -34,6 +38,7 @@ object int:
    *  ```scala
    *  val mod: 5 % 2 = 1
    *  ```
+   *  @syntax markdown
    */
   type %[X <: Int, Y <: Int] <: Int
 
@@ -41,6 +46,7 @@ object int:
    *  ```scala
    *  val lshift: 1 << 2 = 4
    *  ```
+   *  @syntax markdown
    */
   type <<[X <: Int, Y <: Int] <: Int
 
@@ -48,6 +54,7 @@ object int:
    *  ```scala
    *  val rshift: 10 >> 1 = 5
    *  ```
+   *  @syntax markdown
    */
   type >>[X <: Int, Y <: Int] <: Int
 
@@ -55,6 +62,7 @@ object int:
    *  ```scala
    *  val rshiftzero: 10 >>> 1 = 5
    *  ```
+   *  @syntax markdown
    */
   type >>>[X <: Int, Y <: Int] <: Int
 
@@ -62,6 +70,7 @@ object int:
    *  ```scala
    *  val xor: 10 ^ 30 = 20
    *  ```
+   *  @syntax markdown
    */
   type ^[X <: Int, Y <: Int] <: Int
 
@@ -70,6 +79,7 @@ object int:
    *  val lt1: 4 < 2 = false
    *  val lt2: 2 < 4 = true
    *  ```
+   *  @syntax markdown
    */
   type <[X <: Int, Y <: Int] <: Boolean
 
@@ -78,6 +88,7 @@ object int:
    *  val gt1: 4 > 2 = true
    *  val gt2: 2 > 2 = false
    *  ```
+   *  @syntax markdown
    */
   type >[X <: Int, Y <: Int] <: Boolean
 
@@ -86,6 +97,7 @@ object int:
    *  val ge1: 4 >= 2 = true
    *  val ge2: 2 >= 3 = false
    *  ```
+   *  @syntax markdown
    */
   type >=[X <: Int, Y <: Int] <: Boolean
 
@@ -94,6 +106,7 @@ object int:
    *  val lt1: 4 <= 2 = false
    *  val lt2: 2 <= 2 = true
    *  ```
+   *  @syntax markdown
    */
   type <=[X <: Int, Y <: Int] <: Boolean
 
@@ -102,6 +115,7 @@ object int:
    *  val and1: BitwiseAnd[4, 4] = 4
    *  val and2: BitwiseAnd[10, 5] = 0
    *  ```
+   *  @syntax markdown
    */
   type BitwiseAnd[X <: Int, Y <: Int] <: Int
 
@@ -109,6 +123,7 @@ object int:
    *  ```scala
    *  val or: BitwiseOr[10, 11] = 11
    *  ```
+   *  @syntax markdown
    */
   type BitwiseOr[X <: Int, Y <: Int] <: Int
 
@@ -116,6 +131,7 @@ object int:
    *  ```scala
    *  val abs: Abs[-1] = 1
    *  ```
+   *  @syntax markdown
    */
   type Abs[X <: Int] <: Int
 
@@ -124,6 +140,7 @@ object int:
    *  val neg1: Neg[-1] = 1
    *  val neg2: Neg[1] = -1
    *  ```
+   *  @syntax markdown
    */
   type Negate[X <: Int] <: Int
 
@@ -131,6 +148,7 @@ object int:
    *  ```scala
    *  val min: Min[-1, 1] = -1
    *  ```
+   *  @syntax markdown
    */
   type Min[X <: Int, Y <: Int] <: Int
 
@@ -138,6 +156,7 @@ object int:
    *  ```scala
    *  val max: Max[-1, 1] = 1
    *  ```
+   *  @syntax markdown
    */
   type Max[X <: Int, Y <: Int] <: Int
 
@@ -145,5 +164,6 @@ object int:
    *  ```scala
    *  val abs: ToString[1] = "1"
    *  ```
+   *  @syntax markdown
    */
   type ToString[X <: Int] <: String

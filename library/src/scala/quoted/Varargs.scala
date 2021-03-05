@@ -18,6 +18,7 @@ object Varargs {
    *  ```scala
    *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
    *  ```
+   *  @syntax markdown
    */
   def apply[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[Seq[T]] = {
     import quotes.reflect._
@@ -35,6 +36,7 @@ object Varargs {
    *      ...
    *  }
    *  ```
+   *  @syntax markdown
    */
   def unapply[T](expr: Expr[Seq[T]])(using Quotes): Option[Seq[Expr[T]]] = {
     import quotes.reflect._
