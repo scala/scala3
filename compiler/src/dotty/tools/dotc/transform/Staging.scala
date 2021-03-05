@@ -35,7 +35,7 @@ class Staging extends MacroTransform {
 
   override def phaseName: String = Staging.name
 
-  override def runsAfter: Set[String] = Set(PostTyper.name)
+  override def runsAfter: Set[String] = Set(Inlining.name)
 
   override def allowsImplicitSearch: Boolean = true
 

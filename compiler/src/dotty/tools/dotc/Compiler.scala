@@ -42,7 +42,6 @@ class Compiler {
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
@@ -51,6 +50,7 @@ class Compiler {
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
     List(new Inlining) ::           // Inline and execute macros
+    List(new Staging) ::            // Check staging levels and heal staged types
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
