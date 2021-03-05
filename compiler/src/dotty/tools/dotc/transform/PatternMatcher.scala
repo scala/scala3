@@ -692,9 +692,10 @@ object PatternMatcher {
       val scrutinee = plan.scrutinee
       (plan.test: @unchecked) match {
         case NonEmptyTest =>
-          scrutinee
-            .select(nme.isEmpty, _.info.isParameterless)
-            .select(nme.UNARY_!, _.info.isParameterless)
+          constToLiteral(
+            scrutinee
+              .select(nme.isEmpty, _.info.isParameterless)
+              .select(nme.UNARY_!, _.info.isParameterless))
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>
