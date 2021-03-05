@@ -3281,8 +3281,11 @@ class Typer extends Namer
         def issueErrors(): Tree = {
           def paramSymWithMethodTree(paramName: TermName) =
             if tree.symbol.exists then
-              val paramSyms = tree.symbol.paramSymss.flatten.map(sym => sym.name -> sym).toMap
-              Some((paramSyms(paramName), tree))
+              tree.symbol.paramSymss.flatten
+                .map(sym => sym.name -> sym)
+                .toMap
+                .get(paramName)
+                .map((_, tree))
             else
               None
 
