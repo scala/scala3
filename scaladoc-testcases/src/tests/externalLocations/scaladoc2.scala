@@ -10,3 +10,5 @@ class Test {
   def c: Regex.Match = ???
 }
 
+abstract class MySeq[T] extends scala.collection.immutable.Seq[T]
+
