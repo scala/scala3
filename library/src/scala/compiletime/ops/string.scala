@@ -6,5 +6,6 @@ object string:
    *  ```scala
    *  val hello: "hello " + "world" = "hello world"
    *  ```
+   *  @syntax markdown
    */
   type +[X <: String, Y <: String] <: String

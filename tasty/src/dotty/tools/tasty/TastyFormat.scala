@@ -334,6 +334,7 @@ object TastyFormat {
    *   else invariant[file.experimental is non-0 and different than compiler.experimental]
    *     return incompatible
    * ```
+   * @syntax markdown
    */
   def isVersionCompatible(
     fileMajor: Int,
