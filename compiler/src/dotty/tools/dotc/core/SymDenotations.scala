@@ -818,8 +818,12 @@ object SymDenotations {
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(using Context): Boolean = {
 
-      /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) = ctx.owner.isContainedIn(boundary)
+      /** Are we inside definition of `boundary`?
+       *  If this symbol is Java defined, package structure is interpreted to be flat.
+       */
+      def accessWithin(boundary: Symbol) =
+        ctx.owner.isContainedIn(boundary)
+        && !(is(JavaDefined) && boundary.is(PackageClass) && ctx.owner.enclosingPackageClass != boundary)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -2209,8 +2213,8 @@ object SymDenotations {
         ensureCompleted()
       myCompanion
 
-    override def registeredCompanion_=(c: Symbol) = 
-      myCompanion = c 
+    override def registeredCompanion_=(c: Symbol) =
+      myCompanion = c
 
     private var myNestingLevel = -1
 
