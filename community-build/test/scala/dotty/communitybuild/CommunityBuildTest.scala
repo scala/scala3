@@ -108,6 +108,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
   @Test def zio = projects.zio.run()
+  @Test def protoquill = projects.protoquill.run()
 
   // 'scala-stm' and 'Sciss/Lucre':
   // @Test def scissEqual      = projects.scissEqual     .run()
