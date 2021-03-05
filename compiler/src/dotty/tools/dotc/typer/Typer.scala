@@ -2988,7 +2988,7 @@ class Typer extends Namer
     def tryExtension(using Context): Tree =
       findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
         case ref: TermRef =>
-          extMethodApply(untpd.ref(ref).withSpan(tree.span), qual, pt)
+          extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
         case _ =>
           EmptyTree
 
