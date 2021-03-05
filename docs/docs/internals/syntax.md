@@ -272,9 +272,10 @@ BlockStat         ::=  Import
                     |  Expr1
                     |  EndMarker
 
-ForExpr           ::=  ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)        ForYield(enums, expr)
-                       {nl} [‘yield’] Expr
-                    |  ‘for’ Enumerators (‘do’ Expr | ‘yield’ Expr)             ForDo(enums, expr)
+ForExpr           ::=  ‘for’ ‘(’ Enumerators0 ‘)’ {nl} [‘do‘ | ‘yield’] Expr     ForYield(enums, expr) / ForDo(enums, expr)
+                    |  ‘for’ ‘{’ Enumerators0 ‘}’ {nl} [‘do‘ | ‘yield’] Expr
+                    |  ‘for’     Enumerators0          (‘do‘ | ‘yield’) Expr
+Enumerators0      ::=  {nl} Enumerators [semi]
 Enumerators       ::=  Generator {semi Enumerator | Guard}
 Enumerator        ::=  Generator
                     |  Guard
