@@ -598,6 +598,14 @@ object projects:
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
+  lazy val protoquill = SbtCommunityProject(
+    project = "protoquill",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
+    scalacOptions = List("-language:implicitConversions"), // disabled -Ycheck-init, due to bug in macro
+  )
+
 end projects
 
 def allProjects = List(
@@ -663,6 +671,7 @@ def allProjects = List(
   projects.izumiReflect,
   projects.perspective,
   projects.akka,
+  projects.protoquill,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
