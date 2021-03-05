@@ -406,6 +406,14 @@ object projects:
     dependencies = List(munit, scodecBits)
   )
 
+  lazy val scopt = SbtCommunityProject(
+    project          = "scopt",
+    sbtTestCommand   = "scoptJVM/test",
+    // Adds <empty> package
+    dependencies = List(verify)
+  )
+
+
   lazy val scalaParserCombinators = SbtCommunityProject(
     project          = "scala-parser-combinators",
     sbtTestCommand   = "parserCombinatorsJVM/test",
@@ -690,6 +698,7 @@ def allProjects = List(
   projects.discipline,
   projects.disciplineMunit,
   projects.disciplineSpecs2,
+  projects.scopt,
   projects.simulacrumScalafixAnnotations,
   projects.cats,
   projects.catsMtl,

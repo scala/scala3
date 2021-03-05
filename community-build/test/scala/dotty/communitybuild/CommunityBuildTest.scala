@@ -93,6 +93,8 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def geny = projects.geny.run()
   @Test def izumiReflect = projects.izumiReflect.run()
   @Test def oslib = projects.oslib.run()
+  @Test def scopt = projects.scopt.run()
+
   // @Test def oslibWatch = projects.oslibWatch.run()
   @Test def pprint = projects.pprint.run()
   @Test def requests = projects.requests.run()

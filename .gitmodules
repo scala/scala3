@@ -187,6 +187,9 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/scopt"]
+	path = community-build/community-projects/scopt
+	url = https://github.com/scopt/scopt.git
 [submodule "community-build/community-projects/onnx-scala"]
 	path = community-build/community-projects/onnx-scala
 	url = https://github.com/dotty-staging/onnx-scala.git
