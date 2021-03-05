@@ -756,7 +756,7 @@ trait Applications extends Compatibility {
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
+          if !sameSeq(args, orderedArgs) && !isJavaAnnotConstr(methRef.symbol) then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
 
@@ -787,7 +787,7 @@ trait Applications extends Compatibility {
                 argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
             }
             liftedDefs ++= orderedArgDefs
-          }
+          end if
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
           assignType(app0, normalizedFun, typedArgs)
