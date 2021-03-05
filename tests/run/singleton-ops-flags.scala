@@ -1,6 +1,6 @@
 package example {
 
-  import compiletime.S
+  import compiletime.ops.int.S
   import compiletime.ops.int.<<
 
   object TastyFlags:

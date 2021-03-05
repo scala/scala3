@@ -4059,9 +4059,9 @@ object Types {
           val owner = tycon.symbol.owner
           val nArgs = args.length
           val constantType =
-            if (owner == defn.CompiletimePackageObject.moduleClass) name match {
-              case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
-              case _ => None
+            if (defn.isCompiletime_S(tycon.symbol)) {
+              if (nArgs == 1) constantFold1(natValue, _ + 1)
+              else None
             } else if (owner == defn.CompiletimeOpsAnyModuleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
