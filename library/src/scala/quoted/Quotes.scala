@@ -4098,23 +4098,32 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Report an error message at the given position */
       def error(msg: String, pos: Position): Unit
 
-      /** Report an error at the position of the macro expansion and throws a StopMacroExpansion */
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
       def throwError(msg: String): Nothing
 
       /** Report an error at the position of `expr` */
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
-      /** Report an error message at the given position and throws a StopMacroExpansion */
+      /** Report an error message at the given position and throw a StopMacroExpansion */
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */
       def warning(msg: String): Unit
 
-      /** Report a warning at the on the position of `expr` */
+      /** Report a warning at the position of `expr` */
       def warning(msg: String, expr: Expr[Any]): Unit
 
-      /** Report an warning message at the given position */
+      /** Report a warning message at the given position */
       def warning(msg: String, pos: Position): Unit
+
+      /** Report an info at the position of the macro expansion */
+      def info(msg: String): Unit
+
+      /** Report an info message at the position of `expr` */
+      def info(msg: String, expr: Expr[Any]): Unit
+
+      /** Report an info message at the given position */
+      def info(msg: String, pos: Position): Unit
 
     }
 

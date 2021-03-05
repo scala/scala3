@@ -2769,6 +2769,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
 
+      def info(msg: String): Unit =
+        dotc.report.echo(msg, Position.ofMacroExpansion)
+
+      def info(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.echo(msg, asTerm(expr).pos)
+
+      def info(msg: String, pos: Position): Unit =
+        dotc.report.echo(msg, pos)
+
     end report
 
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
