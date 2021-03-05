@@ -1198,7 +1198,9 @@ object Parsers {
               report.errorOrMigrationWarning(
                 em"""symbol literal '${in.name} is no longer supported,
                     |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                    |or enclose in braces '{${in.name}} if you want a quoted expression.""",
+                    |or enclose in braces '{${in.name}} if you want a quoted expression.
+                    |For now, you can also `import language.deprecated.symbolLiterals` to accept
+                    |the idiom, but this possibility might no longer be available in the future.""",
                 in.sourcePos())
               if migrateTo3 then
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
