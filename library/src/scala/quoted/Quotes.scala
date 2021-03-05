@@ -776,10 +776,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unique(qualifier: Term, name: String): Select
 
       /** Call an overloaded method with the given type and term parameters */
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term
 
       /** Call an overloaded method with the given type and term parameters */
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Apply
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term
 
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
