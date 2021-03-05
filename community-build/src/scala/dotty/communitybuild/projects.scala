@@ -91,7 +91,7 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = List("-Ycheck-init")
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -126,6 +126,12 @@ final case class SbtCommunityProject(
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
+
+object SbtCommunityProject:
+  def scalacOptions = List(
+    "-Ycheck:macros",
+    "-Ycheck-init",
+  )
 
 object projects:
 
@@ -452,6 +458,7 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck:macros") // TODO enable -Ycheck:macros
   )
 
   lazy val discipline = SbtCommunityProject(
@@ -473,7 +480,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = Nil // disable -Ycheck-init
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck-init")
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
@@ -487,7 +494,8 @@ object projects:
     sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
-    scalacOptions = Nil  // disable -Ycheck-init, due to -Xfatal-warning
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck-init") // disable -Ycheck-init, due to -Xfatal-warning
+
   )
 
   lazy val catsMtl = SbtCommunityProject(
