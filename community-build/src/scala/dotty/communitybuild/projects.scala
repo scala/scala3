@@ -321,7 +321,12 @@ object projects:
     sbtTestCommand   = "test",
     sbtDocCommand = "doc", // Again we've got problem with extensions
   )
-
+  
+  lazy val verify = SbtCommunityProject(
+    project = "nanotest-strawman",
+    sbtTestCommand = "verifyJVM/test"
+  )
+  
   lazy val effpi = SbtCommunityProject(
     project       = "effpi",
     // We set `useEffpiPlugin := false` because we don't want to run their
@@ -616,6 +621,7 @@ def allProjects = List(
   projects.ujson,
   projects.upickle,
   projects.upickleCore,
+  projects.verify,
   projects.geny,
   projects.fansi,
   projects.pprint,

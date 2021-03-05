@@ -187,3 +187,7 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/nanotest-strawman"]
+	path = community-build/community-projects/nanotest-strawman
+	url = https://github.com/scala/nanotest-strawman.git
+
