@@ -211,8 +211,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMsetter                                                      -- The setter part `x_=` of a var parameter `x` which itself is pickled as a PARAM
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
-                  OPEN
-                  INVISIBLE                                                            -- an open class
+                  OPEN                                                             -- an open class
+                  INVISIBLE                                                        -- invisible during typechecking
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -473,9 +473,9 @@ object TastyFormat {
   final val PARAMalias = 41
   final val TRANSPARENT = 42
   final val INFIX = 43
-  final val EMPTYCLAUSE = 44
-  final val SPLITCLAUSE = 45
-  final val INVISIBLE = 46
+  final val INVISIBLE = 44
+  final val EMPTYCLAUSE = 45
+  final val SPLITCLAUSE = 46
 
   // Cat. 2:    tag Nat
 
