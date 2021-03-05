@@ -397,7 +397,7 @@ object projects:
     project          = "scodec-bits",
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
-    sbtDocCommand   = "coreJVM/doc",
+    // sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit)
   )
 
@@ -405,7 +405,7 @@ object projects:
     project          = "scodec",
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
-    sbtDocCommand   = "coreJVM/doc",
+    // sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits)
   )
 
@@ -451,14 +451,14 @@ object projects:
   lazy val catsEffect2 = SbtCommunityProject(
     project        = "cats-effect-2",
     sbtTestCommand = "test",
-    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
+    // sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
     dependencies   = List(cats, disciplineMunit)
   )
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
     sbtTestCommand = "test",
-    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
+    // sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
 
