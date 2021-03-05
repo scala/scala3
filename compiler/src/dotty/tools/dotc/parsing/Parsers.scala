@@ -17,17 +17,18 @@ import NameKinds.WildcardParamName
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
+import typer.ImportInfo
 import StdNames._
 import util.Spans._
 import Constants._
-import Symbols.defn
+import Symbols.{defn, NoSymbol}
 import ScriptParsers._
 import Decorators._
 import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled}
+import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -496,20 +497,19 @@ object Parsers {
      *  Parameters appear in reverse order.
      */
     var placeholderParams: List[ValDef] = Nil
+    var languageImportContext: Context = ctx
 
-    def checkNoEscapingPlaceholders[T](op: => T): T = {
+    def checkNoEscapingPlaceholders[T](op: => T): T =
       val savedPlaceholderParams = placeholderParams
+      val savedLanguageImportContext = languageImportContext
       placeholderParams = Nil
-
       try op
-      finally {
-        placeholderParams match {
+      finally
+        placeholderParams match
           case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
-        }
         placeholderParams = savedPlaceholderParams
-      }
-    }
+        languageImportContext = savedLanguageImportContext
 
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
@@ -1197,17 +1197,19 @@ object Parsers {
             in.nextToken()
             Quote(t)
           }
-          else {
-            report.errorOrMigrationWarning(
-              em"""symbol literal '${in.name} is no longer supported,
-                  |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                  |or enclose in braces '{${in.name}} if you want a quoted expression.""",
-              in.sourcePos())
-            if migrateTo3 then
-              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
-              patch(source, Span(in.charOffset - 1), "\")")
+          else
+            if !symbolLiteralsEnabled(using languageImportContext) then
+              report.errorOrMigrationWarning(
+                em"""symbol literal '${in.name} is no longer supported,
+                    |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                    |or enclose in braces '{${in.name}} if you want a quoted expression.
+                    |For now, you can also `import language.deprecated.symbolLiterals` to accept
+                    |the idiom, but this possibility might no longer be available in the future.""",
+                in.sourcePos())
+              if migrateTo3 then
+                patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+                patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
-          }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
@@ -1629,7 +1631,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && dependentEnabled
+          if in.token == LPAREN && dependentEnabled(using languageImportContext)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())
@@ -3094,7 +3096,9 @@ object Parsers {
 
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
+      val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
+        languageImportContext = languageImportContext.importContext(imp, NoSymbol)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)
@@ -3105,7 +3109,7 @@ object Parsers {
             syntaxError(i"duplicate source version import", id.span)
           else
             ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
-      Import(tree, selectors)
+      imp
 
     /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
      *                     |  SimpleRef ‘as’ id
