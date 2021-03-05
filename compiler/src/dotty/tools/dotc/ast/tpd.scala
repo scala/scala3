@@ -825,8 +825,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val ownerAcc = new TreeAccumulator[immutable.Set[Symbol]] {
         def apply(ss: immutable.Set[Symbol], tree: Tree)(using Context) = tree match {
           case tree: DefTree =>
-            if (tree.symbol.exists) ss + tree.symbol.owner
-            else ss
+            val sym = tree.symbol
+            if sym.exists && !sym.owner.is(Package) then ss + sym.owner else ss
           case _ =>
             foldOver(ss, tree)
         }
