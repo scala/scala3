@@ -409,7 +409,7 @@ object projects:
   lazy val scopt = SbtCommunityProject(
     project          = "scopt",
     sbtTestCommand   = "scoptJVM/test",
-    // Adds <empty> package
+    sbtPublishCommand = "scoptJVM/publishLocal",
     dependencies = List(verify)
   )
 
@@ -484,7 +484,8 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"), // TODO enable -Xcheck-macros
+    sbtPublishCommand = "verifyJVM/publishLocal",
   )
 
   lazy val discipline = SbtCommunityProject(
