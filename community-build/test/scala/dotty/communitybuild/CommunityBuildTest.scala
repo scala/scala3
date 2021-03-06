@@ -86,6 +86,7 @@ end CommunityBuildTest
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA extends CommunityBuildTest:
+  @Test def akka = projects.akka.run()
   @Test def endpoints4s = projects.endpoints4s.run()
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
@@ -107,6 +108,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def upickle = projects.upickle.run()
   @Test def utest = projects.utest.run()
   @Test def zio = projects.zio.run()
+  @Test def protoquill = projects.protoquill.run()
 
   // 'scala-stm' and 'Sciss/Lucre':
   // @Test def scissEqual      = projects.scissEqual     .run()
@@ -118,7 +120,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   // @Test def scissAsyncFile  = projects.scissAsyncFile .run()
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scalaSTM        = projects.scalaSTM       .run()
-  // @Test def scissLucre      = projects.scissLucre     .run()
+  @Test def scissLucre      = projects.scissLucre     .run()
 
 end CommunityBuildTestA
 

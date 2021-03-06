@@ -144,7 +144,7 @@ object PathResolver {
     }
     else inContext(ContextBase().initialCtx) {
       val ArgsSummary(sstate, rest, errors, warnings) =
-        ctx.settings.processArguments(args.toList, true)
+        ctx.settings.processArguments(args.toList, true, ctx.settingsState)
       errors.foreach(println)
       val pr = new PathResolver()(using ctx.fresh.setSettings(sstate))
       println(" COMMAND: 'scala %s'".format(args.mkString(" ")))

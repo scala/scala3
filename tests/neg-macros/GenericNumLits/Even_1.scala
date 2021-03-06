@@ -17,7 +17,7 @@ object Even {
   }
 
   given EvenFromDigits with {
-    override inline def fromDigits(digits: String) = ${
+    override transparent inline def fromDigits(digits: String) = ${
       EvenFromDigitsImpl('digits)
     }
   }

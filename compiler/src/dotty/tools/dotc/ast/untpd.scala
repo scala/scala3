@@ -535,6 +535,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
 // --------- Copier/Transformer/Accumulator classes for untyped trees -----
 
+  def localCtx(tree: Tree)(using Context): Context = ctx
+
   override val cpy: UntypedTreeCopier = UntypedTreeCopier()
 
   class UntypedTreeCopier extends TreeCopier {
@@ -659,7 +661,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case ModuleDef(name, impl) =>
         cpy.ModuleDef(tree)(name, transformSub(impl))
       case tree: DerivingTemplate =>
-        cpy.Template(tree)(transformSub(tree.constr), transform(tree.parents), transform(tree.derived), transformSub(tree.self), transformStats(tree.body))
+        cpy.Template(tree)(transformSub(tree.constr), transform(tree.parents),
+          transform(tree.derived), transformSub(tree.self), transformStats(tree.body, tree.symbol))
       case ParsedTry(expr, handler, finalizer) =>
         cpy.ParsedTry(tree)(transform(expr), transform(handler), transform(finalizer))
       case SymbolLit(str) =>

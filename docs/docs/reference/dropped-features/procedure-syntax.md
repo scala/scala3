@@ -14,5 +14,5 @@ def f(): Unit = { ... }
 ```
 Scala 3 accepts the old syntax under the `-source:3.0-migration` option.
 If the `-migration` option is set, it can even rewrite old syntax to new.
-The [ScalaFix](https://scalacenter.github.io/scalafix/) tool also
+The [Scalafix](https://scalacenter.github.io/scalafix/) tool also
 can rewrite procedure syntax to make it Scala 3 compatible.

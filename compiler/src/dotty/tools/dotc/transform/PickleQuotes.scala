@@ -377,7 +377,7 @@ class PickleQuotes extends MacroTransform {
             (tree: Tree) => {
               def newCapture = {
                 val tpw = tree.tpe.widen match {
-                  case tpw: MethodicType => tpw.toFunctionType()
+                  case tpw: MethodicType => tpw.toFunctionType(isJava = false)
                   case tpw => tpw
                 }
                 assert(tpw.isInstanceOf[ValueType])
@@ -455,7 +455,7 @@ class PickleQuotes extends MacroTransform {
             apply(tp.dealias)
           case tp @ TypeRef(pre, _) if pre == NoPrefix || pre.termSymbol.isLocal =>
             val hiBound = tp.typeSymbol.info match
-              case info @ ClassInfo(_, _, classParents, _, _) => classParents.reduce(_ & _)
+              case info: ClassInfo => info.parents.reduce(_ & _)
               case info => info.hiBound
             apply(hiBound)
           case tp =>

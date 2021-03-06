@@ -38,6 +38,8 @@ import Constants.{Constant, IntTag, LongTag}
 import Denotations.SingleDenotation
 import annotation.{constructorOnly, threadUnsafe}
 
+import scala.util.control.NonFatal
+
 object Applications {
   import tpd._
 
@@ -509,14 +511,22 @@ trait Applications extends Compatibility {
       if (success) formals match {
         case formal :: formals1 =>
 
+          def checkNoVarArg(arg: Arg) =
+            if !ctx.isAfterTyper && isVarArg(arg) then
+              val addendum =
+                if formal.isRepeatedParam then
+                  i"it is not the only argument to be passed to the corresponding repeated parameter $formal"
+                else
+                  i"the corresponding parameter has type $formal which is not a repeated parameter type"
+              fail(em"Sequence argument type annotation `*` cannot be used here:\n$addendum", arg)
+
           /** Add result of typing argument `arg` against parameter type `formal`.
            *  @return  The remaining formal parameter types. If the method is parameter-dependent
            *           this means substituting the actual argument type for the current formal parameter
            *           in the remaining formal parameters.
            */
-          def addTyped(arg: Arg, formal: Type): List[Type] =
-            if !ctx.isAfterTyper && isVarArg(arg) && !formal.isRepeatedParam then
-              fail(i"Sequence argument type annotation `: _*` cannot be used here: the corresponding parameter has type $formal which is not a repeated parameter type", arg)
+          def addTyped(arg: Arg): List[Type] =
+            if !formal.isRepeatedParam then checkNoVarArg(arg)
             addArg(typedArg(arg, formal), formal)
             if methodType.isParamDependent && typeOfArg(arg).exists then
               // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
@@ -553,9 +563,9 @@ trait Applications extends Compatibility {
             def implicitArg = implicitArgTree(formal, appPos.span)
 
             if !defaultArg.isEmpty then
-              matchArgs(args1, addTyped(treeToArg(defaultArg), formal), n + 1)
+              matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
             else if methodType.isContextualMethod && ctx.mode.is(Mode.ImplicitsEnabled) then
-              matchArgs(args1, addTyped(treeToArg(implicitArg), formal), n + 1)
+              matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
             else
               missingArg(n)
           }
@@ -563,13 +573,18 @@ trait Applications extends Compatibility {
           if (formal.isRepeatedParam)
             args match {
               case arg :: Nil if isVarArg(arg) =>
-                addTyped(arg, formal)
+                addTyped(arg)
               case (arg @ Typed(Literal(Constant(null)), _)) :: Nil if ctx.isAfterTyper =>
-                addTyped(arg, formal)
+                addTyped(arg)
               case _ =>
                 val elemFormal = formal.widenExpr.argTypesLo.head
                 val typedArgs =
-                  harmonic(harmonizeArgs, elemFormal)(args.map(typedArg(_, elemFormal)))
+                  harmonic(harmonizeArgs, elemFormal) {
+                    args.map { arg =>
+                      checkNoVarArg(arg)
+                      typedArg(arg, elemFormal)
+                    }
+                  }
                 typedArgs.foreach(addArg(_, elemFormal))
                 makeVarArg(args.length, elemFormal)
             }
@@ -577,7 +592,7 @@ trait Applications extends Compatibility {
             case EmptyTree :: args1 =>
               tryDefault(n, args1)
             case arg :: args1 =>
-              matchArgs(args1, addTyped(arg, formal), n + 1)
+              matchArgs(args1, addTyped(arg), n + 1)
             case nil =>
               tryDefault(n, args)
           }
@@ -615,7 +630,7 @@ trait Applications extends Compatibility {
         false
       case argtpe =>
         def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType()
+          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
           case _ => false
         }
         isCompatible(argtpe, formal) || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
@@ -735,13 +750,23 @@ trait Applications extends Compatibility {
     }
     private def sameSeq[T <: Trees.Tree[?]](xs: List[T], ys: List[T]): Boolean = firstDiff(xs, ys) < 0
 
+    /** An argument is safe if it is a pure expression or a default getter call
+     *  If all arguments are safe, no reordering is necessary
+     */
+    def isSafeArg(arg: Tree) =
+      isPureExpr(arg)
+      || arg.isInstanceOf[RefTree | Apply | TypeApply] && arg.symbol.name.is(DefaultGetterName)
+
     val result:   Tree = {
       var typedArgs = typedArgBuf.toList
       def app0 = cpy.Apply(app)(normalizedFun, typedArgs) // needs to be a `def` because typedArgs can change later
       val app1 =
         if (!success) app0.withType(UnspecifiedErrorType)
         else {
-          if (!sameSeq(args, orderedArgs.dropWhile(_ eq EmptyTree)) && !isJavaAnnotConstr(methRef.symbol)) {
+          if !sameSeq(args, orderedArgs)
+             && !isJavaAnnotConstr(methRef.symbol)
+             && !typedArgs.forall(isSafeArg)
+          then
             // need to lift arguments to maintain evaluation order in the
             // presence of argument reorderings.
 
@@ -772,7 +797,7 @@ trait Applications extends Compatibility {
                 argDefBuf.zip(impureArgIndices), (arg, idx) => originalIndex(idx)).map(_._1)
             }
             liftedDefs ++= orderedArgDefs
-          }
+          end if
           if (sameSeq(typedArgs, args)) // trick to cut down on tree copying
             typedArgs = args.asInstanceOf[List[Tree]]
           assignType(app0, normalizedFun, typedArgs)
@@ -2144,8 +2169,57 @@ trait Applications extends Compatibility {
     }
   }
 
-  def isApplicableExtensionMethod(ref: TermRef, receiver: Type)(using Context) =
-    ref.symbol.is(ExtensionMethod)
-    && !receiver.isBottomType
-    && isApplicableMethodRef(ref, receiver :: Nil, WildcardType)
+  /** Assuming methodRef is a reference to an extension method defined e.g. as
+   *
+   *  extension [T1, T2](using A)(using B, C)(receiver: R)(using D)
+   *    def foo[T3](using E)(f: F): G = ???
+   *
+   *  return the tree representing methodRef partially applied to the receiver
+   *  and all the implicit parameters preceding it (A, B, C)
+   *  with the type parameters of the extension (T1, T2) inferred.
+   *  None is returned if the implicit search fails for any of the leading implicit parameters
+   *  or if the receiver has a wrong type (note that in general the type of the receiver
+   *  might depend on the exact types of the found instances of the proceding implicits).
+   *  No implicit search is tried for implicits following the receiver or for parameters of the def (D, E).
+   */
+  def tryApplyingExtensionMethod(methodRef: TermRef, receiver: Tree)(using Context): Option[Tree] =
+    // Drop all parameters sections of an extension method following the receiver.
+    // The return type after truncation is not important
+    def truncateExtension(tp: Type)(using Context): Type = tp match
+      case poly: PolyType =>
+        poly.newLikeThis(poly.paramNames, poly.paramInfos, truncateExtension(poly.resType))
+      case meth: MethodType if meth.isContextualMethod =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, truncateExtension(meth.resType))
+      case meth: MethodType =>
+        meth.newLikeThis(meth.paramNames, meth.paramInfos, defn.AnyType)
+
+    def replaceCallee(inTree: Tree, replacement: Tree)(using Context): Tree = inTree match
+      case Apply(fun, args) => Apply(replaceCallee(fun, replacement), args)
+      case TypeApply(fun, args) => TypeApply(replaceCallee(fun, replacement), args)
+      case _ => replacement
+
+    val methodRefTree = ref(methodRef)
+    val truncatedSym = methodRef.symbol.asTerm.copy(info = truncateExtension(methodRef.info))
+    val truncatedRefTree = untpd.TypedSplice(ref(truncatedSym)).withSpan(receiver.span)
+    val newCtx = ctx.fresh.setNewScope.setReporter(new reporting.ThrowingReporter(ctx.reporter))
+
+    try
+      val appliedTree = inContext(newCtx) {
+        // Introducing an auxiliary symbol in a temporary scope.
+        // Entering the symbol indirectly by `newCtx.enter`
+        // could instead add the symbol to the enclosing class
+        // which could break the REPL.
+        newCtx.scope.openForMutations.enter(truncatedSym)
+        newCtx.typer.extMethodApply(truncatedRefTree, receiver, WildcardType)
+      }
+      if appliedTree.tpe.exists && !appliedTree.tpe.isError then
+        Some(replaceCallee(appliedTree, methodRefTree))
+      else
+        None
+    catch
+      case NonFatal(_) => None
+
+  def isApplicableExtensionMethod(methodRef: TermRef, receiverType: Type)(using Context): Boolean =
+    methodRef.symbol.is(ExtensionMethod) && !receiverType.isBottomType &&
+      tryApplyingExtensionMethod(methodRef, nullLiteral.asInstance(receiverType)).nonEmpty
 }

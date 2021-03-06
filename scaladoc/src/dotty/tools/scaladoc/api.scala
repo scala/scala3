@@ -28,6 +28,7 @@ enum VisibilityScope:
 
 enum Modifier(val name: String, val prefix: Boolean):
   case Abstract extends Modifier("abstract", true)
+  case Deferred extends Modifier("", true)
   case Final extends Modifier("final", true)
   case Empty extends Modifier("", true)
   case Sealed extends Modifier("sealed", true)
@@ -53,8 +54,8 @@ enum Kind(val name: String){
   case Object extends Kind("object") with Classlike
   case Trait(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("trait") with Classlike
-  case Enum extends Kind("enum") with Classlike
-  case EnumCase(kind: Object.type | Type | Val.type) extends Kind("case")
+  case Enum(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList]) extends Kind("enum") with Classlike
+  case EnumCase(kind: Object.type | Type | Val.type | Class) extends Kind("case")
   case Def(typeParams: Seq[TypeParameter], argsLists: Seq[ParametersList])
     extends Kind("def")
   case Extension(on: ExtensionTarget, m: Kind.Def) extends Kind("def")
@@ -146,7 +147,7 @@ case class Member(
   modifiers: Seq[Modifier] = Nil,
   annotations: List[Annotation] = Nil,
   signature: Signature = Signature(),
-  sources: Option[TastyDocumentableSource] = None,
+  sources: Option[TastyMemberSource] = None,
   origin: Origin = Origin.RegularlyDefined,
   inheritedFrom: Option[InheritedFrom] = None,
   graph: HierarchyGraph = HierarchyGraph.empty,
@@ -157,7 +158,18 @@ case class Member(
   knownChildren: Seq[LinkToType] = Nil,
   companion: Option[DRI] = None,
   deprecated: Option[Annotation] = None,
-)
+):
+  def needsOwnPage: Boolean =
+    def properKind(kind: Kind): Boolean = kind match
+      case Kind.Package => true
+      case _ if kind.isInstanceOf[Classlike] => true
+      case Kind.Given(inner, _, _) => properKind(inner)
+      case Kind.EnumCase(inner) => properKind(inner)
+      case _ => false
+
+    properKind(kind) &&
+      origin == Origin.RegularlyDefined &&
+      inheritedFrom.isEmpty
 
 object Member:
   def unapply(v: Member): Option[(String, DRI, Visibility, Kind, Origin)] =
@@ -220,4 +232,4 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyDocumentableSource(val path: String, val lineNumber: Int)
+case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)

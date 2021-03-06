@@ -818,8 +818,12 @@ object SymDenotations {
      */
     final def isAccessibleFrom(pre: Type, superAccess: Boolean = false, whyNot: StringBuffer = null)(using Context): Boolean = {
 
-      /** Are we inside definition of `boundary`? */
-      def accessWithin(boundary: Symbol) = ctx.owner.isContainedIn(boundary)
+      /** Are we inside definition of `boundary`?
+       *  If this symbol is Java defined, package structure is interpreted to be flat.
+       */
+      def accessWithin(boundary: Symbol) =
+        ctx.owner.isContainedIn(boundary)
+        && !(is(JavaDefined) && boundary.is(PackageClass) && ctx.owner.enclosingPackageClass != boundary)
 
       /** Are we within definition of linked class of `boundary`? */
       def accessWithinLinked(boundary: Symbol) = {
@@ -1539,7 +1543,7 @@ object SymDenotations {
       info2 match {
         case info2: ClassInfo =>
           info1 match {
-            case info1: ClassInfo => info1.classParents ne info2.classParents
+            case info1: ClassInfo => info1.declaredParents ne info2.declaredParents
             case _ => completersMatter
           }
         case _ => completersMatter
@@ -1730,16 +1734,16 @@ object SymDenotations {
       super.info_=(tp)
     }
 
-    def classParents(using Context): List[Type] = info match {
-      case classInfo: ClassInfo => classInfo.parents
+    /** The symbols of the parent classes. */
+    def parentSyms(using Context): List[Symbol] = info match {
+      case classInfo: ClassInfo => classInfo.declaredParents.map(_.classSymbol)
       case _ => Nil
     }
 
     /** The symbol of the superclass, NoSymbol if no superclass exists */
-    def superClass(using Context): Symbol = classParents match {
+    def superClass(using Context): Symbol = parentSyms match {
       case parent :: _ =>
-        val cls = parent.classSymbol
-        if (cls.is(Trait)) NoSymbol else cls
+        if (parent.is(Trait)) NoSymbol else parent
       case _ =>
         NoSymbol
     }
@@ -1799,19 +1803,20 @@ object SymDenotations {
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      if (classParents.isEmpty && !emptyParentsExpected)
+      val psyms = parentSyms
+      if (psyms.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
-      def traverse(parents: List[Type]): Unit = parents match {
+      def traverse(parents: List[Symbol]): Unit = parents match {
         case p :: parents1 =>
-          p.classSymbol match {
+          p match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
             case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
       }
-      traverse(classParents)
+      traverse(psyms)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
@@ -1959,7 +1964,7 @@ object SymDenotations {
               denots1
         case nil => denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, classParents)
+      else collect(ownDenots, info.parents)
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
@@ -2028,7 +2033,7 @@ object SymDenotations {
                     else if (isOwnThis)
                       if (clsd.baseClassSet.contains(symbol))
                         if (symbol.isStatic && symbol.typeParams.isEmpty) symbol.typeRef
-                        else foldGlb(NoType, clsd.classParents)
+                        else foldGlb(NoType, clsd.info.parents)
                       else NoType
                     else
                       recur(clsd.typeRef).asSeenFrom(prefix, clsd.owner)
@@ -2134,8 +2139,8 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for (p <- classParents if p.classSymbol.isClass)
-          for (name <- p.classSymbol.asClass.memberNames(keepOnly))
+        for (p <- parentSyms if p.isClass)
+          for (name <- p.asClass.memberNames(keepOnly))
             maybeAdd(name)
         val ownSyms =
           if (keepOnly eq implicitFilter)
@@ -2207,7 +2212,9 @@ object SymDenotations {
       if !myCompanion.exists then
         ensureCompleted()
       myCompanion
-    override def registeredCompanion_=(c: Symbol) = { myCompanion = c }
+
+    override def registeredCompanion_=(c: Symbol) =
+      myCompanion = c
 
     private var myNestingLevel = -1
 
@@ -2394,6 +2401,7 @@ object SymDenotations {
     override def owner: Symbol = throw new AssertionError("NoDenotation.owner")
     override def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = this
     override def mapInfo(f: Type => Type)(using Context): SingleDenotation = this
+    override def asSeenFrom(pre: Type)(using Context): AsSeenFromResult = this
 
     override def matches(other: SingleDenotation)(using Context): Boolean = false
     override def targetName(using Context): Name = EmptyTermName
@@ -2458,6 +2466,7 @@ object SymDenotations {
       || owner.isRefinementClass
       || owner.is(Scala2x)
       || owner.unforcedDecls.contains(denot.name, denot.symbol)
+      || (denot.is(Synthetic) && denot.is(ModuleClass) && stillValidInOwner(denot.companionClass))
       || denot.isSelfSym
       || denot.isLocalDummy)
   catch case ex: StaleSymbol => false

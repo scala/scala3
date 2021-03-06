@@ -329,6 +329,32 @@ Occurrences:
 [18:6..18:9): foo <- example/Anonymous#foo.
 [18:16..18:19): Foo -> example/Anonymous#Foo#
 
+expect/AnonymousGiven.scala
+---------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => AnonymousGiven.scala
+Text => empty
+Language => Scala
+Symbols => 5 entries
+Occurrences => 6 entries
+
+Symbols:
+angiven/AnonymousGiven$package. => final package object angiven
+angiven/AnonymousGiven$package.bar(). => method bar
+angiven/AnonymousGiven$package.bar().(x$1) => implicit param x$1
+angiven/Foo# => trait Foo
+angiven/Foo#`<init>`(). => primary ctor <init>
+
+Occurrences:
+[0:8..0:15): angiven <- angiven/
+[2:0..2:0): <- angiven/Foo#`<init>`().
+[2:6..2:9): Foo <- angiven/Foo#
+[4:0..4:0): <- angiven/AnonymousGiven$package.
+[4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
+[4:14..4:17): Foo -> angiven/Foo#
+
 expect/Classes.scala
 --------------------
 
@@ -966,11 +992,11 @@ Occurrences:
 [52:40..52:46): Option -> scala/Option#
 [52:47..52:48): B -> _empty_/Enums.unwrap().[B]
 [54:6..54:11): some1 <- _empty_/Enums.some1.
-[54:14..54:14): -> _empty_/Enums.unwrap().
 [54:14..54:18): Some -> scala/Some.
 [54:18..54:18): -> scala/Some.apply().
 [54:19..54:23): Some -> scala/Some.
 [54:23..54:23): -> scala/Some.apply().
+[54:28..54:34): unwrap -> _empty_/Enums.unwrap().
 [54:34..54:34): -> _empty_/Enums.`<:<`.given_T().
 [56:7..56:13): Planet <- _empty_/Enums.Planet#
 [56:13..56:13): <- _empty_/Enums.Planet#`<init>`().
@@ -1103,6 +1129,48 @@ Occurrences:
 [9:24..9:32): classTag -> scala/reflect/package.classTag().
 [9:33..9:36): Int -> scala/Int#
 [9:37..9:37): -> scala/reflect/ClassTag.apply().
+
+expect/Extension.scala
+----------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => Extension.scala
+Text => empty
+Language => Scala
+Symbols => 8 entries
+Occurrences => 19 entries
+
+Symbols:
+ext/Extension$package. => final package object ext
+ext/Extension$package.`#*#`(). => method #*#
+ext/Extension$package.`#*#`().(i) => param i
+ext/Extension$package.`#*#`().(s) => param s
+ext/Extension$package.a. => val method a
+ext/Extension$package.c. => val method c
+ext/Extension$package.foo(). => method foo
+ext/Extension$package.foo().(s) => param s
+
+Occurrences:
+[0:8..0:11): ext <- ext/
+[2:0..2:0): <- ext/Extension$package.
+[2:11..2:12): s <- ext/Extension$package.foo().(s)
+[2:11..2:12): s <- ext/Extension$package.`#*#`().(s)
+[2:14..2:20): String -> scala/Predef.String#
+[3:6..3:9): foo <- ext/Extension$package.foo().
+[3:11..3:14): Int -> scala/Int#
+[4:6..4:9): #*# <- ext/Extension$package.`#*#`().
+[4:11..4:12): i <- ext/Extension$package.`#*#`().(i)
+[4:14..4:17): Int -> scala/Int#
+[4:21..4:27): String -> scala/Predef.String#
+[4:29..4:32): Int -> scala/Int#
+[4:37..4:37): -> scala/Tuple2.apply().
+[4:37..4:38): s -> ext/Extension$package.`#*#`().(s)
+[4:40..4:41): i -> ext/Extension$package.`#*#`().(i)
+[6:4..6:5): a <- ext/Extension$package.a.
+[6:14..6:17): foo -> ext/Extension$package.foo().
+[8:4..8:5): c <- ext/Extension$package.c.
+[8:14..8:17): #*# -> ext/Extension$package.`#*#`().
 
 expect/ForComprehension.scala
 -----------------------------
@@ -1288,11 +1356,11 @@ Occurrences:
 [10:37..10:40): any -> a/b/Givens.saySoLong().(any)
 [10:40..10:41): " -> scala/StringContext#s().
 [12:6..12:12): hello1 <- a/b/Givens.hello1.
-[12:15..12:15): -> a/b/Givens.sayHello().
+[12:17..12:25): sayHello -> a/b/Givens.sayHello().
 [13:6..13:14): goodbye1 <- a/b/Givens.goodbye1.
-[13:17..13:17): -> a/b/Givens.sayGoodbye().
+[13:19..13:29): sayGoodbye -> a/b/Givens.sayGoodbye().
 [14:6..14:13): soLong1 <- a/b/Givens.soLong1.
-[14:16..14:16): -> a/b/Givens.saySoLong().
+[14:18..14:27): saySoLong -> a/b/Givens.saySoLong().
 [16:8..16:14): Monoid <- a/b/Givens.Monoid#
 [16:14..16:14): <- a/b/Givens.Monoid#`<init>`().
 [16:15..16:16): A <- a/b/Givens.Monoid#[A]
@@ -2089,8 +2157,8 @@ Schema => SemanticDB v4
 Uri => NamedApplyBlock.scala
 Text => empty
 Language => Scala
-Symbols => 46 entries
-Occurrences => 46 entries
+Symbols => 43 entries
+Occurrences => 43 entries
 
 Symbols:
 example/NamedApplyBlockCaseClassConstruction. => final object NamedApplyBlockCaseClassConstruction
@@ -2134,11 +2202,8 @@ example/NamedApplyBlockMethods.foo().(b) => param b
 example/NamedApplyBlockMethods.foo().(c) => param c
 example/NamedApplyBlockMethods.local. => val method local
 example/NamedApplyBlockMethods.recursive(). => method recursive
-local0 => val local b$1
-local1 => val local c$1
-local2 => val local b$3
-local3 => val local b$2
-local4 => val local head$1
+local0 => val local c$1
+local1 => val local b$1
 
 Occurrences:
 [0:8..0:15): example <- example/
@@ -2159,16 +2224,14 @@ Occurrences:
 [4:61..4:62): c -> example/NamedApplyBlockMethods.foo().(c)
 [5:6..5:14): baseCase <- example/NamedApplyBlockMethods.baseCase().
 [5:17..5:20): foo -> example/NamedApplyBlockMethods.foo().
-[5:17..5:17): -> local0
 [5:21..5:26): local -> example/NamedApplyBlockMethods.local.
 [5:28..5:29): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:6..6:15): recursive <- example/NamedApplyBlockMethods.recursive().
 [6:18..6:21): foo -> example/NamedApplyBlockMethods.foo().
-[6:18..6:18): -> local2
+[6:18..6:18): -> local1
 [6:22..6:27): local -> example/NamedApplyBlockMethods.local.
 [6:29..6:30): c -> example/NamedApplyBlockMethods.foo().(c)
 [6:33..6:36): foo -> example/NamedApplyBlockMethods.foo().
-[6:33..6:33): -> local3
 [6:37..6:42): local -> example/NamedApplyBlockMethods.local.
 [6:44..6:45): c -> example/NamedApplyBlockMethods.foo().(c)
 [9:7..9:43): NamedApplyBlockCaseClassConstruction <- example/NamedApplyBlockCaseClassConstruction.
@@ -2183,7 +2246,6 @@ Occurrences:
 [11:6..11:14): bodyText <- example/NamedApplyBlockCaseClassConstruction.bodyText.
 [12:6..12:9): msg <- example/NamedApplyBlockCaseClassConstruction.msg.
 [12:12..12:15): Msg -> example/NamedApplyBlockCaseClassConstruction.Msg.
-[12:12..12:12): -> local4
 [12:15..12:15): -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().
 [12:16..12:24): bodyText -> example/NamedApplyBlockCaseClassConstruction.bodyText.
 [12:26..12:30): tail -> example/NamedApplyBlockCaseClassConstruction.Msg.apply().(tail)
@@ -2387,6 +2449,40 @@ Occurrences:
 [31:6..31:8): n3 <- prefixes/Test.n3().
 [31:10..31:11): T -> prefixes/M.T#
 [31:14..31:17): ??? -> scala/Predef.`???`().
+
+expect/RightAssociativeExtension.scala
+--------------------------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => RightAssociativeExtension.scala
+Text => empty
+Language => Scala
+Symbols => 5 entries
+Occurrences => 14 entries
+
+Symbols:
+ext/RightAssociativeExtension$package. => final package object ext
+ext/RightAssociativeExtension$package.`:*:`(). => method :*:
+ext/RightAssociativeExtension$package.`:*:`().(i) => param i
+ext/RightAssociativeExtension$package.`:*:`().(s) => param s
+ext/RightAssociativeExtension$package.b. => val method b
+
+Occurrences:
+[0:8..0:11): ext <- ext/
+[2:0..2:0): <- ext/RightAssociativeExtension$package.
+[2:11..2:12): s <- ext/RightAssociativeExtension$package.`:*:`().(s)
+[2:14..2:20): String -> scala/Predef.String#
+[3:6..3:9): :*: <- ext/RightAssociativeExtension$package.`:*:`().
+[3:11..3:12): i <- ext/RightAssociativeExtension$package.`:*:`().(i)
+[3:14..3:17): Int -> scala/Int#
+[3:21..3:27): String -> scala/Predef.String#
+[3:29..3:32): Int -> scala/Int#
+[3:37..3:37): -> scala/Tuple2.apply().
+[3:37..3:38): s -> ext/RightAssociativeExtension$package.`:*:`().(s)
+[3:40..3:41): i -> ext/RightAssociativeExtension$package.`:*:`().(i)
+[5:4..5:5): b <- ext/RightAssociativeExtension$package.b.
+[5:14..5:17): :*: -> ext/RightAssociativeExtension$package.`:*:`().
 
 expect/Selfs.scala
 ------------------

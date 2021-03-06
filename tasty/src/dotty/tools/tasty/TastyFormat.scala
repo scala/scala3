@@ -165,7 +165,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   ORtype         Length left_Type right_Type                       -- lefgt | right
                   MATCHtype      Length bound_Type sel_Type case_Type*             -- sel match {cases} with optional upper `bound`
                   MATCHCASEtype  Length pat_type rhs_Type                          -- match cases are MATCHCASEtypes or TYPELAMBDAtypes over MATCHCASEtypes
-                  BIND           Length boundName_NameRef bounds_Type              -- boundName @ bounds,  for type-variables defined in a type pattern
+                  BIND           Length boundName_NameRef bounds_Type Modifier*    -- boundName @ bounds,  for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type                            -- => underlying
                   PARAMtype      Length binder_ASTRef paramNum_Nat                 -- A reference to parameter # paramNum in lambda type `binder`
                   POLYtype       Length result_Type TypesNames                     -- A polymorphic method type `[TypesNames]result`, used in refinements
@@ -334,6 +334,7 @@ object TastyFormat {
    *   else invariant[file.experimental is non-0 and different than compiler.experimental]
    *     return incompatible
    * ```
+   * @syntax markdown
    */
   def isVersionCompatible(
     fileMajor: Int,

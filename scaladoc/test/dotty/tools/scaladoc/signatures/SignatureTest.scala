@@ -1,4 +1,5 @@
 package dotty.tools.scaladoc
+package signatures
 
 import scala.io.Source
 import scala.jdk.CollectionConverters._

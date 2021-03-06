@@ -29,7 +29,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
 
   def inheritedFrom(m: Member) = m.inheritedFrom match
-    case Some(InheritedFrom(name, dri)) => tableRow("Inhertied from", signatureRenderer.renderLink(name, dri))
+    case Some(InheritedFrom(name, dri)) => tableRow("Inherited from", signatureRenderer.renderLink(name, dri))
     case _ => Nil
 
   def docAttributes(m: Member): Seq[AppliedTag] =
@@ -68,7 +68,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def source(m: Member): Seq[AppliedTag] =
     summon[DocContext].sourceLinks.pathTo(m).fold(Nil){ link =>
-      tableRow("Source", a(href := link)("(source)"))
+      tableRow("Source", a(href := link)(m.sources.fold("(source)")(_.path.getFileName().toString())))
     }
 
   def deprecation(m: Member): Seq[AppliedTag] = m.deprecated.fold(Nil){ a =>
@@ -83,10 +83,11 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     val message = named.find(_.name.get == "message")
     val since = named.find(_.name.get == "since")
 
-    val content = Seq(
-      since.map(s => code("[Since version ", parameter(s), "] ")),
-      message.map(m => parameter(m)),
-      m.docs.map(_.deprecated.toSeq.map(renderDocPart)):_*
+    val content = (
+      Seq(
+        since.map(s => code("[Since version ", parameter(s), "] ")),
+        message.map(m => parameter(m)))
+      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
     ).flatten
     Seq(dt("Deprecated"), dd(content:_*))
   }
@@ -122,7 +123,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case _ => Nil
   }
 
-  def memberSingnature(member: Member) =
+  def memberSignature(member: Member) =
     val depStyle = if member.deprecated.isEmpty then "" else "deprecated"
     val nameClasses = cls := s"documentableName $depStyle"
 
@@ -161,9 +162,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       ++ filterAttributes.map{ case (n, v) => Attr(s"data-f-$n") := v }
 
     div(topLevelAttr:_*)(
-      a(href:=link(member.dri).getOrElse("#"), cls := "documentableAnchor"),
+      a(href := (if member.needsOwnPage then link(member.dri).getOrElse("#") else s"#${member.dri.anchor}"), cls := "documentableAnchor"),
       div(annotations(member)),
-      div(cls := "header monospace")(memberSingnature(member)),
+      div(cls := "header monospace")(memberSignature(member)),
       div(cls := "docs")(
         span(cls := "modifiers"), // just to have padding on left
         div(
@@ -201,22 +202,34 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     case m: Member => m.inheritedFrom.nonEmpty
     case g: MGroup => g.members.exists(isInherited)
 
+  private def isAbstract(m: Member | MGroup): Boolean = m match
+    case m: Member => m.modifiers.exists(Set(Modifier.Abstract, Modifier.Deferred).contains)
+    case g: MGroup => g.members.exists(isAbstract)
+
   private type SubGroup = (String, Seq[Member | MGroup])
   private def buildGroup(name: String, subgroups: Seq[SubGroup]): Tab =
     val all = subgroups.map { case (name, members) =>
       val (allInherited, allDefined) = members.partition(isInherited)
       val (depDefined, defined) = allDefined.partition(isDeprecated)
       val (depInherited, inherited) = allInherited.partition(isDeprecated)
-      (
-        actualGroup(name, defined),
-        actualGroup(s"Deprecated ${name.toLowerCase}", depDefined),
-        actualGroup(s"Inherited ${name.toLowerCase}", inherited),
-        actualGroup(s"Deprecated and Inherited ${name.toLowerCase}", depInherited)
+      val normalizedName = name.toLowerCase
+      val definedWithGroup = if Set("methods", "fields").contains(normalizedName) then
+          val (abstr, concr) = defined.partition(isAbstract)
+          Seq(
+            actualGroup(s"Abstract ${normalizedName}", abstr),
+            actualGroup(s"Concrete ${normalizedName}", concr)
+          )
+        else
+          Seq(actualGroup(name, defined))
+
+      definedWithGroup ++ List(
+        actualGroup(s"Deprecated ${normalizedName}", depDefined),
+        actualGroup(s"Inherited ${normalizedName}", inherited),
+        actualGroup(s"Deprecated and Inherited ${normalizedName}", depInherited)
       )
     }
 
-    val children =
-      all.flatMap(_._1) ++ all.flatMap(_._2) ++ all.flatMap(_._3) ++ all.flatMap(_._4)
+    val children = all.flatten.flatten
     if children.isEmpty then emptyTab
     else Tab(name, name, h2(tabAttr(name))(name) +: children, "selected")
 
@@ -270,7 +283,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       buildGroup("Type members", Seq(
         ("Classlikes", rest.filter(m => m.kind.isInstanceOf[Classlike])),
         ("Types", rest.filter(_.kind.isInstanceOf[Kind.Type])),
-        ("Enum entries", rest.filter(_.kind == Kind.EnumCase)),
+        ("Enum entries", rest.filter(_.kind.isInstanceOf[Kind.EnumCase])),
       )),
       buildGroup("Value members", Seq(
         ("Constructors", rest.filter(_.kind.isInstanceOf[Kind.Constructor])),
@@ -362,7 +375,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
           ),
           div(cls := "signature monospace")(
             annotations(m),
-            memberSingnature(m)
+            memberSignature(m)
           )
         )
 

@@ -251,14 +251,16 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  private val languageSubCategories = Set(nme.experimental, nme.deprecated)
+
   /** If `path` looks like a language import, `Some(name)` where name
    *  is `experimental` if that sub-module is imported, and the empty
    *  term name otherwise.
    */
   def languageImport(path: Tree): Option[TermName] = path match
-    case Select(p1, nme.experimental) =>
+    case Select(p1, name: TermName) if languageSubCategories.contains(name) =>
       languageImport(p1) match
-        case Some(EmptyTermName) => Some(nme.experimental)
+        case Some(EmptyTermName) => Some(name)
         case _ => None
     case p1: RefTree if p1.name == nme.language =>
       p1.qualifier match

@@ -24,7 +24,7 @@ For methods with one or more parameters like in the example above, this restrict
 
 ## Automatic eta-expansion and partial application
 In the following example `m` can be partially applied to the first two parameters.
-Assignining `m` to `f1` will automatically eta-expand.
+Assigning `m` to `f1` will automatically eta-expand.
 
 ```scala
 def m(x: Boolean, y: String)(z: Int): List[Int]

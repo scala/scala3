@@ -122,7 +122,6 @@ class Definitions {
         }
         val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
         val methodType = MethodType.companion(
-          isJava = false,
           isContextual = name.isContextFunction,
           isImplicit = false,
           isErased = name.isErasedFunction)
@@ -774,6 +773,7 @@ class Definitions {
   @tu lazy val LanguageModule: Symbol = requiredModule("scala.language")
   @tu lazy val LanguageModuleClass: Symbol = LanguageModule.moduleClass.asClass
   @tu lazy val LanguageExperimentalModule: Symbol = requiredModule("scala.language.experimental")
+  @tu lazy val LanguageDeprecatedModule: Symbol = requiredModule("scala.language.deprecated")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
 

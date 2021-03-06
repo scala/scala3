@@ -17,17 +17,18 @@ import NameKinds.WildcardParamName
 import NameOps._
 import ast.{Positioned, Trees}
 import ast.Trees._
+import typer.ImportInfo
 import StdNames._
 import util.Spans._
 import Constants._
-import Symbols.defn
+import Symbols.{defn, NoSymbol}
 import ScriptParsers._
 import Decorators._
 import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled}
+import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -364,11 +365,15 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
+      def skipEmptyStats(): Unit =
+        while (in.token == SEMI || in.token == NEWLINE || in.token == NEWLINES) do in.nextToken()
+
       in.observeOutdented()
       in.token match
         case SEMI | NEWLINE | NEWLINES =>
-          in.nextToken()
+          skipEmptyStats()
           checkEndMarker(stats)
+          skipEmptyStats()
         case `altEnd` =>
         case _ =>
           if !isStatSeqEnd then
@@ -492,20 +497,19 @@ object Parsers {
      *  Parameters appear in reverse order.
      */
     var placeholderParams: List[ValDef] = Nil
+    var languageImportContext: Context = ctx
 
-    def checkNoEscapingPlaceholders[T](op: => T): T = {
+    def checkNoEscapingPlaceholders[T](op: => T): T =
       val savedPlaceholderParams = placeholderParams
+      val savedLanguageImportContext = languageImportContext
       placeholderParams = Nil
-
       try op
-      finally {
-        placeholderParams match {
+      finally
+        placeholderParams match
           case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
-        }
         placeholderParams = savedPlaceholderParams
-      }
-    }
+        languageImportContext = savedLanguageImportContext
 
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
@@ -1193,17 +1197,19 @@ object Parsers {
             in.nextToken()
             Quote(t)
           }
-          else {
-            report.errorOrMigrationWarning(
-              em"""symbol literal '${in.name} is no longer supported,
-                  |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
-                  |or enclose in braces '{${in.name}} if you want a quoted expression.""",
-              in.sourcePos())
-            if migrateTo3 then
-              patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
-              patch(source, Span(in.charOffset - 1), "\")")
+          else
+            if !symbolLiteralsEnabled(using languageImportContext) then
+              report.errorOrMigrationWarning(
+                em"""symbol literal '${in.name} is no longer supported,
+                    |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
+                    |or enclose in braces '{${in.name}} if you want a quoted expression.
+                    |For now, you can also `import language.deprecated.symbolLiterals` to accept
+                    |the idiom, but this possibility might no longer be available in the future.""",
+                in.sourcePos())
+              if migrateTo3 then
+                patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
+                patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
-          }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
@@ -1296,7 +1302,7 @@ object Parsers {
 
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
-      if in.token == COLONEOL || in.token == WITH then
+      if in.token == COLONEOL then
         if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
         else
           in.nextToken()
@@ -1625,7 +1631,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && dependentEnabled
+          if in.token == LPAREN && dependentEnabled(using languageImportContext)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())
@@ -2333,7 +2339,7 @@ object Parsers {
       possibleTemplateStart()
       val parents =
         if in.isNestedStart then Nil
-        else constrApps(commaOK = false)
+        else constrApps(exclude = COMMA)
       colonAtEOLOpt()
       possibleTemplateStart(isNew = true)
       parents match {
@@ -2628,13 +2634,19 @@ object Parsers {
         ascription(p, location)
       else p
 
-    /**  Pattern3    ::=  InfixPattern [‘*’]
+    /**  Pattern3    ::=  InfixPattern
+     *                 |  PatVar ‘*’
      */
     def pattern3(): Tree =
       val p = infixPattern()
       if followingIsVararg() then
         atSpan(in.skipToken()) {
-          Typed(p, Ident(tpnme.WILDCARD_STAR))
+          p match
+            case p @ Ident(name) if name.isVarPattern =>
+              Typed(p, Ident(tpnme.WILDCARD_STAR))
+            case _ =>
+              syntaxError(em"`*` must follow pattern variable")
+              p
         }
       else p
 
@@ -2726,7 +2738,7 @@ object Parsers {
       if (in.token == RPAREN) Nil else patterns(location)
 
     /** ArgumentPatterns  ::=  ‘(’ [Patterns] ‘)’
-     *                      |  ‘(’ [Patterns ‘,’] Pattern2 ‘*’ ‘)’
+     *                      |  ‘(’ [Patterns ‘,’] PatVar ‘*’ ‘)’
      */
     def argumentPatterns(): List[Tree] =
       inParens(patternsOpt(Location.InPatternArgs))
@@ -3084,7 +3096,9 @@ object Parsers {
 
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
+      val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
+        languageImportContext = languageImportContext.importContext(imp, NoSymbol)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)
@@ -3095,7 +3109,7 @@ object Parsers {
             syntaxError(i"duplicate source version import", id.span)
           else
             ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
-      Import(tree, selectors)
+      imp
 
     /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
      *                     |  SimpleRef ‘as’ id
@@ -3113,7 +3127,7 @@ object Parsers {
       def wildcardSelector() =
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
-            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("3.1")}",
+            em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("future")}",
             in.sourcePos())
           patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
@@ -3131,7 +3145,7 @@ object Parsers {
         if in.token == ARROW || isIdent(nme.as) then
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
-              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("3.1")}",
+              em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("future")}",
               in.sourcePos())
             patch(source, Span(in.offset, in.offset + 2),
                 if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
@@ -3536,7 +3550,7 @@ object Parsers {
       val parents =
         if (in.token == EXTENDS) {
           in.nextToken()
-          constrApps(commaOK = true)
+          constrApps()
         }
         else Nil
       Template(constr, parents, Nil, EmptyValDef, Nil)
@@ -3670,15 +3684,15 @@ object Parsers {
 
     /** ConstrApps  ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
      */
-    def constrApps(commaOK: Boolean): List[Tree] =
+    def constrApps(exclude: Token = EMPTY): List[Tree] =
       val t = constrApp()
       val ts =
-        if in.token == WITH || commaOK && in.token == COMMA then
+        val tok = in.token
+        if (tok == WITH || tok == COMMA) && tok != exclude then
           in.nextToken()
-          constrApps(commaOK)
+          constrApps(exclude = if tok == WITH then COMMA else WITH)
         else Nil
       t :: ts
-
 
     /** `{`with` ConstrApp} but no EOL allowed after `with`.
      */
@@ -3704,7 +3718,7 @@ object Parsers {
               in.sourcePos())
             Nil
           }
-          else constrApps(commaOK = true)
+          else constrApps()
         }
         else Nil
       newLinesOptWhenFollowedBy(nme.derives)
@@ -3758,8 +3772,7 @@ object Parsers {
 
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
-      if in.token != WITH then syntaxError(em"`with` expected")
-      possibleTemplateStart() // consumes a WITH token
+      accept(WITH)
       val (self, stats) = templateBody()
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))

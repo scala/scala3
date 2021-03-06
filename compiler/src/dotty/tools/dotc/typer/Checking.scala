@@ -576,8 +576,8 @@ object Checking {
           }
           tp.derivedClassInfo(
             prefix = apply(tp.prefix),
-            classParents =
-              tp.parents.map(p => transformedParent(apply(p)))
+            declaredParents =
+              tp.declaredParents.map(p => transformedParent(apply(p)))
             )
         case _ =>
           mapOver(tp)
@@ -653,6 +653,21 @@ object Checking {
        || to.isRef(defn.ObjectClass, skipRefined = false)
     then
       report.error(em"the result of an implicit conversion must be more specific than $to", pos)
+
+  def checkValue(tree: Tree)(using Context): Unit =
+    val sym = tree.tpe.termSymbol
+    if sym.is(Flags.Package) || sym.isAllOf(Flags.JavaModule) && !ctx.isJava then
+      report.error(JavaSymbolIsNotAValue(sym), tree.srcPos)
+
+  def checkValue(tree: Tree, proto: Type)(using Context): tree.type =
+    tree match
+      case tree: RefTree
+      if tree.name.isTermName
+         && !proto.isInstanceOf[SelectionProto]
+         && !proto.isInstanceOf[FunOrPolyProto] =>
+        checkValue(tree)
+      case _ =>
+    tree
 }
 
 trait Checking {
@@ -740,6 +755,7 @@ trait Checking {
       case Some(prefix) =>
         val required =
           if prefix == nme.experimental then defn.LanguageExperimentalModule
+          else if prefix == nme.deprecated then defn.LanguageDeprecatedModule
           else defn.LanguageModule
         if path.symbol != required then
           report.error(em"import looks like a language import, but refers to something else: ${path.symbol.showLocated}", path.srcPos)
@@ -1165,7 +1181,7 @@ trait Checking {
         report.error(i"enum case does not extend its enum $enumCls", enumCase.srcPos)
         cls.info match
           case info: ClassInfo =>
-            cls.info = info.derivedClassInfo(classParents = enumCls.typeRefApplied :: info.classParents)
+            cls.info = info.derivedClassInfo(declaredParents = enumCls.typeRefApplied :: info.declaredParents)
           case _ =>
 
     val enumCase =

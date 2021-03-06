@@ -18,7 +18,7 @@ object Main extends dotc.Driver {
     new TASTYDecompiler
   }
 
-  override def setup(args0: Array[String], rootCtx: Context): (List[AbstractFile], Context) = {
+  override def setup(args0: Array[String], rootCtx: Context): Option[(List[AbstractFile], Context)] = {
     var args = args0.filter(a => a != "-decompile")
     if (!args.contains("-from-tasty")) args = "-from-tasty" +: args
     if (args.contains("-d")) args = "-color:never" +: args

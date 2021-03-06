@@ -615,7 +615,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
+    def initJMethod(flags: Int, params: List[Symbol]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -637,7 +637,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // TODO param names: (m.params map (p => javaName(p.sym)))
 
       emitAnnotations(mnode, others)
-      emitParamAnnotations(mnode, paramAnnotations)
+      emitParamNames(mnode, params)
+      emitParamAnnotations(mnode, params.map(_.annotations))
 
     } // end of method initJMethod
 
@@ -749,7 +750,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => p.symbol.annotations))
+      initJMethod(flags, params.map(_.symbol))
 
 
       if (!isAbstractMethod && !isNative) {

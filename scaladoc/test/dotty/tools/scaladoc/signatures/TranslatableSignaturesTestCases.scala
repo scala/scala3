@@ -1,4 +1,4 @@
-package dotty.tools.scaladoc
+package dotty.tools.scaladoc.signatures
 
 class GenericSignaftures extends SignatureTest("genericSignatures", Seq("class"))
 
@@ -43,7 +43,7 @@ class ExtensionMethodSignature extends SignatureTest("extensionMethodSignatures"
 
 class ClassModifiers extends SignatureTest("classModifiers", SignatureTest.classlikeKinds)
 
-// class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
+class EnumSignatures extends SignatureTest("enumSignatures", SignatureTest.all)
 
 class StructuralTypes extends SignatureTest("structuralTypes", SignatureTest.members)
 

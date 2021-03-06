@@ -774,7 +774,7 @@ class Namer { typer: Typer =>
           alt != denot.symbol && alt.info.matchesLoosely(denot.info))
 
       def inheritsConcreteMember =
-        denot.owner.asClass.classParents.exists(parent =>
+        denot.owner.asClass.info.parents.exists(parent =>
           parent.member(denot.name).hasAltWith(sd =>
             !sd.symbol.is(Deferred) && sd.matches(denot)))
 
@@ -809,7 +809,7 @@ class Namer { typer: Typer =>
 
       if denot.isClass && !sym.isEnumAnonymClass && !sym.isRefinementClass then
         val child = if (denot.is(Module)) denot.sourceModule else denot.symbol
-        denot.asClass.classParents.foreach { parent => register(child, parent.classSymbol.asClass) }
+        denot.info.parents.foreach { parent => register(child, parent.classSymbol.asClass) }
       else if denot.is(CaseVal, butNot = Method | Module) then
         assert(denot.is(Enum), denot)
         denot.info.classSymbols.foreach { parent => register(denot.symbol, parent) }
@@ -1049,7 +1049,7 @@ class Namer { typer: Typer =>
                   if sym.isStableMember && sym.isPublic && !refersToPrivate(path.tpe) then
                     (StableRealizable, ExprType(path.tpe.select(sym)))
                   else
-                    (EmptyFlags, mbr.info.ensureMethodic.dropJavaMethod)
+                    (EmptyFlags, mbr.info.ensureMethodic)
                 var mbrFlags = Exported | Method | Final | maybeStable | sym.flags & RetainedExportFlags
                 if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
                 val forwarderName = checkNoConflict(alias, isPrivate = false, span)

@@ -77,6 +77,9 @@ object Scanners {
 
     /** Is current token first one after a newline? */
     def isAfterLineEnd: Boolean = lineOffset >= 0
+
+    def isOperator =
+      token == IDENTIFIER && isOperatorPart(name(name.length - 1))
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -348,12 +351,27 @@ object Scanners {
       && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
+        // Is current lexeme  assumed to start an expression?
+        // This is the case if the lexime is one of the tokens that
+        // starts an expression. Furthermore, if the previous token is
+        // in backticks, the lexeme may not be a binary operator.
+        // I.e. in
+        //
+        //   a
+        //   `x` += 1
+        //
+        // `+=` is not assumed to start an expression since it follows an identifier
+        // in backticks and is a binary operator. Hence, `x` is not classified as a
+        // leading infix operator.
+        def assumeStartsExpr(lexeme: TokenData) =
+          canStartExprTokens.contains(lexeme.token)
+          && (token != BACKQUOTED_IDENT || !lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
-        canStartExprTokens.contains(lookahead.token)
-        || lookahead.token == NEWLINE && canStartExprTokens.contains(lookahead.next.token)
+        assumeStartsExpr(lookahead)
+        || lookahead.token == NEWLINE && assumeStartsExpr(lookahead.next)
       }
       && {
         if migrateTo3 then

@@ -147,7 +147,7 @@ class VarianceChecker(using Context) {
           case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedVarianceAnnot =>
             status
           case tp: ClassInfo =>
-            foldOver(status, tp.classParents)
+            foldOver(status, tp.parents)
           case _ =>
             foldOver(status, tp)
         }

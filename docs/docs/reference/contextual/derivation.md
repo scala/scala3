@@ -279,7 +279,7 @@ enum Opt[+T] derives Eq:
    case Sm(t: T)
    case Nn
 
-@main def test =
+@main def test(): Unit =
    import Opt.*
    val eqoi = summon[Eq[Opt[Int]]]
    assert(eqoi.eqv(Sm(23), Sm(23)))
@@ -312,6 +312,7 @@ As a third example, using a higher level library such as Shapeless the type clas
 given eqSum[A](using inst: => K0.CoproductInstances[Eq, A]): Eq[A] with
    def eqv(x: A, y: A): Boolean = inst.fold2(x, y)(false)(
       [t] => (eqt: Eq[t], t0: t, t1: t) => eqt.eqv(t0, t1)
+   )
 
 given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
    def eqv(x: A, y: A): Boolean = inst.foldLeft2(x, y)(true: Boolean)(
@@ -344,7 +345,7 @@ hand side of this definition in the same way as an instance defined in ADT compa
 
 ### Syntax
 
-```
+```ebnf
 Template          ::=  InheritClauses [TemplateBody]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 InheritClauses    ::=  [‘extends’ ConstrApps] [‘derives’ QualId {‘,’ QualId}]

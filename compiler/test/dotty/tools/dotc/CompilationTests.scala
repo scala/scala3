@@ -40,8 +40,9 @@ class CompilationTests {
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
       compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
-      compileFilesInDir("tests/pos", defaultOptions),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ycheck-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
+      compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
@@ -67,7 +68,7 @@ class CompilationTests {
 
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
-      compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "3.1-migration")),
+      compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
       compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite"))
     ).checkRewrites()
@@ -187,7 +188,7 @@ class CompilationTests {
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run", defaultOptions)
+      compileFilesInDir("tests/run", defaultOptions.and("-Ycheck-init"))
     ).checkRuns()
   }
 
@@ -310,24 +311,13 @@ class CompilationTests {
   }.checkRuns()
 
   // initialization tests
-  @Test def checkInitNeg: Unit = {
+  @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
     val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/neg/", options)
-  }.checkExpectedErrors()
-
-  @Test def checkInitCrash: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init")
-    compileFilesInDir("tests/init/crash", options)
-  }.checkCompile()
-
-  @Test def checkInitPos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/pos", options)
-  }.checkCompile()
-
+    compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/pos", options).checkCompile()
+    compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
+  }
 }
 
 object CompilationTests extends ParallelTesting {

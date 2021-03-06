@@ -61,3 +61,5 @@ i9793.scala
 # lazy_implicit symbol has different position after pickling
 i8182.scala
 
+# local lifted value in annotation argument has different position after pickling
+i2797a

@@ -195,6 +195,19 @@ abstract class AbstractFile extends Iterable[AbstractFile] {
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator(): Iterator[AbstractFile]
 
+  /** Drill down through subdirs looking for the target, as in lookupName.
+   *  Ths target name is the last of parts.
+   */
+  final def lookupPath(parts: Seq[String], directory: Boolean): AbstractFile =
+    var file: AbstractFile = this
+    var i = 0
+    val n = parts.length - 1
+    while file != null && i < n do
+      file = file.lookupName(parts(i), directory = true)
+      i += 1
+    if file == null then null else file.lookupName(parts(i), directory = directory)
+  end lookupPath
+
   /** Returns the abstract file in this abstract directory with the specified
    *  name. If there is no such file, returns `null`. The argument
    *  `directory` tells whether to look for a directory or

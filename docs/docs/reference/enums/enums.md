@@ -93,6 +93,7 @@ end Planet
 As a library author, you may want to signal that an enum case is no longer intended for use. However you could still want to gracefully handle the removal of a case from your public API, such as special casing deprecated cases.
 
 To illustrate, say that the `Planet` enum originally had an additional case:
+
 ```diff
  enum Planet(mass: Double, radius: Double):
     ...
@@ -128,9 +129,11 @@ object Planet {
    }
 }
 ```
+
 We could imagine that a library may use [type class derivation](../contextual/derivation.md) to automatically provide an instance for `Deprecations`.
 
 ### Compatibility with Java Enums
+
 If you want to use the Scala-defined enums as [Java enums](https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html), you can do so by extending
 the class `java.lang.Enum`, which is imported by default, as follows:
 

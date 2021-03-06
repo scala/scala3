@@ -304,7 +304,11 @@ class JUnitBootstrappers extends MiniPhase {
     ref(param).cast(clazz.typeRef)
 
   private def annotatedMethods(owner: ClassSymbol, annot: Symbol)(using Context): List[Symbol] =
-    owner.info.decls.filter(m => m.is(Method) && m.hasAnnotation(annot))
+    owner.info
+      .membersBasedOnFlags(Method, EmptyFlags)
+      .filter(_.symbol.hasAnnotation(annot))
+      .map(_.symbol)
+      .toList
 }
 
 object JUnitBootstrappers {

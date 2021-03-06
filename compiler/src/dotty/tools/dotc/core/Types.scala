@@ -33,7 +33,7 @@ import config.Config
 import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
-import config.Printers.{core, typr}
+import config.Printers.{core, typr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 
@@ -77,9 +77,7 @@ object Types {
    *        +- GroundType -+- AndType
    *                       +- OrType
    *                       +- MethodOrPoly ---+-- PolyType
-   *                                          +-- MethodType ---+- ImplicitMethodType
-   *                                                            +- ContextualMethodType
-   *                       |                                    +- JavaMethodType
+   *                       |                  +-- MethodType
    *                       +- ClassInfo
    *                       |
    *                       +- NoType
@@ -400,9 +398,6 @@ object Types {
     /** Is this an alias TypeBounds? */
     final def isTypeAlias: Boolean = this.isInstanceOf[TypeAlias]
 
-    /** Is this a MethodType which is from Java? */
-    def isJavaMethod: Boolean = false
-
     /** Is this a Method or PolyType which has implicit or contextual parameters? */
     def isImplicitMethod: Boolean = false
 
@@ -427,8 +422,8 @@ object Types {
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
      */
-    final def existsPart(p: Type => Boolean, forceLazy: Boolean = true)(using Context): Boolean =
-      new ExistsAccumulator(p, forceLazy).apply(false, this)
+    final def existsPart(p: Type => Boolean, stopAtStatic: Boolean = false, forceLazy: Boolean = true)(using Context): Boolean =
+      new ExistsAccumulator(p, stopAtStatic, forceLazy).apply(false, this)
 
     /** Returns true if all parts of this type satisfy predicate `p`.
      */
@@ -1725,34 +1720,21 @@ object Types {
      *  @param dropLast  The number of trailing parameters that should be dropped
      *                   when forming the function type.
      */
-    def toFunctionType(dropLast: Int = 0)(using Context): Type = this match {
+    def toFunctionType(isJava: Boolean, dropLast: Int = 0)(using Context): Type = this match {
       case mt: MethodType if !mt.isParamDependent =>
         val formals1 = if (dropLast == 0) mt.paramInfos else mt.paramInfos dropRight dropLast
         val isContextual = mt.isContextualMethod && !ctx.erasedTypes
         val isErased = mt.isErasedMethod && !ctx.erasedTypes
         val result1 = mt.nonDependentResultApprox match {
-          case res: MethodType => res.toFunctionType()
+          case res: MethodType => res.toFunctionType(isJava)
           case res => res
         }
         val funType = defn.FunctionOf(
-          formals1 mapConserve (_.translateFromRepeated(toArray = mt.isJavaMethod)),
+          formals1 mapConserve (_.translateFromRepeated(toArray = isJava)),
           result1, isContextual, isErased)
         if (mt.isResultDependent) RefinedType(funType, nme.apply, mt)
         else funType
     }
-
-    final def dropJavaMethod(using Context): Type = this match
-      case pt: PolyType => pt.derivedLambdaType(resType = pt.resType.dropJavaMethod)
-
-      case mt: MethodType =>
-        if mt.isJavaMethod then
-          MethodType.apply(mt.paramNames, mt.paramInfos, mt.resType.dropJavaMethod)
-        else
-          mt.derivedLambdaType(resType = mt.resType.dropJavaMethod)
-
-      case _ => this
-
-    end dropJavaMethod
 
     /** The signature of this type. This is by default NotAMethod,
      *  but is overridden for PolyTypes, MethodTypes, and TermRef types.
@@ -1999,7 +1981,7 @@ object Types {
 
 // --- NamedTypes ------------------------------------------------------------------
 
-  abstract class NamedType extends CachedProxyType with ValueType with SignatureCachingType { self =>
+  abstract class NamedType extends CachedProxyType with ValueType { self =>
 
     type ThisType >: this.type <: NamedType
     type ThisName <: Name
@@ -2015,11 +1997,13 @@ object Types {
     private var lastSymbol: Symbol = null
     private var checkedPeriod: Period = Nowhere
     private var myStableHash: Byte = 0
+    private var mySignature: Signature = _
+    private var mySignatureRunId: Int = NoRunId
 
     // Invariants:
-    // (1) checkedPeriod != Nowhere  =>  lastDenotation != null
-    // (2) lastDenotation != null    =>  lastSymbol != null
-    // (3) mySigRunId != NoRunId     =>  mySig != null
+    // (1) checkedPeriod != Nowhere     =>  lastDenotation != null
+    // (2) lastDenotation != null       =>  lastSymbol != null
+    // (3) mySignatureRunId != NoRunId  =>  mySignature != null
 
     def isType: Boolean = isInstanceOf[TypeRef]
     def isTerm: Boolean = isInstanceOf[TermRef]
@@ -2037,15 +2021,22 @@ object Types {
       case sym: Symbol => sym.originDenotation.name
     }
 
-    /** The signature computed from the last known denotation with `sigFromDenot`,
-     *  or if there is none, the signature of the symbol. Signatures are always
-     *  computed before erasure, since some symbols change their signature at erasure.
-     */
-    protected[dotc] def computeSignature(using Context): Signature =
-      val lastd = lastDenotation
-      if lastd != null then sigFromDenot(lastd)
-      else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
-      else symbol.asSeenFrom(prefix).signature
+    final override def signature(using Context): Signature =
+      /** The signature computed from the last known denotation with `sigFromDenot`,
+       *  or if there is none, the signature of the symbol. Signatures are always
+       *  computed before erasure, since some symbols change their signature at erasure.
+       */
+      def computeSignature(using Context): Signature =
+        val lastd = lastDenotation
+        if lastd != null then sigFromDenot(lastd)
+        else if ctx.erasedTypes then atPhase(erasurePhase)(computeSignature)
+        else symbol.asSeenFrom(prefix).signature
+
+      if ctx.runId != mySignatureRunId then
+        mySignature = computeSignature
+        if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+      mySignature
+    end signature
 
     /** The signature computed from the current denotation with `sigFromDenot` if it is
      *  known without forcing.
@@ -2933,7 +2924,7 @@ object Types {
           tp match {
             case tp: TypeRef => apply(x, tp.prefix)
             case tp: RecThis => RecType.this eq tp.binder
-            case tp: LazyRef => true // To be safe, assume a reference exists
+            case tp: LazyRef => this(x, tp.ref)
             case _ => foldOver(x, tp)
           }
         }
@@ -3219,39 +3210,11 @@ object Types {
   // is that most poly types are cyclic via poly params,
   // and therefore two different poly types would never be equal.
 
-  /** A trait that mixes in functionality for signature caching */
-  trait SignatureCachingType extends TermType {
-    protected var mySignature: Signature = _
-    protected var mySignatureRunId: Int = NoRunId
-
-    protected[dotc] def computeSignature(using Context): Signature
-
-    final override def signature(using Context): Signature = {
-      if (ctx.runId != mySignatureRunId) {
-        mySignature = computeSignature
-        if (!mySignature.isUnderDefined) mySignatureRunId = ctx.runId
-      }
-      mySignature
-    }
-  }
-
-  trait MethodicType extends TermType {
-    protected def resultSignature(using Context): Signature = try resultType match {
-      case rtp: MethodicType => rtp.signature
-      case tp =>
-        if (tp.isRef(defn.UnitClass)) Signature(Nil, defn.UnitClass.fullName.asTypeName)
-        else Signature(tp, isJava = false)
-    }
-    catch {
-      case ex: AssertionError =>
-        println(i"failure while taking result signature of $this: $resultType")
-        throw ex
-    }
-  }
+  trait MethodicType extends TermType
 
   /** A by-name parameter type of the form `=> T`, or the type of a method with no parameter list. */
   abstract case class ExprType(resType: Type)
-  extends CachedProxyType with TermType with MethodicType {
+  extends CachedProxyType with MethodicType {
     override def resultType(using Context): Type = resType
     override def underlying(using Context): Type = resType
 
@@ -3371,7 +3334,66 @@ object Types {
     final override def equals(that: Any): Boolean = equals(that, null)
   }
 
-  abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType with SignatureCachingType {
+  /** The superclass of MethodType and PolyType. */
+  sealed abstract class MethodOrPoly extends UncachedGroundType with LambdaType with MethodicType {
+
+    // Invariants:
+    // (1) mySignatureRunId != NoRunId      =>  mySignature != null
+    // (2) myJavaSignatureRunId != NoRunId  =>  myJavaSignature != null
+
+    private var mySignature: Signature = _
+    private var mySignatureRunId: Int = NoRunId
+    private var myJavaSignature: Signature = _
+    private var myJavaSignatureRunId: Int = NoRunId
+
+    /** If `isJava` is false, the Scala signature of this method. Otherwise, its Java signature.
+     *
+     *  This distinction is needed because the same method type
+     *  might be part of both a Java and Scala class and each language has
+     *  different type erasure rules.
+     *
+     *  Invariants:
+     *  - Two distinct method overloads defined in the same _Scala_ class will
+     *    have distinct _Scala_ signatures.
+     *  - Two distinct methods overloads defined in the same _Java_ class will
+     *    have distinct _Java_ signatures.
+     *
+     *  @see SingleDenotation#signature
+     */
+    def signature(isJava: Boolean)(using Context): Signature =
+      def computeSignature(isJava: Boolean)(using Context): Signature =
+        val resultSignature = resultType match
+          case tp: MethodOrPoly => tp.signature(isJava)
+          case tp: ExprType => tp.signature
+          case tp =>
+            if tp.isRef(defn.UnitClass) then Signature(Nil, defn.UnitClass.fullName.asTypeName)
+            else Signature(tp, isJava)
+        this match
+          case tp: MethodType =>
+            val params = if (isErasedMethod) Nil else tp.paramInfos
+            resultSignature.prependTermParams(params, isJava)
+          case tp: PolyType =>
+            resultSignature.prependTypeParams(tp.paramNames.length)
+
+      if isJava then
+        if ctx.runId != myJavaSignatureRunId then
+          myJavaSignature = computeSignature(isJava)
+          if !myJavaSignature.isUnderDefined then myJavaSignatureRunId = ctx.runId
+        myJavaSignature
+      else
+        if ctx.runId != mySignatureRunId then
+          mySignature = computeSignature(isJava)
+          if !mySignature.isUnderDefined then mySignatureRunId = ctx.runId
+        mySignature
+    end signature
+
+    /** The Scala signature of this method. Note that two distinct Java method
+     *  overloads may have the same Scala signature, the other overload of
+     *  `signature` can be used to avoid ambiguity if necessary.
+     */
+    final override def signature(using Context): Signature =
+      signature(isJava = false)
+
     final override def hashCode: Int = System.identityHashCode(this)
 
     final override def equals(that: Any): Boolean = equals(that, null)
@@ -3518,7 +3540,6 @@ object Types {
 
     def companion: MethodTypeCompanion
 
-    final override def isJavaMethod: Boolean = companion eq JavaMethodType
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) ||
       companion.eq(ErasedImplicitMethodType) ||
@@ -3530,11 +3551,6 @@ object Types {
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType) ||
       companion.eq(ErasedContextualMethodType)
-
-    protected[dotc] def computeSignature(using Context): Signature = {
-      val params = if (isErasedMethod) Nil else paramInfos
-      resultSignature.prependTermParams(params, isJavaMethod)
-    }
 
     protected def prefixString: String = companion.prefixString
   }
@@ -3619,21 +3635,14 @@ object Types {
   }
 
   object MethodType extends MethodTypeCompanion("MethodType") {
-    def companion(isJava: Boolean = false, isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
-      if (isJava) {
-        assert(!isImplicit)
-        assert(!isErased)
-        assert(!isContextual)
-        JavaMethodType
-      }
-      else if (isContextual)
+    def companion(isContextual: Boolean = false, isImplicit: Boolean = false, isErased: Boolean = false): MethodTypeCompanion =
+      if (isContextual)
         if (isErased) ErasedContextualMethodType else ContextualMethodType
       else if (isImplicit)
         if (isErased) ErasedImplicitMethodType else ImplicitMethodType
       else
         if (isErased) ErasedMethodType else MethodType
   }
-  object JavaMethodType extends MethodTypeCompanion("JavaMethodType")
   object ErasedMethodType extends MethodTypeCompanion("ErasedMethodType")
   object ContextualMethodType extends MethodTypeCompanion("ContextualMethodType")
   object ErasedContextualMethodType extends MethodTypeCompanion("ErasedContextualMethodType")
@@ -3765,9 +3774,6 @@ object Types {
 
     assert(resType.isInstanceOf[TermType], this)
     assert(paramNames.nonEmpty)
-
-    protected[dotc] def computeSignature(using Context): Signature =
-      resultSignature.prependTypeParams(paramNames.length)
 
     override def isContextualMethod = resType.isContextualMethod
     override def isImplicitMethod = resType.isImplicitMethod
@@ -4489,7 +4495,7 @@ object Types {
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
-          trace(i"reduce match type $this $hashCode", typr, show = true) {
+          trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
               try cmp.matchCases(scrutinee.normalized, cases)
               catch case ex: Throwable =>
@@ -4522,20 +4528,21 @@ object Types {
   type TypeOrSymbol = Type | Symbol
 
   /** Roughly: the info of a class during a period.
-   *  @param prefix       The prefix on which parents, decls, and selfType need to be rebased.
-   *  @param cls          The class symbol.
-   *  @param classParents The parent types of this class.
-   *                      These are all normalized to be TypeRefs by moving any refinements
-   *                      to be member definitions of the class itself.
-   *  @param decls        The symbols defined directly in this class.
-   *  @param selfInfo     The type of `this` in this class, if explicitly given,
-   *                      NoType otherwise. If class is compiled from source, can also
-   *                      be a reference to the self symbol containing the type.
+   *  @param prefix           The prefix on which parents, decls, and selfType need to be rebased.
+   *  @param cls              The class symbol.
+   *  @param declaredParents  The parent types of this class.
+   *                          These are all normalized to be TypeRefs by moving any refinements
+   *                          to be member definitions of the class itself.
+   *                          Unlike `parents`, the types are not seen as seen from `prefix`.
+   *  @param decls            The symbols defined directly in this class.
+   *  @param selfInfo         The type of `this` in this class, if explicitly given,
+   *                          NoType otherwise. If class is compiled from source, can also
+   *                          be a reference to the self symbol containing the type.
    */
   abstract case class ClassInfo(
       prefix: Type,
       cls: ClassSymbol,
-      classParents: List[Type],
+      declaredParents: List[Type],
       decls: Scope,
       selfInfo: TypeOrSymbol) extends CachedGroundType with TypeType {
 
@@ -4571,20 +4578,20 @@ object Types {
 
     override def parents(using Context): List[Type] = {
       if (parentsCache == null)
-        parentsCache = classParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
+        parentsCache = declaredParents.mapConserve(_.asSeenFrom(prefix, cls.owner))
       parentsCache
     }
 
-    protected def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
-      ClassInfo(prefix, cls, classParents, decls, selfInfo)
+    protected def newLikeThis(prefix: Type, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
+      ClassInfo(prefix, cls, declaredParents, decls, selfInfo)
 
     def derivedClassInfo(prefix: Type)(using Context): ClassInfo =
       if (prefix eq this.prefix) this
-      else newLikeThis(prefix, classParents, decls, selfInfo)
+      else newLikeThis(prefix, declaredParents, decls, selfInfo)
 
-    def derivedClassInfo(prefix: Type = this.prefix, classParents: List[Type] = this.classParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(using Context): ClassInfo =
-      if ((prefix eq this.prefix) && (classParents eq this.classParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
-      else newLikeThis(prefix, classParents, decls, selfInfo)
+    def derivedClassInfo(prefix: Type = this.prefix, declaredParents: List[Type] = this.declaredParents, decls: Scope = this.decls, selfInfo: TypeOrSymbol = this.selfInfo)(using Context): ClassInfo =
+      if ((prefix eq this.prefix) && (declaredParents eq this.declaredParents) && (decls eq this.decls) && (selfInfo eq this.selfInfo)) this
+      else newLikeThis(prefix, declaredParents, decls, selfInfo)
 
     /** If this class has opaque type alias members, a new class info
      *  with their aliases added as refinements to the self type of the class.
@@ -4620,13 +4627,13 @@ object Types {
       }
 
     override def computeHash(bs: Binders): Int = doHash(bs, cls, prefix)
-    override def hashIsStable: Boolean = prefix.hashIsStable && classParents.hashIsStable
+    override def hashIsStable: Boolean = prefix.hashIsStable && declaredParents.hashIsStable
 
     override def eql(that: Type): Boolean = that match {
       case that: ClassInfo =>
         prefix.eq(that.prefix) &&
         cls.eq(that.cls) &&
-        classParents.eqElements(that.classParents) &&
+        declaredParents.eqElements(that.declaredParents) &&
         decls.eq(that.decls) &&
         selfInfo.eq(that.selfInfo)
       case _ => false
@@ -4638,17 +4645,17 @@ object Types {
       case that: ClassInfo =>
         prefix.equals(that.prefix, bs) &&
         cls.eq(that.cls) &&
-        classParents.equalElements(that.classParents, bs) &&
+        declaredParents.equalElements(that.declaredParents, bs) &&
         decls.eq(that.decls) &&
         selfInfo.eq(that.selfInfo)
       case _ => false
     }
 
-    override def toString: String = s"ClassInfo($prefix, $cls, $classParents)"
+    override def toString: String = s"ClassInfo($prefix, $cls, $declaredParents)"
   }
 
-  class CachedClassInfo(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)
-    extends ClassInfo(prefix, cls, classParents, decls, selfInfo)
+  class CachedClassInfo(prefix: Type, cls: ClassSymbol, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)
+    extends ClassInfo(prefix, cls, declaredParents, decls, selfInfo)
 
   /** A class for temporary class infos where `parents` are not yet known */
   final class TempClassInfo(prefix: Type, cls: ClassSymbol, decls: Scope, selfInfo: TypeOrSymbol)
@@ -4658,15 +4665,15 @@ object Types {
     def finalized(parents: List[Type])(using Context): ClassInfo =
       ClassInfo(prefix, cls, parents, decls, selfInfo)
 
-    override def newLikeThis(prefix: Type, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
+    override def newLikeThis(prefix: Type, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol)(using Context): ClassInfo =
       TempClassInfo(prefix, cls, decls, selfInfo)
 
     override def toString: String = s"TempClassInfo($prefix, $cls)"
   }
 
   object ClassInfo {
-    def apply(prefix: Type, cls: ClassSymbol, classParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol = NoType)(using Context): ClassInfo =
-      unique(new CachedClassInfo(prefix, cls, classParents, decls, selfInfo))
+    def apply(prefix: Type, cls: ClassSymbol, declaredParents: List[Type], decls: Scope, selfInfo: TypeOrSymbol = NoType)(using Context): ClassInfo =
+      unique(new CachedClassInfo(prefix, cls, declaredParents, decls, selfInfo))
   }
 
   /** Type bounds >: lo <: hi */
@@ -5270,7 +5277,7 @@ object Types {
     protected def mapFullClassInfo(tp: ClassInfo): ClassInfo =
       tp.derivedClassInfo(
         prefix = this(tp.prefix),
-        classParents = tp.classParents.mapConserve(this),
+        declaredParents = tp.declaredParents.mapConserve(this),
         selfInfo = tp.selfInfo match {
           case tp: Type => this(tp)
           case sym => sym
@@ -5343,14 +5350,11 @@ object Types {
     def isExpandingBounds: Boolean = expandingBounds
 
     protected def expandBounds(tp: TypeBounds): Type =
-      if expandingBounds then tp
-      else {
-        val saved = expandingBounds
-        expandingBounds = true
-        val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
-        expandingBounds = saved
-        res
-      }
+      val saved = expandingBounds
+      expandingBounds = true
+      val res = range(atVariance(-variance)(reapply(tp.lo)), reapply(tp.hi))
+      expandingBounds = saved
+      res
 
     /** Try to widen a named type to its info relative to given prefix `pre`, where possible.
      *  The possible cases are listed inline in the code.
@@ -5682,11 +5686,12 @@ object Types {
     protected def traverseChildren(tp: Type): Unit = foldOver((), tp)
   }
 
-  class ExistsAccumulator(p: Type => Boolean, forceLazy: Boolean = true)(using Context) extends TypeAccumulator[Boolean] {
-    override def stopAtStatic: Boolean = false
+  class ExistsAccumulator(
+      p: Type => Boolean,
+      override val stopAtStatic: Boolean,
+      forceLazy: Boolean)(using Context) extends TypeAccumulator[Boolean]:
     def apply(x: Boolean, tp: Type): Boolean =
       x || p(tp) || (forceLazy || !tp.isInstanceOf[LazyRef]) && foldOver(x, tp)
-  }
 
   class ForeachAccumulator(p: Type => Unit, override val stopAtStatic: Boolean)(using Context) extends TypeAccumulator[Unit] {
     def apply(x: Unit, tp: Type): Unit = foldOver(p(tp), tp)

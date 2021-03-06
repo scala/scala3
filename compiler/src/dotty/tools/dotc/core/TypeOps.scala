@@ -3,7 +3,7 @@ package dotc
 package core
 
 import Contexts._, Types._, Symbols._, Names._, Flags._
-import Denotations._, SymDenotations._
+import SymDenotations._
 import util.Spans._
 import util.Stats
 import NameKinds.DepParamName
@@ -401,6 +401,7 @@ object TypeOps:
   def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
     val widenMap = new ApproximatingTypeMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
+      @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
       def toAvoid(sym: Symbol) = !sym.isStatic && forbidden.contains(sym)
       def partsToAvoid = new NamedPartsAccumulator(tp => toAvoid(tp.symbol))
 
@@ -429,8 +430,11 @@ object TypeOps:
             case _ =>
               emptyRange // should happen only in error cases
           }
-        case tp: ThisType if toAvoid(tp.cls) =>
-          range(defn.NothingType, apply(classBound(tp.cls.classInfo)))
+        case tp: ThisType =>
+          // ThisType is only used inside a class.
+          // Therefore, either they don't appear in the type to be avoided, or
+          // it must be a class that encloses the block whose type is to be avoided.
+          tp
         case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
           range(defn.NothingType, apply(tp.info))
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
@@ -438,8 +442,13 @@ object TypeOps:
             tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
           val lo1 = apply(lo)
           if (lo1 ne lo) lo1 else tp
-        case tp: LazyRef if isExpandingBounds =>
-          emptyRange
+        case tp: LazyRef =>
+          if localParamRefs.contains(tp.ref) then tp
+          else if isExpandingBounds then emptyRange
+          else mapOver(tp)
+        case tl: HKTypeLambda =>
+          localParamRefs ++= tl.paramRefs
+          mapOver(tl)
         case _ =>
           mapOver(tp)
       }

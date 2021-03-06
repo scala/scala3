@@ -19,7 +19,7 @@ extension [T](xs: List[T])
       false
    }
 
-@main def test =
+@main def test(): Unit =
    val xs = List(1, 2, 3, 4, 5)
    assert(xs.has(2) == xs.contains(2))
 ```

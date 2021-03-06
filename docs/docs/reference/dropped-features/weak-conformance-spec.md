@@ -8,14 +8,16 @@ To simplify the underlying type theory, Scala 3 drops the notion of
 altogether. Instead, it provides more flexibility when
 assigning a type to a constant expression. The new rule is:
 
- - If a list of expressions `Es` appears as one of
+ - *If* a list of expressions `Es` appears as one of
 
      - the elements of a vararg parameter, or
      - the alternatives of an if-then-else or match expression, or
      - the body and catch results of a try expression,
 
-   and all expressions have primitive numeric types, but they do not
-   all have the same type, then the following is attempted:
+- *and* all expressions have primitive numeric types, but they do not
+   all have the same type,
+
+- *then* the following is attempted:
 
      - the expressions `Es` are partitioned into `Int` constants on the
        one hand, and all other expressions on the other hand,
@@ -27,12 +29,15 @@ assigning a type to a constant expression. The new rule is:
        unchanged regardless),
      - otherwise, the expressions `Es` are used unchanged.
 
-    A loss of precision occurs for an `Int -> Float` conversion of a constant
-    `c` if `c.toFloat.toInt != c`. For an `Int -> Byte` conversion it occurs
-    if `c.toByte.toInt != c`. For an `Int -> Short` conversion, it occurs
-    if `c.toShort.toInt != c`.
+    A loss of precision occurs for
+    - an `Int -> Float` conversion of a constant
+    `c` if `c.toFloat.toInt != c`
+    - an `Int -> Byte` conversion of a constant
+    `c` if `c.toByte.toInt != c`,
+    - an `Int -> Short` conversion of a constant
+    `c` if `c.toShort.toInt != c`.
 
-## Examples
+### Examples
 
 ```scala
 inline val b = 33
