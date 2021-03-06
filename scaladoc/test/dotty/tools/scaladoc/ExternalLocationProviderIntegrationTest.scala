@@ -14,7 +14,12 @@ class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationPro
   List(
     "https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.Builder.html",
     "https://docs.oracle.com/javase/8/docs/api/java/util/Map.Entry.html",
-    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html"
+    "https://docs.oracle.com/javase/8/docs/api/java/util/Map.html",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#forEach-java.util.function.Consumer-",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#toArray-T:A-",
+    "https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#subList-int-int-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#printf-java.lang.String-java.lang.Object...-",
+    "https://docs.oracle.com/javase/8/docs/api/java/io/PrintStream.html#write-byte:A-int-int-"
   )
 )
 
@@ -23,8 +28,10 @@ class Scaladoc2ExternalLocationProviderIntegrationTest extends ExternalLocationP
   List(".*scala.*::scaladoc2::https://www.scala-lang.org/api/current/"),
   List(
     "https://www.scala-lang.org/api/current/scala/util/matching/Regex$$Match.html",
-    "https://www.scala-lang.org/api/current/scala/Predef$.html",
-    "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html"
+    "https://www.scala-lang.org/api/current/scala/Predef$.html#String",
+    "https://www.scala-lang.org/api/current/scala/collection/immutable/Map.html",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#addString(b:StringBuilder,start:String,sep:String,end:String):StringBuilder",
+    "https://www.scala-lang.org/api/current/scala/collection/IterableOnceOps.html#mkString(start:String,sep:String,end:String):String"
   )
 )
 

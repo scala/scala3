@@ -66,9 +66,39 @@ trait CliCommand:
 
   /** Creates a help message for a subset of options based on cond */
   protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
-    val ss                  = (settings.allSettings filter cond).toList sortBy (_.name)
-    val width               = (ss map (_.name.length)).max
-    def format(s: String)   = ("%-" + width + "s") format s
+    val ss = (settings.allSettings filter cond).toList sortBy (_.name)
+    val maxNameWidth = 30
+    val nameWidths = ss.map(_.name.length).partition(_ < maxNameWidth)._1
+    val width = if nameWidths.nonEmpty then nameWidths.max else maxNameWidth
+    val terminalWidth = settings.pageWidth.value
+    val (nameWidth, descriptionWidth) = {
+      val w1 =
+        if width < maxNameWidth then width
+        else maxNameWidth
+      val w2 =
+        if terminalWidth < w1 + maxNameWidth then 0
+        else terminalWidth - w1 - 1
+      (w1, w2)
+    }
+    def formatName(name: String) =
+      if name.length <= nameWidth then ("%-" + nameWidth + "s") format name
+      else (name + "\n%-" + nameWidth + "s") format ""
+    def formatDescription(text: String): String =
+      if descriptionWidth == 0 then text
+      else if text.length < descriptionWidth then text
+      else {
+        val inx = text.substring(0, descriptionWidth).lastIndexOf(" ")
+        if inx < 0 then text
+        else
+          val str = text.substring(0, inx)
+          s"${str}\n${formatName("")} ${formatDescription(text.substring(inx + 1))}"
+      }
+    def formatSetting(name: String, value: String) =
+      if (value.nonEmpty)
+        // the format here is helping to make empty padding and put the additional information exactly under the description.
+        s"\n${formatName("")} $name: $value."
+      else
+        ""
     def helpStr(s: Setting[?]) =
       def defaultValue = s.default match
         case _: Int | _: String => s.default.toString
@@ -76,16 +106,8 @@ trait CliCommand:
           // For now, skip the default values that do not make sense for the end user.
           // For example 'false' for the version command.
           ""
-
-      def formatSetting(name: String, value: String) =
-        if (value.nonEmpty)
-        // the format here is helping to make empty padding and put the additional information exactly under the description.
-          s"\n${format("")} $name: $value."
-        else
-          ""
-      s"${format(s.name)} ${s.description}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
-
-    ss.map(helpStr).mkString("", "\n", s"\n${format("@<file>")} A text file containing compiler arguments (options and source files).\n")
+      s"${formatName(s.name)} ${formatDescription(s.description)}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
+    ss.map(helpStr).mkString("", "\n", s"\n${formatName("@<file>")} ${formatDescription("A text file containing compiler arguments (options and source files).")}\n")
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 

@@ -542,7 +542,7 @@ object Contexts {
       def iinfo(using Context) =
         if (ctx.importInfo == null) "" else i"${ctx.importInfo.selectors}%, %"
       def cinfo(using Context) =
-        val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = ${iinfo(using ctx)}"
+        val core = s"  owner = ${ctx.owner}, scope = ${ctx.scope}, import = $iinfo"
         if (ctx ne NoContext) && (ctx.implicits ne ctx.outer.implicits) then
           s"$core, implicits = ${ctx.implicits}"
         else

@@ -459,11 +459,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val denot = qualifier.tpe.member(name.toTermName)
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType).asInstanceOf[Apply])
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term =
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType))
 
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Apply =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType).asInstanceOf[Apply])
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         tpd.cpy.Select(original)(qualifier, name.toTermName)
       def unapply(x: Select): (Term, String) =

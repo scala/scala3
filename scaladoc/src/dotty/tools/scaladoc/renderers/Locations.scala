@@ -53,15 +53,7 @@ trait Locations(using ctx: DocContext):
       val anchor = if to.anchor.isEmpty then "" else "#" + to.anchor
       pathToRaw(rawLocation(from), rawLocation(to)) +".html" + anchor
     else
-      to.origin match
-        case "" =>
-          unknownPage(to)
-        case path =>
-          val external =
-            ctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
-          external.fold(unknownPage(to))(constructPath(to))
-
-
+      to.externalLink.fold(unknownPage(to))(l => l)
 
   def pathToRaw(from: Seq[String], to: Seq[String]): String =
     import dotty.tools.scaladoc.util.Escape._
@@ -90,27 +82,3 @@ trait Locations(using ctx: DocContext):
     case seq => seq.mkString("", "/", "/")
 
   def driExisits(dri: DRI) = true // TODO implement checks!
-
-  def constructPath(dri: DRI)(link: ExternalDocLink): String =
-    val extension = ".html"
-    val docURL = link.documentationUrl.toString
-    def constructPathForJavadoc(dri: DRI): String = {
-      val location = "\\$+".r.replaceAllIn(dri.location.replace(".","/"), _ => ".")
-      val anchor = dri.anchor
-      docURL + location + extension
-    }
-
-    //TODO #263: Add anchor support
-    def constructPathForScaladoc2(dri: DRI): String =
-      docURL + dri.asFileLocation + extension
-
-    // TODO Add tests for it!
-    def constructPathForScaladoc3(dri: DRI): String =
-      val base = docURL + dri.asFileLocation + extension
-      if dri.anchor.isEmpty then base else base + "#" + dri.anchor
-
-    link.kind match {
-      case DocumentationKind.Javadoc => constructPathForJavadoc(dri)
-      case DocumentationKind.Scaladoc2 => constructPathForScaladoc2(dri)
-      case DocumentationKind.Scaladoc3 => constructPathForScaladoc3(dri)
-    }

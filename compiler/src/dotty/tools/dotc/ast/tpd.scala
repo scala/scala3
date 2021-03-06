@@ -565,6 +565,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else foldOver(sym, tree)
   }
 
+  /** The owner to be used in a local context when traversin a tree */
+  def localOwner(tree: Tree)(using Context): Symbol =
+    val sym = tree.symbol
+    (if sym.is(PackageVal) then sym.moduleClass else sym).orElse(ctx.owner)
+
+  /** The local context to use when traversing trees */
+  def localCtx(tree: Tree)(using Context): Context = ctx.withOwner(localOwner(tree))
+
   override val cpy: TypedTreeCopier = // Type ascription needed to pick up any new members in TreeCopier (currently there are none)
     TypedTreeCopier()
 
@@ -817,8 +825,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val ownerAcc = new TreeAccumulator[immutable.Set[Symbol]] {
         def apply(ss: immutable.Set[Symbol], tree: Tree)(using Context) = tree match {
           case tree: DefTree =>
-            if (tree.symbol.exists) ss + tree.symbol.owner
-            else ss
+            val sym = tree.symbol
+            if sym.exists && !sym.owner.is(Package) then ss + sym.owner else ss
           case _ =>
             foldOver(ss, tree)
         }

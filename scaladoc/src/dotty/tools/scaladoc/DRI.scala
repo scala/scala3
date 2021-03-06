@@ -11,10 +11,10 @@ val topLevelDri = DRI("/")
 final case class DRI(
   location: String,
   anchor: String = "",
-  origin: String = "",
+  externalLink: Option[String] = None,
   symbolUUID: String = ""
 ):
-  def withNoOrigin = copy(origin = "")
+  def withNoExternalLink = copy(externalLink = None)
 
   def isStaticFile = symbolUUID == staticFileSymbolUUID
 

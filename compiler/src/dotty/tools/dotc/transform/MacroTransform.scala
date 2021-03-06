@@ -31,11 +31,8 @@ abstract class MacroTransform extends Phase {
 
   class Transformer extends TreeMap(cpy = cpyBetweenPhases) {
 
-    protected def localCtx(tree: Tree)(using Context): FreshContext = {
-      val sym = tree.symbol
-      val owner = if (sym.is(PackageVal)) sym.moduleClass else sym
-      ctx.fresh.setTree(tree).setOwner(owner)
-    }
+    protected def localCtx(tree: Tree)(using Context): FreshContext = 
+      ctx.fresh.setTree(tree).setOwner(localOwner(tree))
 
     override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] = {
       def transformStat(stat: Tree): Tree = stat match {

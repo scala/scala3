@@ -184,3 +184,6 @@
 [submodule "community-build/community-projects/akka"]
 	path = community-build/community-projects/akka
 	url = https://github.com/dotty-staging/akka.git
+[submodule "community-build/community-projects/protoquill"]
+	path = community-build/community-projects/protoquill
+	url = https://github.com/dotty-staging/protoquill.git

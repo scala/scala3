@@ -27,6 +27,12 @@ function onExit() {
 trap onExit INT TERM EXIT
 
 unset cygwin mingw msys darwin conemu
+
+# COLUMNS is used together with command line option '-pageWidth'.
+if command -v tput >/dev/null 2>&1; then
+  export COLUMNS="$(tput -Tdumb cols)"
+fi
+
 case "`uname`" in
   CYGWIN*) cygwin=true
           ;;

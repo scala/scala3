@@ -11,6 +11,7 @@ import scala.reflect.TypeTest
  *     ...
  *  }
  *  ```
+ *  @syntax markdown
  */
 transparent inline def quotes(using inline q: Quotes): q.type = q
 
@@ -29,11 +30,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Pattern matches `this` against `that`. Effectively performing a deep equality check.
     *  It does the equivalent of
-    *  ```
+    *  ```scala
     *  this match
     *    case '{...} => true // where the contents of the pattern are the contents of `that`
     *    case _ => false
     *  ```
+    *  @syntax markdown
     */
     def matches(that: Expr[Any]): Boolean
 
@@ -295,6 +297,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  package foo.bar
      *  // package stats
      *  ```
+     *  @syntax markdown
      */
     type PackageClause <: Tree
 
@@ -468,6 +471,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *     ...
          *  }
          *  ```
+         *  @syntax markdown
          */
         def self: Option[ValDef]
         /** Statements within the class
@@ -477,6 +481,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *     ... // statemets
          *  }
          *  ```
+         *  @syntax markdown
          */
         def body: List[Statement]
       end extension
@@ -515,6 +520,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```scala
          *  extension (a: A) def f[T]() = ...
          *  ```
+         *  @syntax markdown
          */
         def leadingTypeParams: List[TypeDef]
 
@@ -525,6 +531,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```scala
          *  extension (a: A) def f[T]() = ...
          *  ```
+         *  @syntax markdown
          */
         def trailingParamss: List[ParamClause]
 
@@ -776,10 +783,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unique(qualifier: Term, name: String): Select
 
       /** Call an overloaded method with the given type and term parameters */
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Apply
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term
 
       /** Call an overloaded method with the given type and term parameters */
-      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Apply
+      def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term
 
       def copy(original: Tree)(qualifier: Term, name: String): Select
 
@@ -971,6 +978,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `fun` is `f(1)` in the `Apply` of `f(1)(2)`
          *  - `fun` is `f` in the `Apply` of `f(1)`
+         *  @syntax markdown
          */
         def fun: Term
         /** The arguments (implicitly) passed to the method
@@ -982,6 +990,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *  - `args` is `(2)` in the `Apply` of `f(1)(2)`
          *  - `args` is `(1)` in the `Apply` of `f(1)`
+         *  @syntax markdown
          */
         def args: List[Term]
       end extension
@@ -1027,6 +1036,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `f(1)` in the `TypeApply` of `f(1)[Int]`
+         *  @syntax markdown
          */
         def fun: Term
         /** The (inferred) type arguments passed to the method
@@ -1042,6 +1052,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  // f(1)[Int](2)
          *  ```
          *  - `fun` is `[Int]` in the `TypeApply` of `f(1)[Int]`
+         *  @syntax markdown
          */
         def args: List[TypeTree]
       end extension
@@ -1217,35 +1228,38 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** A lambda `(...) => ...` in the source code is represented as
      *  a local method and a closure:
      *
+     *  ```scala
      *  {
      *    def m(...) = ...
      *    closure(m)
      *  }
-     *
+     *  ```
      *  @note Due to the encoding, in pattern matches the case for `Lambda`
      *        should come before the case for `Block` to avoid mishandling
      *        of `Lambda`.
+     *  @syntax markdown
      */
     val Lambda: LambdaModule
 
     /** Methods of the module object `val Lambda` */
     trait LambdaModule { this: Lambda.type =>
       /** Matches a lambda definition of the form
-       *  ```
+       *  ```scala
        *  Block((DefDef(_, _, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
        *  ```
        *  Extracts the parameter definitions and body.
-       *
+       *  @syntax markdown
        */
       def unapply(tree: Block): Option[(List[ValDef], Term)]
 
       /** Generates a lambda with the given method type.
-       *  ```
+       *  ```scala
        *  Block((DefDef(_, _, params :: Nil, _, Some(rhsFn(meth, paramRefs)))) :: Nil, Closure(meth, _))
        *  ```
-       * @param owner: owner of the generated `meth` symbol
-       * @param tpe: Type of the definition
-       * @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
+       *  @param owner: owner of the generated `meth` symbol
+       *  @param tpe: Type of the definition
+       *  @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
+       *  @syntax markdown
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
@@ -2103,6 +2117,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *    case TypeParamClause(params: List[TypeDef])
      *    case TermParamClause(params: List[ValDef])
      *  ```
+     *  @syntax markdown
      */
     type ParamClause <: AnyRef
 
@@ -2328,11 +2343,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Convert this `TypeRepr` to an `Type[?]`
         *
         *  Usage:
-        *  ```
+        *  ```scala
         *  typeRepr.asType match
         *    case '[$t] =>
         *      '{ val x: t = ... }
         *  ```
+        *  @syntax markdown
         */
         def asType: Type[?]
 
@@ -2706,6 +2722,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  ```scala
      *    def foo: Int = ...
      *  ```
+     *  @syntax markdown
      */
     type ByNameType <: TypeRepr
 
@@ -3340,11 +3357,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Symbol of the definition that encloses the current splicing context.
        *
        *  For example, the following call to `spliceOwner` would return the symbol `x`.
-       *  ```
+       *  ```scala
        *  val x = ${ ... Symbol.spliceOwner ... }
        *  ```
        *
-       *   For a macro splice, it is the symbol of the definition where the macro expansion happens.
+       *  For a macro splice, it is the symbol of the definition where the macro expansion happens.
+       *  @syntax markdown
        */
       def spliceOwner: Symbol
 
@@ -4109,12 +4127,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable Tree accumulator.
     *
     *  Usage:
-    *  ```
+    *  ```scala
     *  import qctx.reflect._
     *  class MyTreeAccumulator extends TreeAccumulator[X] {
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
     *  ```
+    *  @syntax markdown
     */
     trait TreeAccumulator[X]:
 
@@ -4212,12 +4231,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable tree traverser.
     *
     *  Usage:
-    *  ```
+    *  ```scala
     *  import qctx.relfect._
     *  class MyTraverser extends TreeTraverser {
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
     *  ```
+    *  @syntax markdown
     */
     trait TreeTraverser extends TreeAccumulator[Unit]:
 
@@ -4232,12 +4252,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Customizable tree mapper.
     *
     *  Usage:
-    *  ```
+    *  ```scala
     *  import quotes.reflect._
     *  class MyTreeMap extends TreeMap {
     *    override def transformTree(tree: Tree)(owner: Symbol): Tree = ...
     *  }
     *  ```
+    *  @syntax markdown
     */
     trait TreeMap:
 

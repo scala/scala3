@@ -35,7 +35,6 @@ class ReplCompiler extends Compiler {
     List(new REPLFrontEnd),
     List(new CollectTopLevelImports),
     List(new PostTyper),
-    List(new Staging),
   )
 
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {

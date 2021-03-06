@@ -85,8 +85,6 @@ class TreeMapWithImplicits extends tpd.TreeMap {
   }
 
   override def transform(tree: Tree)(using Context): Tree = {
-    def localCtx =
-      if (tree.hasType && tree.symbol.exists) ctx.withOwner(tree.symbol) else ctx
     try tree match {
       case Block(stats, expr) =>
         inContext(nestedScopeCtx(stats)) {
@@ -97,19 +95,13 @@ class TreeMapWithImplicits extends tpd.TreeMap {
           else super.transform(tree)
         }
       case tree: DefDef =>
-        inContext(localCtx) {
+        inContext(localCtx(tree)) {
           cpy.DefDef(tree)(
             tree.name,
             transformParamss(tree.paramss),
             transform(tree.tpt),
             transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
         }
-      case EmptyValDef =>
-        tree
-      case _: MemberDef =>
-        super.transform(tree)(using localCtx)
-      case _: PackageDef =>
-        super.transform(tree)(using ctx.withOwner(tree.symbol.moduleClass))
       case impl @ Template(constr, parents, self, _) =>
         cpy.Template(tree)(
           transformSub(constr),
