@@ -1,6 +1,6 @@
 package dotty.tools.scripting
 
-import java.nio.file.{ Files, Path }
+import java.nio.file.{ Files, Paths, Path }
 import java.io.File
 import java.net.{ URL, URLClassLoader }
 import java.lang.reflect.{ Modifier, Method }
@@ -17,7 +17,7 @@ import dotty.tools.dotc.config.Settings.Setting._
 import sys.process._
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(pack:(Path, String, String) => Boolean = null): Unit =
+  def compileAndRun(pack:(Path, Seq[Path], String) => Boolean = null): Unit =
     val outDir = Files.createTempDirectory("scala3-scripting")
     setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh) match
       case Some((toCompile, rootCtx)) =>
@@ -28,11 +28,23 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
           throw ScriptingException("Errors encountered during compilation")
 
         try
-          val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, ctx.settings.classpath.value, scriptFile)
+          val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
+          val classpathEntries: Seq[Path] =
+            classpath.split(pathsep).toIndexedSeq.flatMap { entry =>
+              val f = Paths.get(entry).toAbsolutePath.normalize.toFile
+              // expand wildcard classpath entries
+              if (f.getName == "*" && f.getParentFile.isDirectory){
+                f.getParentFile.listFiles.filter { _.getName.toLowerCase.endsWith(".jar") }.map { _.toPath }.toSeq
+              } else {
+                Seq(f.toPath)
+              }
+            }.toIndexedSeq
+
+          val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, classpathEntries, scriptFile)
           val invokeMain: Boolean =
             Option(pack) match
               case Some(func) =>
-                func(outDir, ctx.settings.classpath.value, mainClass)
+                func(outDir, classpathEntries, mainClass)
               case None =>
                 true
             end match
@@ -52,11 +64,12 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
     target.delete()
   end deleteFile
 
-  private def detectMainClassAndMethod(outDir: Path, classpath: String,
+  private def detectMainClassAndMethod(outDir: Path, classpathEntries: Seq[Path],
       scriptFile: File): (String, Method) =
-    val outDirURL = outDir.toUri.toURL
-    val classpathUrls = classpath.split(pathsep).map(File(_).toURI.toURL)
-    val cl = URLClassLoader(classpathUrls :+ outDirURL)
+
+    val classpathUrls = (classpathEntries :+ outDir).map { _.toUri.toURL }
+
+    val cl = URLClassLoader(classpathUrls.toArray)
 
     def collectMainMethods(target: File, path: String): List[(String, Method)] =
       val nameWithoutExtension = target.getName.takeWhile(_ != '.')
