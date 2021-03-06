@@ -49,9 +49,6 @@ object Main:
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
       classpathEntries:Seq[Path], mainClassName: String): Unit =
 
-    //val javaClasspath = sys.props("java.class.path")
-    //val runtimeClasspath = s"${classpath}$pathsep$javaClasspath"
-
     val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
       case Some(parent) => parent
@@ -60,7 +57,6 @@ object Main:
     def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
 
-    //val cpPaths = runtimeClasspath.split(pathsep).map(_.toUrl)
     val cpPaths = classpathEntries.map { _.toString.toUrl }
 
     import java.util.jar.Attributes.Name
