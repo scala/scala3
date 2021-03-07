@@ -1383,6 +1383,22 @@ object Scanners {
     private def useOuterWidth(): Unit =
       if enclosing.knownWidth == null then enclosing.useOuterWidth()
       knownWidth = enclosing.knownWidth
+
+    private def delimiter = this match
+      case _: InString => "}(in string)"
+      case InParens(LPAREN, _) => ")"
+      case InParens(LBRACKET, _) => "]"
+      case _: InBraces => "}"
+      case _: InCase => "=>"
+      case _: Indented => "UNDENT"
+
+    /** Show open regions as list of lines with decreasing indentations */
+    def visualize: String =
+      indentWidth.toPrefix
+      + delimiter
+      + outer.match
+          case null => ""
+          case next: Region => "\n" + next.visualize
   end Region
 
   case class InString(multiLine: Boolean, outer: Region) extends Region

@@ -16,7 +16,7 @@ class A4 extends _ with Base // error
 object Test {
   type T1 = _ // error
   type T2 = _[Int] // error // error
-  type T3 = _ { type S } // error
+  type T3 = _ { type S } // error // error
   type T4 = [X] =>> _ // error
 
   // Open questions:

@@ -37,14 +37,6 @@ object Parsers {
 
   case class OpInfo(operand: Tree, operator: Ident, offset: Offset)
 
-  class ParensCounters {
-    private var parCounts = new Array[Int](lastParen - firstParen)
-
-    def count(tok: Token): Int = parCounts(tok - firstParen)
-    def change(tok: Token, delta: Int): Unit = parCounts(tok - firstParen) += delta
-    def nonePositive: Boolean = parCounts forall (_ <= 0)
-  }
-
   enum Location(val inParens: Boolean, val inPattern: Boolean, val inArgs: Boolean):
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
@@ -173,8 +165,6 @@ object Parsers {
 
     val in: Scanner = new Scanner(source)
 
-    val openParens: ParensCounters = new ParensCounters
-
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
      */
@@ -261,55 +251,14 @@ object Parsers {
     }
 
     /** Skip on error to next safe point.
-     *  Safe points are:
-     *   - Closing braces, provided they match an opening brace before the error point.
-     *   - Closing parens and brackets, provided they match an opening parent or bracket
-     *     before the error point and there are no intervening other kinds of parens.
-     *   - Semicolons and newlines, provided there are no intervening braces.
-     *   - Definite statement starts on new lines, provided they are not more indented
-     *     than the last known statement start before the error point.
      */
-    protected def skip(): Unit = {
-      val skippedParens = new ParensCounters
-      while (true) {
-        (in.token: @switch) match {
-          case EOF =>
-            return
-          case SEMI | NEWLINE | NEWLINES =>
-            if (skippedParens.count(LBRACE) == 0) return
-          case RBRACE =>
-            if (openParens.count(LBRACE) > 0 && skippedParens.count(LBRACE) == 0)
-              return
-            skippedParens.change(LBRACE, -1)
-          case RPAREN =>
-            if (openParens.count(LPAREN) > 0 && skippedParens.nonePositive)
-              return
-            skippedParens.change(LPAREN, -1)
-          case RBRACKET =>
-            if (openParens.count(LBRACKET) > 0 && skippedParens.nonePositive)
-              return
-            skippedParens.change(LBRACKET, -1)
-          case OUTDENT =>
-            if (openParens.count(INDENT) > 0 && skippedParens.count(INDENT) == 0)
-              return
-            skippedParens.change(INDENT, -1)
-          case LBRACE =>
-            skippedParens.change(LBRACE, +1)
-          case LPAREN =>
-            skippedParens.change(LPAREN, +1)
-          case LBRACKET=>
-            skippedParens.change(LBRACKET, +1)
-          case INDENT =>
-            skippedParens.change(INDENT, +1)
-          case _ =>
-            if (mustStartStat &&
-                in.isAfterLineEnd &&
-                isLeqIndented(in.offset, lastStatOffset max 0))
-              return
-        }
+    protected def skip(): Unit =
+      val lastRegion = in.currentRegion
+      def atStop =
+        in.token == EOF
+        || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
+      while !atStop do
         in.nextToken()
-      }
-    }
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
       report.warning(msg, sourcePos)
@@ -557,15 +506,9 @@ object Parsers {
 
 /* -------- COMBINATORS -------------------------------------------------------- */
 
-    def enclosed[T](tok: Token, body: => T): T = {
+    def enclosed[T](tok: Token, body: => T): T =
       accept(tok)
-      openParens.change(tok, 1)
-      try body
-      finally {
-        accept(tok + 1)
-        openParens.change(tok, -1)
-      }
-    }
+      try body finally accept(tok + 1)
 
     def inParens[T](body: => T): T = enclosed(LPAREN, body)
     def inBraces[T](body: => T): T = enclosed(LBRACE, body)
@@ -1429,7 +1372,6 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            openParens.change(LPAREN, 1)
             imods = modifiers(funTypeArgMods)
             val paramStart = in.offset
             val ts = funArgType() match {
@@ -1441,7 +1383,6 @@ object Parsers {
               case t =>
                 funArgTypesRest(t, funArgType)
             }
-            openParens.change(LPAREN, -1)
             accept(RPAREN)
             if isValParamList || in.token == ARROW || in.token == CTXARROW then
               functionRest(ts)
@@ -2149,14 +2090,12 @@ object Parsers {
         if in.token == RPAREN then
           Nil
         else
-          openParens.change(LPAREN, 1)
           var mods1 = mods
           if in.token == ERASED then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
             accept(RPAREN)
-            openParens.change(LPAREN, -1)
       else {
         val start = in.offset
         val name = bindingName()
@@ -2504,7 +2443,6 @@ object Parsers {
         val enums =
           if (leading == LBRACE || leading == LPAREN && followingIsEnclosedGenerators()) {
             in.nextToken()
-            openParens.change(leading, 1)
             val res =
               if (leading == LBRACE || in.token == CASE)
                 enumerators()
@@ -2514,7 +2452,6 @@ object Parsers {
                   if (in.token == RPAREN || pats.length > 1) {
                     wrappedEnums = false
                     accept(RPAREN)
-                    openParens.change(LPAREN, -1)
                     atSpan(start) { makeTupleOrParens(pats) } // note: alternatives `|' need to be weeded out by typer.
                   }
                   else pats.head
@@ -2523,7 +2460,6 @@ object Parsers {
             if (wrappedEnums) {
               val closingOnNewLine = in.isAfterLineEnd
               accept(leading + 1)
-              openParens.change(leading, -1)
               def hasMultiLineEnum =
                 res.exists { t =>
                   val pos = t.sourcePos
