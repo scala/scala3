@@ -250,6 +250,9 @@ object SymUtils:
     def isDeprecated(using Context): Boolean =
       self.hasAnnotation(defn.DeprecatedAnnot)
 
+    def isThrows(using Context): Boolean =
+      self.hasAnnotation(defn.ThrowsAnnot)
+
     /** Is symbol assumed or declared as an infix symbol? */
     def isDeclaredInfix(using Context): Boolean =
       self.is(Infix)

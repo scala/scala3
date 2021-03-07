@@ -990,6 +990,14 @@ object RefChecks {
           report.error(i"private $sym cannot override ${other.showLocated}", sym.srcPos)
   end checkNoPrivateOverrides
 
+  /** Check if throws annotation defined. */
+  def checkNoThrows(tree: Tree)(using Context): Unit = {
+    val symbol = tree.symbol
+    if (symbol.isThrows) {
+      report.error("`@throws` only allowed for methods and constructors", tree.srcPos)
+    }
+  }
+
   type LevelAndIndex = immutable.Map[Symbol, (LevelInfo, Int)]
 
   class OptLevelInfo {
@@ -1163,6 +1171,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
+    checkNoThrows(tree) // Don't allow throws for before val and var
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1239,6 +1248,12 @@ class RefChecks extends MiniPhase { thisPhase =>
     }
     tree
   }
+
+  override def transformTypeDef(tree: TypeDef)(using Context): Tree = {
+    checkNoThrows(tree) // Don't allow throws for before class, object, trait, and type alias
+    tree
+  }
+
 }
 
 /* todo: rewrite and re-enable
