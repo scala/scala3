@@ -7,6 +7,7 @@ import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
+import NameKinds.WildcardParamName
 import util.SourcePosition
 import parsing.Scanners.Token
 import parsing.Tokens
@@ -149,10 +150,10 @@ import transform.SymUtils._
   extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
     def msg = {
       val ofFun =
-        if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function:\n$tree"
-        else
-          ""
+        if param.name.is(WildcardParamName)
+           || (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+        then i" of expanded function:\n$tree"
+        else ""
 
       val inferred =
         if (pt == WildcardType) ""
