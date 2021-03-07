@@ -117,14 +117,25 @@ object ErrorReporting {
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
-    def whyNoMatchStr(found: Type, expected: Type): String = {
-      if (ctx.settings.explainTypes.value)
-        i"""
-           |${ctx.typerState.constraint}
-           |${TypeComparer.explained(_.isSubType(found, expected))}"""
-      else
-        ""
-    }
+    def whyNoMatchStr(found: Type, expected: Type): String =
+      val header =
+        i"""I tried to show that
+          |  $found
+          |conforms to
+          |  $expected
+          |but the comparison trace ended with `false`:
+          """
+      val c = ctx.typerState.constraint
+      val constraintText =
+        if c.domainLambdas.isEmpty then
+          "empty constraint"
+        else
+          i"""following constraint:
+             |${c.contentsToString}"""
+      i"""
+        |${TypeComparer.explained(_.isSubType(found, expected), header)}
+        |
+        |The tests were made under the $constraintText"""
 
     /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
      *  all occurrences of `${X}` where `X` is in `paramNames` with the
