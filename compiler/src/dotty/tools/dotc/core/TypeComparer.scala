@@ -2591,8 +2591,8 @@ object TypeComparer {
       def addLow: Repr = approx | LoApprox
       def addHigh: Repr = approx | HiApprox
       def show: String =
-        val lo = if low then " (left is tightened)" else ""
-        val hi = if high then " (right is tigthened)" else ""
+        val lo = if low then " (left is approximated)" else ""
+        val hi = if high then " (right is approximated)" else ""
         lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
