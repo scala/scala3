@@ -6,23 +6,23 @@ class ClassThrowsB[T] @throws[Exception]()(someList: List[T]) { // OK, modern ve
   throw new IllegalArgumentException("Boom!")
 }
 
-@throws[Exception] class ClassNoThrows[T](someList: List[T]) { // NG, throws not applied to primary constructor
+@throws[Exception] class ClassNoThrows[T](someList: List[T]) { // error
   throw new IllegalArgumentException("Boom!")
 }
 
-@throws[Exception] object ObjectNoThrows { // NG, throws not applied to primary constructor
+@throws[Exception] object ObjectNoThrows { // error
   throw new UnsupportedOperationException("Boom!")
 }
 
-@throws[Exception] trait TraitNoThrows { // NG, throws not applied to primary constructor
+@throws[Exception] trait TraitNoThrows { // error
   throw new UnsupportedOperationException("Boom!")
 }
 
-@throws[Exception] type AliasNoThrows = Unit // NG, throws not applied to primary constructor
+@throws[Exception] type AliasNoThrows = Unit // error
 
 object OuterObj {
   // might be useful to annotate accessors of lazy vals
-  @throws[Exception] object InnerObj { // NG, throws not applied to primary constructor
+  @throws[Exception] object InnerObj { // error
     throw new UnsupportedOperationException("Boom!")
   }
 }
