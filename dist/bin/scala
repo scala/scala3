@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # Try to autodetect real location of the script
-
-if [ -z "$PROG_HOME" ] ; then
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -107,9 +106,15 @@ while [[ $# -gt 0 ]]; do
     *)
       if [ $execute_script == false ]; then
         # is a script if extension .scala or .sc or if has scala hash bang
-        if [[ -e "$1" && ("$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
+        if [[ "$1" == *.scala || "$1" == *.sc || (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
           execute_script=true
           target_script="$1"
+          if [ ! -f $target_script ]; then
+            # likely a typo or missing script file, quit early
+            echo "not found: $target_script" 1>&2
+            scala_exit_status=2
+            onExit
+          fi
         else
           residual_args+=("$1")
         fi

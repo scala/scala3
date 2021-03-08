@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -z "$PROG_HOME" ] ; then
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -25,7 +25,8 @@ if [ -z "$PROG_HOME" ] ; then
   cd "$saveddir"
 fi
 
-source "$PROG_HOME/bin/common"
+# only source common if necessary
+[ -z "${DEBUG_STR-}" -a -z "${PSEP-}" ] && source "$PROG_HOME/bin/common"
 
 default_java_opts="-Xmx768m -Xms768m"
 withCompiler=true
