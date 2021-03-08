@@ -25,6 +25,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables._
+import transform.{PostTyper, Inlining}
 
 import collection.mutable
 import reporting.trace
@@ -318,7 +319,11 @@ object Inliner {
           val parseErrors = ctx2.reporter.allErrors.toList
           res ++= parseErrors.map(e => ErrorKind.Parser -> e)
           if res.isEmpty then
-            ctx2.typer.typed(tree2)(using ctx2)
+            val tree3 = ctx2.typer.typed(tree2)(using ctx2)
+            val postTyper = ctx.base.postTyperPhase.asInstanceOf[PostTyper]
+            val tree4 = postTyper.newTransformer.transform(tree3)(using ctx2.withPhase(postTyper))
+            val inlining = ctx.base.inliningPhase.asInstanceOf[Inlining]
+            inlining.newTransformer.transform(tree4)(using ctx2.withPhase(inlining))
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
           res.toList
