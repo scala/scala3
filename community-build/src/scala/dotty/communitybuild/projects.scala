@@ -214,6 +214,12 @@ object projects:
     dependencies = List(geny, utest, ujson, upickleCore)
   )
 
+  lazy val cask = MillCommunityProject(
+    project = "cask",
+    baseCommand = s"cask[$compilerVersion]",
+    dependencies = List(utest, upickle, sourcecode, pprint, geny)
+  )
+
   lazy val scas = MillCommunityProject(
     project = "scas",
     baseCommand = "scas.application"
@@ -680,6 +686,7 @@ def allProjects = List(
   projects.perspective,
   projects.akka,
   projects.protoquill,
+  projects.cask
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

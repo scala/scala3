@@ -187,3 +187,6 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/cask"]
+	path = community-build/community-projects/cask
+	url = https://github.com/dotty-staging/cask.git
