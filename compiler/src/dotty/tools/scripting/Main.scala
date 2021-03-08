@@ -32,10 +32,10 @@ object Main:
   def main(args: Array[String]): Unit =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    try driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+    try driver.compileAndRun { (outDir:Path, classpath:String, mainClass: String) =>
       if saveJar then
         // write a standalone jar to the script parent directory
-        writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
+        writeJarfile(outDir, scriptFile, scriptArgs, classpath, mainClass)
       invokeFlag
     }
     catch
@@ -47,7 +47,10 @@ object Main:
         throw e.getCause
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
-      classpathEntries:Seq[Path], mainClassName: String): Unit =
+      classpath:String, mainClassName: String): Unit =
+
+    val javaClasspath = sys.props("java.class.path")
+    val runtimeClasspath = s"${classpath}$pathsep$javaClasspath"
 
     val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
@@ -57,7 +60,7 @@ object Main:
     def scriptBasename = scriptFile.getName.takeWhile(_!='.')
     val jarPath = s"$jarTargetDir/$scriptBasename.jar"
 
-    val cpPaths = classpathEntries.map { _.toString.toUrl }
+    val cpPaths = runtimeClasspath.split(pathsep).map(_.toUrl)
 
     import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
