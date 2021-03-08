@@ -890,12 +890,9 @@ object desugar {
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods.toTermFlags & RetainedModuleValFlags | ModuleValCreationFlags)
         .withSpan(mdef.span.startPos)
-      val ValDef(selfName, selfTpt, _) = impl.self
-      val selfMods = impl.self.mods
-      if (!selfTpt.isEmpty) report.error(ObjectMayNotHaveSelfType(mdef), impl.self.srcPos)
-      val clsSelf = ValDef(selfName, SingletonTypeTree(Ident(moduleName)), impl.self.rhs)
-        .withMods(selfMods)
-        .withSpan(impl.self.span.orElse(impl.span.startPos))
+      if !impl.self.isEmpty then report.error(ObjectMayNotHaveSelfType(mdef), impl.self.srcPos)
+      val clsSelf = ValDef(nme.WILDCARD, SingletonTypeTree(Ident(moduleName)), EmptyTree)
+        .withSpan(impl.span.startPos)
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)

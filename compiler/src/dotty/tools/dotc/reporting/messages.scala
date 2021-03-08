@@ -452,21 +452,9 @@ import transform.SymUtils._
   }
 
   class ObjectMayNotHaveSelfType(mdef: untpd.ModuleDef)(using Context)
-  extends SyntaxMsg(ObjectMayNotHaveSelfTypeID) {
-    def msg = em"""${hl("object")}s must not have a self ${hl("type")}"""
-
-    def explain = {
-      val untpd.ModuleDef(name, tmpl) = mdef
-      val ValDef(_, selfTpt, _) = tmpl.self
-      em"""|${hl("object")}s must not have a self ${hl("type")}:
-           |
-           |Consider these alternative solutions:
-           |  - Create a trait or a class instead of an object
-           |  - Let the object extend a trait containing the self type:
-           |
-           |    object $name extends ${selfTpt.show}"""
-    }
-  }
+  extends SyntaxMsg(ObjectMayNotHaveSelfTypeID):
+    def msg = "objects must not have a self type"
+    def explain = ""
 
   class RepeatedModifier(modifier: String)(implicit ctx:Context)
   extends SyntaxMsg(RepeatedModifierID) {
