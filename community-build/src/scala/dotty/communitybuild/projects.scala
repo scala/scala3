@@ -129,7 +129,7 @@ final case class SbtCommunityProject(
 
 object SbtCommunityProject:
   def scalacOptions = List(
-    "-Ycheck:macros",
+    "-Xcheck-macros",
     "-Ycheck-init",
   )
 
@@ -458,7 +458,7 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck:macros") // TODO enable -Ycheck:macros
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
   )
 
   lazy val discipline = SbtCommunityProject(
