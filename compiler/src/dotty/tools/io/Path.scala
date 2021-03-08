@@ -127,7 +127,15 @@ class Path private[io] (val jpath: JPath) {
    * @return The path of the parent directory, or root if path is already root
    */
   def parent: Directory = jpath.normalize.getParent match {
-    case null => Directory(jpath)
+    case null =>
+      if (isAbsolute)  // it should be a root
+        toDirectory
+      else if (segments.nonEmpty && segments.last == "..")
+        (this / "..").toDirectory
+      else path match {
+        case "" | "." => Directory("..")
+        case _        => Directory(".")
+      }
     case parent => Directory(parent)
   }
   def parents: List[Directory] = {
