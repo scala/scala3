@@ -293,7 +293,7 @@ object Inliner {
     private enum ErrorKind:
       case Parser, Typer
 
-    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using Context): List[(ErrorKind, Error)] =
+    private def compileForErrors(tree: Tree)(using Context): List[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
@@ -317,7 +317,7 @@ object Inliner {
 
           val parseErrors = ctx2.reporter.allErrors.toList
           res ++= parseErrors.map(e => ErrorKind.Parser -> e)
-          if !stopAfterParser || res.isEmpty then
+          if res.isEmpty then
             ctx2.typer.typed(tree2)(using ctx2)
             val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
             res ++= typerErrors.map(e => ErrorKind.Typer -> e)
@@ -346,12 +346,12 @@ object Inliner {
 
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(using Context): Tree =
-      val errors = compileForErrors(tree, true)
+      val errors = compileForErrors(tree)
       Literal(Constant(errors.isEmpty)).withSpan(tree.span)
 
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
     def typeCheckErrors(tree: Tree)(using Context): Tree =
-      val errors = compileForErrors(tree, false)
+      val errors = compileForErrors(tree)
       packErrors(errors)
 
     /** Expand call to scala.compiletime.codeOf */
