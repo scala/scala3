@@ -312,21 +312,26 @@ object Inliner {
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)
-          val tree2 = new Parser(source2)(using ctx2).block()
-          val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
+          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)) {
+            val tree2 = new Parser(source2).block()
+            val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
 
-          val parseErrors = ctx2.reporter.allErrors.toList
-          res ++= parseErrors.map(e => ErrorKind.Parser -> e)
-          if res.isEmpty then
-            val tree3 = ctx2.typer.typed(tree2)(using ctx2)
-            val postTyper = ctx.base.postTyperPhase.asInstanceOf[PostTyper]
-            val tree4 = postTyper.newTransformer.transform(tree3)(using ctx2.withPhase(postTyper))
-            val inlining = ctx.base.inliningPhase.asInstanceOf[Inlining]
-            inlining.newTransformer.transform(tree4)(using ctx2.withPhase(inlining))
-            val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
-            res ++= typerErrors.map(e => ErrorKind.Typer -> e)
-          res.toList
+            val parseErrors = ctx.reporter.allErrors.toList
+            res ++= parseErrors.map(e => ErrorKind.Parser -> e)
+            if res.isEmpty then
+              val tree3 = ctx.typer.typed(tree2)
+              ctx.base.postTyperPhase match
+                case postTyper: PostTyper =>
+                  val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
+                  ctx.base.inliningPhase match
+                    case inlining: Inlining =>
+                      val tree5 = atPhase(inlining) { inlining.newTransformer.transform(tree4) }
+                    case _ =>
+                case _ =>
+              val typerErrors = ctx.reporter.allErrors.filterNot(parseErrors.contains)
+              res ++= typerErrors.map(e => ErrorKind.Typer -> e)
+            res.toList
+          }
         case t =>
           report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
           Nil
