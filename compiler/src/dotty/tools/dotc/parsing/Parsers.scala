@@ -1767,7 +1767,7 @@ object Parsers {
         } :: contextBounds(pname)
       case VIEWBOUND =>
         report.errorOrMigrationWarning(
-          "view bounds `<%' are deprecated, use a context bound `:' instead",
+          "view bounds `<%' are no longer supported, use a context bound `:' instead",
           in.sourcePos())
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
@@ -2027,10 +2027,10 @@ object Parsers {
           val isVarargSplice = location.inArgs && followingIsVararg()
           in.nextToken()
           if isVarargSplice then
-            if sourceVersion.isAtLeast(future) then
-              report.errorOrMigrationWarning(
-                em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("future")}",
-                in.sourcePos(uscoreStart))
+            report.errorOrMigrationWarning(
+              em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead${rewriteNotice("future")}",
+              in.sourcePos(uscoreStart),
+              future)
             if sourceVersion == `future-migration` then
               patch(source, Span(t.span.end, in.lastOffset), " *")
           else if opStack.nonEmpty then
@@ -2103,12 +2103,10 @@ object Parsers {
         val name = bindingName()
         val t =
           if (in.token == COLON && location == Location.InBlock) {
-            if sourceVersion.isAtLeast(future) then
-                // Don't error in non-strict mode, as the alternative syntax "implicit (x: T) => ... "
-                // is not supported by Scala2.x
-              report.errorOrMigrationWarning(
-                s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("future")}",
-                source.atSpan(Span(start, in.lastOffset)))
+            report.errorOrMigrationWarning(
+              s"This syntax is no longer supported; parameter needs to be enclosed in (...)${rewriteNotice("future")}",
+              source.atSpan(Span(start, in.lastOffset)),
+              from = future)
             in.nextToken()
             val t = infixType()
             if (sourceVersion == `future-migration`) {
@@ -2603,10 +2601,10 @@ object Parsers {
         p
 
     private def warnStarMigration(p: Tree) =
-      if sourceVersion.isAtLeast(future) then
-        report.errorOrMigrationWarning(
-          em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
-          in.sourcePos(startOffset(p)))
+      report.errorOrMigrationWarning(
+        em"The syntax `x: _*` is no longer supported for vararg splices; use `x*` instead",
+        in.sourcePos(startOffset(p)),
+        from = future)
 
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
@@ -3064,7 +3062,8 @@ object Parsers {
         if in.token == USCORE && sourceVersion.isAtLeast(future) then
           report.errorOrMigrationWarning(
             em"`_` is no longer supported for a wildcard import; use `*` instead${rewriteNotice("future")}",
-            in.sourcePos())
+            in.sourcePos(),
+            from = future)
           patch(source, Span(in.offset, in.offset + 1), "*")
         ImportSelector(atSpan(in.skipToken()) { Ident(nme.WILDCARD) })
 
@@ -3082,7 +3081,8 @@ object Parsers {
           if in.token == ARROW && sourceVersion.isAtLeast(future) then
             report.errorOrMigrationWarning(
               em"The import renaming `a => b` is no longer supported ; use `a as b` instead${rewriteNotice("future")}",
-              in.sourcePos())
+              in.sourcePos(),
+              from = future)
             patch(source, Span(in.offset, in.offset + 2),
                 if testChar(in.offset - 1, ' ') && testChar(in.offset + 2, ' ') then "as"
                 else " as ")
