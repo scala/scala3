@@ -16,6 +16,7 @@ import dotty.tools.dotc.{ Compiler, Run }
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.dotc.interfaces.Diagnostic._
 
 class SnippetCompiler(
   classpath: String = System.getProperty("java.class.path"), //Probably needs to be done better
@@ -47,8 +48,11 @@ class SnippetCompiler(
       case diagnostic if diagnostic.position.isPresent =>
         val pos = diagnostic.position.get
         val msg = nullableMessage(diagnostic.message)
-        SnippetCompilerMessage(pos.line, pos.column, pos.lineContent, msg)
-      case d => SnippetCompilerMessage(-1, -1, "", nullableMessage(d.message))
+        val level = MessageLevel.fromOrdinal(diagnostic.level)
+        SnippetCompilerMessage(pos.line, pos.column, pos.lineContent, msg, level)
+      case d =>
+        val level = MessageLevel.fromOrdinal(d.level)
+        SnippetCompilerMessage(-1, -1, "", nullableMessage(d.message), level)
     }
     errorMessages
   }
@@ -64,8 +68,7 @@ class SnippetCompiler(
       .setReporter(new StoreReporter)
     val run = newRun(using context)
     run.compileFromStrings(snippets)
-    //Currently no warnings because of reporter implementation
-    val messages = createReportMessage(context.reporter.allErrors)
+    val messages = createReportMessage(context.reporter.pendingMessages(using context))
     val targetIfSuccessful = Option.when(!context.reporter.hasErrors)(target)
     SnippetCompilationResult(targetIfSuccessful, messages)
   }

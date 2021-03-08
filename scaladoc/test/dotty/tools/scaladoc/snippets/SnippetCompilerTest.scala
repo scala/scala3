@@ -29,6 +29,15 @@ class SnippetCompilerTest {
 
   def assertFailedCompilation(str: List[String]): Unit = assertFailedCompilation(runTest(str))
 
+  def assertMessageLevelPresent(str: String, level: MessageLevel): Unit = assertMessageLevelPresent(runTest(str), level)
+
+  def assertMessageLevelPresent(res: SnippetCompilationResult, level: MessageLevel): Unit = res match {
+    case r @ SnippetCompilationResult(_, messages) => assertTrue(
+      s"Expected message with level: ${level.text}. Got result ${r.getSummary}",
+      messages.exists(_.level == level)
+    )
+  }
+
 
   @Test
   def snippetCompilerTest: Unit = {
@@ -43,8 +52,18 @@ class SnippetCompilerTest {
       |class A:
       |  val b: String
       |""".stripMargin
+    val warningSnippet = s"""
+      |package asd
+      |class A:
+      |  val a: Int = try {
+      |    5
+      |  }
+      |""".stripMargin
     assertSuccessfulCompilation(simpleCorrectSnippet)
     assertFailedCompilation(simpleIncorrectSnippet)
     assertFailedCompilation(List(simpleCorrectSnippet, simpleCorrectSnippet))
+    assertMessageLevelPresent(simpleIncorrectSnippet, MessageLevel.Error)
+    assertMessageLevelPresent(warningSnippet, MessageLevel.Warning)
+    //No test for Info
   }
 }
