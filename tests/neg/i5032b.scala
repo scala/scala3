@@ -1,2 +1,2 @@
 class a@
-class b@ // error // error
+class b@ // error
