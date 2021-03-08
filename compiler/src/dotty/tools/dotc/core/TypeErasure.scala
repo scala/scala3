@@ -197,7 +197,7 @@ object TypeErasure {
 
   def sigName(tp: Type, sourceLanguage: SourceLanguage)(using Context): TypeName = {
     val normTp = tp.translateFromRepeated(toArray = sourceLanguage.isJava)
-    val erase = erasureFn(sourceLanguage, semiEraseVCs = true, isConstructor = false, wildcardOK = true)
+    val erase = erasureFn(sourceLanguage, semiEraseVCs = !sourceLanguage.isJava, isConstructor = false, wildcardOK = true)
     erase.sigName(normTp)(using preErasureCtx)
   }
 
@@ -667,7 +667,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
           if (!info.exists) assert(false, i"undefined: $tp with symbol $sym")
           return sigName(info)
         }
-        if (isDerivedValueClass(sym)) {
+        if (semiEraseVCs && isDerivedValueClass(sym)) {
           val erasedVCRef = eraseDerivedValueClass(tp)
           if (erasedVCRef.exists) return sigName(erasedVCRef)
         }
