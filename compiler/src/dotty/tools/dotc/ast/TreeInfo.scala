@@ -938,10 +938,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
      *  The result can be the contents of a term or type quote, which
      *  will return a term or type tree respectively.
      */
-    def unapply(tree: tpd.Tree)(using Context): Option[tpd.Tree] = tree match {
-      case tree: GenericApply if tree.symbol.isQuote => Some(tree.args.head)
-      case _ => None
-    }
+    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
+      if tree.symbol == defn.QuotedRuntime_exprQuote then
+        // quoted.runtime.Expr.quote[T](<body>)
+        Some(tree.args.head)
+      else if tree.symbol == defn.QuotedTypeModule_of then
+        // quoted.Type.of[<body>](quotes)
+        val TypeApply(_, body :: _) = tree.fun
+        Some(body)
+      else None
   }
 
   /** Extractors for splices */
