@@ -3615,6 +3615,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Case class or case object children of a sealed trait */
         def children: List[Symbol]
+
+        /** The tree of the default argument of a parameter symbol, None if there is no default. */
+        def rawDefaultArgument: Option[Tree]
       end extension
     }
 

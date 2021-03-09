@@ -2552,7 +2552,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def show(using printer: Printer[Symbol]): String = printer.show(self)
 
+        def rawDefaultArgument: Option[Tree] =
+          if self.is(HasDefault) then
+            for
+              defaultMeth <- defaultArgMeth(self)
+              defaultDef <- DefDefTypeTest.unapply(defaultMeth.tree)
+              rhs <- optional(defaultDef.rhs)
+            yield
+              rhs
+          else
+            None
+
       end extension
+
+      private def defaultArgMeth(sym: Symbol): Option[Symbol] =
+        if sym.is(Param) && sym.is(HasDefault) then
+          val idx = sym.owner.paramSymss.flatten.indexOf(sym)
+          val app = tpd.ref(sym.owner)
+          Some(dotc.typer.Applications.defaultArgument(app, idx, true).symbol)
+        else
+          None
 
       private def appliedTypeRef(sym: Symbol): TypeRepr =
         sym.typeRef.appliedTo(sym.typeParams.map(_.typeRef))
