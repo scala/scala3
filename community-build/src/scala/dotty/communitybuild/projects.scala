@@ -130,7 +130,7 @@ final case class SbtCommunityProject(
 object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
-    "-Ycheck-init",
+    "-Ysafe-init",
   )
 
 object projects:
@@ -319,7 +319,7 @@ object projects:
     project       = "shapeless",
     sbtTestCommand   = "test",
     sbtDocCommand = forceDoc("typeable", "deriving", "data"),
-    scalacOptions = Nil // disable -Ycheck-init, due to -Xfatal-warnings
+    scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -480,7 +480,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck-init")
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
@@ -494,7 +494,7 @@ object projects:
     sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ycheck-init") // disable -Ycheck-init, due to -Xfatal-warning
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
 
   )
 
@@ -611,7 +611,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
-    scalacOptions = List("-language:implicitConversions"), // disabled -Ycheck-init, due to bug in macro
+    scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
   )
 
   lazy val onnxScala = SbtCommunityProject(
