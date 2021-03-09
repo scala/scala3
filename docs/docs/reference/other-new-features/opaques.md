@@ -6,7 +6,7 @@ title: "Opaque Type Aliases"
 Opaque types aliases provide type abstraction without any overhead. Example:
 
 ```scala
-object Logarithms:
+object MyMath:
 
    opaque type Logarithm = Double
 
@@ -27,7 +27,7 @@ object Logarithms:
       def + (y: Logarithm): Logarithm = Logarithm(math.exp(x) + math.exp(y))
       def * (y: Logarithm): Logarithm = x + y
 
-end Logarithms
+end MyMath
 ```
 
 This introduces `Logarithm` as a new abstract type, which is implemented as `Double`.
@@ -41,7 +41,7 @@ They convert from `Double`s to `Logarithm` values. Moreover, an operation `toDou
 The following operations would be valid because they use functionality implemented in the `Logarithms` object.
 
 ```scala
-import Logarithms.Logarithm
+import MyMath.Logarithm
 
 val l = Logarithm(1.0)
 val l2 = Logarithm(2.0)
