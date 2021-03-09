@@ -189,4 +189,4 @@
 	url = https://github.com/dotty-staging/protoquill.git
 [submodule "community-build/community-projects/onnx-scala"]
 	path = community-build/community-projects/onnx-scala
-	url = https://github.com/EmergentOrder/onnx-scala.git
+	url = https://github.com/dotty-staging/onnx-scala.git
