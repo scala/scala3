@@ -6,6 +6,7 @@ import Symbols._, Types._, Contexts._, Flags._, Names._, StdNames._, Phases._
 import Flags.JavaDefined
 import Uniques.unique
 import TypeOps.makePackageObjPrefixExplicit
+import backend.sjs.JSDefinitions
 import transform.ExplicitOuter._
 import transform.ValueClasses._
 import transform.TypeUtils._
@@ -523,7 +524,19 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       else
         erasedGlb(this(tp1), this(tp2), isJava = sourceLanguage.isJava)
     case OrType(tp1, tp2) =>
-      TypeComparer.orType(this(tp1), this(tp2), isErased = true)
+      if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value then
+        // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were
+        // real unions, but we must still erase them as Scala 2 would to emit
+        // the correct signatures in SJSIR.
+        // We only do this when `isSymbol` is true since in other situations we
+        // cannot distinguish a Scala.js pseudo-union from a Scala 3 union that
+        // has been substituted into a Scala 2 type (e.g., via `asSeenFrom`),
+        // erasing these unions as if they were pseudo-unions could have an
+        // impact on overriding relationships so it's best to leave them
+        // alone (and this doesn't impact the SJSIR we generate).
+        JSDefinitions.jsdefn.PseudoUnionType
+      else
+        TypeComparer.orType(this(tp1), this(tp2), isErased = true)
     case tp: MethodType =>
       def paramErasure(tpToErase: Type) =
         erasureFn(sourceLanguage, semiEraseVCs, isConstructor, isSymbol, wildcardOK)(tpToErase)
