@@ -614,6 +614,13 @@ object projects:
     scalacOptions = List("-language:implicitConversions"), // disabled -Ycheck-init, due to bug in macro
   )
 
+  lazy val onnxScala = SbtCommunityProject(
+    project = "onnx-scala",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
+  )
+
 end projects
 
 def allProjects = List(
@@ -680,6 +687,7 @@ def allProjects = List(
   projects.perspective,
   projects.akka,
   projects.protoquill,
+  projects.onnxScala,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
