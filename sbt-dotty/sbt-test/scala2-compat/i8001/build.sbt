@@ -7,9 +7,5 @@ lazy val lib = (project in file ("lib"))
 lazy val test = (project in file ("main"))
   .dependsOn(lib)
   .settings(
-    scalaVersion := scala3Version,
-    // https://github.com/sbt/sbt/issues/5369
-    projectDependencies := {
-      projectDependencies.value.map(_.withDottyCompat(scalaVersion.value))
-    }
+    scalaVersion := scala3Version
   )
