@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters._
 import dotty.tools.dotc.{ Driver, Compiler }
 import dotty.tools.dotc.core.Contexts, Contexts.{ Context, ContextBase, ctx }
 import dotty.tools.dotc.config.CompilerCommand
-import dotty.tools.io.{ PlainDirectory, Directory }
+import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.config.Settings.Setting._
 
@@ -29,17 +29,7 @@ class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs:
 
         try
           val classpath = s"${ctx.settings.classpath.value}${pathsep}${sys.props("java.class.path")}"
-          val classpathEntries: Seq[Path] =
-            classpath.split(pathsep).toIndexedSeq.flatMap { entry =>
-              val f = Paths.get(entry).toAbsolutePath.normalize.toFile
-              // expand wildcard classpath entries
-              if (f.getName == "*" && f.getParentFile.isDirectory){
-                f.getParentFile.listFiles.filter { _.getName.toLowerCase.endsWith(".jar") }.map { _.toPath }.toSeq
-              } else {
-                Seq(f.toPath)
-              }
-            }.toIndexedSeq
-
+          val classpathEntries: Seq[Path] = ClassPath.expandPath(classpath, expandStar=true).map { Paths.get(_) }
           val (mainClass, mainMethod) = detectMainClassAndMethod(outDir, classpathEntries, scriptFile)
           val invokeMain: Boolean =
             Option(pack) match
