@@ -340,11 +340,10 @@ object Checking {
     }
 
     val errs = buffer.toList.flatMap(eff => check(eff))
-    if errs.isEmpty then {
+    if errs.isEmpty then
       Errors.empty
-    } else {
+    else
       UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
-    }
 
   private def checkPromote(eff: Promote)(using state: State): Errors =
     if (state.safePromoted.contains(eff.potential)) Errors.empty
