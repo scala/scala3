@@ -618,7 +618,7 @@ object projects:
     project = "onnx-scala",
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
-    dependencies = List()
+    dependencies = List(scalatest)
   )
 
 end projects
