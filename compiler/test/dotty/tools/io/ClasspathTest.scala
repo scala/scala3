@@ -23,9 +23,13 @@ class ClasspathTest {
     val outDir = Files.createTempDirectory("classpath-test")
     try
       val compilerLib = "dist/target/pack/lib"
-      for src <- Paths.get(compilerLib).toFile.listFiles.toList.take(5) do
-        val dest = Paths.get(s"$outDir/${src.getName}")
-        printf("copy: %s\n",Files.copy(src.toPath,dest)) // ,REPLACE_EXISTING,COPY_ATTRIBUTES))
+      val libdir = Paths.get(compilerLib).toFile
+      if libdir.exists then
+        try for src <- libdir.listFiles.toList.take(5) do
+          val dest = Paths.get(s"$outDir/${src.getName}")
+          printf("copy: %s\n",Files.copy(src.toPath,dest)) // ,REPLACE_EXISTING,COPY_ATTRIBUTES))
+        catch
+          case _:NullPointerException => // ignore errors adding jars to outDir
 
       //outDir.toFile.listFiles.toList.foreach { printf("%s\n",_) }
       val cp = Seq(s"$compilerLib/*",s"$outDir/*","not-a-real-directory/*").mkString(pathsep).replace('\\','/')
