@@ -21,3 +21,6 @@ package scala
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
   def apply(x: T): U
+object Conversion:
+  extension [T](x: T)
+    def into[U](using c: Conversion[T, U]) = c(x)
