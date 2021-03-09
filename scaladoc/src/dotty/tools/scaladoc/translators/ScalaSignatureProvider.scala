@@ -22,8 +22,6 @@ object ScalaSignatureProvider:
         givenClassSignature(documentable, cls, builder)
       case Kind.Given(d: Kind.Def, _, _) =>
         givenMethodSignature(documentable, d, builder)
-      case Kind.Given(Kind.Val, _, _) =>
-        givenPropertySignature(documentable, builder)
       case cls: Kind.Class =>
         classSignature(documentable, cls, builder)
       case enm: Kind.Enum =>
