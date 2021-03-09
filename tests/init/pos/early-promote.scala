@@ -27,3 +27,12 @@ class A { // checking A
   List(b) // Direct promotion works here
   val af = 42
 }
+
+class RecursiveF {
+  val a = f
+  def f: RecursiveF = f
+  class B(x: Int)
+
+  println(new a.B(5))
+  val n = 10
+}
