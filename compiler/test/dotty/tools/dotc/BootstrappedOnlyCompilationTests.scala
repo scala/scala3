@@ -150,7 +150,7 @@ class BootstrappedOnlyCompilationTests {
 
   @Test def picklingWithCompiler: Unit = {
     val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
-    val runtimeFilter = FileFilter.exclude(List("Tuple.scala")) // TODO
+    val runtimeFilter = FileFilter.exclude(List("Tuple.scala", "stdLibPatches")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
