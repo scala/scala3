@@ -103,7 +103,10 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
-  val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain", "-explain-types", "--explain-types"))
+  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types"))
+    // this setting is necessary for cross compilation, since it is mentioned in sbt-tpolecat, for instance
+    // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
+  val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", supportedReleaseVersions, "", aliases = List("--release"))
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
