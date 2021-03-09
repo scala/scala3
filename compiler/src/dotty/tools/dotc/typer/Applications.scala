@@ -612,18 +612,24 @@ trait Applications extends Compatibility {
       }
   }
 
+  /** The degree to which an argument has to match a formal parameter */
+  enum ArgMatch:
+    case SubType       // argument is a relaxed subtype of formal
+    case Compatible    // argument is compatible with formal
+    case CompatibleCAP // capture-converted argument is compatible with formal
+
   /** Subclass of Application for the cases where we are interested only
    *  in a "can/cannot apply" answer, without needing to construct trees or
    *  issue error messages.
    */
-  abstract class TestApplication[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type, captureWild: Boolean)(using Context)
+  abstract class TestApplication[Arg](methRef: TermRef, funType: Type, args: List[Arg], resultType: Type, argMatch: ArgMatch)(using Context)
   extends Application[Arg](methRef, funType, args, resultType) {
     type TypedArg = Arg
     type Result = Unit
 
     def applyKind = ApplyKind.Regular
 
-    protected def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) match {
+    protected def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) match
       case ref: TermRef if ref.denot.isOverloaded =>
         // in this case we could not resolve overloading because no alternative
         // matches expected type
@@ -633,15 +639,17 @@ trait Applications extends Compatibility {
           case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
           case _ => false
         }
-        isCompatible(argtpe, formal)
-        || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
-        || captureWild
-            && {
-              val argtpe1 = argtpe.widen
-              val captured = captureWildcards(argtpe1)
-              (captured ne argtpe1) && (captured <:< formal.widenExpr)
-            }
-    }
+        if argMatch == ArgMatch.SubType then
+          argtpe relaxed_<:< formal.widenExpr
+        else
+          isCompatible(argtpe, formal)
+          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
+          || argMatch == ArgMatch.CompatibleCAP
+              && {
+                val argtpe1 = argtpe.widen
+                val captured = captureWildcards(argtpe1)
+                (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
+              }
 
     /** The type of the given argument */
     protected def argType(arg: Arg, formal: Type): Type
@@ -661,8 +669,8 @@ trait Applications extends Compatibility {
   /** Subclass of Application for applicability tests with type arguments and value
    *  argument trees.
    */
-  class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type, captureWild: Boolean)(using Context)
-  extends TestApplication(methRef, methRef.widen, args, resultType, captureWild) {
+  class ApplicableToTrees(methRef: TermRef, args: List[Tree], resultType: Type, argMatch: ArgMatch)(using Context)
+  extends TestApplication(methRef, methRef.widen, args, resultType, argMatch) {
     def argType(arg: Tree, formal: Type): Type =
       if untpd.isContextualClosure(arg) && defn.isContextFunctionType(formal) then arg.tpe
       else normalize(arg.tpe, formal)
@@ -672,18 +680,9 @@ trait Applications extends Compatibility {
     def harmonizeArgs(args: List[Tree]): List[Tree] = harmonize(args)
   }
 
-  /** Subclass of Application for applicability tests with type arguments and value
-   * argument trees.
-   */
-  class ApplicableToTreesDirectly(methRef: TermRef, args: List[Tree], resultType: Type)(using Context)
-  extends ApplicableToTrees(methRef, args, resultType, captureWild = false) {
-    override def argOK(arg: TypedArg, formal: Type): Boolean =
-      argType(arg, formal) relaxed_<:< formal.widenExpr
-  }
-
   /** Subclass of Application for applicability tests with value argument types. */
-  class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type, captureWild: Boolean)(using Context)
-  extends TestApplication(methRef, methRef, args, resultType, captureWild) {
+  class ApplicableToTypes(methRef: TermRef, args: List[Type], resultType: Type, argMatch: ArgMatch)(using Context)
+  extends TestApplication(methRef, methRef, args, resultType, argMatch) {
     def argType(arg: Type, formal: Type): Type = arg
     def treeToArg(arg: Tree): Type = arg.tpe
     def isVarArg(arg: Type): Boolean = arg.isRepeatedParam
@@ -1330,31 +1329,24 @@ trait Applications extends Compatibility {
   /** Is given method reference applicable to argument trees `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean, captureWild: Boolean)(using Context): Boolean = {
+  def isApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type, keepConstraint: Boolean, argMatch: ArgMatch)(using Context): Boolean = {
     def isApp(using Context): Boolean =
-      new ApplicableToTrees(methRef, args, resultType, captureWild).success
+      new ApplicableToTrees(methRef, args, resultType, argMatch).success
     if (keepConstraint) isApp else explore(isApp)
   }
-
-  /** Is given method reference applicable to argument trees `args` without inferring views
-    *  or capturing wildcards?
-    *  @param  resultType   The expected result type of the application
-    */
-  def isDirectlyApplicableMethodRef(methRef: TermRef, args: List[Tree], resultType: Type)(using Context): Boolean =
-    explore(new ApplicableToTreesDirectly(methRef, args, resultType).success)
 
   /** Is given method reference applicable to argument types `args`?
    *  @param  resultType   The expected result type of the application
    */
-  def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type, captureWild: Boolean)(using Context): Boolean =
-    explore(new ApplicableToTypes(methRef, args, resultType, captureWild).success)
+  def isApplicableMethodRef(methRef: TermRef, args: List[Type], resultType: Type, argMatch: ArgMatch)(using Context): Boolean =
+    explore(new ApplicableToTypes(methRef, args, resultType, argMatch).success)
 
   /** Is given type applicable to argument trees `args`, possibly after inserting an `apply`?
    *  @param  resultType   The expected result type of the application
    */
   def isApplicableType(tp: Type, args: List[Tree], resultType: Type, keepConstraint: Boolean)(using Context): Boolean =
     onMethod(tp, args.nonEmpty) {
-      isApplicableMethodRef(_, args, resultType, keepConstraint, captureWild = false)
+      isApplicableMethodRef(_, args, resultType, keepConstraint, ArgMatch.Compatible)
     }
 
   /** Is given type applicable to argument types `args`, possibly after inserting an `apply`?
@@ -1362,7 +1354,7 @@ trait Applications extends Compatibility {
    */
   def isApplicableType(tp: Type, args: List[Type], resultType: Type)(using Context): Boolean =
     onMethod(tp, args.nonEmpty) {
-      isApplicableMethodRef(_, args, resultType, captureWild = false)
+      isApplicableMethodRef(_, args, resultType, ArgMatch.Compatible)
     }
 
   private def onMethod(tp: Type, followApply: Boolean)(p: TermRef => Boolean)(using Context): Boolean = tp match {
@@ -1493,9 +1485,9 @@ trait Applications extends Compatibility {
           || {
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, captureWild = false)
+              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
-              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, captureWild = false)
+              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
           }
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
@@ -1804,7 +1796,7 @@ trait Applications extends Compatibility {
     }
 
     def narrowByTypes(alts: List[TermRef], argTypes: List[Type], resultType: Type): List[TermRef] =
-      alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, captureWild = true))
+      alts.filterConserve(isApplicableMethodRef(_, argTypes, resultType, ArgMatch.CompatibleCAP))
 
     /** Normalization steps before checking arguments:
      *
@@ -1873,11 +1865,11 @@ trait Applications extends Compatibility {
 
         def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
           val alts2 = alts.filterConserve(alt =>
-            isDirectlyApplicableMethodRef(alt, args, resultType)
+            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.SubType)
           )
           if (alts2.isEmpty && !ctx.isAfterTyper)
             alts.filterConserve(alt =>
-              isApplicableMethodRef(alt, args, resultType, keepConstraint = false, captureWild = true)
+              isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
             )
           else
             alts2
