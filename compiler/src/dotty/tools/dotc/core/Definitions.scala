@@ -11,6 +11,7 @@ import collection.mutable
 import Denotations.SingleDenotation
 import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
+import Comments.CommentsContext
 
 import scala.annotation.tailrec
 
@@ -1717,6 +1718,9 @@ class Definitions {
       val forced = syntheticCoreClasses ++ syntheticCoreMethods ++ ScalaValueClasses() :+ JavaEnumClass
 
       isInitialized = true
+    }
+    syntheticSymbolsToComment(this).foreach { (s, c) =>
+      ctx.docCtx.get.addDocstring(s, Some(c))
     }
   }
 }

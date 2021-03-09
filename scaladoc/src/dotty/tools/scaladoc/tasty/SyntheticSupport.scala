@@ -83,10 +83,14 @@ trait SyntheticsSupport:
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val classdef = rdef.asInstanceOf[dotc.ast.tpd.TypeDef]
-    val ref = classdef.symbol.info.asInstanceOf[dotc.core.Types.ClassInfo].appliedRef
-    val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
-      ref.baseClasses.map(b => b -> ref.baseType(b))
-    baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
+    classdef.symbol.info match
+      case ci: dotc.core.Types.ClassInfo =>
+        val ref = ci.appliedRef
+        val baseTypes: List[(dotc.core.Symbols.Symbol, dotc.core.Types.Type)] =
+          ref.baseClasses.map(b => b -> ref.baseType(b))
+        baseTypes.asInstanceOf[List[(Symbol, TypeRepr)]]
+      case _ =>
+        List.empty
   }
 
   def hackExists(using Quotes)(rpos: qctx.reflect.Position) = {
@@ -98,7 +102,9 @@ trait SyntheticsSupport:
     pos.exists
   }
 
-  def getSupertypes(using Quotes)(c: ClassDef) = hackGetSupertypes(c).tail
+  def getSupertypes(using Quotes)(c: ClassDef) = hackGetSupertypes(c) match
+    case _ :: tail => tail
+    case _ => List.empty
 
   def typeForClass(c: ClassDef): TypeRepr =
     import qctx.reflect._

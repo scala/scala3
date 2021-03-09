@@ -116,6 +116,21 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
         topLevels ++= parser.parseRootTree(treeRoot)
     }
 
+    val defn = ctx.compilerContext.definitions
+
+    topLevels ++= Seq(
+      defn.AnyClass,
+      defn.MatchableClass,
+      // defn.AnyRefAlias,
+      defn.AnyKindClass,
+      // defn.andType,
+      // defn.orType,
+      defn.AnyValClass,
+      defn.NullClass,
+      defn.NothingClass,
+      defn.SingletonClass
+    ).map(s => "scala" -> parser.parseClasslike(s.asInstanceOf[parser.qctx.reflect.Symbol].tree.asInstanceOf[parser.qctx.reflect.ClassDef]))
+
 
   def result(): (List[Member], Option[Comment]) =
     topLevels.clear()
@@ -154,12 +169,12 @@ case class TastyParser(
       report.warning(throwableToString(e), tree.pos)
       None
 
-  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
-    case t: Throwable =>
-      try report.warning(throwableToString(t), sym.tree.pos) catch
-        case _: Throwable =>
-          report.warning(s"Failed to process ${sym.fullName}:\n${throwableToString(t)}")
-      None
+  // def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
+  //   case t: Throwable =>
+  //     try report.warning(throwableToString(t), sym.tree.pos) catch
+  //       case _: Throwable =>
+  //         report.warning(s"Failed to process ${sym.fullName}:\n${throwableToString(t)}")
+  //     None
 
   def parseRootTree(root: Tree): Seq[(String, Member)] =
     val docs = Seq.newBuilder[(String, Member)]
@@ -187,3 +202,4 @@ case class TastyParser(
 
     docs.result()
 
+  // def parseClasslike(c: ClassDef): Member = parseClasslike(c)
