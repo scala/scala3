@@ -68,7 +68,7 @@ object NamerOps:
   }
 
   /** If a class has one of these flags, it does not get a constructor companion */
-  private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module
+  private val NoConstructorProxyNeededFlags = Abstract | Trait | Case | Synthetic | Module | Invisible
 
   /** The flags of a constructor companion */
   private val ConstructorCompanionFlags = Synthetic | ConstructorProxy

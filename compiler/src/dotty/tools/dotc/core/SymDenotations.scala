@@ -572,8 +572,9 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType) ||
-        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
+        (myInfo `eq` NoType)
+        || is(Invisible) && !ctx.isAfterTyper
+        || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */

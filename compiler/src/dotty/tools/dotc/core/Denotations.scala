@@ -1061,11 +1061,12 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
+      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
       if !required.isEmpty && !symd.isAllOf(required)
-         || !excluded.isEmpty && symd.isOneOf(excluded) then NoDenotation
+         || symd.isOneOf(realExcluded) then NoDenotation
       else this
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
