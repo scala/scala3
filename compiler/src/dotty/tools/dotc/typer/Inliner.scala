@@ -314,23 +314,19 @@ object Inliner {
           val source2 = SourceFile.virtual("tasty-reflect", code)
           inContext(ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)) {
             val tree2 = new Parser(source2).block()
-            val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
-
-            val parseErrors = ctx.reporter.allErrors.toList
-            res ++= parseErrors.map(e => ErrorKind.Parser -> e)
-            if res.isEmpty then
+            if ctx.reporter.allErrors.nonEmpty then
+              ctx.reporter.allErrors.map((ErrorKind.Parser, _))
+            else
               val tree3 = ctx.typer.typed(tree2)
               ctx.base.postTyperPhase match
-                case postTyper: PostTyper =>
+                case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
                   val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
                   ctx.base.inliningPhase match
-                    case inlining: Inlining =>
-                      val tree5 = atPhase(inlining) { inlining.newTransformer.transform(tree4) }
+                    case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
+                      atPhase(inlining) { inlining.newTransformer.transform(tree4) }
                     case _ =>
                 case _ =>
-              val typerErrors = ctx.reporter.allErrors.filterNot(parseErrors.contains)
-              res ++= typerErrors.map(e => ErrorKind.Typer -> e)
-            res.toList
+              ctx.reporter.allErrors.map((ErrorKind.Typer, _))
           }
         case t =>
           report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
