@@ -3,6 +3,8 @@ layout: doc-page
 title: "Macros"
 ---
 
+> When developing macros enable `-Xcheck-macros` scalac option flag to have extra runtime checks.
+
 ## Macros: Quotes and Splices
 
 Macros are built on two well-known fundamental operations: quotation and

@@ -6,6 +6,11 @@ title: "Debug Macros"
 Complex macros may break invariants of the compiler, which leads to compiler crashes.
 Here we list common compiler crashes and how to deal with them.
 
+## Enable checks
+
+* Always enable `-Xcheck-macros`
+* May also enable `-Ycheck:all`
+
 ## position not set
 
 For this problem, here is the log that is usually shown:
