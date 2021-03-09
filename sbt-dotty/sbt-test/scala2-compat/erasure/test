@@ -1,0 +1,3 @@
+> dottyApp/run
+$ copy-file changes/Main.scala dottyApp/Main.scala
+-> dottyApp/compile
