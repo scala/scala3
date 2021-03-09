@@ -1,0 +1,49 @@
+a:
+  scala.Int
+  TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
+b:
+  scala.Int
+  TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")
+c:
+   => scala.Int
+  ByNameType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
+f1:
+  ()scala.Int
+  MethodType(Nil, Nil, TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
+f2:
+  (i: scala.Int)scala.Int
+  MethodType(List(i), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
+f3:
+  (i: scala.Int)(j: scala.Int)scala.Int
+  MethodType(List(i), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")), MethodType(List(j), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
+f4:
+  [T >: scala.Nothing <: scala.Any] => (x: T)scala.Int
+  PolyType(List(T), List(TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))), MethodType(List(x), List(ParamRef(binder, 0)), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
+f5:
+  (i: scala.Int)(x$2: scala.Int)scala.Int
+  MethodType(List(i), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")), MethodType(List(x$2), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
+T1:
+  _ >: scala.Nothing <: scala.Any
+  TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))
+T2:
+  _ >: scala.Int <: scala.Int
+  TypeBounds(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
+T3:
+  _ >: scala.Nothing <: scala.Int
+  TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"))
+T4:
+  _ >: scala.Nothing <: [X >: scala.Nothing <: scala.Any] => scala.Any
+  TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeLambda(List(X), List(TypeBounds(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Nothing"), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any"))), TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Any")))
+A:
+  A
+  TypeRef(NoPrefix(), "A$")
+A$:
+  class Test$._$_$A$ extends java.lang.Object { _: A => }
+  ClassInfo(NoPrefix(), cls/*Test$._$_$A$*/, List(TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")), decls, Some(TermRef(NoPrefix(), "A")))
+A:
+  trait Test$._$_$A extends java.lang.Object
+  ClassInfo(NoPrefix(), cls/*Test$._$_$A*/, List(TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object")), decls, None)
+B:
+  class Test$._$_$B extends java.lang.Object with A
+  ClassInfo(NoPrefix(), cls/*Test$._$_$B*/, List(TypeRef(ThisType(TypeRef(NoPrefix(), "lang")), "Object"), TypeRef(NoPrefix(), "A")), decls, None)
+

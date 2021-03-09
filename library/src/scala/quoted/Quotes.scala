@@ -183,6 +183,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               |              |                +- PolyType
    *               |              +- TypeLambda
    *               +- MatchCase
+   *               +- ClassInfo
    *               +- TypeBounds
    *               +- NoPrefix
    *
@@ -2994,6 +2995,40 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end MatchCaseMethods
 
+    /** Type of the definition of a type lambda taking a list of type parameters. It's return type may be a TypeLambda. */
+    type ClassInfo <: TypeRepr
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `TypeLambda` */
+    given ClassInfoTypeTest: TypeTest[TypeRepr, ClassInfo]
+
+    /** Module object of `type ClassInfo`  */
+    val ClassInfo: ClassInfoModule
+
+    /** Methods of the module object `val ClassInfo` */
+    trait ClassInfoModule { this: ClassInfo.type =>
+      def unapply(x: ClassInfo): (TypeRepr, Symbol, List[TypeRepr], List[Symbol], Option[TypeRepr])
+    }
+
+    /** Makes extension methods on `ClassInfo` available without any imports */
+    given ClassInfoMethods: ClassInfoMethods
+
+    /** Extension methods of `ClassInfo` */
+    trait ClassInfoMethods:
+      extension (self: ClassInfo)
+        /** The qualifier on which parents, decls, and selfType need to be rebased. */
+        def qualifier: TypeRepr
+        /** The symbols defined directly in this class. */
+        def decls: List[Symbol]
+        /** The parent types of this class.
+         *  These are all normalized to be TypeRefs by moving any refinements
+         *  to be member definitions of the class itself.
+         *  Unlike `parents`, the types are not seen as seen from `prefix`.
+         */
+        def declaredParents: List[TypeRepr]
+        /** The type of `this` in this class, if explicitly given, None otherwise. */
+        def selfInfo: Option[TypeRepr]
+      end extension
+    end ClassInfoMethods
 
     // ----- TypeBounds -----------------------------------------------
 
@@ -3436,6 +3471,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `Symbol` */
     trait SymbolMethods {
       extension (self: Symbol)
+
+        /** TypeRepr of the definitions of this symbol */
+        def info: TypeRepr
 
         /** Owner of this symbol. The owner is the symbol in which this symbol is defined. Throws if this symbol does not have an owner. */
         def owner: Symbol

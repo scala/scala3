@@ -1227,6 +1227,16 @@ object SourceCode {
         this += "] => "
         printType(tpe.resType)
 
+      case ClassInfo(prefix, cls, parents, decls, selfInfo) =>
+        this += (if cls.flags.is(Flags.Trait) then "trait " else "class ")
+        this += cls.fullName += " extends "
+        printList(parents, " with ", printType)
+        for info <- selfInfo do
+          this += " { _: "
+          printType(info)
+          this += " => }"
+        this
+
       case tpe@TypeBounds(lo, hi) =>
         this += "_ >: "
         printType(lo)

@@ -2130,6 +2130,32 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end MatchCaseMethods
 
+    type ClassInfo = dotc.core.Types.ClassInfo
+
+    given ClassInfoTypeTest: TypeTest[TypeRepr, ClassInfo] with
+      def unapply(x: TypeRepr): Option[ClassInfo & x.type] = x match
+        case x: (Types.ClassInfo & x.type) => Some(x)
+        case _ => None
+    end ClassInfoTypeTest
+
+    object ClassInfo extends ClassInfoModule:
+      def unapply(x: ClassInfo): (TypeRepr, Symbol, List[TypeRepr], List[Symbol], Option[TypeRepr]) =
+        (x.prefix, x.cls, x.declaredParents, ClassInfoMethods.decls(x), ClassInfoMethods.selfInfo(x))
+    end ClassInfo
+
+    given ClassInfoMethods: ClassInfoMethods with
+      extension (self: ClassInfo)
+        def qualifier: TypeRepr = self.prefix
+        def decls: List[Symbol] = self.decls.toList
+        def declaredParents: List[TypeRepr] = self.declaredParents
+        def selfInfo: Option[TypeRepr] =
+          self.selfInfo match
+            case dotc.core.Types.NoType => None
+            case info: dotc.core.Types.Type => Some(info)
+            case sym: dotc.core.Symbols.Symbol => Some(sym.typeRef)
+      end extension
+    end ClassInfoMethods
+
     type TypeBounds = dotc.core.Types.TypeBounds
 
     object TypeBoundsTypeTest extends TypeTest[TypeRepr, TypeBounds]:
@@ -2408,6 +2434,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given SymbolMethods: SymbolMethods with
       extension (self: Symbol)
+        def info: TypeRepr = self.denot.info
         def owner: Symbol = self.denot.owner
         def maybeOwner: Symbol = self.denot.maybeOwner
         def flags: Flags = self.denot.flags
