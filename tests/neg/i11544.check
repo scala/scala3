@@ -4,7 +4,7 @@
   |          Ambiguous overload. The overloaded alternatives of method (str: String, int: Int): Int with types
   |           (str: String, int: Int): Int
   |           (arg: Int): Int
-  |          both match arguments ((23 : Int))
+  |          both match arguments (23)
   |
   |          Note: Overloaded definitions introduced by refinements cannot be resolved
 

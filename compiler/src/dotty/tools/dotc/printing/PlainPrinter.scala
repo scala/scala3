@@ -248,7 +248,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
   }.close
 
   def toTextSingleton(tp: SingletonType): Text =
-    "(" ~ toTextRef(tp) ~ " : " ~ toTextGlobal(tp.underlying) ~ ")"
+    tp match
+      case ConstantType(value) =>
+        if value.tag == Constants.ByteTag || value.tag == Constants.ShortTag then
+          toText(value) ~ s" /*${value.tpe.show}*/"
+        else
+          toText(value)
+      case _: TermRef => toTextRef(tp) ~ ".type /*" ~ toTextGlobal(tp.underlying) ~ "*/"
+      case _ => "(" ~ toTextRef(tp) ~ ": " ~ toTextGlobal(tp.underlying) ~ ")"
 
   protected def paramsText(lam: LambdaType): Text = {
     def paramText(name: Name, tp: Type) =
@@ -531,6 +538,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
+    case DoubleTag => literalText(const.doubleValue.toString + "d")
+    case FloatTag => literalText(const.floatValue.toString + "f")
     case _ => literalText(String.valueOf(const.value))
   }
 

@@ -11,7 +11,7 @@
    |
    |                                 Test.f[G[T]](x)(given_Stuff)    failed with
    |
-   |                                     Found:    (x : T)
+   |                                     Found:    x.type /*T*/
    |                                     Required: G[T]
 -- [E007] Type Mismatch Error: tests/neg/i6779.scala:14:38 -------------------------------------------------------------
 14 |  def g3[T](x: T): F[G[T]] = this.f(x)(using summon[Stuff]) // error

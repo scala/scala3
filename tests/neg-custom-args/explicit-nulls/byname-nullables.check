@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:19:24 -----------------------
 19 |    if x != null then f(x)   // error: f is call-by-name
    |                        ^
-   |                        Found:    (x : String | Null)
+   |                        Found:    x.type /*String | Null*/
    |                        Required: String
 -- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:32 --------------------------------------------
 43 |    if x != null then f(identity(x), 1)   // error: dropping not null check fails typing
@@ -25,4 +25,4 @@
    |                      None of the overloaded alternatives of method f in object Test7 with types
    |                       (x: => String, y: Int): String
    |                       (x: String, y: String): String
-   |                      match arguments (String | Null, (1 : Int))
+   |                      match arguments (String | Null, 1)

@@ -1,20 +1,20 @@
 -- [E007] Type Mismatch Error: tests/neg/singleton-ops-any.scala:6:23 --------------------------------------------------
 6 |  val t34: 10 == "5" = true // error
   |                       ^^^^
-  |                       Found:    (true : Boolean)
-  |                       Required: (false : Boolean)
+  |                       Found:    true
+  |                       Required: false
 -- [E007] Type Mismatch Error: tests/neg/singleton-ops-any.scala:7:22 --------------------------------------------------
 7 |  val t35: 10 == 10 = false // error
   |                      ^^^^^
-  |                      Found:    (false : Boolean)
-  |                      Required: (true : Boolean)
+  |                      Found:    false
+  |                      Required: true
 -- [E007] Type Mismatch Error: tests/neg/singleton-ops-any.scala:12:24 -------------------------------------------------
 12 |  val t38: false != 5 = false // error
    |                        ^^^^^
-   |                        Found:    (false : Boolean)
-   |                        Required: (true : Boolean)
+   |                        Found:    false
+   |                        Required: true
 -- [E007] Type Mismatch Error: tests/neg/singleton-ops-any.scala:13:22 -------------------------------------------------
 13 |  val t39: 10 != 10 = true // error
    |                      ^^^^
-   |                      Found:    (true : Boolean)
-   |                      Required: (false : Boolean)
+   |                      Found:    true
+   |                      Required: false

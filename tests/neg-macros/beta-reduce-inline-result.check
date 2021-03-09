@@ -3,4 +3,4 @@
 11 |  val x2: 4   = Macros.betaReduce(dummy1)(3) // error
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                Found:    Int
-   |                Required: (4 : Int)
+   |                Required: 4

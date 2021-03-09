@@ -55,6 +55,6 @@
 -- [E120] Naming Error: tests/neg/exports.scala:46:15 ------------------------------------------------------------------
 46 |    export bar._  // error: double definition
    |               ^
-   |               Double definition:
-   |               val bar: Bar in class Baz at line 45 and
-   |               final def bar: => (Baz.this.bar.bar : => (Baz.this.bar.baz.bar : Bar)) in class Baz at line 46
+   |        Double definition:
+   |        val bar: Bar in class Baz at line 45 and
+   |        final def bar: => Baz.this.bar.bar.type /*=> Baz.this.bar.baz.bar.type /*Bar*/*/ in class Baz at line 46

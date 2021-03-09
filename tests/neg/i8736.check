@@ -11,12 +11,12 @@
 -- [E051] Reference Error: tests/neg/i8736.scala:31:26 -----------------------------------------------------------------
 31 |  def res3: Boolean = rec.get("z") // error: ambiguous
    |                      ^^^^^^^
-   |                Ambiguous overload. The overloaded alternatives of method (k: ("k" : String)): String with types
-   |                 (k: ("k" : String)): String
-   |                 (k: ("v" : String)): Int
-   |                 (k: ("z" : String)): Boolean
-   |                all match arguments (("z" : String))
+   |                      Ambiguous overload. The overloaded alternatives of method (k: "k"): String with types
+   |                       (k: "k"): String
+   |                       (k: "v"): Int
+   |                       (k: "z"): Boolean
+   |                      all match arguments ("z")
    |
-   |                Note: Overloaded definitions introduced by refinements cannot be resolved
+   |                      Note: Overloaded definitions introduced by refinements cannot be resolved
 
 longer explanation available when compiling with `-explain`
