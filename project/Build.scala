@@ -348,6 +348,7 @@ object Build {
   )
 
   lazy val commonBenchmarkSettings = Seq(
+    Jmh / bspEnabled := false,
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`scala3-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, ""),
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`scala3-library-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, "")
@@ -1236,6 +1237,7 @@ object Build {
       version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
+      bspEnabled := false,
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
