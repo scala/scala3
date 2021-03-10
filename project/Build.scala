@@ -1237,6 +1237,7 @@ object Build {
       version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
+      bspEnabled := false,
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
