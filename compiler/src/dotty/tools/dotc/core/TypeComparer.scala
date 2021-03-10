@@ -2128,7 +2128,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
+      else if (isErased) erasedGlb(tp1, tp2)
       else liftIfHK(tp1, tp2, op, original, _ | _)
         // The ` | ` on variances is needed since variances are associated with bounds
         // not lambdas. Example:

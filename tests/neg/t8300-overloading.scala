@@ -1,4 +1,3 @@
-// cf. neg/t8300-overloading.scala
 trait Universe {
   type Name >: Null <: AnyRef with NameApi
   trait NameApi
@@ -12,5 +11,5 @@ object Test extends App {
   import u.*
 
   def foo(name: Name) = ???
-  def foo(name: TermName) = ???
+  def foo(name: TermName) = ??? // error: double definition, same type after erasure
 }

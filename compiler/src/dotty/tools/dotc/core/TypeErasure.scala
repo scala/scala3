@@ -394,32 +394,93 @@ object TypeErasure {
   }
 
   /** The erased greatest lower bound of two erased type picks one of the two argument types.
-   *  It prefers, in this order:
-   *  - arrays over non-arrays
-   *  - subtypes over supertypes, unless isJava is set
-   *  - real classes over traits
+   *
+   *  This operation has the following the properties:
+   *  - Associativity and commutativity, because this method acts as the minimum
+   *    of the total order induced by `compareErasedGlb`.
+   *  - Java compatibility: intersections that would be valid in Java code are
+   *    erased like javac would erase them (a Java intersection is composed of
+   *    exactly one class and one or more interfaces and always erases to the
+   *    class).
    */
-  def erasedGlb(tp1: Type, tp2: Type, isJava: Boolean)(using Context): Type = tp1 match {
-    case JavaArrayType(elem1) =>
-      tp2 match {
-        case JavaArrayType(elem2) => JavaArrayType(erasedGlb(elem1, elem2, isJava))
-        case _ => tp1
-      }
-    case _ =>
-      tp2 match {
-        case JavaArrayType(_) => tp2
-        case _ =>
-          val tsym1 = tp1.typeSymbol
-          val tsym2 = tp2.typeSymbol
-          if (!tsym2.exists) tp1
-          else if (!tsym1.exists) tp2
-          else if (!isJava && tsym1.derivesFrom(tsym2)) tp1
-          else if (!isJava && tsym2.derivesFrom(tsym1)) tp2
-          else if (tp1.typeSymbol.isRealClass) tp1
-          else if (tp2.typeSymbol.isRealClass) tp2
-          else tp1
-      }
-  }
+  def erasedGlb(tp1: Type, tp2: Type)(using Context): Type =
+    if compareErasedGlb(tp1, tp2) <= 0 then tp1 else tp2
+
+  /** Overload of `erasedGlb` to compare more than two types at once. */
+  def erasedGlb(tps: List[Type])(using Context): Type =
+    tps.min(using (a,b) => compareErasedGlb(a, b))
+
+  /** A comparison function that induces a total order on erased types,
+   *  where `A <= B` implies that the erasure of `A & B` should be A.
+   *
+   *  This order respects the following properties:
+   *  - ErasedValueTypes <= non-ErasedValueTypes
+   *  - arrays <= non-arrays
+   *  - primitives <= non-primitives
+   *  - real classes <= traits
+   *  - subtypes <= supertypes
+   *
+   *  Since this isn't enough to order to unrelated classes, we use
+   *  lexicographic ordering of the class symbol full name as a tie-breaker.
+   *  This ensure that `A <= B && B <= A` iff `A =:= B`.
+   *
+   *  @see erasedGlb
+   */
+  private def compareErasedGlb(tp1: Type, tp2: Type)(using Context): Int =
+    // this check is purely an optimization.
+    if tp1 eq tp2 then
+      return 0
+
+    val isEVT1 = tp1.isInstanceOf[ErasedValueType]
+    val isEVT2 = tp2.isInstanceOf[ErasedValueType]
+    if isEVT1 && isEVT2 then
+      return compareErasedGlb(tp1.asInstanceOf[ErasedValueType].tycon, tp2.asInstanceOf[ErasedValueType].tycon)
+    else if isEVT1 then
+      return -1
+    else if isEVT2 then
+      return 1
+
+    val isArray1 = tp1.isInstanceOf[JavaArrayType]
+    val isArray2 = tp2.isInstanceOf[JavaArrayType]
+    if isArray1 && isArray2 then
+      return compareErasedGlb(tp1.asInstanceOf[JavaArrayType].elemType, tp2.asInstanceOf[JavaArrayType].elemType)
+    else if isArray1 then
+      return -1
+    else if isArray2 then
+      return 1
+
+    val sym1 = tp1.classSymbol
+    val sym2 = tp2.classSymbol
+    def compareClasses: Int =
+      if sym1.isSubClass(sym2) then
+        -1
+      else if sym2.isSubClass(sym1) then
+        1
+      // Intentionally compare Strings and not Names, since the ordering on
+      // Names depends on implementation details like `NameKind#tag`.
+      else
+        sym1.fullName.toString.compareTo(sym2.fullName.toString)
+
+    val isPrimitive1 = sym1.isPrimitiveValueClass
+    val isPrimitive2 = sym2.isPrimitiveValueClass
+    if isPrimitive1 && isPrimitive2 then
+      return compareClasses
+    else if isPrimitive1 then
+      return -1
+    else if isPrimitive2 then
+      return 1
+
+    val isRealClass1 = sym1.isRealClass
+    val isRealClass2 = sym2.isRealClass
+    if isRealClass1 && isRealClass2 then
+      return compareClasses
+    else if isRealClass1 then
+      return -1
+    else if isRealClass2 then
+      return 1
+
+    compareClasses
+  end compareErasedGlb
 
   /** Does the (possibly generic) type `tp` have the same erasure in all its
    *  possible instantiations?
@@ -522,7 +583,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       if sourceLanguage.isScala2 then
         this(Scala2Erasure.intersectionDominator(Scala2Erasure.flattenedParents(tp)))
       else
-        erasedGlb(this(tp1), this(tp2), isJava = sourceLanguage.isJava)
+        erasedGlb(this(tp1), this(tp2))
     case OrType(tp1, tp2) =>
       if isSymbol && sourceLanguage.isScala2 && ctx.settings.scalajs.value then
         // In Scala2Unpickler we unpickle Scala.js pseudo-unions as if they were

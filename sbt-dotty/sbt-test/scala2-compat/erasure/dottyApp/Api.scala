@@ -22,7 +22,7 @@ class Outer {
 // This is enforced by dottyApp/Main.scala
 class Z {
   def a_01(a: A with B): Unit = {}
-  def b_02X(b: B with A): Unit = {}
+  def a_02X(b: B with A): Unit = {}
   def a_02(a: A with B with A): Unit = {}
   def a_03(a: A with (B with A)): Unit = {}
   def a_04(b: A with (B with A) @foo): Unit = {}
@@ -33,15 +33,15 @@ class Z {
   def a_06(a: T1): Unit = {}
 
   type S <: B with T1
-  def b_07(a: S): Unit = {}
+  def a_07(a: S): Unit = {}
 
   type T2 <: B with A
   type U <: T2 with S
-  def b_08(b: U): Unit = {}
+  def a_08(b: U): Unit = {}
 
   val singB: B = new B {}
   def a_09(a: A with singB.type): Unit = {}
-  def b_10(b: singB.type with A): Unit = {}
+  def a_10(b: singB.type with A): Unit = {}
 
   type V >: SubB <: B
   def b_11(b: V): Unit = {}
@@ -71,11 +71,11 @@ class Z {
 
   type W1 <: A with Cov[Any]
   type X1 <: Cov[Int] with W1
-  def cov_21(a: X1): Unit = {}
+  def a_21(a: X1): Unit = {}
 
   type W2 <: A with Cov[Any]
   type X2 <: Cov[Int] with W2
-  def cov_22(a: X2): Unit = {}
+  def a_22(a: X2): Unit = {}
 
   def z_23(z: A with this.type): Unit = {}
   def z_24(z: this.type with A): Unit = {}
@@ -83,34 +83,34 @@ class Z {
   def a_25(b: A with (B { type T })): Unit = {}
   def a_26(a: (A { type T }) with ((B with A) { type T })): Unit = {}
 
-  def b_27(a: VC with B): Unit = {}
-  def b_28(a: B with VC): Unit = {}
+  def a_27(a: VC with B): Unit = {}
+  def a_28(a: B with VC): Unit = {}
 
   val o1: Outer = new Outer
   val o2: Outer = new Outer
-  def f_29(f: o1.E with o1.F): Unit = {}
-  def f_30(f: o1.F with o1.E): Unit = {}
-  def f_31(f: o1.E with o2.F): Unit = {}
-  def f_32(f: o2.F with o1.E): Unit = {}
-  def f_33(f: Outer#E with Outer#F): Unit = {}
-  def f_34(f: Outer#F with Outer#E): Unit = {}
+  def e_29(f: o1.E with o1.F): Unit = {}
+  def e_30(f: o1.F with o1.E): Unit = {}
+  def e_31(f: o1.E with o2.F): Unit = {}
+  def e_32(f: o2.F with o1.E): Unit = {}
+  def e_33(f: Outer#E with Outer#F): Unit = {}
+  def e_34(f: Outer#F with Outer#E): Unit = {}
 
   val structural1: { type DSub <: D } = new { type DSub <: D }
   def d_35(a: A with structural1.DSub): Unit = {}
   def d_36(a: structural1.DSub with A): Unit = {}
-  def z_37(z: Z with structural1.DSub): Unit = {}
+  def d_37(z: Z with structural1.DSub): Unit = {}
   def d_38(z: structural1.DSub with Z): Unit = {}
 
   val structural2: { type SubCB <: C with B } = new { type SubCB <: C with B }
-  def c_39(c: structural2.SubCB with B): Unit = {}
+  def b_39(c: structural2.SubCB with B): Unit = {}
   def b_40(c: B with structural2.SubCB): Unit = {}
 
   val structural3a: { type SubB <: B; type SubCB <: C with SubB } = new { type SubB <: B; type SubCB <: C with SubB }
   val structural3b: { type SubB <: B; type SubCB <: C with SubB } = new { type SubB <: B; type SubCB <: C with SubB }
   def b_41(c: structural3a.SubB with structural3a.SubCB): Unit = {}
-  def c_42(c: structural3a.SubCB with structural3a.SubB): Unit = {}
+  def b_42(c: structural3a.SubCB with structural3a.SubB): Unit = {}
   def b_43(b: structural3a.SubB with structural3b.SubCB): Unit = {}
-  def c_44(c: structural3b.SubCB with structural3a.SubB): Unit = {}
+  def b_44(c: structural3b.SubCB with structural3a.SubB): Unit = {}
 
   type SubStructural <: C with structural3a.SubB
   def b_45(x: structural3a.SubB with SubStructural): Unit = {}
@@ -146,4 +146,11 @@ class Z {
   type AEq = A
   type Bla2 = AEq { type M[X] <: A }
   def a_57(x: Bla2#M[Any] with ({ type N <: B with Bla2#M[Int] })#N): Unit = {}
+
+  def int_58(x: Int with Singleton): Unit = {}
+  def int_59(x: Singleton with Int): Unit = {}
+  def int_60(x: Int with Any): Unit = {}
+  def int_61(x: Any with Int): Unit = {}
+  def int_62(x: Int with AnyVal): Unit = {}
+  def int_63(x: AnyVal with Int): Unit = {}
 }
