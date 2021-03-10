@@ -24,6 +24,7 @@ import Variances.Invariant
 import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
+import typer.Nullables._
 import util.Spans._
 import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -362,7 +363,9 @@ class TreeUnpickler(reader: TastyReader,
               if nothingButMods(end) then
                 if lo.isMatch then MatchAlias(readVariances(lo))
                 else TypeAlias(readVariances(lo))
-              else TypeBounds(lo, readVariances(readType()))
+              else
+                val hi = readVariances(readType())
+                createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -1249,7 +1252,7 @@ class TreeUnpickler(reader: TastyReader,
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
-              TypeBoundsTree(lo, hi, alias)
+              createNullableTypeBoundsTree(lo, hi, alias)
             case HOLE =>
               val idx = readNat()
               val tpe = readType()

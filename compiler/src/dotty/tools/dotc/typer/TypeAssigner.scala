@@ -154,7 +154,13 @@ trait TypeAssigner {
   def notAMemberErrorType(tree: untpd.Select, qual: Tree)(using Context): ErrorType =
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
-    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum)
+    val foundWithoutNull = qualType match
+      case OrNull(qualType1) =>
+        val name = tree.name
+        val pre = maybeSkolemizePrefix(qualType1, name)
+        reallyExists(qualType1.findMember(name, pre))
+      case _ => false
+    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then ex"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, addendum)

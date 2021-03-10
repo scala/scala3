@@ -402,7 +402,7 @@ class TreeChecker extends Phase with SymTransformer {
                ex"""symbols differ for $tree
                    |was                 : $sym
                    |alternatives by type: $memberSyms%, % of types ${memberSyms.map(_.info)}%, %
-                   |qualifier type      : ${tree.qualifier.typeOpt}
+                   |qualifier type      : ${qualTpe}
                    |tree type           : ${tree.typeOpt} of class ${tree.typeOpt.getClass}""")
       }
 

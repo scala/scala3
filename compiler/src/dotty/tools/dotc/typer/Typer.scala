@@ -433,7 +433,7 @@ class Typer extends Namer
     // If a reference is in the context, it is already trackable at the point we add it.
     // Hence, we don't use isTracked in the next line, because checking use out of order is enough.
     !ref.usedOutOfOrder =>
-      tree.select(defn.Any_typeCast).appliedToType(AndType(ref, tpnn))
+      tree.cast(AndType(ref, tpnn))
     case _ =>
       tree
 
@@ -592,9 +592,20 @@ class Typer extends Namer
     record("typedSelect")
 
     def typeSelectOnTerm(using Context): Tree =
-      typedSelect(tree, pt, typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this)))
-        .withSpan(tree.span)
-        .computeNullable()
+      val qual = typedExpr(tree.qualifier, shallowSelectionProto(tree.name, pt, this))
+      val qual1 = if Nullables.unsafeNullsEnabled then
+        qual.tpe match {
+          case OrNull(tpe1) =>
+            qual.cast(AndType(qual.tpe, tpe1))
+          case tp =>
+            if tp.isNullType
+              && (tree.name == nme.eq || tree.name == nme.ne) then
+              // Allow selecting `eq` and `ne` on `Null` specially
+              qual.cast(defn.ObjectType)
+            else qual
+        }
+      else qual
+      typedSelect(tree, pt, qual1).withSpan(tree.span).computeNullable()
 
     def javaSelectOnType(qual: Tree)(using Context) =
       // semantic name conversion for `O$` in java code
@@ -806,11 +817,22 @@ class Typer extends Namer
         // so the expected type is the union `Seq[T] | Array[_ <: T]`.
         val ptArg =
           // FIXME(#8680): Quoted patterns do not support Array repeated arguments
-          if (ctx.mode.is(Mode.QuotedPattern)) pt.translateFromRepeated(toArray = false, translateWildcard = true)
-          else pt.translateFromRepeated(toArray = false, translateWildcard = true) |
-               pt.translateFromRepeated(toArray = true,  translateWildcard = true)
-        val expr1 = typedExpr(tree.expr, ptArg)
-        val fromCls = if expr1.tpe.derivesFrom(defn.ArrayClass) then defn.ArrayClass else defn.SeqClass
+          if ctx.mode.is(Mode.QuotedPattern) then
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
+          else
+            pt.translateFromRepeated(toArray = false, translateWildcard = true)
+            | pt.translateFromRepeated(toArray = true,  translateWildcard = true)
+        val expr0 = typedExpr(tree.expr, ptArg)
+        val expr1 = if ctx.explicitNulls && (!ctx.mode.is(Mode.Pattern)) then
+            if expr0.tpe.isNullType then
+              // If the type of the argument is `Null`, we cast it to array directly.
+              expr0.cast(pt.translateParameterized(defn.RepeatedParamClass, defn.ArrayClass))
+            else
+              // We need to make sure its type is no longer nullable
+              expr0.castToNonNullable
+          else expr0
+        val fromCls = if expr1.tpe.derivesFrom(defn.ArrayClass)
+          then defn.ArrayClass else defn.SeqClass
         val tpt1 = TypeTree(expr1.tpe.widen.translateToRepeated(fromCls)).withSpan(tree.tpt.span)
         assignType(cpy.Typed(tree)(expr1, tpt1), tpt1)
       }
@@ -1339,8 +1361,8 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            pt match {
-              case SAMType(sam)
+            pt.stripNull match {
+              case pt @ SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
                 // The resulting class `class $anon extends C[?] {...}` would be illegal,
@@ -1698,7 +1720,7 @@ class Typer extends Namer
   }
 
   def typedSeqLiteral(tree: untpd.SeqLiteral, pt: Type)(using Context): SeqLiteral = {
-    val elemProto = pt.elemType match {
+    val elemProto = pt.stripNull.elemType match {
       case NoType => WildcardType
       case bounds: TypeBounds => WildcardType(bounds)
       case elemtp => elemtp

@@ -199,7 +199,6 @@ object StdNames {
     final val Nothing: N             = "Nothing"
     final val NotNull: N             = "NotNull"
     final val Null: N                = "Null"
-    final val UncheckedNull: N            = "UncheckedNull"
     final val Object: N              = "Object"
     final val FromJavaObject: N      = "<FromJavaObject>"
     final val Product: N             = "Product"

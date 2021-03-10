@@ -5,6 +5,7 @@ import core._
 import Contexts._, Symbols._, Types._, Flags._, Decorators._, StdNames._, Constants._
 import MegaPhase._
 import SymUtils._
+import NullOpsDecorator._
 import ast.Trees._
 import reporting._
 import dotty.tools.dotc.util.Spans.Span
@@ -53,7 +54,7 @@ class ExpandSAMs extends MiniPhase:
           checkRefinements(tpe, fn)
           tree
         case tpe =>
-          val tpe1 = checkRefinements(tpe, fn)
+          val tpe1 = checkRefinements(tpe.stripNull, fn)
           val Seq(samDenot) = tpe1.possibleSamMethods
           cpy.Block(tree)(stats,
               AnonClass(tpe1 :: Nil, fn.symbol.asTerm :: Nil, samDenot.symbol.asTerm.name :: Nil))
