@@ -892,8 +892,9 @@ object Erasure {
             case closureDef(meth) =>
               val contextParams = meth.termParamss.head
               for param <- contextParams do
-                param.symbol.copySymDenotation(owner = sym).installAfter(erasurePhase)
-              vparams ++= contextParams
+                if !param.symbol.is(Flags.Erased) then
+                  param.symbol.copySymDenotation(owner = sym).installAfter(erasurePhase)
+                  vparams = vparams :+ param
               if crCount == 1 then meth.rhs.changeOwnerAfter(meth.symbol, sym, erasurePhase)
               else skipContextClosures(meth.rhs, crCount - 1)
 
