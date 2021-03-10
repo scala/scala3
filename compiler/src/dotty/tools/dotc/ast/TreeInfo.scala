@@ -251,6 +251,10 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  def isTypeParamClause(params: ParamClause)(using Context): Boolean = params match
+    case TypeDefs(_) => true
+    case _ => false
+
   private val languageSubCategories = Set(nme.experimental, nme.deprecated)
 
   /** If `path` looks like a language import, `Some(name)` where name

@@ -908,20 +908,20 @@ object desugar {
                 report.error(i"right-associative extension method $problem", mdef.srcPos)
                 ext.paramss ++ mdef.paramss
               def noVParam = badRightAssoc("must start with a single parameter")
-              def checkVparam(params: ParamClause) = params match
+              def checkVparam(pre: List[ParamClause], params: ParamClause, paramss: List[ParamClause]) = params match
                 case ValDefs(vparam :: Nil) =>
                   if !vparam.mods.is(Given) then
                     val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: params1 :: otherExtParamss ::: paramss1
+                    leadingUsing ::: pre ::: params :: otherExtParamss ::: paramss
                   else badRightAssoc("cannot start with using clause")
                 case _ =>
                   noVParam
               params1 match
                 case TypeDefs(_) => paramss1 match
-                  case params2 :: _ => checkVparam(params2)
-                  case _            => noVParam
+                  case params2 :: paramss2 => checkVparam(params1::Nil, params2, paramss2)
+                  case _                   => noVParam
                 case _ =>
-                  checkVparam(params1)
+                  checkVparam(Nil, params1, paramss1)
 
             case _ =>
               ext.paramss ++ mdef.paramss
