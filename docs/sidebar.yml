@@ -89,6 +89,8 @@ sidebar:
               url: docs/reference/metaprogramming/tasty-inspect.html
         - title: Other New Features
           subsection:
+            - title: TypeTest
+              url: docs/reference/other-new-features/type-test.html
             - title: Trait Parameters
               url: docs/reference/other-new-features/trait-parameters.html
             - title: Transparent Traits
