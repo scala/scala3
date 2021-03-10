@@ -95,7 +95,7 @@ object SymUtils:
     *   - none of its children are anonymous classes
     *   - all of its children are addressable through a path from the parent class
     *     and also the location of the generated mirror.
-    *   - all of its children are generic products or singletons
+    *   - all of its children are generic products, singletons, or generic sums themselves.
     */
     def whyNotGenericSum(declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
@@ -118,7 +118,11 @@ object SymUtils:
           else {
             val s = child.whyNotGenericProduct
             if (s.isEmpty) s
-            else i"its child $child is not a generic product because $s"
+            else if (child.is(Sealed)) {
+              val s = child.whyNotGenericSum(if child.useCompanionAsMirror then child.linkedClass else ctx.owner)
+              if (s.isEmpty) s
+              else i"its child $child is not a generic sum because $s"
+            } else i"its child $child is not a generic product because $s"
           }
         }
         if (children.isEmpty) "it does not have subclasses"

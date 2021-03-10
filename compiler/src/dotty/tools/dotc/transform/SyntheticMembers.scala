@@ -523,7 +523,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
         }
-      Match(param, cases)
+      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
     }
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent

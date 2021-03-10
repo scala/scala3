@@ -285,12 +285,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
-        case caseClass: ClassSymbol =>
-          assert(caseClass.is(Case))
-          if caseClass.is(Module) then
-            caseClass.sourceModule.termRef
+        case childClass: ClassSymbol =>
+          assert(childClass.isOneOf(Case | Sealed))
+          if childClass.is(Module) then
+            childClass.sourceModule.termRef
           else
-            caseClass.primaryConstructor.info match
+            childClass.primaryConstructor.info match
               case info: PolyType =>
                 // Compute the the full child type by solving the subtype constraint
                 // `C[X1, ..., Xn] <: P`, where
@@ -307,13 +307,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                     case tp => tp
                   resType <:< target
                   val tparams = poly.paramRefs
-                  val variances = caseClass.typeParams.map(_.paramVarianceSign)
+                  val variances = childClass.typeParams.map(_.paramVarianceSign)
                   val instanceTypes = tparams.lazyZip(variances).map((tparam, variance) =>
                     TypeComparer.instanceType(tparam, fromBelow = variance < 0))
                   resType.substParams(poly, instanceTypes)
-                instantiate(using ctx.fresh.setExploreTyperState().setOwner(caseClass))
+                instantiate(using ctx.fresh.setExploreTyperState().setOwner(childClass))
               case _ =>
-                caseClass.typeRef
+                childClass.typeRef
         case child => child.termRef
       end solve
 
@@ -328,9 +328,9 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           (mirroredType, elems)
 
       val mirrorType =
-          mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
-          .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-          .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+        mirrorCore(defn.Mirror_SumClass, monoType, mirroredType, cls.name, formal)
+            .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
+            .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
         if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
