@@ -28,7 +28,8 @@ import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
+import config.Feature
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -590,6 +591,8 @@ object Parsers {
         if in.currentRegion.indentWidth < nextIndentWidth then
           warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
 
+    def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
+
 /* -------- REWRITES ----------------------------------------------------------- */
 
     /** The last offset where a colon at the end of line would be required if a subsequent { ... }
@@ -1141,7 +1144,7 @@ object Parsers {
             Quote(t)
           }
           else
-            if !symbolLiteralsEnabled(using languageImportContext) then
+            if !featureEnabled(Feature.symbolLiterals) then
               report.errorOrMigrationWarning(
                 em"""symbol literal '${in.name} is no longer supported,
                     |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
@@ -1572,7 +1575,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && dependentEnabled(using languageImportContext)
+          if in.token == LPAREN && featureEnabled(Feature.dependent)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())

@@ -19,11 +19,12 @@ object Feature:
   private def deprecated(str: String): TermName =
     QualifiedName(nme.deprecated, str.toTermName)
 
-  private val Xdependent = experimental("dependent")
-  private val XnamedTypeArguments = experimental("namedTypeArguments")
-  private val XgenericNumberLiterals = experimental("genericNumberLiterals")
-  private val Xmacros = experimental("macros")
-  private val symbolLiterals: TermName = deprecated("symbolLiterals")
+  private val namedTypeArguments = experimental("namedTypeArguments")
+  private val genericNumberLiterals = experimental("genericNumberLiterals")
+  private val macros = experimental("macros")
+
+  val dependent = experimental("dependent")
+  val symbolLiterals: TermName = deprecated("symbolLiterals")
 
 /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -62,15 +63,13 @@ object Feature:
 
   def dynamicsEnabled(using Context): Boolean = enabled(nme.dynamics)
 
-  def dependentEnabled(using Context) = enabled(Xdependent)
+  def dependentEnabled(using Context) = enabled(dependent)
 
-  def namedTypeArgsEnabled(using Context) = enabled(XnamedTypeArguments)
+  def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
-  def genericNumberLiteralsEnabled(using Context) = enabled(XgenericNumberLiterals)
+  def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
-  def symbolLiteralsEnabled(using Context) = enabled(symbolLiterals)
-
-  def scala2ExperimentalMacroEnabled(using Context) = enabled(Xmacros)
+  def scala2ExperimentalMacroEnabled(using Context) = enabled(macros)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
