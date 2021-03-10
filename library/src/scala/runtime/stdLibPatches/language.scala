@@ -36,6 +36,10 @@ object language:
       * @see [[https://dotty.epfl.ch/docs/reference/changed-features/numeric-literals]]
       */
     object genericNumberLiterals
+
+    /** Experimental support for `erased` modifier */
+    object erasedTerms
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

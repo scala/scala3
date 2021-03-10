@@ -230,6 +230,11 @@ object Parsers {
         else (staged & StageKind.Quoted) != 0
       }
 
+    extension (td: TokenData = in)
+      def isErased: Boolean =
+        td.token == ERASED
+        || td.isIdent(nme.erased) && featureEnabled(Feature.erasedTerms)
+
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
     /** The offset of the last time when a statement on a new line was definitely
@@ -1377,7 +1382,7 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            imods = modifiers(funTypeArgMods)
+            if in.isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
@@ -1864,7 +1869,7 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart = in.lookahead.token == ERASED
+      def isSpecialClosureStart = in.lookahead.isErased
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
       else if in.token == LPAREN && isSpecialClosureStart then
@@ -2096,7 +2101,7 @@ object Parsers {
           Nil
         else
           var mods1 = mods
-          if in.token == ERASED then mods1 = addModifier(mods1)
+          if in.isErased then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
@@ -2695,6 +2700,7 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
+          case nme.erased if featureEnabled(Feature.erasedTerms) => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
@@ -2777,8 +2783,6 @@ object Parsers {
           mods
       normalize(loop(start))
     }
-
-    val funTypeArgMods: BitSet = BitSet(ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
@@ -2902,10 +2906,13 @@ object Parsers {
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
       def paramMods() =
-        if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
+        if in.token == IMPLICIT then
+          addParamMod(() => Mod.Implicit())
         else
-          if isIdent(nme.using) then addParamMod(() => Mod.Given())
-          if in.token == ERASED then addParamMod(() => Mod.Erased())
+          if isIdent(nme.using) then
+            addParamMod(() => Mod.Given())
+          if in.isErased then
+            addParamMod(() => Mod.Erased())
 
       def param(): ValDef = {
         val start = in.offset
