@@ -78,7 +78,7 @@ val c = new C()
 // c.f == "field is null"
 ```
 
-The unsoundness above can be caught by the compiler with the option `-Ycheck-init`.
+The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
 More details can be found in [safe initialization](./safe-initialization.md).
 
 ## Equality
