@@ -24,6 +24,7 @@ import printing.Formatting.hl
 import ast.Trees._
 import ast.untpd
 import ast.tpd
+import transform.PatternMatcher.MinSwitchCases
 import transform.SymUtils._
 
 /**  Messages
@@ -2006,7 +2007,9 @@ import transform.SymUtils._
 
   class UnableToEmitSwitch(tooFewCases: Boolean)(using Context)
   extends SyntaxMsg(UnableToEmitSwitchID) {
-    def tooFewStr: String = if (tooFewCases) " since there are not enough cases" else ""
+    def tooFewStr: String =
+      if (tooFewCases) " since a minimum of " + MinSwitchCases + " cases (including the default) are required"
+      else ""
     def msg = em"Could not emit switch for ${hl("@switch")} annotated match$tooFewStr"
     def explain = {
       val codeExample =
