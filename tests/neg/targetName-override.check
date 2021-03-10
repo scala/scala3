@@ -1,14 +1,14 @@
--- Error: tests/neg/targetName-override.scala:16:35 --------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:16:35 -------------------------------------------------
 16 |  @targetName("foo1") override def foo() = 1    // error: should not have a target name
    |                                   ^
    |error overriding method foo in class Alpha of type (): Int;
    |  method foo of type (): Int should not have a @targetName annotation since the overridden member hasn't one either
--- Error: tests/neg/targetName-override.scala:18:25 --------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:18:25 -------------------------------------------------
 18 |  @targetName("baz") def foo(x: String): String = x ++ x   // error: has a different target name annotation
    |                         ^
    | error overriding method foo in class Alpha of type (x: String): String;
    |   method foo of type (x: String): String has a different target name annotation; it should be @targetName(foo1)
--- Error: tests/neg/targetName-override.scala:20:15 --------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:20:15 -------------------------------------------------
 20 |  override def ++ (xs: Alpha[String]): Alpha[String] = this   // error: misses a targetname annotation
    |               ^
    |      error overriding method ++ in class Alpha of type (xs: Alpha[String]): Alpha[String];

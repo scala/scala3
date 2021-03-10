@@ -7,3 +7,5 @@
    |                                   ^^^^^^^
    |                                   Found:    Unit
    |                                   Required: String
+
+longer explanation available when compiling with `-explain`
