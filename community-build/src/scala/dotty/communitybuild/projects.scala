@@ -188,6 +188,18 @@ object projects:
     dependencies = List(geny, utest)
   )
 
+  lazy val upickleImplicits = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"implicits.jvm[$compilerVersion]",
+    dependencies = List(upickleCore, ujson)
+  )
+
+  lazy val upack = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"upack.jvm[$compilerVersion]",
+    dependencies = List(ujson, upickleCore)
+  )
+
   lazy val geny = MillCommunityProject(
     project = "geny",
     baseCommand = s"geny.jvm[$compilerVersion]",
@@ -631,6 +643,8 @@ def allProjects = List(
   projects.ujson,
   projects.upickle,
   projects.upickleCore,
+  projects.upickleImplicits,
+  projects.upack,
   projects.geny,
   projects.fansi,
   projects.pprint,
