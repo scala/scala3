@@ -87,23 +87,13 @@ we don't have a type that is a supertype of `Null` and a subtype of `String`.
 Hence, when we read a type bound from Scala 2 Tasty or Scala 3 Tasty, the upper bound is nullified if the lower
 bound is exactly `Null`. The example above would become `class C[T >: Null <: String | Null]`.
 
-## Unsafe Nulls
+## Unsafe Nulls Feature and SafeNulls Mode
 
 The `unsafeNulls` language feature is currently disabled by default. It can be enabled by importing `scala.language.unsafeNulls` or using `-language:unsafeNulls`. The feature object is defined in `library/src/scalaShadowing/language.scala`. We can use `config.Feature.enabled(nme.unsafeNulls)` to check if this feature is enabled.
 
-The unsafe nulls conversion could happen if:
-1. the explicit nulls flag is enabled, and
-2. `unsafeNulls` language feature is enabled, or `UnsafeNullConversion` mode is in the context.
-
-The reason to use the `UnsafeNullConversion` mode is because the current context may not see the language feature. For example, implicit search could run in some different contexts.
+We use the `SafeNulls` mode to track `unsafeNulls`. If explicit nulls is enabled without `unsafeNulls`, there is a `SafeNulls` mode in the context; when `unsafeNulls` is enabled, `SafeNulls` mode will be removed from the context.
 
 Since we want to allow selecting member on nullable values, when searching a member of a type, the `| Null` part should be ignored. See `goOr` in `Types.scala`.
-
-During adapting, if the type of the tree is not a subtype of the expected type, the `adaptToSubType` in `Typer.scala` will run. The implicit search is invoked to find conversions for the tree. Since implicit search (finding candidates and trying to type the new tree) could run in some different contexts, we have to pass the `UnsafeNullConversion` mode to the search context.
-
-The SAM type conversion also happens in `adaptToSubType`. We need to strip `Null` from `pt` in order to get class information.
-
-We need to modify the overloading resolution as well. The `isCompatible` and `necessarilyCompatible` functions in `ProtoTypes.scala` are used to compare types for overloading resolution. When `unsafeNulls` is enabled, we need to strip all nulls from the type before comparison.
 
 ## Flow Typing
 

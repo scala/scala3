@@ -400,16 +400,15 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ => if (self.isMatch) MatchAlias(self) else TypeAlias(self)
   }
 
-  /** Translate a type of the form From[T] to either To[T] or To[? <: T] (if `wildcardArg` is set).
-   *  Keep other types as they are.
+  /** Translate a type of the form From[T] to either To[T] or To[? <: T] (if `wildcardArg` is set). Keep other types as they are.
    *  `from` and `to` must be static classes, both with one type parameter, and the same variance.
    *  Do the same for by name types => From[T] and => To[T]
    */
-  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match
+  def translateParameterized(from: ClassSymbol, to: ClassSymbol, wildcardArg: Boolean = false)(using Context): Type = self match {
     case self @ ExprType(tp) =>
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
-      if self.derivesFrom(from) then
+      if (self.derivesFrom(from)) {
         def elemType(tp: Type): Type = tp.widenDealias match
           case tp: OrType =>
             if tp.tp1.isBottomType then elemType(tp.tp2)
@@ -420,12 +419,15 @@ class TypeApplications(val self: Type) extends AnyVal {
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)
+      }
       else self
+  }
 
   /** If this is a repeated parameter `*T`, translate it to either `Seq[T]` or
    *  `Array[? <: T]` depending on the value of `toArray`.
    *  Additionally, if `translateWildcard` is true, a wildcard type
-   *  will be translated to `*<?>`. Other types are kept as-is.
+   *  will be translated to `*<?>`.
+   *  Other types are kept as-is.
    */
   def translateFromRepeated(toArray: Boolean, translateWildcard: Boolean = false)(using Context): Type =
     val seqClass = if (toArray) defn.ArrayClass else defn.SeqClass

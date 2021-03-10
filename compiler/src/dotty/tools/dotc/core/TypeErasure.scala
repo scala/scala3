@@ -12,7 +12,6 @@ import transform.TypeUtils._
 import transform.ContextFunctionResults._
 import unpickleScala2.Scala2Erasure
 import Decorators._
-import NullOpsDecorator._
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -566,9 +565,6 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
   private def eraseArray(tp: Type)(using Context) = {
     val defn.ArrayOf(elemtp) = tp
-    // println(elemtp.show)
-    // println(isUnboundedGeneric(elemtp))
-    // println()
     if (classify(elemtp).derivesFrom(defn.NullClass)) JavaArrayType(defn.ObjectType)
     else if (isUnboundedGeneric(elemtp) && !sourceLanguage.isJava) defn.ObjectType
     else JavaArrayType(erasureFn(sourceLanguage, semiEraseVCs = false, isConstructor, wildcardOK)(elemtp))

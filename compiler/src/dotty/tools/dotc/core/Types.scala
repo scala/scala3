@@ -1084,6 +1084,10 @@ object Types {
      *
      *  (*) when matching with a Java method, we also regard Any and Object as equivalent
      *      parameter types.
+     *
+     *  Under explicit nulls, this function will always use unsafe-nulls semamtics to
+     *  check the types. This is because we are using a relaxed rule (ignoring `Null` types)
+     *  to check overriding Java methods.
      */
     def matches(that: Type)(using Context): Boolean = {
       record("matches")
