@@ -1633,7 +1633,9 @@ object Build {
                 "github::https://github.com/lampepfl/dotty," +
                 "gitter::https://gitter.im/scala/scala," +
                 "twitter::https://twitter.com/scala_lang",
-              s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library",
+              s"-source-links:" +
+                s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
+                s"docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString
             )
           ))
