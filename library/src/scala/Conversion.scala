@@ -29,4 +29,4 @@ object Conversion:
 
   extension [T](x: T)
     /** `x.into[U]` converts a value `x` of type `T` to type `U` */
-    def into[U](using c: Conversion[T, U]) = c(x)
+    def convert[U](using c: Conversion[T, U]) = c(x)
