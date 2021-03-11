@@ -231,9 +231,7 @@ object Parsers {
       }
 
     extension (td: TokenData = in)
-      def isErased: Boolean =
-        td.token == ERASED
-        || td.isIdent(nme.erased) && featureEnabled(Feature.erasedTerms)
+      def isErased: Boolean = td.isIdent(nme.erased) && featureEnabled(Feature.erasedTerms)
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
@@ -2692,7 +2690,6 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case GIVEN       => Mod.Given()
-      case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()

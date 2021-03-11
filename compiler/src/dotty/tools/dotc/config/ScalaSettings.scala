@@ -227,7 +227,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   // Extremely experimental language features
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
-  val YerasedTerms: Setting[Boolean] = BooleanSetting("-Yerased-terms", "Allows the use of erased terms.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
 

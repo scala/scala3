@@ -39,7 +39,7 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
-      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedTerms")),
       compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -126,7 +126,7 @@ class CompilationTests {
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
-      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-language:experimental.erasedTerms")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/explicit-nulls", defaultOptions.and("-Yexplicit-nulls")),
@@ -165,7 +165,7 @@ class CompilationTests {
       compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures.and("-language:_")),
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
-      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
+      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-language:experimental.erasedTerms")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
       compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
@@ -189,7 +189,7 @@ class CompilationTests {
       compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "future")),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
-      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedTerms")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"))
     ).checkRuns()
@@ -248,7 +248,7 @@ class CompilationTests {
     val lib =
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
-          "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
+          "-language:experimental.erasedTerms", // support declaration of scala.compiletime.erasedValue
           //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           ))(libGroup)
 

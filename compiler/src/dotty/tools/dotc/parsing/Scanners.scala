@@ -215,8 +215,7 @@ object Scanners {
     private val commentBuf = CharBuffer()
 
     private def handleMigration(keyword: Token): Token =
-      if keyword == ERASED && !ctx.settings.YerasedTerms.value then IDENTIFIER
-      else if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
+      if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
       else keyword
 
     private def treatAsIdent(): Token =
