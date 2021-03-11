@@ -19,25 +19,43 @@ class ClasspathTest {
   // Verify that Windows users not forced to use backslash in classpath.
   //
   @Test def testWildcards(): Unit =
-    import dotty.tools.io.ClassPath
     val outDir = Files.createTempDirectory("classpath-test")
     try
       val compilerLib = "dist/target/pack/lib"
       val libdir = Paths.get(compilerLib).toFile
       if libdir.exists then
-        try for src <- libdir.listFiles.toList.take(5) do
-          val dest = Paths.get(s"$outDir/${src.getName}")
-          printf("copy: %s\n",Files.copy(src.toPath,dest)) // ,REPLACE_EXISTING,COPY_ATTRIBUTES))
-        catch
-          case _:NullPointerException => // ignore errors adding jars to outDir
+        val libjarFiles = libdir.listFiles.toList.take(5)
+        try
+          for src <- libjarFiles do
+            val dest = Paths.get(s"$outDir/${src.getName}")
+            printf("copy: %s\n",Files.copy(src.toPath,dest)) // ,REPLACE_EXISTING,COPY_ATTRIBUTES))
+        
+          val cp = Seq(s"$outDir/*","not-a-real-directory/*").mkString(pathsep).replace('\\','/')
+         
+          val libjars = libjarFiles.map { _.getName }.toSet
 
-      //outDir.toFile.listFiles.toList.foreach { printf("%s\n",_) }
-      val cp = Seq(s"$compilerLib/*",s"$outDir/*","not-a-real-directory/*").mkString(pathsep).replace('\\','/')
-     
-      // need to expand wildcard classpath entries
-      val entries = ClassPath.expandPath(cp)
-      for entry <- entries.take(10) do
-        println(entry)
+          // expand wildcard classpath entries, ignoring invalid entries
+          val entries = ClassPath.expandPath(cp).map { Paths.get(_).toFile.getName }
+
+          // require one-to-one matches
+          assert(libjars == entries.toSet)
+
+          printf("%d entries\n",entries.size)
+          printf("%d libjars\n",libjars.size)
+
+          for entry <- libjars do
+            printf("libdir[%s]\n",entry)
+
+          for entry <- entries do
+            printf("expand[%s]\n",entry)
+
+          // verify that expanded classpath has expected jar names
+          for jar <- libjars do
+            assert(entries.contains(jar))
+
+        catch
+          case _:NullPointerException => // no test if unable to copy jars to outDir
+
 
     finally
       deleteFile(outDir.toFile)
