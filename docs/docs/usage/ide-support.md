@@ -39,6 +39,7 @@ IntelliJ has its own implementation for semantic features, so it does not use Me
 Language Server Protocol (LSP).
 
 In order to import a project into IntelliJ there are two possibilities:
+
   - Use the built-in feature to import sbt builds
   - Use IntelliJ's support for the
     [Build Server Protocol (BSP)](https://www.jetbrains.com/help/idea/bsp-support.html)
