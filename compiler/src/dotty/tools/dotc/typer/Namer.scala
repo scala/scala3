@@ -1439,7 +1439,11 @@ class Namer { typer: Typer =>
         val defaultTp = defaultParamType
         val pt = inherited.orElse(wildApprox(defaultTp)).orElse(WildcardType).widenExpr
         val tp = typedAheadRhs(pt).tpe
-        tp.widenTermRefExpr.simplified match
+        if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
+          // When possible, widen to the default getter parameter type to permit a
+          // larger choice of overrides (see `default-getter.scala`).
+          defaultTp
+        else tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
           case tp =>
             TypeComparer.widenInferred(tp, pt)
