@@ -186,7 +186,9 @@ object Scanners {
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
-    var languageImportContext: Context = ctx
+    private var myLanguageImportContext: Context = ctx
+    def languageImportContext = myLanguageImportContext
+    final def languageImportContext_=(c: Context) = myLanguageImportContext = c
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedTerms) || ctx.settings.YerasedTerms.value
@@ -912,7 +914,9 @@ object Scanners {
         reset()
       next
 
-    class LookaheadScanner() extends Scanner(source, offset)
+    class LookaheadScanner() extends Scanner(source, offset) {
+      override def languageImportContext = Scanner.this.languageImportContext
+    }
 
     /** Skip matching pairs of `(...)` or `[...]` parentheses.
      *  @pre  The current token is `(` or `[`
