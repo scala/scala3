@@ -54,9 +54,9 @@ case "`uname`" in
 esac
 
 unset CYGPATHCMD
-if [[ $cygwin || $mingw || $msys ]]; then
+if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
   # ConEmu terminal is incompatible with jna-5.*.jar
-  [[ ($CONEMUANSI || $ConEmuANSI) ]] && conemu=true
+  [[ (${CONEMUANSI-} || ${ConEmuANSI-}) ]] && conemu=true
   # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
   CYGPATHCMD=`which cygpath 2>/dev/null`
   case "$TERM" in
@@ -111,14 +111,14 @@ CLASSPATH_SUFFIX=""
 PSEP=":"
 
 # translate paths to Windows-mixed format before running java
-if [ -n "$CYGPATHCMD" ]; then
-  [ -n "$PROG_HOME" ] &&
+if [ -n "${CYGPATHCMD-}" ]; then
+  [ -n "${PROG_HOME-}" ] &&
     PROG_HOME=`"$CYGPATHCMD" -am "$PROG_HOME"`
   [ -n "$JAVA_HOME" ] &&
     JAVA_HOME=`"$CYGPATHCMD" -am "$JAVA_HOME"`
   CLASSPATH_SUFFIX=";"
   PSEP=";"
-elif [[ $mingw || $msys ]]; then
+elif [[ ${mingw-} || ${msys-} ]]; then
   # For Mingw / Msys, convert paths from UNIX format before anything is touched
   [ -n "$PROG_HOME" ] &&
     PROG_HOME="`(cd "$PROG_HOME"; pwd -W | sed 's|/|\\\\|g')`"
@@ -134,9 +134,9 @@ fi
 
 find_lib () {
   local lib=$(find $PROG_HOME/lib/ -name "$1")
-  if [ -n "$CYGPATHCMD" ]; then
+  if [ -n "${CYGPATHCMD-}" ]; then
     $CYGPATHCMD -am $lib
-  elif [[ $mingw ||  $msys ]]; then
+  elif [[ ${mingw-} ||  ${msys-} ]]; then
     echo $lib | sed 's|/|\\\\|g'
   else
     echo $lib
@@ -155,8 +155,13 @@ SBT_INTF=$(find_lib "*compiler-interface*")
 JLINE_READER=$(find_lib "*jline-reader-3*")
 JLINE_TERMINAL=$(find_lib "*jline-terminal-3*")
 JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
-[[ $conemu ]] || JNA=$(find_lib "*jna-5*")
+[[ ${conemu-} ]] || JNA=$(find_lib "*jna-5*")
 
 # debug
 
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
+
+export saved_stty PROG_HOME DEBUG_STR PSEP SCALA_LIB DOTTY_LIB SCALA_ASM SBT_INTF DOTTY_INTF DOTTY_COMP TASTY_CORE
+export DOTTY_STAGING DOTTY_TASTY_INSPECTOR JLINE_READER JLINE_TERMINAL JLINE_TERMINAL_JNA JNA JAVACMD SCALA_OPTS
+export cygwin mingw msys darwin conemu CLASSPATH_SUFFIX
+export -f onExit restoreSttySettings find_lib
