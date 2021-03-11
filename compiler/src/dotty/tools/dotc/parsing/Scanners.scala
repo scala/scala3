@@ -17,6 +17,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
+import config.Feature
 import config.Feature.migrateTo3
 import config.SourceVersion._
 import reporting.Message
@@ -184,6 +185,11 @@ object Scanners {
       if (enabled.length > 1)
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
+
+    var languageImportContext: Context = ctx
+
+    def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
+    def erasedEnabled = featureEnabled(Feature.erasedTerms) || ctx.settings.YerasedTerms.value
 
     /** All doc comments kept by their end position in a `Map`.
       *
@@ -1008,13 +1014,16 @@ object Scanners {
       }
 
     def isSoftModifier: Boolean =
-      token == IDENTIFIER && softModifierNames.contains(name)
+      token == IDENTIFIER
+      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && lookahead.token != COLON
+
+    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3

@@ -898,7 +898,7 @@ trait Implicits:
       case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
-        def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
+        def addendum = if (qt1 eq qt) "" else (i"\nThe required type is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
         em"${ if paramName.is(EvidenceParamName) then "an implicit parameter"

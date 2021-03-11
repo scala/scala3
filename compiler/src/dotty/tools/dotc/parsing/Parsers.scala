@@ -180,6 +180,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
+    def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -229,9 +230,6 @@ object Parsers {
         if in.name.length == 1 then in.lookahead.token == LBRACE
         else (staged & StageKind.Quoted) != 0
       }
-
-    extension (td: TokenData = in)
-      def isErased: Boolean = td.isIdent(nme.erased) && featureEnabled(Feature.erasedTerms)
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
@@ -450,11 +448,10 @@ object Parsers {
      *  Parameters appear in reverse order.
      */
     var placeholderParams: List[ValDef] = Nil
-    var languageImportContext: Context = ctx
 
     def checkNoEscapingPlaceholders[T](op: => T): T =
       val savedPlaceholderParams = placeholderParams
-      val savedLanguageImportContext = languageImportContext
+      val savedLanguageImportContext = in.languageImportContext
       placeholderParams = Nil
       try op
       finally
@@ -462,7 +459,7 @@ object Parsers {
           case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
         placeholderParams = savedPlaceholderParams
-        languageImportContext = savedLanguageImportContext
+        in.languageImportContext = savedLanguageImportContext
 
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
@@ -593,8 +590,6 @@ object Parsers {
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if in.currentRegion.indentWidth < nextIndentWidth then
           warning(i"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
-
-    def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
@@ -1147,7 +1142,7 @@ object Parsers {
             Quote(t)
           }
           else
-            if !featureEnabled(Feature.symbolLiterals) then
+            if !in.featureEnabled(Feature.symbolLiterals) then
               report.errorOrMigrationWarning(
                 em"""symbol literal '${in.name} is no longer supported,
                     |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
@@ -1380,7 +1375,7 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            if in.isErased then imods = addModifier(imods)
+            if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
@@ -1578,7 +1573,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && featureEnabled(Feature.dependent)
+          if in.token == LPAREN && in.featureEnabled(Feature.dependent)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())
@@ -1867,7 +1862,7 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart = in.lookahead.isErased
+      def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
       else if in.token == LPAREN && isSpecialClosureStart then
@@ -2099,7 +2094,7 @@ object Parsers {
           Nil
         else
           var mods1 = mods
-          if in.isErased then mods1 = addModifier(mods1)
+          if isErased then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
@@ -2697,7 +2692,7 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
-          case nme.erased if featureEnabled(Feature.erasedTerms) => Mod.Erased()
+          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
@@ -2908,7 +2903,7 @@ object Parsers {
         else
           if isIdent(nme.using) then
             addParamMod(() => Mod.Given())
-          if in.isErased then
+          if isErased then
             addParamMod(() => Mod.Erased())
 
       def param(): ValDef = {
@@ -3039,7 +3034,7 @@ object Parsers {
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
       val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
-        languageImportContext = languageImportContext.importContext(imp, NoSymbol)
+        in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)

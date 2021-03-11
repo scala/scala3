@@ -286,5 +286,5 @@ object Tokens extends TokensCommon {
 
   final val skipStopTokens = BitSet(SEMI, NEWLINE, NEWLINES, RBRACE, RPAREN, RBRACKET, OUTDENT)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix, nme.erased)
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }
