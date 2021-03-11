@@ -266,7 +266,8 @@ object Build {
   // Settings used when compiling dotty (both non-bootstrapped and bootstrapped)
   lazy val commonDottySettings = commonSettings ++ Seq(
     // Manually set the standard library to use
-    autoScalaLibrary := false
+    autoScalaLibrary := false,
+    classpathOptions ~= (_.withAutoBoot(false).withFilterLibrary(false))
   )
 
   lazy val commonScala2Settings = commonSettings ++ Seq(
@@ -286,7 +287,7 @@ object Build {
     scalaVersion := referenceVersion,
     excludeFromIDE := true,
 
-    disableDocSetting
+    disableDocSetting,
   )
 
   lazy val scalacOptionsDocSettings = Seq(
