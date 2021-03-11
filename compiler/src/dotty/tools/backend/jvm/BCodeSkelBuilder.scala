@@ -221,6 +221,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       addClassFields()
 
       innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
+
+      val companion = claszSymbol.companionClass
+      if companion.isTopLevelModuleClass then
+        innerClassBufferASM ++= classBTypeFromSymbol(companion).info.memberClasses
+
       gen(cd.rhs)
       addInnerClassesASM(cnode, innerClassBufferASM.toList)
 

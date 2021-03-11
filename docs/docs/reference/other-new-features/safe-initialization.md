@@ -3,7 +3,7 @@ layout: doc-page
 title: "Safe Initialization"
 ---
 
-Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ycheck-init`.
+Scala 3 implements experimental safe initialization check, which can be enabled by the compiler option `-Ysafe-init`.
 
 ## A Quick Glance
 

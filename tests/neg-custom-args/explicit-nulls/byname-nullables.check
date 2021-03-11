@@ -3,6 +3,8 @@
    |                        ^
    |                        Found:    (x : String | Null)
    |                        Required: String
+
+longer explanation available when compiling with `-explain`
 -- Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:43:32 --------------------------------------------
 43 |    if x != null then f(identity(x), 1)   // error: dropping not null check fails typing
    |                        ^^^^^^^^^^^
@@ -19,7 +21,7 @@
    |                     Wrapping the argument in `byName(...)` fixes the problem by disabling the flow assumptions.
    |
    |                     `byName` needs to be imported from the `scala.compiletime` package.
--- [E134] Type Mismatch Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:81:22 -----------------------
+-- [E134] Type Error: tests/neg-custom-args/explicit-nulls/byname-nullables.scala:81:22 --------------------------------
 81 |    if x != null then f(byName(x), 1)   // error: none of the overloaded methods match argument types
    |                      ^
    |                      None of the overloaded alternatives of method f in object Test7 with types

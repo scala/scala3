@@ -15,6 +15,7 @@ import TreeInfo._
 import ProtoTypes._
 import Scopes._
 import CheckRealizable._
+import NullOpsDecorator._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span

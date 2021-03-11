@@ -283,7 +283,8 @@ object Build {
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
-  lazy val commonBootstrappedSettings = commonDottySettings ++ Seq(
+  lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
+    bspEnabled := false,
     unmanagedSourceDirectories in Compile += baseDirectory.value / "src-bootstrapped",
 
     version := dottyVersion,
@@ -347,6 +348,7 @@ object Build {
   )
 
   lazy val commonBenchmarkSettings = Seq(
+    Jmh / bspEnabled := false,
     mainClass in (Jmh, run) := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
     javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((fullClasspath in (`scala3-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, ""),
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((fullClasspath in (`scala3-library-bootstrapped`, Compile)).value).mkString("", File.pathSeparator, "")
@@ -419,9 +421,10 @@ object Build {
       ),
 
       // For convenience, change the baseDirectory when running the compiler
-      baseDirectory in (Compile, run) := baseDirectory.value / "..",
+      (Compile / forkOptions) := (Compile / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
+      (Compile / run / forkOptions) := (Compile / run / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
       // And when running the tests
-      baseDirectory in Test := baseDirectory.value / "..",
+      (Test / forkOptions) := (Test / forkOptions).value.withWorkingDirectory((ThisBuild / baseDirectory).value),
 
       test in Test := {
         // Exclude VulpixMetaTests
@@ -1234,6 +1237,7 @@ object Build {
       version := "0.1.17-snapshot", // Keep in sync with package.json
       autoScalaLibrary := false,
       publishArtifact := false,
+      bspEnabled := false,
       resourceGenerators in Compile += Def.task {
         // Resources that will be copied when bootstrapping a new project
         val buildSbtFile = baseDirectory.value / "out" / "build.sbt"
@@ -1633,7 +1637,9 @@ object Build {
                 "github::https://github.com/lampepfl/dotty," +
                 "gitter::https://gitter.im/scala/scala," +
                 "twitter::https://twitter.com/scala_lang",
-              s"-source-links:$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library",
+              s"-source-links:" +
+                s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
+                s"docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString
             )
           ))

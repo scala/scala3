@@ -25,6 +25,7 @@ import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
 import Nullables._
+import transform.{PostTyper, Inlining}
 
 import collection.mutable
 import reporting.trace
@@ -293,7 +294,7 @@ object Inliner {
     private enum ErrorKind:
       case Parser, Typer
 
-    private def compileForErrors(tree: Tree, stopAfterParser: Boolean)(using Context): List[(ErrorKind, Error)] =
+    private def compileForErrors(tree: Tree)(using Context): List[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
@@ -311,17 +312,22 @@ object Inliner {
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val source2 = SourceFile.virtual("tasty-reflect", code)
-          val ctx2 = ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)
-          val tree2 = new Parser(source2)(using ctx2).block()
-          val res = collection.mutable.ListBuffer.empty[(ErrorKind, Error)]
-
-          val parseErrors = ctx2.reporter.allErrors.toList
-          res ++= parseErrors.map(e => ErrorKind.Parser -> e)
-          if !stopAfterParser || res.isEmpty then
-            ctx2.typer.typed(tree2)(using ctx2)
-            val typerErrors = ctx2.reporter.allErrors.filterNot(parseErrors.contains)
-            res ++= typerErrors.map(e => ErrorKind.Typer -> e)
-          res.toList
+          inContext(ctx.fresh.setNewTyperState().setTyper(new Typer).setSource(source2)) {
+            val tree2 = new Parser(source2).block()
+            if ctx.reporter.allErrors.nonEmpty then
+              ctx.reporter.allErrors.map((ErrorKind.Parser, _))
+            else
+              val tree3 = ctx.typer.typed(tree2)
+              ctx.base.postTyperPhase match
+                case postTyper: PostTyper if ctx.reporter.allErrors.isEmpty =>
+                  val tree4 = atPhase(postTyper) { postTyper.newTransformer.transform(tree3) }
+                  ctx.base.inliningPhase match
+                    case inlining: Inlining if ctx.reporter.allErrors.isEmpty =>
+                      atPhase(inlining) { inlining.newTransformer.transform(tree4) }
+                    case _ =>
+                case _ =>
+              ctx.reporter.allErrors.map((ErrorKind.Typer, _))
+          }
         case t =>
           report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
           Nil
@@ -346,12 +352,12 @@ object Inliner {
 
     /** Expand call to scala.compiletime.testing.typeChecks */
     def typeChecks(tree: Tree)(using Context): Tree =
-      val errors = compileForErrors(tree, true)
+      val errors = compileForErrors(tree)
       Literal(Constant(errors.isEmpty)).withSpan(tree.span)
 
     /** Expand call to scala.compiletime.testing.typeCheckErrors */
     def typeCheckErrors(tree: Tree)(using Context): Tree =
-      val errors = compileForErrors(tree, false)
+      val errors = compileForErrors(tree)
       packErrors(errors)
 
     /** Expand call to scala.compiletime.codeOf */

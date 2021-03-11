@@ -78,7 +78,7 @@ object report:
   def errorOrMigrationWarning(msg: Message, pos: SrcPos = NoSourcePosition,
       from: SourceVersion = SourceVersion.defaultSourceVersion)(using Context): Unit =
     if sourceVersion.isAtLeast(from) then
-      if sourceVersion.isMigrating then migrationWarning(msg, pos)
+      if sourceVersion.isMigrating && sourceVersion.ordinal <= from.ordinal then migrationWarning(msg, pos)
       else error(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =

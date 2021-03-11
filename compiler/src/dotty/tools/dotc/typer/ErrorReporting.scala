@@ -117,14 +117,25 @@ object ErrorReporting {
     }
 
     /** A subtype log explaining why `found` does not conform to `expected` */
-    def whyNoMatchStr(found: Type, expected: Type): String = {
-      if (ctx.settings.explainTypes.value)
-        i"""
-           |${ctx.typerState.constraint}
-           |${TypeComparer.explained(_.isSubType(found, expected))}"""
-      else
-        ""
-    }
+    def whyNoMatchStr(found: Type, expected: Type): String =
+      val header =
+        i"""I tried to show that
+          |  $found
+          |conforms to
+          |  $expected
+          |but the comparison trace ended with `false`:
+          """
+      val c = ctx.typerState.constraint
+      val constraintText =
+        if c.domainLambdas.isEmpty then
+          "the empty constraint"
+        else
+          i"""a constraint with:
+             |${c.contentsToString}"""
+      i"""
+        |${TypeComparer.explained(_.isSubType(found, expected), header)}
+        |
+        |The tests were made under $constraintText"""
 
     /** Format `raw` implicitNotFound or implicitAmbiguous argument, replacing
      *  all occurrences of `${X}` where `X` is in `paramNames` with the
@@ -141,7 +152,7 @@ object ErrorReporting {
          |${fail.whyFailed.message.indented(8)}"""
 
     def selectErrorAddendum
-      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String)
+      (tree: untpd.RefTree, qual1: Tree, qualType: Type, suggestImports: Type => String, foundWithoutNull: Boolean = false)
       (using Context): String =
 
       val attempts = mutable.ListBuffer[(Tree, String)]()
@@ -155,7 +166,13 @@ object ErrorReporting {
           case fail: FailedExtension => attempts += ((failure.tree, whyFailedStr(fail)))
           case fail: Implicits.NoMatchingImplicits => // do nothing
           case _ => attempts += ((failure.tree, ""))
-      if qualType.derivesFrom(defn.DynamicClass) then
+      if foundWithoutNull then
+        i""".
+          |Since explicit-nulls is enabled, the selection is rejected because
+          |${qualType.widen} could be null at runtime.
+          |If you want to select ${tree.name} without checking for a null value,
+          |insert a .nn before .${tree.name} or import scala.language.unsafeNulls."""
+      else if qualType.derivesFrom(defn.DynamicClass) then
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
         val attemptStrings =

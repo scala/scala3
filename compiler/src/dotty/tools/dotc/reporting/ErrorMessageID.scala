@@ -170,7 +170,9 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     TraitMayNotDefineNativeMethodID,
     JavaEnumParentArgsID,
     AlreadyDefinedID,
-    CaseClassInInlinedCodeID
+    CaseClassInInlinedCodeID,
+    OverrideTypeMismatchErrorID,
+    OverrideErrorID
 
   def errorNumber = ordinal - 2
 }

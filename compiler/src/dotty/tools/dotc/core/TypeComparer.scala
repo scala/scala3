@@ -206,7 +206,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  code would have two extra parameters for each of the many calls that go from
    *  one sub-part of isSubType to another.
    */
-  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)} ${approx.show}", subtyping) {
+  protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
 
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
@@ -2276,13 +2276,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       NoType
   }
 
-  /** Show type, handling type types better than the default */
-  private def showType(tp: Type)(using Context) = tp match {
-    case ClassInfo(_, cls, _, _, _) => cls.showLocated
-    case bounds: TypeBounds => "type bounds" + bounds.show
-    case _ => tp.show
-  }
-
   /** A comparison function to pick a winner in case of a merge conflict */
   private def isAsGood(tp1: Type, tp2: Type): Boolean = tp1 match {
     case tp1: ClassInfo =>
@@ -2522,19 +2515,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
       case (tp1: TypeProxy, tp2: TypeProxy) =>
-        provablyDisjoint(matchTypeSuperType(tp1), tp2) || provablyDisjoint(tp1, matchTypeSuperType(tp2))
+        provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, _) =>
-        provablyDisjoint(matchTypeSuperType(tp1), tp2)
+        provablyDisjoint(tp1.superType, tp2)
       case (_, tp2: TypeProxy) =>
-        provablyDisjoint(tp1, matchTypeSuperType(tp2))
+        provablyDisjoint(tp1, tp2.superType)
       case _ =>
         false
     }
   }
-
-  /** Restores the buggy match type reduction under -Yunsound-match-types. */
-  private def matchTypeSuperType(tp: TypeProxy): Type =
-    if ctx.settings.YunsoundMatchTypes.value then tp.underlying else tp.superType
 
   protected def explainingTypeComparer = ExplainingTypeComparer(comparerContext)
   protected def trackingTypeComparer = TrackingTypeComparer(comparerContext)
@@ -2546,10 +2535,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     finally myInstance = saved
 
   /** The trace of comparison operations when performing `op` */
-  def explained[T](op: ExplainingTypeComparer => T)(using Context): String =
+  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     val cmp = explainingTypeComparer
     inSubComparer(cmp)(op)
-    cmp.lastTrace()
+    cmp.lastTrace(header)
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     inSubComparer(trackingTypeComparer)(op)
@@ -2565,10 +2554,13 @@ object TypeComparer {
     var tpe: Type = NoType
   }
 
-  private[core] def show(res: Any)(using Context): String = res match {
-    case res: printing.Showable if !ctx.settings.YexplainLowlevel.value => res.show
-    case _ => String.valueOf(res)
-  }
+  private[core] def show(res: Any)(using Context): String =
+    if ctx.settings.YexplainLowlevel.value then String.valueOf(res)
+    else res match
+      case ClassInfo(_, cls, _, _, _) => cls.showLocated
+      case bounds: TypeBounds => i"type bounds [$bounds]"
+      case res: printing.Showable => res.show
+      case _ => String.valueOf(res)
 
   /** The approximation state indicates how the pair of types currently compared
    *  relates to the types compared originally.
@@ -2595,8 +2587,8 @@ object TypeComparer {
       def addLow: Repr = approx | LoApprox
       def addHigh: Repr = approx | HiApprox
       def show: String =
-        val lo = if low then "LoApprox" else ""
-        val hi = if high then "HiApprox" else ""
+        val lo = if low then " (left is approximated)" else ""
+        val hi = if high then " (right is approximated)" else ""
         lo ++ hi
   end ApproxState
   type ApproxState = ApproxState.Repr
@@ -2698,8 +2690,8 @@ object TypeComparer {
   def constrainPatternType(pat: Type, scrut: Type)(using Context): Boolean =
     comparing(_.constrainPatternType(pat, scrut))
 
-  def explained[T](op: ExplainingTypeComparer => T)(using Context): String =
-    comparing(_.explained(op))
+  def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
+    comparing(_.explained(op, header))
 
   def tracked[T](op: TrackingTypeComparer => T)(using Context): T =
     comparing(_.tracked(op))
@@ -2848,17 +2840,20 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       res
     }
 
+  private def frozenNotice: String =
+    if frozenConstraint then " in frozen constraint" else ""
+
   override def isSubType(tp1: Type, tp2: Type, approx: ApproxState): Boolean =
     def moreInfo =
       if Config.verboseExplainSubtype || ctx.settings.verbose.value
       then s" ${tp1.getClass} ${tp2.getClass}"
       else ""
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)}$moreInfo ${approx.show} ${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)}  <:  ${show(tp2)}$moreInfo${approx.show}$frozenNotice") {
       super.isSubType(tp1, tp2, approx)
     }
 
   override def recur(tp1: Type, tp2: Type): Boolean =
-    traceIndented(s"${show(tp1)} <:< ${show(tp2)} recur ${if (frozenConstraint) " frozen" else ""}") {
+    traceIndented(s"${show(tp1)}  <:  ${show(tp2)} (recurring)$frozenNotice") {
       super.recur(tp1, tp2)
     }
 
@@ -2882,5 +2877,5 @@ class ExplainingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       super.addConstraint(param, bound, fromBelow)
     }
 
-  def lastTrace(): String = "Subtype trace:" + { try b.toString finally b.clear() }
+  def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
 }

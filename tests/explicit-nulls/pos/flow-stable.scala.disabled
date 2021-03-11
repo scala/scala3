@@ -1,0 +1,15 @@
+// TODO: temporarily disable,
+// in the if expression, `x.type` becomes `((x : T | Null) & T).type` due to `x != null`
+// We need to make sure `(x : T | Null) & T` stable and concrete in order to use `.type`
+
+class S {
+  def i[T](x: T): x.type = x
+
+  def f[T <: AnyRef](x: T | Null): x.type & T = {
+    if x != null then
+      // Any TermRef of x is rewriten to `x.asInstanceOf[(T | Null) & T]
+      i[x.type](x)
+    else
+      throw Exception()
+  }
+}

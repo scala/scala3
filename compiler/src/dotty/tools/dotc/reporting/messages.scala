@@ -7,6 +7,7 @@ import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
+import NameKinds.WildcardParamName
 import util.SourcePosition
 import parsing.Scanners.Token
 import parsing.Tokens
@@ -44,8 +45,10 @@ import transform.SymUtils._
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId):
+  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context) extends Message(errorId):
     def kind = "Type Mismatch"
+    def explain = err.whyNoMatchStr(found, expected)
+    override def canExplain = true
 
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Naming"
@@ -149,10 +152,10 @@ import transform.SymUtils._
   extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
     def msg = {
       val ofFun =
-        if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function:\n$tree"
-        else
-          ""
+        if param.name.is(WildcardParamName)
+           || (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+        then i" of expanded function:\n$tree"
+        else ""
 
       val inferred =
         if (pt == WildcardType) ""
@@ -236,7 +239,7 @@ import transform.SymUtils._
   }
 
   class TypeMismatch(found: Type, expected: Type, addenda: => String*)(using Context)
-    extends TypeMismatchMsg(TypeMismatchID):
+    extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
     // the idea is that if the bounds are also not-subtypes of each other to report
@@ -274,9 +277,7 @@ import transform.SymUtils._
       val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(using printCtx)
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
-        + whereSuffix + err.whyNoMatchStr(found, expected) + postScript
-
-    def explain = ""
+        + whereSuffix + postScript
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
@@ -1074,6 +1075,14 @@ import transform.SymUtils._
            |"""
   }
 
+  class OverrideError(override val msg: String) extends DeclarationMsg(OverrideErrorID):
+    def explain = ""
+
+  class OverrideTypeMismatchError(override val msg: String, memberTp: Type, otherTp: Type)(using Context)
+  extends DeclarationMsg(OverrideTypeMismatchErrorID):
+    def explain = err.whyNoMatchStr(memberTp, otherTp)
+    override def canExplain = true
+
   class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
   extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
     def msg = em"${definition.name} is a forward reference extending over the definition of ${value.name}"
@@ -1324,7 +1333,7 @@ import transform.SymUtils._
         if (isNullary) "\nNullary methods may not be called with parenthesis"
         else ""
 
-      "You have specified more parameter lists as defined in the method definition(s)." + addendum
+      "You have specified more parameter lists than defined in the method definition(s)." + addendum
     }
 
   }
@@ -1414,36 +1423,22 @@ import transform.SymUtils._
   }
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
-    extends TypeMismatchMsg(DoesNotConformToBoundID) {
-    def msg = em"Type argument ${tpe} does not conform to $which bound $bound${err.whyNoMatchStr(tpe, bound)}"
-    def explain = ""
+    extends TypeMismatchMsg(tpe, bound)(DoesNotConformToBoundID) {
+    def msg = em"Type argument ${tpe} does not conform to $which bound $bound"
   }
 
   class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
-                                      otherSelf: Type, relation: String, other: Symbol)(
+                                 otherSelf: Type, relation: String, other: Symbol)(
     implicit ctx: Context)
-    extends TypeMismatchMsg(DoesNotConformToSelfTypeID) {
+    extends TypeMismatchMsg(selfType, otherSelf)(DoesNotConformToSelfTypeID) {
     def msg = em"""$category: self type $selfType of $cls does not conform to self type $otherSelf
                   |of $relation $other"""
-    def explain =
-      em"""You mixed in $other which requires self type $otherSelf, but $cls has self type
-          |$selfType and does not inherit from $otherSelf.
-          |
-          |Note: Self types are indicated with the notation
-          |  ${s"class "}$other ${hl("{ this: ")}$otherSelf${hl(" => ")}
-        """
   }
 
   class DoesNotConformToSelfTypeCantBeInstantiated(tp: Type, selfType: Type)(
     implicit ctx: Context)
-    extends TypeMismatchMsg(DoesNotConformToSelfTypeCantBeInstantiatedID) {
+    extends TypeMismatchMsg(tp, selfType)(DoesNotConformToSelfTypeCantBeInstantiatedID) {
     def msg = em"""$tp does not conform to its self type $selfType; cannot be instantiated"""
-    def explain =
-      em"""To create an instance of $tp it needs to inherit $selfType in some way.
-          |
-          |Note: Self types are indicated with the notation
-          |  ${s"class "}$tp ${hl("{ this: ")}$selfType${hl(" => ")}
-          |"""
   }
 
   class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
@@ -2207,7 +2202,7 @@ import transform.SymUtils._
   }
 
   class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
-    extends TypeMismatchMsg(NoMatchingOverloadID) {
+    extends TypeMsg(NoMatchingOverloadID) {
     def msg =
       em"""None of the ${err.overloadedAltsStr(alternatives)}
           |match ${err.expectedTypeStr(pt)}"""

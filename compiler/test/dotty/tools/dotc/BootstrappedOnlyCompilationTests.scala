@@ -24,8 +24,8 @@ class BootstrappedOnlyCompilationTests {
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
     aggregateTests(
-      compileFilesInDir("tests/bench", defaultOptions),
-      compileFilesInDir("tests/pos-macros", defaultOptions),
+      compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
+      compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
       compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
       compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
       compileDir("tests/pos-special/i11331.1", defaultOptions),
@@ -98,7 +98,7 @@ class BootstrappedOnlyCompilationTests {
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
     aggregateTests(
-      compileFilesInDir("tests/neg-macros", defaultOptions),
+      compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros")),
       compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
     ).checkExpectedErrors()
   }
@@ -116,9 +116,9 @@ class BootstrappedOnlyCompilationTests {
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     aggregateTests(
-      compileFilesInDir("tests/run-macros", defaultOptions),
+      compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros")),
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
-      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions and "-Yerased-terms"),
+      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-Yerased-terms").and("-Xcheck-macros")),
     )
   }.checkRuns()
 

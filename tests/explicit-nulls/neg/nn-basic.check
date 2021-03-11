@@ -1,0 +1,16 @@
+-- [E008] Not Found Error: tests/explicit-nulls/neg/nn-basic.scala:3:21 ------------------------------------------------
+3 |  val s2: String = s.trim // error
+  |                   ^^^^^^
+  |                   value trim is not a member of String | Null.
+  |                   Since explicit-nulls is enabled, the selection is rejected because
+  |                   String | Null could be null at runtime.
+  |                   If you want to select trim without checking for a null value,
+  |                   insert a .nn before .trim or import scala.language.unsafeNulls.
+-- [E008] Not Found Error: tests/explicit-nulls/neg/nn-basic.scala:5:17 ------------------------------------------------
+5 |  val l: Int = s.length // error
+  |               ^^^^^^^^
+  |               value length is not a member of String | Null.
+  |               Since explicit-nulls is enabled, the selection is rejected because
+  |               String | Null could be null at runtime.
+  |               If you want to select length without checking for a null value,
+  |               insert a .nn before .length or import scala.language.unsafeNulls.

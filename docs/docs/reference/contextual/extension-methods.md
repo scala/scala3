@@ -89,13 +89,13 @@ List("a", "bb", "ccc").sumBy[Int](_.length)
 ```
 
 By contrast, type arguments matching type parameters following `extension` can be passed
-only if the method is referenced as a regular method:
+only if the method is referenced as a non-extension method:
 
 ```scala
 sumBy[String](List("a", "bb", "ccc"))(_.length)
 ```
 
-or, passing, both type arguments
+Or, when passing both type arguments:
 
 ```scala
 sumBy[String](List("a", "bb", "ccc"))[Int](_.length)

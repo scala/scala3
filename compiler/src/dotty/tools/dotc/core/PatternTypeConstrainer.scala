@@ -140,8 +140,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
         case AndType(pat1, pat2) =>
           constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
-        case scrut: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(scrut), pat)
+        case pat: RefinedOrRecType =>
+          constrainPatternType(stripRefinement(pat), scrut)
         case pat =>
           constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
       }

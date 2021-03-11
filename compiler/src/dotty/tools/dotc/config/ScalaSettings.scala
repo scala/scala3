@@ -103,7 +103,9 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val semanticdbTarget: Setting[String] = PathSetting("-semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
 
   val deprecation: Setting[Boolean] = BooleanSetting("-deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
-  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail.", aliases = List("--explain-types"))
+  val explainTypes: Setting[Boolean] = BooleanSetting("-explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types"))
+    // this setting is necessary for cross compilation, since it is mentioned in sbt-tpolecat, for instance
+    // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
   val explain: Setting[Boolean] = BooleanSetting("-explain", "Explain errors in more detail.", aliases = List("--explain"))
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", supportedReleaseVersions, "", aliases = List("--release"))
@@ -150,6 +152,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val XimportSuggestionTimeout: Setting[Int] = IntSetting("-Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
   val Xsemanticdb: Setting[Boolean] = BooleanSetting("-Xsemanticdb", "Store information in SemanticDB.", aliases = List("-Ysemanticdb"))
   val Xtarget: Setting[String] = ChoiceSetting("-Xtarget", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. When on JDK 9+, consider -release as a safer alternative.", supportedTargetVersions, "", aliases = List("--Xtarget"))
+  val XcheckMacros: Setting[Boolean] = BooleanSetting("-Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
 
   val XmixinForceForwarders = ChoiceSetting(
     name    = "-Xmixin-force-forwarders",
@@ -225,9 +228,8 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
   val YerasedTerms: Setting[Boolean] = BooleanSetting("-Yerased-terms", "Allows the use of erased terms.")
-  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ycheck-init", "Check initialization of objects")
+  val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
-  val YunsoundMatchTypes: Setting[Boolean] = BooleanSetting("-Yunsound-match-types", "Use unsound match type reduction algorithm.")
 
   /** Area-specific debug output */
   val YexplainLowlevel: Setting[Boolean] = BooleanSetting("-Yexplain-lowlevel", "When explaining type errors, show types at a lower level.")

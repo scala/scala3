@@ -572,8 +572,9 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType) ||
-        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
+        (myInfo `eq` NoType)
+        || is(Invisible) && !ctx.isAfterTyper
+        || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -797,7 +798,8 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
+      then symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -1828,10 +1830,14 @@ object SymDenotations {
       )
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
-      derivesFrom(base) ||
-        base.isClass && (
-          (symbol eq defn.NothingClass) ||
-            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+      derivesFrom(base)
+      || base.isClass
+         && (
+          (symbol eq defn.NothingClass)
+          || (symbol eq defn.NullClass)
+              && (!ctx.mode.is(Mode.SafeNulls) || ctx.phase.erasedTypes)
+              && (base ne defn.NothingClass)
+        )
 
     /** Is it possible that a class inherits both `this` and `that`?
      *

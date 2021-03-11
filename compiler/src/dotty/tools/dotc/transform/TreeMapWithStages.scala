@@ -64,12 +64,17 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
     case _ =>
   }
 
-  /** Transform the quote `quote` which contains the quoted `body`. */
-  protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree =
-    quote match {
-      case quote: Apply => cpy.Apply(quote)(quote.fun, body :: Nil)
-      case quote: TypeApply => cpy.TypeApply(quote)(quote.fun, body :: Nil)
-    }
+  /** Transform the quote `quote` which contains the quoted `body`.
+   *
+   *  - `quoted.runtime.Expr.quote[T](<body0>)`  --> `quoted.runtime.Expr.quote[T](<body>)`
+   *  - `quoted.Type.of[<body0>](quotes)`  --> `quoted.Type.of[<body>](quotes)`
+   */
+  protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree =
+    if body.isTerm then
+      cpy.Apply(quote)(quote.fun, body :: Nil)
+    else
+      val TypeApply(fun, _) = quote.fun
+      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body :: Nil), quote.args)
 
   /** Transform the expression splice `splice` which contains the spliced `body`. */
   protected def transformSplice(body: Tree, splice: Apply)(using Context): Tree
@@ -98,17 +103,17 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
         case Apply(Select(Quoted(quotedTree), _), _) if quotedTree.isType =>
           dropEmptyBlocks(quotedTree) match
             case SplicedType(t) =>
-              // '[ x.$splice ] --> x
+              // Optimization: `quoted.Type.of[x.Underlying]` --> `x`
               transform(t)
             case _ =>
               super.transform(tree)
 
-        case Quoted(quotedTree) =>
+        case tree @ Quoted(quotedTree) =>
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(quotedTree) match {
             case Spliced(t) =>
-              // '{ $x } --> x
+              // Optimization: `'{ $x }` --> `x`
               // and adapt the refinement of `Quotes { type reflect: ... } ?=> Expr[T]`
               transform(t).asInstance(tree.tpe)
             case _ => transformQuotation(quotedTree, tree)
@@ -119,7 +124,9 @@ abstract class TreeMapWithStages(@constructorOnly ictx: Context) extends TreeMap
           val old = inQuoteOrSplice
           inQuoteOrSplice = true
           try dropEmptyBlocks(splicedTree) match {
-            case Quoted(t) => transform(t) // ${ 'x } --> x
+            case Quoted(t) =>
+              // Optimization: `${ 'x }` --> `x`
+              transform(t)
             case _ => transformSplice(splicedTree, tree)
           }
           finally inQuoteOrSplice = old

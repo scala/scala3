@@ -1,4 +1,3 @@
-
 // Test that is fixed when explicit nulls are enabled.
 // https://github.com/lampepfl/dotty/issues/6247
 

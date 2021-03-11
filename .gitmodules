@@ -187,3 +187,9 @@
 [submodule "community-build/community-projects/protoquill"]
 	path = community-build/community-projects/protoquill
 	url = https://github.com/dotty-staging/protoquill.git
+[submodule "community-build/community-projects/onnx-scala"]
+	path = community-build/community-projects/onnx-scala
+	url = https://github.com/dotty-staging/onnx-scala.git
+[submodule "community-build/community-projects/cask"]
+	path = community-build/community-projects/cask
+	url = https://github.com/dotty-staging/cask.git

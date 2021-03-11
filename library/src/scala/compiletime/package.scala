@@ -100,29 +100,16 @@ package object compiletime {
     // implemented in dotty.tools.dotc.typer.Inliner
     error("Compiler bug: `constValue` was not evaluated by the compiler")
 
-  /**
-   * Use this type to widen a self-type to a tuple. E.g.
-   * ```scala
-   * val x: (1, 3) = (1, 3)
-   * val y: Widen[x.type] = x
-   * ```
-   * @syntax markdown
-   */
-  type Widen[Tup <: Tuple] <: Tuple = Tup match {
-    case EmptyTuple => EmptyTuple
-    case h *: t => h *: t
-  }
-
   /** Given a tuple type `(X1, ..., Xn)`, returns a tuple value
    *  `(constValue[X1], ..., constValue[Xn])`.
    */
-  inline def constValueTuple[T <: Tuple]: Widen[T]=
+  inline def constValueTuple[T <: Tuple]: T =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => constValue[t] *: constValueTuple[ts]
       end match
-    res.asInstanceOf[Widen[T]]
+    res.asInstanceOf[T]
   end constValueTuple
 
   /** Summons first given matching one of the listed cases. E.g. in
@@ -159,16 +146,16 @@ package object compiletime {
    *  @tparam T the tuple containing the types of the values to be summoned
    *  @return the given values typed as elements of the tuple
    */
-  inline def summonAll[T <: Tuple]: Widen[T] =
+  inline def summonAll[T <: Tuple]: T =
     val res =
       inline erasedValue[T] match
         case _: EmptyTuple => EmptyTuple
         case _: (t *: ts) => summonInline[t] *: summonAll[ts]
       end match
-    res.asInstanceOf[Widen[T]]
+    res.asInstanceOf[T]
   end summonAll
 
-  /** Succesor of a natural number where zero is the type 0 and successors are reduced as if the definition was
+  /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was
    *
    *  ```scala
    *  type S[N <: Int] <: Int = N match {

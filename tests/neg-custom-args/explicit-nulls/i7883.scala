@@ -6,4 +6,11 @@ object Test extends App {
       case r(hd, tl) => Some((hd, tl))  // error // error // error
       case _ => None
     }
+
+  def headUnsafe(s: String, r: Regex): Option[(String, String)] =
+    import scala.language.unsafeNulls
+    s.trim match {
+      case r(hd, tl) => Some((hd, tl))
+      case _ => None
+    }
 }

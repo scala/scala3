@@ -7,14 +7,21 @@ Explicit nulls is an opt-in feature that modifies the Scala type system, which m
 (anything that extends `AnyRef`) _non-nullable_.
 
 This means the following code will no longer typecheck:
+
 ```scala
-val x: String = null // error: found `Null`,  but required `String`
+val x: String = null // error: found `Null`, but required `String`
 ```
 
 Instead, to mark a type as nullable we use a [union type](../new-types/union-types.md)
 
 ```scala
 val x: String | Null = null // ok
+```
+
+A nullable type could have null value during runtime; hence, it is not safe to select a member without checking its nullity.
+
+```scala
+x.trim // error: trim is not member of String | Null
 ```
 
 Explicit nulls are enabled via a `-Yexplicit-nulls` flag.
@@ -24,13 +31,38 @@ Read on for details.
 ## New Type Hierarchy
 
 When explicit nulls are enabled, the type hierarchy changes so that `Null` is only a subtype of
-`Any`, as opposed to every reference type.
+`Any`, as opposed to every reference type, which means `null` is no longer a value of `AnyRef` and its subtypes.
 
 This is the new type hierarchy:
 
-![](../../../images/explicit-nulls/explicit-nulls-type-hierarchy.png "Type Hierarchy for Explicit Nulls")
+!["Type Hierarchy for Explicit Nulls"](../../../images/explicit-nulls/explicit-nulls-type-hierarchy.png)
 
 After erasure, `Null` remains a subtype of all reference types (as forced by the JVM).
+
+## Working with `Null`
+
+To make working with nullable values easier, we propose adding a few utilities to the standard library.
+So far, we have found the following useful:
+
+- An extension method `.nn` to "cast away" nullability
+
+  ```scala
+   extension [T](x: T | Null)
+     inline def nn: T =
+       assert(x != null)
+       x.asInstanceOf[T]
+  ```
+
+  This means that given `x: String | Null`, `x.nn` has type `String`, so we can call all the
+  usual methods on it. Of course, `x.nn` will throw a NPE if `x` is `null`.
+
+  Don't use `.nn` on mutable variables directly, because it may introduce an unknown type into the type of the variable.
+
+- An `unsafeNulls` language feature.
+
+  When imported, `T | Null` can be used as `T`, similar to regular Scala (without explicit nulls).
+
+  See [UnsafeNulls](#UnsafeNulls) section for more details.
 
 ## Unsoundness
 
@@ -47,7 +79,7 @@ val c = new C()
 // c.f == "field is null"
 ```
 
-The unsoundness above can be caught by the compiler with the option `-Ycheck-init`.
+The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
 More details can be found in [safe initialization](./safe-initialization.md).
 
 ## Equality
@@ -73,25 +105,6 @@ y == x          // ok
 (x: Any) == null            // ok
 ```
 
-## Working with `Null`
-
-To make working with nullable values easier, we propose adding a few utilities to the standard library.
-So far, we have found the following useful:
-
-  - An extension method `.nn` to "cast away" nullability
-
-    ```scala
-    extension [T](x: T | Null)
-      inline def nn: T =
-        assert(x != null)
-        x.asInstanceOf[T]
-    ```
-
-    This means that given `x: String|Null`, `x.nn` has type `String`, so we can call all the
-    usual methods on it. Of course, `x.nn` will throw a NPE if `x` is `null`.
-
-    Don't use `.nn` on mutable variables directly, because it may introduce an unknown type into the type of the variable.
-
 ## Java Interoperability
 
 The Scala compiler can load Java classes in two ways: from source or from bytecode. In either case,
@@ -99,188 +112,185 @@ when a Java class is loaded, we "patch" the type of its members to reflect that 
 remain implicitly nullable.
 
 Specifically, we patch
-* the type of fields
-* the argument type and return type of methods
 
-`UncheckedNull` is an alias for `Null` with magic properties (see [below](#uncheckednull)). We illustrate the rules with following examples:
+- the type of fields
 
-  * The first two rules are easy: we nullify reference types but not value types.
+- the argument type and return type of methods
 
-    ```java
-    class C {
-       String s;
-       int x;
-    }
-    ```
-    ==>
-    ```scala
-    class C:
-       val s: String|UncheckedNull
-       val x: Int
-    ```
+We illustrate the rules with following examples:
 
-  * We nullify type parameters because in Java a type parameter is always nullable, so the following code compiles.
+- The first two rules are easy: we nullify reference types but not value types.
 
-    ```java
-    class C<T> { T foo() { return null; } }
-    ```
-    ==>
-    ```scala
-    class C[T] { def foo(): T|UncheckedNull }
-    ```
+  ```java
+  class C {
+     String s;
+     int x;
+  }
+  ```
 
-    Notice this is rule is sometimes too conservative, as witnessed by
+  ==>
 
-    ```scala
-    class InScala:
-       val c: C[Bool] = ???  // C as above
-       val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool|Null
-    ```
+  ```scala
+  class C:
+     val s: String | Null
+     val x: Int
+  ```
 
-  * This reduces the number of redundant nullable types we need to add. Consider
+- We nullify type parameters because in Java a type parameter is always nullable, so the following code compiles.
 
-    ```java
-    class Box<T> { T get(); }
-    class BoxFactory<T> { Box<T> makeBox(); }
-    ```
-    ==>
-    ```scala
-    class Box[T] { def get(): T|UncheckedNull }
-    class BoxFactory[T] { def makeBox(): Box[T]|UncheckedNull }
-    ```
+  ```java
+  class C<T> { T foo() { return null; } }
+  ```
 
-    Suppose we have a `BoxFactory[String]`. Notice that calling `makeBox()` on it returns a
-    `Box[String]|UncheckedNull`, not a `Box[String|UncheckedNull]|UncheckedNull`. This seems at first
-    glance unsound ("What if the box itself has `null` inside?"), but is sound because calling
-    `get()` on a `Box[String]` returns a `String|UncheckedNull`.
+  ==>
 
-    Notice that we need to patch _all_ Java-defined classes that transitively appear in the
-    argument or return type of a field or method accessible from the Scala code being compiled.
-    Absent crazy reflection magic, we think that all such Java classes _must_ be visible to
-    the Typer in the first place, so they will be patched.
+  ```scala
+  class C[T] { def foo(): T | Null }
+  ```
 
-  * We will append `UncheckedNull` to the type arguments if the generic class is defined in Scala.
+  Notice this is rule is sometimes too conservative, as witnessed by
 
-    ```java
-    class BoxFactory<T> {
-      Box<T> makeBox(); // Box is Scala-defined
-      List<Box<List<T>>> makeCrazyBoxes(); // List is Java-defined
-    }
-    ```
-    ==>
-    ```scala
-    class BoxFactory[T]:
-       def makeBox(): Box[T | UncheckedNull] | UncheckedNull
-       def makeCrazyBoxes(): List[Box[List[T] | UncheckedNull]] | UncheckedNull
-    ```
+  ```scala
+  class InScala:
+     val c: C[Bool] = ???  // C as above
+     val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool | Null
+  ```
 
-    In this case, since `Box` is Scala-defined, we will get `Box[T|UncheckedNull]|UncheckedNull`.
-    This is needed because our nullability function is only applied (modularly) to the Java
-    classes, but not to the Scala ones, so we need a way to tell `Box` that it contains a
-    nullable value.
+- We can reduce the number of redundant nullable types we need to add. Consider
 
-    The `List` is Java-defined, so we don't append `UncheckedNull` to its type argument. But we
-    still need to nullify its inside.
+  ```java
+  class Box<T> { T get(); }
+  class BoxFactory<T> { Box<T> makeBox(); }
+  ```
 
-  * We don't nullify _simple_ literal constant (`final`) fields, since they are known to be non-null
+  ==>
 
-    ```java
-    class Constants {
-       final String NAME = "name";
-       final int AGE = 0;
-       final char CHAR = 'a';
+  ```scala
+  class Box[T] { def get(): T | Null }
+  class BoxFactory[T] { def makeBox(): Box[T] | Null }
+  ```
 
-       final String NAME_GENERATED = getNewName();
-    }
-    ```
-    ==>
-    ```scala
-    class Constants:
-       val NAME: String("name") = "name"
-       val AGE: Int(0) = 0
-       val CHAR: Char('a') = 'a'
+  Suppose we have a `BoxFactory[String]`. Notice that calling `makeBox()` on it returns a
+  `Box[String] | Null`, not a `Box[String | Null] | Null`. This seems at first
+  glance unsound ("What if the box itself has `null` inside?"), but is sound because calling
+  `get()` on a `Box[String]` returns a `String | Null`.
 
-       val NAME_GENERATED: String | Null = ???
-    ```
+  Notice that we need to patch _all_ Java-defined classes that transitively appear in the
+  argument or return type of a field or method accessible from the Scala code being compiled.
+  Absent crazy reflection magic, we think that all such Java classes _must_ be visible to
+  the Typer in the first place, so they will be patched.
 
-  * We don't append `UncheckedNull` to a field nor to a return type of a method which is annotated with a
-    `NotNull` annotation.
+- We will append `Null` to the type arguments if the generic class is defined in Scala.
 
-    ```java
-    class C {
-       @NotNull String name;
-       @NotNull List<String> getNames(String prefix); // List is Java-defined
-       @NotNull Box<String> getBoxedName(); // Box is Scala-defined
-    }
-    ```
-    ==>
-    ```scala
-    class C:
-       val name: String
-       def getNames(prefix: String | UncheckedNull): List[String] // we still need to nullify the paramter types
-       def getBoxedName(): Box[String | UncheckedNull] // we don't append `UncheckedNull` to the outmost level, but we still need to nullify inside
-    ```
+  ```java
+  class BoxFactory<T> {
+    Box<T> makeBox(); // Box is Scala-defined
+    List<Box<List<T>>> makeCrazyBoxes(); // List is Java-defined
+  }
+  ```
 
-    The annotation must be from the list below to be recognized as `NotNull` by the compiler.
-    Check `Definitions.scala` for an updated list.
+  ==>
 
-    ```scala
-    // A list of annotations that are commonly used to indicate
-    // that a field/method argument or return type is not null.
-    // These annotations are used by the nullification logic in
-    // JavaNullInterop to improve the precision of type nullification.
-    // We don't require that any of these annotations be present
-    // in the class path, but we want to create Symbols for the
-    // ones that are present, so they can be checked during nullification.
-    @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
-      "javax.annotation.Nonnull" ::
-      "edu.umd.cs.findbugs.annotations.NonNull" ::
-      "androidx.annotation.NonNull" ::
-      "android.support.annotation.NonNull" ::
-      "android.annotation.NonNull" ::
-      "com.android.annotations.NonNull" ::
-      "org.eclipse.jdt.annotation.NonNull" ::
-      "org.checkerframework.checker.nullness.qual.NonNull" ::
-      "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
-      "org.jetbrains.annotations.NotNull" ::
-      "lombok.NonNull" ::
-      "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
-    ```
+  ```scala
+  class BoxFactory[T]:
+     def makeBox(): Box[T | Null] | Null
+     def makeCrazyBoxes(): java.util.List[Box[java.util.List[T] | Null]] | Null
+  ```
 
-### UncheckedNull
+  In this case, since `Box` is Scala-defined, we will get `Box[T | Null] | Null`.
+  This is needed because our nullability function is only applied (modularly) to the Java
+  classes, but not to the Scala ones, so we need a way to tell `Box` that it contains a
+  nullable value.
 
-To enable method chaining on Java-returned values, we have the special type alias for `Null`:
+  The `List` is Java-defined, so we don't append `Null` to its type argument. But we
+  still need to nullify its inside.
 
-```scala
-type UncheckedNull = Null
-```
+- We don't nullify _simple_ literal constant (`final`) fields, since they are known to be non-null
 
-`UncheckedNull` behaves just like `Null`, except it allows (unsound) member selections:
+  ```java
+  class Constants {
+     final String NAME = "name";
+     final int AGE = 0;
+     final char CHAR = 'a';
 
-```scala
-// Assume someJavaMethod()'s original Java signature is
-// String someJavaMethod() {}
-val s2: String = someJavaMethod().trim().substring(2).toLowerCase() // unsound
-```
+     final String NAME_GENERATED = getNewName();
+  }
+  ```
 
-Here, all of `trim`, `substring` and `toLowerCase` return a `String|UncheckedNull`.
-The Typer notices the `UncheckedNull` and allows the member selection to go through.
-However, if `someJavaMethod` were to return `null`, then the first member selection
-would throw a `NPE`.
+  ==>
 
-Without `UncheckedNull`, the chaining becomes too cumbersome
+  ```scala
+  class Constants:
+     val NAME: String("name") = "name"
+     val AGE: Int(0) = 0
+     val CHAR: Char('a') = 'a'
+
+     val NAME_GENERATED: String | Null = getNewName()
+  ```
+
+- We don't append `Null` to a field nor to a return type of a method which is annotated with a
+  `NotNull` annotation.
+
+  ```java
+  class C {
+     @NotNull String name;
+     @NotNull List<String> getNames(String prefix); // List is Java-defined
+     @NotNull Box<String> getBoxedName(); // Box is Scala-defined
+  }
+  ```
+
+  ==>
+
+  ```scala
+  class C:
+     val name: String
+     def getNames(prefix: String | Null): java.util.List[String] // we still need to nullify the paramter types
+     def getBoxedName(): Box[String | Null] // we don't append `Null` to the outmost level, but we still need to nullify inside
+  ```
+
+  The annotation must be from the list below to be recognized as `NotNull` by the compiler.
+  Check `Definitions.scala` for an updated list.
+
+  ```scala
+  // A list of annotations that are commonly used to indicate
+  // that a field/method argument or return type is not null.
+  // These annotations are used by the nullification logic in
+  // JavaNullInterop to improve the precision of type nullification.
+  // We don't require that any of these annotations be present
+  // in the class path, but we want to create Symbols for the
+  // ones that are present, so they can be checked during nullification.
+  @tu lazy val NotNullAnnots: List[ClassSymbol] = ctx.getClassesIfDefined(
+    "javax.annotation.Nonnull" ::
+    "edu.umd.cs.findbugs.annotations.NonNull" ::
+    "androidx.annotation.NonNull" ::
+    "android.support.annotation.NonNull" ::
+    "android.annotation.NonNull" ::
+    "com.android.annotations.NonNull" ::
+    "org.eclipse.jdt.annotation.NonNull" ::
+    "org.checkerframework.checker.nullness.qual.NonNull" ::
+    "org.checkerframework.checker.nullness.compatqual.NonNullDecl" ::
+    "org.jetbrains.annotations.NotNull" ::
+    "lombok.NonNull" ::
+    "io.reactivex.annotations.NonNull" :: Nil map PreNamedString)
+  ```
+
+### Override check
+
+When we check overriding between Scala classes and Java classes, the rules are relaxed for `Null` type with this feature, in order to help users to working with Java libraries.
+
+Suppose we have Java method `String f(String x)`, we can override this method in Scala in any of the following forms:
 
 ```scala
-val ret = someJavaMethod()
-val s2 =
-   if ret != null then
-      val tmp = ret.trim()
-      if tmp != null then
-         val tmp2 = tmp.substring(2)
-         if tmp2 != null then
-            tmp2.toLowerCase()
-// Additionally, we need to handle the `else` branches.
+def f(x: String | Null): String | Null
+
+def f(x: String): String | Null
+
+def f(x: String | Null): String
+
+def f(x: String): String
 ```
+
+Note that some of the definitions could cause unsoundness. For example, the return type is not nullable, but a `null` value is actually returned.
 
 ## Flow Typing
 
@@ -292,11 +302,11 @@ of an if-statement (among other places).
 Example:
 
 ```scala
-val s: String|Null = ???
+val s: String | Null = ???
 if s != null then
    // s: String
 
-// s: String|Null
+// s: String | Null
 
 assert(s != null)
 // s: String
@@ -306,7 +316,7 @@ A similar inference can be made for the `else` case if the test is `p == null`
 
 ```scala
 if s == null then
-   // s: String|Null
+   // s: String | Null
 else
    // s: String
 ```
@@ -318,15 +328,15 @@ else
 We also support logical operators (`&&`, `||`, and `!`):
 
 ```scala
-val s: String|Null = ???
-val s2: String|Null = ???
+val s: String | Null = ???
+val s2: String | Null = ???
 if s != null && s2 != null then
    // s: String
    // s2: String
 
 if s == null || s2 == null then
-   // s: String|Null
-   // s2: String|Null
+   // s: String | Null
+   // s2: String | Null
 else
    // s: String
    // s2: String
@@ -337,13 +347,13 @@ else
 We also support type specialization _within_ the condition, taking into account that `&&` and `||` are short-circuiting:
 
 ```scala
-val s: String|Null = ???
+val s: String | Null = ???
 
 if s != null && s.length > 0 then // s: String in `s.length > 0`
    // s: String
 
 if s == null || s.length > 0 then // s: String in `s.length > 0`
-   // s: String|Null
+   // s: String | Null
 else
    // s: String
 ```
@@ -353,7 +363,7 @@ else
 The non-null cases can be detected in match statements.
 
 ```scala
-val s: String|Null = ???
+val s: String | Null = ???
 
 s match
    case _: String => // s: String
@@ -365,9 +375,9 @@ s match
 We are able to detect the nullability of some local mutable variables. A simple example is:
 
 ```scala
-class C(val x: Int, val next: C|Null)
+class C(val x: Int, val next: C | Null)
 
-var xs: C|Null = C(1, C(2, null))
+var xs: C | Null = C(1, C(2, null))
 // xs is trackable, since all assignments are in the same method
 while xs != null do
    // xs: C
@@ -387,7 +397,7 @@ When dealing with local mutable variables, there are two questions:
    do flow typing on `x`.
 
    ```scala
-   var x: String|Null = ???
+   var x: String | Null = ???
    def y =
       x = null
 
@@ -399,12 +409,12 @@ When dealing with local mutable variables, there are two questions:
 2. Whether to generate and use flow typing on a specific _use_ of a local mutable variable.
    We only want to do flow typing on a use that belongs to the same method as the definition
    of the local variable.
-   For example, in the following code, even `x` is not assigned to by a closure, but we can only
-   use flow typing in one of the occurrences (because the other occurrence happens within a nested
-   closure).
+   For example, in the following code, even `x` is not assigned to by a closure, we can only
+   use flow typing in one of the occurrences (because the other occurrence happens within a
+   nested closure).
 
    ```scala
-   var x: String|Null = ???
+   var x: String | Null = ???
    def y =
       if x != null then
          // not safe to use the fact (x != null) here
@@ -415,7 +425,7 @@ When dealing with local mutable variables, there are two questions:
       x = null
    ```
 
-See more examples in `tests/explicit-nulls/neg/var-ref-in-closure.scala`.
+See [more examples](../../../../tests/explicit-nulls/neg/flow-varref-in-closure.scala).
 
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.
@@ -426,13 +436,97 @@ We don't support:
 
 - flow facts not related to nullability (`if x == 0 then { // x: 0.type not inferred }`)
 - tracking aliasing between non-nullable paths
+
   ```scala
-  val s: String|Null = ???
-  val s2: String|Null = ???
+  val s: String | Null = ???
+  val s2: String | Null = ???
   if s != null && s == s2 then
      // s:  String inferred
      // s2: String not inferred
   ```
+
+### UnsafeNulls
+
+It is difficult to work with many nullable values, we introduce a language feature `unsafeNulls`.
+Inside this "unsafe" scope, all `T | Null` values can be used as `T`.
+
+Users can import `scala.language.unsafeNulls` to create such scopes, or use `-language:unsafeNulls` to enable this feature globally (for migration purpose only).
+
+Assume `T` is a reference type (a subtype of `AnyRef`), the following unsafe operation rules are
+applied in this unsafe-nulls scope:
+
+1. the members of `T` can be found on `T | Null`
+
+2. a value with type `T` can be compared with `T | Null` and `Null`
+
+3. suppose `T1` is not a subtype of `T2` using explicit-nulls subtyping (where `Null` is a direct
+subtype of Any), extension methods and implicit conversions designed for `T2` can be used for
+`T1` if `T1` is a subtype of `T2` using regular subtyping rules (where `Null` is a subtype of every
+reference type)
+
+4. suppose `T1` is not a subtype of `T2` using explicit-nulls subtyping, a value with type `T1`
+can be used as `T2` if `T1` is a subtype of `T2` using regular subtyping rules
+
+Addtionally, `null` can be used as `AnyRef` (`Object`), which means you can select `.eq` or `.toString` on it.
+
+The program in `unsafeNulls` will have a **similar** semantic as regular Scala, but not **equivalent**.
+
+For example, the following code cannot be compiled even using unsafe nulls. Because of the
+Java interoperation, the type of the get method becomes `T | Null`.
+
+```Scala
+def head[T](xs: java.util.List[T]): T = xs.get(0) // error
+```
+
+Since the compiler doesn’t know whether `T` is a reference type, it is unable to cast `T | Null`
+to `T`. A `.nn` need to be inserted after `xs.get(0)` by user manually to fix the error, which
+strips the `Null` from its type.
+
+The intention of this `unsafeNulls` is to give users a better migration path for explicit nulls.
+Projects for Scala 2 or regular Scala 3 can try this by adding `-Yexplicit-nulls -language:unsafeNulls`
+to the compile options. A small number of manual modifications are expected. To migrate to the full
+explicit nulls feature in the future, `-language:unsafeNulls` can be dropped and add
+`import scala.language.unsafeNulls` only when needed.
+
+```scala
+def f(x: String): String = ???
+def nullOf[T >: Null]: T = null
+
+import scala.language.unsafeNulls
+
+val s: String | Null = ???
+val a: String = s // unsafely convert String | Null to String
+
+val b1 = s.trim // call .trim on String | Null unsafely
+val b2 = b1.length
+
+f(s).trim // pass String | Null as an argument of type String unsafely
+
+val c: String = null // Null to String
+
+val d1: Array[String] = ???
+val d2: Array[String | Null] = d1 // unsafely convert Array[String] to Array[String | Null]
+val d3: Array[String] = Array(null) // unsafe
+
+class C[T >: Null <: String] // define a type bound with unsafe conflict bound
+
+val n = nullOf[String] // apply a type bound unsafely
+```
+
+Without the `unsafeNulls`, all these unsafe operations will not be type-checked.
+
+`unsafeNulls` also works for extension methods and implicit search.
+
+```scala
+import scala.language.unsafeNulls
+
+val x = "hello, world!".split(" ").map(_.length)
+
+given Conversion[String, Array[String]] = _ => ???
+
+val y: String | Null = ???
+val z: Array[String | Null] = y
+```
 
 ## Binary Compatibility
 

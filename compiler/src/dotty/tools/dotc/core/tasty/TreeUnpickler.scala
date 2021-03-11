@@ -24,6 +24,7 @@ import Variances.Invariant
 import TastyUnpickler.NameTable
 import typer.ConstFold
 import typer.Checking.checkNonCyclic
+import typer.Nullables._
 import util.Spans._
 import util.SourceFile
 import ast.{TreeTypeMap, Trees, tpd, untpd}
@@ -362,7 +363,9 @@ class TreeUnpickler(reader: TastyReader,
               if nothingButMods(end) then
                 if lo.isMatch then MatchAlias(readVariances(lo))
                 else TypeAlias(readVariances(lo))
-              else TypeBounds(lo, readVariances(readType()))
+              else
+                val hi = readVariances(readType())
+                createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
               AnnotatedType(readType(), Annotation(readTerm()))
             case ANDtype =>
@@ -585,12 +588,10 @@ class TreeUnpickler(reader: TastyReader,
       val annots =  annotFns.map(_(sym.owner))
       sym.annotations = annots
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
-      val isSyntheticBeanAccessor = flags.isAllOf(Method | Synthetic) &&
-        annots.exists(a => a.matches(defn.BeanPropertyAnnot) || a.matches(defn.BooleanBeanPropertyAnnot))
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
-        case cls: ClassSymbol if (!isScala2MacroDefinedInScala3 || cls == defn.StringContextClass) && !isSyntheticBeanAccessor  =>
-          // Enter all members of classes that are not Scala 2 macros or synthetic bean accessors.
+        case cls: ClassSymbol if !isScala2MacroDefinedInScala3 || cls == defn.StringContextClass =>
+          // Enter all members of classes that are not Scala 2 macros.
           //
           // For `StringContext`, enter `s`, `f` and `raw`
           // These definitions will be entered when defined in Scala 2. It is fine to enter them
@@ -670,6 +671,7 @@ class TreeUnpickler(reader: TastyReader,
           case PARAMalias => addFlag(SuperParamAlias)
           case EXPORTED => addFlag(Exported)
           case OPEN => addFlag(Open)
+          case INVISIBLE => addFlag(Invisible)
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case PRIVATEqualified =>
@@ -1250,7 +1252,7 @@ class TreeUnpickler(reader: TastyReader,
               val lo = readTpt()
               val hi = if currentAddr == end then lo else readTpt()
               val alias = if currentAddr == end then EmptyTree else readTpt()
-              TypeBoundsTree(lo, hi, alias)
+              createNullableTypeBoundsTree(lo, hi, alias)
             case HOLE =>
               val idx = readNat()
               val tpe = readType()

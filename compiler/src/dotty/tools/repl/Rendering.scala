@@ -47,7 +47,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     else {
       val parent = parentClassLoader.getOrElse {
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        new java.net.URLClassLoader(compilerClasspath.toArray, null)
+        // We can't use the system classloader as a parent because it would
+        // pollute the user classpath with everything passed to the JVM
+        // `-classpath`. We can't use `null` as a parent either because on Java
+        // 9+ that's the bootstrap classloader which doesn't contain modules
+        // like `java.sql`, so we use the parent of the system classloader,
+        // which should correspond to the platform classloader on Java 9+.
+        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)

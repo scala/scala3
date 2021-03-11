@@ -70,7 +70,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   override def transformPhase(using Context): Phase = thisPhase.next
 
-  protected def newTransformer(using Context): Transformer =
+  def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)

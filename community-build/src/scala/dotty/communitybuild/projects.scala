@@ -91,7 +91,7 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = List("-Ycheck-init")
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -126,6 +126,12 @@ final case class SbtCommunityProject(
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
     )
+
+object SbtCommunityProject:
+  def scalacOptions = List(
+    "-Xcheck-macros",
+    "-Ysafe-init",
+  )
 
 object projects:
 
@@ -182,6 +188,18 @@ object projects:
     dependencies = List(geny, utest)
   )
 
+  lazy val upickleImplicits = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"implicits.jvm[$compilerVersion]",
+    dependencies = List(upickleCore, ujson)
+  )
+
+  lazy val upack = MillCommunityProject(
+    project = "upickle",
+    baseCommand = s"upack.jvm[$compilerVersion]",
+    dependencies = List(ujson, upickleCore)
+  )
+
   lazy val geny = MillCommunityProject(
     project = "geny",
     baseCommand = s"geny.jvm[$compilerVersion]",
@@ -206,6 +224,12 @@ object projects:
     project = "requests-scala",
     baseCommand = s"requests[$compilerVersion]",
     dependencies = List(geny, utest, ujson, upickleCore)
+  )
+
+  lazy val cask = MillCommunityProject(
+    project = "cask",
+    baseCommand = s"cask[$compilerVersion]",
+    dependencies = List(utest, geny, sourcecode, pprint, upickle, upickleImplicits, upack, requests)
   )
 
   lazy val scas = MillCommunityProject(
@@ -313,7 +337,7 @@ object projects:
     project       = "shapeless",
     sbtTestCommand   = "test",
     sbtDocCommand = forceDoc("typeable", "deriving", "data"),
-    scalacOptions = Nil // disable -Ycheck-init, due to -Xfatal-warnings
+    scalacOptions = Nil // disable -Ysafe-init, due to -Xfatal-warnings
   )
 
   lazy val xmlInterpolator = SbtCommunityProject(
@@ -452,6 +476,7 @@ object projects:
     project        = "verify",
     sbtTestCommand = "verifyJVM/test",
     sbtDocCommand = "verifyJVM/doc",
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") // TODO enable -Xcheck-macros
   )
 
   lazy val discipline = SbtCommunityProject(
@@ -473,7 +498,7 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline),
-    scalacOptions = Nil // disable -Ycheck-init
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init")
   )
 
   lazy val simulacrumScalafixAnnotations = SbtCommunityProject(
@@ -487,7 +512,8 @@ object projects:
     sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
-    scalacOptions = Nil  // disable -Ycheck-init, due to -Xfatal-warning
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
+
   )
 
   lazy val catsMtl = SbtCommunityProject(
@@ -603,7 +629,14 @@ object projects:
     sbtTestCommand = "test",
     sbtPublishCommand = "publishLocal",
     dependencies = List(), // TODO add scalatest and pprint (see protoquill/build.sbt)
-    scalacOptions = List("-language:implicitConversions"), // disabled -Ycheck-init, due to bug in macro
+    scalacOptions = List("-language:implicitConversions"), // disabled -Ysafe-init, due to bug in macro
+  )
+
+  lazy val onnxScala = SbtCommunityProject(
+    project = "onnx-scala",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
   )
 
 end projects
@@ -616,10 +649,13 @@ def allProjects = List(
   projects.ujson,
   projects.upickle,
   projects.upickleCore,
+  projects.upickleImplicits,
+  projects.upack,
   projects.geny,
   projects.fansi,
   projects.pprint,
   projects.requests,
+  projects.cask,
   projects.scas,
   projects.intent,
   projects.algebra,
@@ -672,6 +708,7 @@ def allProjects = List(
   projects.perspective,
   projects.akka,
   projects.protoquill,
+  projects.onnxScala,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

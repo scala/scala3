@@ -120,7 +120,7 @@ object Mode {
   /** Are we resolving a TypeTest node? */
   val InTypeTest: Mode = newMode(27, "InTypeTest")
 
-  /** Are we enforcing null safety */
+  /** Are we enforcing null safety? */
   val SafeNulls = newMode(28, "SafeNulls")
 
   /** We are typing the body of the condition of an `inline if` or the scrutinee of an `inline match`

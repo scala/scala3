@@ -35,7 +35,7 @@ import scala.annotation.constructorOnly
  *  Local type references can be used at the level of their definition or lower. If used used at a higher level,
  *  it will be healed if possible, otherwise it is inconsistent.
  *
- *  Type healing consists in transforming a phase inconsistent type `T` into a splice of `${summon[Type[T]]}`.
+ *  Type healing consists in transforming a phase inconsistent type `T` into `summon[Type[T]].Underlying`.
  *
  *  As references to types do not necessarily have an associated tree it is not always possible to replace the types directly.
  *  Instead we always generate a type alias for it and place it at the start of the surrounding quote. This also avoids duplication.
@@ -48,7 +48,7 @@ import scala.annotation.constructorOnly
  *  is transformed to
  *
  *    '{
- *      type t$1 = ${summon[Type[T]]}
+ *      type t$1 = summon[Type[T]].Underlying
  *      val x: List[t$1] = List[t$1]();
  *      ()
  *     }
@@ -103,7 +103,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     }
 
   /** Transform quoted trees while maintaining phase correctness */
-  override protected def transformQuotation(body: Tree, quote: Tree)(using Context): Tree = {
+  override protected def transformQuotation(body: Tree, quote: Apply)(using Context): Tree = {
     val taggedTypes = new PCPCheckAndHeal.QuoteTypeTags(quote.span)
 
     if (ctx.property(InAnnotation).isDefined)
@@ -118,13 +118,20 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case Nil  => body1
         case tags => tpd.Block(tags, body1).withSpan(body.span)
 
-    quote match {
-      case Apply(fn1 @ TypeApply(fn0, targs), _) =>
-        val targs1 = targs.map(targ => TypeTree(healTypeOfTerm(fn1.srcPos)(targ.tpe)))
-        cpy.Apply(quote)(cpy.TypeApply(fn1)(fn0, targs1), body2 :: Nil)
-      case quote: TypeApply =>
-        cpy.TypeApply(quote)(quote.fun, body2 :: Nil)
-    }
+    if body.isTerm then
+      // `quoted.runtime.Expr.quote[T](<body>)`  --> `quoted.runtime.Expr.quote[T2](<body2>)`
+      val TypeApply(fun, targs) = quote.fun
+      val targs2 = targs.map(targ => TypeTree(healTypeOfTerm(quote.fun.srcPos)(targ.tpe)))
+      cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
+    else
+      body.tpe match
+        case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
+          // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
+          ref(x)
+        case _ =>
+          // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
+          val TypeApply(fun, _) = quote.fun
+          cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body2 :: Nil), quote.args)
   }
 
   /** Transform splice
@@ -136,13 +143,13 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
     val body1 = transform(body)(using spliceContext)
     splice.fun match {
       case fun @ TypeApply(_, _ :: Nil) =>
-        // Type of the splice itsel must also be healed
-        // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
+        // Type of the splice itself must also be healed
+        // `quoted.runtime.Expr.quote[F[T]](... T ...)`  -->  `internal.Quoted.expr[F[$t]](... T ...)`
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), body1 :: Nil)
       case f @ Apply(fun @ TypeApply(_, _), qctx :: Nil) =>
-        // Type of the splice itsel must also be healed
-        // internal.Quoted.expr[F[T]](... T ...)  -->  internal.Quoted.expr[F[$t]](... T ...)
+        // Type of the splice itself must also be healed
+        // `quoted.runtime.Expr.quote[F[T]](... T ...)`  -->  `internal.Quoted.expr[F[$t]](... T ...)`
         val tp = healType(splice.srcPos)(splice.tpe.widenTermRefExpr)
         cpy.Apply(splice)(cpy.Apply(f)(cpy.TypeApply(fun)(fun.fun, tpd.TypeTree(tp) :: Nil), qctx :: Nil), body1 :: Nil)
     }
