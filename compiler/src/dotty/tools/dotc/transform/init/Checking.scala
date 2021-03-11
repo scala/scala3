@@ -267,11 +267,11 @@ object Checking {
     }
 
   /**
-  * Check if we can just directly promote a potential.
-  * A potential can be (currently) directly promoted if and only if:
-  * - `pot == this` and all fields of this are initialized, or
-  * - `pot == Warm(C, outer)` where `outer` can be directly promoted.
-  */
+   * Check if we can just directly promote a potential.
+   * A potential can be (currently) directly promoted if and only if:
+   * - `pot == this` and all fields of this are initialized, or
+   * - `pot == Warm(C, outer)` where `outer` can be directly promoted.
+   */
   private def canDirectlyPromote(pot: Potential, visited: Set[Potential] = Set.empty)(using state: State): Boolean = trace("checking direct promotion of " + pot.show, init) {
     if (state.safePromoted.contains(pot)) true
     // If this potential's promotion depends on itself, we cannot directly promote it.
@@ -295,19 +295,19 @@ object Checking {
   }
 
   /**
-  * Check the Promotion of a Warm object, according to "Rule 2":
-  *
-  * Rule 2: Promote(pot)
-  *
-  * for all concrete methods `m` of D
-  *    pot.m!, Promote(pot.m)
-  *
-  * for all concrete fields `f` of D
-  *    Promote(pot.f)
-  *
-  * for all inner classes `F` of D
-  *    Warm[F, pot].init!, Promote(Warm[F, pot])
-  */
+   * Check the Promotion of a Warm object, according to "Rule 2":
+   *
+   * Rule 2: Promote(pot)
+   *
+   * for all concrete methods `m` of D
+   *    pot.m!, Promote(pot.m)
+   *
+   * for all concrete fields `f` of D
+   *    Promote(pot.f)
+   *
+   * for all inner classes `F` of D
+   *    Warm[F, pot].init!, Promote(Warm[F, pot])
+   */
   private def checkPromoteWarm(warm: Warm, eff: Effect)(using state: State): Errors =
     val Warm(cls, outer) = warm
     val source = eff.source
