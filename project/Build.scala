@@ -1242,12 +1242,9 @@ object Build {
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
 
-      // ensure that sbt-dotty is built on sbt 1.4
+      // ensure that sbt-dotty is built on sbt 1.4 and scripted are run on sbt 1.5
       pluginCrossBuild / sbtVersion := "1.4.9",
-
-      // hack to run the scripted tests on sbt 1.5.0-bin-20210302T081602
-      // https://github.com/sbt/sbt/issues/6347
-      scriptedLaunchOpts ++= Seq("-Dsbt.version=1.5.0-bin-20210302T081602"),
+      scriptedSbt := "1.5.0-RC2",
 
       // The batch mode accidentally became the default with no way to disable
       // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
@@ -1347,7 +1344,7 @@ object Build {
       // hack to run the scripted tests on a nightly version of sbt
       // see https://github.com/sbt/sbt/issues/6347
       scriptedSbt := "1.4.7",
-      scriptedLaunchOpts ++= Seq("-Dsbt.version=1.5.0-bin-20210302T081602"),
+      scriptedLaunchOpts ++= Seq("-Dsbt.version=1.5.0-RC2"),
 
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
