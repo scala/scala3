@@ -1,1 +1,0 @@
-erased class Test // error

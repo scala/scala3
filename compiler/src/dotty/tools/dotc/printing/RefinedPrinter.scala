@@ -925,7 +925,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else PrintableFlags(isType)
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= GivenOrImplicit // drop implicit/given from classes
     val rawFlags = if (sym.exists) sym.flags else mods.flags
-    if (rawFlags.is(Param)) flagMask = flagMask &~ Given
+    if (rawFlags.is(Param)) flagMask = flagMask &~ Given &~ Erased
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
     val annotations =

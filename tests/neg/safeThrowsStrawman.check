@@ -1,0 +1,8 @@
+-- Error: tests/neg/safeThrowsStrawman.scala:17:32 ---------------------------------------------------------------------
+17 |  if x then 1 else raise(Fail())  // error
+   |                                ^
+   |                                The capability to throw exception scalax.Fail is missing.
+   |                                The capability can be provided by one of the following:
+   |                                 - A using clause `(using CanThrow[scalax.Fail])`
+   |                                 - A throws clause in a result type `X throws scalax.Fail`
+   |                                 - an enclosing `try` that catches scalax.Fail
