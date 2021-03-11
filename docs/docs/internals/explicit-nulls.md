@@ -7,10 +7,11 @@ The explicit nulls feature (enabled via a flag) changes the Scala type hierarchy
 so that reference types (e.g. `String`) are non-nullable. We can still express nullability
 with union types: e.g. `val x: String | Null = null`.
 
-The implementation of the feature in dotty can be conceptually divided in several parts:
-  1. changes to the type hierarchy so that `Null` is only a subtype of `Any`
-  2. a "translation layer" for Java interoperability that exposes the nullability in Java APIs
-  3. a `unsafeNulls` language feature which enables implicit unsafe conversion between `T` and `T | Null`
+The implementation of the feature in Scala 3 can be conceptually divided in several parts:
+
+1. changes to the type hierarchy so that `Null` is only a subtype of `Any`
+2. a "translation layer" for Java interoperability that exposes the nullability in Java APIs
+3. a `unsafeNulls` language feature which enables implicit unsafe conversion between `T` and `T | Null`
 
 ## Explicit-Nulls Flag
 
@@ -20,10 +21,11 @@ The explicit-nulls flag is currently disabled by default. It can be enabled via 
 ## Type Hierarchy
 
 We change the type hierarchy so that `Null` is only a subtype of `Any` by:
-  - modifying the notion of what is a nullable class (`isNullableClass`) in `SymDenotations`
-    to include _only_ `Null` and `Any`, which is used by `TypeComparer`
-  - changing the parent of `Null` in `Definitions` to point to `Any` and not `AnyRef`
-  - changing `isBottomType` and `isBottomClass` in `Definitions`
+
+- modifying the notion of what is a nullable class (`isNullableClass`) in `SymDenotations`
+  to include _only_ `Null` and `Any`, which is used by `TypeComparer`
+- changing the parent of `Null` in `Definitions` to point to `Any` and not `AnyRef`
+- changing `isBottomType` and `isBottomClass` in `Definitions`
 
 ## Working with Nullable Unions
 
@@ -47,13 +49,15 @@ Within `Types.scala`, we also defined an extractor `OrNull` to extract the non-n
 
 The problem we're trying to solve here is: if we see a Java method `String foo(String)`,
 what should that method look like to Scala?
-  - since we should be able to pass `null` into Java methods, the argument type should be `String | Null`
-  - since Java methods might return `null`, the return type should be `String | Null`
+
+- since we should be able to pass `null` into Java methods, the argument type should be `String | Null`
+- since Java methods might return `null`, the return type should be `String | Null`
 
 At a high-level:
-  - we track the loading of Java fields and methods as they're loaded by the compiler
-  - we do this in two places: `Namer` (for Java sources) and `ClassFileParser` (for bytecode)
-  - whenever we load a Java member, we "nullify" its argument and return types
+
+- we track the loading of Java fields and methods as they're loaded by the compiler
+- we do this in two places: `Namer` (for Java sources) and `ClassFileParser` (for bytecode)
+- whenever we load a Java member, we "nullify" its argument and return types
 
 The nullification logic lives in `compiler/src/dotty/tools/dotc/core/JavaNullInterop.scala`.
 
@@ -117,7 +121,7 @@ abstract class Node:
    val next: Node | Null
 
 def f =
-   val l: Node|Null = ???
+   val l: Node | Null = ???
    if l != null && l.next != null then
       val third: l.next.next.type = l.next.next
 ```
@@ -126,11 +130,12 @@ After typing, `f` becomes:
 
 ```scala
 def f =
-   val l: Node|Null = ???
+   val l: Node | Null = ???
    if l != null && l.$asInstanceOf$[l.type & Node].next != null then
       val third:
          l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next.type =
          l.$asInstanceOf$[l.type & Node].next.$asInstanceOf$[(l.type & Node).next.type & Node].next
 ```
+
 Notice that in the example above `(l.type & Node).next.type & Node` is still a stable path, so
 we can use it in the type and track it for flow typing.
