@@ -57,7 +57,14 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
             templateToPage(indexPage, siteContext).withNewChildren(newChildren)
 
   val hiddenPages: Seq[Page] =
-    staticSite.toSeq.flatMap(c => c.orphanedTemplates.map(templateToPage(_, c)))
+    staticSite match
+      case None =>
+        Seq(navigablePage.copy( // Add index page that is a copy of api/index.html
+          link = navigablePage.link.copy(dri = docsRootDRI),
+          children = Nil
+        ))
+      case Some(site) =>
+        site.orphanedTemplates.map(templateToPage(_, site))
 
   val allPages = navigablePage +: hiddenPages
 
@@ -139,10 +146,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       case _ => Nil
     }
 
-    def renderNested(nav: Page): (Boolean, AppliedTag) =
+    def renderNested(nav: Page, toplevel: Boolean = false): (Boolean, AppliedTag) =
       val isSelected = nav.link.dri == pageLink.dri
       def linkHtml(exapnded: Boolean = false) =
-        val attrs = if (isSelected) Seq(cls := "selected expanded") else Nil
+        val attrs = if (isSelected || toplevel) Seq(cls := "selected expanded") else Nil
         val icon = nav.content match {
           case m: Member => navigationIcon(m)
           case _ => Nil
@@ -152,15 +159,16 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       nav.children match
         case Nil => isSelected -> div(linkHtml())
         case children =>
-          val nested = children.map(renderNested)
+          val nested = children.map(renderNested(_))
           val expanded = nested.exists(_._1) || nav.link == pageLink
-          val attr = if expanded || isSelected then Seq(cls := "expanded") else Nil
+          val attr =
+            if expanded || isSelected || toplevel then Seq(cls := "expanded") else Nil
           (isSelected || expanded) -> div(attr)(
             linkHtml(expanded),
             span(cls := "ar"),
             nested.map(_._2)
           )
-    renderNested(navigablePage)._2
+    renderNested(navigablePage, toplevel = true)._2
 
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
