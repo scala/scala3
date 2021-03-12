@@ -206,7 +206,7 @@ object Summarization {
           val tp = tdef.symbol.info
           val traverser = new TypeTraverser {
             def traverse(tp: Type): Unit = tp match {
-              case tp: TermRef =>
+              case TermRef(_: SingletonType, _) =>
                 summary = summary + analyze(tp, tdef.rhs)
               case _ =>
                 traverseChildren(tp)
@@ -257,8 +257,12 @@ object Summarization {
         }
         Summary(pots2, effs)
 
+      case _: TermParamRef =>
+        // possible from type definitions
+        Summary.empty
+
       case _ =>
-        throw new Exception("unexpected type: " + tp.show)
+        throw new Exception("unexpected type: " + tp)
     }
 
     if (env.isAlwaysInitialized(tp)) Summary(Potentials.empty, summary.effs)
