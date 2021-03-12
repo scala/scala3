@@ -29,11 +29,11 @@ object Effects {
     def toEffs: Effects = Vector(this)
   }
 
-  /** An effect means that a value that's possibly under initialization
+  /** A promotion effect means that a value that's possibly under initialization
    *  is promoted from the initializing world to the fully-initialized world.
    *
    *  Essentially, this effect enforces that the object pointed to by
-   *  `potential` is fully initialized.
+   *  `potential` is transitively initialized.
    *
    *  This effect is trigger in several scenarios:
    *  - a potential is used as arguments to method calls or new-expressions
