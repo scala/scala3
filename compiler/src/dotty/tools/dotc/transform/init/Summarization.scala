@@ -107,7 +107,7 @@ object Summarization {
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Summary.empty
-        else analyze(expr)
+        else analyze(expr) ++ effectsOfType(tpt.tpe, tpt)
 
       case NamedArg(name, arg) =>
         analyze(arg)
@@ -201,20 +201,7 @@ object Summarization {
 
       case tdef: TypeDef =>
         if tdef.isClassDef then Summary.empty
-        else {
-          var summary = Summary.empty
-          val tp = tdef.symbol.info
-          val traverser = new TypeTraverser {
-            def traverse(tp: Type): Unit = tp match {
-              case TermRef(_: SingletonType, _) =>
-                summary = summary + analyze(tp, tdef.rhs)
-              case _ =>
-                traverseChildren(tp)
-            }
-          }
-          traverser.traverse(tp)
-          summary
-        }
+        else Summary(effectsOfType(tdef.symbol.info, tdef.rhs))
 
       case _: Import | _: Export =>
         Summary.empty
@@ -226,6 +213,19 @@ object Summarization {
     if (env.isAlwaysInitialized(expr.tpe)) Summary(Potentials.empty, summary.effs)
     else summary
   }
+
+  private def effectsOfType(tp: Type, source: Tree)(implicit env: Env): Effects =
+    var summary = Summary.empty
+    val traverser = new TypeTraverser {
+      def traverse(tp: Type): Unit = tp match {
+        case TermRef(_: SingletonType, _) =>
+          summary = summary + analyze(tp, source)
+        case _ =>
+          traverseChildren(tp)
+      }
+    }
+    traverser.traverse(tp)
+    summary.effs
 
   def analyze(tp: Type, source: Tree)(implicit env: Env): Summary =
   trace("summarizing " + tp.show, init, s => s.asInstanceOf[Summary].show) {
@@ -257,8 +257,8 @@ object Summarization {
         }
         Summary(pots2, effs)
 
-      case _: TermParamRef =>
-        // possible from type definitions
+      case _: TermParamRef | _: RecThis  =>
+        // possible from checking effects of types
         Summary.empty
 
       case _ =>
