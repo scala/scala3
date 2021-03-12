@@ -110,10 +110,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case scrut: TypeRef if scrut.symbol.isClass =>
           // consider all parents
           val parents = scrut.parents
-          val andType = trace(i"andType of scrut", gadts) {
-            buildAndType(parents)
-          }
-          constrainPatternType(pat, andType)
+          val andType = buildAndType(parents)
+          !andType.exists || constrainPatternType(pat, andType)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patClassSym = pat.classSymbol
           // find all shared parents in the inheritance hierarchy between pat and scrut
@@ -129,10 +127,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           }
           val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
           val baseClasses = allSyms map scrut.baseType
-          val andType = trace(i"andType of scrut", gadts) {
-            buildAndType(baseClasses)
-          }
-          constrainPatternType(pat, andType)
+          val andType = buildAndType(baseClasses)
+          !andType.exists || constrainPatternType(pat, andType)
         case _ =>
           val upcasted: Type = scrut match {
             case scrut: TypeProxy => scrut.superType
