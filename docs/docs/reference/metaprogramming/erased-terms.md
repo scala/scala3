@@ -1,8 +1,14 @@
 ---
 layout: doc-page
-title: "Erased Terms"
+title: "Erased Terms And Classes"
 ---
 
+`erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
+`experimental.erased`. This can be done with a language import
+```scala
+import scala.language.experimental.erased
+```
+or by setting the command line option `-language:experimental.erased`.
 ## Why erased terms?
 
 Let's describe the motivation behind erased terms with an example. In the
@@ -186,5 +192,37 @@ end Machine
    m.turnOn().turnOff()
    m.turnOn().turnOn() // error: Turning on an already turned on machine
 ```
+
+## Erased Classes
+
+`erased` can also be used as a modifier for a class. An erased class is intended to be used only in erased definitions. If the type of a val definition or parameter is
+a (possibly aliased, refined, or instantiated) erased class, the definition is assumed to be `erased` itself. Likewise, a method with an erased class return type is assumed to be `erased` itself. Since given instances expand to vals and defs, they are also assumed to be erased if the type they produce is an erased class. Finally
+function types with erased classes as arguments turn into erased function types.
+
+Example:
+```scala
+erased class CanRead
+
+val x: CanRead = ...        // `x` is turned into an erased val
+val y: CanRead => Int = ... // the function is turned into an erased function
+def f(x: CanRead) = ...     // `f` takes an erased parameter
+def g(): CanRead = ...      // `g` is turned into an erased def
+given CanRead = ...         // the anonymous given is assumed to be erased
+```
+The code above expands to
+```scala
+erased class CanRead
+
+erased val x: CanRead = ...
+val y: (erased CanRead) => Int = ...
+def f(erased x: CanRead) = ...
+erased def g(): CanRead = ...
+erased given CanRead = ...
+```
+After erasure, it is checked that no references to values of erased classes remain and that no instances of erased classes are created. So the following would be an error:
+```scala
+val err: Any = CanRead() // error: illegal reference to erased class CanRead
+```
+Here, the type of `err` is `Any`, so `err` is not considered erased. Yet its initializing value is a reference to the erased class `CanRead`.
 
 [More Details](./erased-terms-spec.md)
