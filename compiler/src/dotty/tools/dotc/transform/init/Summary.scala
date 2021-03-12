@@ -14,7 +14,7 @@ import config.Printers.init
 import Potentials._, Effects._, Util._
 
 case class Summary(pots: Potentials, effs: Effects) {
-  def union(summary2: Summary): Summary =
+  def +(summary2: Summary): Summary =
     Summary(pots ++ summary2.pots, this.effs ++ summary2.effs)
 
   def +(pot: Potential): Summary =

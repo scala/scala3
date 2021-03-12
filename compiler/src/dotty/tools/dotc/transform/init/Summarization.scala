@@ -140,7 +140,7 @@ object Summarization {
         val Summary(pots, effs) = analyze(selector)
         val init = Summary(Potentials.empty, pots.promote(selector) ++ effs)
         cases.foldLeft(init) { (acc, cas) =>
-          acc union analyze(cas.body)
+          acc + analyze(cas.body)
         }
 
       // case CaseDef(pat, guard, body) =>
@@ -162,7 +162,7 @@ object Summarization {
 
       case Try(block, cases, finalizer) =>
         val Summary(pots, effs) =  cases.foldLeft(analyze(block)) { (acc, cas) =>
-          acc union analyze(cas.body)
+          acc + analyze(cas.body)
         }
         val Summary(_, eff2) = if (finalizer.isEmpty) Summary.empty else analyze(finalizer)
         Summary(pots, effs ++ eff2)
@@ -199,8 +199,22 @@ object Summarization {
           Summary(pots.promote(ddef) ++ effs)
         }
 
-      case _: TypeDef =>
-        Summary.empty
+      case tdef: TypeDef =>
+        if tdef.isClassDef then Summary.empty
+        else {
+          var summary = Summary.empty
+          val tp = tdef.symbol.info
+          val traverser = new TypeTraverser {
+            def traverse(tp: Type): Unit = tp match {
+              case tp: TermRef =>
+                summary = summary + analyze(tp, tdef.rhs)
+              case _ =>
+                traverseChildren(tp)
+            }
+          }
+          traverser.traverse(tp)
+          summary
+        }
 
       case _: Import | _: Export =>
         Summary.empty
