@@ -52,6 +52,7 @@ class CompilationTests {
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/pos/10930.scala", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.andLanguageFeature("dynamics")),
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
