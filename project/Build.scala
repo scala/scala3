@@ -291,6 +291,26 @@ object Build {
     disableDocSetting
   )
 
+  lazy val scalacOptionsDocSettings = Seq(
+      "-external-mappings:" +
+        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
+        ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
+      "-skip-by-regex:.+\\.internal($|\\..+)",
+      "-skip-by-regex:.+\\.impl($|\\..+)",
+      "-project-logo", "docs/logo.svg",
+      "-social-links:" +
+        "github::https://github.com/lampepfl/dotty," +
+        "gitter::https://gitter.im/scala/scala," +
+        "twitter::https://twitter.com/scala_lang",
+      // contains special definitions which are "transplanted" elsewhere
+      // and which therefore confuse Scaladoc when accessed from this pkg
+      "-skip-by-id:scala.runtime.stdLibPatches",
+      // MatchCase is a special type that represents match type cases,
+      // Reflect doesn't expect to see it as a standalone definition
+      // and therefore it's easier just not to document it
+      "-skip-by-id:scala.runtime.MatchCase",
+  )
+
   // Settings used when compiling dotty with a non-bootstrapped dotty
   lazy val commonBootstrappedSettings = commonDottySettings ++ NoBloopExport.settings ++ Seq(
     bspEnabled := false,
@@ -350,25 +370,7 @@ object Build {
         appConfiguration.value
       )
     },
-    Compile / doc / scalacOptions ++= Seq(
-      "-external-mappings:" +
-        ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
-        ".*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/",
-      "-skip-by-regex:.+\\.internal($|\\..+)",
-      "-skip-by-regex:.+\\.impl($|\\..+)",
-      "-project-logo", "docs/logo.svg",
-      "-social-links:" +
-        "github::https://github.com/lampepfl/dotty," +
-        "gitter::https://gitter.im/scala/scala," +
-        "twitter::https://twitter.com/scala_lang",
-      // contains special definitions which are "transplanted" elsewhere
-      // and which therefore confuse Scaladoc when accessed from this pkg
-      "-skip-by-id:scala.runtime.stdLibPatches",
-      // MatchCase is a special type that represents match type cases,
-      // Reflect doesn't expect to see it as a standalone definition
-      // and therefore it's easier just not to document it
-      "-skip-by-id:scala.runtime.MatchCase",
-    ),
+    Compile / doc / scalacOptions ++= scalacOptionsDocSettings,
     // sbt-dotty defines `scalaInstance in doc` so we need to override it manually
     doc / scalaInstance := scalaInstance.value,
   )
@@ -1616,7 +1618,7 @@ object Build {
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
           val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v${stdlibVersion(Bootstrapped)}}#src/library"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
-          val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ revision ++ params ++ targets
+          val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
           import _root_.scala.sys.process._
           Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
         }
