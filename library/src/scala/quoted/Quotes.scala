@@ -2448,6 +2448,19 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The current type applied to given type arguments: `this[targ0, ..., targN]` */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
 
+        /** This type as seen from prefix `pre` and class `clazz`. This means:
+         *  Replace all thistypes of `clazz` or one of its subclasses
+         *  by `pre` and instantiate all parameters by arguments of `pre`.
+         *  Proceed analogously for thistypes referring to outer classes.
+         *
+         *  Example:
+         *    class D[T] { def m: T }
+         *    class C extends p.D[Int]
+         *    T.asSeenFrom(ThisType(C), D)  (where D is owner of m)
+         *      = Int
+         */
+        def asSeenFrom(pre: TypeRepr, clazz: Symbol): TypeRepr
+
       end extension
     }
 

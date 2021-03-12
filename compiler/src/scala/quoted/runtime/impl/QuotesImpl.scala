@@ -1695,6 +1695,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+        def asSeenFrom(pre: TypeRepr, clazz: Symbol): TypeRepr =
+          self.asSeenFrom(pre, clazz)
       end extension
     end TypeReprMethods
 
