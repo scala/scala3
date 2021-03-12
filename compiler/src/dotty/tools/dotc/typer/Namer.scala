@@ -1442,7 +1442,9 @@ class Namer { typer: Typer =>
         if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
           // When possible, widen to the default getter parameter type to permit a
           // larger choice of overrides (see `default-getter.scala`).
-          defaultTp
+          // For justification on the use of `@uncheckedVariance`, see
+          // `default-getter-variance.scala`.
+          AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
         else tp.widenTermRefExpr.simplified match
           case ctp: ConstantType if isInlineVal => ctp
           case tp =>
