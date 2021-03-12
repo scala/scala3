@@ -106,24 +106,25 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
    *
    *  Calling this method evaluates the expression using reflection
    */
-  private def valueOf(sym: Symbol)(using Context): Option[String] = {
+  private def valueOf(sym: Symbol)(using Context): Option[String] =
+    if !sym.is(Flags.Method) && sym.info == defn.UnitType
+    then return None
+
     val objectName = sym.owner.fullName.encode.toString.stripSuffix("$")
     val resObj: Class[?] = Class.forName(objectName, true, classLoader())
-    val value =
-      resObj
-        .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
-        .map(_.invoke(null))
-    val string = value.map(replStringOf(_))
-    if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
-      None
-    else
-      string.map { s =>
-        if (s.startsWith(str.REPL_SESSION_LINE))
-          s.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
-        else
-          s
-      }
-  }
+
+    resObj.getDeclaredMethods.find(_.getName == sym.name.encode.toString).map { method =>
+      val value = method.invoke(null)
+      val resultType = method.getReturnType()
+      val rawStringRepr = replStringOf(value)
+      val stringRepr =
+        if rawStringRepr.startsWith(str.REPL_SESSION_LINE)
+        then rawStringRepr.drop(str.REPL_SESSION_LINE.length).dropWhile(c => c.isDigit || c == '$')
+        else rawStringRepr
+
+      if resultType == classOf[String] then s""""$stringRepr"""" else stringRepr
+    }
+  end valueOf
 
   /** Formats errors using the `messageRenderer` */
   def formatError(dia: Diagnostic)(implicit state: State): Diagnostic =
