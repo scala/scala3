@@ -531,6 +531,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
+    case DoubleTag => literalText(const.doubleValue.toString + "d")
+    case FloatTag => literalText(const.floatValue.toString + "f")
     case _ => literalText(String.valueOf(const.value))
   }
 
