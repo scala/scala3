@@ -326,14 +326,14 @@ object Checking {
 
           case Fun(pots, effs) =>
             val name = sym.name.toString
-            if (name == "apply") Summary(pots, Effects.empty)
-            else if (name == "tupled") Summary(Set(pot1), Effects.empty)
+            if (name == "apply") Summary(pots)
+            else if (name == "tupled") Summary(pot1)
             else if (name == "curried") {
               val arity = defn.functionArity(sym.info.finalResultType)
-              val pots = (1 until arity).foldLeft(Set(pot1)) { (acc, i) =>
-                Set(Fun(acc, Effects.empty)(pot1.source))
+              val pots = (1 until arity).foldLeft(Vector(pot1)) { (acc, i) =>
+                Vector(Fun(acc, Effects.empty)(pot1.source))
               }
-              Summary(pots, Effects.empty)
+              Summary(pots)
             }
             else Summary.empty
 

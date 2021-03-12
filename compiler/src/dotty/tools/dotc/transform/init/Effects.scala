@@ -12,8 +12,8 @@ import core.Contexts._
 import Potentials._
 
 object Effects {
-  type Effects = Set[Effect]
-  val empty: Effects = Set.empty
+  type Effects = Vector[Effect]
+  val empty: Effects = Vector.empty
 
   def show(effs: Effects)(using Context): String =
     effs.map(_.show).mkString(", ")
@@ -25,6 +25,8 @@ object Effects {
     def show(using Context): String
 
     def source: Tree
+
+    def toEffs: Effects = Vector(this)
   }
 
   /** An effect means that a value that's possibly under initialization
@@ -57,8 +59,6 @@ object Effects {
   }
 
   // ------------------ operations on effects ------------------
-
-  extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
 
   def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effect =
     trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, _.asInstanceOf[Effect].show) { eff match {

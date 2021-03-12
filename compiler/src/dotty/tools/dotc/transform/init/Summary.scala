@@ -18,10 +18,10 @@ case class Summary(pots: Potentials, effs: Effects) {
     Summary(pots ++ summary2.pots, this.effs ++ summary2.effs)
 
   def +(pot: Potential): Summary =
-    Summary(pots + pot, effs)
+    Summary(pots :+ pot, effs)
 
   def +(eff: Effect): Summary =
-    Summary(pots, effs + eff)
+    Summary(pots, effs :+ eff)
 
   def dropPotentials: Summary =
     Summary(Potentials.empty, effs)
@@ -44,14 +44,14 @@ case class Summary(pots: Potentials, effs: Effects) {
 object Summary {
   val empty: Summary = Summary(Potentials.empty, Effects.empty)
 
-  def apply(pots: Potentials): Summary = new Summary(pots, Effects.empty)
+  def apply(pots: Potentials): Summary = empty ++ pots
 
   @targetName("withEffects")
-  def apply(effs: Effects): Summary = new Summary(Potentials.empty, effs)
+  def apply(effs: Effects): Summary = empty ++ effs
 
-  def apply(pot: Potential): Summary = new Summary(Potentials.empty + pot, Effects.empty)
+  def apply(pot: Potential): Summary = empty + pot
 
-  def apply(eff: Effect): Summary = new Summary(Potentials.empty, Effects.empty + eff)
+  def apply(eff: Effect): Summary = empty + eff
 }
 
 /** Summary of class.

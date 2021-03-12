@@ -304,7 +304,7 @@ object Summarization {
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
         val init =
           if env.canIgnoreMethod(ctor) then Effects.empty
-          else Effects.empty + MethodCall(ThisRef()(source), ctor)(source)
+          else Effects.empty :+ MethodCall(ThisRef()(source), ctor)(source)
         stats.foldLeft(init) { (acc, stat) =>
           val summary = Summarization.analyze(stat)
           acc ++ summary.effs
@@ -334,7 +334,7 @@ object Summarization {
                 if tref.prefix == NoPrefix then Effects.empty
                 else Summarization.analyze(tref.prefix, ref).effs
 
-              prefixEff +  MethodCall(ThisRef()(ref), ctor)(ref)
+              prefixEff :+ MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
       }
