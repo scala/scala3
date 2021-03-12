@@ -584,8 +584,13 @@ object Erasure {
           case _ => // OK
         }
       }
-      tree
+      checkNotErasedClass(tree)
     }
+
+    private def checkNotErasedClass(tree: Tree)(using Context): tree.type =
+      if tree.tpe.widen.isErasedClass then
+        report.error(em"illegal reference to erased ${tree.tpe.widen.typeSymbol} in expression that is not itself erased", tree.srcPos)
+      tree
 
     def erasedDef(sym: Symbol)(using Context): Thicket = {
       if (sym.owner.isClass) sym.dropAfter(erasurePhase)
@@ -609,7 +614,7 @@ object Erasure {
      *  are handled separately by [[typedDefDef]], [[typedValDef]] and [[typedTyped]].
      */
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      tree.withType(erasure(tree.tpe))
+      checkNotErasedClass(tree.withType(erasure(tree.tpe)))
 
     /** This override is only needed to semi-erase type ascriptions */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
@@ -628,7 +633,7 @@ object Erasure {
       if (tree.typeOpt.isRef(defn.UnitClass))
         tree.withType(tree.typeOpt)
       else if (tree.const.tag == Constants.ClazzTag)
-        clsOf(tree.const.typeValue)
+        checkNotErasedClass(clsOf(tree.const.typeValue))
       else
         super.typedLiteral(tree)
 
@@ -995,6 +1000,9 @@ object Erasure {
       if (xxl) implClosure = cpy.Closure(implClosure)(tpt = TypeTree(defn.FunctionXXLClass.typeRef))
       adaptClosure(implClosure)
     }
+
+    override def typedNew(tree: untpd.New, pt: Type)(using Context): Tree =
+      checkNotErasedClass(super.typedNew(tree, pt))
 
     override def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree =
       EmptyTree

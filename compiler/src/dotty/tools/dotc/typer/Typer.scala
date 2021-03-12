@@ -1159,7 +1159,7 @@ class Typer extends Namer
       case AppliedTypeTree(tycon: TypeTree, args)
       if !isErased
          && numArgs > 0
-         && args.indexWhere(arg => !isErasedClass(arg.tpe)) == numArgs =>
+         && args.indexWhere(!_.tpe.isErasedClass) == numArgs =>
         val tycon1 = TypeTree(defn.FunctionClass(numArgs, isContextual, isErased = true).typeRef)
           .withSpan(tycon.span)
         assignType(cpy.AppliedTypeTree(app)(tycon1, args), tycon1, args)
@@ -2175,16 +2175,13 @@ class Typer extends Namer
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
 
-  private def isErasedClass(tpe: Type)(using Context): Boolean =
-    tpe.underlyingClassRef(refinementOK = true).typeSymbol.is(Erased)
-
   /** (1) Check that the signature of the class mamber does not return a repeated parameter type
    *  (2) If info is an erased class, set erased flag of member
    */
   private def postProcessInfo(sym: Symbol)(using Context): Unit =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
-    if !sym.is(Module) && isErasedClass(sym.info) then
+    if !sym.is(Module) && sym.info.isErasedClass then
       sym.setFlag(Erased)
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {

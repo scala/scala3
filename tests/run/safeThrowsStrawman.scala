@@ -19,7 +19,7 @@ def bar(x: Boolean)(using CanThrow[Fail]): Int =
 
 @main def Test =
   try
-    erased given CanThrow[Fail] = ???
+    given CanThrow[Fail] = ???
     println(foo(true))
     println(foo(false))
   catch case ex: Fail =>

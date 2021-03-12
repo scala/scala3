@@ -21,6 +21,9 @@ object TypeUtils {
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
+    def isErasedClass(using Context): Boolean =
+      self.underlyingClassRef(refinementOK = true).typeSymbol.is(Flags.Erased)
+
     def isByName: Boolean =
       self.isInstanceOf[ExprType]
 
