@@ -181,11 +181,12 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
 ### Relationship to `@inline`
 
-Scala 2 also defines a `@inline` annotation which is used as a hint
-for the backend to inline code. The `inline` modifier is a more powerful
-option: Expansion is guaranteed instead of best effort,
-it happens in the frontend instead of in the backend, and it also applies
-to recursive methods.
+Scala 2 also defines a `@inline` annotation which is used as a hint for the
+backend to inline code. The `inline` modifier is a more powerful option:
+
+- expansion is guaranteed instead of best effort,
+- expansion happens in the frontend instead of in the backend and
+- expansion also applies to recursive methods.
 
 To cross compile between both Scala 3 and Scala 2, we introduce a new `@forceInline`
 annotation which is equivalent to the new `inline` modifier. Note that
@@ -379,7 +380,7 @@ val intTwo: 2 = natTwo
 
 ## The `scala.compiletime` Package
 
-The `scala.compiletime` package contains helper definitions that provide support for compile time operations over values. They are described in the following.
+The [`scala.compiletime`](https://dotty.epfl.ch/api/scala/compiletime.html) package contains helper definitions that provide support for compile time operations over values. They are described in the following.
 
 ### `constValue`, `constValueOpt`, and the `S` combinator
 
@@ -499,7 +500,7 @@ fail(identity("foo")) // error: failed on: identity("foo")
 
 ### The `scala.compiletime.ops` package
 
-The `scala.compiletime.ops` package contains types that provide support for
+The [`scala.compiletime.ops`](https://dotty.epfl.ch/api/scala/compiletime/ops.html) package contains types that provide support for
 primitive operations on singleton types. For example,
 `scala.compiletime.ops.int.*` provides support for multiplying two singleton
 `Int` types, and `scala.compiletime.ops.boolean.&&` for the conjunction of two
