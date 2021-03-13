@@ -62,7 +62,7 @@ So far, we have found the following useful:
 
   When imported, `T | Null` can be used as `T`, similar to regular Scala (without explicit nulls).
 
-  See [UnsafeNulls](#UnsafeNulls) section for more details.
+  See [UnsafeNulls](#unsafenulls) section for more details.
 
 ## Unsoundness
 
@@ -425,7 +425,7 @@ When dealing with local mutable variables, there are two questions:
       x = null
    ```
 
-See [more examples](../../../../tests/explicit-nulls/neg/flow-varref-in-closure.scala).
+See [more examples](https://github.com/lampepfl/dotty/blob/master/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
 
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.

@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package typer
 
 import transform._
@@ -800,7 +801,34 @@ object RefChecks {
         report.error(problem(), clazz.srcPos)
       }
 
+      // check that basetype and subtype agree on types of trait parameters
+      //
+      // I.e. trait and class parameters not only need to conform to the expected
+      // type of the corresponding base-trait, but also to the type as seen by the
+      // inheriting subtype.
+      def checkTraitParametersOK() = for {
+        parent <- clazz.info.parents
+        parentSym = parent.classSymbol
+        if parentSym.isClass
+        cls = parentSym.asClass
+        if cls.paramAccessors.nonEmpty
+        param <- cls.paramAccessors
+      } {
+        val tpeFromParent = parent.memberInfo(param)
+        val tpeFromClazz = clazz.thisType.memberInfo(param)
+        if (!(tpeFromParent <:< tpeFromClazz)) {
+          val msg =
+            em"""illegal parameter: The types of $param do not match.
+                |
+                |  $param in $cls has type: $tpeFromParent
+                |  but $clazz expects $param to have type: $tpeFromClazz"""
+
+          report.error(msg, clazz.srcPos)
+        }
+      }
+
       checkParameterizedTraitsOK()
+      checkTraitParametersOK()
     }
 
     /** Check that `site` does not inherit conflicting generic instances of `baseCls`,
