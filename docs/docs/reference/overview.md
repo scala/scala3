@@ -2,7 +2,7 @@
 layout: doc-page
 title: "Overview"
 ---
-The forthcoming Scala 3 implements many language changes and improvements over Scala 2.
+Scala 3 implements many language changes and improvements over Scala 2.
 In this reference, we discuss design decisions and present important differences compared to Scala 2.
 
 ## Goals
@@ -18,7 +18,7 @@ The language redesign was guided by three main goals:
 - Further improve the consistency and expressiveness of Scala's language constructs.
 
 Corresponding to these goals, the language changes fall into seven categories:
-(1) Core constructs to strengthen foundations, (2) simplifications and (3) [restrictions](#restrictions), to make the language easier and safer to use, (4) dropped constructs to make the language smaller and more regular, (5) [changed constructs](#changes) to remove warts, and increase consistency and usability, (6) [new constructs](#new-constructs) to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces [Scala 2 experimental macros](https://docs.scala-lang.org/overviews/macros/overview.html).
+(1) Core constructs to strengthen foundations, (2) simplifications and (3) [restrictions](#restrictions), to make the language easier and safer to use, (4) [dropped constructs](#dropped-constructs) to make the language smaller and more regular, (5) [changed constructs](#changes) to remove warts, and increase consistency and usability, (6) [new constructs](#new-constructs) to fill gaps and increase expressiveness, (7) a new, principled approach to metaprogramming that replaces [Scala 2 experimental macros](https://docs.scala-lang.org/overviews/macros/overview.html).
 
 ## Essential Foundations
 
