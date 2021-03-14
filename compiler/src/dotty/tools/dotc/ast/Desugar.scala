@@ -602,13 +602,8 @@ object desugar {
     //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
-    //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
-    //              pN: TN = pN: @uncheckedVariance)(moreParams) =
+    //     def copy(p1: T1 = p1..., pN: TN = pN)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
-    //
-    // Note: copy default parameters need @uncheckedVariance; see
-    // neg/t1843-variances.scala for a test case. The test would give
-    // two errors without @uncheckedVariance, one of them spurious.
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
@@ -638,10 +633,8 @@ object desugar {
         }
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
-          def copyDefault(vparam: ValDef) =
-            makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
           val copyFirstParams = derivedVparamss.head.map(vparam =>
-            cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
+            cpy.ValDef(vparam)(rhs = refOfDef(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(
