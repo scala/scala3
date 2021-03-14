@@ -174,7 +174,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
       // case N => _${N + 1}
       val cases = 0.until(arity).map { i =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+        val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
+        CaseDef(Literal(Constant(i)), EmptyTree, sel)
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
