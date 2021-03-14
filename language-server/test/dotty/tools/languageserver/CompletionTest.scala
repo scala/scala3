@@ -30,7 +30,7 @@ class CompletionTest {
 
   @Test def completionFromScalaPackage: Unit = {
     code"class Foo { val foo: Conv${m1} }".withSource
-      .completion(m1, Set(("Conversion", Class, "scala.Conversion")))
+      .completion(m1, Set(("Conversion", Class, "class and object Conversion")))
   }
 
   @Test def completionFromScalaPackageObject: Unit = {
