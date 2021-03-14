@@ -27,7 +27,7 @@ This would generate a main program `happyBirthday` that could be called like thi
 
 ```
 > scala happyBirthday 23 Lisa Peter
-Happy 23rd Birthday, Lisa and Peter!
+Happy 23rd birthday, Lisa and Peter
 ```
 
 A `@main` annotated method can be written either at the top-level or in a statically accessible object. The name of the program is in each case the name of the method, without any object prefixes. The `@main` method can have an arbitrary number of parameters.
