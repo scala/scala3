@@ -116,9 +116,6 @@ object Build {
   // Run tests with filter through vulpix test suite
   val testCompilation = inputKey[Unit]("runs integration test with the supplied filter")
 
-  // Spawns a repl with the correct classpath
-  val repl = inputKey[Unit]("run the REPL with correct classpath")
-
   // Used to compile files similar to ./bin/scalac script
   val scalac = inputKey[Unit]("run the compiler using the correct classpath, or the user supplied classpath")
 
@@ -171,7 +168,9 @@ object Build {
 
     // enable verbose exception messages for JUnit
     testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
-  )
+  ) ++
+    // Spawns a repl with the correct classpath
+    addCommandAlias("repl", "scala3-compiler-bootstrapped/console")
 
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
@@ -387,9 +386,6 @@ object Build {
 
   // Settings shared between scala3-compiler and scala3-compiler-bootstrapped
   lazy val commonDottyCompilerSettings = Seq(
-      // set system in/out for repl
-      connectInput in run := true,
-
       // Generate compiler.properties, used by sbt
       resourceGenerators in Compile += Def.task {
         import java.util._
@@ -531,8 +527,46 @@ object Build {
       },
 
       run := scalac.evaluated,
-      scalac := runCompilerMain().evaluated,
-      repl := runCompilerMain(repl = true).evaluated,
+      scalac := Def.inputTaskDyn {
+        val log = streams.value.log
+        val externalDeps = externalCompilerClasspathTask.value
+        val jars = packageAll.value
+        val scalaLib = findArtifactPath(externalDeps, "scala-library")
+        val dottyLib = jars("scala3-library")
+        val dottyCompiler = jars("scala3-compiler")
+        val args0: List[String] = spaceDelimited("<arg>").parsed.toList
+        val decompile = args0.contains("-decompile")
+        val printTasty = args0.contains("-print-tasty")
+        val debugFromTasty = args0.contains("-Ythrough-tasty")
+        val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
+            arg != "-with-compiler" && arg != "-Ythrough-tasty")
+
+        val main =
+          if (decompile || printTasty) "dotty.tools.dotc.decompiler.Main"
+          else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
+          else "dotty.tools.dotc.Main"
+
+        var extraClasspath = Seq(scalaLib, dottyLib)
+
+        if ((decompile || printTasty) && !args.contains("-classpath"))
+          extraClasspath ++= Seq(".")
+
+        if (args0.contains("-with-compiler")) {
+          if (scalaVersion.value == referenceVersion) {
+            log.error("-with-compiler should only be used with a bootstrapped compiler")
+          }
+          val dottyInterfaces = jars("scala3-interfaces")
+          val dottyStaging = jars("scala3-staging")
+          val dottyTastyInspector = jars("scala3-tasty-inspector")
+          val tastyCore = jars("tasty-core")
+          val asm = findArtifactPath(externalDeps, "scala-asm")
+          extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
+        }
+
+        val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
+
+        (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
+      }.evaluated,
 
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
@@ -568,48 +602,6 @@ object Build {
         } (Set(scalaJSIRSourcesJar)).toSeq
       }.taskValue,
   )
-
-  def runCompilerMain(repl: Boolean = false) = Def.inputTaskDyn {
-    val log = streams.value.log
-    val externalDeps = externalCompilerClasspathTask.value
-    val jars = packageAll.value
-    val scalaLib = findArtifactPath(externalDeps, "scala-library")
-    val dottyLib = jars("scala3-library")
-    val dottyCompiler = jars("scala3-compiler")
-    val args0: List[String] = spaceDelimited("<arg>").parsed.toList
-    val decompile = args0.contains("-decompile")
-    val printTasty = args0.contains("-print-tasty")
-    val debugFromTasty = args0.contains("-Ythrough-tasty")
-    val args = args0.filter(arg => arg != "-repl" && arg != "-decompile" &&
-        arg != "-with-compiler" && arg != "-Ythrough-tasty")
-
-    val main =
-      if (repl) "dotty.tools.repl.Main"
-      else if (decompile || printTasty) "dotty.tools.dotc.decompiler.Main"
-      else if (debugFromTasty) "dotty.tools.dotc.fromtasty.Debug"
-      else "dotty.tools.dotc.Main"
-
-    var extraClasspath = Seq(scalaLib, dottyLib)
-
-    if ((decompile || printTasty) && !args.contains("-classpath"))
-      extraClasspath ++= Seq(".")
-
-    if (args0.contains("-with-compiler")) {
-      if (scalaVersion.value == referenceVersion) {
-        log.error("-with-compiler should only be used with a bootstrapped compiler")
-      }
-      val dottyInterfaces = jars("scala3-interfaces")
-      val dottyStaging = jars("scala3-staging")
-      val dottyTastyInspector = jars("scala3-tasty-inspector")
-      val tastyCore = jars("tasty-core")
-      val asm = findArtifactPath(externalDeps, "scala-asm")
-      extraClasspath ++= Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore)
-    }
-
-    val fullArgs = main :: insertClasspathInArgs(args, extraClasspath.mkString(File.pathSeparator))
-
-    (runMain in Compile).toTask(fullArgs.mkString(" ", " ", ""))
-  }
 
   def insertClasspathInArgs(args: List[String], cp: String): List[String] = {
     val (beforeCp, fromCp) = args.span(_ != "-classpath")
