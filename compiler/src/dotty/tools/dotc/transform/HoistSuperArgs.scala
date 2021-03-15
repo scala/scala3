@@ -119,7 +119,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       /** Only rewire types that are owned by the current Hoister and is an param or accessor */
       def needsRewire(tp: Type) = tp match {
         case ntp: NamedType =>
-          (ntp.symbol.owner == cls || ntp.symbol.owner == constr) && ntp.symbol.isParamOrAccessor
+          val owner = ntp.symbol.maybeOwner
+          (owner == cls || owner == constr) && ntp.symbol.isParamOrAccessor
         case _ => false
       }
 
