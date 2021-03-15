@@ -15,9 +15,8 @@ class Env:
 extension [Ctx <: Context](using ctx: Ctx)(tpe: String)(using env: Env)
   def :#:[T <: Boolean](trm: T)(ext: env.Extra): (String, T, env.Extra) = (tpe, trm, ext)
 
-
-extension (s: String)
-  def :*:[T <: Tuple](t: T): String *: T = s *: t
+extension [A](a: A)
+  def :*:[T <: Tuple](t: T): A *: T = a *: t
 
 @main def Test =
 
