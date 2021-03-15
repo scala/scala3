@@ -464,7 +464,9 @@ object DottyPlugin extends AutoPlugin {
       else Def.task { originalSources }
     }.value,
     scalacOptions ++= {
-      if (isDotty.value) {
+      val isSbt15 = VersionNumber(sbtVersion.value)
+        .matchesSemVer(SemanticSelector(">=1.5.0-M1"))
+      if (isDotty.value && !isSbt15) {
         val projectName =
           if (configuration.value == Compile)
             name.value
