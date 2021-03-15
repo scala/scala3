@@ -16,9 +16,13 @@ import ast.tpd
 /** This phase makes all erased term members of classes private so that they cannot
  *  conflict with non-erased members. This is needed so that subsequent phases like
  *  ResolveSuper that inspect class members work correctly.
- *  The phase also replaces all expressions that appear in an erased context by
- *  default values. This is necessary so that subsequent checking phases such
- *  as IsInstanceOfChecker don't give false negatives.
+ *  The phase also checks that `erased` definitions contain a call to `erasedValue`
+ *  on their RHS. Then replaces all expressions that appear in an effectively
+ *  erased context by default values. This is necessary so that subsequent checking
+ *  phases such as IsInstanceOfChecker don't give false negatives.
+ *
+ *  TODO: This does not belong in this phase as it has nothing to do with `erased`
+ *        definitions. Move it out to keep logic clean.
  *  Finally, the phase replaces `compiletime.uninitialized` on the right hand side
  *  of a mutable field definition by `_`. This avoids a "is declared erased, but is
  *  in fact used" error in Erasure and communicates to Constructors that the
@@ -69,6 +73,12 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
     else tree
 
   private def trivialErasedTree(tree: Tree)(using Context): Tree =
+    tree match
+      case tree: ValOrDefDef if !tree.symbol.is(Inline) && !tree.symbol.is(Synthetic) =>
+        if tree.rhs.symbol == defn.Predef_undefined then
+          report.warning("Implementation of erased definition should be `erasedValue`. May require an import of `scala.comiletime.erasedValue`.", tree.rhs)
+      case _ =>
+
     tree.tpe.widenTermRefExpr.dealias.normalized match
       case ConstantType(c) => Literal(c)
       case _ => ref(defn.Predef_undefined)

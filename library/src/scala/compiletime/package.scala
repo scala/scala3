@@ -16,7 +16,7 @@ package object compiletime {
    *  the branches.
    *  @syntax markdown
    */
-  erased def erasedValue[T]: T = ???
+  erased def erasedValue[T]: T = erasedValue[T]
 
   /** Used as the initializer of a mutable class or object field, like this:
    *
