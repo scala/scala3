@@ -445,8 +445,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ClassDef` */
     trait ClassDefModule { this: ClassDef.type =>
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
-      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement])
     }
 
     /** Makes extension methods on `ClassDef` available without any imports */
@@ -461,8 +461,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  The first parent is always a class.
          */
         def parents: List[Tree /* Term | TypeTree */]
-        /** List of derived type classes */
-        def derived: List[TypeTree] // TODO remove? It seems these don't exist after desugaring
         /** Self-type of the class
          *
          *  ```scala
@@ -4214,9 +4212,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case tdef @ TypeDef(_, rhs) =>
             val owner = tdef.symbol
             foldTree(x, rhs)(owner)
-          case cdef @ ClassDef(_, constr, parents, derived, self, body) =>
+          case cdef @ ClassDef(_, constr, parents, self, body) =>
             val owner = cdef.symbol
-            foldTrees(foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), derived)(owner), self)(owner), body)(owner)
+            foldTrees(foldTrees(foldTrees(foldTree(x, constr)(owner), parents)(owner), self)(owner), body)(owner)
           case Import(expr, _) =>
             foldTree(x, expr)(owner)
           case Export(expr, _) =>
@@ -4330,7 +4328,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             val owner = tree.symbol
             TypeDef.copy(tree)(tree.name, transformTree(tree.rhs)(owner))
           case tree: ClassDef =>
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, tree.body)
+            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, tree.body)
           case tree: Import =>
             Import.copy(tree)(transformTerm(tree.expr)(owner), tree.selectors)
           case tree: Export =>
