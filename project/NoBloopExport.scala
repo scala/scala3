@@ -23,8 +23,8 @@ object NoBloopExport {
         Nil
       case Some(key) =>
         Seq(
-            key in Compile := None,
-            key in Test := None,
+            Compile / key := None,
+            Test / key := None,
         )
     }
   }
