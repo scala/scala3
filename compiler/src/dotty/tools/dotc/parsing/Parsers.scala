@@ -309,6 +309,11 @@ object Parsers {
       offset
     }
 
+    def acceptColon(): Int =
+      val offset = in.offset
+      if in.isColon() then { in.nextToken(); offset }
+      else accept(COLON)
+
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
@@ -861,7 +866,7 @@ object Parsers {
           lookahead.nextToken()
           skipParams()
       skipParams()
-      lookahead.token == COLON
+      lookahead.isColon()
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -1378,7 +1383,7 @@ object Parsers {
             if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
+              case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
                 isValParamList = true
                 funArgTypesRest(
                     typedFunParam(paramStart, name.toTermName, imods),
@@ -1467,7 +1472,7 @@ object Parsers {
     /** TypedFunParam   ::= id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
-        accept(COLON)
+        acceptColon()
         makeParameter(name, typ(), mods)
       }
 
@@ -1761,24 +1766,23 @@ object Parsers {
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
-    def contextBounds(pname: TypeName): List[Tree] = in.token match {
-      case COLON =>
+    def contextBounds(pname: TypeName): List[Tree] =
+      if in.isColon() then
         atSpan(in.skipToken()) {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
-      case VIEWBOUND =>
+      else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           "view bounds `<%' are no longer supported, use a context bound `:' instead",
           in.sourcePos())
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
-      case _ =>
+      else
         Nil
-    }
 
     def typedOpt(): Tree =
-      if (in.token == COLON) { in.nextToken(); toplevelTyp() }
+      if in.isColon() then { in.nextToken(); toplevelTyp() }
       else TypeTree().withSpan(Span(in.lastOffset))
 
     def typeDependingOn(location: Location): Tree =
@@ -2195,6 +2199,7 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
+     *                 |  SimpleExpr1 `:` nl ArgumentExprs
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
@@ -2342,10 +2347,9 @@ object Parsers {
           lookahead.nextToken()
           if (lookahead.token == RPAREN)
             !fn.isInstanceOf[Trees.Apply[?]] // allow one () as annotation argument
-          else if (lookahead.token == IDENTIFIER) {
+          else if lookahead.token == IDENTIFIER then
             lookahead.nextToken()
-            lookahead.token != COLON
-          }
+            !lookahead.isColon()
           else in.canStartExprTokens.contains(lookahead.token)
         }
       }
@@ -2762,7 +2766,7 @@ object Parsers {
         if allowed.contains(in.token)
            || in.isSoftModifier
               && localModifierTokens.subsetOf(allowed) // soft modifiers are admissible everywhere local modifiers are
-              && in.lookahead.token != COLON
+              && !in.lookahead.isColon()
         then
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
@@ -2931,7 +2935,7 @@ object Parsers {
         }
         atSpan(start, nameStart) {
           val name = ident()
-          accept(COLON)
+          acceptColon()
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
           val tpt = paramType()
@@ -2969,7 +2973,7 @@ object Parsers {
               val isParams =
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
+                || isIdent && (in.name == nme.inline || in.lookahead.isColon())
               if isParams then commaSeparated(() => param())
               else contextTypes(ofClass, nparams)
           checkVarArgsRules(clause)
@@ -3191,13 +3195,7 @@ object Parsers {
         case _ =>
           first :: Nil
       }
-      def emptyType = TypeTree().withSpan(Span(in.lastOffset))
-      val tpt =
-        if (in.token == COLON) {
-          in.nextToken()
-          toplevelTyp()
-        }
-        else emptyType
+      val tpt = typedOpt()
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
@@ -3276,15 +3274,7 @@ object Parsers {
         var name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(numLeadParams = numLeadParams)
-        var tpt = fromWithinReturnType {
-          if in.token == COLONEOL then in.token = COLON
-     	      // a hack to allow
-      	    //
-      	    //     def f():
-      	    //       T
-            //
-          typedOpt()
-        }
+        var tpt = fromWithinReturnType { typedOpt() }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if in.token == EQUALS then
@@ -3528,7 +3518,7 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
-        if !(name.isEmpty && noParams) then accept(COLON)
+        if !(name.isEmpty && noParams) then acceptColon()
         val parents =
           if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
           else constrApp() :: withConstrApps()
@@ -3570,7 +3560,7 @@ object Parsers {
         isUsingClause(extParams)
       do ()
       leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
-      if in.token == COLON then
+      if in.isColon() then
         syntaxError("no `:` expected here")
         in.nextToken()
       val methods =
