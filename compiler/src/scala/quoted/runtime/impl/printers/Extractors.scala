@@ -214,7 +214,7 @@ object Extractors {
       case ByNameType(underlying) =>
         this += "ByNameType(" += underlying += ")"
       case ParamRef(binder, idx) =>
-        this += "ParamRef(" += binder += ", " += idx += ")"
+        this += "ParamRef(binder, " += idx += ")"
       case ThisType(tp) =>
         this += "ThisType(" += tp += ")"
       case SuperType(thistpe, supertpe) =>
@@ -228,8 +228,7 @@ object Extractors {
       case PolyType(argNames, argBounds, resType) =>
         this += "PolyType(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case TypeLambda(argNames, argBounds, resType) =>
-        // resType is not printed to avoid cycles
-        this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", _)"
+        this += "TypeLambda(" ++= argNames += ", " ++= argBounds += ", " += resType += ")"
       case TypeBounds(lo, hi) =>
         this += "TypeBounds(" += lo += ", " += hi += ")"
       case NoPrefix() =>
