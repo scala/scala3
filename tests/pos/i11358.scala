@@ -9,6 +9,6 @@ object Test:
   def test7 = +++(IArray(1, 2))[Int](IArray(2, 3))
   def test8 = +++(IArray(1, 2))[Int](List(2, 3))
 
-  extension [A: reflect.ClassTag](arr: IArray[A])
-    def +++[B >: A: reflect.ClassTag](suffix: IArray[B]): IArray[B] = ???
-    def +++[B >: A: reflect.ClassTag](suffix: IterableOnce[B]): IArray[B] = ???
+  extension [A](arr: IArray[A])
+    def +++[B >: A](suffix: IArray[B])(using reflect.ClassTag[A], reflect.ClassTag[B]): IArray[B] = ???
+    def +++[B >: A](suffix: IterableOnce[B])(using reflect.ClassTag[A], reflect.ClassTag[B]): IArray[B] = ???
