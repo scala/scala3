@@ -401,8 +401,8 @@ object Scanners {
         true
       }
 
-    def isContinuingParens() =
-      openParensTokens.contains(token)
+    def isContinuing(lastToken: Token) =
+      (openParensTokens.contains(token) || lastToken == RETURN)
       && !pastBlankLine
       && !migrateTo3
       && !noindentSyntax
@@ -504,7 +504,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator()
-         && !(lastWidth < nextWidth && isContinuingParens())
+         && !(lastWidth < nextWidth && isContinuing(lastToken))
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then

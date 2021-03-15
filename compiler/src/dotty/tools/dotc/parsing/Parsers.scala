@@ -1971,7 +1971,6 @@ object Parsers {
         atSpan(in.skipToken()) { Throw(expr()) }
       case RETURN =>
         atSpan(in.skipToken()) {
-          colonAtEOLOpt()
           Return(if (isExprIntro) expr() else EmptyTree, EmptyTree)
         }
       case FOR =>
@@ -2240,10 +2239,6 @@ object Parsers {
         case MACRO =>
           val start = in.skipToken()
           MacroTree(simpleExpr())
-        case COLONEOL =>
-          syntaxError("':' not allowed here")
-          in.nextToken()
-          simpleExpr()
         case _ =>
           if (isLiteral) literal()
           else {
