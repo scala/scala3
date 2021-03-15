@@ -4062,11 +4062,11 @@ object Types {
             if (owner == defn.CompiletimePackageObject.moduleClass) name match {
               case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsAny.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsAnyModuleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsInt.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs      if nArgs == 1 => constantFold1(intValue, _.abs)
               case tpnme.Negate   if nArgs == 1 => constantFold1(intValue, x => -x)
               case tpnme.ToString if nArgs == 1 => constantFold1(intValue, _.toString)
@@ -4094,10 +4094,10 @@ object Types {
               case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsString.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsStringModuleClass) name match {
               case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsBoolean.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsBooleanModuleClass) name match {
               case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)
               case tpnme.And if nArgs == 2 => constantFold2(boolValue, _ && _)
               case tpnme.Or  if nArgs == 2 => constantFold2(boolValue, _ || _)
