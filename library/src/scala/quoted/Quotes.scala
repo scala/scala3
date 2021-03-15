@@ -445,7 +445,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ClassDef` */
     trait ClassDefModule { this: ClassDef.type =>
-      // TODO def apply(name: String, constr: DefDef, parents: List[TermOrTypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree /* Term | TypeTree */], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement])
     }
@@ -1650,7 +1649,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeProjection` */
     trait TypeProjectionModule { this: TypeProjection.type =>
-      // TODO def apply(qualifier: TypeTree, name: String): Project
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection
       def unapply(x: TypeProjection): (TypeTree, String)
     }
@@ -1703,7 +1701,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Refined` */
     trait RefinedModule { this: Refined.type =>
-      // TODO def apply(tpt: TypeTree, refinements: List[Definition]): Refined
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined
       def unapply(x: Refined): (TypeTree, List[Definition])
     }
@@ -1865,7 +1862,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val TypeBind` */
     trait TypeBindModule { this: TypeBind.type =>
-      // TODO def apply(name: String, tree: Tree): TypeBind
       def copy(original: Tree)(name: String, tpt: Tree /*TypeTree | TypeBoundsTree*/): TypeBind
       def unapply(x: TypeBind): (String, Tree /*TypeTree | TypeBoundsTree*/)
     }
@@ -2064,7 +2060,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Unapply` */
     trait UnapplyModule { this: Unapply.type =>
-      // TODO def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       def unapply(x: Unapply): (Term, List[Term], List[Tree])
     }
