@@ -328,7 +328,7 @@ object projects:
     project       = "stdLib213",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """library/compile""",
-    sbtPublishCommand = """set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
+    sbtPublishCommand = """set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 
