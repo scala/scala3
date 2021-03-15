@@ -70,8 +70,10 @@ stringElement    ::=  printableChar \ (‘"’ | ‘\’)
                    |  charEscapeSeq
 multiLineChars   ::=  {[‘"’] [‘"’] char \ ‘"’} {‘"’}
 processedStringLiteral
-                 ::=  alphaid ‘"’ {printableChar \ (‘"’ | ‘$’) | escape} ‘"’
+                 ::=  alphaid ‘"’ {[‘\’] processedStringPart | ‘\\’ | ‘\"’} ‘"’
                    |  alphaid ‘"""’ {[‘"’] [‘"’] char \ (‘"’ | ‘$’) | escape} {‘"’} ‘"""’
+processedStringPart
+                 ::= printableChar \ (‘"’ | ‘$’ | ‘\’) | escape
 escape           ::=  ‘$$’
                    |  ‘$’ letter { letter | digit }
                    |  ‘{’ Block  [‘;’ whiteSpace stringFormat whiteSpace] ‘}’

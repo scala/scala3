@@ -1053,6 +1053,7 @@ object Scanners {
         getRawStringLit()
       }
 
+    // for interpolated strings
     @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit =
       if (ch == '"')
         if (multiLine) {
@@ -1069,6 +1070,14 @@ object Scanners {
           setStrVal()
           token = STRINGLIT
         }
+      else if (ch == '\\' && !multiLine) {
+        putChar(ch)
+        nextRawChar()
+        if (ch == '"' || ch == '\\')
+          putChar(ch)
+          nextRawChar()
+        getStringPart(multiLine)
+      } 
       else if (ch == '$') {
         nextRawChar()
         if (ch == '$' || ch == '"') {
