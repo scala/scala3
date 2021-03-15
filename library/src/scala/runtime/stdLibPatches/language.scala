@@ -52,8 +52,6 @@ object language:
     object symbolLiterals
   end deprecated
 
-  object symbolLiterals
-
   /** Where imported, auto-tupling is disabled.
     *
     * '''Why control the feature?''' Auto-tupling can lead to confusing and
