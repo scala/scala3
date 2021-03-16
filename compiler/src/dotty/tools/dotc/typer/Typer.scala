@@ -2181,7 +2181,7 @@ class Typer extends Namer
   private def postProcessInfo(sym: Symbol)(using Context): Unit =
     if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
       report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
-    if !sym.is(Module) && sym.info.isErasedClass then
+    if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
       sym.setFlag(Erased)
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
