@@ -77,19 +77,6 @@ object TypeTestsCasts {
       }
     }.apply(tp)
 
-    /** Approximate type parameters depending on variance */
-    def stripTypeParam(tp: Type)(using Context) = new ApproximatingTypeMap {
-      val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
-      def apply(tp: Type): Type = tp match {
-        case _: MatchType =>
-          tp // break cycles
-        case tp: TypeRef if !tp.symbol.isClass =>
-          boundTypeParams.getOrElseUpdate(tp, newTypeVar(tp.underlying.toBounds))
-        case _ =>
-          mapOver(tp)
-      }
-    }.apply(tp)
-
     /** Returns true if the type arguments of `P` can be determined from `X` */
     def typeArgsTrivial(X: Type, P: AppliedType)(using Context) = inContext(ctx.fresh.setExploreTyperState().setFreshGADTBounds) {
       val AppliedType(tycon, _) = P
@@ -102,6 +89,7 @@ object TypeTestsCasts {
       val tvars = constrained(typeLambda, untpd.EmptyTree, alwaysAddTypeVars = true)._2.map(_.tpe)
       val P1 = tycon.appliedTo(tvars)
 
+      debug.println("before " + ctx.typerState.constraint.show)
       debug.println("P : " + P.show)
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
@@ -111,7 +99,11 @@ object TypeTestsCasts {
       // conforms to the type skeleton pre.F[_]. Then it goes on to check
       // if P1 <: P, which means the type arguments in P are trivial,
       // thus no runtime checks are needed for them.
-      P1 <:< X
+      withMode(Mode.GadtConstraintInference) {
+        TypeComparer.constrainPatternType(P1, X, widenParams = false)
+        debug.println(TypeComparer.explained(_.constrainPatternType(P1, X, widenParams = false)))
+        true
+      }
 
       // Maximization of the type means we try to cover all possible values
       // which conform to the skeleton pre.F[_] and X. Then we have to make
@@ -119,10 +111,11 @@ object TypeTestsCasts {
       // type arguments in P are trivial (no runtime check needed).
       maximizeType(P1, span, fromScala2x = false)
 
+      debug.println("after " + ctx.typerState.constraint.show)
+
       val res = P1 <:< P
 
       debug.println(TypeComparer.explained(_.isSubType(P1, P)))
-
       debug.println("P1 : " + P1.show)
       debug.println("P1 <:< P = " + res)
 
@@ -151,10 +144,8 @@ object TypeTestsCasts {
           case _ =>
             // always false test warnings are emitted elsewhere
             X.classSymbol.exists && P.classSymbol.exists &&
-              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass) ||
-            // first try without striping type parameters for performance
-            typeArgsTrivial(X, tpe) ||
-            typeArgsTrivial(stripTypeParam(X), tpe)
+              !X.classSymbol.asClass.mayHaveCommonChild(P.classSymbol.asClass)
+            || typeArgsTrivial(X, tpe)
         }
       case AndType(tp1, tp2)    => recur(X, tp1) && recur(X, tp2)
       case OrType(tp1, tp2)     => recur(X, tp1) && recur(X, tp2)
