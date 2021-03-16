@@ -188,12 +188,6 @@ backend to inline code. The `inline` modifier is a more powerful option:
 - expansion happens in the frontend instead of in the backend and
 - expansion also applies to recursive methods.
 
-To cross compile between both Scala 3 and Scala 2, we introduce a new `@forceInline`
-annotation which is equivalent to the new `inline` modifier. Note that
-Scala 2 ignores the `@forceInline` annotation, so one must use both
-annotations to guarantee inlining for Scala 3 and at the same time hint inlining
-for Scala 2 (i.e. `@forceInline @inline`).
-
 <!--- (Commented out since the docs and implementation differ)
 
 ### Evaluation Rules
