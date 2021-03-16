@@ -3460,14 +3460,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def docstring: Option[String]
 
         /** Tree of this definition
-        *
-        *  If this symbol `isClassDef` it will return `a `ClassDef`,
-        *  if this symbol `isTypeDef` it will return `a `TypeDef`,
-        *  if this symbol `isValDef` it will return `a `ValDef`,
-        *  if this symbol `isDefDef` it will return `a `DefDef`
-        *  if this symbol `isBind` it will return `a `Bind`,
-        *  else will throw
-        */
+         *
+         *  If this symbol `isClassDef` it will return `a `ClassDef`,
+         *  if this symbol `isTypeDef` it will return `a `TypeDef`,
+         *  if this symbol `isValDef` it will return `a `ValDef`,
+         *  if this symbol `isDefDef` it will return `a `DefDef`
+         *  if this symbol `isBind` it will return `a `Bind`,
+         *  else will throw
+         *
+         *  **Warning**: avoid using this method in macros.
+         *
+         *  **Caveat**: The tree is not guaranteed to exist unless the compiler
+         *  option `-Yretain-trees` is enabled.
+         *
+         *  **Anti-pattern**: The following code is an anti-pattern:
+         *
+         *      symbol.tree.info
+         *
+         *  It should be replaced by the following code:
+         *
+         *      tp.memberType(symbol)
+         *
+         */
         def tree: Tree
 
         /** Is the annotation defined with `annotSym` attached to this symbol? */
