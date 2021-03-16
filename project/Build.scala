@@ -1105,7 +1105,8 @@ object Build {
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
-            -- "PromiseMock.scala" -- "AsyncTest.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
+            -- "PromiseMock.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
+                                   // and remove copy in tests/sjs-junit
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
