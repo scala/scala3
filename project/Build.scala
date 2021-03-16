@@ -698,7 +698,7 @@ object Build {
     settings(
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
-      Compile / unmanagedSourceDirectories :=
+      Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
       // Configure the source maps to point to GitHub for releases
