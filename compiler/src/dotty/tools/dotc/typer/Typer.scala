@@ -3114,12 +3114,9 @@ class Typer extends Namer
     def readapt(tree: Tree, shouldTryGadtHealing: Boolean = tryGadtHealing)(using Context) = adapt(tree, pt, locked, shouldTryGadtHealing)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
-    def missingArgs(mt: MethodType) = {
-      val meth = err.exprStr(methPart(tree))
-      if (mt.paramNames.length == 0) report.error(MissingEmptyArgumentList(meth), tree.srcPos)
-      else report.error(em"missing arguments for $meth", tree.srcPos)
+    def missingArgs(mt: MethodType) =
+      ErrorReporting.missingArgs(tree, mt)
       tree.withType(mt.resultType)
-    }
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots =
@@ -3413,11 +3410,12 @@ class Typer extends Namer
       //  - we reference a typelevel method
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
-      if (arity >= 0 &&
-          !tree.symbol.isConstructor &&
-          !tree.symbol.isAllOf(InlineMethod) &&
-          !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !functionExpected)) {
+      if arity >= 0
+         && !tree.symbol.isConstructor
+         && !tree.symbol.isAllOf(InlineMethod)
+         && !ctx.mode.is(Mode.Pattern)
+         && !(isSyntheticApply(tree) && !functionExpected)
+      then
         if (!defn.isFunctionType(pt))
           pt match {
             case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
@@ -3425,7 +3423,6 @@ class Typer extends Namer
             case _ =>
           }
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
-      }
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
@@ -3832,8 +3829,9 @@ class Typer extends Namer
       && !tree.isInstanceOf[Inlined]
       && isPureExpr(tree)
       && !isSelfOrSuperConstrCall(tree)
-    then
-      report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
+    then tree match
+      case closureDef(_) => missingArgs(tree, tree.tpe.widen)
+      case _ => report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =

@@ -43,6 +43,14 @@ object ErrorReporting {
   def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
+  def missingArgs(tree: Tree, mt: Type)(using Context): Unit =
+    val meth = err.exprStr(methPart(tree))
+    mt match
+      case mt: MethodType if mt.paramNames.isEmpty =>
+        report.error(MissingEmptyArgumentList(meth), tree.srcPos)
+      case _ =>
+        report.error(em"missing arguments for $meth", tree.srcPos)
+
   class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
