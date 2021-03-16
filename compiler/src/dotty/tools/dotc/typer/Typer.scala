@@ -3830,8 +3830,17 @@ class Typer extends Namer
       && isPureExpr(tree)
       && !isSelfOrSuperConstrCall(tree)
     then tree match
-      case closureDef(meth) if meth.span == meth.rhs.span.toSynthetic =>
-        // it's a synthesized lambda, for instance via an eta expansion: report a hard error
+      case closureDef(meth)
+      if meth.span == meth.rhs.span.toSynthetic
+          && !original.isInstanceOf[untpd.Function] =>
+        // It's a synthesized lambda, for instance via an eta expansion: report a hard error
+        // There are two tests for synthetic lambdas which both have to be true.
+        // The first test compares spans of closure definition with the closure's right hand
+        // side. This is usually accurate but can fail for compiler-generated test code.
+        // See repl.DocTests for two failing tests. The second tests rules out closures
+        // if the original tree was a lambda. This does not work always either since
+        // sometimes we do not have the original anymore and use the transformed tree instead.
+        // But taken together, the two criteria are quite accurate.
         missingArgs(tree, tree.tpe.widen)
       case _ =>
         report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
