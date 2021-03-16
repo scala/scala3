@@ -76,7 +76,7 @@ a type:
   1. If _T_ is a reference to an opaque type alias named _A_, _S_ includes
     a reference to an object _A_ defined in the same scope as the type, if it exists,
     as well as the implicit scope of _T_'s underlying type or bounds.
-  1. If _T_ is a reference to an an abstract type or match type alias
+  1. If _T_ is a reference to an abstract type or match type alias
     named _A_, _S_ includes a reference to an object _A_ defined in the same scope as the type, if it exists, as well as the implicit scopes of _T_'s given bounds.
   1. If _T_ is a reference to an anchor of the form _p.A_ then _S_ also includes
     all term references on the path _p_.
@@ -107,8 +107,8 @@ which means that the alternative `c` would be chosen as solution!
 Scala 2's somewhat puzzling behavior with respect to ambiguity has been exploited to implement
 the analogue of a "negated" search in implicit resolution, where a query `Q1` fails if some
 other query `Q2` succeeds and `Q1` succeeds if `Q2` fails. With the new cleaned up behavior
-these techniques no longer work. But there is now a new special type `scala.util.Not`
-which implements negation directly. For any query type `Q`: `Not[Q]` succeeds if and only if
+these techniques no longer work. But there is now a new special type `scala.util.NotGiven`
+which implements negation directly. For any query type `Q`, `NotGiven[Q]` succeeds if and only if
 the implicit search for `Q` fails.
 
 **5.** The treatment of divergence errors has also changed. A divergent implicit is treated as a normal failure, after which alternatives are still tried. This also makes sense: Encountering a divergent implicit means that we assume that no finite solution can be found on the corresponding path, but another path can still be tried. By contrast,
