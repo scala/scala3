@@ -2961,7 +2961,7 @@ object Parsers {
         if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
         else
           val clause =
-            if prefix && !isIdent(nme.using) then param() :: Nil
+            if prefix && !isIdent(nme.using) && !isIdent(nme.erased) then param() :: Nil
             else
               paramMods()
               if givenOnly && !impliedMods.is(Given) then
