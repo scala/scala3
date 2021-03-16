@@ -21,7 +21,7 @@ object Feature:
 
   private val namedTypeArguments = experimental("namedTypeArguments")
   private val genericNumberLiterals = experimental("genericNumberLiterals")
-  private val macros = experimental("macros")
+  private val scala2macros = experimental("macros")
 
   val dependent = experimental("dependent")
   val erasedTerms = experimental("erasedTerms")
@@ -70,7 +70,7 @@ object Feature:
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
 
-  def scala2ExperimentalMacroEnabled(using Context) = enabled(macros)
+  def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
