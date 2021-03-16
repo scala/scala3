@@ -29,21 +29,20 @@ class RepeatableAnnotations extends MiniPhase:
     annsByType.flatMap {
       case (_, a :: Nil) => a :: Nil
       case (sym, anns) if sym.derivesFrom(defn.ClassfileAnnotationClass) =>
-        sym.annotations.find(_ matches defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
+        sym.getAnnotation(defn.JavaRepeatableAnnot).flatMap(_.argumentConstant(0)) match
           case Some(Constant(containerTpe: Type)) =>
             val clashingAnns = annsByType.getOrElse(containerTpe.classSymbol, Nil)
-            if !clashingAnns.isEmpty then
+            if clashingAnns.nonEmpty then
               // this is the same error javac would raise in this case
-              val pos = clashingAnns.map(_.tree.srcPos).minBy(_.line)
+              val pos = clashingAnns.head.tree.srcPos
               report.error("Container must not be present at the same time as the element it contains", pos)
               Nil
             else
               val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
               Annotation(containerTpe, NamedArg("value".toTermName, aggregated)) :: Nil
           case _ =>
-            val pos = anns.map(_.tree.srcPos).sortBy(_.line).apply(1)
+            val pos = anns.head.tree.srcPos
             report.error("Not repeatable annotation repeated", pos)
             Nil
       case (_, anns) => anns
     }.toList
-
