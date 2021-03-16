@@ -1356,7 +1356,7 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
       }
     typed(desugared, pt)
   }
@@ -3830,8 +3830,11 @@ class Typer extends Namer
       && isPureExpr(tree)
       && !isSelfOrSuperConstrCall(tree)
     then tree match
-      case closureDef(_) => missingArgs(tree, tree.tpe.widen)
-      case _ => report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
+      case closureDef(meth) if meth.span == meth.rhs.span.toSynthetic =>
+        // it's a synthesized lambda, for instance via an eta expansion: report a hard error
+        missingArgs(tree, tree.tpe.widen)
+      case _ =>
+        report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =
