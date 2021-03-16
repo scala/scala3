@@ -2,11 +2,13 @@ package dotty.tools
 package dotc
 package typer
 
+import backend.sjs.JSDefinitions
 import core._
 import Contexts._, Types._, Symbols._, Names._, Decorators._, ProtoTypes._
 import Flags._, SymDenotations._
 import NameKinds.FlatName
 import NameOps._
+import StdNames._
 import config.Printers.{implicits, implicitsDetailed}
 import util.Spans.Span
 import ast.{untpd, tpd}
@@ -64,6 +66,8 @@ trait ImportSuggestions:
         else !root.name.is(FlatName)
           && !root.name.lastPart.contains('$')
           && root.is(ModuleVal, butNot = JavaDefined)
+          // The implicits in `scalajs.js.|` are implementation details and shouldn't be suggested
+          && !(root.name == nme.raw.BAR && ctx.settings.scalajs.value && root == JSDefinitions.jsdefn.PseudoUnionModule)
       }
 
     def nestedRoots(site: Type)(using Context): List[Symbol] =
