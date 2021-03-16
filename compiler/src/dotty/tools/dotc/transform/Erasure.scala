@@ -13,6 +13,7 @@ import core.Names._
 import core.StdNames._
 import core.NameOps._
 import core.NameKinds.{AdaptedClosureName, BodyRetainerName}
+import core.Scopes.newScopeWith
 import core.Decorators._
 import core.Constants._
 import core.Definitions._
@@ -81,16 +82,22 @@ class Erasure extends Phase with DenotTransformer {
         val oldName = ref.name
         val newName = ref.targetName
         val oldInfo = ref.info
-        val newInfo = transformInfo(oldSymbol, oldInfo)
+        var newInfo = transformInfo(oldSymbol, oldInfo)
         val oldFlags = ref.flags
         var newFlags =
-          if (oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner.denot)) oldFlags &~ Flags.Param
+          if oldSymbol.is(Flags.TermParam) && isCompacted(oldSymbol.owner.denot) then oldFlags &~ Flags.Param
           else oldFlags
         val oldAnnotations = ref.annotations
         var newAnnotations = oldAnnotations
         if oldSymbol.isRetainedInlineMethod then
           newFlags = newFlags &~ Flags.Inline
           newAnnotations = newAnnotations.filterConserve(!_.isInstanceOf[BodyAnnotation])
+        oldSymbol match
+          case cls: ClassSymbol if cls.is(Flags.Erased) =>
+            newFlags = newFlags | Flags.Trait | Flags.JavaInterface
+            newAnnotations = Nil
+            newInfo = erasedClassInfo(cls)
+          case _ =>
         // TODO: define derivedSymDenotation?
         if ref.is(Flags.PackageClass)
            || !ref.isClass  // non-package classes are always copied since their base types change
@@ -124,6 +131,12 @@ class Erasure extends Phase with DenotTransformer {
     val unit = ctx.compilationUnit
     unit.tpdTree = eraser.typedExpr(unit.tpdTree)(using ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
+
+  /** erased classes get erased to empty traits with Object as parent and an empty constructor */
+  private def erasedClassInfo(cls: ClassSymbol)(using Context) =
+    cls.classInfo.derivedClassInfo(
+      declaredParents = defn.ObjectClass.typeRef :: Nil,
+      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Nil, Nil)))
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
@@ -587,15 +600,30 @@ object Erasure {
       checkNotErasedClass(tree)
     }
 
+    private def checkNotErasedClass(tp: Type, tree: untpd.Tree)(using Context): Unit = tp match
+      case JavaArrayType(et) =>
+        checkNotErasedClass(et, tree)
+      case _ =>
+        if tp.isErasedClass then
+          val (kind, tree1) = tree match
+            case tree: untpd.ValOrDefDef => ("definition", tree.tpt)
+            case tree: untpd.DefTree => ("definition", tree)
+            case _ => ("expression", tree)
+          report.error(em"illegal reference to erased ${tp.typeSymbol} in $kind that is not itself erased", tree1.srcPos)
+
     private def checkNotErasedClass(tree: Tree)(using Context): tree.type =
-      if tree.tpe.widen.isErasedClass then
-        report.error(em"illegal reference to erased ${tree.tpe.widen.typeSymbol} in expression that is not itself erased", tree.srcPos)
+      checkNotErasedClass(tree.tpe.widen.finalResultType, tree)
       tree
 
-    def erasedDef(sym: Symbol)(using Context): Thicket = {
-      if (sym.owner.isClass) sym.dropAfter(erasurePhase)
-      tpd.EmptyTree
-    }
+    def erasedDef(sym: Symbol)(using Context): Tree =
+      if sym.isClass then
+      	// We cannot simply drop erased classes, since then they would not generate classfiles
+      	// and would not be visible under separate compilation. So we transform them to
+      	// empty interfaces instead.
+        tpd.ClassDef(sym.asClass, DefDef(sym.primaryConstructor.asTerm), Nil)
+      else
+        if sym.owner.isClass then sym.dropAfter(erasurePhase)
+        tpd.EmptyTree
 
     def erasedType(tree: untpd.Tree)(using Context): Type = {
       val tp = tree.typeOpt
@@ -874,6 +902,7 @@ object Erasure {
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
       if (sym.isEffectivelyErased) erasedDef(sym)
       else
+        checkNotErasedClass(sym.info, vdef)
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
 
@@ -885,6 +914,7 @@ object Erasure {
       if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
         erasedDef(sym)
       else
+        checkNotErasedClass(sym.info.finalResultType, ddef)
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
         var vparams = outerParamDefs(sym)
             ::: ddef.paramss.collect {
@@ -1021,8 +1051,10 @@ object Erasure {
         if mbr.is(ConstructorProxy) then mbr.dropAfter(erasurePhase)
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      try super.typedClassDef(cdef, cls)
-      finally dropConstructorProxies(cls)
+      if cls.is(Flags.Erased) then erasedDef(cls)
+      else
+        try super.typedClassDef(cdef, cls)
+        finally dropConstructorProxies(cls)
 
     override def typedAnnotated(tree: untpd.Annotated, pt: Type)(using Context): Tree =
       typed(tree.arg, pt)
