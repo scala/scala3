@@ -491,19 +491,23 @@ trait ConstraintHandling {
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>
+        val lower = constraint.lower(param)
+        val upper = constraint.upper(param)
         constraint.entry(param) match {
           case bounds: TypeBounds =>
-            val lower = constraint.lower(param)
-            val upper = constraint.upper(param)
             if lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass)
                || upper.nonEmpty && !bounds.hi.isAny
             then constr.println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
-          case _ =>
+          case x =>
             // Happens if param was already solved while processing earlier params of the same TypeLambda.
             // See #4720.
-            true
+
+            // Should propagate bounds even when param has been solved.
+            // See #16682.
+            lower.forall(addOneBound(_, x, isUpper = true)) &&
+              upper.forall(addOneBound(_, x, isUpper = false))
         }
       }
     }
