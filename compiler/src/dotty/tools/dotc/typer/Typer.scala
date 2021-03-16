@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
+import backend.sjs.JSDefinitions
 import core._
 import ast._
 import Trees._
@@ -219,7 +220,13 @@ class Typer extends Namer
                 denot = denot.filterWithPredicate { mbr =>
                   mbr.matchesImportBound(if mbr.symbol.is(Given) then imp.givenBound else imp.wildcardBound)
                 }
-              if reallyExists(denot) then
+              def isScalaJsPseudoUnion =
+                denot.name == tpnme.raw.BAR && ctx.settings.scalajs.value && denot.symbol == JSDefinitions.jsdefn.PseudoUnionClass
+              // Just like Scala2Unpickler reinterprets Scala.js pseudo-unions
+              // as real union types, we want references to `A | B` in sources
+              // to be typed as a real union even if `js.|` has been imported,
+              // so we ignore that import.
+              if reallyExists(denot) && !isScalaJsPseudoUnion then
                 if unimported.isEmpty || !unimported.contains(pre.termSymbol) then
                   return pre.select(name, denot)
           case _ =>

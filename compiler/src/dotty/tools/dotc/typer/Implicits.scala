@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
+import backend.sjs.JSDefinitions
 import core._
 import ast.{Trees, TreeTypeMap, untpd, tpd, DesugarEnums}
 import util.Spans._
@@ -634,6 +635,14 @@ trait ImplicitRunInfo:
               else pre.member(sym.name.toTermName)
                 .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
                 .symbol)
+
+            // The companion of `js.|` defines an implicit conversions from
+            // `A | Unit` to `js.UndefOrOps[A]`. To keep this conversion in scope
+            // in Scala 3, where we re-interpret `js.|` as a real union, we inject
+            // it in the scope of `Unit`.
+            if t.isRef(defn.UnitClass) && ctx.settings.scalajs.value then
+              companions += JSDefinitions.jsdefn.UnionOpsModuleRef
+
             if sym.isClass then
               for p <- t.parents do companions ++= iscopeRefs(p)
             else
