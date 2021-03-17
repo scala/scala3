@@ -25,8 +25,7 @@ package scala
 abstract class Conversion[-T, +U] extends Function1[T, U]:
   /** Convert value `x` of type `T` to type `U` */
   def apply(x: T): U
-object Conversion:
 
-  extension [T](x: T)
-    /** `x.convert[U]` converts a value `x` of type `T` to type `U` */
-    def convert[U](using c: Conversion[T, U]) = c(x)
+  extension (x: T)
+    /** `x.convert` converts a value `x` of type `T` to type `U` */
+    def convert = this(x)
