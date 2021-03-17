@@ -639,5 +639,7 @@ transparent inline def summonInline[T]: T = summonFrom {
 
 ### Reference
 
-For more information, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
+For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.
+
+For more information about compiletime operation, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
 which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.
