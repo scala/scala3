@@ -29,6 +29,9 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       "tests.A" -> cls("tests.A"),
       "tests.A$" -> cls("tests.A$"),
       "tests.Methods.simple" -> cls("tests.Methods").fun("simple"),
+
+      "java.util.AbstractCollection" -> cls("java.util.AbstractCollection"),
+      "java.lang.String" -> cls("java.lang.String"),
     )
 
     cases.foreach { case (query, Sym(sym)) =>
