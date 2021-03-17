@@ -505,7 +505,7 @@ trait ConstraintHandling {
             // See #4720.
 
             // Should propagate bounds even when param has been solved.
-            // See #16682.
+            // See #11682.
             lower.forall(addOneBound(_, x, isUpper = true)) &&
               upper.forall(addOneBound(_, x, isUpper = false))
         }
