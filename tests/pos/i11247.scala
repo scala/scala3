@@ -1,5 +1,6 @@
 import annotation.showAsInfix
 import scala.compiletime._
+import scala.compiletime.ops.int._
 
 class TupleKOps {
 

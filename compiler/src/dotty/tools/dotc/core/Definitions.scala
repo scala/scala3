@@ -222,15 +222,15 @@ class Definitions {
 
   @tu lazy val ScalaXmlPackageClass: Symbol = getPackageClassIfDefined("scala.xml")
 
-  @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
-    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageObject.requiredMethod("codeOf")
-    @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
-    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageObject.requiredMethod("uninitialized")
-    @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
-    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageObject.requiredMethod("requireConst")
-    @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
-    @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
-    @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
+  @tu lazy val CompiletimePackageClass: Symbol = requiredPackage("scala.compiletime").moduleClass
+    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageClass.requiredMethod("codeOf")
+    @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageClass.requiredMethod("erasedValue")
+    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageClass.requiredMethod("uninitialized")
+    @tu lazy val Compiletime_error        : Symbol = CompiletimePackageClass.requiredMethod(nme.error)
+    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageClass.requiredMethod("requireConst")
+    @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageClass.requiredMethod("constValue")
+    @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageClass.requiredMethod("constValueOpt")
+    @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageClass.requiredMethod("summonFrom")
   @tu lazy val CompiletimeTestingPackage: Symbol = requiredPackage("scala.compiletime.testing")
     @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackage.requiredMethod("typeChecks")
     @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackage.requiredMethod("typeCheckErrors")
@@ -241,10 +241,10 @@ class Definitions {
       @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
       @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
   @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
-    @tu lazy val CompiletimeOpsAny: Symbol = requiredModule("scala.compiletime.ops.any")
-    @tu lazy val CompiletimeOpsInt: Symbol = requiredModule("scala.compiletime.ops.int")
-    @tu lazy val CompiletimeOpsString: Symbol = requiredModule("scala.compiletime.ops.string")
-    @tu lazy val CompiletimeOpsBoolean: Symbol = requiredModule("scala.compiletime.ops.boolean")
+    @tu lazy val CompiletimeOpsAnyModuleClass: Symbol = requiredModule("scala.compiletime.ops.any").moduleClass
+    @tu lazy val CompiletimeOpsIntModuleClass: Symbol = requiredModule("scala.compiletime.ops.int").moduleClass
+    @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
+    @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -1049,7 +1049,7 @@ class Definitions {
   }
 
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
-    sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
+    sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
   private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
   private val compiletimePackageIntTypes: Set[Name] = Set(
@@ -1070,11 +1070,11 @@ class Definitions {
   final def isCompiletimeAppliedType(sym: Symbol)(using Context): Boolean =
     compiletimePackageOpTypes.contains(sym.name)
     && (
-         sym.owner == CompiletimePackageObject.moduleClass && sym.name == tpnme.S
-      || sym.owner == CompiletimeOpsAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsInt.moduleClass && compiletimePackageIntTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
+         isCompiletime_S(sym)
+      || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsBooleanModuleClass && compiletimePackageBooleanTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )
 
   // ----- Scala-2 library patches --------------------------------------

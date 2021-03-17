@@ -376,13 +376,14 @@ val intTwo: 2 = natTwo
 
 The [`scala.compiletime`](https://dotty.epfl.ch/api/scala/compiletime.html) package contains helper definitions that provide support for compile time operations over values. They are described in the following.
 
-### `constValue`, `constValueOpt`, and the `S` combinator
+### `constValue` and `constValueOpt`
 
 `constValue` is a function that produces the constant value represented by a
 type.
 
 ```scala
-import scala.compiletime.{constValue, S}
+import scala.compiletime.constValue
+import scala.compiletime.ops.int.S
 
 transparent inline def toIntC[N]: Int =
    inline constValue[N] match
