@@ -1352,7 +1352,7 @@ class Typer extends Namer
             else cpy.ValDef(param)(
               tpt = untpd.TypeTree(
                 inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
-        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual)
+        desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
       }
     typed(desugared, pt)
   }
@@ -3110,12 +3110,9 @@ class Typer extends Namer
     def readapt(tree: Tree, shouldTryGadtHealing: Boolean = tryGadtHealing)(using Context) = adapt(tree, pt, locked, shouldTryGadtHealing)
     def readaptSimplified(tree: Tree)(using Context) = readapt(simplify(tree, pt, locked))
 
-    def missingArgs(mt: MethodType) = {
-      val meth = err.exprStr(methPart(tree))
-      if (mt.paramNames.length == 0) report.error(MissingEmptyArgumentList(meth), tree.srcPos)
-      else report.error(em"missing arguments for $meth", tree.srcPos)
+    def missingArgs(mt: MethodType) =
+      ErrorReporting.missingArgs(tree, mt)
       tree.withType(mt.resultType)
-    }
 
     def adaptOverloaded(ref: TermRef) = {
       val altDenots =
@@ -3409,11 +3406,12 @@ class Typer extends Namer
       //  - we reference a typelevel method
       //  - we are in a pattern
       //  - the current tree is a synthetic apply which is not expandable (eta-expasion would simply undo that)
-      if (arity >= 0 &&
-          !tree.symbol.isConstructor &&
-          !tree.symbol.isAllOf(InlineMethod) &&
-          !ctx.mode.is(Mode.Pattern) &&
-          !(isSyntheticApply(tree) && !functionExpected)) {
+      if arity >= 0
+         && !tree.symbol.isConstructor
+         && !tree.symbol.isAllOf(InlineMethod)
+         && !ctx.mode.is(Mode.Pattern)
+         && !(isSyntheticApply(tree) && !functionExpected)
+      then
         if (!defn.isFunctionType(pt))
           pt match {
             case SAMType(_) if !pt.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot) =>
@@ -3421,7 +3419,6 @@ class Typer extends Namer
             case _ =>
           }
         simplify(typed(etaExpand(tree, wtp, arity), pt), pt, locked)
-      }
       else if (wtp.paramInfos.isEmpty && isAutoApplied(tree.symbol))
         readaptSimplified(tpd.Apply(tree, Nil))
       else if (wtp.isImplicitMethod)
@@ -3841,8 +3838,20 @@ class Typer extends Namer
       && !tree.isInstanceOf[Inlined]
       && isPureExpr(tree)
       && !isSelfOrSuperConstrCall(tree)
-    then
-      report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
+    then tree match
+      case closureDef(meth)
+      if meth.span == meth.rhs.span.toSynthetic && !untpd.isFunction(original) =>
+        // It's a synthesized lambda, for instance via an eta expansion: report a hard error
+        // There are two tests for synthetic lambdas which both have to be true.
+        // The first test compares spans of closure definition with the closure's right hand
+        // side. This is usually accurate but can fail for compiler-generated test code.
+        // See repl.DocTests for two failing tests. The second tests rules out closures
+        // if the original tree was a lambda. This does not work always either since
+        // sometimes we do not have the original anymore and use the transformed tree instead.
+        // But taken together, the two criteria are quite accurate.
+        missingArgs(tree, tree.tpe.widen)
+      case _ =>
+        report.warning(PureExpressionInStatementPosition(original, exprOwner), original.srcPos)
 
   /** Types the body Scala 2 macro declaration `def f = macro <body>` */
   private def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree =

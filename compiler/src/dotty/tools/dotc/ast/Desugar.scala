@@ -1306,9 +1306,10 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+        .withSpan(span)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 
