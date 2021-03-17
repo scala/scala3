@@ -128,19 +128,15 @@ trait MemberLookup {
       // val syms0 = syms.toList
       // val matched0 = syms0.filter(matches)
       // if matched0.isEmpty then
-      //   println(s"Failed to look up $q in $owner; all members below:")
+      //   println(s"Failed to look up $q in $owner; all members: {{{")
       //   syms0.foreach { s => println(s"\t$s") }
+      //   println("}}}")
       // val matched = matched0.iterator
 
-      // def showMatched() = matched.foreach { s =>
-      //   println(s">>> $s")
-      //   println(s">>> ${s.pos}")
-      //   println(s">>> [${s.flags.show}]")
-      //   println(s">>> {${if s.isTerm then "isterm" else ""};${if s.isType then "istype" else ""}}")
-      //   println(s">>> moduleClass = ${if hackResolveModule(s) == s then hackResolveModule(s).show else "none"}")
+      // def showMatched() = matched0.foreach { s =>
+      //   println(s"\t $s")
       // }
-      // println(s"localLookup in class ${owner} for `$q`{forceTerm=$forceTerm}")
-      // println(s"\t${matched0.mkString(", ")}")
+      // println(s"localLookup in class ${owner} for `$q`{forceTerm=$forceTerm}:")
       // showMatched()
 
       val matched = syms.filter(matches)
@@ -148,7 +144,10 @@ trait MemberLookup {
     }
 
     if owner.isPackageDef then
-      findMatch(hackMembersOf(owner))
+      findMatch(hackMembersOf(owner) ++ hackMembersOf(owner).flatMap {
+        s =>
+          if s.name.endsWith("package$") then hackMembersOf(s) else Iterator.empty
+      })
     else
       owner.tree match {
         case tree: ClassDef =>

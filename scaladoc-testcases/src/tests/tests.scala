@@ -162,6 +162,8 @@ package inner {
   }
 }
 
+val bar = "bar"
+
 /** A class with a semi-non-trivial constructor.
   *
   * @param a Hello!
