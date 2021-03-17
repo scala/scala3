@@ -37,8 +37,11 @@ object language:
       */
     object genericNumberLiterals
 
-    /** Experimental support for `erased` modifier */
-    object erasedTerms
+    /** Experimental support for `erased` modifier
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/erased-defs]]
+     */
+    object erasedDefinitions
 
   end experimental
 

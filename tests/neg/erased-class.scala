@@ -1,4 +1,4 @@
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 erased class AA
 erased class BB extends AA // ok
 

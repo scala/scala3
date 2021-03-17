@@ -1,2 +1,2 @@
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 erased val x: A = A()

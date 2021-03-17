@@ -1,4 +1,4 @@
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 erased class ErasedTerm
 
 erased class <::<[-From, +To] extends ErasedTerm

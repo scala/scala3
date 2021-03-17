@@ -1,4 +1,4 @@
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 import annotation.implicitNotFound
 
 object scalax:

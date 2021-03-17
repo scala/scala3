@@ -1,4 +1,4 @@
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 
 object scalax:
   erased class CanThrow[E <: Exception]

@@ -24,7 +24,7 @@ object Feature:
   private val scala2macros = experimental("macros")
 
   val dependent = experimental("dependent")
-  val erasedTerms = experimental("erasedTerms")
+  val erasedDefinitions = experimental("erasedDefinitions")
   val symbolLiterals: TermName = deprecated("symbolLiterals")
 
 /** Is `feature` enabled by by a command-line setting? The enabling setting is

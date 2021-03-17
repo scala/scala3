@@ -1,8 +1,9 @@
 ---
 layout: doc-page
-title: "Erased Terms Spec"
+title: "Erased Definitions: More Details"
 ---
 
+TODO: complete
 ## Rules
 
 1. `erased` is a soft modifier. It can appear:

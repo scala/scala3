@@ -1,5 +1,5 @@
 package canThrowStrawman
-import language.experimental.erasedTerms
+import language.experimental.erasedDefinitions
 
 class CanThrow[E <: Exception]
 

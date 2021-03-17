@@ -1,14 +1,14 @@
 ---
 layout: doc-page
-title: "Erased Terms And Classes"
+title: "Erased Definitions"
 ---
 
 `erased` is a modifier that expresses that some definition or expression is erased by the compiler instead of being represented in the compiled output. It is not yet part of the Scala language standard. To enable `erased`, turn on the language feature
-`experimental.erased`. This can be done with a language import
+`experimental.erasedDefinitions`. This can be done with a language import
 ```scala
-import scala.language.experimental.erased
+import scala.language.experimental.erasedDefinitions
 ```
-or by setting the command line option `-language:experimental.erased`.
+or by setting the command line option `-language:experimental.erasedDefinitions`.
 ## Why erased terms?
 
 Let's describe the motivation behind erased terms with an example. In the
@@ -225,4 +225,4 @@ val err: Any = CanRead() // error: illegal reference to erased class CanRead
 ```
 Here, the type of `err` is `Any`, so `err` is not considered erased. Yet its initializing value is a reference to the erased class `CanRead`.
 
-[More Details](./erased-terms-spec.md)
+[More Details](./erased-defs-spec.md)
