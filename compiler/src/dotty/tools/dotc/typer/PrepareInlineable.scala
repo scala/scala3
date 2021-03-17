@@ -287,10 +287,10 @@ object PrepareInlineable {
             """Malformed macro.
               |
               |Expected the splice ${...} to be at the top of the RHS:
-              |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
+              |  inline def foo(inline x: X, ..., y: Y): Int = ${ impl('x, ... 'y) }
               |
               | * The contents of the splice must call a static method
-              | * All arguments must be quoted or inline
+              | * All arguments must be quoted
             """.stripMargin, inlined.srcPos)
       }
       checkMacro(body)
