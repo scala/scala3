@@ -3804,10 +3804,23 @@ class Typer extends Namer
               mapOver(tp)
         }
 
-        if tree.symbol.isOneOf(Module | Enum)
-           && !(tree.tpe frozen_<:< pt) // fast track
-           && !(tree.tpe frozen_<:< approx(pt))
-        then
+        // Is it certain that a value of `tree.tpe` is never a subtype of `pt`?
+        // It is true if either
+        // - the class of `tree.tpe` and class of `pt` cannot have common subclass, or
+        // - `tree` is an object or enum value, which cannot possibly be a subtype of `pt`
+        val isDefiniteNotSubtype = {
+          val clsA = tree.tpe.widenDealias.classSymbol
+          val clsB = pt.dealias.classSymbol
+          clsA.exists && clsB.exists
+            && clsA != defn.NullClass
+            && (!clsA.isNumericValueClass && !clsB.isNumericValueClass) // approximation for numeric conversion and boxing
+            && !clsA.asClass.mayHaveCommonChild(clsB.asClass)
+          || tree.symbol.isOneOf(Module | Enum)
+             && !(tree.tpe frozen_<:< pt) // fast track
+             && !(tree.tpe frozen_<:< approx(pt))
+        }
+
+        if isDefiniteNotSubtype then
           // We could check whether `equals` is overriden.
           // Reasons for not doing so:
           // - it complicates the protocol
