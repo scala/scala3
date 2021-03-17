@@ -58,6 +58,7 @@ object Tuples {
     else TupleXXL.fromIArray(xs).asInstanceOf[Tuple]
 
   def fromProduct(xs: Product): Tuple = (xs.productArity match {
+    case 0  => EmptyTuple
     case 1 =>
       xs match {
         case xs: Tuple1[_] => xs
