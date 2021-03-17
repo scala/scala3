@@ -102,7 +102,7 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon match
+      def argsInResult: List[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
@@ -114,6 +114,7 @@ object Inferencing {
                   }.toList
                 case _ => Nil
             case _ => Nil
+        case _ => Nil
       couldInstantiateTypeVar(tycon)
       || argsInResult.exists(couldInstantiateTypeVar)
     case RefinedType(parent, _, _) =>
