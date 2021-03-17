@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, widenParams: Boolean = true): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -135,7 +135,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             case _ => NoType
           }
           if (upcasted.exists)
-            constrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
+            constrainSimplePatternType(pat, upcasted, widenParams) || constrainUpcasted(upcasted)
           else true
       }
     }
@@ -155,7 +155,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case pat: RefinedOrRecType =>
           constrainPatternType(stripRefinement(pat), scrut)
         case pat =>
-          constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
+          constrainSimplePatternType(pat, scrut, widenParams) || classesMayBeCompatible && constrainUpcasted(scrut)
       }
     }
   }
@@ -194,7 +194,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  case classes without also appropriately extending the relevant case class
    *  (see `RefChecks#checkCaseClassInheritanceInvariant`).
    */
-  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type): Boolean = {
+  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type, widenParams: Boolean): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
@@ -213,7 +213,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     val widePt =
       if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
-      else widenVariantParams(scrutineeTp)
+      else if widenParams then widenVariantParams(scrutineeTp)
+      else scrutineeTp
     val narrowTp = SkolemType(patternTp)
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)

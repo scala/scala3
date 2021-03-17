@@ -23,8 +23,8 @@ class StringInterpolationPositionTest extends ParserTest {
   def interpolationLiteralPosition: Unit = {
     val t = parseText(program)
     t match {
-      case PackageDef(_, List(TypeDef(_, Template(_, _, _, statements: List[Tree])))) => {
-        val interpolations = statements.collect{ case ValDef(_, _, InterpolatedString(_, int)) => int }
+      case PackageDef(_, List(TypeDef(_, tpl: Template))) => {
+        val interpolations = tpl.body.collect{ case ValDef(_, _, InterpolatedString(_, int)) => int }
         val lits = interpolations.flatten.flatMap {
           case l @ Literal(_) => List(l)
           case Thicket(trees) => trees.collect { case l @ Literal(_) => l }
