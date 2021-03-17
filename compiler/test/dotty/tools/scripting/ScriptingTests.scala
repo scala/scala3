@@ -18,7 +18,8 @@ class ScriptingTests:
   extension(f: File) def absPath =
     f.getAbsolutePath.replace('\\','/')
 
-  def testFiles = scripts("/scripting")
+  // classpath tests managed by scripting.ClasspathTests.scala
+  def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
 
   def script2jar(scriptFile: File) = 
     val jarName = s"${scriptFile.getName.dropExtension}.jar"

@@ -119,8 +119,12 @@ classpathArgs
 if [ "$PROG_NAME" == "$ScriptingMain" ]; then
   scripting_string="-script $target_script ${scripting_args[@]}"
 fi
-
-eval "\"$JAVACMD\"" \
+if [ -n "$SCALAC_ECHO_TEST" ]; then
+  EVAL=echo # to test with EVAL=echo
+else
+  EVAL=eval
+fi
+$EVAL "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${DEBUG-}" \
      "${java_args[@]}" \
