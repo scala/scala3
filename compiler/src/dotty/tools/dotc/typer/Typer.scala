@@ -772,10 +772,6 @@ class Typer extends Namer
       case _ =>
         var tpt1 = typedType(tree.tpt)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
-
-        if (checkClassType(typeOfNew(tpt1), tpt1.srcPos, traitReq = false, stablePrefixReq = true) eq defn.ObjectType)
-          tpt1 = TypeTree(defn.ObjectType).withSpan(tpt1.span)
-
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
             for case targ: TypeBoundsTree <- targs do
