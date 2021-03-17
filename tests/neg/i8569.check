@@ -1,12 +1,6 @@
--- [E083] Type Error: tests/neg/i8569.scala:8:8 ------------------------------------------------------------------------
-8 |  outer.Inner(2) // error
-  |  ^^^^^^^^^^^
-  |  Outer is not a valid class prefix, since it is not an immutable path
-
-longer explanation available when compiling with `-explain`
--- [E083] Type Error: tests/neg/i8569.scala:9:6 ------------------------------------------------------------------------
-9 |  new outer.Inner(2) // error
-  |      ^^^^^
-  |      (Test.outer : => Outer) is not a valid type prefix, since it is not an immutable path
+-- [E083] Type Error: tests/neg/i8569.scala:13:21 ----------------------------------------------------------------------
+13 |  val x = outer.Inner(2) // error (at posttyper)
+   |          ^^^^^^^^^^^^^^
+   |          Outer is not a valid class prefix, since it is not an immutable path
 
 longer explanation available when compiling with `-explain`

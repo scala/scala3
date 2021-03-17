@@ -10,5 +10,5 @@ object Test {
   def outer = Outer(1)
   def outer2 = Outer2(1)
 
-  val x = outer.Inner(2) // error (at posttyper)
+  val x = new outer2.Inner(2) // error (at typer)
 }
