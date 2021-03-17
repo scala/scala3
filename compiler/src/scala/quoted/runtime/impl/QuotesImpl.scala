@@ -218,13 +218,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ClassDefTypeTest
 
     object ClassDef extends ClassDefModule:
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
-      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement]) =
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        (cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body)
+        (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -233,8 +233,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
           self.rhs.asInstanceOf[tpd.Template].parents
-        def derived: List[TypeTree] =
-          self.rhs.asInstanceOf[tpd.Template].derived.asInstanceOf[List[TypeTree]]
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
