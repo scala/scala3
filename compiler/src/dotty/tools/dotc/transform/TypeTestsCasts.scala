@@ -80,15 +80,25 @@ object TypeTestsCasts {
       debug.println("P1 : " + P1.show)
       debug.println("X : " + X.show)
 
-      // It does not matter if P1 is not a subtype of X.
+      // It does not matter whether P1 is a subtype of X or not.
       // It just tries to infer type arguments of P1 from X if the value x
       // conforms to the type skeleton pre.F[_]. Then it goes on to check
       // if P1 <: P, which means the type arguments in P are trivial,
       // thus no runtime checks are needed for them.
       withMode(Mode.GadtConstraintInference) {
+        // Why not widen type arguments here? Given the following program
+        //
+        //   trait Tree[-T] class Ident[-T] extends Tree[T] def foo1(tree:
+        //   Tree[Int]) = tree.isInstanceOf[Ident[Int]]
+        //
+        // In checking whether the test tree.isInstanceOf[Ident[Int]]
+        // is realizable, we want to constrain Ident[X] <: Tree[Int],
+        // such that we can infer X = Int and Ident[X] <:< Ident[Int].
+        //
+        // If we perform widening, we will get X = Nothing, and we don't have
+        // Ident[X] <:< Ident[Int] any more.
         TypeComparer.constrainPatternType(P1, X, widenParams = false)
         debug.println(TypeComparer.explained(_.constrainPatternType(P1, X, widenParams = false)))
-        true
       }
 
       // Maximization of the type means we try to cover all possible values
