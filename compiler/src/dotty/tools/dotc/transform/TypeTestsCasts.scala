@@ -34,10 +34,6 @@ object TypeTestsCasts {
    *
    *  First do the following substitution:
    *  (a) replace `T @unchecked` and pattern binder types (e.g., `_$1`) in P with WildcardType
-   *  (b) replace pattern binder types (e.g., `_$1`) in X:
-   *      - variance = 1  : hiBound
-   *      - variance = -1 : loBound
-   *      - variance = 0  : OrType(Any, Nothing) // TODO: use original type param bounds
    *
    *  Then check:
    *
@@ -63,16 +59,6 @@ object TypeTestsCasts {
           WildcardType
         case AnnotatedType(_, annot) if annot.symbol == defn.UncheckedAnnot =>
           WildcardType
-        case _ => mapOver(tp)
-      }
-    }.apply(tp)
-
-    def replaceX(tp: Type)(using Context) = new TypeMap {
-      def apply(tp: Type) = tp match {
-        case tref: TypeRef if tref.typeSymbol.isPatternBound =>
-          if (variance == 1) tref.info.hiBound
-          else if (variance == -1) tref.info.loBound
-          else OrType(defn.AnyType, defn.NothingType, soft = true) // TODO: what does this line do?
         case _ => mapOver(tp)
       }
     }.apply(tp)
@@ -154,7 +140,7 @@ object TypeTestsCasts {
       case _                    => true
     })
 
-    val res = recur(replaceX(X.widen), replaceP(P))
+    val res = recur(X.widen, replaceP(P))
 
     debug.println(i"checking  ${X.show} isInstanceOf ${P} = $res")
 
