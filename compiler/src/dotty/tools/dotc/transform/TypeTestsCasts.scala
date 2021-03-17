@@ -133,7 +133,7 @@ object TypeTestsCasts {
           case _                   => recur(defn.AnyType, tpT)
         }
       case tpe: AppliedType     =>
-        X.widen match {
+        X.widenDealias match {
           case OrType(tp1, tp2) =>
             // This case is required to retrofit type inference,
             // which cut constraints in the following two cases:
