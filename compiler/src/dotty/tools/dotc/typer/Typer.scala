@@ -3831,8 +3831,7 @@ class Typer extends Namer
       && !isSelfOrSuperConstrCall(tree)
     then tree match
       case closureDef(meth)
-      if meth.span == meth.rhs.span.toSynthetic
-          && !original.isInstanceOf[untpd.Function] =>
+      if meth.span == meth.rhs.span.toSynthetic && !untpd.isFunction(original) =>
         // It's a synthesized lambda, for instance via an eta expansion: report a hard error
         // There are two tests for synthetic lambdas which both have to be true.
         // The first test compares spans of closure definition with the closure's right hand
