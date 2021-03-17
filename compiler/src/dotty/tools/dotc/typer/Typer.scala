@@ -3808,8 +3808,6 @@ class Typer extends Namer
               mapOver(tp)
         }
 
-        val sym = tree.tpe.widen.classSymbol
-
         // Is it certain that a value of `tree.tpe` is never a subtype of `pt`?
         // It is true if either
         // - the class of `tree.tpe` and class of `pt` cannot have common subclass, or
