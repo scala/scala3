@@ -10,7 +10,7 @@ object Main:
       All arguments afterwards are script arguments.*/
   private def distinguishArgs(args: Array[String]): (Array[String], File, Array[String], Boolean, Boolean) =
     val (leftArgs, rest) = args.splitAt(args.indexOf("-script"))
-    assert(rest.size >= 2,s"internal error: rest == Array(${rest.mkString(",")})")
+    assert(rest.size >= 2, s"internal error: rest == Array(${rest.mkString(",")})")
 
     val file = File(rest(1))
     val scriptArgs = rest.drop(2)
@@ -91,7 +91,7 @@ object Main:
     // convert to absolute path relative to cwd.
     def absPath: String = norm match
       case str if str.isAbsolute => norm
-      case _ => Paths.get(userDir,norm).toString.norm
+      case _ => Paths.get(userDir, norm).toString.norm
 
     def toUrl: String = Paths.get(absPath).toUri.toURL.toString
 

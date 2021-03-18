@@ -18,7 +18,7 @@ class ClasspathTests:
     str.reverse.dropWhile(_ != '.').drop(1).reverse
 
   extension(f: File) def absPath =
-    f.getAbsolutePath.replace('\\','/')
+    f.getAbsolutePath.replace('\\', '/')
 
   // only interested in classpath test scripts
   def testFiles = scripts("/scripting").filter { _.getName.matches("classpath.*[.]sc") }
@@ -36,21 +36,21 @@ class ClasspathTests:
    */
   @Test def scalacEchoTest =
     val relpath = testScript.toPath.relpath.norm
-    printf("===> scalacEchoTest for script [%s]\n",relpath)
-    printf("bash is [%s]\n",bashExe)
+    printf("===> scalacEchoTest for script [%s]\n", relpath)
+    printf("bash is [%s]\n", bashExe)
 
     if packBinScalaExists then
       val echoTest = "SCALAC_ECHO_TEST=1"
       val bashCmdline = s"SCALA_OPTS= $echoTest dist/target/pack/bin/scala -classpath '$wildcardEntry' $relpath"
      
       // ask [dist/bin/scalac] to echo generated command line so we can verify some things
-      val cmd = Array(bashExe,"-c",bashCmdline)
+      val cmd = Array(bashExe, "-c", bashCmdline)
 
-      //cmd.foreach { printf("[%s]\n",_) }
+      //cmd.foreach { printf("[%s]\n", _) }
 
       val javaCommandLine = exec(cmd:_*).mkString(" ").split(" ").filter { _.trim.nonEmpty }
-      printf("\n==================== isWin[%s], cygwin[%s], mingw[%s], msys[%s]\n",isWin,cygwin,mingw,msys)
-      javaCommandLine.foreach { printf("java-command[%s]\n",_) }
+      printf("\n==================== isWin[%s], cygwin[%s], mingw[%s], msys[%s]\n", isWin, cygwin, mingw, msys)
+      javaCommandLine.foreach { printf("java-command[%s]\n", _) }
 
       val output = scala.collection.mutable.Queue(javaCommandLine:_*)
       output.dequeueWhile( _ != "dotty.tools.scripting.Main")
@@ -63,54 +63,54 @@ class ClasspathTests:
 
       // display command line starting with "dotty.tools.scripting.Main"
       output.foreach { line =>
-        printf("%s\n",line)
+        printf("%s\n", line)
       }
 
       // expecting -classpath next
-      assert(consumeNext.replaceAll("'","") == "-classpath")
+      assert(consumeNext.replaceAll("'", "") == "-classpath")
       
       // 2nd arg to scripting.Main is 'lib/*', with semicolon added if Windows jdk
     
       // PR #10761: verify that [dist/bin/scala] -classpath processing adds $psep to wildcard if Windows
       val classpathValue = consumeNext
-      printf("classpath value [%s]\n",classpathValue)
+      printf("classpath value [%s]\n", classpathValue)
       assert( !winshell || classpathValue.contains(psep) )
     
       // expecting -script next
-      assert(consumeNext.replaceAll("'","") == "-script")
+      assert(consumeNext.replaceAll("'", "") == "-script")
 
       // PR #10761: verify that Windows jdk did not expand single wildcard classpath to multiple file paths
       if javaCommandLine.last != relpath then
-        printf("last: %s\nrelp: %s\n",javaCommandLine.last,relpath)
-        assert(javaCommandLine.last == relpath,s"unexpected output passed to scripting.Main")
+        printf("last: %s\nrelp: %s\n", javaCommandLine.last, relpath)
+        assert(javaCommandLine.last == relpath, s"unexpected output passed to scripting.Main")
 
   /*
    * verify classpath reported by called script.
    */
   @Test def hashbangClasspathVerifyTest =
     val relpath = testScript.toPath.relpath.norm
-    printf("===> hashbangClasspathVerifyTest for script [%s]\n",relpath)
-    printf("bash is [%s]\n",bashExe)
+    printf("===> hashbangClasspathVerifyTest for script [%s]\n", relpath)
+    printf("bash is [%s]\n", bashExe)
 
     if false && packBinScalaExists then
       val bashCmdline = s"SCALA_OPTS= $relpath"
-      val cmd = Array(bashExe,"-c",bashCmdline)
+      val cmd = Array(bashExe, "-c", bashCmdline)
 
-      cmd.foreach { printf("[%s]\n",_) }
+      cmd.foreach { printf("[%s]\n", _) }
 
       // test script reports the classpath it sees 
       val scriptOutput = exec(cmd:_*)
-      val scriptCwd = findTaggedLine("cwd",scriptOutput)
-      printf("script ran in directory [%s]\n",scriptCwd)
-      val scriptCp = findTaggedLine("classpath",scriptOutput)
+      val scriptCwd = findTaggedLine("cwd", scriptOutput)
+      printf("script ran in directory [%s]\n", scriptCwd)
+      val scriptCp = findTaggedLine("classpath", scriptOutput)
 
       val hashbangClasspathJars = scriptCp.split(psep).map { _.getName }.sorted.distinct
       val packlibJars = listJars(s"$scriptCwd/dist/target/pack/lib").sorted.distinct
      
       // verify that the classpath set in the hashbang line is effective
       if hashbangClasspathJars.size != packlibJars.size then
-        printf("%d test script jars in classpath\n",hashbangClasspathJars.size)
-        printf("%d jar files in dist/target/pack/lib\n",packlibJars.size)
+        printf("%d test script jars in classpath\n", hashbangClasspathJars.size)
+        printf("%d jar files in dist/target/pack/lib\n", packlibJars.size)
 
       assert(hashbangClasspathJars.size == packlibJars.size)
 
@@ -127,7 +127,7 @@ def listJars(dir: String) =
     Nil
 
 import scala.jdk.CollectionConverters._
-lazy val env:Map[String,String] = System.getenv.asScala.toMap
+lazy val env:Map[String, String] = System.getenv.asScala.toMap
 
 // script output expected as "<tag>: <value>"
 def findTaggedLine(tag: String, lines: Seq[String]): String =
@@ -161,7 +161,7 @@ def which(str:String) =
 
 def bashExe = which("bash")
 def unameExe = which("uname")
-def path = envOrElse("PATH","").split(psep).toList
+def path = envOrElse("PATH", "").split(psep).toList
 def psep = sys.props("path.separator")
 
 def cygwin = ostype == "cygwin"
@@ -174,10 +174,10 @@ def ostype = ostypeFull.toLowerCase.takeWhile{ cc => cc >= 'a' && cc <='z' || cc
 
 extension(p:Path)
   def relpath: Path = cwd.relativize(p)
-  def norm: String = p.toString.replace('\\','/')
+  def norm: String = p.toString.replace('\\', '/')
 
 extension(path: String)
-  def getName: String = norm.replaceAll(".*/","")
+  def getName: String = norm.replaceAll(".*/", "")
 
   // Normalize path separator, convert relative path to absolute
   def norm: String =
@@ -187,12 +187,12 @@ extension(path: String)
       case s => s
     }
 
-  def parent: String = norm.replaceAll("/[^/]*$","")
+  def parent: String = norm.replaceAll("/[^/]*$", "")
 
   // convert to absolute path relative to cwd.
   def absPath: String = norm match
     case str if str.isAbsolute => norm
-    case _ => Paths.get(userDir,norm).toString.norm
+    case _ => Paths.get(userDir, norm).toString.norm
 
   def isDir: Boolean = Files.isDirectory(Paths.get(path))
 

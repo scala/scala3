@@ -74,8 +74,8 @@ while [[ $# -gt 0 ]]; do
     -cp*|-classpath*)
       # hashbang can combine args, e.g. "-classpath 'lib/*'"
       CLASS_PATH="${1#* *}${PSEP}"
-      echo "CLASS_PATH[$CLASS_PATH]" 1>&2
       class_path_count+=1
+      shift
       ;;
     -with-compiler)
       with_compiler=true
