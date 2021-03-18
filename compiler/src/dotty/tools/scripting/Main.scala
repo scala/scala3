@@ -33,6 +33,8 @@ object Main:
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
     try driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+      // write expanded classpath to java.class.path property, so called script can see it
+      sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
       if saveJar then
         // write a standalone jar to the script parent directory
         writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
