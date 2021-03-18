@@ -127,7 +127,8 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectSuperCalls) ::   // Find classes that are called with super
+         new CollectSuperCalls,      // Find classes that are called with super
+         new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
 
   /** Generate the output of the compilation */
