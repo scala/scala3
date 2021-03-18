@@ -366,7 +366,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           if self.isExpr then Some(new ExprImpl(self, SpliceScope.getCurrent))
           else None
 
-        def tpe: TypeRepr = self.tpe
+        def tpe: TypeRepr = self.tpe.widenSkolem
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
         def etaExpand(owner: Symbol): Term = self.tpe.widen match {
