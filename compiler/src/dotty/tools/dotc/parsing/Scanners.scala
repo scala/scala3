@@ -89,6 +89,9 @@ object Scanners {
 
     def isOperator =
       token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+
+    def isArrow =
+      token == ARROW || token == CTXARROW
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {

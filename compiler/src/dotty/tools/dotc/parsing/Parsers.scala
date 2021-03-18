@@ -198,12 +198,11 @@ object Parsers {
       in.token match {
         case USCORE => true
         case IDENTIFIER | BACKQUOTED_IDENT =>
-          val nxt = in.lookahead.token
-          nxt == ARROW || nxt == CTXARROW
+          in.lookahead.isArrow
         case LPAREN =>
           val lookahead = in.LookaheadScanner()
           lookahead.skipParens()
-          lookahead.token == ARROW || lookahead.token == CTXARROW
+          lookahead.isArrow
         case _ => false
       }
     } && !in.isSoftModifierInModifierPosition
@@ -1392,7 +1391,7 @@ object Parsers {
                 funArgTypesRest(t, funArgType)
             }
             accept(RPAREN)
-            if isValParamList || in.token == ARROW || in.token == CTXARROW then
+            if isValParamList || in.isArrow then
               functionRest(ts)
             else {
               val ts1 =
@@ -1881,15 +1880,13 @@ object Parsers {
         finally placeholderParams = saved
 
         val t = expr1(location)
-        if (in.token == ARROW || in.token == CTXARROW) {
+        if in.isArrow then
           placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
           val paramMods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
           wrapPlaceholders(closureRest(start, location, convertToParams(t, paramMods)))
-        }
-        else if (isWildcard(t)) {
+        else if isWildcard(t) then
           placeholderParams = placeholderParams ::: saved
           t
-        }
         else wrapPlaceholders(t)
       }
     }
@@ -2262,7 +2259,8 @@ object Parsers {
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
           simpleExprRest(app, canApply = true)
         case USCORE =>
-          atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
+          if in.lookahead.isArrow then ???
+          else atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
         case _ =>
           t
       }
