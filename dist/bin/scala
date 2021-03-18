@@ -53,7 +53,7 @@ truncated_params="${*#-}"
 # options_indicator != 0 if at least one parameter is not an option
 options_indicator=$(( ${#all_params} - ${#truncated_params} - $# ))
 
-[ -n "$SCALA_OPTS" ] && set -- $SCALA_OPTS $@
+[ -n "$SCALA_OPTS" ] && set -- $SCALA_OPTS "$@"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -65,18 +65,17 @@ while [[ $# -gt 0 ]]; do
       execute_run=true
       shift
       ;;
-    -cp | -classpath)
-      CLASS_PATH="$2"
-      if [[ $cygwin || $mingw || $msys ]]; then
-        # in Windows, need to protect a single wildcard entry from jdk globbing.
-        # (jdk globbing replaces a single wildcard arg to multiple jar file args!)
-        if [[ $CLASS_PATH =~ \* && ! $CLASS_PATH =~ \; ]]; then
-          CLASS_PATH=";$CLASS_PATH"
-        fi
-      fi
+    -cp | -classpath )
+      CLASS_PATH="$2${PSEP}"
       class_path_count+=1
       shift
       shift
+      ;;
+    -cp*|-classpath*)
+      # hashbang can combine args, e.g. "-classpath 'lib/*'"
+      CLASS_PATH="${1#* *}${PSEP}"
+      echo "CLASS_PATH[$CLASS_PATH]" 1>&2
+      class_path_count+=1
       ;;
     -with-compiler)
       with_compiler=true
