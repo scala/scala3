@@ -1,14 +1,16 @@
 ---
 layout: doc-page
-title: "Erased Terms Spec"
+title: "Erased Definitions: More Details"
 ---
 
+TODO: complete
 ## Rules
 
-1. The `erased` modifier can appear:
+1. `erased` is a soft modifier. It can appear:
    * At the start of a parameter block of a method, function or class
    * In a method definition
    * In a `val` definition (but not `lazy val` or `var`)
+   * In a `class` or `trait` definition
 
     ```scala
     erased val x = ...
@@ -20,10 +22,11 @@ title: "Erased Terms Spec"
     def h(x: (erased Int) => Int) = ...
 
     class K(erased x: Int) { ... }
+    erased class E {}
     ```
 
 
-2. A reference to an `erased` definition can only be used
+2. A reference to an `erased` val or def can only be used
    * Inside the expression of argument to an `erased` parameter
    * Inside the body of an `erased` `val` or `def`
 

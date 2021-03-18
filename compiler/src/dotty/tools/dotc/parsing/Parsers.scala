@@ -28,7 +28,8 @@ import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
+import config.Feature
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -179,6 +180,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
+    def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -446,11 +448,10 @@ object Parsers {
      *  Parameters appear in reverse order.
      */
     var placeholderParams: List[ValDef] = Nil
-    var languageImportContext: Context = ctx
 
     def checkNoEscapingPlaceholders[T](op: => T): T =
       val savedPlaceholderParams = placeholderParams
-      val savedLanguageImportContext = languageImportContext
+      val savedLanguageImportContext = in.languageImportContext
       placeholderParams = Nil
       try op
       finally
@@ -458,7 +459,7 @@ object Parsers {
           case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
         placeholderParams = savedPlaceholderParams
-        languageImportContext = savedLanguageImportContext
+        in.languageImportContext = savedLanguageImportContext
 
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
@@ -1141,7 +1142,7 @@ object Parsers {
             Quote(t)
           }
           else
-            if !symbolLiteralsEnabled(using languageImportContext) then
+            if !in.featureEnabled(Feature.symbolLiterals) then
               report.errorOrMigrationWarning(
                 em"""symbol literal '${in.name} is no longer supported,
                     |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
@@ -1374,7 +1375,7 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            imods = modifiers(funTypeArgMods)
+            if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
@@ -1572,7 +1573,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && dependentEnabled(using languageImportContext)
+          if in.token == LPAREN && in.featureEnabled(Feature.dependent)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())
@@ -1861,7 +1862,7 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart = in.lookahead.token == ERASED
+      def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
       else if in.token == LPAREN && isSpecialClosureStart then
@@ -2093,7 +2094,7 @@ object Parsers {
           Nil
         else
           var mods1 = mods
-          if in.token == ERASED then mods1 = addModifier(mods1)
+          if isErased then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
@@ -2684,7 +2685,6 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case GIVEN       => Mod.Given()
-      case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()
@@ -2692,6 +2692,7 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
+          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
@@ -2774,8 +2775,6 @@ object Parsers {
           mods
       normalize(loop(start))
     }
-
-    val funTypeArgMods: BitSet = BitSet(ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
@@ -2899,10 +2898,13 @@ object Parsers {
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
       def paramMods() =
-        if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
+        if in.token == IMPLICIT then
+          addParamMod(() => Mod.Implicit())
         else
-          if isIdent(nme.using) then addParamMod(() => Mod.Given())
-          if in.token == ERASED then addParamMod(() => Mod.Erased())
+          if isIdent(nme.using) then
+            addParamMod(() => Mod.Given())
+          if isErased then
+            addParamMod(() => Mod.Erased())
 
       def param(): ValDef = {
         val start = in.offset
@@ -2959,7 +2961,7 @@ object Parsers {
         if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
         else
           val clause =
-            if prefix && !isIdent(nme.using) then param() :: Nil
+            if prefix && !isIdent(nme.using) && !isIdent(nme.erased) then param() :: Nil
             else
               paramMods()
               if givenOnly && !impliedMods.is(Given) then
@@ -3032,7 +3034,7 @@ object Parsers {
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
       val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
-        languageImportContext = languageImportContext.importContext(imp, NoSymbol)
+        in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)

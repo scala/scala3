@@ -1147,8 +1147,24 @@ class Typer extends Namer
 
     assert(!funFlags.is(Erased) || !args.isEmpty, "An empty function cannot not be erased")
 
-    val funCls = defn.FunctionClass(args.length,
-        isContextual = funFlags.is(Given), isErased = funFlags.is(Erased))
+    val numArgs = args.length
+    val isContextual = funFlags.is(Given)
+    val isErased = funFlags.is(Erased)
+    val funCls = defn.FunctionClass(numArgs, isContextual, isErased)
+
+    /** If `app` is a function type with arguments that are all erased classes,
+     *  turn it into an erased function type.
+     */
+    def propagateErased(app: Tree): Tree = app match
+      case AppliedTypeTree(tycon: TypeTree, args)
+      if !isErased
+         && numArgs > 0
+         && args.indexWhere(!_.tpe.isErasedClass) == numArgs =>
+        val tycon1 = TypeTree(defn.FunctionClass(numArgs, isContextual, isErased = true).typeRef)
+          .withSpan(tycon.span)
+        assignType(cpy.AppliedTypeTree(app)(tycon1, args), tycon1, args)
+      case _ =>
+        app
 
     /** Typechecks dependent function type with given parameters `params` */
     def typedDependent(params: List[untpd.ValDef])(using Context): Tree =
@@ -1172,7 +1188,7 @@ class Typer extends Namer
       val resTpt = TypeTree(mt.nonDependentResultApprox).withSpan(body.span)
       val typeArgs = appDef.termParamss.head.map(_.tpt) :+ resTpt
       val tycon = TypeTree(funCls.typeRef)
-      val core = AppliedTypeTree(tycon, typeArgs)
+      val core = propagateErased(AppliedTypeTree(tycon, typeArgs))
       RefinedTypeTree(core, List(appDef), ctx.owner.asClass)
     end typedDependent
 
@@ -1181,7 +1197,8 @@ class Typer extends Namer
         typedDependent(args.asInstanceOf[List[untpd.ValDef]])(
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
-        typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt)
+        propagateErased(
+          typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funCls.typeRef), args :+ body), pt))
     }
   }
 
@@ -2065,7 +2082,7 @@ class Typer extends Namer
       case rhs => typedExpr(rhs, tpt1.tpe.widenExpr)
     }
     val vdef1 = assignType(cpy.ValDef(vdef)(name, tpt1, rhs1), sym)
-    checkSignatureRepeatedParam(sym)
+    postProcessInfo(sym)
     vdef1.setDefTree
   }
 
@@ -2153,10 +2170,19 @@ class Typer extends Namer
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
-    checkSignatureRepeatedParam(sym)
+    postProcessInfo(sym)
     ddef2.setDefTree
       //todo: make sure dependent method types do not depend on implicits or by-name params
   }
+
+  /** (1) Check that the signature of the class mamber does not return a repeated parameter type
+   *  (2) If info is an erased class, set erased flag of member
+   */
+  private def postProcessInfo(sym: Symbol)(using Context): Unit =
+    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
+      report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
+    if !sym.is(Module) && !sym.isConstructor && sym.info.finalResultType.isErasedClass then
+      sym.setFlag(Erased)
 
   def typedTypeDef(tdef: untpd.TypeDef, sym: Symbol)(using Context): Tree = {
     val TypeDef(name, rhs) = tdef

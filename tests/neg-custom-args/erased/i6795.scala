@@ -1,1 +1,0 @@
-erased class Foo // error

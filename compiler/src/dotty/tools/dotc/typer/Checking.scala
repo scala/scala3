@@ -501,7 +501,8 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy, butNot = Given))
+      checkApplicable(Erased,
+        !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -996,11 +997,6 @@ trait Checking {
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     else tpt
-
-  /** Check that the signature of the class mamber does not return a repeated parameter type */
-  def checkSignatureRepeatedParam(sym: Symbol)(using Context): Unit =
-    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
-      report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
 
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =

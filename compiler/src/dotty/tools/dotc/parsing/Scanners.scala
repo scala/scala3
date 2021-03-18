@@ -17,6 +17,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.collection.immutable.{SortedMap, BitSet}
 import rewrites.Rewrites.patch
+import config.Feature
 import config.Feature.migrateTo3
 import config.SourceVersion._
 import reporting.Message
@@ -185,6 +186,13 @@ object Scanners {
         error(s"illegal combination of -rewrite targets: ${enabled(0).name} and ${enabled(1).name}")
     }
 
+    private var myLanguageImportContext: Context = ctx
+    def languageImportContext = myLanguageImportContext
+    final def languageImportContext_=(c: Context) = myLanguageImportContext = c
+
+    def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
+    def erasedEnabled = featureEnabled(Feature.erasedDefinitions) || ctx.settings.YerasedTerms.value
+
     /** All doc comments kept by their end position in a `Map`.
       *
       * Note: the map is necessary since the comments are looked up after an
@@ -215,8 +223,7 @@ object Scanners {
     private val commentBuf = CharBuffer()
 
     private def handleMigration(keyword: Token): Token =
-      if keyword == ERASED && !ctx.settings.YerasedTerms.value then IDENTIFIER
-      else if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
+      if scala3keywords.contains(keyword) && migrateTo3 then treatAsIdent()
       else keyword
 
     private def treatAsIdent(): Token =
@@ -907,7 +914,9 @@ object Scanners {
         reset()
       next
 
-    class LookaheadScanner() extends Scanner(source, offset)
+    class LookaheadScanner() extends Scanner(source, offset) {
+      override def languageImportContext = Scanner.this.languageImportContext
+    }
 
     /** Skip matching pairs of `(...)` or `[...]` parentheses.
      *  @pre  The current token is `(` or `[`
@@ -1009,13 +1018,16 @@ object Scanners {
       }
 
     def isSoftModifier: Boolean =
-      token == IDENTIFIER && softModifierNames.contains(name)
+      token == IDENTIFIER
+      && (softModifierNames.contains(name) || name == nme.erased && erasedEnabled)
 
     def isSoftModifierInModifierPosition: Boolean =
       isSoftModifier && inModifierPosition()
 
     def isSoftModifierInParamModifierPosition: Boolean =
       isSoftModifier && lookahead.token != COLON
+
+    def isErased: Boolean = isIdent(nme.erased) && erasedEnabled
 
     def canStartStatTokens =
       if migrateTo3 then canStartStatTokens2 else canStartStatTokens3

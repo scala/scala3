@@ -360,8 +360,8 @@ object Flags {
   /** An export forwarder */
   val (Exported @ _, _, _) = newFlags(41, "exported")
 
-  /** Labeled with `erased` modifier (erased value)  */
-  val (_, Erased @ _, _) = newFlags(42, "erased")
+  /** Labeled with `erased` modifier (erased value or class)  */
+  val (Erased @ _, _, _) = newFlags(42, "erased")
 
   /** An opaque type alias or a class containing one */
   val (Opaque @ _, _, _) = newFlags(43, "opaque")
@@ -439,13 +439,13 @@ object Flags {
 
   /** Flags representing source modifiers */
   private val CommonSourceModifierFlags: FlagSet =
-    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent)
+    commonFlags(Private, Protected, Final, Case, Implicit, Given, Override, JavaStatic, Transparent, Erased)
 
   val TypeSourceModifierFlags: FlagSet =
     CommonSourceModifierFlags.toTypeFlags | Abstract | Sealed | Opaque | Open
 
   val TermSourceModifierFlags: FlagSet =
-    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy | Erased
+    CommonSourceModifierFlags.toTermFlags | Inline | AbsOverride | Lazy
 
   /** Flags representing modifiers that can appear in trees */
   val ModifierFlags: FlagSet =
@@ -515,12 +515,12 @@ object Flags {
   val RetainedModuleValAndClassFlags: FlagSet =
     AccessFlags | Package | Case |
     Synthetic | JavaDefined | JavaStatic | Artifact |
-    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible
+    Lifted | MixedIn | Specialized | ConstructorProxy | Invisible | Erased
 
   /** Flags that can apply to a module val */
   val RetainedModuleValFlags: FlagSet = RetainedModuleValAndClassFlags |
     Override | Final | Method | Implicit | Given | Lazy |
-    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Erased | Transparent
+    Accessor | AbsOverride | StableRealizable | Captured | Synchronized | Transparent
 
   /** Flags that can apply to a module class */
   val RetainedModuleClassFlags: FlagSet = RetainedModuleValAndClassFlags | Enum
