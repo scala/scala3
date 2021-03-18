@@ -161,7 +161,7 @@ JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
 
 DEBUG_STR=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
 
-export saved_stty PROG_HOME DEBUG_STR PSEP SCALA_LIB DOTTY_LIB SCALA_ASM SBT_INTF DOTTY_INTF DOTTY_COMP TASTY_CORE
+export saved_stty DEBUG_STR PSEP SCALA_LIB DOTTY_LIB SCALA_ASM SBT_INTF DOTTY_INTF DOTTY_COMP TASTY_CORE
 export DOTTY_STAGING DOTTY_TASTY_INSPECTOR JLINE_READER JLINE_TERMINAL JLINE_TERMINAL_JNA JNA JAVACMD SCALA_OPTS
 export cygwin mingw msys darwin conemu CLASSPATH_SUFFIX
-export -f onExit restoreSttySettings find_lib
+export -f onExit find_lib
