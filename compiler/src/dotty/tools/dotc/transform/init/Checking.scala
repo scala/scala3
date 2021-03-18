@@ -349,39 +349,39 @@ object Checking {
     if (state.safePromoted.contains(eff.potential)) Errors.empty
     else {
       val pot = eff.potential
-      val errs = pot match {
-        case pot if canDirectlyPromote(pot) =>
+      val errs =
+        if canDirectlyPromote(pot) then
           Errors.empty
+        else pot match {
+          case pot: ThisRef =>
+              PromoteThis(pot, eff.source, state.path).toErrors
 
-        case pot: ThisRef =>
-            PromoteThis(pot, eff.source, state.path).toErrors
+          case _: Cold =>
+            PromoteCold(eff.source, state.path).toErrors
 
-        case _: Cold =>
-          PromoteCold(eff.source, state.path).toErrors
+          case pot @ Warm(cls, outer) =>
+            checkPromoteWarm(pot, eff)
 
-        case pot @ Warm(cls, outer) =>
-          checkPromoteWarm(pot, eff)
-
-        case Fun(pots, effs) =>
-          val errs1 = state.test {
-            effs.toList.flatMap(check(_))
-          }
-          val errs2 = state.test {
-            pots.toList.flatMap { pot =>
-              checkPromote(Promote(pot)(eff.source))
+          case Fun(pots, effs) =>
+            val errs1 = state.test {
+              effs.toList.flatMap(check(_))
             }
-          }
+            val errs2 = state.test {
+              pots.toList.flatMap { pot =>
+                checkPromote(Promote(pot)(eff.source))
+              }
+            }
 
-          if (errs1.nonEmpty || errs2.nonEmpty)
-            UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
-          else
-            Errors.empty
+            if (errs1.nonEmpty || errs2.nonEmpty)
+              UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+            else
+              Errors.empty
 
-        case pot =>
-          val Summary(pots, effs) = expand(pot)
-          val effs2 = pots.map(Promote(_)(eff.source))
-          (effs2 ++ effs).toList.flatMap(check(_))
-      }
+          case pot =>
+            val Summary(pots, effs) = expand(pot)
+            val effs2 = pots.map(Promote(_)(eff.source))
+            (effs2 ++ effs).toList.flatMap(check(_))
+        }
       // If we can safely promote, then we don't need to check again
       if (errs.isEmpty)
         state.safePromoted += pot
