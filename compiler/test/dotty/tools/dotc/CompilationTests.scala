@@ -49,7 +49,6 @@ class CompilationTests {
         defaultOptions.and("-nowarn", "-Xfatal-warnings")
       ),
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
-      compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),

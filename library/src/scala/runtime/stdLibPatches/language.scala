@@ -43,6 +43,9 @@ object language:
      */
     object erasedDefinitions
 
+    /** Experimental support for using indentation for arguments
+     */
+    object fewerBraces
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

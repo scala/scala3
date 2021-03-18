@@ -182,9 +182,6 @@ object Scanners {
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
       && !isInstanceOf[LookaheadScanner]
-    val colonSyntax =
-      ctx.settings.YindentColons.value
-      || rewriteNoIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -200,6 +197,15 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions) || ctx.settings.YerasedTerms.value
+
+    private var fewerBracesEnabledCache = false
+    private var fewerBracesEnabledCtx: Context = NoContext
+
+    def fewerBracesEnabled =
+      if fewerBracesEnabledCtx ne myLanguageImportContext then
+        fewerBracesEnabledCache = featureEnabled(Feature.fewerBraces)
+        fewerBracesEnabledCtx = myLanguageImportContext
+      fewerBracesEnabledCache
 
     /** All doc comments kept by their end position in a `Map`.
       *
@@ -635,7 +641,7 @@ object Scanners {
               else
                 reset()
         case COLON =>
-          if colonSyntax then observeColonEOL()
+          if fewerBracesEnabled then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>
