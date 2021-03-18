@@ -28,9 +28,9 @@ class ClasspathTest {
         try
           for src <- libjarFiles do
             val dest = Paths.get(s"$outDir/${src.getName}")
-            printf("copy: %s\n",Files.copy(src.toPath,dest)) // ,REPLACE_EXISTING,COPY_ATTRIBUTES))
+            printf("copy: %s\n", Files.copy(src.toPath, dest))
         
-          val cp = Seq(s"$outDir/*","not-a-real-directory/*").mkString(pathsep).replace('\\','/')
+          val cp = Seq(s"$outDir/*", "not-a-real-directory/*").mkString(pathsep).replace('\\', '/')
          
           val libjars = libjarFiles.map { _.getName }.toSet
 
@@ -40,14 +40,14 @@ class ClasspathTest {
           // require one-to-one matches
           assert(libjars == entries.toSet)
 
-          printf("%d entries\n",entries.size)
-          printf("%d libjars\n",libjars.size)
+          printf("%d entries\n", entries.size)
+          printf("%d libjars\n", libjars.size)
 
           for entry <- libjars do
-            printf("libdir[%s]\n",entry)
+            printf("libdir[%s]\n", entry)
 
           for entry <- entries do
-            printf("expand[%s]\n",entry)
+            printf("expand[%s]\n", entry)
 
           // verify that expanded classpath has expected jar names
           for jar <- libjars do
