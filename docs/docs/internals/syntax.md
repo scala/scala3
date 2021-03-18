@@ -244,8 +244,10 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
+                    |  SimpleExpr1 :<<< BlockExpr >>>                           -- under language.experimental.fewerBraces
+                    |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) indent Block outdent -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
-                    |  XmlExpr													(to be dropped)
+                    |  XmlExpr													                        -- to be dropped
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}

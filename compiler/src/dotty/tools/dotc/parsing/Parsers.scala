@@ -43,6 +43,7 @@ object Parsers {
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
     case InPattern     extends Location(false, true, false)
+    case InGuard       extends Location(false, false, false)
     case InPatternArgs extends Location(false, true, true) // InParens not true, since it might be an alternative
     case InBlock       extends Location(false, false, false)
     case ElseWhere     extends Location(false, false, false)
@@ -403,22 +404,23 @@ object Parsers {
 
     /** Convert tree to formal parameter list
     */
-    def convertToParams(tree: Tree, mods: Modifiers): List[ValDef] = tree match {
-      case Parens(t) =>
-        convertToParam(t, mods) :: Nil
-      case Tuple(ts) =>
-        ts.map(convertToParam(_, mods))
-      case t: Typed =>
-        report.errorOrMigrationWarning(
-          em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
-          in.sourcePos())
-        if migrateTo3 then
-          patch(source, t.span.startPos, "(")
-          patch(source, t.span.endPos, ")")
-        convertToParam(t, mods) :: Nil
-      case t =>
-        convertToParam(t, mods) :: Nil
-    }
+    def convertToParams(tree: Tree): List[ValDef] =
+      val mods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+      tree match
+        case Parens(t) =>
+          convertToParam(t, mods) :: Nil
+        case Tuple(ts) =>
+          ts.map(convertToParam(_, mods))
+        case t: Typed =>
+          report.errorOrMigrationWarning(
+            em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
+            in.sourcePos())
+          if migrateTo3 then
+            patch(source, t.span.startPos, "(")
+            patch(source, t.span.endPos, ")")
+          convertToParam(t, mods) :: Nil
+        case t =>
+          convertToParam(t, mods) :: Nil
 
     /** Convert tree to formal parameter
     */
@@ -920,7 +922,8 @@ object Parsers {
      *  @param maybePostfix  postfix operators are allowed.
      */
     def infixOps(
-        first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
+        first: Tree, canStartOperand: Token => Boolean, operand: Location => Tree,
+        location: Location,
         isType: Boolean,
         isOperator: => Boolean,
         maybePostfix: Boolean = false): Tree = {
@@ -941,7 +944,7 @@ object Parsers {
               PostfixOp(od, topInfo.operator)
             }
           }
-          else recur(operand())
+          else recur(operand(location))
         }
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
@@ -1488,12 +1491,15 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, isType = true,
+      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere,
+        isType = true,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
-    val refinedType: () => Tree = () => refinedTypeRest(withType())
+    val refinedTypeFn: Location => Tree = _ => refinedType()
+
+    def refinedType() = refinedTypeRest(withType())
 
     def refinedTypeRest(t: Tree): Tree = {
       argumentStart()
@@ -1811,7 +1817,11 @@ object Parsers {
           if in.token != altToken then
             if toBeContinued(altToken) then
               t = inSepRegion(InCond) {
-                expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
+                expr1Rest(
+                  postfixExprRest(
+                    simpleExprRest(t, Location.ElseWhere),
+                    Location.ElseWhere),
+                  Location.ElseWhere)
               }
             else
               if rewriteToNewSyntax(t.span) then
@@ -1882,8 +1892,7 @@ object Parsers {
         val t = expr1(location)
         if in.isArrow then
           placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          val paramMods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
-          wrapPlaceholders(closureRest(start, location, convertToParams(t, paramMods)))
+          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
         else if isWildcard(t) then
           placeholderParams = placeholderParams ::: saved
           t
@@ -2155,30 +2164,30 @@ object Parsers {
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.ElseWhere): Tree =
-      val t = postfixExprRest(prefixExpr(), location)
+      val t = postfixExprRest(prefixExpr(location), location)
       if location.inArgs && followingIsVararg() then
         Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
       else
         t
 
-    def postfixExprRest(t: Tree, location: Location = Location.ElseWhere): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr,
+    def postfixExprRest(t: Tree, location: Location): Tree =
+      infixOps(t, in.canStartExprTokens, prefixExpr, location,
         isType = false,
         isOperator = !(location.inArgs && followingIsVararg()),
         maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
-    val prefixExpr: () => Tree = () =>
+    val prefixExpr: Location => Tree = location =>
       if (isIdent && nme.raw.isUnary(in.name)) {
         val start = in.offset
         val op = termIdent()
         if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), canApply = true)
+          simpleExprRest(literal(start), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr()) }
+          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
       }
-      else simpleExpr()
+      else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
@@ -2195,11 +2204,12 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 `:` nl ArgumentExprs
+     *                 |  SimpleExpr1 :<<< BlockExpr >>>                             -- under language.experimental.fewerBraces
+     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) indent Block outdent  -- under language.experimental.fewerBraces
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
-    def simpleExpr(): Tree = {
+    def simpleExpr(location: Location): Tree = {
       var canApply = true
       val t = in.token match {
         case XMLSTART =>
@@ -2235,7 +2245,7 @@ object Parsers {
           newExpr()
         case MACRO =>
           val start = in.skipToken()
-          MacroTree(simpleExpr())
+          MacroTree(simpleExpr(Location.ElseWhere))
         case _ =>
           if (isLiteral) literal()
           else {
@@ -2243,28 +2253,56 @@ object Parsers {
             errorTermTree
           }
       }
-      simpleExprRest(t, canApply)
+      simpleExprRest(t, location, canApply)
     }
 
-    def simpleExprRest(t: Tree, canApply: Boolean = true): Tree = {
+    def simpleExprRest(t: Tree, location: Location, canApply: Boolean = true): Tree = {
       if (canApply) argumentStart()
       in.token match {
         case DOT =>
           in.nextToken()
-          simpleExprRest(selectorOrMatch(t), canApply = true)
+          simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
-          simpleExprRest(tapp, canApply = true)
+          simpleExprRest(tapp, location, canApply = true)
         case LPAREN | LBRACE | INDENT if canApply =>
-          val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
-          simpleExprRest(app, canApply = true)
+          val inParents = in.token == LPAREN
+          val app = atSpan(startOffset(t), in.offset) {
+            val argExprs @ (args, isUsing) = argumentExprs()
+            if inParents && !isUsing && in.isArrow && location != Location.InGuard then
+              val params = convertToParams(Tuple(args))
+              if params.forall(_.name != nme.ERROR) then
+                applyToClosure(t, in.offset, params)
+              else
+                mkApply(t, argExprs)
+            else
+              mkApply(t, argExprs)
+          }
+          simpleExprRest(app, location, canApply = true)
         case USCORE =>
-          if in.lookahead.isArrow then ???
-          else atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
+          if in.lookahead.isArrow && location != Location.InGuard then
+            val app = applyToClosure(t, in.offset, convertToParams(wildcardIdent()))
+            simpleExprRest(app, location, canApply = true)
+          else
+            atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
+        case IDENTIFIER if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard =>
+          val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
+          simpleExprRest(app, location, canApply = true)
         case _ =>
           t
       }
     }
+
+    def applyToClosure(t: Tree, start: Offset, params: List[ValDef]): Tree =
+      atSpan(startOffset(t), in.offset) {
+        val arg = atSpan(start, in.skipToken()) {
+          if in.token != INDENT then
+            syntaxErrorOrIncomplete(i"indented expression expected, ${in} found")
+          val body = inDefScopeBraces(block(simplify = true))
+          Function(params, body)
+        }
+        Apply(t, arg)
+      }
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                  |  ‘new’ TemplateBody
@@ -2382,7 +2420,7 @@ object Parsers {
     /** Guard ::= if PostfixExpr
      */
     def guard(): Tree =
-      if (in.token == IF) { in.nextToken(); postfixExpr() }
+      if (in.token == IF) { in.nextToken(); postfixExpr(Location.InGuard) }
       else EmptyTree
 
     /** Enumerators ::= Generator {semi Enumerator | Guard}
@@ -2607,7 +2645,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePattern,
+      infixOps(simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern,
         isType = false,
         isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
@@ -2622,7 +2660,7 @@ object Parsers {
      *  PatVar           ::= id
      *                    |  `_'
      */
-    val simplePattern: () => Tree = () => in.token match {
+    def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
         simpleRef() match
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
@@ -2632,7 +2670,7 @@ object Parsers {
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
-        simpleExpr()
+        simpleExpr(Location.ElseWhere)
       case XMLSTART =>
         xmlLiteralPattern()
       case GIVEN =>
@@ -2648,6 +2686,8 @@ object Parsers {
           errorTermTree
         }
     }
+
+    val simplePatternFn: Location => Tree = _ => simplePattern()
 
     def simplePatternRest(t: Tree): Tree =
       if in.token == DOT then
