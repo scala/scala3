@@ -88,7 +88,8 @@ object Scanners {
     def isAfterLineEnd: Boolean = lineOffset >= 0
 
     def isOperator =
-      token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      token == BACKQUOTED_IDENT
+      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
 
     def isArrow =
       token == ARROW || token == CTXARROW
@@ -370,8 +371,7 @@ object Scanners {
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
-      && (  token == BACKQUOTED_IDENT
-         || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
+      && isOperator
       && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
@@ -389,7 +389,7 @@ object Scanners {
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
           canStartExprTokens.contains(lexeme.token)
-          && (token != BACKQUOTED_IDENT || !lexeme.isOperator || nme.raw.isUnary(lexeme.name))
+          && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
           // force a NEWLINE a after current token if it is on its own line
