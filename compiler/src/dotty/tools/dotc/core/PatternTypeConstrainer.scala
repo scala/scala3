@@ -211,10 +211,15 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         tp
     }
 
+    val isWideningUnnecessary = patternTp match {
+      case tp @ AppliedType(tycon, args) =>
+        args.forall(_.isInstanceOf[TypeVar])
+      case _ => false
+    }
+
     val widePt =
-      if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
-      else if widenParams then widenVariantParams(scrutineeTp)
-      else scrutineeTp
+      if migrateTo3 || refinementIsInvariant(patternTp) || isWideningUnnecessary then scrutineeTp
+      else widenVariantParams(scrutineeTp)
     val narrowTp = SkolemType(patternTp)
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)
