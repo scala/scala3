@@ -9,8 +9,9 @@ import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import translators._
+import dotty.tools.scaladoc.snippets._
 
-class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
+class MemberRenderer(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using DocContext) extends DocRender(signatureRenderer, snippetChecker):
   import signatureRenderer._
 
   def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)(using m)))

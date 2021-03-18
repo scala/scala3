@@ -8,19 +8,17 @@ import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import dotty.tools.scaladoc.snippets._
 
-class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
-
-  private val snippetChecker = SnippetChecker()
+class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using DocContext):
 
   private val snippetCheckingFunc: Member => String => Unit =
   (m: Member) => {
     (str: String) => {
-      snippetChecker.checkSnippet(str) match {
-        case r @ SnippetCompilationResult(None, _) =>
-          println(s"In member ${m.name}:")
-          println(r.getSummary)
-        case _ =>
-      }
+        snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData)) match {
+          case r @ SnippetCompilationResult(None, _) =>
+            println(s"In member ${m.name}:")
+            println(r.getSummary)
+          case _ =>
+        }
     }
   }
 
