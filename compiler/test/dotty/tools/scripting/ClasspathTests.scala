@@ -26,29 +26,35 @@ class ClasspathTests:
   /*
    * Call test scripts
    */
-  @Test def scriptingJarTest =
+  @Test def scalacEchoTest =
     for scriptFile <- testFiles do
       val relpath = scriptFile.toPath.relpath.norm
       printf("===> test script name [%s]\n",relpath)
       printf("%s\n",relpath)
-      val bashExe = which("bash")
       printf("bash is [%s]\n",bashExe)
       
+      val echoTest = "SCALAC_ECHO_TEST=1"
+      val bashCmdline = s"SCALA_OPTS= $echoTest dist/target/pack/bin/scala -classpath 'lib/*' $relpath"
+     
       // ask [dist/bin/scalac] to echo generated command line so we can verify some things
-      val cmd = Array(bashExe,"-c",s"SCALAC_ECHO_TEST=1 dist/target/pack/bin/scala -classpath '*/lib' $relpath")
-      cmd.foreach { printf("cmd[%s]\n",_) }
-      val javaCommandLine = exec(cmd:_*).mkString(" ").split(" ").filter { _.trim.nonEmpty }
-      val args = scala.collection.mutable.Queue(javaCommandLine:_*)
-      args.dequeueWhile( _ != "dotty.tools.scripting.Main")
+      val cmd = Array(bashExe,"-c",bashCmdline)
 
-      def consumeNext = args.dequeue()
+      cmd.foreach { printf("[%s]\n",_) }
+
+      val javaCommandLine = exec(cmd:_*).mkString(" ").split(" ").filter { _.trim.nonEmpty }
+      javaCommandLine.foreach { printf("scalac-java-command[%s]\n",_) }
+
+      val output = scala.collection.mutable.Queue(javaCommandLine:_*)
+      output.dequeueWhile( _ != "dotty.tools.scripting.Main")
+
+      def consumeNext = if output.isEmpty then "" else output.dequeue()
 
       // assert that we found "dotty.tools.scripting.Main"
       assert(consumeNext == "dotty.tools.scripting.Main")
-      val mainArgs = args.copyToArray(Array.ofDim[String](args.length))
+      val mainArgs = output.copyToArray(Array.ofDim[String](output.length))
 
       // display command line starting with "dotty.tools.scripting.Main"
-      args.foreach { line =>
+      output.foreach { line =>
         printf("%s\n",line)
       }
 
@@ -59,7 +65,9 @@ class ClasspathTests:
     
       // PR #10761: verify that [dist/bin/scala] -classpath processing adds $psep to wildcard if Windows
       val classpathValue = consumeNext
-      assert( !isWin || classpathValue.contains(psep) )
+      printf("classpath value [%s]\n",classpathValue)
+      if isWin then printf("cygwin[%s], mingw[%s], msys[%s]\n",cygwin,mingw,msys)
+      assert( !winshell || classpathValue.contains(psep) )
     
       // expecting -script next
       assert(consumeNext.replaceAll("'","") == "-script")
@@ -67,7 +75,7 @@ class ClasspathTests:
       // PR #10761: verify that Windows jdk did not expand single wildcard classpath to multiple file paths
       if javaCommandLine.last != relpath then
         printf("last: %s\nrelp: %s\n",javaCommandLine.last,relpath)
-        assert(javaCommandLine.last == relpath,s"unexpected args passed to scripting.Main")
+        assert(javaCommandLine.last == relpath,s"unexpected output passed to scripting.Main")
 
 
 lazy val cwd = Paths.get(".").toAbsolutePath
@@ -100,8 +108,17 @@ def which(str:String) =
   out
 
 def bashExe = which("bash")
+def unameExe = which("uname")
 def path = envOrElse("PATH","").split(psep).toList
 def psep = sys.props("path.separator")
+
+def cygwin = ostype == "cygwin"
+def mingw = ostype == "mingw"
+def msys = ostype == "msys"
+def winshell = cygwin || mingw || msys
+
+def ostypeFull = if unameExe.nonEmpty then exec(unameExe).mkString else ""
+def ostype = ostypeFull.toLowerCase.takeWhile{ cc => cc >= 'a' && cc <='z' || cc >= 'A' && cc <= 'Z' }
 
 extension(p:Path)
   def relpath: Path = cwd.relativize(p)
