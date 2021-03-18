@@ -784,6 +784,7 @@ object Build {
           ).mkString(File.pathSeparator),
         )
       },
+      Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1638,7 +1639,8 @@ object Build {
               s"-source-links:" +
                 s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
                 s"docs=github://lampepfl/dotty/master#docs",
-              "-doc-root-content", docRootFile.toString
+              "-doc-root-content", docRootFile.toString,
+              "-Ydocument-synthetic-types"
             )
           ))
         }.evaluated,

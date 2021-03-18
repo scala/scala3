@@ -146,7 +146,7 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
-        Some(parseTypeDef(c, td))
+        Some(parseTypeDef(td))
 
       case vd: ValDef if !isSyntheticField(vd.symbol)
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
@@ -306,7 +306,7 @@ trait ClassLikeSupport:
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef(classDef, _))
+    }.toList.map(parseTypeDef)
 
     val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
@@ -405,7 +405,7 @@ trait ClassLikeSupport:
       memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
     )
 
-  def parseTypeDef(c: ClassDef, typeDef: TypeDef): Member =
+  def parseTypeDef(typeDef: TypeDef): Member =
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)

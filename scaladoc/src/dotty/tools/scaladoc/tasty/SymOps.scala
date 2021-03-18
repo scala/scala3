@@ -160,11 +160,12 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
           else if (sym.maybeOwner.isDefDef) Some(sym.owner)
           else None
 
-        val className = sym.className
+        val (className, anchor) = if sym.fullName == "scala.AnyRef" then // hacking relocation for synthetic `type AnyRef`
+          (Some("AnyRef"), None)
+        else
+          (sym.className, sym.anchor)
 
         val location = sym.packageNameSplitted ++ className
-
-        val anchor = sym.anchor
 
         val externalLink = {
             import q.reflect._
