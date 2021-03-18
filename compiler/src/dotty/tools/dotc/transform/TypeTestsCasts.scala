@@ -88,8 +88,9 @@ object TypeTestsCasts {
       withMode(Mode.GadtConstraintInference) {
         // Why not widen type arguments here? Given the following program
         //
-        //   trait Tree[-T] class Ident[-T] extends Tree[T] def foo1(tree:
-        //   Tree[Int]) = tree.isInstanceOf[Ident[Int]]
+        //    trait Tree[-T] class Ident[-T] extends Tree[T]
+        //
+        //    def foo1(tree: Tree[Int]) = tree.isInstanceOf[Ident[Int]]
         //
         // In checking whether the test tree.isInstanceOf[Ident[Int]]
         // is realizable, we want to constrain Ident[X] <: Tree[Int],
