@@ -2246,11 +2246,15 @@ object Parsers {
           val start = in.skipToken()
           MacroTree(simpleExpr(Location.ElseWhere))
         case _ =>
-          if (isLiteral) literal()
-          else {
+          if isLiteral then
+            literal()
+          else if in.isColon() then
+            syntaxError(IllegalStartSimpleExpr(tokenString(in.token)))
+            in.nextToken()
+            simpleExpr(location)
+          else
             syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), expectedOffset)
             errorTermTree
-          }
       }
       simpleExprRest(t, location, canApply)
     }
