@@ -1,5 +1,27 @@
 package tests.methodsAndConstructors
 
+
+/**
+ * This is my codeblock
+ * 
+ * ```
+ * //{{
+ * import xd
+ * import xd2
+ * //}}
+ *
+ *
+ * val x = 1 // This is my valid comment
+ *
+ * /*
+ * Is this my comment?
+ * */
+ *
+ * val y = 2
+ * ```
+ *
+ * The end of my codeblock
+ */
 class A
 class B extends A
 class C
