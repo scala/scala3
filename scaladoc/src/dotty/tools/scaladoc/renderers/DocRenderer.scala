@@ -8,16 +8,21 @@ import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import dotty.tools.scaladoc.snippets._
 
-class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using DocContext):
+class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using ctx: DocContext):
 
-  private val snippetCheckingFunc: Member => String => Unit =
+  private val snippetCheckingFunc: Member => (String, Option[SnippetCompilerArg]) => Unit =
   (m: Member) => {
-    (str: String) => {
-        snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData)) match {
-          case r @ SnippetCompilationResult(None, _) =>
-            println(s"In member ${m.name}:")
-            println(r.getSummary)
-          case _ =>
+    (str: String, argOverride: Option[SnippetCompilerArg]) => {
+        val arg = argOverride.fold(
+          ctx.snippetCompilerArgs.get(m).fold(SnippetCompilerArg.default)(p => p)
+        )(p => p)
+
+        snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg).foreach { _ match {
+            case r @ SnippetCompilationResult(None, _) =>
+              println(s"In member ${m.name} (${m.dri.location}):")
+              println(r.getSummary)
+            case _ =>
+          }
         }
     }
   }
@@ -62,7 +67,7 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
           case 6 => h6(content)
     case Paragraph(text) => p(renderElement(text))
     case Code(data: String) =>
-      snippetCheckingFunc(m)(data)
+      snippetCheckingFunc(m)(data, None)
       pre(code(raw(data))) // TODO add classes
     case HorizontalRule => hr
 

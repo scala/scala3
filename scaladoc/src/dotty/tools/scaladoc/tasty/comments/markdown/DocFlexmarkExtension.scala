@@ -45,19 +45,21 @@ object DocFlexmarkParser {
     }
 }
 
-case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String) => Unit)
+case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String, Option[snippets.SnippetCompilerArg]) => Unit)
   extends HtmlRenderer.HtmlRendererExtension:
 
     def rendererOptions(opt: MutableDataHolder): Unit = () // noop
 
-    object CodeHandler extends CustomNodeRenderer[ast.Code]:
-      override def render(node: ast.Code, c: NodeRendererContext, html: HtmlWriter): Unit =
-        snippetCheckingFunc(node.getText.toString)
-        c.delegateRender()
-
-    object CodeBlockHandler extends CustomNodeRenderer[ast.CodeBlock]:
-      override def render(node: ast.CodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
-        snippetCheckingFunc(node.getContentChars.toString)
+    object FencedCodeBlockHandler extends CustomNodeRenderer[ast.FencedCodeBlock]:
+      override def render(node: ast.FencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
+        val info = node.getInfo.toString
+        val argOverride =
+          info.split(" ")
+            .find(_.startsWith("sc:"))
+            .map(_.stripPrefix("sc:"))
+            .map(snippets.SnippetCompilerArgParser.parse)
+            .flatMap(_.toOption)
+        snippetCheckingFunc(node.getContentChars.toString, argOverride)
         c.delegateRender()
 
     object Handler extends CustomNodeRenderer[DocLinkNode]:
@@ -68,8 +70,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetC
       override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
         JSet(
           new NodeRenderingHandler(classOf[DocLinkNode], Handler),
-          new NodeRenderingHandler(classOf[ast.Code], CodeHandler),
-          new NodeRenderingHandler(classOf[ast.CodeBlock], CodeBlockHandler)
+          new NodeRenderingHandler(classOf[ast.FencedCodeBlock], FencedCodeBlockHandler)
         )
 
     object Factory extends NodeRendererFactory:
@@ -79,6 +80,6 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetC
       htmlRendererBuilder.nodeRendererFactory(Factory)
 
 object DocFlexmarkRenderer:
-  def render(node: Node)(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String) => Unit) =
+  def render(node: Node)(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String, Option[snippets.SnippetCompilerArg]) => Unit) =
     val opts = MarkdownParser.mkMarkdownOptions(Seq(DocFlexmarkRenderer(renderLink, snippetCheckingFunc)))
     HtmlRenderer.builder(opts).build().render(node)

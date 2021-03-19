@@ -234,4 +234,9 @@ extension (s: Signature)
 
 case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)
 
-case class SnippetCompilerData(val packageName: String, val classType: Option[String], val classGenerics: Option[String], val imports: List[String])
+case class SnippetCompilerData(
+  val packageName: String,
+  val classType: Option[String],
+  val classGenerics: Option[String],
+  val imports: List[String]
+)
