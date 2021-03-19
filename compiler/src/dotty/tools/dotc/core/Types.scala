@@ -2663,8 +2663,11 @@ object Types {
    *  the future. See also NamedType#withDenot. Test case is neg/opaque-self-encoding.scala.
    */
   private def designatorFor(prefix: Type, name: Name, denot: Denotation)(using Context): Designator = {
+    def ownerIsPrefix(owner: Symbol) = prefix match
+      case prefix: ThisType => prefix.sameThis(owner.thisType)
+      case _ => false
     val sym = denot.symbol
-    if (sym.exists && (prefix.eq(NoPrefix) || prefix.ne(sym.owner.thisType)))
+    if (sym.exists && (prefix.eq(NoPrefix) || !ownerIsPrefix(sym.owner)))
       sym
     else
       name
@@ -2736,6 +2739,12 @@ object Types {
       case that: ThisType => tref.eq(that.tref)
       case _ => false
     }
+
+    /** Check that the rhs is a ThisType that refers to the same class.
+     */
+    def sameThis(that: Type)(using Context): Boolean = (that eq this) || that.match
+      case that: ThisType => this.cls eq that.cls
+      case _ => false
   }
 
   final class CachedThisType(tref: TypeRef) extends ThisType(tref)
