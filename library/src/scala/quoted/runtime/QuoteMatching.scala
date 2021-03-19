@@ -25,8 +25,6 @@ trait QuoteMatching:
     *
     *  @param scrutinee `Expr[Any]` on which we are pattern matching
     *  @param pattern `Expr[Any]` containing the pattern tree
-    *  @param hasTypeSplices `Boolean` notify if the pattern has type splices
-    *  @param qctx the current Quotes
     *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Expr[Ti]``
     */
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: Expr[Any])(using pattern: Expr[Any]): Option[Tup]
@@ -40,8 +38,6 @@ trait QuoteMatching:
      *
      *  @param scrutinee `Type[?]` on which we are pattern matching
      *  @param pattern `Type[?]` containing the pattern tree
-     *  @param hasTypeSplices `Boolean` notify if the pattern has type splices
-     *  @param qctx the current Quotes
      *  @return None if it did not match, `Some(tup)` if it matched where `tup` contains `Type[Ti]``
      */
     def unapply[TypeBindings <: Tuple, Tup <: Tuple](scrutinee: Type[?])(using pattern: Type[?]): Option[Tup]
