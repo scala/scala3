@@ -322,7 +322,7 @@ object TypeTestsCasts {
               transformTypeTest(e, tp1, flagUnrelated)
                 .and(transformTypeTest(e, tp2, flagUnrelated))
             }
-          case defn.MultiArrayOf(elem, ndims) if isUnboundedGeneric(elem) =>
+          case defn.MultiArrayOf(elem, ndims) if isGenericArrayElement(elem, isScala2 = false) =>
             def isArrayTest(arg: Tree) =
               ref(defn.runtimeMethodRef(nme.isArray)).appliedTo(arg, Literal(Constant(ndims)))
             if (ndims == 1) isArrayTest(expr)

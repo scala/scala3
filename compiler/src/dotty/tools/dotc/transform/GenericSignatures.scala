@@ -10,7 +10,7 @@ import core.Flags._
 import core.Names.{DerivedName, Name, SimpleName, TypeName}
 import core.Symbols._
 import core.TypeApplications.TypeParamInfo
-import core.TypeErasure.{erasedGlb, erasure, isUnboundedGeneric}
+import core.TypeErasure.{erasedGlb, erasure, isGenericArrayElement}
 import core.Types._
 import core.classfile.ClassfileConstants
 import ast.Trees._
@@ -246,7 +246,7 @@ object GenericSignatures {
           typeParamSig(ref.paramName.lastPart)
 
         case defn.ArrayOf(elemtp) =>
-          if (isUnboundedGeneric(elemtp))
+          if (isGenericArrayElement(elemtp, isScala2 = false))
             jsig(defn.ObjectType)
           else
             builder.append(ClassfileConstants.ARRAY_TAG)
