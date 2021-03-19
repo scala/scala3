@@ -59,7 +59,7 @@ object Completion {
    *
    * Otherwise, provide no completion suggestion.
    */
-  private def completionMode(path: List[Tree], pos: SourcePosition): Mode =
+  def completionMode(path: List[Tree], pos: SourcePosition): Mode =
     path match {
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
@@ -81,7 +81,7 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  private def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
+  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
     path match {
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
@@ -100,7 +100,7 @@ object Completion {
     }
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
-  private def completionOffset(path: List[Tree]): Int =
+  def completionOffset(path: List[Tree]): Int =
     path match {
       case (ref: RefTree) :: _ => ref.span.point
       case _ => 0
@@ -134,7 +134,7 @@ object Completion {
    * If several denotations share the same name, the type denotations appear before term denotations inside
    * the same `Completion`.
    */
-  private def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
+  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
     completions
       .toList.groupBy(_._1.toTermName) // don't distinguish between names of terms and types
       .toList.map { (name, namedDenots) =>
@@ -153,7 +153,7 @@ object Completion {
    *
    * When there are multiple denotations, show their kinds.
    */
-  private def description(denots: List[SingleDenotation])(using Context): String =
+  def description(denots: List[SingleDenotation])(using Context): String =
     denots match {
       case denot :: Nil =>
         if (denot.isType) denot.symbol.showFullName
@@ -174,7 +174,7 @@ object Completion {
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  private class Completer(val mode: Mode, val prefix: String, pos: SourcePosition) {
+  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition) {
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -442,11 +442,11 @@ object Completion {
    * The completion mode: defines what kinds of symbols should be included in the completion
    * results.
    */
-  private class Mode(val bits: Int) extends AnyVal {
+  class Mode(val bits: Int) extends AnyVal {
     def is(other: Mode): Boolean = (bits & other.bits) == other.bits
     def |(other: Mode): Mode = new Mode(bits | other.bits)
   }
-  private object Mode {
+  object Mode {
     /** No symbol should be included */
     val None: Mode = new Mode(0)
 
