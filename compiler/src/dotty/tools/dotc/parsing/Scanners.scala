@@ -539,10 +539,10 @@ object Scanners {
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
-      currentRegion match {
+      currentRegion match
         case Indented(curWidth, others, prefix, outer)
         if curWidth < nextWidth && !others.contains(nextWidth) && nextWidth != lastWidth =>
-          if (token == OUTDENT)
+          if token == OUTDENT && next.token != COLON then
             errorButContinue(
               i"""The start of this line does not match any of the previous indentation widths.
                   |Indentation width of current line : $nextWidth
@@ -550,7 +550,6 @@ object Scanners {
           else
             currentRegion = Indented(curWidth, others + nextWidth, prefix, outer)
         case _ =>
-      }
     end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
