@@ -5,15 +5,22 @@ import scala.quoted._
 
 trait MemberLookup {
 
+  def memberLookupResult(using Quotes)(
+    symbol: quotes.reflect.Symbol,
+    label: String,
+    inheritingParent: Option[quotes.reflect.Symbol] = None
+  ): (quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol]) =
+    (symbol, label, inheritingParent)
+
   def lookup(using Quotes, DocContext)(
     query: Query,
     owner: quotes.reflect.Symbol,
-  ): Option[(quotes.reflect.Symbol, String)] = lookupOpt(query, Some(owner))
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] = lookupOpt(query, Some(owner))
 
   def lookupOpt(using Quotes, DocContext)(
     query: Query,
     ownerOpt: Option[quotes.reflect.Symbol],
-  ): Option[(quotes.reflect.Symbol, String)] =
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] =
     try
       import quotes.reflect._
 
@@ -26,7 +33,7 @@ trait MemberLookup {
       def nearestMembered(sym: Symbol): Symbol =
         if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
 
-      val res: Option[(Symbol, String)] = {
+      val res: Option[(Symbol, String, Option[Symbol])] = {
         def toplevelLookup(querystrings: List[String]) =
           downwardLookup(querystrings, defn.PredefModule.moduleClass)
           .orElse(downwardLookup(querystrings, defn.ScalaPackage))
@@ -38,7 +45,7 @@ trait MemberLookup {
             val nearest = nearestMembered(owner)
             val nearestCls = nearestClass(owner)
             val nearestPkg = nearestPackage(owner)
-            def relativeLookup(querystrings: List[String], owner: Symbol): Option[Symbol] = {
+            def relativeLookup(querystrings: List[String], owner: Symbol): Option[(Symbol, Option[Symbol])] = {
               val isMeaningful =
                 owner.exists
                 // those are just an optimisation, they can be dropped if problems show up
@@ -56,26 +63,27 @@ trait MemberLookup {
 
             query match {
               case Query.StrictMemberId(id) =>
-                localLookup(id, nearest).nextOption.map(_ -> id)
+                localLookup(id, nearest).nextOption.map(memberLookupResult(_, id))
               case Query.QualifiedId(Query.Qual.This, _, rest) =>
-                downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
+                downwardLookup(rest.asList, nearestCls).map(memberLookupResult(_, rest.join, _))
               case Query.QualifiedId(Query.Qual.Package, _, rest) =>
-                downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
+                downwardLookup(rest.asList, nearestPkg).map(memberLookupResult(_, rest.join, _))
               case query =>
                 val ql = query.asList
                 toplevelLookup(ql)
                 .orElse(relativeLookup(ql, nearest))
-                .map(_ -> query.join)
+                .map(memberLookupResult(_, query.join, _))
             }
 
           case None =>
-            toplevelLookup(query.asList).map(_ -> query.join)
+            toplevelLookup(query.asList).map(memberLookupResult(_, query.join, _))
         }
       }
 
       // println(s"looked up `$query` in ${owner.show}[${owner.flags.show}] as ${res.map(_.show)}")
 
       res
+
     catch
       case e: Exception =>
         // TODO (https://github.com/lampepfl/scala3doc/issues/238): proper reporting
@@ -169,11 +177,13 @@ trait MemberLookup {
       }
   }
 
-  private def downwardLookup(using Quotes)(query: List[String], owner: quotes.reflect.Symbol): Option[quotes.reflect.Symbol] = {
+  private def downwardLookup(using Quotes)(
+    query: List[String], owner: quotes.reflect.Symbol
+  ): Option[(quotes.reflect.Symbol, Option[quotes.reflect.Symbol])] = {
     import quotes.reflect._
     query match {
       case Nil => None
-      case q :: Nil => localLookup(q, owner).nextOption
+      case q :: Nil => localLookup(q, owner).nextOption.map((_, None))
       case q :: qs =>
         val lookedUp =
           localLookup(q, owner).toSeq
@@ -191,8 +201,18 @@ trait MemberLookup {
             else if s.flags.is(Flags.Module) then tm = Some(s)
             else if s.isClassDef || s.isTypeDef then tp = Some(s)
           }
+
+          def downwardLookUpForInheritedMembers(qs: List[String], owner: Symbol): Option[(Symbol, Option[Symbol])] =
+            downwardLookup(qs, owner).orElse(owner.memberMethod(qs.head).headOption.map((_, Some(owner)))).orElse {
+              val symbol = owner.memberType(qs.head)
+              Option.when(symbol != dotty.tools.dotc.core.Symbols.NoSymbol)(symbol).map((_, Some(owner)))
+            }.orElse {
+              val symbol = owner.memberField(qs.head)
+              Option.when(symbol != dotty.tools.dotc.core.Symbols.NoSymbol)(symbol).map((_, Some(owner)))
+            }
+
           pk.flatMap(downwardLookup(qs, _))
-          .orElse(tp.flatMap(downwardLookup(qs, _)))
+          .orElse(tp.flatMap(downwardLookUpForInheritedMembers(qs, _)))
           .orElse(tm.flatMap(downwardLookup(qs, _)))
         }
     }
