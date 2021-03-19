@@ -100,5 +100,10 @@
 
 .pull-right {
     float: right;
-    margin-left: auto
+    margin-left: auto;
+}
+
+.hide-snippet-comments-button {
+    position: absolute;
+    left: 90%;
 }
