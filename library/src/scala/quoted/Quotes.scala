@@ -19,7 +19,7 @@ transparent inline def quotes(using inline q: Quotes): q.type = q
  *  Used to perform all operations on quoted `Expr` or `Type`.
  *
  *  It contains the low-level Typed AST API metaprogramming API.
- *  This API does not have the static type guarantiees that `Expr` and `Type` provide.
+ *  This API does not have the static type guarantees that `Expr` and `Type` provide.
  */
 trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
@@ -283,7 +283,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     }
 
-    /** Tree representing a pacakage clause in the source code
+    /** Tree representing a package clause in the source code
      *
      *  ```scala
      *  package foo {
@@ -475,7 +475,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  ```scala
          *  class C {
-         *     ... // statemets
+         *     ... // statements
          *  }
          *  ```
          *  @syntax markdown
@@ -511,7 +511,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** List of type and term parameter clauses */
         def paramss: List[ParamClause]
 
-        /** List of leading type paramters or Nil if the method does not have leading type paramters.
+        /** List of leading type parameters or Nil if the method does not have leading type parameters.
          *
          *  Note: Non leading type parameters can be found in extension methods such as
          *  ```scala
@@ -522,7 +522,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def leadingTypeParams: List[TypeDef]
 
         /** List of parameter clauses following the leading type parameters or all clauses.
-         *  Return all parameter clauses if there are no leading type paramters.
+         *  Return all parameter clauses if there are no leading type parameters.
          *
          *  Non leading type parameters can be found in extension methods such as
          *  ```scala
@@ -539,7 +539,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def returnTpt: TypeTree
 
         /** The tree of the implementation of the method.
-         *  Returns `None` if the method does not hava an implemetation.
+         *  Returns `None` if the method does not have an implementation.
          */
         def rhs: Option[Term]
       end extension
@@ -547,7 +547,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ValDef
 
-    /** Tree representing a value definition in the source code This inclues `val`, `lazy val`, `var`, `object` and parameter defintions. */
+    /** Tree representing a value definition in the source code This includes `val`, `lazy val`, `var`, `object` and parameter definitions. */
     type ValDef <: Definition
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `ValDef` */
@@ -659,7 +659,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Replace Ident nodes references to the underlying tree that defined them */
         def underlying: Term
 
-        /** Converts a partally applied term into a lambda expression */
+        /** Converts a partially applied term into a lambda expression */
         def etaExpand(owner: Symbol): Term
 
         /** A unary apply node with given argument: `tree(arg)` */
@@ -1255,7 +1255,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  ```
        *  @param owner: owner of the generated `meth` symbol
        *  @param tpe: Type of the definition
-       *  @param rhsFn: Funtion that recieves the `meth` symbol and the a list of references to the `params`
+       *  @param rhsFn: Function that receives the `meth` symbol and the a list of references to the `params`
        *  @syntax markdown
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
@@ -2102,7 +2102,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** A parameter clause `[X1, ..., Xn]` or `(x1: X1, ..., xn: Xx)`
      *
-     *  `[X1, ..., Xn]` are reresented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
+     *  `[X1, ..., Xn]` are represented with `TypeParamClause` and `(x1: X1, ..., xn: Xx)` are represented with `TermParamClause`
      *
      *  `ParamClause` encodes the following enumeration
      *  ```scala
@@ -2404,7 +2404,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
         /** Is this type a function type?
         *
-        *  @return true if the dealised type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
+        *  @return true if the dealiased type of `self` without refinement is `FunctionN[T1, T2, ..., Tn]`
         *
         *  @note The function
         *
@@ -2603,7 +2603,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AppliedTypeMethods
 
-    /** A type with an anottation `T @foo` */
+    /** A type with an annotation `T @foo` */
     type AnnotatedType <: TypeRepr
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is an `AnnotatedType` */
@@ -3562,7 +3562,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Get non-private named methods defined directly inside the class */
         def declaredMethod(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, exluding constructors */
+        /** Get all non-private methods defined directly inside the class, excluding constructors */
         def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
@@ -3574,7 +3574,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Get non-private named methods defined directly inside the class */
         def declaredType(name: String): List[Symbol]
 
-        /** Get all non-private methods defined directly inside the class, exluding constructors */
+        /** Get all non-private methods defined directly inside the class, excluding constructors */
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
@@ -3854,7 +3854,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def Abstract: Flags
 
       /** Is this generated by Scala compiler.
-       *  Coresponds to ACC_SYNTHETIC in the JVM.
+       *  Corresponds to ACC_SYNTHETIC in the JVM.
        */
       def Artifact: Flags
 
@@ -3921,10 +3921,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Is this symbol `lazy` */
       def Lazy: Flags
 
-      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier proctected[this] */
+      /** Is this symbol local? Used in conjunction with private/private[T] to mean private[this] extends Modifier protected[this] */
       def Local: Flags
 
-      /** Is this symbol marked as a macro. An inline method containing toplevel splices */
+      /** Is this symbol marked as a macro. An inline method containing top level splices */
       def Macro: Flags
 
       def Method: Flags
@@ -4093,7 +4093,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // REPORTING //
     ///////////////
 
-    /** Module containg error and waring reporiting. */
+    /** Module containing error and waring reporting. */
     val report: reportModule
 
     /** Methods of the module object `val report` */
@@ -4147,7 +4147,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import qctx.reflect._
+    *  import quotes.reflect._
     *  class MyTreeAccumulator extends TreeAccumulator[X] {
     *    def foldTree(x: X, tree: Tree)(owner: Symbol): X = ...
     *  }
@@ -4251,7 +4251,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     *
     *  Usage:
     *  ```scala
-    *  import qctx.relfect._
+    *  import quotes.relfect._
     *  class MyTraverser extends TreeTraverser {
     *    override def traverseTree(tree: Tree)(owner: Symbol): Unit = ...
     *  }
@@ -4461,15 +4461,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val Printer` */
     trait PrinterModule { self: Printer.type =>
-      /** Prints fully elaborated vesion of the source code. */
+      /** Prints fully elaborated version of the source code. */
       def TreeCode: Printer[Tree]
 
-      /** Prints fully elaborated vesion of the source code.
+      /** Prints fully elaborated version of the source code.
        *  Same as `TreeCode` but does not print full package prefixes.
        */
       def TreeShortCode: Printer[Tree]
 
-      /** Prints fully elaborated vesion of the source code using ANSI colors. */
+      /** Prints fully elaborated version of the source code using ANSI colors. */
       def TreeAnsiCode: Printer[Tree]
 
       /** Prints a pattern like representation of the `Tree`.
