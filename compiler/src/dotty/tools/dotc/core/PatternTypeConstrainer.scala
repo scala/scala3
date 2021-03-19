@@ -213,7 +213,11 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     val isWideningUnnecessary = patternTp match {
       case tp @ AppliedType(tycon, args) =>
-        args.forall(_.isInstanceOf[TypeVar])
+        args.forall {
+          case tp : TypeVar =>
+            !tp.isInstantiated && !tp.hasLowerBound && !tp.hasUpperBound
+          case _ => false
+        }
       case _ => false
     }
 
