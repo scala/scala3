@@ -55,7 +55,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-RC1"
+  val referenceVersion = "3.0.0-RC2-bin-20210318-e60ef35-NIGHTLY"
 
   val baseVersion = "3.0.0-RC2"
   val baseSbtDottyVersion = "0.5.4"
@@ -670,10 +670,6 @@ object Build {
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
-     // support declaration of scala.compiletime.erasedValue
-      "-Yerased-terms"
-        // TODO: drop after bootstrap with erasure language import
-        // scala.compile now contains the roght language import so no global setting is needed
     ),
   )
 

@@ -191,7 +191,7 @@ object Scanners {
     final def languageImportContext_=(c: Context) = myLanguageImportContext = c
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
-    def erasedEnabled = featureEnabled(Feature.erasedDefinitions) || ctx.settings.YerasedTerms.value
+    def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
 
     /** All doc comments kept by their end position in a `Map`.
       *
