@@ -38,6 +38,14 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Def.settings(
     commonBootstrappedSettings,
 
+    /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
+     * Instead, in this build, we use `.dependsOn` relationships to depend on
+     * the appropriate, locally-defined, scala3-library-bootstrappedJS.
+     */
+    libraryDependencies ~= {
+      _.filter(!_.name.startsWith("scala3-library_sjs1"))
+    },
+
     // Replace the JVM JUnit dependency by the Scala.js one
     libraryDependencies ~= {
       _.filter(!_.name.startsWith("junit-interface"))
