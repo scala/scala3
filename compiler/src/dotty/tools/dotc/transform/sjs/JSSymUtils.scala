@@ -161,6 +161,9 @@ object JSSymUtils {
     def jsCallingConvention(using Context): JSCallingConvention =
       JSCallingConvention.of(sym)
 
+    def hasJSCallCallingConvention(using Context): Boolean =
+      sym.jsCallingConvention == JSCallingConvention.Call
+
     /** Gets the unqualified JS name of the symbol.
      *
      *  If it is not explicitly specified with an `@JSName` annotation, the

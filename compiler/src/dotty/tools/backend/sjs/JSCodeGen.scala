@@ -2702,7 +2702,7 @@ class JSCodeGen()(using genCtx: Context) {
 
       case JSCallingConvention.Call =>
         requireNotSuper()
-        if (jsdefn.isJSThisFunctionClass(sym.owner))
+        if (sym.owner.isSubClass(jsdefn.JSThisFunctionClass))
           js.JSMethodApply(ruleOutGlobalScope(receiver), js.StringLiteral("call"), args)
         else
           js.JSFunctionApply(ruleOutGlobalScope(receiver), args)
@@ -3052,17 +3052,35 @@ class JSCodeGen()(using genCtx: Context) {
     }
     val (formalCaptures, actualCaptures) = formalAndActualCaptures.unzip
 
+    val funInterfaceSym = functionalInterface.tpe.typeSymbol
+    val hasRepeatedParam = {
+      funInterfaceSym.exists && {
+        val Seq(samMethodDenot) = funInterfaceSym.info.possibleSamMethods
+        val samMethod = samMethodDenot.symbol
+        atPhase(elimRepeatedPhase)(samMethod.info.paramInfoss.flatten.exists(_.isRepeatedParam))
+      }
+    }
+
     val formalParamNames = sym.info.paramNamess.flatten.drop(envSize)
     val formalParamTypes = sym.info.paramInfoss.flatten.drop(envSize)
-    val formalParamNamesAndTypes = formalParamNames.zip(formalParamTypes)
-    val formalAndActualParams = formalParamNamesAndTypes.map {
-      case (name, tpe) =>
+    val formalParamRepeateds =
+      if (hasRepeatedParam) (0 until (formalParamTypes.size - 1)).map(_ => false) :+ true
+      else (0 until formalParamTypes.size).map(_ => false)
+
+    val formalAndActualParams = formalParamNames.lazyZip(formalParamTypes).lazyZip(formalParamRepeateds).map {
+      (name, tpe, repeated) =>
         val formalParam = js.ParamDef(freshLocalIdent(name.toString),
             OriginalName(name.toString), jstpe.AnyType, mutable = false)
-        val actualParam = unbox(formalParam.ref, tpe)
+        val actualParam =
+          if (repeated) genJSArrayToVarArgs(formalParam.ref)(tree.sourcePos)
+          else unbox(formalParam.ref, tpe)
         (formalParam, actualParam)
     }
-    val (formalParams, actualParams) = formalAndActualParams.unzip
+    val (formalAndRestParams, actualParams) = formalAndActualParams.unzip
+
+    val (formalParams, restParam) =
+      if (hasRepeatedParam) (formalAndRestParams.init, Some(formalAndRestParams.last))
+      else (formalAndRestParams, None)
 
     val genBody = {
       val call = if (isStaticCall) {
@@ -3077,15 +3095,20 @@ class JSCodeGen()(using genCtx: Context) {
       box(call, sym.info.finalResultType)
     }
 
-    val funInterfaceSym = functionalInterface.tpe.typeSymbol
+    val isThisFunction = funInterfaceSym.isSubClass(jsdefn.JSThisFunctionClass) && {
+      val ok = formalParams.nonEmpty
+      if (!ok)
+        report.error("The SAM or apply method for a js.ThisFunction must have a leading non-varargs parameter", tree)
+      ok
+    }
 
-    if (jsdefn.isJSThisFunctionClass(funInterfaceSym)) {
+    if (isThisFunction) {
       val thisParam :: otherParams = formalParams
       js.Closure(
           arrow = false,
           formalCaptures,
           otherParams,
-          None,
+          restParam,
           js.Block(
               js.VarDef(thisParam.name, thisParam.originalName,
                   thisParam.ptpe, mutable = false,
@@ -3093,11 +3116,9 @@ class JSCodeGen()(using genCtx: Context) {
               genBody),
           actualCaptures)
     } else {
-      val closure = js.Closure(arrow = true, formalCaptures, formalParams, None, genBody, actualCaptures)
+      val closure = js.Closure(arrow = true, formalCaptures, formalParams, restParam, genBody, actualCaptures)
 
-      if (jsdefn.isJSFunctionClass(funInterfaceSym)) {
-        closure
-      } else {
+      if (!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym)) {
         assert(!funInterfaceSym.exists || defn.isFunctionClass(funInterfaceSym),
             s"Invalid functional interface $funInterfaceSym reached the back-end")
         val formalCount = formalParams.size
@@ -3105,6 +3126,10 @@ class JSCodeGen()(using genCtx: Context) {
         val ctorName = MethodName.constructor(
             jstpe.ClassRef(ClassName("scala.scalajs.js.Function" + formalCount)) :: Nil)
         js.New(cls, js.MethodIdent(ctorName), List(closure))
+      } else {
+        assert(funInterfaceSym.isJSType,
+            s"Invalid functional interface $funInterfaceSym reached the back-end")
+        closure
       }
     }
   }

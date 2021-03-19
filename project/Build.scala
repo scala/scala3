@@ -1115,9 +1115,7 @@ object Build {
           ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
             -- "JSOptionalTest212.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
             )).get
-          ++ (dir / "js/src/test/require-sam" ** (("*.scala": FileFilter)
-            -- "CustomJSFunctionTest.scala" // TODO: Custom JS function types are not implemented yet
-            )).get
+          ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
       },
