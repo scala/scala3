@@ -227,6 +227,7 @@ Catches           ::=  ‘catch’ (Expr | ExprCaseClause)
 PostfixExpr       ::=  InfixExpr [id]                                           PostfixOp(expr, op)
 InfixExpr         ::=  PrefixExpr
                     |  InfixExpr id [nl] InfixExpr                              InfixOp(expr, op, expr)
+                    |  InfixExpr id ‘:’ IndentedExpr
                     |  InfixExpr MatchClause
 MatchClause       ::=  ‘match’ <<< CaseClauses >>>                              Match(expr, cases)
 PrefixExpr        ::=  [‘-’ | ‘+’ | ‘~’ | ‘!’] SimpleExpr                       PrefixOp(expr, op)
@@ -244,10 +245,11 @@ SimpleExpr        ::=  SimpleRef
                     |  SimpleExpr ‘.’ MatchClause
                     |  SimpleExpr TypeArgs                                      TypeApply(expr, args)
                     |  SimpleExpr ArgumentExprs                                 Apply(expr, args)
-                    |  SimpleExpr1 :<<< (CaseClauses | Block) >>>               -- under language.experimental.fewerBraces
-                    |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) indent Block outdent -- under language.experimental.fewerBraces
+                    |  SimpleExpr1 ‘:’ IndentedExpr                             -- under language.experimental.fewerBraces
+                    |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr        -- under language.experimental.fewerBraces
                     |  SimpleExpr ‘_’                                           PostfixOp(expr, _) (to be dropped)
                     |  XmlExpr													                        -- to be dropped
+IndentedExpr      ::=  indent CaseClauses | Block outdent
 Quoted            ::=  ‘'’ ‘{’ Block ‘}’
                     |  ‘'’ ‘[’ Type ‘]’
 ExprsInParens     ::=  ExprInParens {‘,’ ExprInParens}
@@ -257,7 +259,7 @@ ParArgumentExprs  ::=  ‘(’ [‘using’] ExprsInParens ‘)’              
                     |  ‘(’ [ExprsInParens ‘,’] PostfixExpr ‘*’ ‘)’              exprs :+ Typed(expr, Ident(wildcardStar))
 ArgumentExprs     ::=  ParArgumentExprs
                     |  BlockExpr
-BlockExpr         ::=  <<< (CaseClauses | Block) >>>
+BlockExpr         ::=  <<< CaseClauses | Block >>>
 Block             ::=  {BlockStat semi} [BlockResult]                           Block(stats, expr?)
 BlockStat         ::=  Import
                     |  {Annotation {nl}} {LocalModifier} Def

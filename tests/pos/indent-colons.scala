@@ -139,3 +139,30 @@ val o =
   :
     x => x.toString
 
+object Test23:
+  val x = 1.+ :  // ok
+    2
+
+  val y = 1 + : // ok
+    2
+
+  val r = 1 to:
+    100
+
+  val credentials = List("OK")
+  val all = credentials ++ :
+    val file = "file"
+    if file.isEmpty
+    then Seq("none")
+    else Seq(file)
+
+extension (x: Boolean)
+  infix def or (y: => Boolean) = x || y
+
+def test24(x: Int, y: Int) =
+  x < y or:
+    x > y
+  or:
+    x == y
+
+

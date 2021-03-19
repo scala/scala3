@@ -934,6 +934,7 @@ object Parsers {
           val op = if (isType) typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
+          colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
@@ -2160,6 +2161,7 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
+     *                  | InfixExpr id `:` IndentedExpr
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.ElseWhere): Tree =
@@ -2203,8 +2205,9 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
-     *                 |  SimpleExpr1 :<<< (CaseClauses | Block) >>>                 -- under language.experimental.fewerBraces
-     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) indent Block outdent  -- under language.experimental.fewerBraces
+     *                 |  SimpleExpr1 `:` IndentedExpr                       -- under language.experimental.fewerBraces
+     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr  -- under language.experimental.fewerBraces
+     *  IndentedExpr  ::=  indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
@@ -2304,8 +2307,7 @@ object Parsers {
         val arg = atSpan(start, in.skipToken()) {
           if in.token != INDENT then
             syntaxErrorOrIncomplete(i"indented expression expected, ${in} found")
-          val body = inDefScopeBraces(block(simplify = true))
-          Function(params, body)
+          Function(params, blockExpr())
         }
         Apply(t, arg)
       }
@@ -2397,8 +2399,7 @@ object Parsers {
       else fn
     }
 
-    /** BlockExpr         ::= `{' BlockExprContents `}'
-     *  BlockExprContents ::= CaseClauses | Block
+    /** BlockExpr     ::= <<< (CaseClauses | Block) >>>
      */
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT

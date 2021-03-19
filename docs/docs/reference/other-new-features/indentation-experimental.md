@@ -23,6 +23,16 @@ times(10):
    println("ha")
 ```
 
+The colon can also follow an infix operator:
+
+```scala
+credentials ++ :
+   val file = Path.userHome / ".credentials"
+   if file.exists
+   then Seq(Credentials(file))
+   else Seq()
+```
+
 Function calls that take multiple argument lists can also be handled this way:
 
 ```scala
@@ -39,7 +49,7 @@ val firstLine = files.get(fileName).fold:
 
 ## Lambda Arguments Without Braces
 
-Braces can also be omitted around multiple line function value arguments. Examples
+Braces can also be omitted around multiple line function value arguments:
 ```scala
 val xs = elems.map x =>
    val y = x - 1
@@ -52,26 +62,21 @@ Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>
 ## Syntax Changes
 
 ```
-SimpleExpr  ::=  ...
-              |  SimpleExpr : indent (CaseClauses | Block) outdent
-              |  SimpleExpr FunParams (‘=>’ | ‘?=>’) indent Block outdent
+SimpleExpr       ::=  ...
+                   |  SimpleExpr `:` IndentedArgument
+                   |  SimpleExpr FunParams (‘=>’ | ‘?=>’) IndentedArgument
+InfixExpr        ::=  ...
+                   |  InfixExpr id `:` IndentedArgument
+IndentedArgument ::=  indent (CaseClauses | Block) outdent
 ```
 
-Note that indented blocks after `:` or `=>` only work when following a simple expression, they are not allowed after an infix operator. So the following examples
-would be incorrect:
-
-```scala
-   x + :      // error
-      y
-
-   f `andThen` y =>  // error
-      y + 1
-```
-
-Note also that a lambda argument must have the `=>` at the end of a line for braces
+Note that a lambda argument must have the `=>` at the end of a line for braces
 to be optional. For instance, the following would also be incorrect:
 
 ```scala
   xs.map x => x + 1   // error: braces or parentheses are required
+```
+The lambda has to be enclosed in braces or parentheses:
+```scala
   xs.map(x => x + 1)  // ok
 ```
