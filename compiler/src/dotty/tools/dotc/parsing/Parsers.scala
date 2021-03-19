@@ -934,7 +934,6 @@ object Parsers {
           val op = if (isType) typeIdent() else termIdent()
           val top1 = reduceStack(base, top, precedence(op.name), !op.name.isRightAssocOperatorName, op.name, isType)
           opStack = OpInfo(top1, op, in.offset) :: opStack
-          colonAtEOLOpt()
           newLineOptWhenFollowing(canStartOperand)
           if (maybePostfix && !canStartOperand(in.token)) {
             val topInfo = opStack.head
