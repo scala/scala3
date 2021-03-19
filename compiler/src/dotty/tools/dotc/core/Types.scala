@@ -5287,17 +5287,6 @@ object Types {
     protected def mapClassInfo(tp: ClassInfo): Type =
       derivedClassInfo(tp, this(tp.prefix))
 
-    /** A version of mapClassInfo which also maps parents and self type */
-    protected def mapFullClassInfo(tp: ClassInfo): ClassInfo =
-      tp.derivedClassInfo(
-        prefix = this(tp.prefix),
-        declaredParents = tp.declaredParents.mapConserve(this),
-        selfInfo = tp.selfInfo match {
-          case tp: Type => this(tp)
-          case sym => sym
-        }
-      )
-
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       override def stopAtStatic = thisMap.stopAtStatic
       def apply(tp: Type) = f(thisMap(tp))
@@ -5308,7 +5297,7 @@ object Types {
   abstract class DeepTypeMap(using Context) extends TypeMap {
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.parents mapConserve this
+      val parents1 = tp.declaredParents mapConserve this
       val selfInfo1: TypeOrSymbol = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
