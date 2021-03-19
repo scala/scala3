@@ -1137,6 +1137,23 @@ class Definitions {
           assocFile = denot.symbol.associatedFile
         )
 
+      def makeNonClassSymbol(patch: Symbol) =
+        if patch.is(Inline) then
+          // Inline symbols contain trees in annotations, which is coupled
+          // with the underlying symbol.
+          // Changing owner for inline symbols is a simple workaround.
+          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+          patch
+        else
+          // change `info` which might contain reference to the patch
+          patch.copy(
+            owner = denot.symbol,
+            info =
+              if patch.is(Module)
+              then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
+              else patch.info // assume non-object info does not refer to symbols in the patch
+          )
+
       if patchCls.exists then
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
@@ -1151,21 +1168,7 @@ class Definitions {
               case ClassInfo(_, _, parents, _, selfInfo) =>
                 makeClassSymbol(patch, parents, selfInfo)
               case _ =>
-                if patch.is(Inline) then
-                  // Inline symbols contain trees in definitions, which is coupled
-                  // with the underlying symbol.
-                  // Changing owner for inline symbols is a simple workaround.
-                  patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-                  patch
-                else
-                  // change `info` which might contain reference to the patch
-                  patch.copy(
-                    owner = denot.symbol,
-                    info =
-                      if patch.is(Module)
-                      then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
-                      else patch.info // assume non-object info does not refer to symbols in the patch
-                  )
+                makeNonClassSymbol(patch)
               end match
             sym.annotations = patch.annotations
             scope.enter(sym)
