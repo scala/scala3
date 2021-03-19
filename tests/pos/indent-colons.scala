@@ -117,3 +117,25 @@ end Coder
 
 object Test22:
   def foo: Int = 22
+
+def tryEither[T](x: T)(y: Int => T): T = ???
+
+def test1 =
+  tryEither:
+      "hello"
+    :
+      y => y.toString
+
+def test2 =
+  tryEither:
+    "hello"
+  :
+    _.toString
+
+
+val o =
+  Some(3).fold:
+    "nothing"
+  :
+    x => x.toString
+
