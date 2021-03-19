@@ -148,10 +148,7 @@ trait MemberLookup {
     }
 
     if owner.isPackageDef then
-      findMatch(hackMembersOf(owner).flatMap {
-        s =>
-          (if s.name.endsWith("package$") then hackMembersOf(s) else Iterator.empty) ++ Iterator(s)
-      })
+      findMatch(hackMembersOf(owner))
     else
       owner.tree match {
         case tree: ClassDef =>
