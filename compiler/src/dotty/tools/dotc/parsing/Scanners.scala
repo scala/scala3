@@ -1251,7 +1251,7 @@ object Scanners {
               nextChar()
             }
           }
-          val alt = if oct == LF then raw"\n" else f"\u$oct%04x"
+          val alt = if oct == LF then raw"\n" else f"${"\\"}u$oct%04x"
           error(s"octal escape literals are unsupported: use $alt instead", start)
           putChar(oct.toChar)
         }

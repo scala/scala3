@@ -49,7 +49,7 @@ object StringContextChecker {
       *
       * @return true if an error/warning has been reported, false
       */
-    def hasReported() : Boolean
+    def hasReported : Boolean
 
     /** Stores the old value of the reported and reset it to false */
     def resetReported() : Unit
@@ -106,7 +106,7 @@ object StringContextChecker {
         report.error(message, args0.srcPos)
       }
 
-      def hasReported() : Boolean = {
+      def hasReported : Boolean = {
         reported
       }
 
@@ -160,7 +160,7 @@ object StringContextChecker {
       case p :: parts1 => p :: parts1.map((part : String) => {
         if (!part.startsWith("%")) {
           val index = part.indexOf('%')
-          if (!reporter.hasReported() && index != -1) {
+          if (!reporter.hasReported && index != -1) {
             reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", parts.indexOf(part), index)
             "%s" + part
           } else "%s" + part
@@ -296,7 +296,7 @@ object StringContextChecker {
       }
 
       //conversion
-      if((conversion >= l || (!part.charAt(conversion).isLetter && part.charAt(conversion) != '%')) && !reporter.hasReported())
+      if((conversion >= l || (!part.charAt(conversion).isLetter && part.charAt(conversion) != '%')) && !reporter.hasReported)
         reporter.partError("Missing conversion operator in '" + part.substring(pos, conversion) + "'; use %% for literal %, %n for newline", partIndex, pos)
 
       val hasWidth = (hasWidth1 && !hasArgumentIndex) || hasWidth2
@@ -337,7 +337,7 @@ object StringContextChecker {
       if (argumentIndex > maxArgumentIndex || argumentIndex <= 0)
         reporter.partError("Argument index out of range", partIndex, offset)
 
-      if (expected && expectedArgumentIndex != argumentIndex && !reporter.hasReported())
+      if (expected && expectedArgumentIndex != argumentIndex && !reporter.hasReported)
         reporter.partWarning("Index is not this arg", partIndex, offset)
     }
 
@@ -376,10 +376,10 @@ object StringContextChecker {
     def checkUniqueFlags(partIndex : Int, flags : List[(Char, Int)], notAllowedFlagOnCondition : List[(Char, Boolean, String)]) = {
       reporter.resetReported()
       for {flag <- flags ; (nonAllowedFlag, condition, message) <- notAllowedFlagOnCondition ; if (flag._1 == nonAllowedFlag && condition)} {
-        if (!reporter.hasReported())
+        if (!reporter.hasReported)
           reporter.partError(message, partIndex, flag._2)
       }
-      if (!reporter.hasReported())
+      if (!reporter.hasReported)
         reporter.restoreReported()
     }
 
@@ -656,7 +656,7 @@ object StringContextChecker {
         argument match {
           case Some(argIndex, arg) => {
             val (hasArgumentIndex, argumentIndex, flags, hasWidth, width, hasPrecision, precision, hasRelative, relativeIndex, conversion) = getFormatSpecifiers(part, argIndex, argIndex + 1, false, formattingStart)
-            if (!reporter.hasReported()){
+            if (!reporter.hasReported){
               val conversionWithType = checkFormatSpecifiers(argIndex + 1, hasArgumentIndex, argumentIndex, Some(argIndex + 1), start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, Some(arg.tpe), part)
               nextStart = conversion + 1
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
@@ -668,10 +668,10 @@ object StringContextChecker {
               reporter.partError("Argument index out of range", 0, argumentIndex)
             if (hasRelative)
               reporter.partError("No last arg", 0, relativeIndex)
-            if (!reporter.hasReported()){
+            if (!reporter.hasReported){
               val conversionWithType = checkFormatSpecifiers(0, hasArgumentIndex, argumentIndex, None, start == 0, maxArgumentIndex, hasRelative, hasWidth, width, hasPrecision, precision, flags, conversion, None, part)
               nextStart = conversion + 1
-              if (!reporter.hasReported() && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n' && !hasArgumentIndex && !hasRelative)
+              if (!reporter.hasReported && part.charAt(conversion) != '%' && part.charAt(conversion) != 'n' && !hasArgumentIndex && !hasRelative)
                 reporter.partError("conversions must follow a splice; use %% for literal %, %n for newline", 0, part.indexOf('%'))
               conversionWithType :: checkPart(part, nextStart, argument, maxArgumentIndex)
             } else checkPart(part, conversion + 1, argument, maxArgumentIndex)
@@ -691,10 +691,10 @@ object StringContextChecker {
     // add default format
     val parts = addDefaultFormat(parts0)
 
-    if (!parts.isEmpty && !reporter.hasReported()) {
+    if (!parts.isEmpty && !reporter.hasReported) {
       if (parts.size == 1 && args.size == 0 && parts.head.size != 0){
         val argTypeWithConversion = checkPart(parts.head, 0, None, None)
-        if (!reporter.hasReported())
+        if (!reporter.hasReported)
           for ((argument, conversionChar, flags) <- argTypeWithConversion)
             checkArgTypeWithConversion(0, conversionChar, argument, flags, parts.head.indexOf('%'))
       } else {
@@ -702,7 +702,7 @@ object StringContextChecker {
         for (i <- (0 until args.size)){
           val (part, arg) = partWithArgs(i)
           val argTypeWithConversion = checkPart(part, 0, Some((i, arg)), Some(args.size))
-          if (!reporter.hasReported())
+          if (!reporter.hasReported)
             for ((argument, conversionChar, flags) <- argTypeWithConversion)
               checkArgTypeWithConversion(i + 1, conversionChar, argument, flags, parts(i).indexOf('%'))
         }
