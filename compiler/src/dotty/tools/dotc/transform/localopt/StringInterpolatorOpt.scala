@@ -32,7 +32,7 @@ class StringInterpolatorOpt extends MiniPhase {
     tree match {
       case tree: RefTree =>
         val sym = tree.symbol
-        assert(sym != defn.StringContext_raw && sym != defn.StringContext_s,
+        assert(sym != defn.StringContext_raw && sym != defn.StringContext_s && sym != defn.StringContext_f,
           i"$tree in ${ctx.owner.showLocated} should have been rewritten by phase $phaseName")
       case _ =>
     }
@@ -122,6 +122,11 @@ class StringInterpolatorOpt extends MiniPhase {
       (sym.name == nme.raw_ && sym.eq(defn.StringContext_raw)) ||
       (sym.name == nme.f && sym.eq(defn.StringContext_f)) ||
       (sym.name == nme.s && sym.eq(defn.StringContext_s))
+    def transformF(fun: Tree, args: Tree): Tree =
+      val (parts1, args1) = FormatInterpolatorTransform.checked(fun, args)
+      resolveConstructor(defn.StringOps.typeRef, List(parts1))
+        .select(nme.format)
+        .appliedTo(args1)
     if (isInterpolatedMethod)
       (tree: @unchecked) match {
         case StringContextIntrinsic(strs: List[Literal], elems: List[Tree]) =>
@@ -138,10 +143,7 @@ class StringInterpolatorOpt extends MiniPhase {
           }
           result
         case Apply(intp, args :: Nil) if sym.eq(defn.StringContext_f) =>
-          val partsStr = StringContextChecker.checkedParts(intp, args).mkString
-          resolveConstructor(defn.StringOps.typeRef, List(Literal(Constant(partsStr))))
-            .select(nme.format)
-            .appliedTo(args)
+          transformF(intp, args)
         // Starting with Scala 2.13, s and raw are macros in the standard
         // library, so we need to expand them manually.
         // sc.s(args)    -->   standardInterpolator(processEscapes, args, sc.parts)
