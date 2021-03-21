@@ -1,11 +1,12 @@
 function highlightDotty(hljs) {
 
   // identifiers
-  const camelCaseId = /[a-z][$\w]*/
   const capitalizedId = /\b[A-Z][$\w]*\b/
   const alphaId = /[a-zA-Z$_][$\w]*/
-  const op = /[^\s\w\d,"'()[\]{}]+/
-  const id = new RegExp(`(${alphaId.source}((?<=_)${op.source})?|${op.source}|\`.*?\`)`)
+  const op1 = /[^\s\w\d,;"'()[\]{}=:]/
+  const op2 = /[^\s\w\d,;"'()[\]{}]/
+  const compound = `[a-zA-Z$][a-zA-Z0-9$]*_${op2.source}` // e.g. value_=
+  const id = new RegExp(`(${compound}|${alphaId.source}|${op2.source}{2,}|${op1.source}+|\`.+?\`)`)
 
   // numbers
   const hexDigit = '[a-fA-F0-9]'
@@ -19,26 +20,18 @@ function highlightDotty(hljs) {
   // Regular Keywords
   // The "soft" keywords (e.g. 'using') are added later where necessary
   const alwaysKeywords = {
-    $pattern: /(\w+|\?=>|\?{1,3}|=>>|=>|<:|>:|_|<-|\.nn)/,
+    $pattern: /(\w+|\?=>|\?{1,3}|=>>|=>|<:|>:|_|#|<-|\.nn)/,
     keyword:
       'abstract case catch class def do else enum export extends final finally for given '+
       'if implicit import lazy match new object package private protected override return '+
-      'sealed then throw trait true try type val var while with yield =>> => ?=> <: >: _ ? <-',
+      'sealed then throw trait true try type val var while with yield =>> => ?=> <: >: _ ? <- #',
     literal: 'true false null this super',
-    built_in: '??? asInstanceOf isInstanceOf assert implicitly locally summon .nn'
+    built_in: '??? asInstanceOf isInstanceOf assert implicitly locally summon valueOf .nn'
   }
   const modifiers = 'abstract|final|implicit|override|private|protected|sealed'
 
   // End of class, enum, etc. header
-  const templateDeclEnd = /(\/[/*]|{|: *\n|\n(?! *(extends|with|derives)))/
-
-  // name <title>
-  function titleFor(name) {
-    return {
-      className: 'title',
-      begin: `(?<=${name} )${id.source}`
-    }
-  }
+  const templateDeclEnd = /(\/[/*]|{|:(?= *\n)|\n(?! *(extends|with|derives)))/
 
   // all the keywords + soft keywords, separated by spaces
   function withSoftKeywords(kwd) {
@@ -48,6 +41,43 @@ function highlightDotty(hljs) {
       literal: alwaysKeywords.literal,
       built_in: alwaysKeywords.built_in
     }
+  }
+
+  // title inside of a complex token made of several parts (e.g. class)
+  const TITLE = {
+    className: 'title',
+    begin: id,
+    returnEnd: true,
+    keywords: alwaysKeywords.keyword,
+    literal: alwaysKeywords.literal,
+    built_in: alwaysKeywords.built_in
+  }
+
+  // title that goes to the end of a simple token (e.g. val)
+  const TITLE2 = {
+    className: 'title',
+    begin: id,
+    excludeEnd: true,
+    endsWithParent: true
+  }
+
+  const TYPED = {
+    begin: /: (?=[a-zA-Z()?])/,
+    end: /\/\/|\/\*|\n/,
+    endsWithParent: true,
+    returnEnd: true,
+    contains: [
+      {
+        // works better than the usual way of defining keyword,
+        // in this specific situation
+        className: 'keyword',
+        begin: /\?\=>|=>>|[=:][><]|\?/,
+      },
+      {
+        className: 'type',
+        begin: alphaId
+      }
+    ]
   }
 
   const PROBABLY_TYPE = {
@@ -62,6 +92,7 @@ function highlightDotty(hljs) {
     relevance: 0
   }
 
+  // type parameters within [square brackets]
   const TPARAMS = {
     begin: /\[/, end: /\]/,
     keywords: {
@@ -121,6 +152,7 @@ function highlightDotty(hljs) {
     ]
   }
 
+  // "string" or """string""", with or without interpolation
   const STRING = {
     className: 'string',
     variants: [
@@ -206,8 +238,15 @@ function highlightDotty(hljs) {
         begin: /- (?=\S)/, end: /\s/,
       },
       {
-        className: 'link',
-        begin: /(?<=\[.*?\])\(/, end: /\)/,
+        begin: /\[.*?\]\(/, end: /\)/,
+        contains: [
+          {
+            // mark as "link" only the URL
+            className: 'link',
+            begin: /.*?/,
+            endsWithParent: true
+          }
+        ]
       }
     ]
   })
@@ -215,57 +254,62 @@ function highlightDotty(hljs) {
   // Methods
   const METHOD = {
     className: 'function',
-    begin: `((${modifiers}|transparent|inline) +)*def`, end: / =|\n/,
+    begin: `((${modifiers}|transparent|inline|infix) +)*def`, end: / =\s|\n/,
     excludeEnd: true,
     relevance: 5,
-    keywords: withSoftKeywords('inline transparent'),
+    keywords: withSoftKeywords('inline infix transparent'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      titleFor('def'),
       TPARAMS,
       CTX_PARAMS,
       PARAMS,
-      PROBABLY_TYPE
+      TYPED, // prevents the ":" (declared type) to become a title
+      PROBABLY_TYPE,
+      TITLE
     ]
   }
 
   // Variables & Constants
   const VAL = {
-    beginKeywords: 'val var', end: /[=:;\n]/,
+    beginKeywords: 'val var', end: /[=:;\n/]/,
     excludeEnd: true,
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      titleFor('(val|var)')
+      TITLE2
     ]
   }
 
   // Type declarations
   const TYPEDEF = {
     className: 'typedef',
-    begin: `((${modifiers}|opaque) +)*type`, end: /[=;\n]/,
+    begin: `((${modifiers}|opaque) +)*type`, end: /[=;\n]| ?[<>]:/,
     excludeEnd: true,
     keywords: withSoftKeywords('opaque'),
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      titleFor('type'),
-      PROBABLY_TYPE
+      PROBABLY_TYPE,
+      TITLE,
     ]
   }
 
   // Given instances
   const GIVEN = {
-    begin: /given/, end: /[=;\n]/,
+    begin: /given/, end: / =|[=;\n]/,
     excludeEnd: true,
     keywords: 'given using with',
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      titleFor('given'),
       PARAMS,
-      PROBABLY_TYPE
+      {
+        begin: 'as',
+        keywords: 'as'
+      },
+      PROBABLY_TYPE,
+      TITLE
     ]
   }
 
@@ -318,17 +362,29 @@ function highlightDotty(hljs) {
     className: 'class',
     begin: `((${modifiers}|open|case|transparent) +)*(class|trait|enum|object|package object)`, end: templateDeclEnd,
     keywords: withSoftKeywords('open transparent'),
+    excludeEnd: true,
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      titleFor('(class|trait|object|enum)'),
       TPARAMS,
       CTX_PARAMS,
       PARAMS,
       EXTENDS_PARENT,
       WITH_MIXIN,
       DERIVES_TYPECLASS,
+      TITLE,
       PROBABLY_TYPE
+    ]
+  }
+
+  // package declaration with a content
+  const PACKAGE = {
+    className: 'package',
+    begin: /package (?=\w+ *[:{\n])/, end: /[:{\n]/,
+    excludeEnd: true,
+    keywords: alwaysKeywords,
+    contains: [
+      TITLE
     ]
   }
 
@@ -340,22 +396,18 @@ function highlightDotty(hljs) {
     contains: [
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE,
-      {
-        // case A, B, C
-        className: 'title',
-        begin: `(?<=(case|,) *)${id.source}`
-      },
       PARAMS,
       EXTENDS_PARENT,
       WITH_MIXIN,
       DERIVES_TYPECLASS,
+      TITLE,
       PROBABLY_TYPE
     ]
   }
 
   // Case in pattern matching
   const MATCH_CASE = {
-    begin: /case/, end: /=>/,
+    begin: /case/, end: /=>|\n/,
     keywords: 'case',
     excludeEnd: true,
     contains: [
@@ -393,6 +445,7 @@ function highlightDotty(hljs) {
       METHOD,
       VAL,
       TYPEDEF,
+      PACKAGE,
       CLASS,
       GIVEN,
       EXTENSION,
