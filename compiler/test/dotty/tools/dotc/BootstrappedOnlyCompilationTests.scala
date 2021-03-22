@@ -149,15 +149,13 @@ class BootstrappedOnlyCompilationTests {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def picklingWithCompiler: Unit = {
-    val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
-    val runtimeFilter = FileFilter.exclude(List("Tuple.scala", "stdLibPatches")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
       compileDir("library/src/scala/runtime/function", picklingWithCompilerOptions),
-      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions, runtimeFilter),
-      compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions, jvmBackendFilter),
+      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions),
+      compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc/config", picklingWithCompilerOptions),

@@ -1113,10 +1113,49 @@ class Definitions {
    *  is read from a classfile.
    */
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
-
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
       val scope = denot.info.decls.openForMutations
+
       def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
+
+      def makeClassSymbol(patch: Symbol, parents: List[Type], selfInfo: TypeOrSymbol) =
+        newClassSymbol(
+          owner = denot.symbol,
+          name = patch.name.asTypeName,
+          flags = patch.flags,
+          // need to rebuild a fresh ClassInfo
+          infoFn = cls => ClassInfo(
+            prefix = denot.symbol.thisType,
+            cls = cls,
+            declaredParents = parents, // assume parents in patch don't refer to symbols in the patch
+            decls = newScope,
+            selfInfo =
+              if patch.is(Module)
+              then TermRef(denot.symbol.thisType, patch.name.sourceModuleName)
+              else selfInfo // assume patch self type annotation does not refer to symbols in the patch
+          ),
+          privateWithin = patch.privateWithin,
+          coord = denot.symbol.coord,
+          assocFile = denot.symbol.associatedFile
+        )
+
+      def makeNonClassSymbol(patch: Symbol) =
+        if patch.is(Inline) then
+          // Inline symbols contain trees in annotations, which is coupled
+          // with the underlying symbol.
+          // Changing owner for inline symbols is a simple workaround.
+          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+          patch
+        else
+          // change `info` which might contain reference to the patch
+          patch.copy(
+            owner = denot.symbol,
+            info =
+              if patch.is(Module)
+              then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
+              else patch.info // assume non-object info does not refer to symbols in the patch
+          )
+
       if patchCls.exists then
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
@@ -1126,9 +1165,16 @@ class Definitions {
         for patch <- patches do
           patch.ensureCompleted()
           if !recurse(patch) then
-            patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-            scope.enter(patch)
-          else if patch.isClass then
+            val sym =
+              patch.info match
+              case ClassInfo(_, _, parents, _, selfInfo) =>
+                makeClassSymbol(patch, parents, selfInfo)
+              case _ =>
+                makeNonClassSymbol(patch)
+              end match
+            sym.annotations = patch.annotations
+            scope.enter(sym)
+          if patch.isClass then
             patch2(scope.lookup(patch.name).asClass, patch)
 
     def patchWith(patchCls: Symbol) =
