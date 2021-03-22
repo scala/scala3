@@ -38,6 +38,14 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def projectSettings: Seq[Setting[_]] = Def.settings(
     commonBootstrappedSettings,
 
+    /* #11709 Remove the dependency on scala3-library that ScalaJSPlugin adds.
+     * Instead, in this build, we use `.dependsOn` relationships to depend on
+     * the appropriate, locally-defined, scala3-library-bootstrappedJS.
+     */
+    libraryDependencies ~= {
+      _.filter(!_.name.startsWith("scala3-library_sjs1"))
+    },
+
     // Replace the JVM JUnit dependency by the Scala.js one
     libraryDependencies ~= {
       _.filter(!_.name.startsWith("junit-interface"))
@@ -55,7 +63,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-RC1"
+  val referenceVersion = "3.0.0-RC2-bin-20210318-e60ef35-NIGHTLY"
 
   val baseVersion = "3.0.0-RC2"
   val baseSbtDottyVersion = "0.5.4"
@@ -670,8 +678,6 @@ object Build {
     (Compile / scalacOptions) ++= Seq(
       // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
       "-sourcepath", (Compile / sourceDirectories).value.map(_.getAbsolutePath).distinct.mkString(File.pathSeparator),
-     // support declaration of scala.compiletime.erasedValue
-      "-Yerased-terms"
     ),
   )
 
@@ -698,7 +704,7 @@ object Build {
     settings(
       libraryDependencies +=
         ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
-      Compile / unmanagedSourceDirectories :=
+      Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
       // Configure the source maps to point to GitHub for releases
@@ -782,6 +788,7 @@ object Build {
           ).mkString(File.pathSeparator),
         )
       },
+      Compile / doc / scalacOptions += "-Ydocument-synthetic-types",
       scalacOptions -= "-Xfatal-warnings",
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
@@ -1105,9 +1112,13 @@ object Build {
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
+            -- "PromiseMock.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
+                                   // and remove copy in tests/sjs-junit
             )).get
 
-          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
+          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
+            -- "JSOptionalTest212.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
+            )).get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
@@ -1603,6 +1614,11 @@ object Build {
           val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
           val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
+          val dottyManagesSources =
+            (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
+
+          val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
+
           if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
           else Def.task{
             IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
@@ -1630,9 +1646,11 @@ object Build {
                 "gitter::https://gitter.im/scala/scala," +
                 "twitter::https://twitter.com/scala_lang",
               s"-source-links:" +
+                s"$dottyLibRoot=github://lampepfl/dotty/master#library/src," +
                 s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
                 s"docs=github://lampepfl/dotty/master#docs",
-              "-doc-root-content", docRootFile.toString
+              "-doc-root-content", docRootFile.toString,
+              "-Ydocument-synthetic-types"
             )
           ))
         }.evaluated,

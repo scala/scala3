@@ -2,6 +2,21 @@ package scala.compiletime
 package ops
 
 object int:
+  /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was
+   *
+   *  ```scala
+   *  type S[N <: Int] <: Int = N match {
+   *    case 0 => 1
+   *    case 1 => 2
+   *    case 2 => 3
+   *    ...
+   *    case 2147483646 => 2147483647
+   *  }
+   *  ```
+   *  @syntax markdown
+   */
+  type S[N <: Int] <: Int
+
   /** Addition of two `Int` singleton types.
    *  ```scala
    *  val sum: 2 + 2 = 4

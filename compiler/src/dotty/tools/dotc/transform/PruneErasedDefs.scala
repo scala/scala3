@@ -34,7 +34,7 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   override def runsAfterGroupsOf: Set[String] = Set(RefChecks.name, ExplicitOuter.name)
 
   override def transformSym(sym: SymDenotation)(using Context): SymDenotation =
-    if (sym.isEffectivelyErased && !sym.is(Private) && sym.owner.isClass)
+    if (sym.isEffectivelyErased && sym.isTerm && !sym.is(Private) && sym.owner.isClass)
       sym.copySymDenotation(initFlags = sym.flags | Private)
     else sym
 

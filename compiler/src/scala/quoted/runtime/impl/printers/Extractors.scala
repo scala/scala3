@@ -121,11 +121,9 @@ object Extractors {
         this += "DefDef(\"" += name += "\", " ++= paramsClauses += ", " += returnTpt += ", " += rhs += ")"
       case TypeDef(name, rhs) =>
         this += "TypeDef(\"" += name += "\", " += rhs += ")"
-      case ClassDef(name, constr, parents, derived, self, body) =>
+      case ClassDef(name, constr, parents, self, body) =>
         this += "ClassDef(\"" += name += "\", " += constr += ", "
         visitList[Tree](parents, visitTree)
-        this += ", "
-        visitList[TypeTree](derived, visitTree)
         this += ", " += self += ", " ++= body += ")"
       case Import(expr, selectors) =>
         this += "Import(" += expr += ", " ++= selectors += ")"

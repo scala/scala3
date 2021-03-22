@@ -26,9 +26,16 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       "Predef.identity" -> cls("scala.Predef$").fun("identity"),
       "Array$.from" -> cls("scala.Array$").fun("from"),
       "???" -> cls("scala.Predef$").fun("???"),
+      "scala.List" -> cls("scala.package$").tpe("List"),
+
       "tests.A" -> cls("tests.A"),
       "tests.A$" -> cls("tests.A$"),
       "tests.Methods.simple" -> cls("tests.Methods").fun("simple"),
+      "tests.foo" -> cls("tests.package$").fld("foo"),
+      "tests.bar" -> cls("tests.tests$package$").fld("bar"),
+
+      "java.util.AbstractCollection" -> cls("java.util.AbstractCollection"),
+      "java.lang.String" -> cls("java.lang.String"),
     )
 
     cases.foreach { case (query, Sym(sym)) =>
@@ -83,6 +90,11 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       cls("tests.A") -> "A.foo" -> cls("tests.A$").fun("foo"),
 
       cls("tests.inner.B") -> "A" -> cls("tests.inner.A$"),
+
+      cls("tests.D") -> "foo" -> cls("tests.package$").fld("foo"),
+      cls("tests.D") -> "bar" -> cls("tests.tests$package$").fld("bar"),
+      cls("tests.inner.A$") -> "foo" -> cls("tests.package$").fld("foo"),
+      cls("tests.inner.A$") -> "bar" -> cls("tests.tests$package$").fld("bar"),
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>

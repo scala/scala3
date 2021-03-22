@@ -712,7 +712,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     // the owner from the inlined method to the current owner.
     val inliner = new TreeTypeMap(
       typeMap =
-        new TypeMap {
+        new DeepTypeMap {
           def apply(t: Type) = t match {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
@@ -721,7 +721,6 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
-          override def mapClassInfo(tp: ClassInfo) = mapFullClassInfo(tp)
         },
       treeMap = {
         case tree: This =>

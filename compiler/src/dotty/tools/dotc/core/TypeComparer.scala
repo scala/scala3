@@ -2128,7 +2128,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
+      else if (isErased) erasedGlb(tp1, tp2)
       else liftIfHK(tp1, tp2, op, original, _ | _)
         // The ` | ` on variances is needed since variances are associated with bounds
         // not lambdas. Example:
@@ -2687,8 +2687,8 @@ object TypeComparer {
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))
 
-  def constrainPatternType(pat: Type, scrut: Type)(using Context): Boolean =
-    comparing(_.constrainPatternType(pat, scrut))
+  def constrainPatternType(pat: Type, scrut: Type, widenParams: Boolean = true)(using Context): Boolean =
+    comparing(_.constrainPatternType(pat, scrut, widenParams))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))

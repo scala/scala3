@@ -13,6 +13,7 @@ import NameKinds.{Scala2MethodNameKinds, SuperAccessorName, ExpandedName}
 import util.Spans._
 import dotty.tools.dotc.ast.{tpd, untpd}, ast.tpd._
 import ast.untpd.Modifiers
+import backend.sjs.JSDefinitions
 import printing.Texts._
 import printing.Printer
 import io.AbstractFile
@@ -675,6 +676,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
     def removeSingleton(tp: Type): Type =
       if (tp isRef defn.SingletonClass) defn.AnyType else tp
+    def mapArg(arg: Type) = arg match {
+      case arg: TypeRef if isBound(arg) => arg.symbol.info
+      case _ => arg
+    }
     def elim(tp: Type): Type = tp match {
       case tp @ RefinedType(parent, name, rinfo) =>
         val parent1 = elim(tp.parent)
@@ -690,12 +695,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         }
       case tp @ AppliedType(tycon, args) =>
         val tycon1 = tycon.safeDealias
-        def mapArg(arg: Type) = arg match {
-          case arg: TypeRef if isBound(arg) => arg.symbol.info
-          case _ => arg
-        }
         if (tycon1 ne tycon) elim(tycon1.appliedTo(args))
         else tp.derivedAppliedType(tycon, args.map(mapArg))
+      case tp: AndOrType =>
+        // scalajs.js.|.UnionOps has a type parameter upper-bounded by `_ | _`
+        tp.derivedAndOrType(mapArg(tp.tp1).bounds.hi, mapArg(tp.tp2).bounds.hi)
       case _ =>
         tp
     }
@@ -777,6 +781,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val tycon = select(pre, sym)
         val args = until(end, () => readTypeRef())
         if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        else if (ctx.settings.scalajs.value && args.length == 2 &&
+            sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym == JSDefinitions.jsdefn.PseudoUnionClass) {
+          // Treat Scala.js pseudo-unions as real unions, this requires a
+          // special-case in erasure, see TypeErasure#eraseInfo.
+          OrType(args(0), args(1), soft = false)
+        }
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
         else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon

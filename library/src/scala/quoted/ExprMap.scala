@@ -5,7 +5,7 @@ trait ExprMap:
   /** Map an expression `e` with a type `T` */
   def transform[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T]
 
-  /** Map subexpressions an expression `e` with a type `T` */
+  /** Map sub-expressions an expression `e` with a type `T` */
   def transformChildren[T](e: Expr[T])(using Type[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
     final class MapChildren() {
@@ -34,7 +34,7 @@ trait ExprMap:
             tree
           case tree: ClassDef =>
             val newBody = transformStats(tree.body)(owner)
-            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.derived, tree.self, newBody)
+            ClassDef.copy(tree)(tree.name, tree.constructor, tree.parents, tree.self, newBody)
         }
       }
 
@@ -99,9 +99,9 @@ trait ExprMap:
           case _: Inlined =>
             transformTermChildren(tree, tpe)(owner)
           case _ if tree.isExpr =>
-            // WARNING: Never do a cast like this in user code (accepable within the stdlib).
+            // WARNING: Never do a cast like this in user code (acceptable within the stdlib).
             // In theory we should use `tree.asExpr match { case '{ $expr: t } => transform(expr).asTerm }`
-            // This is to avoid conflicts when re-boostrapping the library.
+            // This is to avoid conflicts when re-bootstrapping the library.
             type X
             val expr = tree.asExpr.asInstanceOf[Expr[X]]
             val t = tpe.asType.asInstanceOf[Type[X]]

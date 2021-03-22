@@ -68,6 +68,12 @@ object Main {
     z.b_55(dummy)
     // z.b_56(dummy)
     // z.a_57(dummy)
+    z.int_58(1)
+    z.int_59(1)
+    z.int_60(1)
+    z.int_61(1)
+    z.int_62(1)
+    z.int_63(1)
 
     val methods = classOf[scala2Lib.Z].getDeclaredMethods.toList ++ classOf[dottyApp.Z].getDeclaredMethods.toList
     methods.foreach { m =>

@@ -57,5 +57,8 @@ class ScaladocSettings extends SettingGroup with CommonScalaSettings:
   val docRootContent: Setting[String] =
     StringSetting("-doc-root-content", "path", "The file from which the root package documentation should be imported.", "")
 
+  val YdocumentSyntheticTypes: Setting[Boolean] =
+    BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
+
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent)

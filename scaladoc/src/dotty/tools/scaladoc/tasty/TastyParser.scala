@@ -116,6 +116,27 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
         topLevels ++= parser.parseRootTree(treeRoot)
     }
 
+    val defn = ctx.compilerContext.definitions
+
+    if ctx.args.documentSyntheticTypes then
+      val intrinsicClassDefs = Seq(
+        defn.AnyClass,
+        defn.MatchableClass,
+        defn.AnyKindClass,
+        defn.AnyValClass,
+        defn.NullClass,
+        defn.NothingClass,
+        defn.SingletonClass,
+        defn.andType,
+        defn.orType,
+      ).map { s =>
+        "scala" -> s.asInstanceOf[parser.qctx.reflect.Symbol].tree.match {
+          case cd: parser.qctx.reflect.ClassDef => parser.parseClasslike(cd)
+          case td: parser.qctx.reflect.TypeDef  => parser.parseTypeDef(td)
+        }
+      }
+      topLevels ++= intrinsicClassDefs
+      topLevels += mergeAnyRefAliasAndObject(parser)
 
   def result(): (List[Member], Option[Comment]) =
     topLevels.clear()
@@ -134,6 +155,14 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
       basePck.withMembers((basePck.members ++ rest).sortBy(_.name))
     }.toList -> rootDoc
 
+  def mergeAnyRefAliasAndObject(parser: TastyParser) =
+    val defn = ctx.compilerContext.definitions
+    val oM = parser.parseClasslike(defn.ObjectClass.asInstanceOf[parser.qctx.reflect.Symbol].tree.asInstanceOf[parser.qctx.reflect.ClassDef])
+    val aM = parser.parseTypeDef(defn.AnyRefAlias.asInstanceOf[parser.qctx.reflect.Symbol].tree.asInstanceOf[parser.qctx.reflect.TypeDef])
+    "scala" -> aM.copy(
+      kind = oM.kind,
+      members = oM.members
+    )
 /** Parses a single Tasty compilation unit. */
 case class TastyParser(
   qctx: Quotes,
@@ -152,13 +181,6 @@ case class TastyParser(
   def processTreeOpt[T](tree: Tree)(op: => Option[T]): Option[T] = try op catch
     case e: Exception =>
       report.warning(throwableToString(e), tree.pos)
-      None
-
-  def processSymbol[T](sym: Symbol)(op: => T): Option[T] = try Option(op) catch
-    case t: Throwable =>
-      try report.warning(throwableToString(t), sym.tree.pos) catch
-        case _: Throwable =>
-          report.warning(s"Failed to process ${sym.fullName}:\n${throwableToString(t)}")
       None
 
   def parseRootTree(root: Tree): Seq[(String, Member)] =
@@ -186,4 +208,3 @@ case class TastyParser(
       e.printStackTrace()
 
     docs.result()
-

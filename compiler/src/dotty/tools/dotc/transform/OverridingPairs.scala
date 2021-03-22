@@ -64,11 +64,25 @@ object OverridingPairs {
       decls
     }
 
+    /** Is `parent` a qualified sub-parent of `bc`?
+     *  @pre `parent` is a parent class of `base` and it derives from `bc`.
+     *  @return true if the `bc`-basetype of the parent's type is the same as
+     *               the `bc`-basetype of base. In that case, overriding checks
+     *               relative to `parent` already subsume overriding checks
+     *               relative to `base`. See neg/11719a.scala for where this makes
+     *               a difference.
+     */
+    protected def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
+      bc.typeParams.isEmpty
+      || self.baseType(parent).baseType(bc) == self.baseType(bc)
+
     private val subParents = MutableSymbolMap[BitSet]()
+
     for bc <- base.info.baseClasses do
       var bits = BitSet.empty
       for i <- 0 until parents.length do
-        if parents(i).derivesFrom(bc) then bits += i
+        if parents(i).derivesFrom(bc) && isSubParent(parents(i), bc)
+        then bits += i
       subParents(bc) = bits
 
     private def hasCommonParentAsSubclass(cls1: Symbol, cls2: Symbol): Boolean =

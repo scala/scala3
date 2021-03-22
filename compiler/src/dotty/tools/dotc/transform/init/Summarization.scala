@@ -107,7 +107,7 @@ object Summarization {
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Summary.empty
-        else analyze(expr)
+        else analyze(expr) ++ effectsOfType(tpt.tpe, tpt)
 
       case NamedArg(name, arg) =>
         analyze(arg)
@@ -140,7 +140,7 @@ object Summarization {
         val Summary(pots, effs) = analyze(selector)
         val init = Summary(Potentials.empty, pots.promote(selector) ++ effs)
         cases.foldLeft(init) { (acc, cas) =>
-          acc union analyze(cas.body)
+          acc + analyze(cas.body)
         }
 
       // case CaseDef(pat, guard, body) =>
@@ -162,7 +162,7 @@ object Summarization {
 
       case Try(block, cases, finalizer) =>
         val Summary(pots, effs) =  cases.foldLeft(analyze(block)) { (acc, cas) =>
-          acc union analyze(cas.body)
+          acc + analyze(cas.body)
         }
         val Summary(_, eff2) = if (finalizer.isEmpty) Summary.empty else analyze(finalizer)
         Summary(pots, effs ++ eff2)
@@ -199,8 +199,9 @@ object Summarization {
           Summary(pots.promote(ddef) ++ effs)
         }
 
-      case _: TypeDef =>
-        Summary.empty
+      case tdef: TypeDef =>
+        if tdef.isClassDef then Summary.empty
+        else Summary(effectsOfType(tdef.symbol.info, tdef.rhs))
 
       case _: Import | _: Export =>
         Summary.empty
@@ -212,6 +213,19 @@ object Summarization {
     if (env.isAlwaysInitialized(expr.tpe)) Summary(Potentials.empty, summary.effs)
     else summary
   }
+
+  private def effectsOfType(tp: Type, source: Tree)(implicit env: Env): Effects =
+    var summary = Summary.empty
+    val traverser = new TypeTraverser {
+      def traverse(tp: Type): Unit = tp match {
+        case TermRef(_: SingletonType, _) =>
+          summary = summary + analyze(tp, source)
+        case _ =>
+          traverseChildren(tp)
+      }
+    }
+    traverser.traverse(tp)
+    summary.effs
 
   def analyze(tp: Type, source: Tree)(implicit env: Env): Summary =
   trace("summarizing " + tp.show, init, s => s.asInstanceOf[Summary].show) {
@@ -243,8 +257,12 @@ object Summarization {
         }
         Summary(pots2, effs)
 
+      case _: TermParamRef | _: RecThis  =>
+        // possible from checking effects of types
+        Summary.empty
+
       case _ =>
-        throw new Exception("unexpected type: " + tp.show)
+        throw new Exception("unexpected type: " + tp)
     }
 
     if (env.isAlwaysInitialized(tp)) Summary(Potentials.empty, summary.effs)
@@ -290,7 +308,7 @@ object Summarization {
       def parentArgEffsWithInit(stats: List[Tree], ctor: Symbol, source: Tree): Effects =
         val init =
           if env.canIgnoreMethod(ctor) then Effects.empty
-          else Effects.empty + MethodCall(ThisRef()(source), ctor)(source)
+          else Effects.empty :+ MethodCall(ThisRef()(source), ctor)(source)
         stats.foldLeft(init) { (acc, stat) =>
           val summary = Summarization.analyze(stat)
           acc ++ summary.effs
@@ -320,7 +338,7 @@ object Summarization {
                 if tref.prefix == NoPrefix then Effects.empty
                 else Summarization.analyze(tref.prefix, ref).effs
 
-              prefixEff +  MethodCall(ThisRef()(ref), ctor)(ref)
+              prefixEff :+ MethodCall(ThisRef()(ref), ctor)(ref)
             }
         })
       }

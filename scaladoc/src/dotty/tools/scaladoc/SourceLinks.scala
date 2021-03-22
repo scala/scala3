@@ -14,13 +14,6 @@ trait SourceLink:
   val path: Option[Path] = None
   def render(memberName: String, path: Path, operation: String, line: Option[Int]): String
 
-case class PrefixedSourceLink(val myPath: Path, nested: SourceLink) extends SourceLink:
-  val myPrefix = pathToString(myPath)
-  override val path = Some(myPath)
-  override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
-    nested.render(memberName, myPath.relativize(path), operation, line)
-
-
 case class TemplateSourceLink(val urlTemplate: String) extends SourceLink:
   override val path: Option[Path] = None
   override def render(memberName: String, path: Path, operation: String, line: Option[Int]): String =
@@ -48,8 +41,7 @@ case class WebBasedSourceLink(prefix: String, revision: String, subPath: String)
     val linePart = line.fold("")(l => s"#L$l")
     s"$prefix/$action/$revision$subPath/${pathToString(path)}$linePart"
 
-object SourceLink:
-  val SubPath = "([^=]+)=(.+)".r
+class SourceLinkParser(revision: Option[String]) extends ArgParser[SourceLink]:
   val KnownProvider = raw"(\w+):\/\/([^\/#]+)\/([^\/#]+)(\/[^\/#]+)?(#.+)?".r
   val BrokenKnownProvider = raw"(\w+):\/\/.+".r
   val ScalaDocPatten = raw"€\{(TPL_NAME|TPL_OWNER|FILE_PATH|FILE_EXT|FILE_LINE|FILE_PATH_EXT)\}".r
@@ -68,9 +60,8 @@ object SourceLink:
 
   private def parseLinkDefinition(s: String): Option[SourceLink] = ???
 
-  def parse(string: String, revision: Option[String]): Either[String, SourceLink] =
-
-    string match
+  def parse(string: String): Either[String, SourceLink] =
+    val res = string match
       case KnownProvider(name, organization, repo, rawRevision, rawSubPath) =>
         val subPath = Option(rawSubPath).fold("")("/" + _.drop(1))
         val pathRev = Option(rawRevision).map(_.drop(1)).orElse(revision)
@@ -87,14 +78,6 @@ object SourceLink:
               WebBasedSourceLink(gitlabPrefix(organization, repo), rev, subPath))
           case other =>
             Left(s"'$other' is not a known provider, please provide full source path template.")
-
-      case SubPath(prefix, config) =>
-        parse(config, revision) match
-          case l: Left[String, _] => l
-          case Right(_:PrefixedSourceLink) =>
-            Left(s"Source path $string has duplicated subpath setting (scm template can not contains '=')")
-          case Right(nested) =>
-            Right(PrefixedSourceLink(Paths.get(prefix), nested))
       case BrokenKnownProvider("gitlab" | "github") =>
         Left(s"Does not match known provider syntax: `<name>://organization/repository`")
       case scaladocSetting if ScalaDocPatten.findFirstIn(scaladocSetting).nonEmpty =>
@@ -104,28 +87,23 @@ object SourceLink:
         else Right(TemplateSourceLink(supported.foldLeft(string)((template, pattern) =>
           template.replace(pattern, SupportedScalaDocPatternReplacements(pattern)))))
       case other =>
-        Right(TemplateSourceLink(""))
+        Left("Does not match any implemented source link syntax")
+    res match {
+      case Left(error) => Left(s"'$string': $error")
+      case other => other
+    }
 
 
 type Operation = "view" | "edit"
 
-case class SourceLinks(links: Seq[SourceLink], projectRoot: Path):
+class SourceLinks(val sourceLinks: PathBased[SourceLink]):
   def pathTo(rawPath: Path, memberName: String = "", line: Option[Int] = None, operation: Operation = "view"): Option[String] =
-    def resolveRelativePath(path: Path) =
-      links
-        .find(_.path.forall(p => path.startsWith(p)))
-        .map(_.render(memberName, path, operation, line))
-
-    if rawPath.isAbsolute then
-      if rawPath.startsWith(projectRoot) then resolveRelativePath(projectRoot.relativize(rawPath))
-      else None
-    else resolveRelativePath(rawPath)
+    sourceLinks.get(rawPath).map(res => res.elem.render(memberName, res.path, operation, line))
 
   def pathTo(member: Member): Option[String] =
     member.sources.flatMap(s => pathTo(s.path, member.name, Option(s.lineNumber).map(_ + 1)))
 
 object SourceLinks:
-
   val usage =
     """Source links provide a mapping between file in documentation and code repository.
       |
@@ -150,32 +128,16 @@ object SourceLinks:
       |Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`.
       |In such case paths used in templates will be relativized against `<sub-path>`""".stripMargin
 
-  def load(
-      configs: Seq[String],
-      revision: Option[String],
-      projectRoot: Path)(
-      using Context): SourceLinks =
-    val mappings = configs.map(str => str -> SourceLink.parse(str, revision))
+  def load(config: Seq[String], revision: Option[String], projectRoot: Path = Paths.get("").toAbsolutePath)(using CompilerContext): SourceLinks =
+    PathBased.parse(config, projectRoot)(using SourceLinkParser(revision)) match {
+      case PathBased.ParsingResult(errors, sourceLinks) =>
+        if errors.nonEmpty then report.warning(
+          s"""Following templates has invalid format:
+            |$errors
+            |
+            |${SourceLinks.usage}
+            |""".stripMargin
+        )
+        SourceLinks(sourceLinks)
+    }
 
-    val errors = mappings.collect {
-      case (template, Left(message)) =>
-        s"'$template': $message"
-    }.mkString("\n")
-
-    if errors.nonEmpty then report.warning(
-      s"""Following templates has invalid format:
-         |$errors
-         |
-         |$usage
-         |""".stripMargin
-      )
-
-    SourceLinks(mappings.collect {case (_, Right(link)) => link}, projectRoot)
-
-  def load(using ctx: DocContext): SourceLinks =
-    load(
-      ctx.args.sourceLinks,
-      ctx.args.revision,
-      // TODO (https://github.com/lampepfl/scaladoc/issues/240): configure source root
-      Paths.get("").toAbsolutePath
-    )

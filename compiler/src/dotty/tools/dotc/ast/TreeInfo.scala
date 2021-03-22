@@ -329,6 +329,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def isFunctionWithUnknownParamType(tree: Tree): Boolean =
     functionWithUnknownParamType(tree).isDefined
 
+  def isFunction(tree: Tree): Boolean = tree match
+    case Function(_, _) | Match(EmptyTree, _) => true
+    case Block(Nil, expr) => isFunction(expr)
+    case _ => false
+
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {
     case tree: FunctionWithMods => tree.mods.is(Given)
