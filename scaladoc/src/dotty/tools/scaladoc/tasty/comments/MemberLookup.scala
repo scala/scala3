@@ -88,7 +88,10 @@ trait MemberLookup {
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
-    val members = sym.info.decls.iterator.filter(s => hackIsNotAbsent(s.asInstanceOf[Symbol]))
+    val members =
+      sym.info.allMembers.iterator.map(_.symbol).filter(
+        s => hackIsNotAbsent(s.asInstanceOf[Symbol])
+      )
     // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
     members.asInstanceOf[Iterator[Symbol]]
   }
@@ -144,8 +147,6 @@ trait MemberLookup {
       })
     else
       owner.tree match {
-        case tree: ClassDef =>
-          findMatch(tree.body.iterator.collect { case t: Definition if hackIsNotAbsent(t.symbol) => t.symbol })
         case tree: TypeDef =>
           val tpe =
             tree.rhs match {

@@ -28,6 +28,8 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       "???" -> cls("scala.Predef$").fun("???"),
       "scala.List" -> cls("scala.package$").tpe("List"),
 
+      "scala.List.lift" -> cls("scala.PartialFunction").fun("lift"),
+
       "tests.A" -> cls("tests.A"),
       "tests.A$" -> cls("tests.A$"),
       "tests.Methods.simple" -> cls("tests.Methods").fun("simple"),
@@ -90,6 +92,8 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       cls("tests.A") -> "A.foo" -> cls("tests.A$").fun("foo"),
 
       cls("tests.inner.B") -> "A" -> cls("tests.inner.A$"),
+
+      cls("tests.B$") -> "foo" -> cls("tests.BModule").fun("foo"),
 
       cls("tests.D") -> "foo" -> cls("tests.package$").fld("foo"),
       cls("tests.D") -> "bar" -> cls("tests.tests$package$").fld("bar"),

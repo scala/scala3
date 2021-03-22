@@ -131,6 +131,10 @@ class B extends A {
   class BB
 }
 
+class BModule {
+  def foo = "foo"
+}
+
 /** Companion object to test linking.
   *
   * This is my member: [[B$.Z]]
@@ -141,7 +145,7 @@ class B extends A {
   *
   * And this is my term member, addressed differently: [[this.Z$]]
   */
-object B {
+object B extends BModule {
   type Z = Int
   val Z: Int = 0
 }
