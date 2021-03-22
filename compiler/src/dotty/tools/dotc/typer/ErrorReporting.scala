@@ -375,17 +375,30 @@ class ImplicitSearchError(
    *  def foo(implicit foo: Foo): Any = ???
    */
   private def userDefinedImplicitNotFoundTypeMessage: Option[String] =
-    pt.baseClasses.iterator
-      // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
-      .filter(sym => Feature.migrateTo3 || sym != defn.Function1)
-      .map(userDefinedImplicitNotFoundTypeMessage(_))
-      .find(_.isDefined).flatten
+    def recur(tp: Type): Option[String] = tp match
+      case tp: TypeRef =>
+        val sym = tp.symbol
+        userDefinedImplicitNotFoundTypeMessage(sym).orElse(recur(tp.info))
+      case tp: ClassInfo =>
+        tp.baseClasses.iterator
+          .map(userDefinedImplicitNotFoundTypeMessage)
+          .find(_.isDefined).flatten
+      case tp: TypeProxy =>
+        recur(tp.underlying)
+      case tp: AndType =>
+        recur(tp.tp1).orElse(recur(tp.tp2))
+      case _ =>
+        None
+    recur(pt)
 
-  private def userDefinedImplicitNotFoundTypeMessage(classSym: ClassSymbol): Option[String] =
-    userDefinedMsg(classSym, defn.ImplicitNotFoundAnnot).map { rawMsg =>
-      val substituteType = (_: Type).asSeenFrom(pt, classSym)
-      formatAnnotationMessage(rawMsg, classSym, substituteType)
-    }
+  private def userDefinedImplicitNotFoundTypeMessage(sym: Symbol): Option[String] =
+    for
+      rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
+      if Feature.migrateTo3 || sym != defn.Function1
+        // Don't inherit "No implicit view available..." message if subtypes of Function1 are not treated as implicit conversions anymore
+    yield
+      val substituteType = (_: Type).asSeenFrom(pt, sym)
+      formatAnnotationMessage(rawMsg, sym, substituteType)
 
   private def hiddenImplicitsAddendum: String =
     def hiddenImplicitNote(s: SearchSuccess) =
