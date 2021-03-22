@@ -1614,6 +1614,11 @@ object Build {
           val stdLibRoot = projectRoot.relativize(managedSources.toPath.normalize())
           val docRootFile = stdLibRoot.resolve("rootdoc.txt")
 
+          val dottyManagesSources =
+            (`stdlib-bootstrapped`/Compile/sourceManaged).value / "dotty-library-src"
+
+          val dottyLibRoot = projectRoot.relativize(dottyManagesSources.toPath.normalize())
+
           if (dottyJars.isEmpty) Def.task { streams.value.log.error("Dotty lib wasn't found") }
           else Def.task{
             IO.write(dest / "versions" / "latest-nightly-base", majorVersion)
@@ -1641,6 +1646,7 @@ object Build {
                 "gitter::https://gitter.im/scala/scala," +
                 "twitter::https://twitter.com/scala_lang",
               s"-source-links:" +
+                s"$dottyLibRoot=github://lampepfl/dotty/master#library/src," +
                 s"$stdLibRoot=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library," +
                 s"docs=github://lampepfl/dotty/master#docs",
               "-doc-root-content", docRootFile.toString,
