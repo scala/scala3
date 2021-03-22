@@ -4004,7 +4004,7 @@ object Types {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    override def tryNormalize(using Context): Type = tycon match {
+    override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
@@ -4014,12 +4014,28 @@ object Types {
           case _ =>
             NoType
         }
-
         tryCompiletimeConstantFold.orElse(tryMatchAlias)
-
       case _ =>
         NoType
     }
+
+    /** Does this application expand to a match type? */
+    def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
+      case tycon: TypeRef =>
+        tycon.info match
+          case _: MatchAlias => true
+          case _ => false
+      case _ => false
+
+    /** Is this an unreducible application to wildcard arguments?
+     *  This is the case if tycon is higher-kinded. This means
+     *  it is a subtype of a hk-lambda, but not a match alias.
+     *  (normal parameterized aliases are removed in `appliedTo`).
+     *  Applications of hgher-kinded type constructors to wildcard arguments
+     *  are equivalent to existential types, which are not supported.
+     */
+    def isUnreducibleWild(using Context): Boolean =
+      tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
 
     def tryCompiletimeConstantFold(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
