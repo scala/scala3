@@ -124,7 +124,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.4.9",
+      "-sbt-version", "1.5.0",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -140,7 +140,7 @@ object projects:
 
   private def forceDoc(projects: String*) =
     projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
     ).mkString(" ")
 
   private def aggregateDoc(in: String)(projects: String*) =
