@@ -28,7 +28,16 @@ object Feature:
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
 
-/** Is `feature` enabled by by a command-line setting? The enabling setting is
+  val experimentalWarningMessage = "Experimental features may only be used with nightly or snapshot version of compiler."
+
+  /** Experimental features are only enabled for snapshot and nightly compiler versions
+   */
+  def checkExperimentalFeature(feature: TermName): Boolean =
+    feature match
+    case QualifiedName(nme.experimental, _) => Properties.experimental
+    case _ => true
+
+  /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
    *
@@ -56,9 +65,11 @@ object Feature:
    *  @param  feature   The name of the feature
    *  @param  owner     The prefix symbol (nested in `scala.language`) where the
    *                    feature is defined.
+   *
+   *  Note: Experimental features are only enabled for snapshot and nightly version of compiler.
    */
   def enabled(feature: TermName)(using Context): Boolean =
-    enabledBySetting(feature) || enabledByImport(feature)
+    checkExperimentalFeature(feature) && (enabledBySetting(feature) || enabledByImport(feature))
 
   /** Is auto-tupling enabled? */
   def autoTuplingEnabled(using Context): Boolean = !enabled(nme.noAutoTupling)
@@ -70,6 +81,8 @@ object Feature:
   def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
 
   def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
+
+  def erasedEnabled(using Context) = enabled(Feature.erasedDefinitions)
 
   def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
@@ -96,5 +109,15 @@ object Feature:
       true
     else
       false
+
+  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
+  def checkExperimentalFlags(using Context): Unit =
+    if !Properties.experimental then
+      val features = ctx.settings.language.value.filter(_.contains(nme.experimental.toString))
+      if features.nonEmpty then
+        report.error(
+          experimentalWarningMessage +
+          "\nThe experimental language features are enabled via -language:" + features.mkString(",")
+        )
 
 end Feature

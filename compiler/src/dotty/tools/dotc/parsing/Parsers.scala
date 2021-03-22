@@ -32,6 +32,7 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
+import config.Properties
 
 object Parsers {
 
@@ -3079,6 +3080,8 @@ object Parsers {
       val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
         in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
+        if isExperimentalImport(tree) && !Properties.experimental then
+          report.error(Feature.experimentalWarningMessage, imp.srcPos)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
           if allSourceVersionNames.contains(imported)
