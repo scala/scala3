@@ -298,7 +298,7 @@ object desugar {
             rhs = vparam.rhs
           )
           .withMods(Modifiers(
-            meth.mods.flags & (AccessFlags | Synthetic),
+            meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
