@@ -5487,38 +5487,43 @@ object Types {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if (args.exists(isRange))
-            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
-            else {
-              val loBuf, hiBuf = new mutable.ListBuffer[Type]
-              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
-              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
-              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
-              // ranges that appear in as co- or contravariant arguments.
-              // Fail for non-variant argument ranges.
-              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
-              // @return  operation succeeded for all arguments.
-              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
-                case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVarianceSign
-                  if (v == 0) false
-                  else {
-                    if (v > 0) { loBuf += lo; hiBuf += hi }
-                    else { loBuf += hi; hiBuf += lo }
-                    distributeArgs(args1, tparams.tail)
-                  }
-                case arg :: args1 =>
-                  loBuf += arg; hiBuf += arg
+          if args.exists(isRange) then
+            if variance > 0 then
+              tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
+                case tp1: AppliedType if tp1.isUnreducibleWild =>
+                  // don't infer a type that would trigger an error later in
+                  // Checling.checkAppliedType; fall through to default handling instead
+                case tp1 =>
+                  return tp1
+            end if
+            val loBuf, hiBuf = new mutable.ListBuffer[Type]
+            // Given `C[A1, ..., An]` where some A's are ranges, try to find
+            // non-range arguments L1, ..., Ln and H1, ..., Hn such that
+            // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
+            // ranges that appear in as co- or contravariant arguments.
+            // Fail for non-variant argument ranges.
+            // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+            // @return  operation succeeded for all arguments.
+            def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
+              case Range(lo, hi) :: args1 =>
+                val v = tparams.head.paramVarianceSign
+                if (v == 0) false
+                else {
+                  if (v > 0) { loBuf += lo; hiBuf += hi }
+                  else { loBuf += hi; hiBuf += lo }
                   distributeArgs(args1, tparams.tail)
-                case nil =>
-                  true
-              }
-              if (distributeArgs(args, tp.tyconTypeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.toList),
-                      tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range(defn.NothingType, defn.AnyType)
-                // TODO: can we give a better bound than `topType`?
+                }
+              case arg :: args1 =>
+                loBuf += arg; hiBuf += arg
+                distributeArgs(args1, tparams.tail)
+              case nil =>
+                true
             }
+            if (distributeArgs(args, tp.tyconTypeParams))
+              range(tp.derivedAppliedType(tycon, loBuf.toList),
+                    tp.derivedAppliedType(tycon, hiBuf.toList))
+            else range(defn.NothingType, defn.AnyType)
+              // TODO: can we give a better bound than `topType`?
           else tp.derivedAppliedType(tycon, args)
       }
 
