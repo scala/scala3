@@ -999,12 +999,16 @@ object desugar {
           case tree: TypeDef => tree.name.toString
           case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
             s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
+          case InfixOp(left, op, right) =>
+            if followArgs then s"${op.name}_${extractArgs(List(left, right))}"
+            else op.name.toString
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
             extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
+            if followArgs then s"${extractArgs(tree.args)}_to_${apply("", tree.body)}"
+            else "Function"
           case _ => foldOver(x, tree)
         }
       else x
