@@ -146,4 +146,11 @@ class Z {
   type AEq = A
   type Bla2 = AEq { type M[X] <: A }
   def a_57(x: Bla2#M[Any] with ({ type N <: B with Bla2#M[Int] })#N): Unit = {}
+
+  def int_58(x: Int with Singleton): Unit = {}
+  def int_59(x: Singleton with Int): Unit = {}
+  def int_60(x: Int with Any): Unit = {}
+  def int_61(x: Any with Int): Unit = {}
+  def int_62(x: Int with AnyVal): Unit = {}
+  def int_63(x: AnyVal with Int): Unit = {}
 }
