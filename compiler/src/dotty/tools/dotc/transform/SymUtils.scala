@@ -95,7 +95,7 @@ object SymUtils:
     *   - none of its children are anonymous classes
     *   - all of its children are addressable through a path from the parent class
     *     and also the location of the generated mirror.
-    *   - all of its children are generic products or singletons
+    *   - all of its children are generic products, singletons, or sealed traits ar classes
     */
     def whyNotGenericSum(declScope: Symbol)(using Context): String =
       if (!self.is(Sealed))
@@ -112,7 +112,7 @@ object SymUtils:
 
           if (child == self) "it has anonymous or inaccessible subclasses"
           else if (!isAccessible(child.owner)) i"its child $child is not accessible"
-          else if (!child.isClass) ""
+          else if !child.isClass || child.is(Sealed) then ""
           else {
             val s = child.whyNotGenericProduct
             if (s.isEmpty) s
