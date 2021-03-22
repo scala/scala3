@@ -93,12 +93,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
   }
 
   def memberInfo(m: Member): Seq[AppliedTag] =
+    val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     Seq(
-      div(cls := "documentableBrief doc")(bodyContents.take(1)),
+      div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart)),
       div(cls := "cover")(
-        div(cls := "doc")(bodyContents.drop(1)),
+        div(cls := "doc")(bodyContents),
         dl(cls := "attributes")(
           docAttributes(m),
           companion(m),
@@ -169,7 +170,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         span(cls := "modifiers"), // just to have padding on left
         div(
           div(cls := "originInfo")(originInfo(member):_*),
-          div(cls := "documentableBrief")(memberInfo(member)),
+          div(cls := "memberDocumentation")(memberInfo(member)),
         )
       )
     )
