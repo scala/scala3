@@ -65,7 +65,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       cls("tests.A") -> "AA!" -> cls("tests.A").tpe("AA"),
       cls("tests.A") -> "AA$" -> cls("tests.A").fld("AA"),
 
-      cls("tests.C") -> "CC" -> cls("tests.C").fld("CC"),
+      cls("tests.C") -> "CC" -> cls("tests.C").tpe("CC"),
       cls("tests.C") -> "CC$" -> cls("tests.C").fld("CC"),
       cls("tests.C") -> "CC!" -> cls("tests.C").tpe("CC"),
 

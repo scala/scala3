@@ -56,7 +56,7 @@ trait MemberLookup {
 
             query match {
               case Query.StrictMemberId(id) =>
-                localLookup(id, nearest).nextOption.map(_ -> id)
+                downwardLookup(List(id), nearest).map(_ -> id)
               case Query.QualifiedId(Query.Qual.This, _, rest) =>
                 downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
               case Query.QualifiedId(Query.Qual.Package, _, rest) =>
@@ -101,26 +101,19 @@ trait MemberLookup {
     sym.isCompleted && sym.info.exists
   }
 
-  private def localLookup(using Quotes)(query: String, owner: quotes.reflect.Symbol): Iterator[quotes.reflect.Symbol] = {
+  private def localLookup(using Quotes)(
+    sel: MemberLookup.Selector,
+    owner: quotes.reflect.Symbol
+  ): Iterator[quotes.reflect.Symbol] = {
     import quotes.reflect._
 
     def findMatch(syms: Iterator[Symbol]): Iterator[Symbol] = {
-      // Scaladoc overloading support allows terminal * (and they're meaningless)
-      val cleanQuery = query.stripSuffix("*")
-      val (q, forceTerm, forceType) =
-        if cleanQuery endsWith "$" then
-          (cleanQuery.init, true, false)
-        else if cleanQuery endsWith "!" then
-          (cleanQuery.init, false, true)
-        else
-          (cleanQuery, false, false)
-
       def matches(s: Symbol): Boolean =
-        s.name == q && (
-          if forceTerm then s.isTerm
-          else if forceType then s.isType
-          else true
-        )
+        s.name == sel.ident && sel.kind.match {
+          case MemberLookup.SelectorKind.ForceTerm => s.isTerm
+          case MemberLookup.SelectorKind.ForceType => s.isType
+          case MemberLookup.SelectorKind.NoForce => true
+        }
 
       def hackResolveModule(s: Symbol): Symbol =
         if s.flags.is(Flags.Module) then s.moduleClass else s
@@ -128,7 +121,7 @@ trait MemberLookup {
       // val syms0 = syms.toList
       // val matched0 = syms0.filter(matches)
       // if matched0.isEmpty then
-      //   println(s"Failed to look up $q in $owner; all members: {{{")
+      //   println(s"Failed to look up ${sel.ident} in $owner; all members: {{{")
       //   syms0.foreach { s => println(s"\t$s") }
       //   println("}}}")
       // val matched = matched0.iterator
@@ -136,8 +129,9 @@ trait MemberLookup {
       // def showMatched() = matched0.foreach { s =>
       //   println(s"\t $s")
       // }
-      // println(s"localLookup in class ${owner} for `$q`{forceTerm=$forceTerm}:")
+      // println(s"localLookup in class ${owner} for `${sel.ident}`{kind=${sel.kind}}:{{{")
       // showMatched()
+      // println("}}}")
 
       val matched = syms.filter(matches)
       matched.map(hackResolveModule)
@@ -172,10 +166,22 @@ trait MemberLookup {
     import quotes.reflect._
     query match {
       case Nil => None
-      case q :: Nil => localLookup(q, owner).nextOption
+      case q :: Nil =>
+        val sel = MemberLookup.Selector.fromString(q)
+        sel.kind match {
+          case MemberLookup.SelectorKind.NoForce =>
+            val lookedUp = localLookup(sel, owner).toSeq
+            // note: those flag lookups are necessary b/c for objects we return their classes
+            lookedUp.find(s => s.isType && !s.flags.is(Flags.Module)).orElse(
+              lookedUp.find(s => s.isTerm || s.flags.is(Flags.Module))
+            )
+          case _ =>
+            localLookup(sel, owner).nextOption
+
+        }
       case q :: qs =>
-        val lookedUp =
-          localLookup(q, owner).toSeq
+        val sel = MemberLookup.Selector.fromString(q)
+        val lookedUp = localLookup(sel, owner).toSeq
 
         if lookedUp.isEmpty then None else {
           // tm/tp - term/type symbols which we looked up and which allow further lookup
@@ -198,4 +204,25 @@ trait MemberLookup {
   }
 }
 
-object MemberLookup extends MemberLookup
+object MemberLookup extends MemberLookup {
+  enum SelectorKind {
+    case ForceTerm
+    case ForceType
+    case NoForce
+  }
+
+  case class Selector(ident: String, kind: SelectorKind)
+  object Selector {
+    def fromString(str: String) = {
+      // Scaladoc overloading support allows terminal * (and they're meaningless)
+      val cleanStr = str.stripSuffix("*")
+
+      if cleanStr endsWith "$" then
+        Selector(cleanStr.init, SelectorKind.ForceTerm)
+      else if cleanStr endsWith "!" then
+        Selector(cleanStr.init, SelectorKind.ForceType)
+      else
+        Selector(cleanStr, SelectorKind.NoForce)
+    }
+  }
+}
