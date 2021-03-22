@@ -343,6 +343,11 @@ class TreePickler(pickler: TastyPickler) {
         case _ if tpt.isType => pickleTpt(tpt)
       }
       pickleTreeUnlessEmpty(rhs)
+      mdef match
+        case _: ValDef if !sym.is(StableRealizable) =>
+          // deterministically set the StableRealizable flag before committing to TASTy.
+          CheckRealizable.realizability(sym.termRef)
+        case _ =>
       pickleModifiers(sym, mdef)
     }
     for
