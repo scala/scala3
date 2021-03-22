@@ -38,14 +38,25 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
       "java.util.AbstractCollection" -> cls("java.util.AbstractCollection"),
       "java.lang.String" -> cls("java.lang.String"),
+
+      "tests.lookupInheritedMembers.pack1.A.x" ->
+        cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
+
+      "tests.lookupInheritedMembers.pack2.B.x" ->
+        cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
     )
 
-    cases.foreach { case (query, Sym(sym)) =>
-      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
-      assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
-      val Some((lookedUp, _)) = lookupRes
-      assertSame(query, sym, lookedUp)
+    cases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
     }
+  }
+
+  def testOwnerlessLookup(query: String, wrappedTarget: Sym): Unit = {
+    val target = wrappedTarget.symbol
+    val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
+    assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
+    val Some((lookedUp, _, _)) = lookupRes
+    assertSame(query, target, lookedUp)
   }
 
   def testOwnedLookup(): Unit = {
@@ -102,7 +113,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>
-      val Some((lookedUp, _)) = MemberLookup.lookup(parseQuery(query), owner)
+      val Some((lookedUp, _, _)) = MemberLookup.lookup(parseQuery(query), owner)
       assertSame(s"$owner / $query", target, lookedUp)
     }
   }

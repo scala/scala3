@@ -83,6 +83,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
 
   object SymOps extends SymOps[qctx.type](qctx)
   export SymOps.dri
+  export SymOps.driInContextOfInheritingParent
 
   def resolveLink(queryStr: String): DocLink =
     if SchemeUri.matches(queryStr) then DocLink.ToURL(queryStr)
@@ -94,8 +95,11 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
         DocLink.UnresolvedDRI(queryStr, msg)
       case Right(query) =>
         MemberLookup.lookup(using qctx)(query, owner) match
-          case Some((sym, targetText)) =>
-            DocLink.ToDRI(sym.dri, targetText)
+          case Some((sym, targetText, inheritingParent)) =>
+            var dri = inheritingParent match
+              case Some(parent) => sym.driInContextOfInheritingParent(parent)
+              case None => sym.dri
+            DocLink.ToDRI(dri, targetText)
           case None =>
             val txt = s"No DRI found for query"
             val msg = s"$txt: $queryStr"

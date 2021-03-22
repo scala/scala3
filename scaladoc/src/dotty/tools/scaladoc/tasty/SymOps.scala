@@ -190,3 +190,8 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
           // For some reason it contains `$$$` instrad of symbol name
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
+
+    def driInContextOfInheritingParent(par: Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
+      location = par.dri.location,
+      externalLink = None
+    )

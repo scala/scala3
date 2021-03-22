@@ -5,15 +5,22 @@ import scala.quoted._
 
 trait MemberLookup {
 
+  def memberLookupResult(using Quotes)(
+    symbol: quotes.reflect.Symbol,
+    label: String,
+    inheritingParent: Option[quotes.reflect.Symbol] = None
+  ): (quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol]) =
+    (symbol, label, inheritingParent)
+
   def lookup(using Quotes, DocContext)(
     query: Query,
     owner: quotes.reflect.Symbol,
-  ): Option[(quotes.reflect.Symbol, String)] = lookupOpt(query, Some(owner))
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] = lookupOpt(query, Some(owner))
 
   def lookupOpt(using Quotes, DocContext)(
     query: Query,
     ownerOpt: Option[quotes.reflect.Symbol],
-  ): Option[(quotes.reflect.Symbol, String)] =
+  ): Option[(quotes.reflect.Symbol, String, Option[quotes.reflect.Symbol])] =
     try
       import quotes.reflect._
 
@@ -26,7 +33,7 @@ trait MemberLookup {
       def nearestMembered(sym: Symbol): Symbol =
         if sym.isClassDef || sym.flags.is(Flags.Package) then sym else nearestMembered(sym.owner)
 
-      val res: Option[(Symbol, String)] = {
+      val res: Option[(Symbol, String, Option[Symbol])] = {
         def toplevelLookup(querystrings: List[String]) =
           downwardLookup(querystrings, defn.PredefModule.moduleClass)
           .orElse(downwardLookup(querystrings, defn.ScalaPackage))
@@ -38,7 +45,7 @@ trait MemberLookup {
             val nearest = nearestMembered(owner)
             val nearestCls = nearestClass(owner)
             val nearestPkg = nearestPackage(owner)
-            def relativeLookup(querystrings: List[String], owner: Symbol): Option[Symbol] = {
+            def relativeLookup(querystrings: List[String], owner: Symbol): Option[(Symbol, Option[Symbol])] = {
               val isMeaningful =
                 owner.exists
                 // those are just an optimisation, they can be dropped if problems show up
@@ -56,20 +63,20 @@ trait MemberLookup {
 
             query match {
               case Query.StrictMemberId(id) =>
-                downwardLookup(List(id), nearest).map(_ -> id)
+                downwardLookup(List(id), nearest).map(memberLookupResult(_, id, _))
               case Query.QualifiedId(Query.Qual.This, _, rest) =>
-                downwardLookup(rest.asList, nearestCls).map(_ -> rest.join)
+                downwardLookup(rest.asList, nearestCls).map(memberLookupResult(_, rest.join, _))
               case Query.QualifiedId(Query.Qual.Package, _, rest) =>
-                downwardLookup(rest.asList, nearestPkg).map(_ -> rest.join)
+                downwardLookup(rest.asList, nearestPkg).map(memberLookupResult(_, rest.join, _))
               case query =>
                 val ql = query.asList
                 toplevelLookup(ql)
                 .orElse(relativeLookup(ql, nearest))
-                .map(_ -> query.join)
+                .map(memberLookupResult(_, query.join, _))
             }
 
           case None =>
-            toplevelLookup(query.asList).map(_ -> query.join)
+            toplevelLookup(query.asList).map(memberLookupResult(_, query.join, _))
         }
       }
 
@@ -163,13 +170,15 @@ trait MemberLookup {
       }
   }
 
-  private def downwardLookup(using Quotes)(query: List[String], owner: quotes.reflect.Symbol): Option[quotes.reflect.Symbol] = {
+  private def downwardLookup(using Quotes)(
+    query: List[String], owner: quotes.reflect.Symbol
+  ): Option[(quotes.reflect.Symbol, Option[quotes.reflect.Symbol])] = {
     import quotes.reflect._
     query match {
       case Nil => None
       case q :: Nil =>
         val sel = MemberLookup.Selector.fromString(q)
-        sel.kind match {
+        val res = sel.kind match {
           case MemberLookup.SelectorKind.NoForce =>
             val lookedUp = localLookup(sel, owner).toSeq
             // note: those flag lookups are necessary b/c for objects we return their classes
@@ -178,7 +187,16 @@ trait MemberLookup {
             )
           case _ =>
             localLookup(sel, owner).nextOption
-
+        }
+        res match {
+          case None => None
+          case Some(sym) =>
+            val externalOwner: Option[quotes.reflect.Symbol] =
+              if owner eq sym.owner then None
+              else if owner.flags.is(Flags.Module) then Some(owner.moduleClass)
+              else if owner.isClassDef then Some(owner)
+              else None
+            Some(sym -> externalOwner)
         }
       case q :: qs =>
         val sel = MemberLookup.Selector.fromString(q)
