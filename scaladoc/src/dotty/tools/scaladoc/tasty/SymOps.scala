@@ -109,6 +109,8 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
     def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
 
+    def isArtifact: Boolean = sym.flags.is(Flags.Artifact)
+
     def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
     def extendedSymbol: Option[ValDef] =
