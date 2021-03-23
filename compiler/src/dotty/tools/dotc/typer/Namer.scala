@@ -1269,7 +1269,7 @@ class Namer { typer: Typer =>
       end ensureFirstIsClass
 
       /** If `parents` contains references to traits that have supertraits with implicit parameters
-       *  add those supertraits in lineraization order unless they are already covered by other
+       *  add those supertraits in linearization order unless they are already covered by other
        *  parent types. For instance, in
        *
        *    class A
