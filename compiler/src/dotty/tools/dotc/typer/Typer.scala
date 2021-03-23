@@ -2151,22 +2151,32 @@ class Typer extends Namer
       val rhsToInline = PrepareInlineable.wrapRHS(ddef, tpt1, rhs1)
       PrepareInlineable.registerInlineInfo(sym, rhsToInline)
 
-    if (sym.isConstructor && !sym.isPrimaryConstructor) {
-      if (sym.targetName != sym.name)
-        report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
+    if sym.isConstructor then
+      if sym.isPrimaryConstructor then
+        if sym.owner.is(Case) then
+          for
+            params <- paramss1.dropWhile(TypeDefs.unapply(_).isDefined).take(1)
+            case param: ValDef <- params
+          do
+            if defn.isContextFunctionType(param.tpt.tpe) then
+              report.error("case class element cannot be a context function", param.srcPos)
+      else
+        if sym.targetName != sym.name then
+          report.error(em"@targetName annotation may not be used on a constructor", ddef.srcPos)
 
-      for params <- paramss1; param <- params do
-        checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
+        for params <- paramss1; param <- params do
+          checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")
 
-      def checkThisConstrCall(tree: Tree): Unit = tree match {
-        case app: Apply if untpd.isSelfConstrCall(app) =>
-          if (sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start)
-            report.error("secondary constructor must call a preceding constructor", app.srcPos)
-        case Block(call :: _, _) => checkThisConstrCall(call)
-        case _ =>
-      }
-      checkThisConstrCall(rhs1)
-    }
+        def checkThisConstrCall(tree: Tree): Unit = tree match
+          case app: Apply if untpd.isSelfConstrCall(app) =>
+            if (sym.span.exists && app.symbol.span.exists && sym.span.start <= app.symbol.span.start)
+              report.error("secondary constructor must call a preceding constructor", app.srcPos)
+          case Block(call :: _, _) => checkThisConstrCall(call)
+          case _ =>
+
+        checkThisConstrCall(rhs1)
+      end if
+    end if
 
     if sym.is(Method) && sym.owner.denot.isRefinementClass then
       for annot <- sym.paramSymss.flatten.filter(_.isTerm).flatMap(_.getAnnotation(defn.ImplicitNotFoundAnnot)) do
