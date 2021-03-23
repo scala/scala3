@@ -3080,7 +3080,10 @@ object Parsers {
       val imp = Import(tree, selectors)
       if isLanguageImport(tree) then
         in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
-        if isExperimentalImport(tree) && !Feature.experimentalEnabled then
+        if isExperimentalImport(tree)
+           && !Feature.experimentalEnabled
+           && selectors.exists(_.name != nme.macros)
+        then
           report.error(Feature.experimentalWarningMessage, imp.srcPos)
         for
           case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors

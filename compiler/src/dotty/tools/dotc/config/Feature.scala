@@ -36,9 +36,9 @@ object Feature:
     Properties.experimental && !ctx.settings.YnoExperimental.value
 
   def isExperimental(feature: TermName): Boolean =
-    feature match
+    feature != scala2macros && feature.match
     case QualifiedName(nme.experimental, _) => true
-    case _ => true
+    case _ => false
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
@@ -117,7 +117,9 @@ object Feature:
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalFlags(using Context): Unit =
     if !experimentalEnabled then
-      val features = ctx.settings.language.value.filter(_.contains(nme.experimental.toString))
+      val features = ctx.settings.language.value.filter { feature =>
+        feature.contains(nme.experimental.toString) && !feature.contains("macros")
+      }
       if features.nonEmpty then
         report.error(
           experimentalWarningMessage +
