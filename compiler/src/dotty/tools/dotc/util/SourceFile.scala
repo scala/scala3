@@ -196,7 +196,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (idx < length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
+      col += (if (idx < content().length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
     col
@@ -285,4 +285,3 @@ object SourceFile {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }
-
