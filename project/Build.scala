@@ -1549,7 +1549,8 @@ object Build {
 
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyLibrary).
-      settings(tastyCoreSettings)
+      settings(tastyCoreSettings).
+      settings(disableDocSetting)
 
     def asTastyCoreScala2: Project = project.settings(commonScala2Settings)
 
