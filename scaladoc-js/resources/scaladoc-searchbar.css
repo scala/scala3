@@ -103,7 +103,29 @@
     margin-left: auto;
 }
 
-.hide-snippet-comments-button {
+.snippet-comment-button {
     position: absolute;
-    left: 90%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+}
+
+.show-snippet-comments-button {
+    -ms-transform: translate(calc(-50% + 5em), -50%);
+    transform: translate(calc(-50% + 5em), -50%);
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Ccircle cx='12' cy='12' r='12' fill='white'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M19 11.0053L19 13.1085H12.9873L12.988 19H10.8714L10.8721 13.1085L5 13.1085L5 11.0053L10.8721 11.0053V5L12.9865 5.00074L12.988 11.0045L19 11.0053Z' fill='%2327282C' fill-opacity='0.75'/%3E %3C/svg%3E");
+}
+
+.show-snippet-comments-button:hover {
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Ccircle cx='12' cy='12' r='12' fill='light grey'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M19 11.0053L19 13.1085H12.9873L12.988 19H10.8714L10.8721 13.1085L5 13.1085L5 11.0053L10.8721 11.0053V5L12.9865 5.00074L12.988 11.0045L19 11.0053Z' fill='%2327282C' fill-opacity='0.75'/%3E %3C/svg%3E");
+}
+
+.hide-snippet-comments-button {
+    -ms-transform: translate(calc(-50% + 5em), -50%) rotate(45deg);
+    transform: translate(calc(-50% + 5em), -50%) rotate(45deg);
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Ccircle cx='12' cy='12' r='12' fill='white'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M19 11.0053L19 13.1085H12.9873L12.988 19H10.8714L10.8721 13.1085L5 13.1085L5 11.0053L10.8721 11.0053V5L12.9865 5.00074L12.988 11.0045L19 11.0053Z' fill='%2327282C' fill-opacity='0.75'/%3E %3C/svg%3E");
+}
+
+.hide-snippet-comments-button:hover {
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E %3Ccircle cx='12' cy='12' r='12' fill='light grey'/%3E %3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M19 11.0053L19 13.1085H12.9873L12.988 19H10.8714L10.8721 13.1085L5 13.1085L5 11.0053L10.8721 11.0053V5L12.9865 5.00074L12.988 11.0045L19 11.0053Z' fill='%2327282C' fill-opacity='0.75'/%3E %3C/svg%3E");
 }

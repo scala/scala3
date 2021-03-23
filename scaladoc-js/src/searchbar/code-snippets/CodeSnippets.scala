@@ -25,13 +25,19 @@ class CodeSnippets:
   toggleHide(document)
 
   document.querySelectorAll("pre").foreach {
-    case e: html.Element =>
+    case e: html.Element if e.querySelectorAll("code span.hideable").nonEmpty =>
       val a = document.createElement("a")
-      a.textContent = "Show"
       a.addEventListener("click", { (_: MouseEvent) =>
-        a.textContent = if a.textContent == "Show" then "Hide" else "Show"
+        if(a.classList.contains("hide-snippet-comments-button")) {
+          a.classList.add("show-snippet-comments-button")
+          a.classList.remove("hide-snippet-comments-button")
+        } else {
+          a.classList.add("hide-snippet-comments-button")
+          a.classList.remove("show-snippet-comments-button")
+        }
         toggleHide(e)
       })
-      a.classList.add("hide-snippet-comments-button")
+      a.classList.add("snippet-comment-button")
+      a.classList.add("show-snippet-comments-button")
       e.insertBefore(a, e.firstChild)
   }
