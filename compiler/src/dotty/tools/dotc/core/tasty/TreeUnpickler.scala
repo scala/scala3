@@ -1186,15 +1186,34 @@ class TreeUnpickler(reader: TastyReader,
             case SELECTin =>
               var sname = readName()
               val qual = readTerm()
-              val owner = readType()
-              def select(name: Name, denot: Denotation) =
-                val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qual.tpe.widenIfUnstable, name)
-                makeSelect(qual, name, denot.asSeenFrom(prefix))
-              sname match
-                case SignedName(name, sig, target) =>
-                  select(name, owner.decl(name).atSignature(sig, target))
-                case name =>
-                  select(name, owner.decl(name))
+              val ownerTpe = readType()
+              val owner = ownerTpe.typeSymbol
+              val SignedName(name, sig, target) = sname: @unchecked // only methods with params use SELECTin
+              val qualType = qual.tpe.widenIfUnstable
+              val prefix = ctx.typeAssigner.maybeSkolemizePrefix(qualType, name)
+
+              /** Tasty should still be able to resolve a method from another root class,
+               *  even if it has been moved to a super type,
+               *  or an override has been removed.
+               *
+               *  This is tested in
+               *  - sbt-dotty/sbt-test/tasty-compat/remove-override
+               *  - sbt-dotty/sbt-test/tasty-compat/move-method
+               */
+              def lookupInSuper =
+                val cls = ownerTpe.classSymbol
+                if cls.exists then
+                  cls.asClass.classDenot
+                    .findMember(name, cls.thisType, EmptyFlags, excluded=Private)
+                    .atSignature(sig, target)
+                else
+                  NoDenotation
+
+              val denot =
+                val d = ownerTpe.decl(name).atSignature(sig, target)
+                (if !d.exists then lookupInSuper else d).asSeenFrom(prefix)
+
+              makeSelect(qual, name, denot)
             case REPEATED =>
               val elemtpt = readTpt()
               SeqLiteral(until(end)(readTerm()), elemtpt)

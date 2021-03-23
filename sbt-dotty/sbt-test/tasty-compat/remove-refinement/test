@@ -1,0 +1,8 @@
+# compile library A
+> a/compile
+# compile library B, from source, against A
+> b/compile
+# add a refinement in library A', it changes the parameter names
+> a-changes/compile
+# compile B, from tasty, against A', it should continue compile: named arguments still ok.
+> c/compile
