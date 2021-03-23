@@ -149,10 +149,31 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
               createTypeConstructor(t.asInstanceOf[dotc.core.Types.TypeRef].underlying)
             ).mkString("[",", ","]")
           )
-        SnippetCompilerData(packageName, classType, classGenerics, Nil)
+        SnippetCompilerData(packageName, classType, classGenerics, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
       case _ => getSnippetCompilerData(sym.maybeOwner)
-    } else SnippetCompilerData(packageName, None, None, Nil)
+    } else SnippetCompilerData(packageName, None, None, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
 
+  private def position(p: Option[qctx.reflect.Position]): SnippetCompilerData.Position =
+    p.fold(SnippetCompilerData.Position(0, 0))(p => SnippetCompilerData.Position(p.startLine, p.startColumn))
+
+  private def hackGetPositionOfDocstring(using Quotes)(s: qctx.reflect.Symbol): Option[qctx.reflect.Position] =
+    import dotty.tools.dotc.core.Comments.CommentsContext
+    import dotty.tools.dotc
+    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    val docCtx = ctx.docCtx.getOrElse {
+      throw new RuntimeException(
+        "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
+      )
+    }
+    val span = docCtx.docstring(s.asInstanceOf[dotc.core.Symbols.Symbol]).span
+    s.pos.flatMap { pos =>
+      docCtx.docstring(s.asInstanceOf[dotc.core.Symbols.Symbol]).map { docstring =>
+        dotty.tools.dotc.util.SourcePosition(
+          pos.sourceFile.asInstanceOf[dotty.tools.dotc.util.SourceFile],
+          docstring.span
+        ).asInstanceOf[qctx.reflect.Position]
+      }
+    }
 
   final def parse(preparsed: PreparsedComment): Comment =
     val body = markupToDokkaCommentBody(stringToMarkup(preparsed.body))

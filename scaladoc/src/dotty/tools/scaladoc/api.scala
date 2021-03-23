@@ -232,11 +232,15 @@ extension (s: Signature)
       case l: Link => l.name
     }.mkString
 
-case class TastyMemberSource(val path: java.nio.file.Path, val lineNumber: Int)
+case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
+
+object SnippetCompilerData:
+  case class Position(line: Int, column: Int)
 
 case class SnippetCompilerData(
-  val packageName: String,
-  val classType: Option[String],
-  val classGenerics: Option[String],
-  val imports: List[String]
+  packageName: String,
+  classType: Option[String],
+  classGenerics: Option[String],
+  imports: List[String],
+  position: SnippetCompilerData.Position
 )

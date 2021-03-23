@@ -10,22 +10,22 @@ import dotty.tools.scaladoc.snippets._
 
 class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using ctx: DocContext):
 
-  private val snippetCheckingFunc: Member => (String, Option[SnippetCompilerArg]) => Unit =
-  (m: Member) => {
-    (str: String, argOverride: Option[SnippetCompilerArg]) => {
-        val arg = argOverride.fold(
-          ctx.snippetCompilerArgs.get(m).fold(SnippetCompilerArg.default)(p => p)
-        )(p => p)
-
-        snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg).foreach { _ match {
-            case r @ SnippetCompilationResult(None, _) =>
-              println(s"In member ${m.name} (${m.dri.location}):")
-              println(r.getSummary)
-            case _ =>
+  private val snippetCheckingFuncFromMember: Member => SnippetChecker.SnippetCheckingFunc =
+    (m: Member) => {
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
+          val arg = argOverride.getOrElse(
+            ctx.snippetCompilerArgs.get(m).getOrElse(SnippetCompilerArg.default)
+          )
+          
+          snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg, lineOffset).foreach { _ match {
+              case r @ SnippetCompilationResult(None, _) =>
+                println(s"In member ${m.name} (${m.dri.location}):")
+                println(r.getSummary)
+              case _ =>
+            }
           }
-        }
+      }
     }
-  }
 
   def renderDocPart(doc: DocPart)(using Member): AppliedTag = doc match
     case md: MdNode => renderMarkdown(md)
@@ -37,7 +37,7 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
     raw(DocFlexmarkRenderer.render(el)(
       (link,name) =>
         renderLink(link, default => text(if name.isEmpty then default else name)).toString,
-      snippetCheckingFunc(m)
+        snippetCheckingFuncFromMember(m)
     ))
 
   private def listItems(items: Seq[WikiDocElement])(using m: Member) =
@@ -67,7 +67,7 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
           case 6 => h6(content)
     case Paragraph(text) => p(renderElement(text))
     case Code(data: String) =>
-      snippetCheckingFunc(m)(data, None)
+      snippetCheckingFuncFromMember(m)(data, 0, None)
       pre(code(raw(data))) // TODO add classes
     case HorizontalRule => hr
 

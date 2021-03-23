@@ -3,6 +3,7 @@ package snippetCompiler
 /**
   * ```scala sc:compile
   * def a = 2
+  * val x = 1 + List()
   * a
   * ```
   *

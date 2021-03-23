@@ -42,14 +42,14 @@ class SnippetCompiler(
   private def nullableMessage(msgOrNull: String): String =
     if (msgOrNull == null) "" else msgOrNull
 
-  private def createReportMessage(diagnostics: Seq[Diagnostic]): Seq[SnippetCompilerMessage] = {
+  private def createReportMessage(diagnostics: Seq[Diagnostic], line: Int, column: Int): Seq[SnippetCompilerMessage] = {
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
         val pos = diagnostic.position.get
         val msg = nullableMessage(diagnostic.message)
         val level = MessageLevel.fromOrdinal(diagnostic.level)
-        SnippetCompilerMessage(pos.line, pos.column, pos.lineContent, msg, level)
+        SnippetCompilerMessage(pos.line + line, pos.column + column, pos.lineContent, msg, level)
       case d =>
         val level = MessageLevel.fromOrdinal(d.level)
         SnippetCompilerMessage(-1, -1, "", nullableMessage(d.message), level)
@@ -58,7 +58,7 @@ class SnippetCompiler(
   }
 
   def compile(
-    snippets: List[String]
+    wrappedSnippet: WrappedSnippet
   ): SnippetCompilationResult = {
     val context = driver.currentCtx.fresh
       .setSetting(
@@ -67,14 +67,8 @@ class SnippetCompiler(
       )
       .setReporter(new StoreReporter)
     val run = newRun(using context)
-    run.compileFromStrings(snippets)
-    val messages = createReportMessage(context.reporter.pendingMessages(using context))
+    run.compileFromStrings(List(wrappedSnippet.snippet))
+    val messages = createReportMessage(context.reporter.pendingMessages(using context), wrappedSnippet.lineOffset, wrappedSnippet.columnOffset)
     val targetIfSuccessful = Option.when(!context.reporter.hasErrors)(target)
     SnippetCompilationResult(targetIfSuccessful, messages)
   }
-
-  def compile(
-    snippet: String
-  ): SnippetCompilationResult = compile(List(snippet))
-
-

@@ -12,6 +12,8 @@ import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
 import com.vladsch.flexmark._
 
+import dotty.tools.scaladoc.snippets.SnippetChecker
+
 class DocLinkNode(
   val target: DocLink,
   val body: String,
@@ -45,7 +47,7 @@ object DocFlexmarkParser {
     }
 }
 
-case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String, Option[snippets.SnippetCompilerArg]) => Unit)
+case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc)
   extends HtmlRenderer.HtmlRendererExtension:
 
     def rendererOptions(opt: MutableDataHolder): Unit = () // noop
@@ -59,7 +61,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetC
             .map(_.stripPrefix("sc:"))
             .map(snippets.SnippetCompilerArgParser.parse)
             .flatMap(_.toOption)
-        snippetCheckingFunc(node.getContentChars.toString, argOverride)
+        snippetCheckingFunc(node.getContentChars.toString, node.getStartLineNumber, argOverride)
         c.delegateRender()
 
     object Handler extends CustomNodeRenderer[DocLinkNode]:
@@ -80,6 +82,6 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetC
       htmlRendererBuilder.nodeRendererFactory(Factory)
 
 object DocFlexmarkRenderer:
-  def render(node: Node)(renderLink: (DocLink, String) => String, snippetCheckingFunc: (String, Option[snippets.SnippetCompilerArg]) => Unit) =
+  def render(node: Node)(renderLink: (DocLink, String) => String, snippetCheckingFunc: SnippetChecker.SnippetCheckingFunc) =
     val opts = MarkdownParser.mkMarkdownOptions(Seq(DocFlexmarkRenderer(renderLink, snippetCheckingFunc)))
     HtmlRenderer.builder(opts).build().render(node)
