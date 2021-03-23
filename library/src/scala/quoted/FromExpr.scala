@@ -84,11 +84,13 @@ object FromExpr {
     def unapply(expr: Expr[T])(using Quotes) =
       import quotes.reflect._
       def rec(tree: Term): Option[T] = tree match {
-        case Literal(c) if c.value != null => Some(c.value.asInstanceOf[T])
-        case Block(Nil, e) => rec(e)
+        case Block(stats, e) => if stats.isEmpty then rec(e) else None
+        case Inlined(_, bindings, e) => if bindings.isEmpty then rec(e) else None
         case Typed(e, _) => rec(e)
-        case Inlined(_, Nil, e) => rec(e)
-        case _  => None
+        case _ =>
+          tree.tpe.widenTermRefByName match
+            case ConstantType(c) => Some(c.value.asInstanceOf[T])
+            case _ => None
       }
       rec(expr.asTerm)
   }
