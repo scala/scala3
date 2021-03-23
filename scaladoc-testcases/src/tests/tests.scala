@@ -20,7 +20,22 @@ package tests
   * ```scala
   * is.an("actual code block")
   * with.multiple("lines")
+  * """
+  * {{{
+  * and an embedded Wiki code block for good measure
+  * }}}
+  * """
   * ```
+  *
+  * While
+  * {{{
+  * this.is("a Wiki code block")
+  * """
+  * ```
+  * with an embedded Md code block for good measure
+  * ```
+  * """
+  * }}}
   *
   * And this
   *

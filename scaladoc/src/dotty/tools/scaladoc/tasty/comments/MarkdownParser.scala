@@ -44,14 +44,19 @@ object MarkdownParser {
 
   val markdownOptions: DataHolder = mkMarkdownOptions(Seq(WikiLinkExtension.create()))
 
-  private val parser = Parser.builder(markdownOptions).build()
-
   val RENDERER = Formatter.builder(markdownOptions).build()
 
   def parseToMarkdown(text: String, extensions: Extension*): mdu.Document =
+    val options =
+      if extensions.isEmpty then
+        markdownOptions
+      else
+        mkMarkdownOptions(extensions)
+
     val thisParser =
-      if(extensions.isEmpty) parser
-      else Parser.builder(mkMarkdownOptions(extensions)).build()
+      Parser.builder(options)
+        .customBlockParserFactory(parsers.WikiCodeBlockParser.Factory())
+        .build()
 
     // We need to remove safe tag markers as they break flexmark parsing
     thisParser.parse(text.replace(safeTagMarker.toString, "")).asInstanceOf[mdu.Document]
