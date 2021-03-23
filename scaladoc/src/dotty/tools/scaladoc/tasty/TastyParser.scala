@@ -80,8 +80,12 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
     def driFor(link: String): Option[DRI] =
       val symOps = new SymOps[q.type](q)
       import symOps._
-      Try(QueryParser(link).readQuery()).toOption.flatMap(q =>
-        MemberLookup.lookupOpt(q, None).map{ case (sym, _) => sym.dri}
+      Try(QueryParser(link).readQuery()).toOption.flatMap(query =>
+        MemberLookup.lookupOpt(query, None).map {
+          case (sym, _, inheritingParent) => inheritingParent match
+            case Some(parent) => sym.driInContextOfInheritingParent(parent)
+            case None => sym.dri
+        }
       )
 
     ctx.staticSiteContext.foreach(_.memberLinkResolver = driFor)

@@ -28,6 +28,8 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       "???" -> cls("scala.Predef$").fun("???"),
       "scala.List" -> cls("scala.package$").tpe("List"),
 
+      "scala.List.lift" -> cls("scala.PartialFunction").fun("lift"),
+
       "tests.A" -> cls("tests.A"),
       "tests.A$" -> cls("tests.A$"),
       "tests.Methods.simple" -> cls("tests.Methods").fun("simple"),
@@ -36,14 +38,25 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
       "java.util.AbstractCollection" -> cls("java.util.AbstractCollection"),
       "java.lang.String" -> cls("java.lang.String"),
+
+      "tests.lookupInheritedMembers.pack1.A.x" ->
+        cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
+
+      "tests.lookupInheritedMembers.pack2.B.x" ->
+        cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
     )
 
-    cases.foreach { case (query, Sym(sym)) =>
-      val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
-      assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
-      val Some((lookedUp, _)) = lookupRes
-      assertSame(query, sym, lookedUp)
+    cases.foreach { case (query, sym) =>
+      testOwnerlessLookup(query, sym)
     }
+  }
+
+  def testOwnerlessLookup(query: String, wrappedTarget: Sym): Unit = {
+    val target = wrappedTarget.symbol
+    val lookupRes = MemberLookup.lookupOpt(parseQuery(query), None)
+    assertTrue(s"Couldn't look up: $query", lookupRes.nonEmpty)
+    val Some((lookedUp, _, _)) = lookupRes
+    assertSame(query, target, lookedUp)
   }
 
   def testOwnedLookup(): Unit = {
@@ -65,7 +78,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
       cls("tests.A") -> "AA!" -> cls("tests.A").tpe("AA"),
       cls("tests.A") -> "AA$" -> cls("tests.A").fld("AA"),
 
-      cls("tests.C") -> "CC" -> cls("tests.C").fld("CC"),
+      cls("tests.C") -> "CC" -> cls("tests.C").tpe("CC"),
       cls("tests.C") -> "CC$" -> cls("tests.C").fld("CC"),
       cls("tests.C") -> "CC!" -> cls("tests.C").tpe("CC"),
 
@@ -91,6 +104,8 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
       cls("tests.inner.B") -> "A" -> cls("tests.inner.A$"),
 
+      cls("tests.B$") -> "foo" -> cls("tests.BModule").fun("foo"),
+
       cls("tests.D") -> "foo" -> cls("tests.package$").fld("foo"),
       cls("tests.D") -> "bar" -> cls("tests.tests$package$").fld("bar"),
       cls("tests.inner.A$") -> "foo" -> cls("tests.package$").fld("foo"),
@@ -98,7 +113,7 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
     )
 
     cases.foreach { case ((Sym(owner), query), Sym(target)) =>
-      val Some((lookedUp, _)) = MemberLookup.lookup(parseQuery(query), owner)
+      val Some((lookedUp, _, _)) = MemberLookup.lookup(parseQuery(query), owner)
       assertSame(s"$owner / $query", target, lookedUp)
     }
   }
