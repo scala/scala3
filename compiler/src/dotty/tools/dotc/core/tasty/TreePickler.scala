@@ -739,7 +739,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Accessor)) writeModTag(FIELDaccessor)
       if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
       if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
-      if (flags.is(StableRealizable)) writeModTag(STABLE)
+      if flags.isAllOf(StableMethod) then writeModTag(STABLE) // other StableRealizable flag occurrences are either implied or can be recomputed
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)

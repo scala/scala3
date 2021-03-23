@@ -487,7 +487,9 @@ class TreeUnpickler(reader: TastyReader,
       if (lacksDefinition && tag != PARAM) flags |= Deferred
       if (tag == DEFDEF) flags |= Method
       if (givenFlags.is(Module))
-        flags = flags | (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
+        flags |= (if (tag == VALDEF) ModuleValCreationFlags else ModuleClassCreationFlags)
+      if flags.is(Enum, butNot = Method) && name.isTermName then
+        flags |= StableRealizable
       if (ctx.owner.isClass) {
         if (tag == TYPEPARAM) flags |= Param
         else if (tag == PARAM) {

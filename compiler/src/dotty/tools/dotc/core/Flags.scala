@@ -300,6 +300,11 @@ object Flags {
    *
    *  - the purity analysis used by the inliner to decide whether it is safe to elide, and
    *  - the TASTy reader of Scala 2.13, to determine whether there is a $init$ method.
+   *
+   *  StableRealizable is
+   *  - asserted for methods
+   *  - automatic in conjunction with Module or Enum vals
+   *  - cached for other vals
    */
   val (_, StableRealizable @ _, _) = newFlags(24, "<stable>")
 
@@ -584,6 +589,7 @@ object Flags {
   val MethodOrModule: FlagSet                = Method | Module
   val ParamForwarder: FlagSet                = Method | ParamAccessor | StableRealizable      // A parameter forwarder
   val PrivateMethod: FlagSet                 = Method | Private
+  val StableMethod: FlagSet                  = Method | StableRealizable
   val NoInitsInterface: FlagSet              = NoInits | PureInterface
   val NoInitsTrait: FlagSet                  = NoInits | Trait                                // A trait that does not need to be initialized
   val ValidForeverFlags: FlagSet             = Package | Permanent | Scala2SpecialFlags
