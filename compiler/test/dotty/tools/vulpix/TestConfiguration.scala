@@ -9,6 +9,7 @@ object TestConfiguration {
   val noCheckOptions = Array(
     "-pagewidth", "120",
     "-color:never",
+    "-Yno-experimental",
     "-Xtarget", defaultTarget
   )
 

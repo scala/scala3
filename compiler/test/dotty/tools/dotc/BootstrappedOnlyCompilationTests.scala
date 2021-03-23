@@ -199,6 +199,18 @@ class BootstrappedOnlyCompilationTests {
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
     compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
   }
+
+  // tests for experimental featuress ------------------------------------------
+
+  @Test def experimental: Unit =
+    implicit val testGroup: TestGroup = TestGroup("experimental")
+    compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")).checkExpectedErrors()
+    if config.Properties.experimental then
+      compileFilesInDir("tests/run-custom-args/experimental", defaultOptions.without("-Yno-experimental")).checkRuns()
+      compileFilesInDir("tests/neg-custom-args/experimental", defaultOptions.without("-Yno-experimental")).checkExpectedErrors()
+      compileFilesInDir("tests/pos-custom-args/experimental", defaultOptions.without("-Yno-experimental")).checkCompile()
+      compileFilesInDir("tests/run-staging-experimental", withStagingOptions.without("-Yno-experimental")).checkRuns()
+
 }
 
 object BootstrappedOnlyCompilationTests extends ParallelTesting {

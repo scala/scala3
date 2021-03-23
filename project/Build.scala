@@ -246,6 +246,8 @@ object Build {
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
 
+    scalacOptions += "-Yno-experimental",
+
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
     sourcesInBase := false,
@@ -444,6 +446,8 @@ object Build {
 
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
+
+      scalacOptions += "-Yno-experimental",
 
       javaOptions ++= {
         val managedSrcDir = {
