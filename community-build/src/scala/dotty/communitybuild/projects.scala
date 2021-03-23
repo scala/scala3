@@ -362,11 +362,10 @@ object projects:
     sbtDocCommand    = "set ThisBuild / useEffpiPlugin := false; effpi/doc; benchmarks/doc; examples/doc; pluginBenchmarks/doc",
   )
 
-  // TODO @odersky? It got broken by #5458
-  // val pdbp = test(
-  //   project       = "pdbp",
-  //   sbtTestCommand   = "compile",
-  // )
+  val psbp = SbtCommunityProject(
+    project       = "psbp",
+    sbtTestCommand   = "compile",
+  )
 
   lazy val sconfig = SbtCommunityProject(
     project       = "sconfig",
@@ -709,6 +708,7 @@ def allProjects = List(
   projects.akka,
   projects.protoquill,
   projects.onnxScala,
+  projects.psbp,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
