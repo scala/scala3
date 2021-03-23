@@ -772,15 +772,16 @@ object Types {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
+          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
           val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
             case joint: SingleDenotation
-            if rinfo.isInstanceOf[MethodOrPoly] && rinfo <:< joint.info =>
+            if isRefinedMethod && rinfo <:< joint.info =>
               // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo)
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
               joint
       }
