@@ -4,6 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation._
 
 class RegressionTestScala3 {
   import RegressionTestScala3.*
@@ -21,6 +22,11 @@ class RegressionTestScala3 {
     assertEquals(-1, obj2.y)
     assertEquals(4, obj2.foo(5))
   }
+
+  @Test def testJSNativeDefaultCtorParamIssue11592(): Unit = {
+    assertEquals("foo", new RangeErrorIssue11592("foo").message)
+    assertEquals("", new RangeErrorIssue11592().message)
+  }
 }
 
 object RegressionTestScala3 {
@@ -32,6 +38,12 @@ object RegressionTestScala3 {
     private class ChildClass extends ParentTrait // must be class *and* private
 
     def foo(x: Int): Int = new ChildClass().concreteMethod(x)
+  }
+
+  @js.native
+  @JSGlobal("RangeError")
+  class RangeErrorIssue11592(msg: String = js.native) extends js.Object {
+    val message: String = js.native
   }
 }
 
