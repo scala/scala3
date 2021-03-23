@@ -2219,20 +2219,18 @@ class Typer extends Namer
      *  @param psym  Its type symbol
      *  @param cinfo The info of its constructor
      */
-    def maybeCall(ref: Tree, psym: Symbol, cinfo: Type): Tree = cinfo.stripPoly match {
+    def maybeCall(ref: Tree, psym: Symbol): Tree = psym.primaryConstructor.info.stripPoly match
       case cinfo @ MethodType(Nil) if cinfo.resultType.isImplicitMethod =>
         typedExpr(untpd.New(untpd.TypedSplice(ref)(using superCtx), Nil))(using superCtx)
       case cinfo @ MethodType(Nil) if !cinfo.resultType.isInstanceOf[MethodType] =>
         ref
       case cinfo: MethodType =>
-        if (!ctx.erasedTypes) { // after constructors arguments are passed in super call.
+        if !ctx.erasedTypes then // after constructors arguments are passed in super call.
           typr.println(i"constr type: $cinfo")
           report.error(ParameterizedTypeLacksArguments(psym), ref.srcPos)
-        }
         ref
       case _ =>
         ref
-    }
 
     val seenParents = mutable.Set[Symbol]()
 
@@ -2257,13 +2255,34 @@ class Typer extends Namer
       if (tree.isType) {
         checkSimpleKinded(result) // Not needed for constructor calls, as type arguments will be inferred.
         if (psym.is(Trait) && !cls.is(Trait) && !cls.superClass.isSubClass(psym))
-          result = maybeCall(result, psym, psym.primaryConstructor.info)
+          result = maybeCall(result, psym)
       }
       else checkParentCall(result, cls)
       checkTraitInheritance(psym, cls, tree.srcPos)
       if (cls is Case) checkCaseInheritance(psym, cls, tree.srcPos)
       result
     }
+
+    /** Augment `ptrees` to have the same class symbols as `parents`. Generate TypeTrees
+     *  or New trees to fill in any parents for which no tree exists yet.
+     */
+    def parentTrees(parents: List[Type], ptrees: List[Tree]): List[Tree] = parents match
+      case parent :: parents1 =>
+        val psym = parent.classSymbol
+        def hasSameParent(ptree: Tree) = ptree.tpe.classSymbol == psym
+        ptrees match
+          case ptree :: ptrees1 if hasSameParent(ptree) =>
+            ptree :: parentTrees(parents1, ptrees1)
+          case ptree :: ptrees1 if ptrees1.exists(hasSameParent) =>
+            ptree :: parentTrees(parents, ptrees1)
+          case _ =>
+            var added: Tree = TypeTree(parent).withSpan(cdef.nameSpan.focus)
+            if psym.is(Trait) && psym.primaryConstructor.info.takesImplicitParams then
+              // classes get a constructor separately using a different context
+              added = ensureConstrCall(cls, added)
+            added :: parentTrees(parents1, ptrees)
+      case _ =>
+        ptrees
 
     /** Checks if one of the decls is a type with the same name as class type member in selfType */
     def classExistsOnSelf(decls: Scope, self: tpd.ValDef): Boolean = {
@@ -2285,8 +2304,10 @@ class Typer extends Namer
 
     completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
-    val parentsWithClass = ensureFirstTreeIsClass(parents.mapconserve(typedParent).filterConserve(!_.isEmpty), cdef.nameSpan)
-    val parents1 = ensureConstrCall(cls, parentsWithClass)(using superCtx)
+    val parents0 = parentTrees(
+        cls.classInfo.declaredParents,
+        parents.mapconserve(typedParent).filterConserve(!_.isEmpty))
+    val parents1 = ensureConstrCall(cls, parents0)(using superCtx)
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
 
@@ -2355,52 +2376,23 @@ class Typer extends Namer
   protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
     ctx.compilationUnit.inlineAccessors.addAccessorDefs(cls, body)
 
-  /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
-   *  If that's not already the case, add one. The added class type CT is determined as follows.
-   *  First, let C be the unique class such that
-   *  - there is a parent P_i such that P_i derives from C, and
-   *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
-   *  Then, let CT be the smallest type which
-   *  - has C as its class symbol, and
-   *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
-   */
-  def ensureFirstIsClass(parents: List[Type], span: Span)(using Context): List[Type] = {
-    def realClassParent(cls: Symbol): ClassSymbol =
-      if (!cls.isClass) defn.ObjectClass
-      else if (!cls.is(Trait)) cls.asClass
-      else cls.info.parents match {
-        case parentRef :: _ => realClassParent(parentRef.typeSymbol)
-        case nil => defn.ObjectClass
-      }
-    def improve(candidate: ClassSymbol, parent: Type): ClassSymbol = {
-      val pcls = realClassParent(parent.classSymbol)
-      if (pcls derivesFrom candidate) pcls else candidate
-    }
-    parents match {
-      case p :: _ if p.classSymbol.isRealClass => parents
-      case _ =>
-        val pcls = parents.foldLeft(defn.ObjectClass)(improve)
-        typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
-        val first = TypeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
-        checkFeasibleParent(first, ctx.source.atSpan(span), em" in inferred superclass $first") :: parents
-    }
-  }
-
-  /** Ensure that first parent tree refers to a real class. */
-  def ensureFirstTreeIsClass(parents: List[Tree], span: Span)(using Context): List[Tree] = parents match {
-    case p :: ps if p.tpe.classSymbol.isRealClass => parents
-    case _ => TypeTree(ensureFirstIsClass(parents.tpes, span).head).withSpan(span.focus) :: parents
-  }
-
   /** If this is a real class, make sure its first parent is a
    *  constructor call. Cannot simply use a type. Overridden in ReTyper.
    */
-  def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] = {
-    val firstParent :: otherParents = parents
-    if (firstParent.isType && !cls.is(Trait) && !cls.is(JavaDefined))
-      typed(untpd.New(untpd.TypedSplice(firstParent), Nil)) :: otherParents
-    else parents
-  }
+  def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] = parents match
+    case parents @ (first :: others) =>
+      parents.derivedCons(ensureConstrCall(cls, first), others)
+    case parents =>
+      parents
+
+ /** If this is a real class, make sure its first parent is a
+   *  constructor call. Cannot simply use a type. Overridden in ReTyper.
+   */
+  def ensureConstrCall(cls: ClassSymbol, parent: Tree)(using Context): Tree =
+    if (parent.isType && !cls.is(Trait) && !cls.is(JavaDefined))
+      typed(untpd.New(untpd.TypedSplice(parent), Nil))
+    else
+      parent
 
   def localDummy(cls: ClassSymbol, impl: untpd.Template)(using Context): Symbol =
     newLocalDummy(cls, impl.span)

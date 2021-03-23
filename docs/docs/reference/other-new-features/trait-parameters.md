@@ -52,6 +52,36 @@ The correct way to write `E` is to extend both `Greeting` and
 class E extends Greeting("Bob"), FormalGreeting
 ```
 
+### Traits With Context Parameters
+
+This "explicit extension required" rule is relaxed if the missing trait contains only
+[context parameters](../contextual/using-clauses). In that case the trait reference is
+implicitly inserted as an additional parent with inferred arguments. For instance,
+here's a variant of greetings where the addressee is a context parameter of type
+`ImpliedName`:
+
+```scala
+case class ImpliedName(name: String):
+  override def toString = name
+
+trait ImpliedGreeting(using val iname: ImpliedName):
+   def msg = s"How are you, $iname"
+
+trait ImpliedFormalGreeting extends ImpliedGreeting:
+   override def msg = s"How do you do, $iname"
+
+class F(using iname: ImpliedName) extends ImpliedFormalGreeting
+```
+
+The definition of `F` in the last line is implicitly expanded to
+```scala
+class F(using iname: ImpliedName) extends
+   Object,
+   ImpliedGreeting(using iname),
+   ImpliedFormalGreeting(using iname)
+```
+Note the inserted reference to the super trait `ImpliedGreeting`, which was not mentioned explicitly.
+
 ## Reference
 
 For more information, see [Scala SIP 25](http://docs.scala-lang.org/sips/pending/trait-parameters.html).

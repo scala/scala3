@@ -1237,12 +1237,81 @@ class Namer { typer: Typer =>
         }
       }
 
+      /** Ensure that the first type in a list of parent types Ps points to a non-trait class.
+       *  If that's not already the case, add one. The added class type CT is determined as follows.
+       *  First, let C be the unique class such that
+       *  - there is a parent P_i such that P_i derives from C, and
+       *  - for every class D: If some parent P_j, j <= i derives from D, then C derives from D.
+       *  Then, let CT be the smallest type which
+       *  - has C as its class symbol, and
+       *  - for all parents P_i: If P_i derives from C then P_i <:< CT.
+       */
+      def ensureFirstIsClass(parents: List[Type]): List[Type] =
+
+        def realClassParent(sym: Symbol): ClassSymbol =
+          if !sym.isClass then defn.ObjectClass
+          else if !sym.is(Trait) then sym.asClass
+          else sym.info.parents match
+            case parentRef :: _ => realClassParent(parentRef.typeSymbol)
+            case nil => defn.ObjectClass
+
+        def improve(candidate: ClassSymbol, parent: Type): ClassSymbol =
+          val pcls = realClassParent(parent.classSymbol)
+          if (pcls derivesFrom candidate) pcls else candidate
+
+        parents match
+          case p :: _ if p.classSymbol.isRealClass => parents
+          case _ =>
+            val pcls = parents.foldLeft(defn.ObjectClass)(improve)
+            typr.println(i"ensure first is class $parents%, % --> ${parents map (_ baseType pcls)}%, %")
+            val first = TypeComparer.glb(defn.ObjectType :: parents.map(_.baseType(pcls)))
+            checkFeasibleParent(first, cls.srcPos, em" in inferred superclass $first") :: parents
+      end ensureFirstIsClass
+
+      /** If `parents` contains references to traits that have supertraits with implicit parameters
+       *  add those supertraits in linearization order unless they are already covered by other
+       *  parent types. For instance, in
+       *
+       *    class A
+       *    trait B(using I) extends A
+       *    trait C extends B
+       *    class D extends A, C
+       *
+       *  the class declaration of `D` is augmented to
+       *
+       *    class D extends A, B, C
+       *
+       *  so that an implicit `I` can be passed to `B`. See i7613.scala for more examples.
+       */
+      def addUsingTraits(parents: List[Type]): List[Type] =
+        lazy val existing = parents.map(_.classSymbol).toSet
+        def recur(parents: List[Type]): List[Type] = parents match
+          case parent :: parents1 =>
+            val psym = parent.classSymbol
+            val addedTraits =
+              if psym.is(Trait) then
+                psym.asClass.baseClasses.tail.iterator
+                  .takeWhile(_.is(Trait))
+                  .filter(p =>
+                    p.primaryConstructor.info.takesImplicitParams
+                    && !cls.superClass.isSubClass(p)
+                    && !existing.contains(p))
+                  .toList.reverse
+              else Nil
+            addedTraits.map(parent.baseType) ::: parent :: recur(parents1)
+          case nil =>
+            Nil
+        if cls.isRealClass then recur(parents) else parents
+      end addUsingTraits
+
       completeConstructor(denot)
       denot.info = tempInfo
 
       val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
-          ensureFirstIsClass(parents.map(checkedParentType(_)), cls.span)
+          addUsingTraits(
+            ensureFirstIsClass(parents.map(checkedParentType(_)))
+          )
         )
       )
       typr.println(i"completing $denot, parents = $parents%, %, parentTypes = $parentTypes%, %")
