@@ -290,12 +290,12 @@ class JSCodeGen()(using genCtx: Context) {
         "genScalaClass() must be called only for normal classes: "+sym)
     assert(sym.superClass != NoSymbol, sym)
 
-    /*if (hasDefaultCtorArgsAndRawJSModule(sym)) {
-      reporter.error(pos,
-          "Implementation restriction: constructors of " +
-          "Scala classes cannot have default parameters " +
-          "if their companion module is JS native.")
-    }*/
+    if (hasDefaultCtorArgsAndJSModule(sym)) {
+      report.error(
+          "Implementation restriction: " +
+          "constructors of Scala classes cannot have default parameters if their companion module is JS native.",
+          td)
+    }
 
     val classIdent = encodeClassNameIdent(sym)
     val originalName = originalNameOfClass(sym)
@@ -965,9 +965,8 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (hasDefaultCtorArgsAndJSModule(classSym)) {
       report.error(
-          "Implementation restriction: constructors of " +
-          "non-native JS classes cannot have default parameters " +
-          "if their companion module is JS native.",
+          "Implementation restriction: " +
+          "constructors of non-native JS classes cannot have default parameters if their companion module is JS native.",
           classSym.srcPos)
       val ctorDef = js.JSMethodDef(js.MemberFlags.empty,
           js.StringLiteral("constructor"), Nil, None, js.Skip())(
@@ -1067,9 +1066,10 @@ class JSCodeGen()(using genCtx: Context) {
         Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
             jsParams, toIRType(patchedResultType(sym)), None)(
             OptimizerHints.empty, None))
-      } else /*if (isJSNativeCtorDefaultParam(sym)) {
+      } else if (sym.isJSNativeCtorDefaultParam) {
+        // #11592
         None
-      } else if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
+      } else /*if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
         None
       } else*/ {
         /*def isTraitImplForwarder = dd.rhs match {
