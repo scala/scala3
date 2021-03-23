@@ -113,7 +113,7 @@ object Checking {
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
-        if (tycon.isLambdaSub && tp.hasWildcardArg)
+        if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos)
