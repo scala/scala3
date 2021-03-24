@@ -658,6 +658,58 @@ Occurrences:
 [0:8..0:15): example <- example/
 [2:7..2:18): EmptyObject <- example/EmptyObject.
 
+expect/EnumVal.scala
+--------------------
+
+Summary:
+Schema => SemanticDB v4
+Uri => EnumVal.scala
+Text => empty
+Language => Scala
+Symbols => 16 entries
+Occurrences => 21 entries
+
+Symbols:
+enumVal/A# => trait A
+enumVal/A#`<init>`(). => primary ctor <init>
+enumVal/Color# => abstract sealed enum class Color
+enumVal/Color#`<init>`(). => primary ctor <init>
+enumVal/Color#`<init>`().(rgb) => val param rgb
+enumVal/Color#rgb. => val method rgb
+enumVal/Color. => final object Color
+enumVal/Color.$values. => val method $values
+enumVal/Color.Blue. => case val static enum method Blue
+enumVal/Color.Green. => case val static enum method Green
+enumVal/Color.Red. => case val static enum method Red
+enumVal/Color.fromOrdinal(). => method fromOrdinal
+enumVal/Color.fromOrdinal().(ordinal) => param ordinal
+enumVal/Color.valueOf(). => method valueOf
+enumVal/Color.valueOf().($name) => param $name
+enumVal/Color.values(). => method values
+
+Occurrences:
+[0:8..0:15): enumVal <- enumVal/
+[2:7..2:12): scala -> scala/
+[2:13..2:20): runtime -> scala/runtime/
+[2:21..2:30): EnumValue -> scala/runtime/EnumValue.
+[5:0..5:0): <- enumVal/A#`<init>`().
+[5:6..5:7): A <- enumVal/A#
+[7:5..7:10): Color <- enumVal/Color#
+[7:10..7:10): <- enumVal/Color#`<init>`().
+[7:15..7:18): rgb <- enumVal/Color#rgb.
+[7:20..7:23): Int -> scala/Int#
+[8:7..8:10): Red <- enumVal/Color.Red.
+[8:21..8:26): Color -> enumVal/Color#
+[8:26..8:26): -> enumVal/Color#`<init>`().
+[8:42..8:51): EnumValue -> scala/runtime/EnumValue#
+[9:7..9:12): Green <- enumVal/Color.Green.
+[9:21..9:26): Color -> enumVal/Color#
+[9:26..9:26): -> enumVal/Color#`<init>`().
+[9:42..9:43): A -> enumVal/A#
+[10:7..10:11): Blue <- enumVal/Color.Blue.
+[10:21..10:26): Color -> enumVal/Color#
+[10:26..10:26): -> enumVal/Color#`<init>`().
+
 expect/Enums.scala
 ------------------
 
@@ -667,7 +719,7 @@ Uri => Enums.scala
 Text => empty
 Language => Scala
 Symbols => 181 entries
-Occurrences => 201 entries
+Occurrences => 184 entries
 
 Symbols:
 _empty_/Enums. => final object Enums
@@ -910,23 +962,18 @@ Occurrences:
 [31:9..31:14): Penny <- _empty_/Enums.Coin.Penny.
 [31:26..31:30): Coin -> _empty_/Enums.Coin#
 [31:30..31:30): -> _empty_/Enums.Coin#`<init>`().
-[31:33..31:33): -> scala/runtime/EnumValue#
 [32:9..32:15): Nickel <- _empty_/Enums.Coin.Nickel.
 [32:26..32:30): Coin -> _empty_/Enums.Coin#
 [32:30..32:30): -> _empty_/Enums.Coin#`<init>`().
-[32:33..32:33): -> scala/runtime/EnumValue#
 [33:9..33:13): Dime <- _empty_/Enums.Coin.Dime.
 [33:26..33:30): Coin -> _empty_/Enums.Coin#
 [33:30..33:30): -> _empty_/Enums.Coin#`<init>`().
-[33:34..33:34): -> scala/runtime/EnumValue#
 [34:9..34:16): Quarter <- _empty_/Enums.Coin.Quarter.
 [34:26..34:30): Coin -> _empty_/Enums.Coin#
 [34:30..34:30): -> _empty_/Enums.Coin#`<init>`().
-[34:34..34:34): -> scala/runtime/EnumValue#
 [35:9..35:15): Dollar <- _empty_/Enums.Coin.Dollar.
 [35:26..35:30): Coin -> _empty_/Enums.Coin#
 [35:30..35:30): -> _empty_/Enums.Coin#`<init>`().
-[35:35..35:35): -> scala/runtime/EnumValue#
 [37:7..37:12): Maybe <- _empty_/Enums.Maybe#
 [37:12..37:12): <- _empty_/Enums.Maybe#`<init>`().
 [37:14..37:15): A <- _empty_/Enums.Maybe#[A]
@@ -934,9 +981,7 @@ Occurrences:
 [38:13..38:13): <- _empty_/Enums.Maybe.Just#`<init>`().
 [38:14..38:19): value <- _empty_/Enums.Maybe.Just#value.
 [38:21..38:22): A -> _empty_/Enums.Maybe.Just#[A]
-[39:4..39:4): -> _empty_/Enums.Maybe#`<init>`().
 [39:9..39:13): None <- _empty_/Enums.Maybe.None.
-[39:13..39:13): -> scala/runtime/EnumValue#
 [41:7..41:10): Tag <- _empty_/Enums.Tag#
 [41:10..41:10): <- _empty_/Enums.Tag#`<init>`().
 [41:11..41:12): A <- _empty_/Enums.Tag#[A]
@@ -944,12 +989,10 @@ Occurrences:
 [42:24..42:27): Tag -> _empty_/Enums.Tag#
 [42:28..42:31): Int -> scala/Int#
 [42:32..42:32): -> _empty_/Enums.Tag#`<init>`().
-[42:32..42:32): -> scala/runtime/EnumValue#
 [43:9..43:19): BooleanTag <- _empty_/Enums.Tag.BooleanTag.
 [43:28..43:31): Tag -> _empty_/Enums.Tag#
 [43:32..43:39): Boolean -> scala/Boolean#
 [43:40..43:40): -> _empty_/Enums.Tag#`<init>`().
-[43:40..43:40): -> scala/runtime/EnumValue#
 [45:7..45:10): <:< <- _empty_/Enums.`<:<`#
 [45:10..45:10): <- _empty_/Enums.`<:<`#`<init>`().
 [45:12..45:13): A <- _empty_/Enums.`<:<`#[A]
@@ -1025,35 +1068,27 @@ Occurrences:
 [61:9..61:16): Mercury <- _empty_/Enums.Planet.Mercury.
 [61:25..61:31): Planet -> _empty_/Enums.Planet#
 [61:31..61:31): -> _empty_/Enums.Planet#`<init>`().
-[61:52..61:52): -> scala/runtime/EnumValue#
 [62:9..62:14): Venus <- _empty_/Enums.Planet.Venus.
 [62:25..62:31): Planet -> _empty_/Enums.Planet#
 [62:31..62:31): -> _empty_/Enums.Planet#`<init>`().
-[62:52..62:52): -> scala/runtime/EnumValue#
 [63:9..63:14): Earth <- _empty_/Enums.Planet.Earth.
 [63:25..63:31): Planet -> _empty_/Enums.Planet#
 [63:31..63:31): -> _empty_/Enums.Planet#`<init>`().
-[63:53..63:53): -> scala/runtime/EnumValue#
 [64:9..64:13): Mars <- _empty_/Enums.Planet.Mars.
 [64:25..64:31): Planet -> _empty_/Enums.Planet#
 [64:31..64:31): -> _empty_/Enums.Planet#`<init>`().
-[64:52..64:52): -> scala/runtime/EnumValue#
 [65:9..65:16): Jupiter <- _empty_/Enums.Planet.Jupiter.
 [65:25..65:31): Planet -> _empty_/Enums.Planet#
 [65:31..65:31): -> _empty_/Enums.Planet#`<init>`().
-[65:52..65:52): -> scala/runtime/EnumValue#
 [66:9..66:15): Saturn <- _empty_/Enums.Planet.Saturn.
 [66:25..66:31): Planet -> _empty_/Enums.Planet#
 [66:31..66:31): -> _empty_/Enums.Planet#`<init>`().
-[66:52..66:52): -> scala/runtime/EnumValue#
 [67:9..67:15): Uranus <- _empty_/Enums.Planet.Uranus.
 [67:25..67:31): Planet -> _empty_/Enums.Planet#
 [67:31..67:31): -> _empty_/Enums.Planet#`<init>`().
-[67:52..67:52): -> scala/runtime/EnumValue#
 [68:9..68:16): Neptune <- _empty_/Enums.Planet.Neptune.
 [68:25..68:31): Planet -> _empty_/Enums.Planet#
 [68:31..68:31): -> _empty_/Enums.Planet#`<init>`().
-[68:52..68:52): -> scala/runtime/EnumValue#
 
 expect/EtaExpansion.scala
 -------------------------

@@ -154,7 +154,7 @@ class ExtractSemanticDB extends Phase:
           if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
             case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
-              template.parents.foreach(traverse)
+              template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
             case _ => // calls $new
           case tree: ValDef
           if tree.symbol.isSelfSym =>
