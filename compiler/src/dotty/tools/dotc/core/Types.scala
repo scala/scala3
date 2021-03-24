@@ -2800,7 +2800,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context ?=> Type) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
 
@@ -2813,7 +2813,7 @@ object Types {
           throw CyclicReference(NoDenotation)
       else
         computed = true
-        val result = refFn
+        val result = refFn(ctx)
         refFn = null
         if result != null then myRef = result
         else assert(myRef != null)  // must have been `update`d
@@ -2835,6 +2835,8 @@ object Types {
     override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode: Int = System.identityHashCode(this)
   }
+  object LazyRef:
+    def of(refFn: Context ?=> Type): LazyRef = LazyRef(refFn(using _))
 
   // --- Refined Type and RecType ------------------------------------------------
 
@@ -4655,7 +4657,7 @@ object Types {
             RefinedType(selfType, sym.name,
               TypeAlias(
                 withMode(Mode.CheckCyclic)(
-                  LazyRef(force))))
+                  LazyRef.of(force))))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(
@@ -5254,7 +5256,8 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { refCtx ?=>
+          LazyRef { refCtx =>
+            given Context = refCtx
             val ref1 = tp.ref
             if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context

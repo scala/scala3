@@ -363,7 +363,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
-        LazyRef(dealiased.ref.appliedTo(args))
+        LazyRef.of(dealiased.ref.appliedTo(args))
       case dealiased: WildcardType =>
         WildcardType(dealiased.optBounds.orElse(TypeBounds.empty).appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>

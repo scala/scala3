@@ -301,7 +301,7 @@ object Checking {
         catch {
           case ex: CyclicReference =>
             report.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
-            if (cycleOK) LazyRef(tp)
+            if (cycleOK) LazyRef.of(tp)
             else if (reportErrors) throw ex
             else tp
         }
