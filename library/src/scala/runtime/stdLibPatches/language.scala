@@ -48,6 +48,9 @@ object language:
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    /** Experimental support for using indentation for arguments
+     */
+    object fewerBraces
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
