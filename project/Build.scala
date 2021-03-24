@@ -1541,11 +1541,26 @@ object Build {
       dependsOn(tastyCore).
       settings(dottyCompilerSettings)
 
-    def asDottyLibrary(implicit mode: Mode): Project = project.withCommonSettings.
-      settings(
-        libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion
-      ).
-      settings(dottyLibrarySettings)
+    def asDottyLibrary(implicit mode: Mode): Project = {
+      val base =
+        project.withCommonSettings.
+          settings(
+            libraryDependencies += "org.scala-lang" % "scala-library" % stdlibVersion
+          ).
+          settings(dottyLibrarySettings)
+      if (mode == Bootstrapped) {
+        base.settings(Seq(
+          (Compile/doc) := {
+            // Workaround for
+            // [error]    |object IArray cannot have the same name as object IArray in package scala
+            // -- cannot define object member with the same name as a object member in self reference _.
+            val doWork = (Compile/doc).result.value
+            (Compile/doc/target).value
+          }
+        ))
+      } else base
+    }
+
 
     def asTastyCore(implicit mode: Mode): Project = project.withCommonSettings.
       dependsOn(dottyLibrary).
