@@ -54,12 +54,16 @@ jobs:
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -99,12 +103,16 @@ jobs:
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -134,6 +142,8 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile"
@@ -159,6 +169,8 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
@@ -192,12 +204,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -232,12 +248,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -272,12 +292,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -312,12 +336,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -360,12 +388,16 @@ jobs:
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -396,12 +428,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -430,12 +466,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -476,12 +516,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -558,12 +602,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -603,12 +651,16 @@ jobs:
     steps:
       - name: Checkout cleanup script
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
         uses: actions/checkout@v2
+        with:
+          persist-credentials: false
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
