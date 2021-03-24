@@ -49,6 +49,9 @@ jobs:
            && github.repository == 'lampepfl/dotty'
          )"
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
@@ -97,6 +100,9 @@ jobs:
          )"
 
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
@@ -196,6 +202,9 @@ jobs:
          )"
 
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
@@ -239,6 +248,9 @@ jobs:
          )"
 
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
@@ -282,6 +294,9 @@ jobs:
          )"
 
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
@@ -325,6 +340,9 @@ jobs:
          )"
 
     steps:
+      - name: debug
+        run: git remote show origin -n
+
       - name: Sync submodules
         run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
 
