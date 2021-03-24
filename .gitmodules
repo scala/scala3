@@ -25,6 +25,9 @@
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
 	url = https://github.com/dotty-staging/scala
+[submodule "community-build/community-projects/pdbp"]
+	path = community-build/community-projects/pdbp
+	url = https://github.com/dotty-staging/pdbp
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode
@@ -190,6 +193,3 @@
 [submodule "community-build/community-projects/cask"]
 	path = community-build/community-projects/cask
 	url = https://github.com/dotty-staging/cask.git
-[submodule "community-build/community-projects/psbp"]
-	path = community-build/community-projects/psbp
-	url = https://github.com/dotty-staging/psbp-library.github.io
