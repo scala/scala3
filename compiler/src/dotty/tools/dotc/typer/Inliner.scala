@@ -753,7 +753,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       },
       oldOwners = inlinedMethod :: Nil,
       newOwners = ctx.owner :: Nil
-    )(using inlineCtx)
+    )(using inlineCtx) {
+      override def stopAtInlinedArgument: Boolean = true
+    }
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
