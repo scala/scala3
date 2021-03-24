@@ -230,12 +230,8 @@ object Inliner {
     val topLevelClass = Some(inlined.call.symbol.topLevelClass).filter(_.exists)
     val inliningPosition = InliningPosition(inlined.sourcePos, topLevelClass)
 
-    // In case that bindings are present we are adding InliningPosition attachement both to the resulting block and to the expansion
-    // as in some cases the block is removed in one of later phases and attachment is lost.
-    val tree1 =
-      if inlined.bindings.isEmpty then inlined.expansion
-      else cpy.Block(inlined)(inlined.bindings, inlined.expansion.withAttachment(InliningPosition, inliningPosition))
-    tree1.withAttachment(InliningPosition, inliningPosition)
+    val withPos = inlined.expansion.withAttachment(InliningPosition, inliningPosition)
+    if inlined.bindings.isEmpty then withPos else cpy.Block(inlined)(inlined.bindings, withPos)
 
   /** Leave only a call trace consisting of
    *  - a reference to the top-level class from which the call was inlined,
