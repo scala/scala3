@@ -1459,8 +1459,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
 
       val methodName = samMethod.javaSimpleName
       val samMethodType = asmMethodType(samMethod).toASMType
+      // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
+      // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
-      val bridgeMethods = atPhase(erasurePhase.prev){
+      val bridgeMethods = atPhase(erasurePhase){
         samMethod.allOverriddenSymbols.toList
       }
       val overriddenMethodTypes = bridgeMethods.map(b => asmMethodType(b).toASMType)

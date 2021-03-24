@@ -927,10 +927,10 @@ object Types {
      */
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
-      atPhaseNoLater(erasurePhase.prev) {
+      atPhaseNoLater(erasurePhase) {
         abstractTermMembers.toList.filterConserve(m =>
           !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
-      }
+      }.map(_.current)
     }
 
     /** The set of abstract type members of this type. */

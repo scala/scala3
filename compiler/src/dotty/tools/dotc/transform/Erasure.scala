@@ -433,12 +433,9 @@ object Erasure {
       val implReturnsUnit = implResultType.classSymbol eq defn.UnitClass
       // The SAM that this closure should implement.
       // At this point it should be already guaranteed that there's only one method to implement
-      val Seq(unerasedSam) = lambdaType.possibleSamMethods
-      // We're now in erasure so the alternatives will have erased types
-      val Seq(erasedSam: MethodType) = unerasedSam.symbol.alternatives.map(_.info)
-
-      val samParamTypes = erasedSam.paramInfos
-      val samResultType = erasedSam.resultType
+      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info)
+      val samParamTypes = sam.paramInfos
+      val samResultType = sam.resultType
 
       /** Can the implementation parameter type `tp` be auto-adapted to a different
        *  parameter type in the SAM?
@@ -502,7 +499,7 @@ object Erasure {
         val bridgeType =
           if paramAdaptationNeeded then
             if resultAdaptationNeeded then
-              erasedSam
+              sam
             else
               implType.derivedLambdaType(paramInfos = samParamTypes)
           else
