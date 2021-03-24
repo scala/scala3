@@ -190,6 +190,9 @@ jobs:
          )"
 
     steps:
+      - name: Annihilate git submodules directory and see what happens
+        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -230,6 +233,9 @@ jobs:
          )"
 
     steps:
+      - name: Annihilate git submodules directory and see what happens
+        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -270,6 +276,9 @@ jobs:
          )"
 
     steps:
+      - name: Annihilate git submodules directory and see what happens
+        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
