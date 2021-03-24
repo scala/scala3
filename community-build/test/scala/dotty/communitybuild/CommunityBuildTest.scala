@@ -102,7 +102,6 @@ class CommunityBuildTestA extends CommunityBuildTest:
   // @Test def scissSpan       = projects.scissSpan      .run()
   @Test def scissLucre = projects.scissLucre.run()
   @Test def zio = projects.zio.run()
-  @Test def psbp = projects.psbp.run()
 end CommunityBuildTestA
 
 @Category(Array(classOf[TestCategory]))
