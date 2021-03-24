@@ -25,9 +25,6 @@
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
 	url = https://github.com/dotty-staging/scala
-[submodule "community-build/community-projects/pdbp"]
-	path = community-build/community-projects/pdbp
-	url = https://github.com/dotty-staging/pdbp
 [submodule "community-build/community-projects/sourcecode"]
 	path = community-build/community-projects/sourcecode
 	url = https://github.com/dotty-staging/sourcecode
