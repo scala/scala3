@@ -49,6 +49,9 @@ jobs:
            && github.repository == 'lampepfl/dotty'
          )"
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -94,6 +97,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
@@ -190,6 +196,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -230,6 +239,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -270,6 +282,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -310,6 +325,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -355,6 +373,9 @@ jobs:
          )"
 
     steps:
+      - name: Sync submodules
+        run: git fetch origin master && git reset --hard 4b32aeb && git submodule sync && git submodule init && git submodule update
+
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
