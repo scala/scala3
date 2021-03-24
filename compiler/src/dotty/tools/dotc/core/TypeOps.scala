@@ -687,8 +687,8 @@ object TypeOps:
           tp // break cycles
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef(apply(tp.underlying.loBound))
-          def hi = LazyRef(apply(tp.underlying.hiBound))
+          def lo = LazyRef.of(apply(tp.underlying.loBound))
+          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else
