@@ -53,7 +53,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -101,7 +101,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -138,9 +138,6 @@ jobs:
          )"
 
     steps:
-      - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
-
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -166,9 +163,6 @@ jobs:
          )"
 
     steps:
-      - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
-
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -203,7 +197,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -219,7 +213,7 @@ jobs:
 
       - name: Test
         run: |
-          git submodule sync
+          git submodule sync && cat .gitmodules
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
 
@@ -246,7 +240,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -262,7 +256,7 @@ jobs:
 
       - name: Test
         run: |
-          git submodule sync
+          git submodule sync && cat .gitmodules
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
 
@@ -289,7 +283,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -305,7 +299,7 @@ jobs:
 
       - name: Test
         run: |
-          git submodule sync
+          git submodule sync && cat .gitmodules
           git submodule update --init --recursive --jobs 7
           ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
 
@@ -332,7 +326,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -383,7 +377,7 @@ jobs:
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -422,7 +416,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -459,7 +453,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -508,7 +502,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -593,7 +587,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -641,7 +635,7 @@ jobs:
 
     steps:
       - name: Cleanup submodules
-        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+        run: git reset --hard HEAD && git submodule sync && cat .gitmodules && git submodule deinit -f . || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
