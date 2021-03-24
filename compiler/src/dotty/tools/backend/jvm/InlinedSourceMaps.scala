@@ -82,8 +82,7 @@ object InlinedSourceMaps:
   end Stratum
 
   def sourceMapFor(cunit: CompilationUnit)(internalNameProvider: Symbol => String)(using Context): InlinedSourceMap =
-    val requests = mutable.ListBuffer.empty[Request]
-    var lastLine = cunit.tpdTree.sourcePos.endLine
+    val requests = mutable.ListBuffer.empty[(SourcePosition, SourcePosition)]
     var internalNames = Map.empty[SourceFile, String]
 
     class RequestCollector(enclosingFile: SourceFile) extends TreeTraverser:
@@ -91,8 +90,8 @@ object InlinedSourceMaps:
         if tree.source != enclosingFile && tree.source != cunit.source then
           tree.getAttachment(InliningPosition) match
             case Some(InliningPosition(targetPos, cls)) =>
-              val firstFakeLine = allocate(tree.sourcePos)
-              requests += Request(targetPos, tree.sourcePos, firstFakeLine)
+              requests += (targetPos -> tree.sourcePos)
+
               cls match
                 case Some(symbol) if !internalNames.isDefinedAt(tree.source) =>
                   internalNames += (tree.source -> internalNameProvider(symbol))
@@ -108,13 +107,15 @@ object InlinedSourceMaps:
         else traverseChildren(tree)
     end RequestCollector
 
+    var lastLine = cunit.tpdTree.sourcePos.endLine
     def allocate(origPos: SourcePosition): Int =
       val line = lastLine + 1
       lastLine += origPos.lines.length
       line
 
     RequestCollector(cunit.source).traverse(cunit.tpdTree)
-    InlinedSourceMap(cunit, requests.toList, internalNames)
+    val allocated = requests.sortBy(_._1.start).map(r => Request(r._1, r._2, allocate(r._2)))
+    InlinedSourceMap(cunit, allocated.toList, internalNames)
   end sourceMapFor
 
   class InlinedSourceMap private[InlinedSourceMaps] (
