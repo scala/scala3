@@ -52,6 +52,9 @@ jobs:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -97,6 +100,9 @@ jobs:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -132,6 +138,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -157,6 +166,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -190,6 +202,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -230,6 +245,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -270,6 +288,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -310,6 +331,9 @@ jobs:
          )"
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -358,6 +382,9 @@ jobs:
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -394,6 +421,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -428,6 +458,9 @@ jobs:
                                            # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -474,6 +507,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -556,6 +592,9 @@ jobs:
                                            # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -601,6 +640,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
     steps:
+      - name: Cleanup submodules
+        run: git reset --hard HEAD && git submodule sync && git submodule deinit -f . || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
