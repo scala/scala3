@@ -1,5 +1,5 @@
 object test {
 
-  def f() = 5;
+  def f() = 5
 
 }
