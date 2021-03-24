@@ -52,6 +52,13 @@ jobs:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -96,6 +103,13 @@ jobs:
     steps:
       - name: Set JDK 16 as default
         run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -190,8 +204,12 @@ jobs:
          )"
 
     steps:
-      - name: Annihilate git submodules directory and see what happens
-        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -233,8 +251,12 @@ jobs:
          )"
 
     steps:
-      - name: Annihilate git submodules directory and see what happens
-        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -276,8 +298,12 @@ jobs:
          )"
 
     steps:
-      - name: Annihilate git submodules directory and see what happens
-        run: rm -rf ".git/modules" && rm -rf "community-build/community-projects"/* || true
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -319,6 +345,13 @@ jobs:
          )"
 
     steps:
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -366,6 +399,13 @@ jobs:
     steps:
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Just burn everything to the ground
+        run: |
+          if test -d .git
+          then rm -vrf ./* ./.[!.]*
+          else echo "No .git directory found"
+          fi
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
