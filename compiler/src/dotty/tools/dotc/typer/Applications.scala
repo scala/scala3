@@ -1311,7 +1311,7 @@ trait Applications extends Compatibility {
         val unapplyPatterns = bunchedArgs.lazyZip(argTypes) map (typed(_, _))
         val result = assignType(cpy.UnApply(tree)(unapplyFn, unapplyImplicits(unapplyApp), unapplyPatterns), ownType)
         unapp.println(s"unapply patterns = $unapplyPatterns")
-        if ((ownType eq selType) || ownType.isError) result
+        if ownType =:= selType || ownType.isError then result
         else tryWithTypeTest(Typed(result, TypeTree(ownType)), selType)
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
