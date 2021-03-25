@@ -3,9 +3,13 @@ package snippets
 
 import dotty.tools.io.{ AbstractFile }
 
-case class Position(line: Int, column: Int, sourceLine: String)
+case class Position(line: Int, column: Int, sourceLine: String, relativeLine: Int)
 
-case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel)
+case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel):
+  def getSummary: String =
+    position.fold(s"${level.text}: ${message}") { pos =>
+      s"At ${pos.line}:${pos.column}:\n${pos.sourceLine}${level.text}: ${message}"
+    }
 
 case class SnippetCompilationResult(
   wrappedSnippet: String,
@@ -13,15 +17,7 @@ case class SnippetCompilationResult(
   result: Option[AbstractFile],
   messages: Seq[SnippetCompilerMessage]
 ):
-  def getSummary: String =
-    messages.map(m =>
-      m.position.fold(
-        s"${m.level.text}: ${m.message}"
-      )(pos =>
-        s"At ${pos.line}:${pos.column}:\n${pos.sourceLine}${m.level.text}: ${m.message}"
-      )
-    ).mkString("\n")
-
+  def getSummary: String = messages.map(_.getSummary).mkString("\n")
 
 enum MessageLevel(val text: String):
   case Info extends MessageLevel("Info")

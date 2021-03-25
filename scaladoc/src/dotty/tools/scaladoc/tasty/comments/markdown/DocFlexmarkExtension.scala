@@ -10,13 +10,21 @@ import com.vladsch.flexmark.ext.wikilink.internal.WikiLinkLinkRefProcessor
 import com.vladsch.flexmark.util.ast._
 import com.vladsch.flexmark.util.options._
 import com.vladsch.flexmark.util.sequence.BasedSequence
+import com.vladsch.flexmark._
 
+import dotty.tools.scaladoc.snippets._
+import scala.collection.JavaConverters._
 
 class DocLinkNode(
   val target: DocLink,
   val body: String,
   seq: BasedSequence
-  ) extends WikiNode(seq, false, false, false, false)
+) extends WikiNode(seq, false, false, false, false)
+
+case class ExtendedFencedCodeBlock(
+  codeBlock: ast.FencedCodeBlock,
+  compilationResult: Option[SnippetCompilationResult]
+) extends WikiNode(codeBlock.getChars, false, false, false, false)
 
 class DocFlexmarkParser(resolveLink: String => DocLink) extends Parser.ParserExtension:
 
@@ -49,13 +57,25 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
   extends HtmlRenderer.HtmlRendererExtension:
     def rendererOptions(opt: MutableDataHolder): Unit = () // noop
 
+    object ExtendedFencedCodeBlockHandler extends CustomNodeRenderer[ExtendedFencedCodeBlock]:
+      override def render(node: ExtendedFencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
+        html.raw(
+          SnippetRenderer.renderSnippetWithMessages(
+            node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
+            node.compilationResult.toSeq.flatMap(_.messages)
+          )
+        )
+
     object Handler extends CustomNodeRenderer[DocLinkNode]:
       override def render(node: DocLinkNode, c: NodeRendererContext, html: HtmlWriter): Unit =
         html.raw(renderLink(node.target, node.body))
 
     object Render extends NodeRenderer:
       override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
-        JSet(new NodeRenderingHandler(classOf[DocLinkNode], Handler))
+        JSet(
+          new NodeRenderingHandler(classOf[DocLinkNode], Handler),
+          new NodeRenderingHandler(classOf[ExtendedFencedCodeBlock], ExtendedFencedCodeBlockHandler),
+        )
 
     object Factory extends NodeRendererFactory:
       override def create(options: DataHolder): NodeRenderer = Render

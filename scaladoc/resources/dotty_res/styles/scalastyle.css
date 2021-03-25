@@ -93,21 +93,56 @@ code {
   padding: 0 .3em;
 }
 pre {
-  overflow-x: auto;
   scrollbar-width: thin;
+  margin: 0px;
 }
 pre code, pre code.hljs {
   font-size: 1em;
   padding: 0;
 }
-pre, .symbol.monospace {
+.snippet {
   padding: 12px 8px 10px 12px;
+  background: var(--code-bg);
+  margin: 1em 0px;
+  border-radius: 2px;
+  box-shadow: 0 0 2px #888;
+}
+.snippet-error {
+  border-bottom: 2px dotted red;
+}
+.snippet-warn {
+  border-bottom: 2px dotted orange;
+}
+.snippet-info {
+  border-bottom: 2px dotted teal;
+}
+.snippet-debug {
+  border-bottom: 2px dotted pink;
+}
+.tooltip {
+  position: relative;
+}
+.tooltip:hover:after {
+  content: attr(label);
+  padding: 4px 8px;
+  color: white;
+  background-color:black;
+  position: absolute;
+  left: 0;
+  z-index:10;
+  box-shadow:0 0 3px #444;
+  opacity: 0.8;
+}
+pre, .symbol.monospace {
   font-weight: 500;
   font-size: 12px;
 }
 pre .hljs-comment {
   /* Fold comments in snippets */
   white-space: normal;
+}
+.symbol.monospace {
+  padding: 12px 8px 10px 12px;
 }
 a, a:visited, span[data-unresolved-link] {
   text-decoration: none;

@@ -48,7 +48,7 @@ class SnippetCompiler(
       case diagnostic if diagnostic.position.isPresent =>
         val diagPos = diagnostic.position.get
         val pos = Some(
-          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent)
+          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent, diagPos.line)
         )
         val msg = nullableMessage(diagnostic.message)
         val level = MessageLevel.fromOrdinal(diagnostic.level)
