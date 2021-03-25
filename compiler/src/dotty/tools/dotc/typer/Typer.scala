@@ -857,6 +857,7 @@ class Typer extends Namer
         val result = tryWithTypeTest(matched, pt)
         if (result eq matched)
            && pt != defn.ImplicitScrutineeTypeRef
+           && !pt.hasAnnotation(defn.UncheckedAnnot)
            && !(pt <:< tpt1.tpe)
         then
           // no check for matchability if TestTest was applied
@@ -1447,7 +1448,9 @@ class Typer extends Namer
       case _ =>
         if tree.isInline then checkInInlineContext("inline match", tree.srcPos)
         val sel1 = typedExpr(tree.selector)
-        val selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
+        var selType = fullyDefinedType(sel1.tpe, "pattern selector", tree.span).widen
+        if sel1.tpe.hasAnnotation(defn.UncheckedAnnot) then
+          selType = AnnotatedType(selType, Annotation(defn.UncheckedAnnot))
 
         /** Extractor for match types hidden behind an AppliedType/MatchAlias */
         object MatchTypeInDisguise {
