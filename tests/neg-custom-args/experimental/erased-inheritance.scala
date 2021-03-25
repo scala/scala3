@@ -8,5 +8,3 @@ erased trait D
 
 val x = new A{} // ok, x is erased
 val y = new C with D{} // error
-
-

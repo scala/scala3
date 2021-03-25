@@ -48,4 +48,3 @@ object BigFloat extends App {
       '{BigInt(${Expr(x.toString)})}
   }
 }
-

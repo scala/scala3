@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
-  protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
+  protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]
 
   /** Scala manifest attributes.
    */

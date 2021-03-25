@@ -1,3 +1,5 @@
+import language.experimental.erasedDefinitions
+
 import scala.collection.mutable
 import scala.annotation.tailrec
 
