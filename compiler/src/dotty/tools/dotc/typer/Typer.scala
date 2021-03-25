@@ -495,7 +495,7 @@ class Typer extends Namer
         val shadowed = findRef(name, pt, EmptyFlags, ConstructorProxy, tree.srcPos)
         if shadowed.exists then
           report.error(
-            em"""Reference to creator proxy for ${ownType.symbol.companionClass.showLocated}
+            em"""Reference to constructor proxy for ${ownType.symbol.companionClass.showLocated}
                 |shadows outer reference to ${shadowed.termSymbol.showLocated}""", tree.srcPos)
       case _ =>
 
