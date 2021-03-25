@@ -2455,7 +2455,7 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
+  class ModifierNotAllowedForDefinition(flag: FlagSet)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
     def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
     def explain = ""

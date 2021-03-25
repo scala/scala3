@@ -435,7 +435,7 @@ object Checking {
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
-        fail(ModifierNotAllowedForDefinition(Erased))
+        fail(ModifierNotAllowedForDefinition(flag))
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
