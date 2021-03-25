@@ -11,7 +11,7 @@ A soft modifier is treated as potential modifier of a definition if it is follow
 
 Otherwise, soft keywords are treated specially in the following situations:
 
- - `inline`, if it is followed by `if`, `match`, or a parameter definition.
+ - `inline`, if it is followed by any token that can start an expression.
  - `derives`, if it appears after an extension clause or after
    the name and possibly parameters of a class, trait, object, or enum definition.
  - `end`, if it appears at the start of a line following a statement (i.e. definition or toplevel expression)
