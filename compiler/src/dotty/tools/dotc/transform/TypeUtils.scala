@@ -40,7 +40,7 @@ object TypeUtils {
     /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs,
      *  or -1 if this is not a tuple type.
      */
-    def tupleArity(using Context): Int = self match {
+    def tupleArity(using Context): Int = self.stripTypeVar.stripAnnots match {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
@@ -53,7 +53,7 @@ object TypeUtils {
     }
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs */
-    def tupleElementTypes(using Context): List[Type] = self match {
+    def tupleElementTypes(using Context): List[Type] = self.stripTypeVar.stripAnnots match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
       case self: SingletonType =>
