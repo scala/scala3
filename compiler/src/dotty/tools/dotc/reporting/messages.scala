@@ -2479,3 +2479,13 @@ import transform.SymUtils._
           |Inlining such definition would multiply this footprint for each call site.
           |""".stripMargin
   }
+
+  class ModifierRedundantForTopLevelDef(flag: Flag)(using Context)
+    extends SyntaxMsg(ModifierRedundantForTopLevelDefID) {
+    def msg = em"${hl(flag.flagsString)} modifier is redundant for top level definition"
+
+    def explain =
+      em"""|Top level definitions cannot be extended making the ${hl(flag.flagsString)} modifier redundant.
+           |You may want to define the definitions without ${hl(flag.flagsString)}.
+           |""".stripMargin
+  }

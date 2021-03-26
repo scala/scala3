@@ -1307,6 +1307,8 @@ object desugar {
     val (nestedStats, topStats) = pdef.stats.partition(inPackageObject)
     if (nestedStats.isEmpty) pdef
     else {
+      for (stat: DefTree) <- nestedStats; if stat.mods.is(Final) && stat.mods.hasMod(classOf[Mod.Final]) do
+        report.warning(ModifierRedundantForTopLevelDef(Final), stat.srcPos)
       val name = packageObjectName(ctx.source)
       val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)

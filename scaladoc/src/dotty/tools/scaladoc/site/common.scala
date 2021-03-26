@@ -51,8 +51,8 @@ def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   layout = None
 )
 
-final val ConfigSeparator = "---"
-final val LineSeparator = "\n"
+inline val ConfigSeparator = "---"
+inline val LineSeparator = "\n"
 
 val yamlParser: Parser = Parser.builder(defaultMarkdownOptions).build()
 
