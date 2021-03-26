@@ -26,6 +26,8 @@ class Checker extends MiniPhase {
   // cache of class summary
   private val baseEnv = Env(null)
 
+  val globalChecker = new CheckGlobal
+
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
@@ -58,6 +60,10 @@ class Checker extends MiniPhase {
       )
 
       Checking.checkClassBody(tree)
+
+      // check cycles of object dependencies
+      if cls.is(Flags.Module) && cls.isStatic  then
+        globalChecker.check(cls.sourceModule)
     }
 
     tree
