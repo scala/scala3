@@ -746,16 +746,15 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               val inlinedSingleton = singleton(t).withSpan(argSpan)
               inlinedFromOutside(inlinedSingleton)(tree.span)
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(argSpan)
+              inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
             case _ => tree
           }
         case tree => tree
       },
       oldOwners = inlinedMethod :: Nil,
-      newOwners = ctx.owner :: Nil
-    )(using inlineCtx) {
-      override def stopAtInlinedArgument: Boolean = true
-    }
+      newOwners = ctx.owner :: Nil,
+      stopAtInlinedArgument = true
+    )(using inlineCtx)
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
