@@ -6,5 +6,4 @@ object test {
       val fx : F[X] = ???
       val gx : G[X] = fx
   }
-
 }
