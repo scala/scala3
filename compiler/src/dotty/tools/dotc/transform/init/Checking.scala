@@ -39,7 +39,18 @@ object Checking {
     safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
     env: Env
   ) {
-    def withOwner(sym: Symbol): State = copy(env = env.withOwner(sym))
+    def withOwner[T](sym: Symbol)(op: State ?=> T): T =
+      val state = this.copy(env = env.withOwner(sym))
+      val res = op(using state)
+      this.visited = state.visited
+      res
+
+
+    def withStep[T](step: Tree)(op: State ?=> T): T =
+      val state: State = this.copy(path = path :+ step)
+      val res = op(using state)
+      this.visited = state.visited
+      res
 
     def test(op: State ?=> Errors): Errors = {
       val savedVisited = visited
@@ -60,11 +71,12 @@ object Checking {
       }
       else {
         state.visited = state.visited + eff
-        val state2: State = state.copy(path = state.path :+ eff.source)
-        eff match {
-          case eff: Promote      => Checking.checkPromote(eff)(using state2)
-          case eff: FieldAccess  => Checking.checkFieldAccess(eff)(using state2)
-          case eff: MethodCall   => Checking.checkMethodCall(eff)(using state2)
+        state.withStep(eff.source) {
+          eff match {
+            case eff: Promote      => Checking.checkPromote(eff)
+            case eff: FieldAccess  => Checking.checkFieldAccess(eff)
+            case eff: MethodCall   => Checking.checkMethodCall(eff)
+          }
         }
       }
     }
@@ -118,11 +130,11 @@ object Checking {
     def checkConstructor(ctor: Symbol, tp: Type, source: Tree)(using state: State): Unit = traceOp("checking " + ctor.show, init) {
       val cls = ctor.owner
       val classDef = cls.defTree
-      if (!classDef.isEmpty) {
-        given State = state.withOwner(cls)
-        if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
-        else checkSecondaryConstructor(ctor)
-      }
+      if (!classDef.isEmpty)
+        state.withOwner(cls) {
+          if (ctor.isPrimaryConstructor) checkClassBody(classDef.asInstanceOf[TypeDef])
+          else checkSecondaryConstructor(ctor)
+        }
     }
 
     def checkSecondaryConstructor(ctor: Symbol)(using state: State): Unit = traceOp("checking " + ctor.show, init) {

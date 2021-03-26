@@ -12,8 +12,7 @@ import printing.SyntaxHighlighting
 import reporting.trace
 import config.Printers.init
 
-import ast.Trees._
-import ast.tpd
+import ast.tpd._
 
 import scala.collection.mutable
 
@@ -37,10 +36,10 @@ import scala.collection.mutable
  *  compiled projects.
  */
 class CheckGlobal {
-  case class Dependency(sym: Symbol, source: tpd.Tree)
+  case class Dependency(sym: Symbol, source: Tree)
 
   /** Checking state */
-  case class State(var visited: Set[Symbol], path: Vector[tpd.Tree], obj: Symbol) {
+  case class State(visited: mutable.Set[Symbol], path: Vector[Tree], obj: Symbol) {
     def cyclicPath(using Context): String = if (path.isEmpty) "" else " Cyclic path:\n" + {
       var indentCount = 0
       var last: String = ""
@@ -74,7 +73,7 @@ class CheckGlobal {
   private val summaryCache = mutable.Map.empty[Symbol, List[Dependency]]
 
   def check(obj: Symbol)(using Context): Unit = trace("checking " + obj.show, init) {
-    checkDependencies(obj, State(visited = Set.empty, path = Vector.empty, obj)) match
+    checkDependencies(obj, State(visited = mutable.Set.empty, path = Vector.empty, obj)) match
     case Some(err) => err.issue
     case _ =>
   }
@@ -85,7 +84,7 @@ class CheckGlobal {
     else if state.visited.contains(sym) then
       None
     else
-      state.visited = state.visited + sym
+      state.visited += sym
       checkDependencies(sym, state)
   }
 
@@ -96,8 +95,9 @@ class CheckGlobal {
     var res: Option[Error] = None
     // TODO: stop early
     deps.foreach { dep =>
-      val state2: State = state.copy(path = state.path :+ dep.source)
-      if res.isEmpty then res = check(dep.sym, state2)
+      if res.isEmpty then
+        val state2: State = state.copy(path = state.path :+ dep.source)
+        res = check(dep.sym, state2)
     }
     res
   }
@@ -110,19 +110,19 @@ class CheckGlobal {
     if (cls.defTree.isEmpty) Nil
     else if (summaryCache.contains(cls)) summaryCache(cls)
     else {
-      val cdef = cls.defTree.asInstanceOf[tpd.TypeDef]
-      val tpl = cdef.rhs.asInstanceOf[tpd.Template]
+      val cdef = cls.defTree.asInstanceOf[TypeDef]
+      val tpl = cdef.rhs.asInstanceOf[Template]
       var dependencies: List[Dependency] = Nil
-      val traverser = new tpd.TreeTraverser {
-        override def traverse(tree: tpd.Tree)(using Context): Unit =
+      val traverser = new TreeTraverser {
+        override def traverse(tree: Tree)(using Context): Unit =
           tree match {
-            case tree: tpd.RefTree if isStaticObjectRef(tree.symbol) =>
+            case tree: RefTree if isStaticObjectRef(tree.symbol) =>
               dependencies = Dependency(tree.symbol, tree) :: dependencies
 
-            case tdef: tpd.TypeDef =>
+            case tdef: TypeDef =>
               // don't go into nested classes
 
-            case tree: tpd.New =>
+            case tree: New =>
               dependencies = Dependency(tree.tpe.classSymbol, tree) :: dependencies
 
             case _ =>
@@ -130,9 +130,30 @@ class CheckGlobal {
           }
       }
 
+      def typeRefOf(tp: Type): TypeRef = tp.dealias.typeConstructor match {
+        case tref: TypeRef => tref
+        case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
+      }
+
+      def addStaticOuterDep(tp: Type, source: Tree): Unit =
+        tp match
+        case NoPrefix =>
+        case tmref: TermRef  =>
+          if isStaticObjectRef(tmref.symbol) then
+            dependencies = Dependency(tmref.symbol, source) :: dependencies
+        case ThisType(tref) =>
+          val obj = tref.symbol.sourceModule
+          if isStaticObjectRef(obj) then
+            dependencies = Dependency(obj, source) :: dependencies
+        case _ =>
+          throw new Exception("unexpected type: " + tp)
+
       // TODO: the traverser might create duplicate entries for parents
       tpl.parents.foreach { tree =>
-        dependencies = Dependency(tree.tpe.classSymbol, tree) :: dependencies
+        val tp = tree.tpe
+        val tref = typeRefOf(tp)
+        dependencies = Dependency(tp.classSymbol, tree) :: dependencies
+        addStaticOuterDep(tref.prefix, tree)
       }
 
       traverser.traverse(tpl)
