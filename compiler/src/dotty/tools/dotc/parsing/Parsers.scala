@@ -1237,7 +1237,7 @@ object Parsers {
 
     def colonAtEOLOpt(): Unit = {
       possibleColonOffset = in.lastOffset
-      if (in.token == COLONEOL) in.nextToken()
+      if in.token == COLONEOL then in.nextToken()
     }
 
     def argumentStart(): Unit =
@@ -3736,8 +3736,8 @@ object Parsers {
           (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(): (ValDef, List[Tree]) =
-      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
+    def templateBody(rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
+      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
@@ -3747,7 +3747,7 @@ object Parsers {
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
       accept(WITH)
-      val (self, stats) = templateBody()
+      val (self, stats) = templateBody(rewriteWithColon = false)
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
@@ -4000,7 +4000,7 @@ object Parsers {
       EmptyTree
     }
 
-    override def templateBody(): (ValDef, List[Thicket]) = {
+    override def templateBody(rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }
