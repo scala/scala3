@@ -995,26 +995,31 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       */
     def betaReduce(tree: Tree)(using Context): Tree = tree match {
       case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-        ddef.tpe.widen match {
-          case mt: MethodType if ddef.paramss.head.length == args.length =>
-            val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
-              arg.tpe.dealias match {
-                case ref @ TermRef(NoPrefix, _) => ref.symbol
-                case _ =>
-                  paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                    using ctx.withSource(cl.source)
-                  ).symbol
+        // closureDef also returns a result for closures wrapped in Inlined nodes.
+        // These need to be preserved.
+        def recur(cl: Tree): Tree = cl match
+          case Inlined(call, bindings, expr) =>
+            cpy.Inlined(cl)(call, bindings, recur(expr))
+          case _ => ddef.tpe.widen match
+            case mt: MethodType if ddef.paramss.head.length == args.length =>
+              val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+              val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
+                arg.tpe.dealias match {
+                  case ref @ TermRef(NoPrefix, _) => ref.symbol
+                  case _ =>
+                    paramBindingDef(name, paramtp, arg, bindingsBuf)(
+                      using ctx.withSource(cl.source)
+                    ).symbol
+                }
               }
-            }
-            val expander = new TreeTypeMap(
-              oldOwners = ddef.symbol :: Nil,
-              newOwners = ctx.owner :: Nil,
-              substFrom = ddef.paramss.head.map(_.symbol),
-              substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
-          case _ => tree
-        }
+              val expander = new TreeTypeMap(
+                oldOwners = ddef.symbol :: Nil,
+                newOwners = ctx.owner :: Nil,
+                substFrom = ddef.paramss.head.map(_.symbol),
+                substTo = argSyms)
+              Block(bindingsBuf.toList, expander.transform(ddef.rhs)).withSpan(tree.span)
+            case _ => tree
+        recur(cl)
       case _ => tree
     }
 
