@@ -26,4 +26,5 @@ enum MessageLevel(val text: String):
   case Info extends MessageLevel("Info")
   case Warning extends MessageLevel("Warning")
   case Error extends MessageLevel("Error")
+  case Debug extends MessageLevel("Debug")
 

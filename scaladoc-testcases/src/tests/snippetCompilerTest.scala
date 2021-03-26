@@ -7,6 +7,12 @@ package snippetCompiler
   * a
   * ```
   *
+  * ```scala sc:compile&debug
+  * def a = 2
+  * val x = 1 + List()
+  * a
+  * ```
+  *
   * ```scala sc:compile&failing
   * def a = 2
   * ```

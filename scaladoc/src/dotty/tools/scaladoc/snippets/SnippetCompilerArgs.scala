@@ -9,10 +9,15 @@ object SnippetCompilerArg:
     Set(SCFlags.NoCompile)
   )
 
-enum SCFlags(val flagName: String, val forbiddenFlags: Set[SCFlags]):
-  case Compile extends SCFlags("compile", Set())
-  case NoCompile extends SCFlags("nocompile", Set())
-  case Fail extends SCFlags("failing", Set())
+sealed trait SCFlags(val flagName: String, val forbiddenFlags: Set[SCFlags])
+
+object SCFlags:
+  case object Compile extends SCFlags("compile", Set(NoCompile))
+  case object NoCompile extends SCFlags("nocompile", Set(Compile))
+  case object Fail extends SCFlags("failing", Set())
+  case object Debug extends SCFlags("debug", Set())
+
+  def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail, Debug)
 
 case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg]):
   def get(member: Member): Option[SnippetCompilerArg] = member.sources.flatMap(s => scArgs.get(s.path).map(_.elem))
@@ -58,15 +63,19 @@ object SnippetCompilerArgParser extends ArgParser[SnippetCompilerArg]:
       )
     ).partition(_.isRight)
 
+
     val (flags, errors2) = parsed.collect {
       case Right(flag) => flag
     } match {
-      case list => list.map(f =>
-        list.find(elem => f.forbiddenFlags.contains(elem)) match {
-          case Some(forbiddenElem) => Left(s"${f.flagName}: Cannot be used with flag: ${forbiddenElem.flagName}")
-          case None => Right(f)
-        }
-      ).partition(_.isRight)
+      case list =>
+        list.map(f =>
+          list.find(elem =>
+            f.forbiddenFlags.contains(elem)
+          ) match {
+              case Some(forbiddenElem) => Left(s"${f.flagName}: Cannot be used with flag: ${forbiddenElem.flagName}")
+              case None => Right(f)
+            }
+        ).partition(_.isRight)
     }
 
     val checkedFlags = flags.collect {

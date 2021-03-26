@@ -60,9 +60,14 @@ class SnippetCompiler(
     errorMessages
   }
 
-  private def additionalMessages(arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
-    Option.when(arg.is(SCFlags.Fail) && !context.reporter.hasErrors)(
-      SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
+  private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
+    (
+      Option.when(arg.is(SCFlags.Fail) && !context.reporter.hasErrors)(
+        SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
+      ) ++
+      Option.when(arg.is(SCFlags.Debug))(
+        SnippetCompilerMessage(None, s"\n${wrappedSnippet.snippet}", MessageLevel.Debug)
+      )
     ).toList
   }
 
@@ -86,7 +91,7 @@ class SnippetCompiler(
 
     val messages =
       createReportMessage(context.reporter.pendingMessages(using context), wrappedSnippet.lineOffset, wrappedSnippet.columnOffset) ++
-      additionalMessages(arg, context)
+      additionalMessages(wrappedSnippet, arg, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
     SnippetCompilationResult(isSuccessful(arg, context), t, messages)
