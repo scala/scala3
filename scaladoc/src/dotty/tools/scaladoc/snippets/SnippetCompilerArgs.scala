@@ -3,6 +3,11 @@ package snippets
 
 case class SnippetCompilerArg(flags: Set[SCFlags]):
   def is(flag: SCFlags): Boolean = flags.contains(flag)
+  def +(other: SnippetCompilerArg): SnippetCompilerArg = {
+    val allNoncompatbileFlags = flags.flatMap(_.forbiddenFlags)
+    val compatibleFlags = other.flags.filter(flag => !allNoncompatbileFlags.contains(flag))
+    copy(flags = flags ++ compatibleFlags)
+  }
 
 object SnippetCompilerArg:
   def default: SnippetCompilerArg = SnippetCompilerArg(

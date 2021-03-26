@@ -13,8 +13,15 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
   private val snippetCheckingFuncFromMember: Member => SnippetChecker.SnippetCheckingFunc =
     (m: Member) => {
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
-          val arg = argOverride.getOrElse(
-            ctx.snippetCompilerArgs.get(m).getOrElse(SnippetCompilerArg.default)
+          val pathBasedArg = ctx.snippetCompilerArgs.get(m).fold(
+            SnippetCompilerArg.default
+          )(
+            _ + SnippetCompilerArg.default
+          )
+          val arg = argOverride.fold(
+            pathBasedArg
+          )(
+            _ + pathBasedArg
           )
 
           snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg, lineOffset).foreach { _ match {
