@@ -112,6 +112,10 @@ class CheckGlobal {
     else {
       val cdef = cls.defTree.asInstanceOf[TypeDef]
       val tpl = cdef.rhs.asInstanceOf[Template]
+
+      // ignore separately compiled classes
+      if !tpl.unforced.isInstanceOf[List[_]] then return Nil
+
       var dependencies: List[Dependency] = Nil
       val traverser = new TreeTraverser {
         override def traverse(tree: Tree)(using Context): Unit =
