@@ -12,6 +12,7 @@ object SnippetCompilerArg:
 enum SCFlags(val flagName: String, val forbiddenFlags: Set[SCFlags]):
   case Compile extends SCFlags("compile", Set())
   case NoCompile extends SCFlags("nocompile", Set())
+  case Fail extends SCFlags("failing", Set())
 
 case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg]):
   def get(member: Member): Option[SnippetCompilerArg] = member.sources.flatMap(s => scArgs.get(s.path).map(_.elem))

@@ -46,19 +46,34 @@ class SnippetCompiler(
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
-        val pos = diagnostic.position.get
+        val diagPos = diagnostic.position.get
+        val pos = Some(
+          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent)
+        )
         val msg = nullableMessage(diagnostic.message)
         val level = MessageLevel.fromOrdinal(diagnostic.level)
-        SnippetCompilerMessage(pos.line + line, pos.column + column, pos.lineContent, msg, level)
+        SnippetCompilerMessage(pos, msg, level)
       case d =>
         val level = MessageLevel.fromOrdinal(d.level)
-        SnippetCompilerMessage(-1, -1, "", nullableMessage(d.message), level)
+        SnippetCompilerMessage(None, nullableMessage(d.message), level)
     }
     errorMessages
   }
 
+  private def additionalMessages(arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
+    Option.when(arg.is(SCFlags.Fail) && !context.reporter.hasErrors)(
+      SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
+    ).toList
+  }
+
+  private def isSuccessful(arg: SnippetCompilerArg, context: Context): Boolean = {
+    if arg.is(SCFlags.Fail) then context.reporter.hasErrors
+    else !context.reporter.hasErrors
+  }
+
   def compile(
-    wrappedSnippet: WrappedSnippet
+    wrappedSnippet: WrappedSnippet,
+    arg: SnippetCompilerArg
   ): SnippetCompilationResult = {
     val context = driver.currentCtx.fresh
       .setSetting(
@@ -68,7 +83,11 @@ class SnippetCompiler(
       .setReporter(new StoreReporter)
     val run = newRun(using context)
     run.compileFromStrings(List(wrappedSnippet.snippet))
-    val messages = createReportMessage(context.reporter.pendingMessages(using context), wrappedSnippet.lineOffset, wrappedSnippet.columnOffset)
-    val targetIfSuccessful = Option.when(!context.reporter.hasErrors)(target)
-    SnippetCompilationResult(targetIfSuccessful, messages)
+
+    val messages =
+      createReportMessage(context.reporter.pendingMessages(using context), wrappedSnippet.lineOffset, wrappedSnippet.columnOffset) ++
+      additionalMessages(arg, context)
+
+    val t = Option.when(!context.reporter.hasErrors)(target)
+    SnippetCompilationResult(isSuccessful(arg, context), t, messages)
   }

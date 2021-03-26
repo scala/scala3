@@ -16,9 +16,9 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
           val arg = argOverride.getOrElse(
             ctx.snippetCompilerArgs.get(m).getOrElse(SnippetCompilerArg.default)
           )
-          
+
           snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg, lineOffset).foreach { _ match {
-              case r @ SnippetCompilationResult(None, _) =>
+              case r: SnippetCompilationResult if !r.isSuccessful =>
                 println(s"In member ${m.name} (${m.dri.location}):")
                 println(r.getSummary)
               case _ =>

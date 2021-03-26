@@ -11,8 +11,8 @@ class SnippetChecker()(using ctx: DocContext):
       ctx.args.tastyDirs.map(_.getAbsolutePath()).mkString(sep)
   private val compiler: SnippetCompiler = SnippetCompiler(classpath = cp)
 
-  var warningsCount = 0
-  var errorsCount = 0
+  private var warningsCount = 0
+  private var errorsCount = 0
 
   def checkSnippet(
     snippet: String,
@@ -30,9 +30,9 @@ class SnippetChecker()(using ctx: DocContext):
         lineOffset + data.fold(0)(_.position.line) + 1,
         data.fold(0)(_.position.column)
       )
-      val res = compiler.compile(wrapped)
-      if !res.messages.filter(_.level == MessageLevel.Error).isEmpty then errorsCount = errorsCount + 1
-      if !res.messages.filter(_.level == MessageLevel.Warning).isEmpty then warningsCount = warningsCount + 1
+      val res = compiler.compile(wrapped, arg)
+      if !res.isSuccessful && res.messages.exists(_.level == MessageLevel.Error) then errorsCount = errorsCount + 1
+      if !res.isSuccessful && res.messages.exists(_.level == MessageLevel.Warning) then warningsCount = warningsCount + 1
       Some(res)
     else None
   }
