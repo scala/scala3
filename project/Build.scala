@@ -63,7 +63,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  val referenceVersion = "3.0.0-RC2-bin-20210318-e60ef35-NIGHTLY"
+  val referenceVersion = "3.0.0-RC2-bin-20210325-ab2664f-NIGHTLY"
 
   val baseVersion = "3.0.0-RC2"
   val baseSbtDottyVersion = "0.5.4"
@@ -245,9 +245,6 @@ object Build {
     scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(false))),
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % Test,
-
-    // TODO: enable after bootstrap
-    // scalacOptions += "-Yno-experimental",
 
     // If someone puts a source file at the root (e.g., for manual testing),
     // don't pick it up as part of any project.
@@ -448,8 +445,7 @@ object Build {
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
-      // TODO: enable after bootstrap
-      // scalacOptions += "-Yno-experimental",
+      scalacOptions += "-Yno-experimental",
 
       javaOptions ++= {
         val managedSrcDir = {
