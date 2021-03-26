@@ -2910,12 +2910,12 @@ object Parsers {
 
     /** ContextTypes   ::=  Type {‘,’ Type}
      */
-    def contextTypes(ofClass: Boolean, nparams: Int): List[ValDef] =
+    def contextTypes(ofClass: Boolean, nparams: Int, impliedMods: Modifiers): List[ValDef] =
       val tps = commaSeparated(typ)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
-      tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
+      tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’ | UsingClsParamClause
      *  UsingClsParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
@@ -3016,7 +3016,7 @@ object Parsers {
                 || startParamTokens.contains(in.token)
                 || isIdent && (in.name == nme.inline || in.lookahead.isColon())
               if isParams then commaSeparated(() => param())
-              else contextTypes(ofClass, nparams)
+              else contextTypes(ofClass, nparams, impliedMods)
           checkVarArgsRules(clause)
           clause
       }
