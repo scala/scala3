@@ -7,10 +7,9 @@ title: "Macros"
 
 ## Macros: Quotes and Splices
 
-Macros are built on two well-known fundamental operations: quotation and
-splicing.  Quotation is expressed as `'{...}` for expressions and as `'[...]`
-for types. Splicing is expressed as `${ ... }`. Additionally, within a quote
-or a splice we can quote or splice identifiers directly (i.e. `'e` and `$e`).
+Macros are built on two well-known fundamental operations: quotation and splicing.
+Quotation is expressed as `'{...}` for expressions and splicing is expressed as `${ ... }`.
+Additionally, within a quote or a splice we can quote or splice identifiers directly (i.e. `'e` and `$e`).
 Readers may notice the resemblance of the two aforementioned syntactic
 schemes with the familiar string interpolation syntax.
 
@@ -45,7 +44,7 @@ def showExpr(expr: Expr[Boolean])(using Quotes): Expr[String] =
 ```
 
 If `e` is an expression, then `'{e}` represents the typed
-abstract syntax tree representing `e`. If `T` is a type, then `'[T]`
+abstract syntax tree representing `e`. If `T` is a type, then `Type.of[T]`
 represents the type structure representing `T`.  The precise
 definitions of "typed abstract syntax tree" or "type-structure" do not
 matter for now, the terms are used only to give some
@@ -62,14 +61,12 @@ Quotes and splices can also be applied directly to identifiers. An identifier
 splice `${x}`. Analogously, an quoted identifier `'x` that appears inside a splice
 is treated as a quote `'{x}`. See the Syntax section below for details.
 
-Quotes and splices are duals of each other. For arbitrary
-expressions `e` and types `T` we have:
+Quotes and splices are duals of each other.
+For arbitrary expressions `e` we have:
 
 ```scala
 ${'{e}} = e
 '{${e}} = e
-${'[T]} = T
-'[${T}] = T
 ```
 
 ## Types for Quotations
@@ -78,7 +75,7 @@ The type signatures of quotes and splices can be described using
 two fundamental types:
 
 - `Expr[T]`: abstract syntax trees representing expressions of type `T`
-- `Type[T]`: type structures representing type `T`.
+- `Type[T]`: non erased representation of type `T`.
 
 Quoting takes expressions of type `T` to expressions of type `Expr[T]`
 and it takes types `T` to expressions of type `Type[T]`. Splicing
@@ -90,8 +87,8 @@ The two types can be defined in package [`scala.quoted`](https://dotty.epfl.ch/a
 ```scala
 package scala.quoted
 
-sealed abstract class Expr[+T]
-sealed abstract class Type[T]
+sealed trait Expr[+T]
+sealed trait Type[T]
 ```
 
 Both `Expr` and `Type` are abstract and sealed, so all constructors for
@@ -375,7 +372,7 @@ where `T` is not defined in the current stage, we construct the type constructor
 of `List` applied to the splice of the result of searching for a given instance for `Type[T]`:
 
 ```scala
-'[ List[ ${ summon[Type[T]] } ] ]
+Type.of[ List[ summon[Type[T]].Underlying ] ]
 ```
 
 This is exactly the algorithm that Scala 2 uses to search for type tags.
@@ -493,7 +490,7 @@ var x: Expr[T] = ...
 This code, if it was accepted, would _extrude_ a reference to a quoted variable
 `y` from its scope. This would subsequently allow access to a variable outside the
 scope where it is defined, which is likely problematic. The code is clearly
-phase consistent, so we cannot use PCP to rule it out. Instead we postulate a
+phase consistent, so we cannot use PCP to rule it out. Instead, we postulate a
 future effect system that can guarantee that splices are pure. In the absence of
 such a system we simply demand that spliced expressions are pure by convention,
 and allow for undefined compiler behavior if they are not. This is analogous to
@@ -502,7 +499,7 @@ verified, to be pure.
 
 [Multi-Stage Programming](./staging.md) introduces one additional method where
 you can expand code at runtime with a method `run`. There is also a problem with
-that invokation of `run` in splices. Consider the following expression:
+that invocation of `run` in splices. Consider the following expression:
 
 ```scala
 '{ (x: Int) => ${ run('x); 1 } }
@@ -573,7 +570,7 @@ val arr: Array[Int] = Array.apply(1, [2,3 : Int]:Int*)
 
 var sum = 0
 val f = x => '{sum += $x}
-${ _root_.Macros.map('arr, 'f)('[Int])}
+${ _root_.Macros.map('arr, 'f)(Type.of[Int])}
 sum
 ```
 
@@ -720,7 +717,7 @@ private def sumExpr(args1: Seq[Expr[Int]])(using Quotes): Expr[Int] =
 
 ### Recovering precise types using patterns
 
-Sometimes it is necessary to get a more precise type for an expression. This can be achived using the following pattern match.
+Sometimes it is necessary to get a more precise type for an expression. This can be achieved using the following pattern match.
 
 ```scala
 def f(expr: Expr[Any])(using Quotes) = expr match

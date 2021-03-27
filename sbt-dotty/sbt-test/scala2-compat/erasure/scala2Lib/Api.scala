@@ -8,6 +8,7 @@ trait B
 trait SubB extends B
 trait C
 trait Cov[+T]
+trait Univ extends Any
 
 class D
 
@@ -153,4 +154,36 @@ class Z {
   def int_61(x: Any with Int): Unit = {}
   def int_62(x: Int with AnyVal): Unit = {}
   def int_63(x: AnyVal with Int): Unit = {}
+
+  def intARRAY_64(x: Array[Int with Singleton]): Unit = {}
+  def object_65(x: Array[_ <: Int]): Unit = {}
+  def object_66(x: Array[_ <: Int with Singleton]): Unit = {}
+  def object_67(x: Array[_ <: Singleton with Int]): Unit = {}
+  def object_68(x: Array[_ <: Int with Any]): Unit = {}
+  def object_69(x: Array[_ <: Any with Int]): Unit = {}
+  def object_70(x: Array[_ <: Int with AnyVal]): Unit = {}
+  def object_71(x: Array[_ <: AnyVal with Int]): Unit = {}
+
+  def stringARRAY_72(x: Array[String with Singleton]): Unit = {}
+  def stringARRAY_73(x: Array[_ <: String]): Unit = {}
+  def stringARRAY_74(x: Array[_ <: String with Singleton]): Unit = {}
+  def stringARRAY_75(x: Array[_ <: Singleton with String]): Unit = {}
+  def stringARRAY_76(x: Array[_ <: String with Any]): Unit = {}
+  def stringARRAY_77(x: Array[_ <: Any with String]): Unit = {}
+  def stringARRAY_78(x: Array[_ <: String with AnyRef]): Unit = {}
+  def stringARRAY_79(x: Array[_ <: AnyRef with String]): Unit = {}
+
+  def object_80(x: Array[_ <: Singleton]): Unit = {}
+  def object_81(x: Array[_ <: AnyVal]): Unit = {}
+  def objectARRAY_82(x: Array[_ <: AnyRef]): Unit = {}
+  def object_83(x: Array[_ <: Any]): Unit = {}
+
+  def object_84(x: Array[_ <: Serializable]): Unit = {}
+  def object_85(x: Array[_ <: Univ]): Unit = {}
+  def aARRAY_86(x: Array[_ <: A]): Unit = {}
+  def aARRAY_87(x: Array[_ <: A with B]): Unit = {}
+
+  def objectARRAY_88(x: Array[Any]): Unit = {}
+  def objectARRAY_89(x: Array[AnyRef]): Unit = {}
+  def objectARRAY_90(x: Array[AnyVal]): Unit = {}
 }

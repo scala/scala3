@@ -9,7 +9,6 @@ object AnObject:
 /**
  * Broken link, that should result a warning not break compilation
  * [[tests.links.AnObject]]
-
  */
 class LinksTest:
   def verifyIfLinksTestIsGenerated(b: Int): Int

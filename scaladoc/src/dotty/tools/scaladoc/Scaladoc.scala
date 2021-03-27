@@ -96,9 +96,6 @@ object Scaladoc:
 
     allSettings.filterNot(scaladocSpecificSettings.contains).foreach(setInGlobal)
 
-    summary.warnings.foreach(report.warning(_))
-    summary.errors.foreach(report.error(_))
-
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
 

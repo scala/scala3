@@ -113,7 +113,7 @@ object Checking {
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
-        if (tycon.isLambdaSub && tp.hasWildcardArg)
+        if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos)
@@ -301,7 +301,7 @@ object Checking {
         catch {
           case ex: CyclicReference =>
             report.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
-            if (cycleOK) LazyRef(tp)
+            if (cycleOK) LazyRef.of(tp)
             else if (reportErrors) throw ex
             else tp
         }
@@ -435,7 +435,7 @@ object Checking {
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
-        fail(ModifierNotAllowedForDefinition(Erased))
+        fail(ModifierNotAllowedForDefinition(flag))
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass

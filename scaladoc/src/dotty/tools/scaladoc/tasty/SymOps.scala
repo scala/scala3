@@ -109,6 +109,8 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
     def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
 
+    def isArtifact: Boolean = sym.flags.is(Flags.Artifact)
+
     def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
 
     def extendedSymbol: Option[ValDef] =
@@ -190,3 +192,8 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
           // For some reason it contains `$$$` instrad of symbol name
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
+
+    def driInContextOfInheritingParent(par: Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
+      location = par.dri.location,
+      externalLink = None
+    )

@@ -298,7 +298,7 @@ object PrepJSExports {
         case _: ExportDestination.TopLevel =>
           if (sym.is(Lazy))
             report.error("You may not export a lazy val to the top level", exportPos)
-          else if (!sym.is(Accessor) && sym.isTerm && sym.isJSProperty)
+          else if (sym.is(Method, butNot = Accessor) && sym.isJSProperty)
             report.error("You may not export a getter or a setter to the top level", exportPos)
 
           /* Disallow non-static methods.

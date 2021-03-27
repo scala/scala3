@@ -298,7 +298,7 @@ object desugar {
             rhs = vparam.rhs
           )
           .withMods(Modifiers(
-            meth.mods.flags & (AccessFlags | Synthetic),
+            meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
@@ -902,28 +902,37 @@ object desugar {
       defDef(
         cpy.DefDef(mdef)(
           name = normalizeName(mdef, ext).asTermName,
-          paramss = mdef.paramss match
-            case params1 :: paramss1 if mdef.name.isRightAssocOperatorName =>
-              def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
-                ext.paramss ++ mdef.paramss
-              def noVParam = badRightAssoc("must start with a single parameter")
-              def checkVparam(params: ParamClause) = params match
-                case ValDefs(vparam :: Nil) =>
-                  if !vparam.mods.is(Given) then
-                    val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: params1 :: otherExtParamss ::: paramss1
-                  else badRightAssoc("cannot start with using clause")
-                case _ =>
-                  noVParam
-              params1 match
-                case TypeDefs(_) => paramss1 match
-                  case params2 :: _ => checkVparam(params2)
-                  case _            => noVParam
-                case _ =>
-                  checkVparam(params1)
+          paramss =
+            if mdef.name.isRightAssocOperatorName then
+              val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
-            case _ =>
+              paramss match
+                case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+
+                  def badRightAssoc(problem: String) =
+                    report.error(i"right-associative extension method $problem", mdef.srcPos)
+                    ext.paramss ++ mdef.paramss
+
+                  params match
+                    case ValDefs(vparam :: Nil) =>
+                      if !vparam.mods.is(Given) then
+                        // we merge the extension parameters with the method parameters,
+                        // swapping the operator arguments:
+                        // e.g.
+                        //   extension [A](using B)(c: C)(using D)
+                        //     def %:[E](f: F)(g: G)(using H): Res = ???
+                        // will be encoded as
+                        //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+                        val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
+                        leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                      else
+                        badRightAssoc("cannot start with using clause")
+                    case _ =>
+                      badRightAssoc("must start with a single parameter")
+                case _ =>
+                  // no value parameters, so not an infix operator.
+                  ext.paramss ++ mdef.paramss
+            else
               ext.paramss ++ mdef.paramss
         ).withMods(mdef.mods | ExtensionMethod)
       )

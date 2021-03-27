@@ -431,8 +431,9 @@ object Erasure {
       val implParamTypes = implType.paramInfos
       val implResultType = implType.resultType
       val implReturnsUnit = implResultType.classSymbol eq defn.UnitClass
-      // The SAM that this closure should implement
-      val SAMType(sam) = lambdaType: @unchecked
+      // The SAM that this closure should implement.
+      // At this point it should be already guaranteed that there's only one method to implement
+      val Seq(sam: MethodType) = lambdaType.possibleSamMethods.map(_.info)
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
@@ -503,7 +504,7 @@ object Erasure {
               implType.derivedLambdaType(paramInfos = samParamTypes)
           else
             implType.derivedLambdaType(resType = samResultType)
-        val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method, bridgeType)
+        val bridge = newSymbol(ctx.owner, AdaptedClosureName(meth.symbol.name.asTermName), Flags.Synthetic | Flags.Method | Flags.Bridge, bridgeType)
         Closure(bridge, bridgeParamss =>
           inContext(ctx.withOwner(bridge)) {
             val List(bridgeParams) = bridgeParamss

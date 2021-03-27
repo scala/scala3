@@ -1,7 +1,7 @@
 -- Error: tests/neg-scalajs/js-non-native-members.scala:5:6 ------------------------------------------------------------
 5 |  def apply(arg: Int): Int = arg // error
-  |      ^
-  |      A non-native JS class cannot declare a method named `apply` without `@JSName`
+  |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |  A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
 -- Error: tests/neg-scalajs/js-non-native-members.scala:8:6 ------------------------------------------------------------
 7 |  @JSBracketAccess
 8 |  def foo(index: Int, arg: Int): Int = arg // error

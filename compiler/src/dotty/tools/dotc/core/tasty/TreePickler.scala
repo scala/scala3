@@ -409,22 +409,23 @@ class TreePickler(pickler: TastyPickler) {
             case _ =>
               val sig = tree.tpe.signature
               var ename = tree.symbol.targetName
-              val isAmbiguous =
-                sig != Signature.NotAMethod
-                && qual.tpe.nonPrivateMember(name).match
-                  case d: MultiDenotation => d.atSignature(sig, ename).isInstanceOf[MultiDenotation]
-                  case _ => false
-              if isAmbiguous then
+              val selectFromQualifier =
+                name.isTypeName
+                || qual.isInstanceOf[TreePickler.Hole] // holes have no symbol
+                || sig == Signature.NotAMethod // no overload resolution necessary
+                || !tree.denot.symbol.exists // polymorphic function type
+                || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
+              if selectFromQualifier then
+                writeByte(if name.isTypeName then SELECTtpt else SELECT)
+                pickleNameAndSig(name, sig, ename)
+                pickleTree(qual)
+              else // select from owner
                 writeByte(SELECTin)
                 withLength {
                   pickleNameAndSig(name, tree.symbol.signature, ename)
                   pickleTree(qual)
                   pickleType(tree.symbol.owner.typeRef)
                 }
-              else
-                writeByte(if (name.isTypeName) SELECTtpt else SELECT)
-                pickleNameAndSig(name, sig, ename)
-                pickleTree(qual)
           }
         case Apply(fun, args) =>
           if (fun.symbol eq defn.throwMethod) {
@@ -739,7 +740,7 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Accessor)) writeModTag(FIELDaccessor)
       if (flags.is(CaseAccessor)) writeModTag(CASEaccessor)
       if (flags.is(HasDefault)) writeModTag(HASDEFAULT)
-      if (flags.is(StableRealizable)) writeModTag(STABLE)
+      if flags.isAllOf(StableMethod) then writeModTag(STABLE) // other StableRealizable flag occurrences are either implied or can be recomputed
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)

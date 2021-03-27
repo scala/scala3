@@ -896,11 +896,14 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
+      def preIsThis = pre match
+        case pre: ThisType => pre.sameThis(thisType)
+        case _ => false
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
        || ctx.erasedTypes
        || (pre eq NoPrefix)
-       || (pre eq thisType)
+       || preIsThis
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -1504,8 +1507,11 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(

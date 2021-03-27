@@ -1,8 +1,6 @@
 package scala
 package compiletime
 
-import scala.language.experimental.erasedDefinitions
-
 import annotation.compileTimeOnly
 
 /** Use this method when you have a type, do not have a value for it but want to
@@ -18,7 +16,8 @@ import annotation.compileTimeOnly
  *  the branches.
  *  @syntax markdown
  */
-erased def erasedValue[T]: T = ???
+// TODO add `erased` once it is not an experimental feature anymore
+def erasedValue[T]: T = ???
 
 /** Used as the initializer of a mutable class or object field, like this:
  *

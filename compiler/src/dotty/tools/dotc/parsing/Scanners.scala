@@ -76,11 +76,23 @@ object Scanners {
     def isNestedStart = token == LBRACE || token == INDENT
     def isNestedEnd = token == RBRACE || token == OUTDENT
 
+    /** Is token a COLON, after having converted COLONEOL to COLON?
+     *  The conversion means that indentation is not significant after `:`
+     *  anymore. So, warning: this is a side-effecting operation.
+     */
+    def isColon() =
+      if token == COLONEOL then token = COLON
+      token == COLON
+
     /** Is current token first one after a newline? */
     def isAfterLineEnd: Boolean = lineOffset >= 0
 
     def isOperator =
-      token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+      token == BACKQUOTED_IDENT
+      || token == IDENTIFIER && isOperatorPart(name(name.length - 1))
+
+    def isArrow =
+      token == ARROW || token == CTXARROW
   }
 
   abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
@@ -174,9 +186,6 @@ object Scanners {
       ((if (Config.defaultIndent) !noindentSyntax else ctx.settings.indent.value)
        || rewriteNoIndent)
       && !isInstanceOf[LookaheadScanner]
-    val colonSyntax =
-      ctx.settings.YindentColons.value
-      || rewriteNoIndent
 
     if (rewrite) {
       val s = ctx.settings
@@ -192,6 +201,15 @@ object Scanners {
 
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
+
+    private var fewerBracesEnabledCache = false
+    private var fewerBracesEnabledCtx: Context = NoContext
+
+    def fewerBracesEnabled =
+      if fewerBracesEnabledCtx ne myLanguageImportContext then
+        fewerBracesEnabledCache = featureEnabled(Feature.fewerBraces)
+        fewerBracesEnabledCtx = myLanguageImportContext
+      fewerBracesEnabledCache
 
     /** All doc comments kept by their end position in a `Map`.
       *
@@ -353,8 +371,7 @@ object Scanners {
       */
     def isLeadingInfixOperator(inConditional: Boolean = true) =
       allowLeadingInfixOperators
-      && (  token == BACKQUOTED_IDENT
-         || token == IDENTIFIER && isOperatorPart(name(name.length - 1)))
+      && isOperator
       && (isWhitespace(ch) || ch == LF)
       && !pastBlankLine
       && {
@@ -372,7 +389,7 @@ object Scanners {
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
           canStartExprTokens.contains(lexeme.token)
-          && (token != BACKQUOTED_IDENT || !lexeme.isOperator || nme.raw.isUnary(lexeme.name))
+          && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
           // force a NEWLINE a after current token if it is on its own line
@@ -393,8 +410,8 @@ object Scanners {
         true
       }
 
-    def isContinuingParens() =
-      openParensTokens.contains(token)
+    def isContinuing(lastToken: Token) =
+      (openParensTokens.contains(token) || lastToken == RETURN)
       && !pastBlankLine
       && !migrateTo3
       && !noindentSyntax
@@ -496,7 +513,7 @@ object Scanners {
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
          && !isLeadingInfixOperator()
-         && !(lastWidth < nextWidth && isContinuingParens())
+         && !(lastWidth < nextWidth && isContinuing(lastToken))
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
       else if indentIsSignificant then
@@ -522,10 +539,10 @@ object Scanners {
             currentRegion.knownWidth = nextWidth
         else if (lastWidth != nextWidth)
           errorButContinue(spaceTabMismatchMsg(lastWidth, nextWidth))
-      currentRegion match {
+      currentRegion match
         case Indented(curWidth, others, prefix, outer)
         if curWidth < nextWidth && !others.contains(nextWidth) && nextWidth != lastWidth =>
-          if (token == OUTDENT)
+          if token == OUTDENT && next.token != COLON then
             errorButContinue(
               i"""The start of this line does not match any of the previous indentation widths.
                   |Indentation width of current line : $nextWidth
@@ -533,7 +550,6 @@ object Scanners {
           else
             currentRegion = Indented(curWidth, others + nextWidth, prefix, outer)
         case _ =>
-      }
     end handleNewLine
 
     def spaceTabMismatchMsg(lastWidth: IndentWidth, nextWidth: IndentWidth) =
@@ -627,7 +643,7 @@ object Scanners {
               else
                 reset()
         case COLON =>
-          if colonSyntax then observeColonEOL()
+          if fewerBracesEnabled then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
         case EOF =>
@@ -1065,6 +1081,7 @@ object Scanners {
         getRawStringLit()
       }
 
+    // for interpolated strings
     @annotation.tailrec private def getStringPart(multiLine: Boolean): Unit =
       if (ch == '"')
         if (multiLine) {
@@ -1081,6 +1098,14 @@ object Scanners {
           setStrVal()
           token = STRINGLIT
         }
+      else if (ch == '\\' && !multiLine) {
+        putChar(ch)
+        nextRawChar()
+        if (ch == '"' || ch == '\\')
+          putChar(ch)
+          nextRawChar()
+        getStringPart(multiLine)
+      } 
       else if (ch == '$') {
         nextRawChar()
         if (ch == '$' || ch == '"') {

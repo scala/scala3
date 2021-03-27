@@ -28,7 +28,7 @@ jobs:
   test_non_bootstrapped:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -49,8 +49,11 @@ jobs:
            && github.repository == 'lampepfl/dotty'
          )"
     steps:
-      - name: Set JDK 15 as default
-        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 16 as default
+        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -72,7 +75,7 @@ jobs:
   test:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -94,8 +97,11 @@ jobs:
          )"
 
     steps:
-      - name: Set JDK 15 as default
-        run: echo "/usr/lib/jvm/java-15-openjdk-amd64/bin" >> $GITHUB_PATH
+      - name: Set JDK 16 as default
+        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
         uses: actions/checkout@v2
@@ -132,6 +138,10 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        shell: cmd
+
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -157,6 +167,10 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+        shell: cmd
+
       - name: Git Checkout
         uses: actions/checkout@v2
 
@@ -171,7 +185,7 @@ jobs:
   community_build_a:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -190,6 +204,9 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -211,7 +228,7 @@ jobs:
   community_build_b:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -230,6 +247,9 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -270,6 +290,9 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -291,7 +314,7 @@ jobs:
   test_sbt:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -310,6 +333,9 @@ jobs:
          )"
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -331,7 +357,7 @@ jobs:
   test_java8:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -358,6 +384,9 @@ jobs:
       - name: Set JDK 8 as default
         run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -378,7 +407,7 @@ jobs:
   publish_nightly:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -394,6 +423,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -413,7 +445,7 @@ jobs:
   nightly_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -428,6 +460,9 @@ jobs:
                                            # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -455,7 +490,7 @@ jobs:
   publish_release:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -474,6 +509,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -538,7 +576,7 @@ jobs:
   release_documentation:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -556,6 +594,9 @@ jobs:
                                            # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 
@@ -583,7 +624,7 @@ jobs:
   publish_sbt_release:
     runs-on: [self-hosted, Linux]
     container:
-      image: lampepfl/dotty:2020-11-19
+      image: lampepfl/dotty:2021-03-22
       options: --cpu-shares 4096
       volumes:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
@@ -601,6 +642,9 @@ jobs:
       SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
     steps:
+      - name: Reset existing repo
+        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+
       - name: Checkout cleanup script
         uses: actions/checkout@v2
 

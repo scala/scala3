@@ -103,8 +103,8 @@ class ReTyper extends Typer with ReChecking {
 
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = ()
 
-  override def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] =
-    parents
+  override def ensureConstrCall(cls: ClassSymbol, parent: Tree)(using Context): Tree =
+    parent
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>

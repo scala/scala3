@@ -154,7 +154,7 @@ class ExtractSemanticDB extends Phase:
           if tree.symbol.isAllOf(EnumValue) =>
             tree.rhs match
             case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
-              template.parents.foreach(traverse)
+              template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
             case _ => // calls $new
           case tree: ValDef
           if tree.symbol.isSelfSym =>
@@ -481,9 +481,19 @@ class ExtractSemanticDB extends Phase:
 
     private def registerDefinition(sym: Symbol, span: Span, symkinds: Set[SymbolKind], treeSource: SourceFile)(using Context) =
       val symbol = symbolName(sym)
-      registerOccurrence(symbol, span, SymbolOccurrence.Role.DEFINITION, treeSource)
+      val finalSpan = if !span.hasLength || !sym.is(Given) || namePresentInSource(sym, span, treeSource) then
+        span
+      else
+        Span(span.start)
+
+      registerOccurrence(symbol, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symbol, symkinds)
+
+    private def namePresentInSource(sym: Symbol, span: Span, source:SourceFile)(using Context): Boolean =
+      val content = source.content()
+      val (start, end) = if content(span.end - 1) == '`' then (span.start + 1, span.end - 1) else (span.start, span.end)
+      content.slice(start, end).mkString == sym.name.stripModuleClassSuffix.lastPart.toString
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
