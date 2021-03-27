@@ -522,9 +522,13 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     for ((level, selfSym) <- sortedProxies) {
       lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
       val rhs =
-        if (lastSelf.exists)
-          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
+        if lastSelf.exists then
+          selfSym.info match
+            case info: TermRef if info.isStable =>
+              ref(info)
+            case _ =>
+              ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
+        else if rhsClsSym.is(Module) && rhsClsSym.isStatic then
           ref(rhsClsSym.sourceModule)
         else
           inlineCallPrefix
