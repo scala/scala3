@@ -1,4 +1,3 @@
-import language.experimental.dependent
 
 type Vec[T] = (n: Int) =>> Array[T] // error: not yet implemented
 
