@@ -452,25 +452,32 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    */
   private def paramBindingDef(name: Name, paramtp: Type, arg0: Tree,
                               bindingsBuf: mutable.ListBuffer[ValOrDefDef])(using Context): ValOrDefDef = {
+    val isByName = paramtp.dealias.isInstanceOf[ExprType]
     val arg = arg0 match {
       case Typed(arg1, tpt) if tpt.tpe.isRepeatedParam && arg1.tpe.derivesFrom(defn.ArrayClass) =>
         wrapArray(arg1, arg0.tpe.elemType)
       case _ => arg0
     }
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
-    val isByName = paramtp.dealias.isInstanceOf[ExprType]
-    var inlineFlags: FlagSet = InlineProxy
-    if (paramtp.widenExpr.hasAnnotation(defn.InlineParamAnnot)) inlineFlags |= Inline
-    if (isByName) inlineFlags |= Method
-    val (bindingFlags, bindingType) =
-      if (isByName) (inlineFlags, ExprType(argtpe.widen))
-      else (inlineFlags, argtpe.widen)
+    val argIsBottom = argtpe.isBottomTypeAfterErasure
+    val bindingType =
+      if argIsBottom then paramtp
+      else if isByName then ExprType(argtpe.widen)
+      else argtpe.widen
+    var bindingFlags: FlagSet = InlineProxy
+    if paramtp.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
+      bindingFlags |= Inline
+    if isByName then
+      bindingFlags |= Method
     val boundSym = newSym(InlineBinderName.fresh(name.asTermName), bindingFlags, bindingType).asTerm
     val binding = {
-      val newArg = arg.changeOwner(ctx.owner, boundSym)
-      if (isByName) DefDef(boundSym, newArg)
+      var newArg = arg.changeOwner(ctx.owner, boundSym)
+      if bindingFlags.is(Inline) && argIsBottom then
+        newArg = Typed(newArg, TypeTree(paramtp)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
+      if isByName then DefDef(boundSym, newArg)
       else ValDef(boundSym, newArg)
     }.withSpan(boundSym.span)
+    inlining.println(i"parameter binding: $binding, $argIsBottom")
     bindingsBuf += binding
     binding
   }
@@ -479,30 +486,35 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
    *  corresponding arguments. `bindingbuf` will be further extended later by
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
-  private def computeParamBindings(tp: Type, targs: List[Tree], argss: List[List[Tree]]): Boolean = tp match
-    case tp: PolyType =>
-      tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
-        paramSpan(name) = arg.span
-        paramBinding(name) = arg.tpe.stripTypeVar
-      }
-      computeParamBindings(tp.resultType, targs.drop(tp.paramNames.length), argss)
-    case tp: MethodType =>
-      if argss.isEmpty then
-        report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
-        false
-      else
-        tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
+  private def computeParamBindings(
+      tp: Type, targs: List[Tree], argss: List[List[Tree]], paramSubst: Type => Type): Boolean =
+    tp match
+      case tp: PolyType =>
+        tp.paramNames.lazyZip(targs).foreach { (name, arg) =>
           paramSpan(name) = arg.span
-          paramBinding(name) = arg.tpe.dealias match {
-            case _: SingletonType if isIdempotentPath(arg) => arg.tpe
-            case _ => paramBindingDef(name, paramtp, arg, bindingsBuf).symbol.termRef
-          }
+          paramBinding(name) = arg.tpe.stripTypeVar
         }
-        computeParamBindings(tp.resultType, targs, argss.tail)
-    case _ =>
-      assert(targs.isEmpty)
-      assert(argss.isEmpty)
-      true
+        computeParamBindings(
+          tp.resultType, targs.drop(tp.paramNames.length), argss,
+          paramSubst.andThen(_.substParams(tp, targs.map(_.tpe.stripTypeVar))))
+      case tp: MethodType =>
+        if argss.isEmpty then
+          report.error(i"missing arguments for inline method $inlinedMethod", call.srcPos)
+          false
+        else
+          tp.paramNames.lazyZip(tp.paramInfos).lazyZip(argss.head).foreach { (name, paramtp, arg) =>
+            paramSpan(name) = arg.span
+            paramBinding(name) = arg.tpe.dealias match
+              case _: SingletonType if isIdempotentPath(arg) =>
+                arg.tpe
+              case _ =>
+                paramBindingDef(name, paramSubst(paramtp), arg, bindingsBuf).symbol.termRef
+          }
+          computeParamBindings(tp.resultType, targs, argss.tail, paramSubst)
+      case _ =>
+        assert(targs.isEmpty)
+        assert(argss.isEmpty)
+        true
 
   // Compute val-definitions for all this-proxies and append them to `bindingsBuf`
   private def computeThisBindings() = {
@@ -687,7 +699,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       }
 
     // Compute bindings for all parameters, appending them to bindingsBuf
-    if !computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss) then
+    if !computeParamBindings(inlinedMethod.info, callTypeArgs, callValueArgss, identity) then
       return call
 
     // make sure prefix is executed if it is impure
