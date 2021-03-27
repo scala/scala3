@@ -28,7 +28,7 @@ object Feature:
   val symbolLiterals = deprecated("symbolLiterals")
   val fewerBraces = experimental("fewerBraces")
 
-/** Is `feature` enabled by by a command-line setting? The enabling setting is
+  /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
    *
@@ -96,5 +96,16 @@ object Feature:
       true
     else
       false
+
+  val experimentalWarningMessage = "Experimental features may only be used with nightly or snapshot version of compiler."
+
+  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
+  def checkExperimentalFlags(using Context): Unit =
+    if !Properties.experimental then
+      val features = ctx.settings.language.value.filter(_.startsWith("experimental."))
+      if features.nonEmpty then
+        report.error(
+          i"""$experimentalWarningMessage
+             |The experimental language features were enabled via -language:$features%,%""")
 
 end Feature
