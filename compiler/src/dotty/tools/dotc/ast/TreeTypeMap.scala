@@ -22,8 +22,6 @@ import core.tasty.TreePickler.Hole
  *  @param newOwners New owners, replacing previous owners.
  *  @param substFrom The symbols that need to be substituted.
  *  @param substTo   The substitution targets.
- *  @param stopAtInlinedArgument  Whether one should stop at an inlined argument,
- *                    i.e. a node of form Inlined(EmptyTree, _, _).
  *
  *  The reason the substitution is broken out from the rest of the type map is
  *  that all symbols have to be substituted at the same time. If we do not do this,
@@ -33,20 +31,24 @@ import core.tasty.TreePickler.Hole
  *  do S2 we get outer#2.inner#4. But that means that the named type outer#2.inner
  *  gets two different denotations in the same period. Hence, if -Yno-double-bindings is
  *  set, we would get a data race assertion error.
- *
- *  Note: TreeTypeMap is final, since derived maps are created dynamically for
- *  nested scopes. Any subclass of TreeTypeMap would revert to the standard
- *  TreeTypeMap in these recursive invocations.
  */
-final class TreeTypeMap(
+class TreeTypeMap(
   val typeMap: Type => Type = IdentityTypeMap,
   val treeMap: tpd.Tree => tpd.Tree = identity _,
   val oldOwners: List[Symbol] = Nil,
   val newOwners: List[Symbol] = Nil,
   val substFrom: List[Symbol] = Nil,
-  val substTo: List[Symbol] = Nil,
-  stopAtInlinedArgument: Boolean = false)(using Context) extends tpd.TreeMap {
+  val substTo: List[Symbol] = Nil)(using Context) extends tpd.TreeMap {
   import tpd._
+
+  def copy(
+      typeMap: Type => Type,
+      treeMap: tpd.Tree => tpd.Tree,
+      oldOwners: List[Symbol],
+      newOwners: List[Symbol],
+      substFrom: List[Symbol],
+      substTo: List[Symbol])(using Context): TreeTypeMap =
+    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
   def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
@@ -119,15 +121,8 @@ final class TreeTypeMap(
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
-        case inlined @ Inlined(call, bindings, expanded) =>
-          if stopAtInlinedArgument && call.isEmpty then
-            expanded match
-              case expanded: TypeTree => assert(bindings.isEmpty); expanded
-              case _ => inlined
-          else
-            val (tmap1, bindings1) = transformDefs(bindings)
-            val expanded1 = tmap1.transform(expanded)
-            cpy.Inlined(inlined)(call, bindings1, expanded1)
+        case inlined: Inlined =>
+          transformInlined(inlined)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)
@@ -183,14 +178,13 @@ final class TreeTypeMap(
       assert(!to.exists(substFrom contains _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
-      new TreeTypeMap(
+      copy(
         typeMap,
         treeMap,
         from ++ oldOwners,
         to ++ newOwners,
         from ++ substFrom,
-        to ++ substTo,
-        stopAtInlinedArgument)
+        to ++ substTo)
     }
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
