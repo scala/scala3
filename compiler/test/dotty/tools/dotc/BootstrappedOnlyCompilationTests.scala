@@ -118,6 +118,7 @@ class BootstrappedOnlyCompilationTests {
     aggregateTests(
       compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros")),
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
+      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-language:experimental.erasedDefinitions").and("-Xcheck-macros")),
     )
   }.checkRuns()
 
@@ -198,24 +199,6 @@ class BootstrappedOnlyCompilationTests {
     compileFilesInDir("tests/plugins/neg").checkExpectedErrors()
     compileDir("tests/plugins/custom/analyzer", withCompilerOptions.and("-Yretain-trees")).checkCompile()
   }
-
-  // tests for experimental featuress ------------------------------------------
-
-  @Test def experimental: Unit =
-    implicit val testGroup: TestGroup = TestGroup("experimental")
-    val enableExperimental = defaultOptions.without("-Yno-experimental")
-    val enableErased = enableExperimental.and("-language:experimental.erasedDefinitions")
-    compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")).checkExpectedErrors()
-    if config.Properties.experimental then
-      compileFilesInDir("tests/run-custom-args/experimental", enableExperimental).checkRuns()
-      compileFilesInDir("tests/neg-custom-args/experimental", enableExperimental).checkExpectedErrors()
-      compileFilesInDir("tests/pos-custom-args/experimental", enableExperimental).checkCompile()
-      compileFilesInDir("tests/run-staging-experimental", withStagingOptions.without("-Yno-experimental")).checkRuns()
-      compileFilesInDir("tests/neg-custom-args/erased", enableErased).checkExpectedErrors()
-      compileFilesInDir("tests/pos-custom-args/erased", enableErased).checkCompile()
-      compileFilesInDir("tests/run-custom-args/run-macros-erased", enableErased.and("-Xcheck-macros")).checkRuns()
-      compileFilesInDir("tests/run-custom-args/erased", enableErased)
-
 }
 
 object BootstrappedOnlyCompilationTests extends ParallelTesting {

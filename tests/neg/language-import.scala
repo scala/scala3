@@ -20,3 +20,4 @@ object d:
   import language.experimental.genericNumberLiterals // ok
   import scala.language.noAutoTupling  // ok
   import _root_.scala.language.strictEquality // ok
+

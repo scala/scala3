@@ -466,8 +466,6 @@ object Build {
       // Add git-hash used to package the distribution to the manifest to know it in runtime and report it in REPL
       packageOptions += ManifestAttributes(("Git-Hash", VersionUtil.gitHash)),
 
-      scalacOptions += "-Yno-experimental",
-
       javaOptions ++= {
         val managedSrcDir = {
           // Populate the directory

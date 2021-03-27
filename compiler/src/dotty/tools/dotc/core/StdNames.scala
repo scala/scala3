@@ -520,7 +520,6 @@ object StdNames {
     val longHash: N             = "longHash"
     val macroThis : N           = "_this"
     val macroContext : N        = "c"
-    val macros: N               = "macros"
     val main: N                 = "main"
     val manifest: N             = "manifest"
     val ManifestFactory: N      = "ManifestFactory"
