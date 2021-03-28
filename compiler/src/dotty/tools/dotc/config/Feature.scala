@@ -6,22 +6,22 @@ import core._
 import Contexts._, Symbols._, Names._, NameOps._, Phases._
 import StdNames.nme
 import Decorators.{_, given}
-import util.SrcPos
+import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
 import NameKinds.QualifiedName
 
 object Feature:
 
-  private def experimental(str: String): TermName =
+  def experimental(str: PreName): TermName =
     QualifiedName(nme.experimental, str.toTermName)
 
-  private def deprecated(str: String): TermName =
+  private def deprecated(str: PreName): TermName =
     QualifiedName(nme.deprecated, str.toTermName)
 
   private val namedTypeArguments = experimental("namedTypeArguments")
   private val genericNumberLiterals = experimental("genericNumberLiterals")
-  private val scala2macros = experimental("macros")
+  val scala2macros = experimental("macros")
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
@@ -97,15 +97,17 @@ object Feature:
     else
       false
 
-  val experimentalWarningMessage = "Experimental features may only be used with nightly or snapshot version of compiler."
+  def allowExperimentalFeatures(using Context) =
+    Config.allowExperimentalFeatures
+
+  def checkExperimentalFeature(which: String, srcPos: SrcPos = NoSourcePosition)(using Context) =
+    if !allowExperimentalFeatures then
+      report.error(i"Experimental feature$which may only be used with nightly or snapshot version of compiler", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
-  def checkExperimentalFlags(using Context): Unit =
-    if !Properties.experimental then
-      val features = ctx.settings.language.value.filter(_.startsWith("experimental."))
-      if features.nonEmpty then
-        report.error(
-          i"""$experimentalWarningMessage
-             |The experimental language features were enabled via -language:$features%,%""")
+  def checkExperimentalSettings(using Context): Unit =
+    ctx.settings.language.value
+      .filter(str => str.startsWith("experimental.") && str != "experimental.scala2macros")
+      .foreach(str => checkExperimentalFeature(s" $str"))
 
 end Feature

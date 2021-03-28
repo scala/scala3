@@ -214,4 +214,10 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
+
+  /** Are experimental imports are allowed? By default same as
+   *  `Properties.experimental`. Can be re-assigned, e.g. to allow tests
+   *  of experimental features.
+   */
+  private[dotty] var allowExperimentalFeatures = Properties.experimental
 }
