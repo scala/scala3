@@ -4,8 +4,8 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Block(List(DefDef("$anonfun", List(TermParamClause(List(ValDef("x", TypeIdent("Int"), None)))), Inferred(), Some(Ident("x")))), Closure(Ident("$anonfun"), None)))
 AppliedType(TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Function1"), List(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int"), TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Int")))
 
-Inlined(None, Nil, Ident("???"))
-TermRef(TermRef(ThisType(TypeRef(NoPrefix(), "scala")), "Predef"), "???")
+Inlined(None, Nil, Typed(Ident("???"), Inferred()))
+AnnotatedType(TypeRef(TermRef(ThisType(TypeRef(NoPrefix(), "<root>")), "scala"), "Any"), Apply(Select(New(Inferred()), "<init>"), Nil))
 
 Inlined(None, Nil, Literal(IntConstant(1)))
 ConstantType(IntConstant(1))
