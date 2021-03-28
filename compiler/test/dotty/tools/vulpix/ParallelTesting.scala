@@ -25,6 +25,7 @@ import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
+import dotc.config.Config
 import dotc.util.DiffUtil
 import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
@@ -36,8 +37,9 @@ import dotty.tools.vulpix.TestConfiguration.defaultOptions
  *  test suite itself runs with a high level of concurrency.
  */
 trait ParallelTesting extends RunnerOrchestration { self =>
-
   import ParallelTesting._
+
+  Config.allowExperimentalFeatures = true
 
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback

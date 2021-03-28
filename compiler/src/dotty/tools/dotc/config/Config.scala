@@ -1,4 +1,5 @@
 package dotty.tools.dotc.config
+import annotation.internal.sharable
 
 object Config {
 
@@ -219,5 +220,5 @@ object Config {
    *  `Properties.experimental`. Can be re-assigned, e.g. to allow tests
    *  of experimental features.
    */
-  private[dotty] var allowExperimentalFeatures = Properties.experimental
+  @sharable private[dotty] var allowExperimentalFeatures = Properties.experimental
 }
