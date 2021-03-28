@@ -32,7 +32,6 @@ import config.Feature
 import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
-import config.Properties
 
 object Parsers {
 
