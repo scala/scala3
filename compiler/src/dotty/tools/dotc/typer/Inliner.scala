@@ -516,17 +516,17 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
       lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
-      val rhs =
-        if lastSelf.exists then
-          selfSym.info match
-            case info: TermRef if info.isStable =>
-              ref(info)
-            case _ =>
-              ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if rhsClsSym.is(Module) && rhsClsSym.isStatic then
-          ref(rhsClsSym.sourceModule)
-        else
-          inlineCallPrefix
+      val rhs = selfSym.info.dealias match
+        case info: TermRef if info.isStable =>
+          ref(info)
+        case info =>
+          val rhsClsSym = info.widenDealias.classSymbol
+          if rhsClsSym.is(Module) && rhsClsSym.isStatic then
+            ref(rhsClsSym.sourceModule)
+          else if lastSelf.exists then
+            ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
+          else
+            inlineCallPrefix
       val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span)
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
