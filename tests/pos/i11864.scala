@@ -19,6 +19,20 @@ object test2:
     val y = bar[Int](???)
     y: Option[Int]
 
+object test3:
+  inline def bar(ev: Ev)(x: ev.Out): Option[ev.Out] = Some(x)
+  val a: Ev { type Out = Int } = ???
+  def test =
+    val y = bar(a)(???)
+    y: Option[Int]
+
+object test4:
+  inline def bar(ev: Ev, x: ev.Out): Option[ev.Out] = Some(x)
+  val a: Ev { type Out = Int } = ???
+  def test =
+    val y = bar(a, ???)
+    y: Option[Int]
+
 final class CallbackTo[+A] {
   inline def map[B](f: A => B)(using erased ev: CallbackTo.MapGuard[B]): CallbackTo[ev.Out] = ???
 }
