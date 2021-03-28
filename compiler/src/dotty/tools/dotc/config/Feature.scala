@@ -97,11 +97,16 @@ object Feature:
     else
       false
 
-  def compilerSupportsExperimental(using Context) =
-    Config.compilerSupportsExperimental && !ctx.settings.YnoExperimental.value
+  private val assumeExperimentalIn = Set("dotty.tools.vulpix.ParallelTesting")
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos = NoSourcePosition)(using Context) =
-    if !compilerSupportsExperimental then
+    def hasSpecialPermission =
+      new Exception().getStackTrace.exists(elem =>
+        assumeExperimentalIn.exists(elem.getClassName().startsWith(_)))
+    if !(Properties.experimental || hasSpecialPermission)
+       || ctx.settings.YnoExperimental.value
+    then
+      //println(i"${new Exception().getStackTrace.map(_.getClassName).toList}%\n%")
       report.error(i"Experimental feature$which may only be used with nightly or snapshot version of compiler", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */

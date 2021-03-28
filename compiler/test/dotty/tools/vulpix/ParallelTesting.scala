@@ -39,8 +39,6 @@ import dotty.tools.vulpix.TestConfiguration.defaultOptions
 trait ParallelTesting extends RunnerOrchestration { self =>
   import ParallelTesting._
 
-  Config.compilerSupportsExperimental = true
-
   /** If the running environment supports an interactive terminal, each `Test`
    *  will be run with a progress bar and real time feedback
    */

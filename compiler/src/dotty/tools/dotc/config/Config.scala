@@ -215,16 +215,4 @@ object Config {
    *  reduces the number of allocated denotations by ~50%.
    */
   inline val reuseSymDenotations = true
-
-  /** Turn on in order to test the CI assuming we have a stable release compiler
-   *  instead of a nightly or snapshot.
-   */
-  private val assumeNonExperimentalCompiler = false
-
-  /** Are experimental features are allowed? By default same as
-   *  `Properties.experimental`. Can be re-assigned, e.g. to allow tests
-   *  of experimental features.
-   */
-  @sharable private[dotty] var compilerSupportsExperimental =
-    Properties.experimental && !assumeNonExperimentalCompiler
 }
