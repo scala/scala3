@@ -98,7 +98,7 @@ object Feature:
       false
 
   def allowExperimentalFeatures(using Context) =
-    Config.allowExperimentalFeatures
+    Config.allowExperimentalFeatures && !ctx.settings.YnoExperimental.value
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos = NoSourcePosition)(using Context) =
     if !allowExperimentalFeatures then
