@@ -225,6 +225,6 @@ object Config {
    *  `Properties.experimental`. Can be re-assigned, e.g. to allow tests
    *  of experimental features.
    */
-  @sharable private[dotty] var allowExperimentalFeatures =
+  @sharable private[dotty] var compilerSupportsExperimental =
     Properties.experimental && !assumeNonExperimentalCompiler
 }

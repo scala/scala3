@@ -97,11 +97,11 @@ object Feature:
     else
       false
 
-  def allowExperimentalFeatures(using Context) =
-    Config.allowExperimentalFeatures && !ctx.settings.YnoExperimental.value
+  def compilerSupportsExperimental(using Context) =
+    Config.compilerSupportsExperimental && !ctx.settings.YnoExperimental.value
 
   def checkExperimentalFeature(which: String, srcPos: SrcPos = NoSourcePosition)(using Context) =
-    if !allowExperimentalFeatures then
+    if !compilerSupportsExperimental then
       report.error(i"Experimental feature$which may only be used with nightly or snapshot version of compiler", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
