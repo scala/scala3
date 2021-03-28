@@ -1045,12 +1045,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     }
                   }
 
-                  var usedGadtOrdering: Boolean = false
                   def byGadtOrdering: Boolean =
                     ctx.gadt.contains(tycon1sym)
                     && ctx.gadt.contains(tycon2sym)
                     && ctx.gadt.isLess(tycon1sym, tycon2sym)
-                    && { usedGadtOrdering = true; true }
 
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
@@ -1066,11 +1064,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     // 2) if we touched GADTs, then the _other_ symbol (class syms
                     //    cannot have GADT constraints), the one w/ GADT cstrs,
                     //    must be instantiated, making the two tycons equal
-                    // 3) if we used GADT ordering, which means that neither symbol
-                    //    has been instantiated, we should not assume injectivity
                     val tyconIsInjective =
                       (tycon1sym.isClass || tycon2sym.isClass)
-                      && (!touchedGADTs || gadtIsInstantiated && !usedGadtOrdering)
+                      && (!touchedGADTs || gadtIsInstantiated)
 
                     inFrozenGadtIf(!tyconIsInjective) {
                       if tycon1sym == tycon2sym && tycon1sym.isAliasType then
