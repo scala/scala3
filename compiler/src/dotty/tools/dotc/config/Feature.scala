@@ -107,7 +107,7 @@ object Feature:
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalSettings(using Context): Unit =
     for setting <- ctx.settings.language.value
-        if setting.startsWith("experimental.") && setting != "experimental.scala2macros"
+        if setting.startsWith("experimental.") && setting != "experimental.macros"
     do checkExperimentalFeature(s" $setting")
 
 end Feature
