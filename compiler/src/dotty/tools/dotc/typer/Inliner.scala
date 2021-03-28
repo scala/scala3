@@ -508,14 +508,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   private def computeThisBindings() = {
     // All needed this-proxies, paired-with and sorted-by nesting depth of
     // the classes they represent (innermost first)
-    val sortedProxies = thisProxy.toList.map {
-      case (cls, proxy) =>
-        // The class that the this-proxy `selfSym` represents
-        def classOf(selfSym: Symbol) = selfSym.info.classSymbol
-        // The total nesting depth of the class represented by `selfSym`.
-        def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
-        (outerLevel(cls), proxy.symbol)
-    }.sortBy(-_._1)
+    val sortedProxies = thisProxy.toList
+      .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol))
+      .sortBy(-_._1)
 
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
