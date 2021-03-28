@@ -518,26 +518,25 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
   private def computeThisBindings() = {
     // All needed this-proxies, paired-with and sorted-by nesting depth of
     // the classes they represent (innermost first)
-    val sortedProxies = thisProxy.toList.map {
-      case (cls, proxy) =>
-        // The class that the this-proxy `selfSym` represents
-        def classOf(selfSym: Symbol) = selfSym.info.classSymbol
-        // The total nesting depth of the class represented by `selfSym`.
-        def outerLevel(selfSym: Symbol): Int = classOf(selfSym).ownersIterator.length
-        (outerLevel(cls), proxy.symbol)
-    }.sortBy(-_._1)
+    val sortedProxies = thisProxy.toList
+      .map((cls, proxy) => (cls.ownersIterator.length, proxy.symbol))
+      .sortBy(-_._1)
 
     var lastSelf: Symbol = NoSymbol
     var lastLevel: Int = 0
     for ((level, selfSym) <- sortedProxies) {
       lazy val rhsClsSym = selfSym.info.widenDealias.classSymbol
-      val rhs =
-        if (lastSelf.exists)
-          ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
-        else if (rhsClsSym.is(Module) && rhsClsSym.isStatic)
-          ref(rhsClsSym.sourceModule)
-        else
-          inlineCallPrefix
+      val rhs = selfSym.info.dealias match
+        case info: TermRef if info.isStable =>
+          ref(info)
+        case info =>
+          val rhsClsSym = info.widenDealias.classSymbol
+          if rhsClsSym.is(Module) && rhsClsSym.isStatic then
+            ref(rhsClsSym.sourceModule)
+          else if lastSelf.exists then
+            ref(lastSelf).outerSelect(lastLevel - level, selfSym.info)
+          else
+            inlineCallPrefix
       val binding = ValDef(selfSym.asTerm, QuoteUtils.changeOwnerOfTree(rhs, selfSym)).withSpan(selfSym.span)
       bindingsBuf += binding
       inlining.println(i"proxy at $level: $selfSym = ${bindingsBuf.last}")
