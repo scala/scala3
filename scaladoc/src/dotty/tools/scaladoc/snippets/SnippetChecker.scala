@@ -20,7 +20,7 @@ class SnippetChecker()(using ctx: DocContext):
     arg: SnippetCompilerArg,
     lineOffset: SnippetChecker.LineOffset
   ): Option[SnippetCompilationResult] = {
-    if arg.is(SCFlags.Compile) then
+    if arg.flag != SCFlags.NoCompile then
       val wrapped = WrappedSnippet(
         snippet,
         data.map(_.packageName),
@@ -45,4 +45,4 @@ class SnippetChecker()(using ctx: DocContext):
 
 object SnippetChecker:
   type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SnippetCompilerArg]) => Unit
+  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Unit

@@ -95,8 +95,11 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val YdocumentSyntheticTypes: Setting[Boolean] =
     BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
 
-  val snippetCompilerArgs: Setting[List[String]] =
-    MultiStringSetting("-snippet-compiler-args", "snippet-compiler-args", snippets.SnippetCompilerArgs.usage)
+  val snippetCompiler: Setting[List[String]] =
+    MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
+
+  val snippetCompilerDebug: Setting[Boolean] =
+    BooleanSetting("-snippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
 
   def scaladocSpecificSettings: Set[Setting[_]] =
-    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompilerArgs)
+    Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)

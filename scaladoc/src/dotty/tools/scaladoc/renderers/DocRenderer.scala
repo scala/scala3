@@ -10,19 +10,11 @@ import dotty.tools.scaladoc.snippets._
 
 class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using ctx: DocContext):
 
-  private val snippetCheckingFuncFromMember: Member => SnippetChecker.SnippetCheckingFunc =
+  private def snippetCheckingFuncFromMember: Member => SnippetChecker.SnippetCheckingFunc =
     (m: Member) => {
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SnippetCompilerArg]) => {
-          val pathBasedArg = ctx.snippetCompilerArgs.get(m).fold(
-            SnippetCompilerArg.default
-          )(
-            _ + SnippetCompilerArg.default
-          )
-          val arg = argOverride.fold(
-            pathBasedArg
-          )(
-            _ + pathBasedArg
-          )
+      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
+          val pathBasedArg = ctx.snippetCompilerArgs.get(m)
+          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
 
           snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg, lineOffset).foreach { _ match {
               case r: SnippetCompilationResult if !r.isSuccessful =>

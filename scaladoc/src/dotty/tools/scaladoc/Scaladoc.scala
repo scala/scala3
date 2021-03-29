@@ -49,7 +49,8 @@ object Scaladoc:
     includePrivateAPI: Boolean = false,
     docCanonicalBaseUrl: String = "",
     documentSyntheticTypes: Boolean = false,
-    snippetCompilerArgs: List[String] = Nil
+    snippetCompiler: List[String] = Nil,
+    snippetCompilerDebug: Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -191,7 +192,8 @@ object Scaladoc:
         visibilityPrivate.get,
         docCanonicalBaseUrl.get,
         YdocumentSyntheticTypes.get,
-        snippetCompilerArgs.get
+        snippetCompiler.get,
+        snippetCompilerDebug.get
       )
       (Some(docArgs), newContext)
     }

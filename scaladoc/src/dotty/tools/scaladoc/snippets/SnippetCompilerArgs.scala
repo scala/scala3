@@ -1,31 +1,23 @@
 package dotty.tools.scaladoc
 package snippets
 
-case class SnippetCompilerArg(flags: Set[SCFlags]):
-  def is(flag: SCFlags): Boolean = flags.contains(flag)
-  def +(other: SnippetCompilerArg): SnippetCompilerArg = {
-    val allNoncompatbileFlags = flags.flatMap(_.forbiddenFlags)
-    val compatibleFlags = other.flags.filter(flag => !allNoncompatbileFlags.contains(flag))
-    copy(flags = flags ++ compatibleFlags)
-  }
+case class SnippetCompilerArg(flag: SCFlags, debug: Boolean):
+  def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
 
-object SnippetCompilerArg:
-  def default: SnippetCompilerArg = SnippetCompilerArg(
-    Set(SCFlags.NoCompile)
-  )
-
-sealed trait SCFlags(val flagName: String, val forbiddenFlags: Set[SCFlags])
+sealed trait SCFlags(val flagName: String)
 
 object SCFlags:
-  case object Compile extends SCFlags("compile", Set(NoCompile))
-  case object NoCompile extends SCFlags("nocompile", Set(Compile))
-  case object Fail extends SCFlags("failing", Set())
-  case object Debug extends SCFlags("debug", Set())
+  case object Compile extends SCFlags("compile")
+  case object NoCompile extends SCFlags("nocompile")
+  case object Fail extends SCFlags("failing")
 
-  def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail, Debug)
+  def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail)
 
-case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg]):
-  def get(member: Member): Option[SnippetCompilerArg] = member.sources.flatMap(s => scArgs.get(s.path).map(_.elem))
+case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], val debug: Boolean, defaultFlag: SCFlags):
+  def get(member: Member): SnippetCompilerArg =
+    member.sources
+      .flatMap(s => scFlags.get(s.path).map(_.elem))
+      .fold(SnippetCompilerArg(defaultFlag, debug))(SnippetCompilerArg(_, debug))
 
 object SnippetCompilerArgs:
   val usage =
@@ -33,63 +25,40 @@ object SnippetCompilerArgs:
     |Snippet compiler arguments provide a way to configure snippet checking.
     |
     |This setting accept list of arguments in format:
-    |arg := [path=]flag{&flag}
+    |args := arg{,arg}
+    |arg := [path=]flag
     |where path is a prefix of source paths to members to which argument should be set.
     |
     |If path is not present, argument will be used as default.
     |
     |Available flags:
-    |compile - Enables snippet checking. Cannot be used with nocompile.
-    |nocompile - Disables snippet checking. Cannot be used with compile.
+    |compile - Enables snippet checking.
+    |nocompile - Disables snippet checking.
+    |failing - Enables snippet checking, asserts that snippet doesn't compile.
     |
     """.stripMargin
 
-  def load(args: List[String])(using CompilerContext): SnippetCompilerArgs = {
-    PathBased.parse[SnippetCompilerArg](args)(using SnippetCompilerArgParser) match {
+  val debugUsage = """
+  |Setting this option causes snippet compiler to print snippet as it is compiled (after wrapping).
+  """.stripMargin
+
+  def load(args: List[String], debug: Boolean, defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {
+    PathBased.parse[SCFlags](args)(using SCFlagsParser) match {
       case PathBased.ParsingResult(errors, res) =>
-        if errors.nonEmpty then report.warning(
-          s"""Got following errors during snippet compiler args parsing:
+        if errors.nonEmpty then report.warning(s"""
+            |Got following errors during snippet compiler args parsing:
             |$errors
             |
-            |${usage}
+            |$usage
             |""".stripMargin
         )
-        SnippetCompilerArgs(res)
+        SnippetCompilerArgs(res, debug, defaultFlag)
     }
   }
 
-object SnippetCompilerArgParser extends ArgParser[SnippetCompilerArg]:
-  def parse(s: String): Either[String, SnippetCompilerArg] = {
-    val flagStrings = s.split("&")
-    val (parsed, errors) = flagStrings.map(flag => SCFlags.values.find(_.flagName == flag).fold(
-        Left(s"$flag: No such flag found.")
-      )(
-        Right(_)
-      )
-    ).partition(_.isRight)
-
-
-    val (flags, errors2) = parsed.collect {
-      case Right(flag) => flag
-    } match {
-      case list =>
-        list.map(f =>
-          list.find(elem =>
-            f.forbiddenFlags.contains(elem)
-          ) match {
-              case Some(forbiddenElem) => Left(s"${f.flagName}: Cannot be used with flag: ${forbiddenElem.flagName}")
-              case None => Right(f)
-            }
-        ).partition(_.isRight)
-    }
-
-    val checkedFlags = flags.collect {
-      case Right(flag) => flag
-    }.toSet
-
-    val allErrors = (errors ++ errors2).collect {
-      case Left(error) => error
-    }.toList
-
-    if !allErrors.isEmpty then Left(allErrors.mkString("\n")) else Right(SnippetCompilerArg(checkedFlags))
+object SCFlagsParser extends ArgParser[SCFlags]:
+  def parse(s: String): Either[String, SCFlags] = {
+    SCFlags.values
+      .find(_.flagName == s)
+      .fold(Left(s"$s: No such flag found."))(Right(_))
   }

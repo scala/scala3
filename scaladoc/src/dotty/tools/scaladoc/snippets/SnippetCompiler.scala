@@ -62,17 +62,17 @@ class SnippetCompiler(
 
   private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
     (
-      Option.when(arg.is(SCFlags.Fail) && !context.reporter.hasErrors)(
+      Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
         SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
       ) ++
-      Option.when(arg.is(SCFlags.Debug))(
+      Option.when(arg.debug && !isSuccessful(arg, context))(
         SnippetCompilerMessage(None, s"\n${wrappedSnippet.snippet}", MessageLevel.Debug)
       )
     ).toList
   }
 
   private def isSuccessful(arg: SnippetCompilerArg, context: Context): Boolean = {
-    if arg.is(SCFlags.Fail) then context.reporter.hasErrors
+    if arg.flag == SCFlags.Fail then context.reporter.hasErrors
     else !context.reporter.hasErrors
   }
 

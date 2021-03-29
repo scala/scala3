@@ -59,7 +59,7 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String, snippetC
           info.split(" ")
             .find(_.startsWith("sc:"))
             .map(_.stripPrefix("sc:"))
-            .map(snippets.SnippetCompilerArgParser.parse)
+            .map(snippets.SCFlagsParser.parse)
             .flatMap(_.toOption)
         snippetCheckingFunc(node.getContentChars.toString, node.getStartLineNumber, argOverride)
         c.delegateRender()
