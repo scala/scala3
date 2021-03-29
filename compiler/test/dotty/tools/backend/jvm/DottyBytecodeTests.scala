@@ -118,6 +118,28 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  @Test def switchOnStrings = {
+    val source =
+      """
+        |object Foo {
+        |  import scala.annotation.switch
+        |  def foo(s: String) = s match {
+        |    case "AaAa" => println(3)
+        |    case "BBBB" | "c" => println(2)
+        |    case "D" | "E" => println(1)
+        |    case _ => println(0)
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(source) { dir =>
+      val moduleIn   = dir.lookupName("Foo$.class", directory = false)
+      val moduleNode = loadClassNode(moduleIn.input)
+      val methodNode = getMethod(moduleNode, "foo")
+      assert(verifySwitch(methodNode))
+    }
+  }
+
   @Test def matchWithDefaultNoThrowMatchError = {
     val source =
       """class Test {
