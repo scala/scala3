@@ -1280,9 +1280,7 @@ trait Checking {
   def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit =
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
-      report.warning(
-        em"""${kind} should be an instance of Matchable,
-            |but it has unmatchable type $tp instead""", pos)
+      report.warning(MatchableWarning(tp, pattern), pos)
 }
 
 trait ReChecking extends Checking {
