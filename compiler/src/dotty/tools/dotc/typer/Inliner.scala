@@ -460,10 +460,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     }
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
-    val bindingType =
-      if argIsBottom then formal
-      else if isByName then ExprType(argtpe.widen)
-      else argtpe.widen
+    val bindingType = formal.dealias match
+      case ExprType(formal) => ExprType(AndType.make(formal, argtpe))
+      case _ => AndType.make(formal, argtpe)
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
       bindingFlags |= Inline
@@ -503,7 +502,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
             paramSpan(name) = arg.span
             paramBinding(name) = arg.tpe.dealias match
-              case _: SingletonType if isIdempotentPath(arg) =>
+              case _: SingletonType if isIdempotentPath(arg) && ctx.phase == Phases.typerPhase =>
                 arg.tpe
               case _ =>
                 paramBindingDef(name, formal, arg, bindingsBuf).symbol.termRef
