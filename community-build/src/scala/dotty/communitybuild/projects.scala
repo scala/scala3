@@ -40,6 +40,7 @@ sealed trait CommunityProject:
   val dependencies: List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
+  val requiresExperimental: Boolean
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
@@ -48,6 +49,7 @@ sealed trait CommunityProject:
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
+    // TODO what should this do with .requiresExperimental?
     if !published then
       publishDependencies()
       log(s"Publishing $project")
@@ -59,6 +61,11 @@ sealed trait CommunityProject:
       published = true
 
   final def doc(): Unit =
+    if this.requiresExperimental && !compilerSupportExperimental then
+      log(
+        s"Skipping ${this.project} - it needs experimental features unsupported in this build."
+      )
+      return
     publishDependencies()
     log(s"Documenting $project")
     if docCommand eq null then
@@ -78,6 +85,7 @@ final case class MillCommunityProject(
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
     ignoreDocs: Boolean = false,
+    requiresExperimental: Boolean = false,
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
@@ -94,7 +102,8 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
+    requiresExperimental: Boolean = false,
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -237,13 +246,15 @@ object projects:
 
   lazy val scas = MillCommunityProject(
     project = "scas",
-    baseCommand = "scas.application"
+    baseCommand = "scas.application",
+    requiresExperimental = true
   )
 
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
-    sbtDocCommand = "doc"
+    sbtDocCommand = "doc",
+    requiresExperimental = true,
   )
 
   lazy val algebra = SbtCommunityProject(
@@ -398,7 +409,8 @@ object projects:
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit)
+    dependencies = List(munit),
+    requiresExperimental = true,
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -406,7 +418,8 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit, scodecBits)
+    dependencies = List(munit, scodecBits),
+    requiresExperimental = true,
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(

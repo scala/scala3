@@ -20,7 +20,12 @@ abstract class CommunityBuildTest:
    *  and avoid network overhead. See https://github.com/lampepfl/dotty-drone
    *  for more infrastructural details.
    */
-  extension (self: CommunityProject) def run()(using suite: CommunityBuildTest) =
+  extension (self: CommunityProject) def run()(using suite: CommunityBuildTest): Unit =
+    if self.requiresExperimental && !compilerSupportExperimental then
+      println(
+        s"Skipping ${self.project} - it needs experimental features unsupported in this build."
+      )
+      return
     self.dependencies.foreach(_.publish())
     suite.test(self)
 
@@ -116,8 +121,8 @@ class CommunityBuildTestB extends CommunityBuildTest:
   @Test def disciplineSpecs2 = projects.disciplineSpecs2.run()
   @Test def munit = projects.munit.run()
   @Test def perspective = projects.perspective.run()
-  @Test def scodec = if compilerSupportExperimental then projects.scodec.run()
-  @Test def scodecBits = if compilerSupportExperimental then projects.scodecBits.run()
+  @Test def scodec = projects.scodec.run()
+  @Test def scodecBits = projects.scodecBits.run()
   @Test def simulacrumScalafixAnnotations = projects.simulacrumScalafixAnnotations.run()
 end CommunityBuildTestB
 
@@ -134,7 +139,7 @@ class CommunityBuildTestC extends CommunityBuildTest:
   @Test def fansi = projects.fansi.run()
   @Test def fastparse = projects.fastparse.run()
   @Test def geny = projects.geny.run()
-  @Test def intent = if compilerSupportExperimental then projects.intent.run()
+  @Test def intent = projects.intent.run()
   @Test def minitest = projects.minitest.run()
   @Test def onnxScala = projects.onnxScala.run()
   @Test def oslib = projects.oslib.run()
