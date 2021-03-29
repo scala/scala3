@@ -3130,12 +3130,6 @@ class JSCodeGen()(using genCtx: Context) {
     def abortMatch(msg: String): Nothing =
       throw new FatalError(s"$msg in switch-like pattern match at ${tree.span}: $tree")
 
-    /* Although GenBCode adapts the scrutinee and the cases to `int`, only
-     * true `int`s can reach the back-end, as asserted by the String-switch
-     * transformation in `cleanup`. Therefore, we do not adapt, preserving
-     * the `string`s and `null`s that come out of the pattern matching in
-     * Scala 2.13.2+.
-     */
     val genSelector = genExpr(selector)
 
     // Sanity check: we can handle Ints and Strings (including `null`s), but nothing else
@@ -3192,11 +3186,6 @@ class JSCodeGen()(using genCtx: Context) {
      * When no optimization applies, and any of the case values is not a
      * literal int, we emit a series of `if..else` instead of a `js.Match`.
      * This became necessary in 2.13.2 with strings and nulls.
-     *
-     * Note that dotc has not adopted String-switch-Matches yet, so these code
-     * paths are dead code at the moment. However, they already existed in the
-     * scalac, so were ported, to be immediately available and working when
-     * dotc starts emitting switch-Matches on Strings.
      */
     def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
 

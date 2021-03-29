@@ -3,6 +3,7 @@ package backend
 package jvm
 
 import scala.annotation.switch
+import scala.collection.mutable.SortedMap
 
 import scala.tools.asm
 import scala.tools.asm.{Handle, Label, Opcodes}
@@ -840,61 +841,170 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       generatedType
     }
 
-    /*
-     * A Match node contains one or more case clauses,
-     * each case clause lists one or more Int values to use as keys, and a code block.
-     * Except the "default" case clause which (if it exists) doesn't list any Int key.
-     *
-     * On a first pass over the case clauses, we flatten the keys and their targets (the latter represented with asm.Labels).
-     * That representation allows JCodeMethodV to emit a lookupswitch or a tableswitch.
-     *
-     * On a second pass, we emit the switch blocks, one for each different target.
+    /* A Match node contains one or more case clauses, each case clause lists one or more
+     * Int/String values to use as keys, and a code block. The exception is the "default" case
+     * clause which doesn't list any key (there is exactly one of these per match).
      */
     private def genMatch(tree: Match): BType = tree match {
       case Match(selector, cases) =>
       lineNumber(tree)
-      genLoad(selector, INT)
       val generatedType = tpeTK(tree)
-
-      var flatKeys: List[Int]       = Nil
-      var targets:  List[asm.Label] = Nil
-      var default:  asm.Label       = null
-      var switchBlocks: List[(asm.Label, Tree)] = Nil
-
-      // collect switch blocks and their keys, but don't emit yet any switch-block.
-      for (caze @ CaseDef(pat, guard, body) <- cases) {
-        assert(guard == tpd.EmptyTree, guard)
-        val switchBlockPoint = new asm.Label
-        switchBlocks ::= (switchBlockPoint, body)
-        pat match {
-          case Literal(value) =>
-            flatKeys ::= value.intValue
-            targets  ::= switchBlockPoint
-          case Ident(nme.WILDCARD) =>
-            assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
-            default = switchBlockPoint
-          case Alternative(alts) =>
-            alts foreach {
-              case Literal(value) =>
-                flatKeys ::= value.intValue
-                targets  ::= switchBlockPoint
-              case _ =>
-                abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
-            }
-          case _ =>
-            abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
-        }
-      }
-
-      bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
-
-      // emit switch-blocks.
       val postMatch = new asm.Label
-      for (sb <- switchBlocks.reverse) {
-        val (caseLabel, caseBody) = sb
-        markProgramPoint(caseLabel)
-        genLoad(caseBody, generatedType)
-        bc goTo postMatch
+
+      // Only two possible selector types exist in `Match` trees at this point: Int and String
+      if (tpeTK(selector) == INT) {
+
+        /* On a first pass over the case clauses, we flatten the keys and their
+         * targets (the latter represented with asm.Labels). That representation
+         * allows JCodeMethodV to emit a lookupswitch or a tableswitch.
+         *
+         * On a second pass, we emit the switch blocks, one for each different target.
+         */
+
+        var flatKeys: List[Int]       = Nil
+        var targets:  List[asm.Label] = Nil
+        var default:  asm.Label       = null
+        var switchBlocks: List[(asm.Label, Tree)] = Nil
+
+        genLoad(selector, INT)
+
+        // collect switch blocks and their keys, but don't emit yet any switch-block.
+        for (caze @ CaseDef(pat, guard, body) <- cases) {
+          assert(guard == tpd.EmptyTree, guard)
+          val switchBlockPoint = new asm.Label
+          switchBlocks ::= (switchBlockPoint, body)
+          pat match {
+            case Literal(value) =>
+              flatKeys ::= value.intValue
+              targets  ::= switchBlockPoint
+            case Ident(nme.WILDCARD) =>
+              assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
+              default = switchBlockPoint
+            case Alternative(alts) =>
+              alts foreach {
+                case Literal(value) =>
+                  flatKeys ::= value.intValue
+                  targets  ::= switchBlockPoint
+                case _ =>
+                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+              }
+            case _ =>
+              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+          }
+        }
+
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+
+        // emit switch-blocks.
+        for (sb <- switchBlocks.reverse) {
+          val (caseLabel, caseBody) = sb
+          markProgramPoint(caseLabel)
+          genLoad(caseBody, generatedType)
+          bc goTo postMatch
+        }
+      } else {
+
+        /* Since the JVM doesn't have a way to switch on a string, we  switch
+         * on the `hashCode` of the string then do an `equals` check (with a
+         * possible second set of jumps if blocks can be reach from multiple
+         * string alternatives).
+         *
+         * This mirrors the way that Java compiles `switch` on Strings.
+         */
+
+        var default:  asm.Label       = null
+        var indirectBlocks: List[(asm.Label, Tree)] = Nil
+
+        import scala.collection.mutable
+
+        // Cases grouped by their hashCode
+        val casesByHash = SortedMap.empty[Int, List[(String, Either[asm.Label, Tree])]]
+        var caseFallback: Tree = null
+
+        for (caze @ CaseDef(pat, guard, body) <- cases) {
+          assert(guard == tpd.EmptyTree, guard)
+          pat match {
+            case Literal(value) =>
+              val strValue = value.stringValue
+              casesByHash.updateWith(strValue.##) { existingCasesOpt =>
+                val newCase = (strValue, Right(body))
+                Some(newCase :: existingCasesOpt.getOrElse(Nil))
+              }
+            case Ident(nme.WILDCARD) =>
+              assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
+              default = new asm.Label
+              indirectBlocks ::= (default, body)
+            case Alternative(alts) =>
+              // We need an extra basic block since multiple strings can lead to this code
+              val indirectCaseGroupLabel = new asm.Label
+              indirectBlocks ::= (indirectCaseGroupLabel, body)
+              alts foreach {
+                case Literal(value) =>
+                  val strValue = value.stringValue
+                  casesByHash.updateWith(strValue.##) { existingCasesOpt =>
+                    val newCase = (strValue, Left(indirectCaseGroupLabel))
+                    Some(newCase :: existingCasesOpt.getOrElse(Nil))
+                  }
+                case _ =>
+                  abort(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
+              }
+
+            case _ =>
+              abort(s"Invalid pattern in Match node: $tree at: ${tree.span}")
+          }
+        }
+
+        // Organize the hashCode options into switch cases
+        var flatKeys: List[Int]       = Nil
+        var targets:  List[asm.Label] = Nil
+        var hashBlocks: List[(asm.Label, List[(String, Either[asm.Label, Tree])])] = Nil
+        for ((hashValue, hashCases) <- casesByHash) {
+          val switchBlockPoint = new asm.Label
+          hashBlocks ::= (switchBlockPoint, hashCases)
+          flatKeys ::= hashValue
+          targets  ::= switchBlockPoint
+        }
+
+        // Push the hashCode of the string (or `0` it is `null`) onto the stack and switch on it
+        genLoadIf(
+          If(
+            tree.selector.select(defn.Any_==).appliedTo(nullLiteral),
+            Literal(Constant(0)),
+            tree.selector.select(defn.Any_hashCode).appliedToNone
+          ),
+          INT
+        )
+        bc.emitSWITCH(mkArrayReverse(flatKeys), mkArrayL(targets.reverse), default, MIN_SWITCH_DENSITY)
+
+        // emit blocks for each hash case
+        for ((hashLabel, caseAlternatives) <- hashBlocks.reverse) {
+          markProgramPoint(hashLabel)
+          for ((caseString, indirectLblOrBody) <- caseAlternatives) {
+            val comparison = if (caseString == null) defn.Any_== else defn.Any_equals
+            val condp = Literal(Constant(caseString)).select(defn.Any_==).appliedTo(tree.selector)
+            val keepGoing = new asm.Label
+            indirectLblOrBody match {
+              case Left(jump) =>
+                genCond(condp, jump, keepGoing, targetIfNoJump = keepGoing)
+
+              case Right(caseBody) =>
+                val thisCaseMatches = new asm.Label
+                genCond(condp, thisCaseMatches, keepGoing, targetIfNoJump = thisCaseMatches)
+                markProgramPoint(thisCaseMatches)
+                genLoad(caseBody, generatedType)
+                bc goTo postMatch
+            }
+            markProgramPoint(keepGoing)
+          }
+          bc goTo default
+        }
+
+        // emit blocks for common patterns
+        for ((caseLabel, caseBody) <- indirectBlocks.reverse) {
+          markProgramPoint(caseLabel)
+          genLoad(caseBody, generatedType)
+          bc goTo postMatch
+        }
       }
 
       markProgramPoint(postMatch)
