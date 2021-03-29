@@ -1,6 +1,8 @@
 package dotty.tools.scaladoc
 package snippets
 
+import java.nio.file.Path
+
 case class SnippetCompilerArg(flag: SCFlags, debug: Boolean):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
 
@@ -18,6 +20,12 @@ case class SnippetCompilerArgs(scFlags: PathBased[SCFlags], val debug: Boolean, 
     member.sources
       .flatMap(s => scFlags.get(s.path).map(_.elem))
       .fold(SnippetCompilerArg(defaultFlag, debug))(SnippetCompilerArg(_, debug))
+
+  def get(path: Option[Path]): SnippetCompilerArg =
+    path
+      .flatMap(p => scFlags.get(p).map(_.elem))
+      .fold(SnippetCompilerArg(defaultFlag, debug))(SnippetCompilerArg(_, debug))
+
 
 object SnippetCompilerArgs:
   val usage =

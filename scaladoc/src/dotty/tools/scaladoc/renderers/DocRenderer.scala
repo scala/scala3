@@ -6,40 +6,21 @@ import util.HTML._
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
-import dotty.tools.scaladoc.snippets._
 
-class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using ctx: DocContext):
+class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
 
-  private def snippetCheckingFuncFromMember: Member => SnippetChecker.SnippetCheckingFunc =
-    (m: Member) => {
-      (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
-          val pathBasedArg = ctx.snippetCompilerArgs.get(m)
-          val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
-
-          snippetChecker.checkSnippet(str, m.docs.map(_.snippetCompilerData), arg, lineOffset).foreach { _ match {
-              case r: SnippetCompilationResult if !r.isSuccessful =>
-                println(s"In member ${m.name} (${m.dri.location}):")
-                println(r.getSummary)
-              case _ =>
-            }
-          }
-      }
-    }
-
-  def renderDocPart(doc: DocPart)(using Member): AppliedTag = doc match
+  def renderDocPart(doc: DocPart): AppliedTag = doc match
     case md: MdNode => renderMarkdown(md)
     case Nil => raw("")
     case Seq(elem: WikiDocElement) => renderElement(elem)
     case list: Seq[WikiDocElement @unchecked] => div(list.map(renderElement))
 
-  private def renderMarkdown(el: MdNode)(using m: Member): AppliedTag =
-    raw(DocFlexmarkRenderer.render(el)(
-      (link,name) =>
-        renderLink(link, default => text(if name.isEmpty then default else name)).toString,
-        snippetCheckingFuncFromMember(m)
+  private def renderMarkdown(el: MdNode): AppliedTag =
+    raw(DocFlexmarkRenderer.render(el)( (link,name) =>
+      renderLink(link, default => text(if name.isEmpty then default else name)).toString
     ))
 
-  private def listItems(items: Seq[WikiDocElement])(using m: Member) =
+  private def listItems(items: Seq[WikiDocElement]) =
     items.map(i => li(renderElement(i)))
   private def notSupported(name: String, content: AppliedTag): AppliedTag =
     report.warning(s"Wiki syntax does not support $name in ${signatureRenderer.currentDri.location}")
@@ -54,7 +35,7 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
         val tooltip = s"Problem linking $query: $msg"
         signatureRenderer.unresolvedLink(linkBody(query), titleAttr :=  tooltip)
 
-  private def renderElement(e: WikiDocElement)(using m: Member): AppliedTag = e match
+  private def renderElement(e: WikiDocElement): AppliedTag = e match
     case Title(text, level) =>
       val content = renderElement(text)
       level match
@@ -65,9 +46,7 @@ class DocRender(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChe
           case 5 => h5(content)
           case 6 => h6(content)
     case Paragraph(text) => p(renderElement(text))
-    case Code(data: String) =>
-      snippetCheckingFuncFromMember(m)(data, 0, None)
-      pre(code(raw(data))) // TODO add classes
+    case Code(data: String) => pre(code(raw(data))) // TODO add classes
     case HorizontalRule => hr
 
     case UnorderedList(items) => ul(listItems(items))

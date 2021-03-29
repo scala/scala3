@@ -29,9 +29,9 @@ object ScaladocSupport:
 
     val parser = commentSyntax match {
       case CommentSyntax.Wiki =>
-        comments.WikiCommentParser(comments.Repr(quotes)(sym))
+        comments.WikiCommentParser(comments.Repr(quotes)(sym), snippetChecker)
       case CommentSyntax.Markdown =>
-        comments.MarkdownCommentParser(comments.Repr(quotes)(sym))
+        comments.MarkdownCommentParser(comments.Repr(quotes)(sym), snippetChecker)
     }
     parser.parse(preparsed)
 

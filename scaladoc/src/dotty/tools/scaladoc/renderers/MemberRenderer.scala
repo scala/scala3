@@ -9,12 +9,11 @@ import dotty.tools.scaladoc.tasty.comments.markdown.DocFlexmarkRenderer
 import com.vladsch.flexmark.util.ast.{Node => MdNode}
 import dotty.tools.scaladoc.tasty.comments.wiki.WikiDocElement
 import translators._
-import dotty.tools.scaladoc.snippets._
 
-class MemberRenderer(signatureRenderer: SignatureRenderer, snippetChecker: SnippetChecker)(using DocContext) extends DocRender(signatureRenderer, snippetChecker):
+class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) extends DocRender(signatureRenderer):
   import signatureRenderer._
 
-  def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)(using m)))
+  def doc(m: Member): Seq[AppliedTag] =  m.docs.fold(Nil)(d => Seq(renderDocPart(d.body)))
 
   def tableRow(name: String, content: AppliedTag) = Seq(dt(name), dd(content))
 
@@ -38,14 +37,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, snippetChecker: Snipp
     def nested(name: String, on: SortedMap[String, DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else
         tableRow(name, dl(cls := "attributes")(
-          on.map { case (name, value) => tableRow(name, renderDocPart(value)(using m))}.toList:_*
+          on.map { case (name, value) => tableRow(name, renderDocPart(value))}.toList:_*
         ))
 
     def list(name: String, on: List[DocPart]): Seq[AppliedTag] =
-      if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)(using m)))))
+      if on.isEmpty then Nil else tableRow(name, div(on.map(e => div(renderDocPart(e)))))
 
     def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] =
-      if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get)(using m))
+      if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get))
 
     def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors", authors) else Nil
 
@@ -90,14 +89,14 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, snippetChecker: Snipp
       Seq(
         since.map(s => code("[Since version ", parameter(s), "] ")),
         message.map(m => parameter(m)))
-      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart(_)(using m)))
+      ++ m.docs.map(_.deprecated.toSeq.map(renderDocPart))
     ).flatten
     Seq(dt("Deprecated"), dd(content:_*))
   }
 
   def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
-    val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body)(using m) :: Nil)
+    val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     Seq(
       Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
@@ -252,8 +251,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer, snippetChecker: Snipp
       val rawGroups = membersInGroups.groupBy(_.docs.flatMap(_.group)).collect {
           case (Some(groupName), members) =>
             ExpandedGroup(
-              names.get(groupName).fold(raw(groupName))(renderDocPart(_)(using m)),
-              descriptions.get(groupName).fold(raw(""))(renderDocPart(_)(using m)),
+              names.get(groupName).fold(raw(groupName))(renderDocPart),
+              descriptions.get(groupName).fold(raw(""))(renderDocPart),
               prios.getOrElse(groupName, 1000)
             ) -> members
         }

@@ -14,8 +14,6 @@ import java.nio.file.Files
 import java.nio.file.FileVisitOption
 import java.io.File
 
-import dotty.tools.scaladoc.snippets._
-
 case class Page(link: Link, content: Member | ResolvedTemplate | String, children: Seq[Page]):
   def withNewChildren(newChildren: Seq[Page]) = copy(children = children ++ newChildren)
 
@@ -28,7 +26,6 @@ case class Page(link: Link, content: Member | ResolvedTemplate | String, childre
 class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx: DocContext)
   extends SiteRenderer, Resources, Locations, Writer:
   private val args = summon[DocContext].args
-  private val snippetChecker = SnippetChecker()
   val staticSite = summon[DocContext].staticSiteContext
 
   val effectiveMembers = members
@@ -78,7 +75,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         def link(dri: DRI): Option[String] =
           Some(pathToPage(currentDri, dri)).filter(_ != UnresolvedLocationLink)
 
-      MemberRenderer(signatureRenderer, snippetChecker).fullMember(m)
+      MemberRenderer(signatureRenderer).fullMember(m)
     case t: ResolvedTemplate => siteContent(page.link.dri, t)
     case a: String =>  raw(a)
 
@@ -125,7 +122,6 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
   def render(): Unit =
     val renderedResources = renderResources()
     val sites = allPages.map(renderPage(_, Vector.empty))
-    println(snippetChecker.summary)
 
   def mkHead(page: Page): AppliedTag =
     val resources = page.content match
