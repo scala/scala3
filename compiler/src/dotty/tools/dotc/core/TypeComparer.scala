@@ -1045,10 +1045,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     }
                   }
 
+                  def byGadtOrdering: Boolean =
+                    ctx.gadt.contains(tycon1sym)
+                    && ctx.gadt.contains(tycon2sym)
+                    && ctx.gadt.isLess(tycon1sym, tycon2sym)
+
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
                     || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
                     || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
+                    || byGadtOrdering
                   ) && {
                     // There are two cases in which we can assume injectivity.
                     // First we check if either sym is a class.
