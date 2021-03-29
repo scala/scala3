@@ -277,8 +277,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
         case _ => None
     case _ => None
 
-  def isLanguageImport(path: Tree): Boolean = languageImport(path).isDefined
-
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
     case Bind(_, y) => unbind(y)
