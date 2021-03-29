@@ -88,7 +88,9 @@ trait PropertiesTrait {
    *  2. Features supported by experimental versions of the compiler:
    *     - research plugins
    */
-  val experimental: Boolean = versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY")
+  val experimental: Boolean =
+    false
+    // versionString.contains("SNAPSHOT") || versionString.contains("NIGHTLY")
 
   val copyrightString: String       = scalaPropOrElse("copyright.string", "(c) 2002-2017 LAMP/EPFL")
 

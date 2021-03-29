@@ -11,7 +11,8 @@ lazy val compilerVersion: String =
   new String(Files.readAllBytes(file), UTF_8)
 
 lazy val compilerSupportExperimental: Boolean =
-  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
+  false
+  // compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
 
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
