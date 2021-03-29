@@ -723,11 +723,40 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     def inlinedFromOutside(tree: Tree)(span: Span): Tree =
       Inlined(EmptyTree, Nil, tree)(using ctx.withSource(inlinedMethod.topLevelClass.source)).withSpan(span)
 
+    // InlinerMap is a TreeTypeMap with special treatment for inlined arguments:
+    // They are generally left alone (not mapped further, and if they wrap a type
+    // the type Inlined wrapper gets dropped
+    class InlinerMap(
+        typeMap: Type => Type,
+        treeMap: Tree => Tree,
+        oldOwners: List[Symbol],
+        newOwners: List[Symbol],
+        substFrom: List[Symbol],
+        substTo: List[Symbol])(using Context)
+      extends TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo):
+
+      override def copy(
+          typeMap: Type => Type,
+          treeMap: Tree => Tree,
+          oldOwners: List[Symbol],
+          newOwners: List[Symbol],
+          substFrom: List[Symbol],
+          substTo: List[Symbol])(using Context) =
+        new InlinerMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+
+      override def transformInlined(tree: Inlined)(using Context) =
+        if tree.call.isEmpty then
+          tree.expansion match
+            case expansion: TypeTree => expansion
+            case _ => tree
+        else super.transformInlined(tree)
+    end InlinerMap
+
     // A tree type map to prepare the inlined body for typechecked.
     // The translation maps references to `this` and parameters to
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
-    val inliner = new TreeTypeMap(
+    val inliner = new InlinerMap(
       typeMap =
         new DeepTypeMap {
           def apply(t: Type) = t match {
@@ -763,16 +792,16 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               val inlinedSingleton = singleton(t).withSpan(argSpan)
               inlinedFromOutside(inlinedSingleton)(tree.span)
             case Some(t) if tree.isType =>
-              TypeTree(t).withSpan(argSpan)
+              inlinedFromOutside(TypeTree(t).withSpan(argSpan))(tree.span)
             case _ => tree
           }
         case tree => tree
       },
       oldOwners = inlinedMethod :: Nil,
-      newOwners = ctx.owner :: Nil
-    )(using inlineCtx) {
-      override def stopAtInlinedArgument: Boolean = true
-    }
+      newOwners = ctx.owner :: Nil,
+      substFrom = Nil,
+      substTo = Nil
+    )(using inlineCtx)
 
     // Apply inliner to `rhsToInline`, split off any implicit bindings from result, and
     // make them part of `bindingsBuf`. The expansion is then the tree that remains.
@@ -1012,26 +1041,31 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       */
     def betaReduce(tree: Tree)(using Context): Tree = tree match {
       case Apply(Select(cl @ closureDef(ddef), nme.apply), args) if defn.isFunctionType(cl.tpe) =>
-        ddef.tpe.widen match {
-          case mt: MethodType if ddef.paramss.head.length == args.length =>
-            val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
-            val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
-              arg.tpe.dealias match {
-                case ref @ TermRef(NoPrefix, _) => ref.symbol
-                case _ =>
-                  paramBindingDef(name, paramtp, arg, bindingsBuf)(
-                    using ctx.withSource(cl.source)
-                  ).symbol
+        // closureDef also returns a result for closures wrapped in Inlined nodes.
+        // These need to be preserved.
+        def recur(cl: Tree): Tree = cl match
+          case Inlined(call, bindings, expr) =>
+            cpy.Inlined(cl)(call, bindings, recur(expr))
+          case _ => ddef.tpe.widen match
+            case mt: MethodType if ddef.paramss.head.length == args.length =>
+              val bindingsBuf = new mutable.ListBuffer[ValOrDefDef]
+              val argSyms = mt.paramNames.lazyZip(mt.paramInfos).lazyZip(args).map { (name, paramtp, arg) =>
+                arg.tpe.dealias match {
+                  case ref @ TermRef(NoPrefix, _) => ref.symbol
+                  case _ =>
+                    paramBindingDef(name, paramtp, arg, bindingsBuf)(
+                      using ctx.withSource(cl.source)
+                    ).symbol
+                }
               }
-            }
-            val expander = new TreeTypeMap(
-              oldOwners = ddef.symbol :: Nil,
-              newOwners = ctx.owner :: Nil,
-              substFrom = ddef.paramss.head.map(_.symbol),
-              substTo = argSyms)
-            Block(bindingsBuf.toList, expander.transform(ddef.rhs))
-          case _ => tree
-        }
+              val expander = new TreeTypeMap(
+                oldOwners = ddef.symbol :: Nil,
+                newOwners = ctx.owner :: Nil,
+                substFrom = ddef.paramss.head.map(_.symbol),
+                substTo = argSyms)
+              Block(bindingsBuf.toList, expander.transform(ddef.rhs)).withSpan(tree.span)
+            case _ => tree
+        recur(cl)
       case _ => tree
     }
 

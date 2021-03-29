@@ -41,6 +41,15 @@ class TreeTypeMap(
   val substTo: List[Symbol] = Nil)(using Context) extends tpd.TreeMap {
   import tpd._
 
+  def copy(
+      typeMap: Type => Type,
+      treeMap: tpd.Tree => tpd.Tree,
+      oldOwners: List[Symbol],
+      newOwners: List[Symbol],
+      substFrom: List[Symbol],
+      substTo: List[Symbol])(using Context): TreeTypeMap =
+    new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
+
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
   def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
 
@@ -76,8 +85,11 @@ class TreeTypeMap(
       updateDecls(prevStats.tail, newStats.tail)
     }
 
-  /** If true, stop return Inlined(Empty, _, _) nodes unchanged */
-  def stopAtInlinedArgument: Boolean = false
+  def transformInlined(tree: tpd.Inlined)(using Context): tpd.Tree =
+    val Inlined(call, bindings, expanded) = tree
+    val (tmap1, bindings1) = transformDefs(bindings)
+    val expanded1 = tmap1.transform(expanded)
+    cpy.Inlined(tree)(call, bindings1, expanded1)
 
   override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, _) =>
@@ -109,13 +121,8 @@ class TreeTypeMap(
           val (tmap1, stats1) = transformDefs(stats)
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
-        case inlined @ Inlined(call, bindings, expanded) =>
-          if stopAtInlinedArgument && call.isEmpty then
-            inlined
-          else
-            val (tmap1, bindings1) = transformDefs(bindings)
-            val expanded1 = tmap1.transform(expanded)
-            cpy.Inlined(inlined)(call, bindings1, expanded1)
+        case inlined: Inlined =>
+          transformInlined(inlined)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)
@@ -171,7 +178,7 @@ class TreeTypeMap(
       assert(!to.exists(substFrom contains _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
-      new TreeTypeMap(
+      copy(
         typeMap,
         treeMap,
         from ++ oldOwners,
