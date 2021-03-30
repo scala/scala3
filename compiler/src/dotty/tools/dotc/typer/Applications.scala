@@ -635,15 +635,16 @@ trait Applications extends Compatibility {
         // matches expected type
         false
       case argtpe =>
-        def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-          case _ => false
-        }
+        def SAMargOK(onlyFunctionalInterface: Boolean) =
+          (!onlyFunctionalInterface || formal.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
+          && formal.match
+            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case _ => false
         if argMatch == ArgMatch.SubType then
-          argtpe relaxed_<:< formal.widenExpr
+          (argtpe relaxed_<:< formal.widenExpr) || SAMargOK(onlyFunctionalInterface = true)
         else
           isCompatible(argtpe, formal)
-          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
+          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK(onlyFunctionalInterface = false)
           || argMatch == ArgMatch.CompatibleCAP
               && {
                 val argtpe1 = argtpe.widen
@@ -1877,12 +1878,12 @@ trait Applications extends Compatibility {
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
-        //report.log(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
+        overload.println(i"narrowed by size: ${alts1.map(_.symbol.showDcl)}%, %")
         if isDetermined(alts1) then alts1
         else
           record("resolveOverloaded.narrowedBySize", alts1.length)
           val alts2 = narrowByShapes(alts1)
-          //report.log(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
+          overload.println(i"narrowed by shape: ${alts2.map(_.symbol.showDcl)}%, %")
           if isDetermined(alts2) then alts2
           else
             record("resolveOverloaded.narrowedByShape", alts2.length)
