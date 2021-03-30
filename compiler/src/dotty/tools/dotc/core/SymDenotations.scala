@@ -1899,7 +1899,9 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(using Context): Unit = {
-      info.decls.openForMutations.unlink(sym)
+      val scope = info.decls.openForMutations
+      scope.unlink(sym, sym.name)
+      if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
       if (myMemberCache != null) myMemberCache.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
