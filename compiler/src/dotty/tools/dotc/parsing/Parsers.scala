@@ -3077,18 +3077,24 @@ object Parsers {
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
       val imp = Import(tree, selectors)
-      if isLanguageImport(tree) then
-        in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
-        for
-          case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-          if allSourceVersionNames.contains(imported)
-        do
-          if !outermost then
-            syntaxError(i"source version import is only allowed at the toplevel", id.span)
-          else if ctx.compilationUnit.sourceVersion.isDefined then
-            syntaxError(i"duplicate source version import", id.span)
-          else
-            ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+      languageImport(tree) match
+        case Some(prefix) =>
+          in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
+          if prefix == nme.experimental
+             && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
+          then
+            Feature.checkExperimentalFeature("s", imp.srcPos)
+          for
+            case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
+            if allSourceVersionNames.contains(imported)
+          do
+            if !outermost then
+              syntaxError(i"source version import is only allowed at the toplevel", id.span)
+            else if ctx.compilationUnit.sourceVersion.isDefined then
+              syntaxError(i"duplicate source version import", id.span)
+            else
+              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+        case None =>
       imp
 
     /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec

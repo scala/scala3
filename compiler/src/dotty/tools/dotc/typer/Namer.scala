@@ -1032,10 +1032,13 @@ class Namer { typer: Typer =>
             val forwarder =
               if mbr.isType then
                 val forwarderName = checkNoConflict(alias.toTypeName, isPrivate = false, span)
+                var target = path.tpe.select(sym)
+                if target.typeParams.nonEmpty then
+                  target = target.EtaExpand(target.typeParams)
                 newSymbol(
                   cls, forwarderName,
                   Exported | Final,
-                  TypeAlias(path.tpe.select(sym)),
+                  TypeAlias(target),
                   coord = span)
                 // Note: This will always create unparameterzied aliases. So even if the original type is
                 // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do

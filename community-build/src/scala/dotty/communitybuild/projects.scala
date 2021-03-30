@@ -10,6 +10,9 @@ lazy val compilerVersion: String =
   val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
 
+lazy val compilerSupportExperimental: Boolean =
+  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
+
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()

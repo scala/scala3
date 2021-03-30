@@ -838,6 +838,32 @@ import transform.SymUtils._
     def explain = ""
   }
 
+  class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
+  extends TypeMsg(MatchableWarningID) {
+    def msg =
+      val kind = if pattern then "pattern selector" else "value"
+      em"""${kind} should be an instance of Matchable,,
+          |but it has unmatchable type $tp instead"""
+
+    def explain =
+      if pattern then
+        em"""A value of type $tp cannot be the selector of a match expression
+            |since it is not constrained to be `Matchable`. Matching on unconstrained
+            |values is disallowed since it can uncover implementation details that
+            |were intended to be hidden and thereby can violate paramtetricity laws
+            |for reasoning about programs.
+            |
+            |The restriction can be overridden by appending `.asMatchable` to
+            |the selector value. `asMatchable` needs to be imported from
+            |scala.compiletime. Example:
+            |
+            |    import compiletime.asMatchable
+            |    def f[X](x: X) = x.asMatchable match { ... }"""
+      else
+        em"""The value can be converted to a `Matchable` by appending `.asMatchable`.
+            |`asMatchable` needs to be imported from scala.compiletime."""
+  }
+
   class SeqWildcardPatternPos()(using Context)
   extends SyntaxMsg(SeqWildcardPatternPosID) {
     def msg = em"""${hl("*")} can be used only for last argument"""

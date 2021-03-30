@@ -181,6 +181,11 @@ object DottyPlugin extends AutoPlugin {
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
         sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt $requiredVersion is required.")
 
+      val deprecatedVersion = ">=1.5.0-RC2"
+      val logger = sLog.value
+      if (VersionNumber(sbtV).matchesSemVer(SemanticSelector(deprecatedVersion)))
+        logger.warn(s"The sbt-dotty plugin is no longer neeeded with sbt >= 1.5, please remove it from your build.")
+
       state
     }
   )
@@ -374,7 +379,7 @@ object DottyPlugin extends AutoPlugin {
       resolvers ++= (if(!useScaladoc.value) Nil else Seq(Resolver.jcenterRepo)),
       useScaladoc := {
         val v = scalaVersion.value
-        v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
+        v.startsWith("3") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
       },
       // We need to add doctool classes to the classpath so they can be called
       doc / scalaInstance := Def.taskDyn {
