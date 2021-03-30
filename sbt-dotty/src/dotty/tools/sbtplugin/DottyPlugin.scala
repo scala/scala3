@@ -374,7 +374,7 @@ object DottyPlugin extends AutoPlugin {
       resolvers ++= (if(!useScaladoc.value) Nil else Seq(Resolver.jcenterRepo)),
       useScaladoc := {
         val v = scalaVersion.value
-        v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
+        v.startsWith("3") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
       },
       // We need to add doctool classes to the classpath so they can be called
       doc / scalaInstance := Def.taskDyn {
