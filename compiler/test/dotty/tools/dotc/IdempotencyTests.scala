@@ -18,14 +18,18 @@ class IdempotencyTests {
   import IdempotencyTests._
   import CompilationTest.aggregateTests
 
+  val filter = FileFilter.exclude(
+    s"pos${JFile.separator}i6507b"
+  )
+
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
     implicit val testGroup: TestGroup = TestGroup("idempotency")
     val opt = defaultOptions
 
     val posIdempotency = aggregateTests(
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency1")),
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency2")),
+      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency1")),
+      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency2")),
     )
 
     val orderIdempotency = {

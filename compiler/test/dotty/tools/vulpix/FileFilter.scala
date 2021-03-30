@@ -5,6 +5,10 @@ sealed trait FileFilter {
 }
 
 object FileFilter {
+  def exclude(file: String): FileFilter = exclude(file :: Nil)
+
+  def exclude(file: String, files: String*): FileFilter =
+    exclude(file :: files.toList)
 
   def exclude(files: List[String]): FileFilter = new FileFilter {
     private val blackList = files.toSet
