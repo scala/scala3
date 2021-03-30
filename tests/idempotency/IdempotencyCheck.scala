@@ -25,7 +25,7 @@ object IdempotencyCheck {
       val bytecodeFiles = {
         def bytecodeFiles(paths: JStream[JPath], dir: String): List[(String, JPath)] = {
           def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
-          def tupleWithName(f: JPath) = (f.toString.substring(dir.length + 1, f.toString.length - 6), f)
+          def tupleWithName(f: JPath) = (f.toString.substring(dir.length, f.toString.length - 6), f)
           paths.iterator.asScala.filter(path => isBytecode(path.toString)).map(tupleWithName).toList
         }
         bytecodeFiles(JFiles.walk(dir1Path), dir1String) ++ bytecodeFiles(JFiles.walk(dir2Path), dir2String)
