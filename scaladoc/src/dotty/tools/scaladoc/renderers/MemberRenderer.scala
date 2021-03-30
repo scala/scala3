@@ -46,13 +46,15 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     def opt(name: String, on: Option[DocPart]): Seq[AppliedTag] =
       if on.isEmpty then Nil else tableRow(name, renderDocPart(on.get))
 
+    def authors(authors: List[DocPart]) = if summon[DocContext].args.includeAuthors then list("Authors", authors) else Nil
+
     m.docs.fold(Nil)(d =>
       nested("Type Params", d.typeParams) ++
       nested("Value Params", d.valueParams) ++
       opt("Returns", d.result) ++
       nested("Throws", d.throws) ++
       opt("Constructor", d.constructor) ++
-      list("Authors", d.authors) ++
+      authors(d.authors) ++
       list("See also", d.see) ++
       opt("Version", d.version) ++
       opt("Since", d.since) ++
@@ -263,7 +265,13 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       Tab("Grouped members", "custom_groups", content, "selected")
 
   def buildMembers(s: Member): AppliedTag =
-    val (membersInGroups, rest) = s.members.partition(_.docs.exists(_.group.nonEmpty))
+    def partitionIntoGroups(members: Seq[Member]) =
+      if summon[DocContext].args.includeGroups then
+        members.partition(_.docs.exists(_.group.nonEmpty))
+      else
+        (Nil, members)
+
+    val (membersInGroups, rest) = partitionIntoGroups(s.members)
 
     val extensions =
       rest.groupBy{ _.kind match
