@@ -8,6 +8,7 @@ case class Position(line: Int, column: Int, sourceLine: String)
 case class SnippetCompilerMessage(position: Option[Position], message: String, level: MessageLevel)
 
 case class SnippetCompilationResult(
+  wrappedSnippet: String,
   isSuccessful: Boolean,
   result: Option[AbstractFile],
   messages: Seq[SnippetCompilerMessage]

@@ -61,14 +61,9 @@ class SnippetCompiler(
   }
 
   private def additionalMessages(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, context: Context): Seq[SnippetCompilerMessage] = {
-    (
       Option.when(arg.flag == SCFlags.Fail && !context.reporter.hasErrors)(
         SnippetCompilerMessage(None, "Snippet should not compile but compiled succesfully", MessageLevel.Error)
-      ) ++
-      Option.when(arg.debug && !isSuccessful(arg, context))(
-        SnippetCompilerMessage(None, s"\n${wrappedSnippet.snippet}", MessageLevel.Debug)
-      )
-    ).toList
+      ).toList
   }
 
   private def isSuccessful(arg: SnippetCompilerArg, context: Context): Boolean = {
@@ -94,5 +89,5 @@ class SnippetCompiler(
       additionalMessages(wrappedSnippet, arg, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
-    SnippetCompilationResult(isSuccessful(arg, context), t, messages)
+    SnippetCompilationResult(wrappedSnippet.snippet, isSuccessful(arg, context), t, messages)
   }

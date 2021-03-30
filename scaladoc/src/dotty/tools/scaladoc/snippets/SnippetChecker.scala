@@ -34,4 +34,4 @@ class SnippetChecker()(using ctx: DocContext):
 
 object SnippetChecker:
   type LineOffset = Int
-  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Unit
+  type SnippetCheckingFunc = (String, LineOffset, Option[SCFlags]) => Option[SnippetCompilationResult]
