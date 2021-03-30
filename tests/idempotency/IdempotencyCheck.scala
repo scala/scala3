@@ -6,13 +6,12 @@ import java.util.stream.Stream as JStream
 import scala.collection.JavaConverters.*
 
 object IdempotencyCheck {
-  val blacklisted = Set(
-    // No fix needed. Bridges on collections in different order. Second one in scala2 order.
-    s"pos{JFile.separator}Map{JFile.separator}scala{JFile.separator}collection{JFile.separator}immutable/Map",
-    s"pos{JFile.separator}Map{JFile.separator}scala{JFile.separator}collection{JFile.separator}immutable{JFile.separator}AbstractMap",
-    s"pos{JFile.separator}t1203a/NodeSeq",
-    s"pos{JFile.separator}i2345{JFile.separator}Whatever"
-  )
+  val flakyTestsOnWindows =
+    if scala.util.Properties.isWin
+    then Set(s"pos${JFile.separator}i6507b")
+    else Set.empty
+
+  val blacklisted = flakyTestsOnWindows
 
   def checkIdempotency(dir1: String, dir2: String): Unit = {
     var failed = 0
