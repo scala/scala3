@@ -269,11 +269,10 @@ object DottyPlugin extends AutoPlugin {
       scalaBinaryVersion := {
         scalaVersion.value.split("[\\.-]").toList match {
           case "0" :: minor :: _ => s"0.$minor"
-          case "3" :: minor :: patch :: suffix =>
-            s"3.$minor.$patch" + (suffix match {
-              case milestone :: _ => s"-$milestone"
-              case Nil => ""
-            })
+          case "3" :: "0" :: "0" :: milestone :: _ =>
+            s"3.0.0-$milestone"
+          case "3" :: _ =>
+            "3"
           case _ => scalaBinaryVersion.value
         }
       },
