@@ -168,4 +168,7 @@ abstract class Constraint extends Showable {
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit
+
+  /** A string describing the constraint's contents without a header or trailer */
+  def contentsToString(using Context): String
 }

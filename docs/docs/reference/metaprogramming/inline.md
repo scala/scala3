@@ -181,17 +181,12 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
 ### Relationship to `@inline`
 
-Scala 2 also defines a `@inline` annotation which is used as a hint
-for the backend to inline code. The `inline` modifier is a more powerful
-option: Expansion is guaranteed instead of best effort,
-it happens in the frontend instead of in the backend, and it also applies
-to recursive methods.
+Scala 2 also defines a `@inline` annotation which is used as a hint for the
+backend to inline code. The `inline` modifier is a more powerful option:
 
-To cross compile between both Scala 3 and Scala 2, we introduce a new `@forceInline`
-annotation which is equivalent to the new `inline` modifier. Note that
-Scala 2 ignores the `@forceInline` annotation, so one must use both
-annotations to guarantee inlining for Scala 3 and at the same time hint inlining
-for Scala 2 (i.e. `@forceInline @inline`).
+- expansion is guaranteed instead of best effort,
+- expansion happens in the frontend instead of in the backend and
+- expansion also applies to recursive methods.
 
 <!--- (Commented out since the docs and implementation differ)
 
@@ -379,15 +374,16 @@ val intTwo: 2 = natTwo
 
 ## The `scala.compiletime` Package
 
-The `scala.compiletime` package contains helper definitions that provide support for compile time operations over values. They are described in the following.
+The [`scala.compiletime`](https://dotty.epfl.ch/api/scala/compiletime.html) package contains helper definitions that provide support for compile time operations over values. They are described in the following.
 
-### `constValue`, `constValueOpt`, and the `S` combinator
+### `constValue` and `constValueOpt`
 
 `constValue` is a function that produces the constant value represented by a
 type.
 
 ```scala
-import scala.compiletime.{constValue, S}
+import scala.compiletime.constValue
+import scala.compiletime.ops.int.S
 
 transparent inline def toIntC[N]: Int =
    inline constValue[N] match
@@ -499,7 +495,7 @@ fail(identity("foo")) // error: failed on: identity("foo")
 
 ### The `scala.compiletime.ops` package
 
-The `scala.compiletime.ops` package contains types that provide support for
+The [`scala.compiletime.ops`](https://dotty.epfl.ch/api/scala/compiletime/ops.html) package contains types that provide support for
 primitive operations on singleton types. For example,
 `scala.compiletime.ops.int.*` provides support for multiplying two singleton
 `Int` types, and `scala.compiletime.ops.boolean.&&` for the conjunction of two
@@ -644,5 +640,7 @@ transparent inline def summonInline[T]: T = summonFrom {
 
 ### Reference
 
-For more information, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
+For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.
+
+For more information about compiletime operation, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
 which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.

@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 package typer
 
+import backend.sjs.JSDefinitions
 import core._
 import ast.{Trees, TreeTypeMap, untpd, tpd, DesugarEnums}
 import util.Spans._
@@ -250,7 +251,7 @@ object Implicits:
         val candidates = new mutable.ListBuffer[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
           var ckind = exploreInFreshCtx { (ctx: FreshContext) ?=>
-            ctx.setMode(ctx.mode | Mode.TypevarsMissContext)
+            ctx.setMode(ctx.mode &~ Mode.SafeNulls | Mode.TypevarsMissContext)
             candidateKind(ref.underlyingRef)
           }
           if extensionOnly then ckind &= Candidate.Extension
@@ -634,6 +635,14 @@ trait ImplicitRunInfo:
               else pre.member(sym.name.toTermName)
                 .suchThat(companion => companion.is(Module) && companion.owner == sym.owner)
                 .symbol)
+
+            // The companion of `js.|` defines an implicit conversions from
+            // `A | Unit` to `js.UndefOrOps[A]`. To keep this conversion in scope
+            // in Scala 3, where we re-interpret `js.|` as a real union, we inject
+            // it in the scope of `Unit`.
+            if t.isRef(defn.UnitClass) && ctx.settings.scalajs.value then
+              companions += JSDefinitions.jsdefn.UnionOpsModuleRef
+
             if sym.isClass then
               for p <- t.parents do companions ++= iscopeRefs(p)
             else
@@ -889,7 +898,7 @@ trait Implicits:
       case Select(qual, nme.apply) if defn.isFunctionType(qual.tpe.widen) =>
         val qt = qual.tpe.widen
         val qt1 = qt.dealiasKeepAnnots
-        def addendum = if (qt1 eq qt) "" else (i"\nwhich is an alias of: $qt1")
+        def addendum = if (qt1 eq qt) "" else (i"\nThe required type is an alias of: $qt1")
         em"parameter of ${qual.tpe.widen}$addendum"
       case _ =>
         em"${ if paramName.is(EvidenceParamName) then "an implicit parameter"
@@ -1699,4 +1708,3 @@ object TermRefSet:
     override def += (ref: TermRef): Unit = throw UnsupportedOperationException("+=")
 
 end TermRefSet
-

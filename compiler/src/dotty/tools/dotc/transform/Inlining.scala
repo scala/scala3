@@ -67,7 +67,7 @@ class Inlining extends MacroTransform {
       case _ =>
     }
 
-  protected def newTransformer(using Context): Transformer = new Transformer {
+  def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       new InliningTreeMap().transform(tree)
   }

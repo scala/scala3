@@ -69,8 +69,7 @@ extension (r: report.type)
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
-  lazy val sourceLinks: SourceLinks = SourceLinks.load(using this)
-
+  lazy val sourceLinks = SourceLinks.load(args.sourceLinks, args.revision)(using compilerContext)
   lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
       File(path).getAbsoluteFile(),
       args,

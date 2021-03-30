@@ -23,7 +23,7 @@ object Expr {
       case Some(expr1) => expr1.asExpr.asInstanceOf[Expr[T]]
       case _ => expr
 
-  /** Returns an expression containing a block with the given statements and ending with the expresion
+  /** Returns an expression containing a block with the given statements and ending with the expression
    *  Given list of statements `s1 :: s2 :: ... :: Nil` and an expression `e` the resulting expression
    *  will be equivalent to `'{ $s1; $s2; ...; $e }`.
    */
@@ -46,7 +46,7 @@ object Expr {
    *    // value: T
    *  ```
    *
-   *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` insead.
+   *  To directly get the value of an expression `expr: Expr[T]` consider using `expr.value`/`expr.valueOrError` instead.
    *  @syntax markdown
    */
   def unapply[T](x: Expr[T])(using FromExpr[T])(using Quotes): Option[T] =

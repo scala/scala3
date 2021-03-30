@@ -39,13 +39,6 @@ object MainProxies {
     mainMethods(stats).flatMap(mainProxy)
   }
 
-  private def checkNoShadowing(mainFun: Symbol)(using Context) =
-    val cls = ctx.typer.findRef(mainFun.name.toTypeName, WildcardType, EmptyFlags, EmptyFlags, mainFun).typeSymbol
-    if cls.exists && cls.owner != ctx.owner then
-      report.warning(
-        i"""The class `${ctx.printer.fullNameString(mainFun)}` generated from `@main` will shadow the existing ${cls.showLocated}.
-           |The existing definition might no longer be found on recompile.""", mainFun)
-
   import untpd._
   def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
@@ -93,7 +86,6 @@ object MainProxies {
         case _ =>
           report.error(s"@main can only annotate a method", pos)
       }
-      checkNoShadowing(mainFun)
       val errVar = Ident(nme.error)
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
@@ -106,7 +98,7 @@ object MainProxies {
         .withFlags(JavaStatic)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
-        .withFlags(Final)
+        .withFlags(Final | Invisible)
       if (!ctx.reporter.hasErrors) result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
     }
     result

@@ -70,7 +70,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
   override def transformPhase(using Context): Phase = thisPhase.next
 
-  protected def newTransformer(using Context): Transformer =
+  def newTransformer(using Context): Transformer =
     new PostTyperTransformer
 
   val superAcc: SuperAccessors = new SuperAccessors(thisPhase)
@@ -295,6 +295,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
               // need to check instantiability here, because the type of the New itself
               // might be a type constructor.
+              ctx.typer.checkClassType(tree.tpe, tree.srcPos, traitReq = false, stablePrefixReq = true)
               Checking.checkInstantiable(tree.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>

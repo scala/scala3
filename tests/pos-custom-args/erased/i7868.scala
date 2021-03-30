@@ -1,5 +1,6 @@
 import language.experimental.namedTypeArguments
 import scala.compiletime.*
+import scala.compiletime.ops.int.*
 
 final case class Coproduct[+Set, +Value, Index <: Int](value: Value & Set, index: Index)
 
@@ -35,6 +36,6 @@ object Coproduct {
 object Test extends App {
   import Coproduct.*
 
-  // Error: No singleton value available for scala.compiletime.S[scala.compiletime.S[(0 : Int)]].
+  // Error: No singleton value available for scala.compiletime.ops.int.S[scala.compiletime.ops.int.S[(0 : Int)]].
   val c = from[Set = Int +: String +: Seq[Double] +: Nothing](Nil)
 }

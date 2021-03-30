@@ -10,26 +10,8 @@ class Test {
     def run = s"C $x $y"
   }
 
-  val x1 = new Test().A()      // error: object A does not take parameters
-  val x2 = new Test().B()      // error: value B is not a member of Test
-  val x3 = new Test().B[Int]() // error: value B is not a member of Test
+  val x1 = new Test().A()      // error: not stable
+  val x2 = new Test().B()      // error: not stable
+  val x3 = new Test().B[Int]() // error: not stable
 }
 
-
-object Test2 {
-  class A(s: String = "A") {
-    def run = s
-  }
-  object A {
-    def apply() = A("X")  // error: recursive method needs return type
-  }
-}
-
-object Test3 {
-  class A(s: String = "A") {
-    def run = s
-  }
-  object A {
-    def apply(): A = A("X")  // error too many arguments
-  }
-}

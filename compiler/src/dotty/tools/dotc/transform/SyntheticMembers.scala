@@ -174,7 +174,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def productElementBody(arity: Int, index: Tree)(using Context): Tree = {
       // case N => _${N + 1}
       val cases = 0.until(arity).map { i =>
-        CaseDef(Literal(Constant(i)), EmptyTree, Select(This(clazz), nme.selectorName(i)))
+        val sel = This(clazz).select(nme.selectorName(i), _.info.isParameterless)
+        CaseDef(Literal(Constant(i)), EmptyTree, sel)
       }
 
       Match(index, (cases :+ generateIOBECase(index)).toList)
@@ -210,8 +211,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       // Second constructor of ioob that takes a String argument
       def filterStringConstructor(s: Symbol): Boolean = s.info match {
         case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
-          val pinfo = if (ctx.explicitNulls) m.paramInfos.head.stripUncheckedNull else m.paramInfos.head
-          pinfo == defn.StringType
+          m.paramInfos.head.stripNull == defn.StringType
         case _ => false
       }
       val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor _).asTerm
@@ -385,12 +385,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.writeReplace)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def hasReadResolve(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.readResolve)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, isJava = false))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =

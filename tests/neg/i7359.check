@@ -1,4 +1,4 @@
--- Error: tests/neg/i7359.scala:3:6 ------------------------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/i7359.scala:3:6 -----------------------------------------------------------------
 3 |  def notify(): Unit // error
   |      ^
   |      error overriding method notify in class Object of type (): Unit;

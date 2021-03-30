@@ -15,6 +15,7 @@ import TreeInfo._
 import ProtoTypes._
 import Scopes._
 import CheckRealizable._
+import NullOpsDecorator._
 import ErrorReporting.errorTree
 import rewrites.Rewrites.patch
 import util.Spans.Span
@@ -112,7 +113,7 @@ object Checking {
 
     def checkWildcardApply(tp: Type): Unit = tp match {
       case tp @ AppliedType(tycon, _) =>
-        if (tycon.isLambdaSub && tp.hasWildcardArg)
+        if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos)
@@ -300,7 +301,7 @@ object Checking {
         catch {
           case ex: CyclicReference =>
             report.debuglog(i"cycle detected for $tp, $nestedCycleOK, $cycleOK")
-            if (cycleOK) LazyRef(tp)
+            if (cycleOK) LazyRef.of(tp)
             else if (reportErrors) throw ex
             else tp
         }
@@ -434,7 +435,7 @@ object Checking {
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
     def checkApplicable(flag: FlagSet, ok: Boolean) =
       if (!ok && !sym.is(Synthetic))
-        fail(ModifierNotAllowedForDefinition(Erased))
+        fail(ModifierNotAllowedForDefinition(flag))
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
@@ -500,7 +501,8 @@ object Checking {
         sym.setFlag(Private) // break the overriding relationship by making sym Private
       }
     if (sym.is(Erased))
-      checkApplicable(Erased, !sym.isOneOf(MutableOrLazy, butNot = Given))
+      checkApplicable(Erased,
+        !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
   }
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
@@ -995,11 +997,6 @@ trait Checking {
         // needed to make pos/java-interop/t1196 work.
       errorTree(tpt, MissingTypeParameterFor(tpt.tpe))
     else tpt
-
-  /** Check that the signature of the class mamber does not return a repeated parameter type */
-  def checkSignatureRepeatedParam(sym: Symbol)(using Context): Unit =
-    if (!sym.isOneOf(Synthetic | InlineProxy | Param) && sym.info.finalResultType.isRepeatedParam)
-      report.error(em"Cannot return repeated parameter type ${sym.info.finalResultType}", sym.srcPos)
 
   /** Verify classes extending AnyVal meet the requirements */
   def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit =

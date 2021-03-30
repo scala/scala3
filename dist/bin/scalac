@@ -79,7 +79,6 @@ classpathArgs () {
   jvm_cp_args="-classpath \"$toolchain\""
 }
 
-in_scripting_args=false
 while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
@@ -90,7 +89,8 @@ case "$1" in
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
     -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
         -repl) PROG_NAME="$ReplMain" && shift ;;
-      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && in_scripting_args=true && shift && shift ;;
+      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && shift && shift
+               while [[ $# -gt 0 ]]; do addScripting "$1" && shift ; done ;;
      -compile) PROG_NAME="$CompilerMain" && shift ;;
    -decompile) PROG_NAME="$DecompilerMain" && shift ;;
  -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
@@ -104,13 +104,7 @@ case "$1" in
           # will be available as system properties.
           -D*) addJava "$1" && shift ;;
           -J*) addJava "${1:2}" && shift ;;
-            *) if [ $in_scripting_args == false ]; then
-                addResidual "$1"
-               else
-                addScripting "$1"
-               fi
-               shift
-               ;;
+            *) addResidual "$1" && shift ;;
   esac
 done
 

@@ -461,7 +461,7 @@ trait QuotesAndSplices {
     val quoteClass = if (tree.quoted.isTerm) defn.QuotedExprClass else defn.QuotedTypeClass
     val quotedPattern =
       if (tree.quoted.isTerm) ref(defn.QuotedRuntime_exprQuote.termRef).appliedToType(defn.AnyType).appliedTo(shape).select(nme.apply).appliedTo(qctx)
-      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).select(nme.apply).appliedTo(qctx)
+      else ref(defn.QuotedTypeModule_of.termRef).appliedToTypeTree(shape).appliedTo(qctx)
 
     val matchModule = if tree.quoted.isTerm then defn.QuoteMatching_ExprMatch else defn.QuoteMatching_TypeMatch
     val unapplyFun = qctx.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(nme.unapply)

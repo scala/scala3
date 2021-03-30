@@ -83,7 +83,7 @@ object HTML:
   val ol = Tag("ol")
   val li = Tag("li")
   val code = Tag("code")
-
+  val pre = Tag("pre")
 
   val cls = Attr("class")
   val href = Attr("href")

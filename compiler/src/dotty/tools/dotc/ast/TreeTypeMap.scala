@@ -76,6 +76,9 @@ class TreeTypeMap(
       updateDecls(prevStats.tail, newStats.tail)
     }
 
+  /** If true, stop return Inlined(Empty, _, _) nodes unchanged */
+  def stopAtInlinedArgument: Boolean = false
+
   override def transform(tree: tpd.Tree)(using Context): tpd.Tree = treeMap(tree) match {
     case impl @ Template(constr, parents, self, _) =>
       val tmap = withMappedSyms(localSyms(impl :: self :: Nil))
@@ -107,9 +110,12 @@ class TreeTypeMap(
           val expr1 = tmap1.transform(expr)
           cpy.Block(blk)(stats1, expr1)
         case inlined @ Inlined(call, bindings, expanded) =>
-          val (tmap1, bindings1) = transformDefs(bindings)
-          val expanded1 = tmap1.transform(expanded)
-          cpy.Inlined(inlined)(call, bindings1, expanded1)
+          if stopAtInlinedArgument && call.isEmpty then
+            inlined
+          else
+            val (tmap1, bindings1) = transformDefs(bindings)
+            val expanded1 = tmap1.transform(expanded)
+            cpy.Inlined(inlined)(call, bindings1, expanded1)
         case cdef @ CaseDef(pat, guard, rhs) =>
           val tmap = withMappedSyms(patVars(pat))
           val pat1 = tmap.transform(pat)

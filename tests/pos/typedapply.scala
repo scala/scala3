@@ -6,6 +6,6 @@ object typedapply {
 
   foo[Int, String](1, "abc")
 
-  foo[Int, String] _
+  val x = foo[Int, String] _
 
 }

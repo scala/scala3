@@ -102,7 +102,7 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon match
+      def argsInResult: List[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
@@ -114,6 +114,7 @@ object Inferencing {
                   }.toList
                 case _ => Nil
             case _ => Nil
+        case _ => Nil
       couldInstantiateTypeVar(tycon)
       || argsInResult.exists(couldInstantiateTypeVar)
     case RefinedType(parent, _, _) =>
@@ -488,6 +489,36 @@ object Inferencing {
     }
 
     propagate(accu(SimpleIdentityMap.empty, tp))
+  }
+
+  /** Replace every top-level occurrence of a wildcard type argument by
+    *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+    *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
+    */
+  def captureWildcards(tp: Type)(using Context): Type = tp match {
+    case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
+      tycon.typeParams match {
+        case tparams @ ((_: Symbol) :: _) =>
+          val boundss = tparams.map(_.paramInfo.substApprox(tparams.asInstanceOf[List[TypeSymbol]], args))
+          val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
+            arg match {
+              case TypeBounds(lo, hi) =>
+                val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
+                TypeRef(skolem, defn.TypeBox_CAP)
+              case arg => arg
+            }
+          }
+          tp.derivedAppliedType(tycon, args1)
+        case _ =>
+          tp
+      }
+    case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
+    case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
+    case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
+    case tp: LazyRef => captureWildcards(tp.ref)
+    case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+    case _ => tp
   }
 }
 

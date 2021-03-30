@@ -32,7 +32,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
-          case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
+          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
             val sym = tp.typeSymbol
             val classTag = ref(defn.ClassTagModule)
             val tag =
@@ -114,10 +114,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.explicitNulls then
-        // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
-        // If a nullable value has a non-nullable type, we can still cast it to nullable type
-        // then compare.
+      else if ctx.mode.is(Mode.SafeNulls) then
+        // If explicit nulls is enabled, and unsafeNulls is not enabled,
+        // we want to disallow comparison between Object and Null.
+        // If we have to check whether a variable with a non-nullable type has null value
+        // (for example, a NotNull java method returns null for some reasons),
+        // we can still cast it to a nullable type then compare its value.
         //
         // Example:
         // val x: String = null.asInstanceOf[String]

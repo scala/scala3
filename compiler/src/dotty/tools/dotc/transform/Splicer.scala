@@ -149,7 +149,7 @@ object Splicer {
         case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
           // OK
 
-        case Apply(Select(TypeApply(fn, List(quoted)), nme.apply), _)if fn.symbol == defn.QuotedTypeModule_of =>
+        case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -161,7 +161,7 @@ object Splicer {
         case SeqLiteral(elems, _) =>
           elems.foreach(checkIfValidArgument)
 
-        case tree: Ident if tree.symbol.is(Inline) || summon[Env].contains(tree.symbol) =>
+        case tree: Ident if summon[Env].contains(tree.symbol) =>
           // OK
 
         case _ =>
@@ -185,6 +185,9 @@ object Splicer {
 
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
+
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
+          // OK, canceled and warning emitted
 
         case Call(fn, args)
             if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
@@ -233,7 +236,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_of =>
+      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>

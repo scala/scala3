@@ -541,7 +541,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
         val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-        paramInfos = TypeBounds(lo, LazyRef(hi)) :: pinfos1
+        paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
     }
@@ -648,7 +648,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- toText -----------------------------------------------------
 
-  override def toText(printer: Printer): Text = {
+  private def contentsToText(printer: Printer): Text =
     //Printer.debugPrintUnique = true
     def entryText(tp: Type) = tp match {
       case tp: TypeBounds =>
@@ -657,20 +657,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         " := " ~ tp.toText(printer)
     }
     val indent = 3
-    val header: Text = "Constraint("
-    val uninstVarsText = " uninstVars = " ~
-      Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
+    val uninstVarsText = " uninstantiated variables: " ~
+      Text(uninstVars.map(_.toText(printer)), ", ")
     val constrainedText =
-      " constrained types = " ~ Text(domainLambdas map (_.toText(printer)), ", ")
+      " constrained types: " ~ Text(domainLambdas map (_.toText(printer)), ", ")
     val boundsText =
-      " bounds = " ~ {
+      " bounds: " ~ {
         val assocs =
           for (param <- domainParams)
           yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
         Text(assocs, "\n")
       }
     val orderingText =
-      " ordering = " ~ {
+      " ordering: " ~ {
         val deps =
           for {
             param <- domainParams
@@ -683,8 +682,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         Text(deps, "\n")
       }
     //Printer.debugPrintUnique = false
-    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
-  }
+    Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+
+  override def toText(printer: Printer): Text =
+    Text.lines(List("Constraint(", contentsToText(printer), ")"))
+
+  def contentsToString(using Context): String =
+    contentsToText(ctx.printer).show
 
   override def toString: String = {
     def entryText(tp: Type): String = tp match {

@@ -10,7 +10,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
  *
  *  See PickleQuotes.scala and PickledQuotes.scala
  *
- *  Adding this annotation in source has undefined behaviour at compile-time
+ *  Adding this annotation in source has undefined behavior at compile-time
  */
 @compileTimeOnly("Illegal reference to `scala.quoted.runtime.SplicedType`")
 class SplicedType extends Annotation

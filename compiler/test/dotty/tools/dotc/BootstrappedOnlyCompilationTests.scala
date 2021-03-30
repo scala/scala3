@@ -24,8 +24,8 @@ class BootstrappedOnlyCompilationTests {
   @Test def posMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compilePosMacros")
     aggregateTests(
-      compileFilesInDir("tests/bench", defaultOptions),
-      compileFilesInDir("tests/pos-macros", defaultOptions),
+      compileFilesInDir("tests/bench", defaultOptions.without("-Yno-deep-subtypes")),
+      compileFilesInDir("tests/pos-macros", defaultOptions.and("-Xcheck-macros")),
       compileFilesInDir("tests/pos-custom-args/semanticdb", defaultOptions.and("-Xsemanticdb")),
       compileDir("tests/pos-special/i7592", defaultOptions.and("-Yretain-trees")),
       compileDir("tests/pos-special/i11331.1", defaultOptions),
@@ -98,7 +98,7 @@ class BootstrappedOnlyCompilationTests {
   @Test def negMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
     aggregateTests(
-      compileFilesInDir("tests/neg-macros", defaultOptions),
+      compileFilesInDir("tests/neg-macros", defaultOptions.and("-Xcheck-macros")),
       compileFile("tests/pos-macros/i9570.scala", defaultOptions.and("-Xfatal-warnings")),
     ).checkExpectedErrors()
   }
@@ -116,9 +116,9 @@ class BootstrappedOnlyCompilationTests {
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     aggregateTests(
-      compileFilesInDir("tests/run-macros", defaultOptions),
+      compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros")),
       compileFilesInDir("tests/run-custom-args/Yretain-trees", defaultOptions and "-Yretain-trees"),
-      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions and "-Yerased-terms"),
+      compileFilesInDir("tests/run-custom-args/run-macros-erased", defaultOptions.and("-language:experimental.erasedDefinitions").and("-Xcheck-macros")),
     )
   }.checkRuns()
 
@@ -149,15 +149,13 @@ class BootstrappedOnlyCompilationTests {
   // lower level of concurrency as to not kill their running VMs
 
   @Test def picklingWithCompiler: Unit = {
-    val jvmBackendFilter = FileFilter.exclude(List("BTypes.scala", "Primitives.scala")) // TODO
-    val runtimeFilter = FileFilter.exclude(List("Tuple.scala")) // TODO
     implicit val testGroup: TestGroup = TestGroup("testPicklingWithCompiler")
     aggregateTests(
       compileDir("compiler/src/dotty/tools", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc", picklingWithCompilerOptions, recursive = false),
       compileDir("library/src/scala/runtime/function", picklingWithCompilerOptions),
-      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions, runtimeFilter),
-      compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions, jvmBackendFilter),
+      compileFilesInDir("library/src/scala/runtime", picklingWithCompilerOptions),
+      compileFilesInDir("compiler/src/dotty/tools/backend/jvm", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/ast", picklingWithCompilerOptions),
       compileDir("compiler/src/dotty/tools/dotc/core", picklingWithCompilerOptions, recursive = false),
       compileDir("compiler/src/dotty/tools/dotc/config", picklingWithCompilerOptions),

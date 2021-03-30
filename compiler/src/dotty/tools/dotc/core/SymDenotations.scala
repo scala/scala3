@@ -572,8 +572,9 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType) ||
-        is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
+        (myInfo `eq` NoType)
+        || is(Invisible) && !ctx.isAfterTyper
+        || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
 
     /** Is this symbol the root class or its companion object? */
@@ -797,7 +798,8 @@ object SymDenotations {
 
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
-      if (ctx.explicitNulls && !ctx.phase.erasedTypes) symbol == defn.NullClass || symbol == defn.AnyClass
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
+      then symbol == defn.NullClass || symbol == defn.AnyClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -894,11 +896,14 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
+      def preIsThis = pre match
+        case pre: ThisType => pre.sameThis(thisType)
+        case _ => false
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
        || ctx.erasedTypes
        || (pre eq NoPrefix)
-       || (pre eq thisType)
+       || preIsThis
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -1502,8 +1507,11 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -1828,10 +1836,14 @@ object SymDenotations {
       )
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
-      derivesFrom(base) ||
-        base.isClass && (
-          (symbol eq defn.NothingClass) ||
-            (symbol eq defn.NullClass) && (base ne defn.NothingClass))
+      derivesFrom(base)
+      || base.isClass
+         && (
+          (symbol eq defn.NothingClass)
+          || (symbol eq defn.NullClass)
+              && (!ctx.mode.is(Mode.SafeNulls) || ctx.phase.erasedTypes)
+              && (base ne defn.NothingClass)
+        )
 
     /** Is it possible that a class inherits both `this` and `that`?
      *

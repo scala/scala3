@@ -10,8 +10,7 @@ object ScopeException:
     if scope.root != currentScope.root then
       throw new ScopeException(s"Cannot use $kind oustide of the macro splice `$${...}` or the scala.quoted.staging.run(...)` where it was defined")
 
-    val yCheck = ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
-    if yCheck && !scope.isOuterScopeOf(currentScope) then
+    if ctx.settings.XcheckMacros.value && !scope.isOuterScopeOf(currentScope) then
       throw new ScopeException(
         if scope.atSameLocation(currentScope) then
           s"""Type created in a splice, extruded from that splice and then used in a subsequent evaluation of that same splice.

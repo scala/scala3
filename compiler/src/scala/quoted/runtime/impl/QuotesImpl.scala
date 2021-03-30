@@ -36,8 +36,7 @@ object QuotesImpl {
 
 class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler, QuoteMatching:
 
-  private val yCheck: Boolean =
-    ctx.settings.Ycheck.value(using ctx).exists(x => x == "all" || x == "macros")
+  private val xCheckMacro: Boolean = ctx.settings.XcheckMacros.value
 
   extension [T](self: scala.quoted.Expr[T])
     def show: String =
@@ -219,13 +218,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ClassDefTypeTest
 
     object ClassDef extends ClassDefModule:
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
-      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement]) =
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        (cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body)
+        (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -234,8 +233,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
           self.rhs.asInstanceOf[tpd.Template].parents
-        def derived: List[TypeTree] =
-          self.rhs.asInstanceOf[tpd.Template].derived.asInstanceOf[List[TypeTree]]
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
@@ -254,10 +251,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object DefDef extends DefDefModule:
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef =
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
-          yCheckedOwners(yCheckValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
+          xCheckMacroedOwners(xCheckMacroValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
         ))
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, yCheckedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, xCheckMacroedOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
         (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
     end DefDef
@@ -283,9 +280,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ValDef extends ValDefModule:
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef =
-        tpd.ValDef(symbol.asTerm, yCheckedOwners(yCheckValidExpr(rhs), symbol).getOrElse(tpd.EmptyTree))
+        tpd.ValDef(symbol.asTerm, xCheckMacroedOwners(xCheckMacroValidExpr(rhs), symbol).getOrElse(tpd.EmptyTree))
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef =
-        tpd.cpy.ValDef(original)(name.toTermName, tpt, yCheckedOwners(yCheckValidExpr(rhs), original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.ValDef(original)(name.toTermName, tpt, xCheckMacroedOwners(xCheckMacroValidExpr(rhs), original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
 
@@ -369,7 +366,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           if self.isExpr then Some(new ExprImpl(self, SpliceScope.getCurrent))
           else None
 
-        def tpe: TypeRepr = self.tpe
+        def tpe: TypeRepr = self.tpe.widenSkolem
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
         def etaExpand(owner: Symbol): Term = self.tpe.widen match {
@@ -558,9 +555,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object NamedArg extends NamedArgModule:
       def apply(name: String, arg: Term): NamedArg =
-        withDefaultPos(tpd.NamedArg(name.toTermName, yCheckValidExpr(arg)))
+        withDefaultPos(tpd.NamedArg(name.toTermName, xCheckMacroValidExpr(arg)))
       def copy(original: Tree)(name: String, arg: Term): NamedArg =
-        tpd.cpy.NamedArg(original)(name.toTermName, yCheckValidExpr(arg))
+        tpd.cpy.NamedArg(original)(name.toTermName, xCheckMacroValidExpr(arg))
       def unapply(x: NamedArg): (String, Term) =
         (x.name.toString, x.value)
     end NamedArg
@@ -582,10 +579,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Apply extends ApplyModule:
       def apply(fun: Term, args: List[Term]): Apply =
-        yCheckValidExprs(args)
+        xCheckMacroValidExprs(args)
         withDefaultPos(tpd.Apply(fun, args))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
-        yCheckValidExprs(args)
+        xCheckMacroValidExprs(args)
         tpd.cpy.Apply(original)(fun, args)
       def unapply(x: Apply): (Term, List[Term]) =
         (x.fun, x.args)
@@ -657,9 +654,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Typed extends TypedModule:
       def apply(expr: Term, tpt: TypeTree): Typed =
-        withDefaultPos(tpd.Typed(yCheckValidExpr(expr), tpt))
+        withDefaultPos(tpd.Typed(xCheckMacroValidExpr(expr), tpt))
       def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
-        tpd.cpy.Typed(original)(yCheckValidExpr(expr), tpt)
+        tpd.cpy.Typed(original)(xCheckMacroValidExpr(expr), tpt)
       def unapply(x: Typed): (Term, TypeTree) =
         (x.expr, x.tpt)
     end Typed
@@ -681,9 +678,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Assign extends AssignModule:
       def apply(lhs: Term, rhs: Term): Assign =
-        withDefaultPos(tpd.Assign(lhs, yCheckValidExpr(rhs)))
+        withDefaultPos(tpd.Assign(lhs, xCheckMacroValidExpr(rhs)))
       def copy(original: Tree)(lhs: Term, rhs: Term): Assign =
-        tpd.cpy.Assign(original)(lhs, yCheckValidExpr(rhs))
+        tpd.cpy.Assign(original)(lhs, xCheckMacroValidExpr(rhs))
       def unapply(x: Assign): (Term, Term) =
         (x.lhs, x.rhs)
     end Assign
@@ -746,10 +743,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-        tpd.Closure(meth, tss => yCheckedOwners(yCheckValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth))
+        tpd.Closure(meth, tss => xCheckMacroedOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -766,9 +763,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object If extends IfModule:
       def apply(cond: Term, thenp: Term, elsep: Term): If =
-        withDefaultPos(tpd.If(yCheckValidExpr(cond), yCheckValidExpr(thenp), yCheckValidExpr(elsep)))
+        withDefaultPos(tpd.If(xCheckMacroValidExpr(cond), xCheckMacroValidExpr(thenp), xCheckMacroValidExpr(elsep)))
       def copy(original: Tree)(cond: Term, thenp: Term, elsep: Term): If =
-        tpd.cpy.If(original)(yCheckValidExpr(cond), yCheckValidExpr(thenp), yCheckValidExpr(elsep))
+        tpd.cpy.If(original)(xCheckMacroValidExpr(cond), xCheckMacroValidExpr(thenp), xCheckMacroValidExpr(elsep))
       def unapply(tree: If): (Term, Term, Term) =
         (tree.cond, tree.thenp, tree.elsep)
     end If
@@ -792,10 +789,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Match extends MatchModule:
       def apply(selector: Term, cases: List[CaseDef]): Match =
-        withDefaultPos(tpd.Match(yCheckValidExpr(selector), cases))
+        withDefaultPos(tpd.Match(xCheckMacroValidExpr(selector), cases))
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-        tpd.cpy.Match(original)(yCheckValidExpr(selector), cases)
+        tpd.cpy.Match(original)(xCheckMacroValidExpr(selector), cases)
 
       def unapply(x: Match): (Term, List[CaseDef]) =
         (x.scrutinee, x.cases)
@@ -842,9 +839,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Try extends TryModule:
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(yCheckValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Try(xCheckMacroValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(yCheckValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree))
+        tpd.cpy.Try(original)(xCheckMacroValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree))
       def unapply(x: Try): (Term, List[CaseDef], Option[Term]) =
         (x.body, x.cases, optional(x.finalizer))
     end Try
@@ -867,9 +864,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Return extends ReturnModule:
       def apply(expr: Term, from: Symbol): Return =
-        withDefaultPos(tpd.Return(yCheckValidExpr(expr), from))
+        withDefaultPos(tpd.Return(xCheckMacroValidExpr(expr), from))
       def copy(original: Tree)(expr: Term, from: Symbol): Return =
-        tpd.cpy.Return(original)(yCheckValidExpr(expr), tpd.ref(from))
+        tpd.cpy.Return(original)(xCheckMacroValidExpr(expr), tpd.ref(from))
       def unapply(x: Return): (Term, Symbol) =
         (x.expr, x.from.symbol)
     end Return
@@ -891,10 +888,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
-        yCheckValidExprs(elems)
+        xCheckMacroValidExprs(elems)
         withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
-        yCheckValidExprs(elems)
+        xCheckMacroValidExprs(elems)
         tpd.cpy.SeqLiteral(original)(elems, elemtpt)
       def unapply(x: Repeated): (List[Term], TypeTree) =
         (x.elems, x.elemtpt)
@@ -917,9 +914,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Inlined extends InlinedModule:
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, yCheckValidExpr(expansion)))
+        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, xCheckMacroValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], yCheckValidExpr(expansion))
+        tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion))
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
         (optional(x.call), x.bindings, x.body)
     end Inlined
@@ -972,9 +969,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object While extends WhileModule:
       def apply(cond: Term, body: Term): While =
-        withDefaultPos(tpd.WhileDo(yCheckValidExpr(cond), yCheckValidExpr(body)))
+        withDefaultPos(tpd.WhileDo(xCheckMacroValidExpr(cond), xCheckMacroValidExpr(body)))
       def copy(original: Tree)(cond: Term, body: Term): While =
-        tpd.cpy.WhileDo(original)(yCheckValidExpr(cond), yCheckValidExpr(body))
+        tpd.cpy.WhileDo(original)(xCheckMacroValidExpr(cond), xCheckMacroValidExpr(body))
       def unapply(x: While): (Term, Term) =
         (x.cond, x.body)
     end While
@@ -1501,7 +1498,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TermParamClause extends TermParamClauseModule:
       def apply(params: List[ValDef]): TermParamClause =
-        if yCheck then
+        if xCheckMacro then
           val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
           assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
         params
@@ -2658,6 +2655,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def Implicit: Flags = dotc.core.Flags.Implicit
       def Infix: Flags = dotc.core.Flags.Infix
       def Inline: Flags = dotc.core.Flags.Inline
+      def Invisible: Flags = dotc.core.Flags.Invisible
       def JavaDefined: Flags = dotc.core.Flags.JavaDefined
       def JavaStatic: Flags = dotc.core.Flags.JavaStatic
       def Lazy: Flags = dotc.core.Flags.Lazy
@@ -2769,6 +2767,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
 
+      def info(msg: String): Unit =
+        dotc.report.echo(msg, Position.ofMacroExpansion)
+
+      def info(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.echo(msg, asTerm(expr).pos)
+
+      def info(msg: String, pos: Position): Unit =
+        dotc.report.echo(msg, pos)
+
     end report
 
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
@@ -2780,26 +2787,26 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     /** Checks that all definitions in this tree have the expected owner.
      *  Nested definitions are ignored and assumed to be correct by construction.
      */
-    private def yCheckedOwners(tree: Option[Tree], owner: Symbol): tree.type =
-      if yCheck then
+    private def xCheckMacroedOwners(tree: Option[Tree], owner: Symbol): tree.type =
+      if xCheckMacro then
         tree match
           case Some(tree) =>
-            yCheckOwners(tree, owner)
+            xCheckMacroOwners(tree, owner)
           case _ =>
       tree
 
     /** Checks that all definitions in this tree have the expected owner.
      *  Nested definitions are ignored and assumed to be correct by construction.
      */
-    private def yCheckedOwners(tree: Tree, owner: Symbol): tree.type =
-      if yCheck then
-        yCheckOwners(tree, owner)
+    private def xCheckMacroedOwners(tree: Tree, owner: Symbol): tree.type =
+      if xCheckMacro then
+        xCheckMacroOwners(tree, owner)
       tree
 
     /** Checks that all definitions in this tree have the expected owner.
      *  Nested definitions are ignored and assumed to be correct by construction.
      */
-    private def yCheckOwners(tree: Tree, owner: Symbol): Unit =
+    private def xCheckMacroOwners(tree: Tree, owner: Symbol): Unit =
       new tpd.TreeTraverser {
         def traverse(t: Tree)(using Context): Unit =
           t match
@@ -2824,14 +2831,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => traverseChildren(t)
       }.traverse(tree)
 
-    private def yCheckValidExprs(terms: List[Term]): terms.type =
-      if yCheck then terms.foreach(yCheckValidExpr)
+    private def xCheckMacroValidExprs(terms: List[Term]): terms.type =
+      if xCheckMacro then terms.foreach(xCheckMacroValidExpr)
       terms
-    private def yCheckValidExpr(termOpt: Option[Term]): termOpt.type =
-      if yCheck then termOpt.foreach(yCheckValidExpr)
+    private def xCheckMacroValidExpr(termOpt: Option[Term]): termOpt.type =
+      if xCheckMacro then termOpt.foreach(xCheckMacroValidExpr)
       termOpt
-    private def yCheckValidExpr(term: Term): term.type =
-      if yCheck then
+    private def xCheckMacroValidExpr(term: Term): term.type =
+      if xCheckMacro then
         assert(!term.tpe.widenDealias.isInstanceOf[dotc.core.Types.MethodicType],
           "Reference to a method must be eta-expanded before it is used as an expression: " + term.show)
       term

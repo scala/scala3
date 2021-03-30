@@ -1,7 +1,8 @@
 package compiletime
 
 class Test:
-  import scala.compiletime.{constValue, erasedValue, S}
+  import scala.compiletime.{constValue, erasedValue}
+  import scala.compiletime.ops.int.S
 
   trait Nat
   case object Zero extends Nat

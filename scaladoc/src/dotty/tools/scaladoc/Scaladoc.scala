@@ -42,7 +42,8 @@ object Scaladoc:
     socialLinks: List[SocialLinks] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
-    rootDocPath: Option[String] = None
+    rootDocPath: Option[String] = None,
+    documentSyntheticTypes: Boolean = false,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -94,9 +95,6 @@ object Scaladoc:
       }
 
     allSettings.filterNot(scaladocSpecificSettings.contains).foreach(setInGlobal)
-
-    summary.warnings.foreach(report.warning(_))
-    summary.errors.foreach(report.error(_))
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
@@ -171,7 +169,8 @@ object Scaladoc:
         socialLinksParsed,
         skipById.get ++ deprecatedSkipPackages.get,
         skipByRegex.get,
-        docRootContent.nonDefault
+        docRootContent.nonDefault,
+        YdocumentSyntheticTypes.get
       )
       (Some(docArgs), newContext)
     }

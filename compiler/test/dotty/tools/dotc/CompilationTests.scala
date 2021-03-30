@@ -39,8 +39,8 @@ class CompilationTests {
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
-      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
-      compileFilesInDir("tests/pos", defaultOptions.and("-Ycheck-init")),
+      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
       compileFile(
@@ -49,7 +49,6 @@ class CompilationTests {
         defaultOptions.and("-nowarn", "-Xfatal-warnings")
       ),
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
-      compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
       compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
       compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
@@ -70,7 +69,8 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
       compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
-      compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite"))
     ).checkRewrites()
   }
 
@@ -110,7 +110,8 @@ class CompilationTests {
       compileFile("tests/pos/i0239.scala", defaultOptions),
       compileFile("tests/pos/anonClassSubtyping.scala", defaultOptions),
       compileFile("tests/pos/extmethods.scala", defaultOptions),
-      compileFile("tests/pos/companions.scala", defaultOptions)
+      compileFile("tests/pos/companions.scala", defaultOptions),
+      compileFile("tests/pos/main.scala", defaultOptions)
     ).times(2).checkCompile()
   }
 
@@ -125,7 +126,7 @@ class CompilationTests {
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
-      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/explicit-nulls", defaultOptions.and("-Yexplicit-nulls")),
@@ -145,6 +146,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i9517.scala", defaultOptions.and("-Xprint-types")),
+      compileFile("tests/neg-custom-args/i11637.scala", defaultOptions.and("-explain")),
       compileFile("tests/neg-custom-args/interop-polytypes.scala", allowDeepSubtypes.and("-Yexplicit-nulls")),
       compileFile("tests/neg-custom-args/conditionalWarnings.scala", allowDeepSubtypes.and("-deprecation").and("-Xfatal-warnings")),
       compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings"),
@@ -163,11 +165,12 @@ class CompilationTests {
       compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures.and("-language:_")),
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
-      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
+      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
       compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
       compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
-      compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future"))
+      compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
+      compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
     ).checkExpectedErrors()
   }
 
@@ -186,9 +189,9 @@ class CompilationTests {
       compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "future")),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
-      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run", defaultOptions.and("-Ycheck-init"))
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"))
     ).checkRuns()
   }
 
@@ -245,7 +248,7 @@ class CompilationTests {
     val lib =
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
-          "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
+          "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
           //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           ))(libGroup)
 
@@ -293,7 +296,8 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings")
+      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions),
     )
   }.checkExpectedErrors()
 
@@ -301,7 +305,8 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions)
+      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
     )
   }.checkCompile()
 
@@ -313,7 +318,7 @@ class CompilationTests {
   // initialization tests
   @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
+    val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()

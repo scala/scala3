@@ -1,4 +1,4 @@
-import scala.compiletime.S
+import scala.compiletime.ops.int.S
 
 object Test extends App {
     def plusOne[I <: Int](using x: ValueOf[S[I]]): S[I] = x.value

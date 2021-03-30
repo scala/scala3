@@ -1,1 +1,0 @@
-erased trait Test // error

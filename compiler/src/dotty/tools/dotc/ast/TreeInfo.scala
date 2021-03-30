@@ -251,6 +251,10 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  def isTypeParamClause(params: ParamClause)(using Context): Boolean = params match
+    case TypeDefs(_) => true
+    case _ => false
+
   private val languageSubCategories = Set(nme.experimental, nme.deprecated)
 
   /** If `path` looks like a language import, `Some(name)` where name
@@ -328,6 +332,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
   def isFunctionWithUnknownParamType(tree: Tree): Boolean =
     functionWithUnknownParamType(tree).isDefined
+
+  def isFunction(tree: Tree): Boolean = tree match
+    case Function(_, _) | Match(EmptyTree, _) => true
+    case Block(Nil, expr) => isFunction(expr)
+    case _ => false
 
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {
@@ -938,10 +947,15 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
      *  The result can be the contents of a term or type quote, which
      *  will return a term or type tree respectively.
      */
-    def unapply(tree: tpd.Tree)(using Context): Option[tpd.Tree] = tree match {
-      case tree: GenericApply if tree.symbol.isQuote => Some(tree.args.head)
-      case _ => None
-    }
+    def unapply(tree: tpd.Apply)(using Context): Option[tpd.Tree] =
+      if tree.symbol == defn.QuotedRuntime_exprQuote then
+        // quoted.runtime.Expr.quote[T](<body>)
+        Some(tree.args.head)
+      else if tree.symbol == defn.QuotedTypeModule_of then
+        // quoted.Type.of[<body>](quotes)
+        val TypeApply(_, body :: _) = tree.fun
+        Some(body)
+      else None
   }
 
   /** Extractors for splices */

@@ -119,6 +119,8 @@ sidebar:
               url: docs/reference/other-new-features/explicit-nulls.html
             - title: Safe Initialization
               url: docs/reference/other-new-features/safe-initialization.html
+            - title: TypeTest
+              url: docs/reference/other-new-features/type-test.html
         - title: Other Changed Features
           subsection:
             - title: Numeric Literals
@@ -209,6 +211,8 @@ sidebar:
           url: docs/contributing/debugging.html
         - title: IDEs and Tools
           subsection:
+            - title: IDEs
+              url: docs/contributing/tools/ide.html
             - title: Mill
               url: docs/contributing/tools/mill.html
             - title: Scalafix
