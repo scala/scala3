@@ -6,13 +6,6 @@ import java.util.stream.Stream as JStream
 import scala.collection.JavaConverters.*
 
 object IdempotencyCheck {
-  val flakyTestsOnWindows =
-    if scala.util.Properties.isWin
-    then Set(s"pos${JFile.separator}i6507b")
-    else Set.empty
-
-  val blacklisted = flakyTestsOnWindows
-
   def checkIdempotency(dir1: String, dir2: String): Unit = {
     var failed = 0
     var total = 0
@@ -32,7 +25,7 @@ object IdempotencyCheck {
       }
       val groups = bytecodeFiles.groupBy(_._1).mapValues(_.map(_._2))
 
-      groups.filterNot(x => blacklisted(x._1)).iterator.flatMap { g =>
+      groups.iterator.flatMap { g =>
         def pred(f: JPath, dir: String, isTasty: Boolean) =
           f.toString.contains(dir) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
         val class1 = g._2.find(f => pred(f, dir1String, isTasty = false))
