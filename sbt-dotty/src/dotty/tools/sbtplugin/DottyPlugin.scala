@@ -181,6 +181,11 @@ object DottyPlugin extends AutoPlugin {
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
         sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt $requiredVersion is required.")
 
+      val deprecatedVersion = ">=1.5.0-RC2"
+      val logger = sLog.value
+      if (VersionNumber(sbtV).matchesSemVer(SemanticSelector(deprecatedVersion)))
+        logger.warn(s"The sbt-dotty plugin is no longer neeeded with sbt >= 1.5, please remove it from your build.")
+
       state
     }
   )
