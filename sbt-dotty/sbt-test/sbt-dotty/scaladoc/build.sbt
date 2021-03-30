@@ -1,7 +1,7 @@
 scalaVersion := sys.props("plugin.scalaVersion")
 
 TaskKey[Unit]("assertUsingScaladoc") := {
-  assert(useScaladoc.value)
+  assert(useScaladoc.value, "Scaladoc version does not match the expected pattern")
 }
 
 TaskKey[Unit]("checkScaladocOptions") := {
