@@ -154,12 +154,12 @@ jobs:
         shell: cmd
 
       - name: cygwin tests
-        run: bash ./project/scripts/winCmdTests
+        run: '"C:\Program Files\cygwin64\bin\bash" ./project/scripts/winCmdTests'
         shell: cmd
 
-      # - name: msys tests
-      #   run: 'C:\Program Files\Git\bin\bash' ./project/scripts/winCmdTests
-      #   shell: cmd
+      - name: msys tests
+        run: '"C:\Program Files\Git\bin\bash" ./project/scripts/winCmdTests'
+        shell: cmd
 
       - name: Scala.js Test
         run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"

@@ -7,4 +7,4 @@ $PREFIX/bin/scalac @project/scripts/options "$SOURCE"
 $PREFIX/bin/scalac -d out "$SOURCE"
 $PREFIX/bin/scala -classpath out HelloWorld
 $PREFIX/bin/scala -classpath out -J-Xmx512m HelloWorld
-mkdir -p _site && $PREFIX/bin/scaladoc -siteroot _site -project Hello "$SOURCE"
+mkdir -p _site && $PREFIX/bin/scaladoc -d _site -project Hello "$SOURCE"
