@@ -64,3 +64,6 @@ echo "testing i11644"
 cwd=$(pwd)
 clear_out "$OUT"
 (cd "$OUT" && "$cwd/bin/scalac" "$cwd/tests/pos/i11644.scala" && "$cwd/bin/scalac" "$cwd/tests/pos/i11644.scala")
+
+# check options specified in files
+./bin/scalac @project/scripts/options "$SOURCE"
