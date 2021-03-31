@@ -65,7 +65,7 @@ object BootstrappedDottyJSPlugin extends DottyJSPlugin(Build.commonBootstrappedS
 object NonBootstrappedDottyJSPlugin extends DottyJSPlugin(Build.commonNonBootstrappedSettings)
 
 object Build {
-  val referenceVersion = "3.0.0-RC2-bin-20210325-ab2664f-NIGHTLY"
+  val referenceVersion = "3.0.0-RC2"
 
   val baseVersion = "3.0.1-RC1"
   val baseSbtDottyVersion = "0.5.5"
