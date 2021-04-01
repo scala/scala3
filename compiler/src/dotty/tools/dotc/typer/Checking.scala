@@ -425,6 +425,7 @@ object Checking {
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
+    def warn(msg: Message) = report.warning(msg, sym.srcPos)
 
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
@@ -464,8 +465,15 @@ object Checking {
       fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
-    if (sym.is(Trait) && sym.is(Final))
-      fail(TraitsMayNotBeFinal(sym))
+    if sym.is(Trait) then
+      if sym.is(Final) then
+        fail(TraitsMayNotBeFinal(sym))
+      else if sym.is(Open) then
+        warn(RedundantModifier(Open))
+    if sym.isAllOf(Abstract | Open) then
+      warn(RedundantModifier(Open))
+    if sym.is(Open) && sym.isLocal then
+      warn(RedundantModifier(Open))
     // Skip ModuleVal since the annotation will also be on the ModuleClass
     if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.isOneOf(Method | ModuleVal))
       fail(TailrecNotApplicable(sym))
