@@ -92,24 +92,26 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     Seq(dt("Deprecated"), dd(content:_*))
   }
 
-  def memberInfo(m: Member): Seq[AppliedTag] =
+  def memberInfo(m: Member, withBrief: Boolean = false): Seq[AppliedTag] =
     val comment = m.docs
     val bodyContents = m.docs.fold(Nil)(e => renderDocPart(e.body) :: Nil)
 
     Seq(
-      div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart)),
-      div(cls := "cover")(
-        div(cls := "doc")(bodyContents),
-        dl(cls := "attributes")(
-          docAttributes(m),
-          companion(m),
-          deprecation(m),
-          defintionClasses(m),
-          inheritedFrom(m),
-          source(m),
+      Option.when(withBrief)(div(cls := "documentableBrief doc")(comment.flatMap(_.short).fold("")(renderDocPart))),
+      Some(
+        div(cls := "cover")(
+          div(cls := "doc")(bodyContents),
+          dl(cls := "attributes")(
+            docAttributes(m),
+            companion(m),
+            deprecation(m),
+            defintionClasses(m),
+            inheritedFrom(m),
+            source(m),
+          )
         )
       )
-    )
+    ).flatten
 
   private def originInfo(m: Member): Seq[TagArg] = m.origin match {
     case Origin.ImplicitlyAddedBy(name, dri) =>
@@ -170,7 +172,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
         span(cls := "modifiers"), // just to have padding on left
         div(
           div(cls := "originInfo")(originInfo(member):_*),
-          div(cls := "memberDocumentation")(memberInfo(member)),
+          div(cls := "memberDocumentation")(memberInfo(member, withBrief = true)),
         )
       )
     )
@@ -382,7 +384,8 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
     div(
       intro,
-      memberInfo(m),
+      memberInfo(m, withBrief = false),
       classLikeParts(m),
       buildDocumentableFilter, // TODO Need to make it work in JS :(
-      buildMembers(m))
+      buildMembers(m)
+    )
