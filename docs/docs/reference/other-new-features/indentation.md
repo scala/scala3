@@ -80,8 +80,11 @@ There are two rules:
       ```
       then  else  do  catch  finally  yield  match
       ```
-    - the first token on the next line is not a
+    - if the first token on the next line is a
         [leading infix operator](../changed-features/operators.md).
+      then its indentation width is less then the current indentation width,
+      and it either matches a previous indentation width or is also less
+      than the enclosing indentation width.
 
     If an `<outdent>` is inserted, the top element is popped from `IW`.
     If the indentation width of the token on the next line is still less than the new current indentation width, step (2) repeats. Therefore, several `<outdent>` tokens
@@ -104,6 +107,24 @@ if x < 0 then
 
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
 at the top-level, inside braces `{...}`, but not inside parentheses `(...)`, patterns or types.
+
+**Note:** The rules for leading infix operators above are there to make sure that
+```scala
+  one
+  + two.match
+      case 1 => b
+      case 2 => c
+  + three
+```
+is parsed as `one + (two.match ...) + three`. Also, that
+```scala
+if x then
+    a
+  + b
+  + c
+else d
+```
+is parsed as `if x then a + b + c else d`.
 
 ### Optional Braces Around Template Bodies
 
