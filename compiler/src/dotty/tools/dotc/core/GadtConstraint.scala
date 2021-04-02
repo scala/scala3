@@ -6,6 +6,7 @@ import Decorators._
 import Contexts._
 import Types._
 import Symbols._
+import Names.Name
 import util.SimpleIdentityMap
 import collection.mutable
 import printing._
@@ -34,6 +35,11 @@ sealed abstract class GadtConstraint extends Showable {
   def addToConstraint(syms: List[Symbol])(using Context): Boolean
   def addToConstraint(sym: Symbol)(using Context): Boolean = addToConstraint(sym :: Nil)
 
+  /** Add type members to constraint.
+    */
+  def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean
+
+
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
@@ -61,13 +67,17 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
+  private var tpmMapping: SimpleIdentityMap[TermRef, SimpleIdentityMap[Name, TypeVar]],
+  private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
   def this() = this(
     myConstraint = new OrderingConstraint(SimpleIdentityMap.empty, SimpleIdentityMap.empty, SimpleIdentityMap.empty),
     mapping = SimpleIdentityMap.empty,
-    reverseMapping = SimpleIdentityMap.empty
+    reverseMapping = SimpleIdentityMap.empty,
+    tpmMapping = SimpleIdentityMap.empty,
+    reverseTpmMapping = SimpleIdentityMap.empty
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -128,7 +138,105 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
+  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean = {
+    import NameKinds.DepParamName
+    // add type member names, from both scrutinee and pattern
+    val tpmNames: List[Name] = { (scrutTpMems ++ patTpMems) map (_._1) }.distinct
+    // type member names from the scrutinee
+    val scrutNames: Set[Name] = Set.from { scrutTpMems map (_._1) }
+
+    // classify names into two groups, those internalized before and those new
+    val (internalizedNames, newNames): (List[Name], List[Name]) = tpmMapping(scrutPath) match {
+      case null => (tpmNames, Nil)
+      case nameMapping =>
+        val m = tpmNames groupBy { name =>
+          (scrutNames contains name) && (nameMapping(name) ne null)
+        }
+
+        (m.getOrElse(true, Nil), m.getOrElse(false, Nil))
+    }
+
+    val existingTvars = internalizedNames map { name => tvarOrError(scrutPath, name) }
+
+    val poly1 = PolyType(newNames map { name => DepParamName.fresh(name.toTypeName) })(
+      _ => newNames map { _ => TypeBounds(defn.NothingType, defn.AnyType) },
+      _ => defn.AnyType
+    )
+    val newTvars = newNames.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
+      val tv = TypeVar(paramRef, creatorState = null)
+
+      if scrutNames contains name then {
+        tpmMapping = tpmMapping.updated(
+          scrutPath,
+          tpmMapping(scrutPath) match {
+            case null => SimpleIdentityMap.empty.updated(name, tv)
+            case m => m.updated(name, tv)
+          }
+        )
+        reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+      }
+
+      tv
+    }
+
+    // type member names, reordered
+    val tpmNames1 = internalizedNames ++ newNames
+    // type variables associated to type members, ordered the same way as tpmNames1
+    val tvars = existingTvars ++ newTvars
+
+    // build a map from member names to type vars
+    val tvarOfName: Map[Name, TypeVar] = Map.from { tpmNames1 zip tvars }
+    def getTvarOfName(name: Name): TypeVar = (tvarOfName get name).ensuring(_.isDefined, "member name is not in collected name list").get
+
+    // substitute dependent symbols in tb
+    def processBounds(tb: TypeBounds): TypeBounds = {
+      def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
+        def loop(tp: Type) = substDependentSyms(tp, isUpper)
+        tp match {
+          case tp @ AndType(tp1, tp2) if !isUpper =>
+            tp.derivedAndType(loop(tp1), loop(tp2))
+          case tp @ OrType(tp1, tp2) if isUpper =>
+            tp.derivedOrType(loop(tp1), loop(tp2))
+          case TypeRef(RecThis(_), des : Name) =>
+            getTvarOfName(des).origin
+          case tp: NamedType =>
+            mapping(tp.symbol) match {
+              case tv: TypeVar => tv.origin
+              case null => tp
+            }
+          case tp => tp
+        }
+      }
+      tb match {
+        case alias : TypeAlias =>
+          alias.derivedAlias(substDependentSyms(alias.lo, isUpper = false))
+        case _ =>
+          tb.derivedTypeBounds(
+            lo = substDependentSyms(tb.lo, isUpper = false),
+            hi = substDependentSyms(tb.hi, isUpper = true)
+          )
+      }
+    }
+
+    def addPolyOk: Boolean =
+      addToConstraint(poly1, newTvars)
+        .showing(i"added to constraint: [$poly1]%, %\n$debugBoundsDescription", gadts)
+
+    def addBoundsOk: List[Boolean] = (scrutTpMems ++ patTpMems) map { (name, tb) =>
+      val tvar = getTvarOfName(name)
+      val tb1 = processBounds(tb)
+
+      {
+        tb1.lo.isRef(defn.NothingClass) || addBound(tvar, tb1.lo, isUpper = false)
+      } && {
+        tb1.hi.isAny || addBound(tvar, tb1.hi, isUpper = true)
+      }
+    }
+
+    addPolyOk && (addBoundsOk forall identity)
+  }
+
+  private def addBound(tvar: TypeVar, bound: Type, isUpper: Boolean)(using Context): Boolean = {
     @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
       case tv: TypeVar =>
         val inst = constraint.instType(tv)
@@ -136,10 +244,10 @@ final class ProperGadtConstraint private(
       case _ => tp
     }
 
-    val symTvar: TypeVar = stripInternalTypeVar(tvarOrError(sym)) match {
+    val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
       case inst =>
-        gadts.println(i"instantiated: $sym -> $inst")
+        // gadts.println(i"instantiated: $sym -> $inst")
         return if (isUpper) isSub(inst, bound) else isSub(bound, inst)
     }
 
@@ -161,9 +269,12 @@ final class ProperGadtConstraint private(
     ).showing({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
-      i"adding $descr bound $sym $op $bound = $result"
+      i"adding $descr bound $tvar $op $bound = $result"
     }, gadts)
   }
+
+  override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean =
+    addBound(tvarOrError(sym), bound, isUpper)
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
@@ -202,7 +313,9 @@ final class ProperGadtConstraint private(
   override def fresh: GadtConstraint = new ProperGadtConstraint(
     myConstraint,
     mapping,
-    reverseMapping
+    reverseMapping,
+    tpmMapping,
+    reverseTpmMapping
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -210,6 +323,8 @@ final class ProperGadtConstraint private(
       this.myConstraint = other.myConstraint
       this.mapping = other.mapping
       this.reverseMapping = other.reverseMapping
+      this.tpmMapping = other.tpmMapping
+      this.reverseTpmMapping = other.reverseTpmMapping
     case _ => ;
   }
 
@@ -256,6 +371,16 @@ final class ProperGadtConstraint private(
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
+  private def tvarOrError(path: TermRef, designator: Name)(using Context): TypeVar = {
+    def get: TypeVar =
+      tpmMapping(path) match {
+        case null => null
+        case nameMapping => nameMapping(designator)
+      }
+
+    get.ensuring(_ ne null, i"not a constrainable path-dependent type: $path.$designator")
+  }
+
   private def containsNoInternalTypes(
     tp: Type,
     acc: TypeAccumulator[Boolean] = null
@@ -298,6 +423,8 @@ final class ProperGadtConstraint private(
   override def contains(sym: Symbol)(using Context) = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
+  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean =
+    unsupported("EmptyGadtConstraint.addToConstraint")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
