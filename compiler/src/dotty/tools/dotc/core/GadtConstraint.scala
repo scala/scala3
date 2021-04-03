@@ -27,6 +27,7 @@ sealed abstract class GadtConstraint extends Showable {
    *       Using this in isSubType can lead to infinite recursion. Consider `bounds` instead.
    */
   def fullBounds(sym: Symbol)(using Context): TypeBounds
+  def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
@@ -181,7 +182,7 @@ final class ProperGadtConstraint private(
           }
         )
         reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
-      }
+     }
 
       tv
     }
@@ -307,6 +308,14 @@ final class ProperGadtConstraint private(
       case tv =>
         fullBounds(tv.origin)
           // .ensuring(containsNoInternalTypes(_))
+    }
+
+  override def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds =
+    mapTpMem(path, designator) match {
+      case null => null
+      case tv =>
+        fullBounds(tv.origin)
+        // .ensuring(containsNoInternalTypes(_))
     }
 
   private def mapTpMem(path: TermRef, designator: Name): TypeVar = tpmMapping(path) match {
@@ -450,6 +459,11 @@ final class ProperGadtConstraint private(
     mapping.foreachBinding { case (sym, _) =>
       sb ++= i"$sym: ${fullBounds(sym)}\n"
     }
+    tpmMapping.foreachBinding { case (path, nameMapping) =>
+      nameMapping.foreachBinding { case (name, _) =>
+        sb ++= i"(${path.symbol}).$name: ${fullBounds(path, name)}"
+      }
+    }
     sb.result
   }
 }
@@ -458,6 +472,7 @@ final class ProperGadtConstraint private(
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
   override def bounds(path: TermRef, designator: Name)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
+  override def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
