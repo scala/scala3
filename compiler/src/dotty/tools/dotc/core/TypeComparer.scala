@@ -511,7 +511,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             { isBottom(tp1) || GADTusage(tp2.symbol) }
         }
-        def compareGADTTpMem: Boolean = {
+        def compareGADTTpMem: Boolean = trace(i"compareGADT $tp1 <:< $tp2", subtyping) {
           val gbounds2 = gadtBounds(tp2)
           (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo)
         }
@@ -767,7 +767,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 { tp2.isAny || GADTusage(tp1.symbol) }
             }
-            def compareGADTTpMem: Boolean = {
+            def compareGADTTpMem: Boolean = trace(i"compareGADTTpMem $tp1 <:< $tp2", subtyping) {
               val gbounds1 = gadtBounds(tp1)
               (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2)
             }
