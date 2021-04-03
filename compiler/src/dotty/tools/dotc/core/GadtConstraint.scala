@@ -331,6 +331,8 @@ final class ProperGadtConstraint private(
           bounds(tv.origin) match {
             case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
               TypeAlias(reverseTpmMapping(tpr))
+            case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
+              TypeAlias(reverseMapping(tpr).typeRef)
             case tb => tb
           }
         retrieveBounds
@@ -342,6 +344,8 @@ final class ProperGadtConstraint private(
       case tv =>
         def retrieveBounds: TypeBounds =
           bounds(tv.origin) match {
+            case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
+              TypeAlias(reverseTpmMapping(tpr))
             case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
               TypeAlias(reverseMapping(tpr).typeRef)
             case tb => tb
