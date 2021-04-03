@@ -118,6 +118,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   protected def gadtBounds(path: TermRef, designator: Name)(using Context): TypeBounds = ctx.gadt.bounds(path, designator)
   protected def gadtBounds(tp: NamedType): TypeBounds = tp match {
     case TypeRef(path: TermRef, designator: Name) => gadtBounds(path, designator)
+    case TypeRef(path: TermRef, designator: Symbol) => gadtBounds(path, designator.name)
     case _ => null
   }
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
