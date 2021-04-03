@@ -74,7 +74,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace.force(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
     def classesMayBeCompatible: Boolean = {
       import Flags._
       val patClassSym = pat.classSymbol
@@ -118,7 +118,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       "{" + (tpMem map { (name, tb) => i"$name $tb" } mkString "; ") + "}"
 
     def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)], maybePatPath: Option[TermRef]): Boolean =
-      trace.force(i"constrainTypeMembers (${scrutPath.symbol}) @ ${showTpMem(scrutTpMem)} &${maybePatPath.map(x => i" (${x.symbol}) @").getOrElse("")} ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+      trace(i"constrainTypeMembers (${scrutPath.symbol}) @ ${showTpMem(scrutTpMem)} &${maybePatPath.map(x => i" (${x.symbol}) @").getOrElse("")} ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
         ctx.gadt.addToConstraint(scrutPath, scrutTpMem, patTpMem, maybePatPath)
       }
 
