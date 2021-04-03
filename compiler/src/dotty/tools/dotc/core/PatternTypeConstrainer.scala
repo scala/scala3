@@ -75,7 +75,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  in which case the subtyping relationship "heals" the type.
    */
   def constrainPatternType(pat: Type, scrut: Type): Boolean = trace.force(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
-
     def classesMayBeCompatible: Boolean = {
       import Flags._
       val patClassSym = pat.classSymbol
@@ -92,6 +91,17 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     def stripRefinement(tp: Type): Type = tp match {
       case tp: RefinedOrRecType => stripRefinement(tp.parent)
       case tp => tp
+    }
+
+    def collectTypeMembers(tp: Type): List[(Name, TypeBounds)] = {
+      val typeMemeberNames: List[Name] = tp.memberNames(typeNameFilter).toList
+
+      typeMemeberNames.flatMap { name =>
+        tp.findMember(name, tp).info match {
+          case tb: TypeBounds => Some(name -> tb)
+          case _ => None
+        }
+      }
     }
 
     def collectRefinement(tp: Type): List[(Name, TypeBounds)] = {
@@ -159,12 +169,12 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    val scrutTpMem = collectRefinement(scrut)
+    val scrutTpMem = collectTypeMembers(scrut)
     val (maybePatPath, patTpMem) = pat match {
       case path: TermRef =>
-        (Some(path), collectRefinement(pat.widen))
+        (Some(path), collectTypeMembers(pat.widen))
       case tp =>
-        (None, collectRefinement(pat))
+        (None, collectTypeMembers(pat))
     }
 
     def tpMemOk: Boolean =
