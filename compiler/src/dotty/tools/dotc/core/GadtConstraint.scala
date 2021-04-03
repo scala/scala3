@@ -18,6 +18,9 @@ sealed abstract class GadtConstraint extends Showable {
   /** Immediate bounds of `sym`. Does not contain lower/upper symbols (see [[fullBounds]]). */
   def bounds(sym: Symbol)(using Context): TypeBounds
 
+  /** Simiar to [[bounds]], while retrieve bounds for type members. */
+  def bounds(path: TermRef, designator: Name)(using Context): TypeBounds
+
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
    * @note this performs subtype checks between ordered symbols.
@@ -306,6 +309,24 @@ final class ProperGadtConstraint private(
           // .ensuring(containsNoInternalTypes(_))
     }
 
+  private def mapTpMem(path: TermRef, designator: Name): TypeVar = tpmMapping(path) match {
+    case null => null
+    case nameMapping => nameMapping(designator)
+  }
+
+  override def bounds(path: TermRef, designator: Name)(using Context): TypeBounds =
+    mapTpMem(path, designator) match {
+      case null => null
+      case tv =>
+        def retrieveBounds: TypeBounds =
+          bounds(tv.origin) match {
+            case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
+              TypeAlias(reverseTpmMapping(tpr))
+            case tb => tb
+          }
+        retrieveBounds
+    }
+
   override def bounds(sym: Symbol)(using Context): TypeBounds =
     mapping(sym) match {
       case null => null
@@ -435,6 +456,7 @@ final class ProperGadtConstraint private(
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
+  override def bounds(path: TermRef, designator: Name)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")

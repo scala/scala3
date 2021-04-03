@@ -115,6 +115,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
+  protected def gadtBounds(path: TermRef, designator: Name)(using Context): TypeBounds = ctx.gadt.bounds(path, designator)
+  protected def gadtBounds(tp: NamedType): TypeBounds = tp match {
+    case TypeRef(path: TermRef, designator: Name) => gadtBounds(path, designator)
+    case _ => null
+  }
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
 
@@ -506,7 +511,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             { isBottom(tp1) || GADTusage(tp2.symbol) }
         }
-        isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
+        def compareGADTTpMem: Boolean = {
+          val gbounds2 = gadtBounds(tp2)
+          (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo)
+        }
+        isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || tryLiftedToThis2 || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
@@ -758,7 +767,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
                 { tp2.isAny || GADTusage(tp1.symbol) }
             }
-            isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
+            def compareGADTTpMem: Boolean = {
+              val gbounds1 = gadtBounds(tp1)
+              (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2)
+            }
+            isSubType(hi1, tp2, approx.addLow) || compareGADT || compareGADTTpMem || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.widenDealias match {
               case tp: TypeRef => tp.symbol.isNullableClass
