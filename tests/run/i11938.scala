@@ -8,7 +8,8 @@ class Future[T](val initial: T) {
 
 object Test {
   val f = new Future(42)
-  val fn = (i: Int) => i.toString
+  def fn(i: Int) = i.toString
   def main(args: Array[String]): Unit =
     f.map((i: Int) => i.toString)
+    f.map(fn)
 }
