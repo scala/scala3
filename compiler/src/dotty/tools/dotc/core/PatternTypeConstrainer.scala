@@ -74,7 +74,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace.force(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -107,9 +107,9 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     def showTpMem(tpMem: List[(Name, TypeBounds)]): String =
       "{" + (tpMem map { (name, tb) => i"$name $tb" } mkString "; ") + "}"
 
-    def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)]): Boolean =
-      trace(i"constrainTypeMembers ${scrutPath.symbol} @ ${showTpMem(scrutTpMem)} & ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
-        ctx.gadt.addToConstraint(scrutPath, scrutTpMem, patTpMem)
+    def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)], maybePatPath: Option[TermRef]): Boolean =
+      trace.force(i"constrainTypeMembers (${scrutPath.symbol}) @ ${showTpMem(scrutTpMem)} &${maybePatPath.map(x => i" (${x.symbol}) @").getOrElse("")} ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+        ctx.gadt.addToConstraint(scrutPath, scrutTpMem, patTpMem, maybePatPath)
       }
 
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
@@ -160,13 +160,18 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     }
 
     val scrutTpMem = collectRefinement(scrut)
-    val patTpMem = collectRefinement(pat)
+    val (maybePatPath, patTpMem) = pat match {
+      case path: TermRef =>
+        (Some(path), collectRefinement(pat.widen))
+      case tp =>
+        (None, collectRefinement(pat))
+    }
 
     def tpMemOk: Boolean =
       scrutTpMem.isEmpty || patTpMem.isEmpty || { ctx.gadt.narrowScrutTp eq null } || {
         ctx.gadt.narrowScrutTp match {
           case tp: TermRef =>
-            constrainTypeMembers(tp, scrutTpMem, patTpMem)
+            constrainTypeMembers(tp, scrutTpMem, patTpMem, maybePatPath)
           case _ =>
             true
         }

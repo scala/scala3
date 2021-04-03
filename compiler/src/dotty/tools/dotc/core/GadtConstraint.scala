@@ -41,7 +41,7 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Add type members to constraint.
     */
-  def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean
+  def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean
 
   def narrowScrutTp_=(tp: Type): Unit
   def narrowScrutTp: Type
@@ -146,25 +146,68 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean = {
+  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
     import NameKinds.DepParamName
     // add type member names, from both scrutinee and pattern
     val tpmNames: List[Name] = { (scrutTpMems ++ patTpMems) map (_._1) }.distinct
     // type member names from the scrutinee
     val scrutNames: Set[Name] = Set.from { scrutTpMems map (_._1) }
+    // type member names from the pattern
+    val patNames: Set[Name] = Set.from { patTpMems map (_._1) }
+
+    def maybeMapTpMem(path: Option[TermRef], designator: Name): TypeVar =
+      path.map(path => mapTpMem(path, designator)).getOrElse(null)
+
+    def nullEither[T <: AnyRef](x1: => T, x2: => T): T =
+      if x1 eq null then
+        x2
+      else
+        x1
 
     // classify names into two groups, those internalized before and those new
-    val (internalizedNames, newNames): (List[Name], List[Name]) = tpmMapping(scrutPath) match {
-      case null => (Nil, tpmNames)
-      case nameMapping =>
-        val m = tpmNames groupBy { name =>
-          (scrutNames contains name) && (nameMapping(name) ne null)
-        }
+    val (internalizedNames, newNames): (List[Name], List[Name]) = {
+      val m = tpmNames groupBy { name =>
+       nullEither(mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) ne null
+      }
 
-        (m.getOrElse(true, Nil), m.getOrElse(false, Nil))
+      (m.getOrElse(true, Nil), m.getOrElse(false, Nil))
     }
 
-    val existingTvars = internalizedNames map { name => tvarOrError(scrutPath, name) }
+    var equalTvars: List[(TypeVar, TypeVar)] = Nil
+
+    val existingTvars: List[TypeVar] = internalizedNames map { name =>
+      (mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) match {
+        case (null, tvar2: TypeVar) =>
+          if scrutNames contains name then {
+            tpmMapping = tpmMapping.updated(
+              scrutPath,
+              tpmMapping(scrutPath) match {
+                case null => SimpleIdentityMap.empty.updated(name, tvar2)
+                case m => m.updated(name, tvar2)
+              }
+            )
+            reverseTpmMapping = reverseTpmMapping.updated(tvar2.origin, TypeRef(scrutPath, name))
+          }
+          tvar2
+        case (tvar1: TypeVar, null) =>
+          if patNames contains name then {
+            maybePatPath map { patPath =>
+              tpmMapping = tpmMapping.updated(
+                patPath,
+                tpmMapping(patPath) match {
+                  case null => SimpleIdentityMap.empty.updated(name, tvar1)
+                  case m => m.updated(name, tvar1)
+                }
+              )
+              reverseTpmMapping = reverseTpmMapping.updated(tvar1.origin, TypeRef(scrutPath, name))
+            }
+          }
+          tvar1
+        case (tvar1: TypeVar, tvar2: TypeVar) =>
+          equalTvars = tvar1 -> tvar2 :: equalTvars
+          tvar1
+      }
+    }
 
     val poly1 =
       if newNames.nonEmpty then
@@ -188,6 +231,19 @@ final class ProperGadtConstraint private(
               }
             )
             reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+          }
+
+          if patNames contains name then {
+            maybePatPath map { patPath =>
+              tpmMapping = tpmMapping.updated(
+                patPath,
+                tpmMapping(patPath) match {
+                  case null => SimpleIdentityMap.empty.updated(name, tv)
+                  case m => m.updated(name, tv)
+                }
+              )
+              reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+            }
           }
 
           tv
@@ -260,7 +316,11 @@ final class ProperGadtConstraint private(
       }
     }
 
-    addPolyOk && (addBoundsOk forall identity)
+    def eqTvarsOk = equalTvars map { (tvar1, tvar2) =>
+      addUpperBound(tvar1, tvar2) && addUpperBound(tvar2, tvar1)
+    }
+
+    addPolyOk && (addBoundsOk forall identity) && (eqTvarsOk forall identity)
   }
 
   override def narrowScrutTp_=(tp: Type): Unit = myNarrowScrutTp = tp
@@ -493,7 +553,7 @@ final class ProperGadtConstraint private(
   override def contains(sym: Symbol)(using Context) = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
-  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean =
+  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean =
     unsupported("EmptyGadtConstraint.addToConstraint")
   override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
