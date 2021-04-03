@@ -198,10 +198,10 @@ final class ProperGadtConstraint private(
           case tp @ OrType(tp1, tp2) if isUpper =>
             tp.derivedOrType(loop(tp1), loop(tp2))
           case TypeRef(RecThis(_), des : Name) =>
-            getTvarOfName(des).origin
+            getTvarOfName(des)
           case tp: NamedType =>
             mapping(tp.symbol) match {
-              case tv: TypeVar => tv.origin
+              case tv: TypeVar => tv
               case null => tp
             }
           case tp => tp
