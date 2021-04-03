@@ -166,26 +166,34 @@ final class ProperGadtConstraint private(
 
     val existingTvars = internalizedNames map { name => tvarOrError(scrutPath, name) }
 
-    val poly1 = PolyType(newNames map { name => DepParamName.fresh(name.toTypeName) })(
-      _ => newNames map { _ => TypeBounds(defn.NothingType, defn.AnyType) },
-      _ => defn.AnyType
-    )
-    val newTvars = newNames.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
-      val tv = TypeVar(paramRef, creatorState = null)
-
-      if scrutNames contains name then {
-        tpmMapping = tpmMapping.updated(
-          scrutPath,
-          tpmMapping(scrutPath) match {
-            case null => SimpleIdentityMap.empty.updated(name, tv)
-            case m => m.updated(name, tv)
-          }
+    val poly1 =
+      if newNames.nonEmpty then
+        PolyType(newNames map { name => DepParamName.fresh(name.toTypeName) })(
+          _ => newNames map { _ => TypeBounds(defn.NothingType, defn.AnyType) },
+          _ => defn.AnyType
         )
-        reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
-     }
+      else
+        null
+    val newTvars =
+      if newNames.nonEmpty then
+        newNames.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
+          val tv = TypeVar(paramRef, creatorState = null)
 
-      tv
-    }
+          if scrutNames contains name then {
+            tpmMapping = tpmMapping.updated(
+              scrutPath,
+              tpmMapping(scrutPath) match {
+                case null => SimpleIdentityMap.empty.updated(name, tv)
+                case m => m.updated(name, tv)
+              }
+            )
+            reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+          }
+
+          tv
+        }
+        else
+          Nil
 
     // type member names, reordered
     val tpmNames1 = internalizedNames ++ newNames
@@ -227,7 +235,7 @@ final class ProperGadtConstraint private(
     }
 
     def addPolyOk: Boolean =
-      addToConstraint(poly1, newTvars)
+      (poly1 eq null) || addToConstraint(poly1, newTvars)
         .showing(i"added to constraint: [$poly1]%, %\n$debugBoundsDescription", gadts)
 
     def addUpperBound(tp1: Type, tp2: Type): Boolean = {
