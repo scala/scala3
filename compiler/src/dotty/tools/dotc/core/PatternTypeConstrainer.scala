@@ -94,6 +94,24 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case tp => tp
     }
 
+    def collectRefinement(tp: Type): List[(Name, TypeBounds)] = {
+      @annotation.tailrec def recur(tp: Type, acc: List[(Name, TypeBounds)]): List[(Name, TypeBounds)] = tp match {
+        case RefinedType(parent, name, bounds : TypeBounds) => recur(parent, name -> bounds :: acc)
+        case RefinedType(parent, _, _) => recur(parent, acc)
+        case tp: RecType => recur(tp.parent, acc)
+        case _ => acc
+      }
+      recur(tp, Nil)
+    }
+
+    def showTpMem(tpMem: List[(Name, TypeBounds)]): String =
+      "{" + (tpMem map { (name, tb) => i"$name : $tb" } mkString "; ") + "}"
+
+    def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)]): Boolean =
+      trace(i"constrainTypeMembers ${scrutPath.symbol} @ ${showTpMem(scrutTpMem)} & ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
+        ctx.gadt.addToConstraint(scrutPath, scrutTpMem, patTpMem)
+      }
+
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
       // Fold a list of types into an AndType
       def buildAndType(xs: List[Type]): Type = {
@@ -141,24 +159,39 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       }
     }
 
-    scrut.dealias match {
-      case OrType(scrut1, scrut2) =>
-        either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
-      case AndType(scrut1, scrut2) =>
-        constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
-      case scrut: RefinedOrRecType =>
-        constrainPatternType(pat, stripRefinement(scrut))
-      case scrut => pat.dealias match {
-        case OrType(pat1, pat2) =>
-          either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
-        case AndType(pat1, pat2) =>
-          constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
-        case pat: RefinedOrRecType =>
-          constrainPatternType(stripRefinement(pat), scrut)
-        case pat =>
-          constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
+    val scrutTpMem = collectRefinement(scrut)
+    val patTpMem = collectRefinement(pat)
+
+    def tpMemOk: Boolean =
+      scrutTpMem.isEmpty || patTpMem.isEmpty || { ctx.gadt.narrowScrutTp eq null } || {
+        ctx.gadt.narrowScrutTp match {
+          case tp: TermRef =>
+            constrainTypeMembers(tp, scrutTpMem, patTpMem)
+          case _ =>
+            true
+        }
       }
-    }
+
+    {
+      scrut.dealias match {
+        case OrType(scrut1, scrut2) =>
+          either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
+        case AndType(scrut1, scrut2) =>
+          constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
+        case scrut: RefinedOrRecType =>
+          constrainPatternType(pat, stripRefinement(scrut))
+        case scrut => pat.dealias match {
+          case OrType(pat1, pat2) =>
+            either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
+          case AndType(pat1, pat2) =>
+            constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
+          case pat: RefinedOrRecType =>
+            constrainPatternType(stripRefinement(pat), scrut)
+          case pat =>
+            constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
+        }
+      }
+    } && tpMemOk
   }
 
   /** Constrain "simple" patterns (see `constrainPatternType`).

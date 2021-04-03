@@ -151,7 +151,7 @@ final class ProperGadtConstraint private(
 
     // classify names into two groups, those internalized before and those new
     val (internalizedNames, newNames): (List[Name], List[Name]) = tpmMapping(scrutPath) match {
-      case null => (tpmNames, Nil)
+      case null => (Nil, tpmNames)
       case nameMapping =>
         val m = tpmNames groupBy { name =>
           (scrutNames contains name) && (nameMapping(name) ne null)
@@ -201,7 +201,7 @@ final class ProperGadtConstraint private(
             tp.derivedAndType(loop(tp1), loop(tp2))
           case tp @ OrType(tp1, tp2) if isUpper =>
             tp.derivedOrType(loop(tp1), loop(tp2))
-          case TypeRef(RecThis(_), des : Name) =>
+          case TypeRef(_ : RecThis, des : Name) =>
             getTvarOfName(des)
           case tp: NamedType =>
             mapping(tp.symbol) match {
@@ -226,27 +226,42 @@ final class ProperGadtConstraint private(
       addToConstraint(poly1, newTvars)
         .showing(i"added to constraint: [$poly1]%, %\n$debugBoundsDescription", gadts)
 
+    def addUpperBound(tp1: Type, tp2: Type): Boolean = {
+      (
+        stripInternalTypeVar(tp1),
+        stripInternalTypeVar(tp2)
+      ) match {
+        case (tv1 : TypeVar, t2) => addBound(tv1, t2, isUpper = true)
+        case (t1, tv2: TypeVar) => addBound(tv2, t1, isUpper = false)
+        case (t1, t2) => isSub(t1, t2)
+      }
+    }
+
     def addBoundsOk: List[Boolean] = (scrutTpMems ++ patTpMems) map { (name, tb) =>
       val tvar = getTvarOfName(name)
       val tb1 = processBounds(tb)
 
       {
-        tb1.lo.isRef(defn.NothingClass) || addBound(tvar, tb1.lo, isUpper = false)
+        tb1.lo.isRef(defn.NothingClass) || addUpperBound(tb1.lo, tvar)
       } && {
-        tb1.hi.isAny || addBound(tvar, tb1.hi, isUpper = true)
+        tb1.hi.isAny || addUpperBound(tvar, tb1.hi)
       }
     }
 
     addPolyOk && (addBoundsOk forall identity)
   }
 
+  override def narrowScrutTp_=(tp: Type): Unit = myNarrowScrutTp = tp
+  override def narrowScrutTp: Type = myNarrowScrutTp
+
+  @annotation.tailrec private def stripInternalTypeVar(tp: Type): Type = tp match {
+    case tv: TypeVar =>
+      val inst = constraint.instType(tv)
+      if (inst.exists) stripInternalTypeVar(inst) else tv
+    case _ => tp
+  }
+
   private def addBound(tvar: TypeVar, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-    @annotation.tailrec def stripInternalTypeVar(tp: Type): Type = tp match {
-      case tv: TypeVar =>
-        val inst = constraint.instType(tv)
-        if (inst.exists) stripInternalTypeVar(inst) else tv
-      case _ => tp
-    }
 
     val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
@@ -319,7 +334,8 @@ final class ProperGadtConstraint private(
     mapping,
     reverseMapping,
     tpmMapping,
-    reverseTpmMapping
+    reverseTpmMapping,
+    myNarrowScrutTp
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -329,6 +345,7 @@ final class ProperGadtConstraint private(
       this.reverseMapping = other.reverseMapping
       this.tpmMapping = other.tpmMapping
       this.reverseTpmMapping = other.reverseTpmMapping
+      this.myNarrowScrutTp = other.myNarrowScrutTp
     case _ => ;
   }
 
@@ -429,6 +446,8 @@ final class ProperGadtConstraint private(
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean =
     unsupported("EmptyGadtConstraint.addToConstraint")
+  override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
+  override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
