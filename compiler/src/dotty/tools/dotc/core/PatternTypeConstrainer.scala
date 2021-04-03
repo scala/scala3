@@ -5,6 +5,7 @@ package core
 import Decorators._
 import Symbols._
 import Types._
+import Names.Name
 import Flags._
 import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
@@ -73,7 +74,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._

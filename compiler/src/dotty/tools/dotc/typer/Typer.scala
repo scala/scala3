@@ -1586,6 +1586,7 @@ class Typer extends Namer
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
     }
 
+    gadtCtx.gadt.narrowScrutTp_=(sel.tpe)
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
     caseRest(pat1)(
       using Nullables.caseContext(sel, pat1)(

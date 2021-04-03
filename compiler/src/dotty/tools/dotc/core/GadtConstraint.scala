@@ -39,6 +39,8 @@ sealed abstract class GadtConstraint extends Showable {
     */
   def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)])(using Context): Boolean
 
+  def narrowScrutTp_=(tp: Type): Unit
+  def narrowScrutTp: Type
 
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
@@ -68,7 +70,8 @@ final class ProperGadtConstraint private(
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
   private var tpmMapping: SimpleIdentityMap[TermRef, SimpleIdentityMap[Name, TypeVar]],
-  private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef]
+  private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
+  private var myNarrowScrutTp: Type
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -77,7 +80,8 @@ final class ProperGadtConstraint private(
     mapping = SimpleIdentityMap.empty,
     reverseMapping = SimpleIdentityMap.empty,
     tpmMapping = SimpleIdentityMap.empty,
-    reverseTpmMapping = SimpleIdentityMap.empty
+    reverseTpmMapping = SimpleIdentityMap.empty,
+    myNarrowScrutTp = null
   )
 
   /** Exposes ConstraintHandling.subsumes */
