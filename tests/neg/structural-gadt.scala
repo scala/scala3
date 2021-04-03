@@ -15,15 +15,15 @@ object Test {
 
     case _: Expr { type T <: Int } =>
       val a: A = 0 // error
-      val i: Int = ??? : A // limitation // error
+      val i: Int = ??? : A
 
     case _: IntExpr =>
       val a: A = 0 // limitation // error
       val i: Int = ??? : A // limitation // error
 
     case _: Expr { type T = Int } =>
-      val a: A = 0 // limitation // error
-      val i: Int = ??? : A // limitation // error
+      val a: A = 0
+      val i: Int = ??? : A
   }
 
   def bar[A](e: Expr { type T <: A }) = e match {
@@ -40,7 +40,7 @@ object Test {
       val i: Int = ??? : A // error
 
     case _: Expr { type T = Int } =>
-      val a: A = 0 // limitation // error
+      val a: A = 0
       val i: Int = ??? : A // error
   }
 
