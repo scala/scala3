@@ -58,10 +58,18 @@ object Effects {
     def show(using Context): String = potential.show + "." + method.name.show + "!"
   }
 
+  /** Accessing a global object */
+  case class AccessGlobal(potential: Global) extends Effect {
+    val source = potential.source
+
+    def show(using Context): String = potential.symbol.name.show + "!"
+  }
+
   // ------------------ operations on effects ------------------
 
   def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effect =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, _.asInstanceOf[Effect].show) { eff match {
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, _.asInstanceOf[Effect].show) {
+      eff match
       case Promote(pot) =>
         val pot1 = Potentials.asSeenFrom(pot, thisValue)
         Promote(pot1)(eff.source)
@@ -73,7 +81,9 @@ object Effects {
       case MethodCall(pot, sym) =>
         val pot1 = Potentials.asSeenFrom(pot, thisValue)
         MethodCall(pot1, sym)(eff.source)
-    } }
+
+      case _: AccessGlobal => eff
+    }
 
   def asSeenFrom(effs: Effects, thisValue: Potential)(implicit env: Env): Effects =
     effs.map(asSeenFrom(_, thisValue))

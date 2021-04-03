@@ -37,6 +37,7 @@ object Checking {
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
+    dependencies: mutable.Set[Dependency],     // if the current class is a static object, its dependencies
     env: Env
   ) {
     def withOwner[T](sym: Symbol)(op: State ?=> T): T =
@@ -45,6 +46,11 @@ object Checking {
       this.visited = state.visited
       res
 
+    def isThisStatic(using Context): Boolean =
+      thisClass.is(Flags.Module) && thisClass.sourceModule.isStatic
+
+    def isInSameFile(that: Symbol)(using Context): Boolean =
+      that.source == that.source
 
     def visit[T](eff: Effect)(op: State ?=> T): T =
       val state: State = this.copy(path = path :+ eff.source, visited = this.visited + eff)
@@ -53,10 +59,8 @@ object Checking {
       res
 
     def test(op: State ?=> Errors): Errors = {
-      val savedVisited = visited
-      val errors = op(using this)
-      visited = savedVisited
-      errors
+      val state = this.copy(dependencies = mutable.Set.empty)
+      op(using state)
     }
   }
 
@@ -71,11 +75,11 @@ object Checking {
       }
       else
         state.visit(eff) {
-          eff match {
-            case eff: Promote      => Checking.checkPromote(eff)
-            case eff: FieldAccess  => Checking.checkFieldAccess(eff)
-            case eff: MethodCall   => Checking.checkMethodCall(eff)
-          }
+          eff match
+          case eff: Promote      => Checking.checkPromote(eff)
+          case eff: FieldAccess  => Checking.checkFieldAccess(eff)
+          case eff: MethodCall   => Checking.checkMethodCall(eff)
+          case eff: AccessGlobal => Checking.checkAccessGlobal(eff)
         }
     }
   }
@@ -164,13 +168,25 @@ object Checking {
     }
 
     tpl.parents.foreach {
-      case tree @ Block(_, parent) =>
+      case tree @ Block(stats, parent) =>
+        if state.isThisStatic then
+          val argss = termArgss(parent)
+          checkStats((stats :: argss).flatten, cls)
+
         checkConstructor(funPart(parent).symbol, parent.tpe, tree)
 
-      case tree @ Apply(Block(_, parent), _) =>
+      case tree @ Apply(Block(stats, parent), args) =>
+        if state.isThisStatic then
+          val argss = termArgss(parent)
+          checkStats((stats :: args :: argss).flatten, cls)
+
         checkConstructor(funPart(parent).symbol, tree.tpe, tree)
 
       case parent : Apply =>
+        if state.isThisStatic then
+          val argss = termArgss(parent)
+          checkStats(argss.flatten, cls)
+
         checkConstructor(funPart(parent).symbol, parent.tpe, parent)
 
       case ref =>
@@ -198,7 +214,7 @@ object Checking {
 
       case SuperRef(thisRef: ThisRef, supercls) =>
         val target = resolveSuper(state.thisClass, supercls, sym)
-        if (!target.is(Flags.Method))
+        if (!target.isOneOf(Flags.Method | Flags.Lazy))
           check(FieldAccess(pot, target)(eff.source))
         else if (target.hasSource) {
           val effs = thisRef.effectsOf(target).toList
@@ -216,6 +232,38 @@ object Checking {
         else if (!sym.isConstructor)
           CallUnknown(target, eff.source, state.path).toErrors
         else
+          Errors.empty
+
+      case pot @ Global(obj) =>
+        if !state.isThisStatic then
+          Errors.empty
+        else if state.isInSameFile(obj) then
+          // more fine-grained check if in the same source
+          val target = resolve(pot.moduleClass, sym)
+          if (target.hasSource) {
+            val effs = pot.effectsOf(target).toList
+            effs.flatMap(check(_))
+          }
+          else Errors.empty
+        else
+          // coarse-grained check if in different file
+          state.dependencies += Dependency(obj.moduleClass)(pot.source)
+          Errors.empty
+
+      case hot: Hot =>
+        if !state.isThisStatic then
+          Errors.empty
+        else if state.isInSameFile(hot.classSymbol) then
+          // more fine-grained check if in the same source
+          val target = resolve(hot.classSymbol, sym)
+          if (target.hasSource) {
+            val effs = hot.effectsOf(target).toList
+            effs.flatMap(check(_))
+          }
+          else Errors.empty
+        else
+          // coarse-grained check if in different file
+          state.dependencies += Dependency(hot.classSymbol)(pot.source)
           Errors.empty
 
       case _: Cold =>
@@ -253,6 +301,24 @@ object Checking {
         val target = resolve(cls, field)
         if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
         else Errors.empty
+
+      case hot: Hot =>
+        if state.isThisStatic then
+          val target = resolve(hot.classSymbol, field)
+          if (target.is(Flags.Lazy)) check(MethodCall(hot, target)(eff.source))
+          else Errors.empty
+        else
+          Errors.empty
+
+      case obj: Global =>
+        // for globals, either accessing the object is an error
+        // or all fields are already initialized
+        if state.isThisStatic then
+          val target = resolve(obj.moduleClass, field)
+          if (target.is(Flags.Lazy)) check(MethodCall(obj, target)(eff.source))
+          else Errors.empty
+        else
+          Errors.empty
 
       case _: Cold =>
         AccessCold(field, eff.source, state.path).toErrors
@@ -293,6 +359,16 @@ object Checking {
           if (errors.isEmpty) Errors.empty
           else PromoteWarm(pot, eff.source, state.path).toErrors
 
+        case obj: Global =>
+          assert(state.isThisStatic, "encountered global object promotion while checking " + state.thisClass.show)
+          state.dependencies += Dependency(obj.symbol.moduleClass)(pot.source)
+          Errors.empty
+
+        case hot: Hot =>
+          if !state.isThisStatic then Errors.empty
+          state.dependencies += Dependency(hot.classSymbol)(pot.source)
+          Errors.empty
+
         case Fun(pots, effs) =>
           val errs1 = state.test {
             effs.toList.flatMap(check(_))
@@ -318,6 +394,17 @@ object Checking {
         state.safePromoted += pot
       errs
     }
+
+  private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
+    val obj = eff.potential
+    if state.isThisStatic then
+      if obj.moduleClass != state.thisClass then
+        state.dependencies += Dependency(obj.symbol)(eff.source)
+        Errors.empty
+      else
+        CyclicObjectInit(obj.symbol, state.path).toErrors
+    else
+      Errors.empty
 
   private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
     pot match {
@@ -352,6 +439,26 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
+          case hot: Hot =>
+            if !state.isThisStatic then
+              Summary.empty
+            else if state.isInSameFile(hot.classSymbol) then
+              val target = resolve(hot.classSymbol, sym)
+              if (target.hasSource) Summary(hot.potentialsOf(target), Effects.empty)
+              else Summary.empty
+            else
+              Summary.empty   // already recorded with effect checking
+
+          case pot @ Global(obj) =>
+            if !state.isThisStatic then
+              Summary.empty
+            else if state.isInSameFile(obj) then
+              val target = resolve(pot.moduleClass, sym)
+              if (target.hasSource) Summary(pot.potentialsOf(target), Effects.empty)
+              else Summary.empty
+            else
+              Summary.empty   // already recorded with effect checking
+
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
@@ -381,6 +488,26 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
+          case hot: Hot =>
+            if !state.isThisStatic then
+              Summary.empty
+            else if state.isInSameFile(hot.classSymbol) then
+              val target = resolve(hot.classSymbol, sym)
+              if (target.hasSource) Summary(hot.potentialsOf(target), Effects.empty)
+              else Summary.empty
+            else
+              Summary.empty
+
+          case pot @ Global(obj) =>
+            if !state.isThisStatic then
+              Summary.empty
+            else if state.isInSameFile(obj) then
+              val target = resolve(pot.moduleClass, sym)
+              if (target.hasSource) Summary(pot.potentialsOf(target), Effects.empty)
+              else Summary.empty
+            else
+              Summary.empty
+
           case _: Cold =>
             Summary.empty // error already reported, ignore
 
@@ -396,8 +523,8 @@ object Checking {
             // all outers for `this` are assumed to be hot
             Summary.empty
 
-          case _: Fun =>
-            throw new Exception("Unexpected code reached")
+          case _: Fun | _: Hot | _: Global =>
+            throw new Exception("Unexpected code reached " + pot.show)
 
           case warm: Warm =>
             Summary(warm.resolveOuter(cls))
@@ -408,7 +535,7 @@ object Checking {
             Summary(pots2, effs)
         }
 
-      case _: ThisRef | _: Fun | _: Warm | _: Cold =>
+      case _: ThisRef | _: Fun | _: Warm | _: Cold | _: Global | _: Hot =>
         Summary(pot)
 
       case SuperRef(pot1, supercls) =>

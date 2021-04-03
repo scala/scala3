@@ -5,7 +5,6 @@ object Flags {
 
   new Flags.Inner
 
-  val a = this.b + 3
   val b = 5              // error
 }
 

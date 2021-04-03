@@ -32,6 +32,12 @@ object Potentials {
     def show(using Context): String
     def source: Tree
 
+    def isGlobal: Boolean =
+      this match
+      case _: Global => true
+      case FieldReturn(pot, _) => pot.isGlobal
+      case _ => false
+
     def toPots: Potentials = Vector(this)
   }
 
@@ -153,6 +159,21 @@ object Potentials {
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
 
+  /** Reference to a global object */
+  case class Global(symbol: Symbol)(val source: Tree) extends Refinable {
+    def show(using Context): String = symbol.show
+
+    def moduleClass(using Context): ClassSymbol = symbol.moduleClass.asClass
+  }
+
+  /** The potential of a hot object
+   *
+   *  A hot object may potentially reference a global object.
+   */
+  case class Hot(classSymbol: ClassSymbol)(val source: Tree) extends Refinable {
+    def show(using Context): String = "Hot[" + classSymbol.name.show + "]"
+  }
+
   // ------------------ operations on potentials ------------------
 
   /** Selection on a set of potentials
@@ -218,12 +239,12 @@ object Potentials {
         val outer3 = asSeenFrom(outer2, thisValue2)
         Warm(cls, outer3)(pot.source)
 
-      case _: Cold =>
-        pot
-
       case SuperRef(potThis, supercls) =>
         val pot1 = asSeenFrom(potThis, thisValue)
         SuperRef(pot1, supercls)(pot.source)
+
+      case _: Global | _: Hot | _: Cold =>
+        pot
     }
   }
 

@@ -12,13 +12,13 @@ import Types._
 import Symbols._
 
 import dotty.tools.dotc.transform._
-import MegaPhase._
+import Phases._
 
 
 import scala.collection.mutable
 
 
-class Checker extends MiniPhase {
+class Checker extends Phase {
   import tpd._
 
   val phaseName = "initChecker"
@@ -26,13 +26,38 @@ class Checker extends MiniPhase {
   // cache of class summary
   private val cache = new Cache
 
+  private val cycleChecker = new CycleChecker
+
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value
 
-  override def transformTypeDef(tree: TypeDef)(using Context): tpd.Tree = {
-    if (!tree.isClassDef) return tree
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    cycleChecker.clean()
+    val newUnits = super.runOn(units)
+    cycleChecker.check()
+    newUnits
+
+  val traverser = new TreeTraverser {
+    override def traverse(tree: Tree)(using Context): Unit =
+      tree match {
+        case tdef: TypeDef if tdef.isClassDef =>
+          cycleChecker.classesInCurrentRun += tdef.symbol
+          checkClassDef(tdef)
+          traverseChildren(tree)
+        case _ =>
+          traverseChildren(tree)
+      }
+  }
+
+  override def run(using Context): Unit = {
+    val unit = ctx.compilationUnit
+    traverser.traverse(unit.tpdTree)
+  }
+
+  def checkClassDef(tree: TypeDef)(using Context): tpd.Tree = {
+    assert(tree.isClassDef)
 
     val cls = tree.symbol.asClass
     val instantiable: Boolean =
@@ -54,10 +79,14 @@ class Checker extends MiniPhase {
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
         safePromoted = mutable.Set.empty,
+        dependencies = mutable.Set.empty,
         env = Env(ctx.withOwner(cls), cache)
       )
 
       Checking.checkClassBody(tree)
+
+      if cls.is(Flags.Module) && cls.isStatic then
+        cycleChecker.cacheObjectDependencies(cls.sourceModule, state.dependencies.toList)
     }
 
     tree

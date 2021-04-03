@@ -69,6 +69,15 @@ object Errors {
       report.warning(show + stacktrace, field.srcPos)
   }
 
+  case class CyclicObjectInit(obj: Symbol, trace: Vector[Tree]) extends Error {
+    def source: Tree = trace.last
+    def show(using Context): String =
+      "Cyclic object initialization of " + obj.show + "."
+
+    override def issue(using Context): Unit =
+      report.warning(show + stacktrace, obj.srcPos)
+  }
+
   /** Promote `this` under initialization to fully-initialized */
   case class PromoteThis(pot: ThisRef, source: Tree, trace: Vector[Tree]) extends Error {
     def show(using Context): String = "Promote the value under initialization to fully-initialized."

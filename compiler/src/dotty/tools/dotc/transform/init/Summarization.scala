@@ -40,11 +40,13 @@ object Summarization {
         analyze(supert.tpe, supert)
 
       case Select(qualifier, name) =>
+        val sym = expr.symbol
         val Summary(pots, effs) = analyze(qualifier)
-        if (env.canIgnoreMethod(expr.symbol)) Summary(effs)
-        else if (!expr.symbol.exists) { // polymorphic function apply and structural types
+        if (env.canIgnoreMethod(sym)) Summary(effs)
+        else if (!sym.exists) // polymorphic function apply and structural types
           Summary(pots.promote(expr) ++ effs)
-        }
+        else if (sym.is(Flags.Module) && sym.isStatic)
+          Summary(effs) + Global(sym)(expr)
         else {
           val Summary(pots2, effs2) = pots.select(expr.symbol, expr)
           Summary(pots2, effs ++ effs2)
@@ -90,7 +92,7 @@ object Summarization {
           val thisRef = ThisRef()(expr)
           val enclosing = cls.owner.lexicallyEnclosingClass.asClass
           val summary = resolveThis(enclosing, thisRef, cur, expr)
-          if summary.pots.isEmpty then summary
+          if summary.pots.isEmpty then summary + Hot(cls)(expr)
           else {
             assert(summary.pots.size == 1)
             summary.dropPotentials + Warm(cls, summary.pots.head)(expr)
@@ -98,10 +100,14 @@ object Summarization {
         }
         else {
           val summary = analyze(tref.prefix, expr)
-          if summary.pots.isEmpty then summary
+          if summary.pots.isEmpty then summary + Hot(cls)(expr)
           else {
             assert(summary.pots.size == 1)
-            summary.dropPotentials + Warm(cls, summary.pots.head)(expr)
+            val outer = summary.pots.head
+            val pot =
+              if outer.isGlobal then Hot(cls)(expr)
+              else Warm(cls, outer)(expr)
+            summary.dropPotentials + pot
           }
         }
 
@@ -236,6 +242,18 @@ object Summarization {
       case tmref: TermRef if tmref.prefix == NoPrefix =>
         Summary.empty
 
+      case tmref: TermRef
+      if tmref.symbol.is(Flags.Module, butNot = Flags.Package)
+         && tmref.symbol.isStatic
+      =>
+        val cls = tmref.symbol.moduleClass
+        if cls == env.ctx.owner.lexicallyEnclosingClass then
+          // self reference to an object inside the object
+          Summary(ThisRef()(source))
+        else
+          val pot = Global(tmref.symbol)(source)
+          Summary(pot) + AccessGlobal(pot)
+
       case tmref: TermRef =>
         val Summary(pots, effs) = analyze(tmref.prefix, source)
         if (env.canIgnoreMethod(tmref.symbol)) Summary(effs)
@@ -245,9 +263,18 @@ object Summarization {
         }
 
       case ThisType(tref) =>
-        val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
-        val cls = tref.symbol.asClass
-        resolveThis(cls, ThisRef()(source), enclosing, source)
+        if tref.symbol.is(Flags.Module, butNot = Flags.Package)
+          && tref.symbol.isStatic
+          && env.ctx.owner.isStatic
+          && tref.symbol != env.ctx.owner
+        then
+          val sym = tref.symbol.sourceModule
+          val pot = Global(sym)(source)
+          Summary(pot) + AccessGlobal(pot)
+        else
+          val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+          val cls = tref.symbol.asClass
+          resolveThis(cls, ThisRef()(source), enclosing, source)
 
       case SuperType(thisTp, superTp) =>
         val Summary(pots, effs) = analyze(thisTp, source)
@@ -285,12 +312,13 @@ object Summarization {
     if (cls.is(Flags.Package)) Summary.empty
     else if (cls == cur) Summary(pot)
     else if (pot.size > 2) Summary(Promote(pot)(source))
+    else if (cls.is(Flags.Module) && !cur.ownersIterator.exists(_ == cls)) {
+      // Dotty uses O$.this outside of the object O
+      val pot = Global(cls.sourceModule)(source)
+      Summary(pot) + AccessGlobal(pot)
+    }
     else {
       val enclosing = cur.owner.lexicallyEnclosingClass.asClass
-      // Dotty uses O$.this outside of the object O
-      if (enclosing.is(Flags.Package) && cls.is(Flags.Module))
-        return Summary.empty
-
       assert(!enclosing.is(Flags.Package), "enclosing = " + enclosing.show + ", cls = " + cls.show + ", pot = " + pot.show + ", cur = " + cur.show)
       val pot2 = Outer(pot, cur)(pot.source)
       resolveThis(cls, pot2, enclosing, source)
@@ -378,5 +406,4 @@ object Summarization {
       ClassSummary(cls, parentOuter.toMap)
     }
   }
-
 }
