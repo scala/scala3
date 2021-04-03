@@ -105,7 +105,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     }
 
     def showTpMem(tpMem: List[(Name, TypeBounds)]): String =
-      "{" + (tpMem map { (name, tb) => i"$name : $tb" } mkString "; ") + "}"
+      "{" + (tpMem map { (name, tb) => i"$name $tb" } mkString "; ") + "}"
 
     def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)]): Boolean =
       trace(i"constrainTypeMembers ${scrutPath.symbol} @ ${showTpMem(scrutTpMem)} & ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
