@@ -465,7 +465,7 @@ final class ProperGadtConstraint private(
     }
     tpmMapping.foreachBinding { case (path, nameMapping) =>
       nameMapping.foreachBinding { case (name, _) =>
-        sb ++= i"(${path.symbol}).$name: ${fullBounds(path, name)}"
+        sb ++= i"(${path.symbol}).$name: ${fullBounds(path, name)}\n"
       }
     }
     sb.result
