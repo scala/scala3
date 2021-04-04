@@ -74,7 +74,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, touchedTypeMembers: Boolean = false): Boolean = trace(i"constrainPatternType($scrut, $pat)(narrowScrutType = ${if ctx.gadt.narrowScrutTp eq null then "null" else ctx.gadt.narrowScrutTp})", gadts) {
     def classesMayBeCompatible: Boolean = {
       import Flags._
       val patClassSym = pat.classSymbol
@@ -119,7 +119,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def constrainTypeMembers(scrutPath: TermRef, scrutTpMem: List[(Name, TypeBounds)], patTpMem: List[(Name, TypeBounds)], maybePatPath: Option[TermRef]): Boolean =
       trace(i"constrainTypeMembers (${scrutPath.symbol}) @ ${showTpMem(scrutTpMem)} &${maybePatPath.map(x => i" (${x.symbol}) @").getOrElse("")} ${showTpMem(patTpMem)}", gadts, res => s"$res\n${ctx.gadt.debugBoundsDescription}") {
-        ctx.gadt.addToConstraint(scrutPath, scrutTpMem, patTpMem, maybePatPath)
+        ctx.gadt.addToConstraint(scrut, pat, scrutPath, scrutTpMem, patTpMem, maybePatPath)
       }
 
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
@@ -140,7 +140,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           // consider all parents
           val parents = scrut.parents
           val andType = buildAndType(parents)
-          !andType.exists || constrainPatternType(pat, andType)
+          !andType.exists || constrainPatternType(pat, andType, true)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patClassSym = pat.classSymbol
           // find all shared parents in the inheritance hierarchy between pat and scrut
@@ -157,7 +157,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
           val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
           val baseClasses = allSyms map scrut.baseType
           val andType = buildAndType(baseClasses)
-          !andType.exists || constrainPatternType(pat, andType)
+          !andType.exists || constrainPatternType(pat, andType, true)
         case _ =>
           val upcasted: Type = scrut match {
             case scrut: TypeProxy => scrut.superType
@@ -190,23 +190,23 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     {
       scrut.dealias match {
         case OrType(scrut1, scrut2) =>
-          either(constrainPatternType(pat, scrut1), constrainPatternType(pat, scrut2))
+          either(constrainPatternType(pat, scrut1, true), constrainPatternType(pat, scrut2, true))
         case AndType(scrut1, scrut2) =>
-          constrainPatternType(pat, scrut1) && constrainPatternType(pat, scrut2)
+          constrainPatternType(pat, scrut1, true) && constrainPatternType(pat, scrut2, true)
         case scrut: RefinedOrRecType =>
-          constrainPatternType(pat, stripRefinement(scrut))
+          constrainPatternType(pat, stripRefinement(scrut), true)
         case scrut => pat.dealias match {
           case OrType(pat1, pat2) =>
-            either(constrainPatternType(pat1, scrut), constrainPatternType(pat2, scrut))
+            either(constrainPatternType(pat1, scrut, true), constrainPatternType(pat2, scrut, true))
           case AndType(pat1, pat2) =>
-            constrainPatternType(pat1, scrut) && constrainPatternType(pat2, scrut)
+            constrainPatternType(pat1, scrut, true) && constrainPatternType(pat2, scrut, true)
           case pat: RefinedOrRecType =>
-            constrainPatternType(stripRefinement(pat), scrut)
+            constrainPatternType(stripRefinement(pat), scrut, true)
           case pat =>
             constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
         }
       }
-    } && tpMemOk
+    } && (touchedTypeMembers || tpMemOk)
   }
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
