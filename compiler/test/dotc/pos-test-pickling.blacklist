@@ -64,3 +64,7 @@ i8182.scala
 
 # local lifted value in annotation argument has different position after pickling
 i2797a
+
+# GADT cast applied to singleton type difference
+i4176-gadt.scala
+

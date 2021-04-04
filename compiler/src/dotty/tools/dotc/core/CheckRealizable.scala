@@ -118,6 +118,7 @@ class CheckRealizable(using Context) {
     case tp =>
       def isConcrete(tp: Type): Boolean = tp.dealias match {
         case tp: TypeRef => tp.symbol.isClass
+        case tp: TypeParamRef => false
         case tp: TypeProxy => isConcrete(tp.underlying)
         case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
         case tp: OrType  => isConcrete(tp.tp1) && isConcrete(tp.tp2)

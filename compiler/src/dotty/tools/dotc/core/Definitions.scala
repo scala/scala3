@@ -919,6 +919,7 @@ class Definitions {
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
   @tu lazy val SetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.setter")
   @tu lazy val ShowAsInfixAnnot: ClassSymbol = requiredClass("scala.annotation.showAsInfix")
+  @tu lazy val StableAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Stable")
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
