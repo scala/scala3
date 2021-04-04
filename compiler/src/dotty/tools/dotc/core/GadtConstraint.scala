@@ -41,7 +41,7 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Add type members to constraint.
     */
-  def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean
+  def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean
 
   def narrowScrutTp_=(tp: Type): Unit
   def narrowScrutTp: Type
@@ -146,7 +146,7 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
+  override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
     import NameKinds.DepParamName
     // add type member names, from both scrutinee and pattern
     val tpmNames: List[Name] = { (scrutTpMems ++ patTpMems) map (_._1) }.distinct
@@ -269,6 +269,12 @@ final class ProperGadtConstraint private(
             tp.derivedAndType(loop(tp1), loop(tp2))
           case tp @ OrType(tp1, tp2) if isUpper =>
             tp.derivedOrType(loop(tp1), loop(tp2))
+          case TypeRef(tp, des: Symbol) if tp == scrut || tp == pat =>
+            getTvarOfName(des.name)
+          case TypeRef(_ : RecThis, des : Symbol) =>
+            getTvarOfName(des.name)
+          case TypeRef(tp, des: Name) if tp == scrut || tp == pat =>
+            getTvarOfName(des)
           case TypeRef(_ : RecThis, des : Name) =>
             getTvarOfName(des)
           case tp: NamedType =>
@@ -334,7 +340,6 @@ final class ProperGadtConstraint private(
   }
 
   private def addBound(tvar: TypeVar, bound: Type, isUpper: Boolean)(using Context): Boolean = {
-
     val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
       case inst =>
@@ -553,7 +558,7 @@ final class ProperGadtConstraint private(
   override def contains(sym: Symbol)(using Context) = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
-  override def addToConstraint(scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean =
+  override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean =
     unsupported("EmptyGadtConstraint.addToConstraint")
   override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
