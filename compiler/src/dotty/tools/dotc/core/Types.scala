@@ -3148,10 +3148,7 @@ object Types {
     /** Replace or type by the closest non-or type above it */
     def join(using Context): Type = {
       if (myJoinPeriod != ctx.period) {
-        myJoin =
-          if tp1 frozen_<:< tp2 then tp2
-          else if tp2 frozen_<:< tp1 then tp1
-          else TypeOps.orDominator(this)
+        myJoin = TypeOps.orDominator(this)
         core.println(i"join of $this == $myJoin")
         assert(myJoin != this)
         myJoinPeriod = ctx.period
