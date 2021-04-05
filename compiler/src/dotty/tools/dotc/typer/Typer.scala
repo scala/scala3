@@ -3532,7 +3532,12 @@ class Typer extends Namer
                 adaptToSubType(wtp)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
-             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) { tree.tpe.widenExpr frozen_<:< pt } =>
+             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
+               (tree.tpe.widenExpr frozen_<:< pt)
+                // we overshot; a cast is not needed, after all. (this happens a lot. We should
+                // find out whether we can make GADTused more precise)
+                .showing(i"false alarm for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}", gadts)
+              } =>
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
             // if the expected type is a supertype of the GADT bound. It would be good to come
