@@ -905,8 +905,9 @@ class Typer extends Namer
      * of annotation defined as `@interface Annot { int[] value() }`
      * We assume that calling `typedNamedArg` in context of Java implies that we are dealing
      * with annotation contructor, as named arguments are not allowed anywhere else in Java.
+     * Under explicit nulls, the pt could be nullable. We need to strip `Null` type first.
      */
-    val arg1 = pt match {
+    val arg1 = pt.stripNull match {
       case AppliedType(a, typ :: Nil) if ctx.isJava && a.isRef(defn.ArrayClass) =>
         tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
