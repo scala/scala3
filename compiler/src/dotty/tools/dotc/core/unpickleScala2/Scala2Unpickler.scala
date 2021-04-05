@@ -30,6 +30,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.annotation.switch
 import reporting._
+import config.Printers.scala2unpickle
 
 object Scala2Unpickler {
 
@@ -491,8 +492,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         sym.setFlag(Scala2x)
       if (!(isRefinementClass(sym) || isUnpickleRoot(sym) || sym.is(Scala2Existential))) {
         val owner = sym.owner
-        if (owner.isClass)
-          owner.asClass.enter(sym, symScope(owner))
+        if owner.isClass then
+          val scope = symScope(owner)
+          if !(sym.isType && scope.lookup(sym.name).exists) then
+            owner.asClass.enter(sym, scope)
+          else
+            scala2unpickle.println(i"duplicate symbol ${sym.showLocated}")
+            // Scala 2.13 seems sometimes generates duplicate type parameters with the same owner
+            // For instance, in i11173. In this case, we cannot proceed with entering.
       }
       sym
     }

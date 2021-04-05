@@ -39,6 +39,7 @@ object Printers {
   val quotePickling = noPrinter
   val plugins = noPrinter
   val refcheck = noPrinter
+  val scala2unpickle = noPrinter
   val simplify = noPrinter
   val staging = noPrinter
   val subtyping = noPrinter
