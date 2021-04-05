@@ -614,7 +614,8 @@ trait Applications extends Compatibility {
 
   /** The degree to which an argument has to match a formal parameter */
   enum ArgMatch:
-    case SubType       // argument is a relaxed subtype of formal
+    case SubType       // argument is a relaxed subtype of formal, SAM conversions are also allowed
+    case Comparing     // same as compatible, subtyping in one direction disables SAM conversion in the other
     case Compatible    // argument is compatible with formal
     case CompatibleCAP // capture-converted argument is compatible with formal
 
@@ -635,22 +636,26 @@ trait Applications extends Compatibility {
         // matches expected type
         false
       case argtpe =>
-        def SAMargOK(onlyFunctionalInterface: Boolean) =
-          (!onlyFunctionalInterface || formal.classSymbol.hasAnnotation(defn.FunctionalInterfaceAnnot))
-          && formal.match
-            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-            case _ => false
-        if argMatch == ArgMatch.SubType then
-          (argtpe relaxed_<:< formal.widenExpr) || SAMargOK(onlyFunctionalInterface = true)
-        else
-          isCompatible(argtpe, formal)
-          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK(onlyFunctionalInterface = false)
-          || argMatch == ArgMatch.CompatibleCAP
-              && {
-                val argtpe1 = argtpe.widen
-                val captured = captureWildcards(argtpe1)
-                (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
-              }
+        val argtpe1 = argtpe.widen
+
+        def isSAMargOK =
+          defn.isFunctionType(argtpe1)
+          && {
+            formal match
+              case SAMType(sam) => argtpe1 <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+              case _ => false
+          }
+          && (argMatch != ArgMatch.Comparing || !(formal.widenExpr relaxed_<:< argtpe1))
+
+        ( if argMatch == ArgMatch.SubType then argtpe relaxed_<:< formal.widenExpr
+          else isCompatible(argtpe, formal) )
+        || isSAMargOK//.showing(i"sam $argtpe, $formal, $argMatch = $result, ${formal.widenExpr relaxed_<:<  argtpe1}")
+        || argMatch == ArgMatch.CompatibleCAP
+            && {
+              val captured = captureWildcards(argtpe1)
+              (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
+            }
+    end argOK
 
     /** The type of the given argument */
     protected def argType(arg: Arg, formal: Type): Type
@@ -1486,9 +1491,9 @@ trait Applications extends Compatibility {
           || {
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Comparing)
             else
-              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
+              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Comparing)
           }
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
