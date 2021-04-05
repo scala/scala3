@@ -1260,6 +1260,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val saved = constraint
+      val savedGadtConstraint = ctx.gadt.constraint
+      val savedGADTused = GADTused
       val savedSuccessCount = successCount
       try
         recCount += 1
@@ -1268,6 +1270,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         recCount -= 1
         if !result then
           state.constraint = saved
+          ctx.gadt.constraint = savedGadtConstraint
+            // it seems we need to reset the GADT constraint in case a subtype test fails.
+            // or is this done elsewhere?
+          GADTused = savedGADTused
         else if recCount == 0 && needsGc then
           state.gc()
           needsGc = false

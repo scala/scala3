@@ -54,6 +54,9 @@ sealed abstract class GadtConstraint extends Showable {
   /** Restore the state from other [[GadtConstraint]], probably copied using [[fresh]] */
   def restore(other: GadtConstraint): Unit
 
+  def constraint: Constraint
+  def constraint_=(c: Constraint): Unit
+
   def debugBoundsDescription(using Context): String
 }
 
@@ -217,8 +220,8 @@ final class ProperGadtConstraint private(
 
   // ---- Protected/internal -----------------------------------------------
 
-  override protected def constraint = myConstraint
-  override protected def constraint_=(c: Constraint) = myConstraint = c
+  override def constraint = myConstraint
+  override def constraint_=(c: Constraint) = myConstraint = c
 
   override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSubType(tp1, tp2)
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
@@ -305,6 +308,9 @@ final class ProperGadtConstraint private(
   override def fresh = new ProperGadtConstraint
   override def restore(other: GadtConstraint): Unit =
     if (!other.isEmpty) sys.error("cannot restore a non-empty GADTMap")
+
+  override def constraint: Constraint = OrderingConstraint.empty
+  override def constraint_=(c: Constraint): Unit = ()
 
   override def debugBoundsDescription(using Context): String = "EmptyGadtConstraint"
 
