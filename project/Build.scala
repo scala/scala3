@@ -291,6 +291,8 @@ object Build {
     disableDocSetting
   )
 
+  private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
+
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
         ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
@@ -309,6 +311,9 @@ object Build {
       // Reflect doesn't expect to see it as a standalone definition
       // and therefore it's easier just not to document it
       "-skip-by-id:scala.runtime.MatchCase",
+      "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
+      "-author",
+      "-groups"
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
@@ -426,7 +431,7 @@ object Build {
           s"""version.number=${version.value}
              |maven.version.number=${version.value}
              |git.hash=${VersionUtil.gitHash}
-             |copyright.string=Copyright 2002-${Calendar.getInstance().get(Calendar.YEAR)}, LAMP/EPFL
+             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
            """.stripMargin
 
         if (!(file.exists && IO.read(file) == contents)) {

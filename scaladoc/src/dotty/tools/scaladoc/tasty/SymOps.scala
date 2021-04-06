@@ -83,15 +83,15 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
         Flags.Case -> Modifier.Case,
         ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
 
-    def isHiddenByVisibility: Boolean =
+    def isHiddenByVisibility(using dctx: DocContext): Boolean =
       import VisibilityScope._
 
-      getVisibility() match
+      !summon[DocContext].args.includePrivateAPI && getVisibility().match
         case Visibility.Private(_) => true
         case Visibility.Protected(ThisScope | ImplicitModuleScope | _: ExplicitModuleScope) => true
         case _ => false
 
-    def shouldDocumentClasslike: Boolean = !isHiddenByVisibility
+    def shouldDocumentClasslike(using dctx: DocContext): Boolean = !isHiddenByVisibility
         && !sym.flags.is(Flags.Synthetic)
         && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
         && !(sym.companionModule.flags.is(Flags.Given))
