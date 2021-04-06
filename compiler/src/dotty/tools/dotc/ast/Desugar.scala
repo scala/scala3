@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{FrontEnd, Namer}
+import typer.{FrontEnd, Namer, Checking}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
@@ -859,16 +859,7 @@ object desugar {
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
-
-    def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
-
-    if (mods.is(Abstract))
-      report.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
-    if (mods.is(Sealed))
-      report.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
-    // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
-    if (mods.is(Final) && !mods.is(Synthetic))
-      report.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
+    Checking.checkWellFormedModule(mdef)
 
     if (mods.is(Package))
       packageModuleDef(mdef)

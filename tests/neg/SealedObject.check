@@ -1,6 +1,0 @@
--- [E147] Syntax Error: tests/neg/SealedObject.scala:1:0 ---------------------------------------------------------------
-1 |sealed object A {} // error
-  |^^^^^^
-  |sealed modifier is redundant for objects
-
-longer explanation available when compiling with `-explain`
