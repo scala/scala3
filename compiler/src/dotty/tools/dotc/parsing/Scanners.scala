@@ -369,7 +369,7 @@ object Scanners {
       *     token that can start an expression.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
-    def isLeadingInfixOperator(inConditional: Boolean = true) =
+    def isLeadingInfixOperator(nextWidth: IndentWidth = indentWidth(offset), inConditional: Boolean = true) =
       allowLeadingInfixOperators
       && isOperator
       && (isWhitespace(ch) || ch == LF)
@@ -396,6 +396,20 @@ object Scanners {
         lookahead.nextToken()
         assumeStartsExpr(lookahead)
         || lookahead.token == NEWLINE && assumeStartsExpr(lookahead.next)
+      }
+      && {
+        currentRegion match
+          case r: Indented =>
+            r.width <= nextWidth
+            || {
+              r.outer match
+                case null => true
+                case Indented(outerWidth, others, _, _) =>
+                  outerWidth < nextWidth && !others.contains(nextWidth)
+                case outer =>
+                  outer.indentWidth < nextWidth
+            }
+          case _ => true
       }
       && {
         if migrateTo3 then
@@ -512,7 +526,7 @@ object Scanners {
       if newlineIsSeparating
          && canEndStatTokens.contains(lastToken)
          && canStartStatTokens.contains(token)
-         && !isLeadingInfixOperator()
+         && !isLeadingInfixOperator(nextWidth)
          && !(lastWidth < nextWidth && isContinuing(lastToken))
       then
         insert(if (pastBlankLine) NEWLINES else NEWLINE, lineOffset)
@@ -521,7 +535,7 @@ object Scanners {
            || nextWidth == lastWidth && (indentPrefix == MATCH || indentPrefix == CATCH) && token != CASE then
           if currentRegion.isOutermost then
             if nextWidth < lastWidth then currentRegion = topLevelRegion(nextWidth)
-          else if !isLeadingInfixOperator() && !statCtdTokens.contains(lastToken) then
+          else if !isLeadingInfixOperator(nextWidth) && !statCtdTokens.contains(lastToken) then
             currentRegion match
               case r: Indented =>
                 currentRegion = r.enclosing
@@ -1105,7 +1119,7 @@ object Scanners {
           putChar(ch)
           nextRawChar()
         getStringPart(multiLine)
-      } 
+      }
       else if (ch == '$') {
         nextRawChar()
         if (ch == '$' || ch == '"') {

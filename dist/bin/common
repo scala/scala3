@@ -7,7 +7,7 @@
 # save terminal settings
 saved_stty=$(stty -g 2>/dev/null)
 # clear on error so we don't later try to restore them
-if [[ ! $? ]]; then  
+if [[ ! $? ]]; then
   saved_stty=""
 fi
 
@@ -135,7 +135,7 @@ fi
 find_lib () {
   local lib=$(find $PROG_HOME/lib/ -name "$1")
   if [ -n "$CYGPATHCMD" ]; then
-    $CYGPATHCMD -am $lib
+    "$CYGPATHCMD" -am $lib
   elif [[ $mingw ||  $msys ]]; then
     echo $lib | sed 's|/|\\\\|g'
   else

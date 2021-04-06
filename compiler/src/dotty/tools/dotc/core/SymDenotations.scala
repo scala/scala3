@@ -2098,25 +2098,27 @@ object SymDenotations {
             computeTypeProxy
 
           case tp: AndOrType =>
-            def computeAndOrType = {
+            def computeAndOrType: Type =
               val tp1 = tp.tp1
               val tp2 = tp.tp2
+              if !tp.isAnd then
+                if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
+                if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
               val baseTp =
-                if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
+                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
                   symbol.typeRef
-                else {
+                else
                   val baseTp1 = recur(tp1)
                   val baseTp2 = recur(tp2)
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
-                  combined match {
+                  combined match
                     case combined: AndOrType
                     if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
-                  }
-                }
+
               if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
               baseTp
-            }
+
             computeAndOrType
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>

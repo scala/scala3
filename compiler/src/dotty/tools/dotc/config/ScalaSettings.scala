@@ -52,36 +52,6 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val showPlugins: Setting[Boolean]        = BooleanSetting      ("-Xplugin-list", "Print a synopsis of loaded plugins.")
   val pluginsDir: Setting[String]         = StringSetting       ("-Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
   val pluginOptions: Setting[List[String]]      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
-
-   /** Doctool specific settings */
-  val siteRoot: Setting[String] = StringSetting(
-    "-siteroot",
-    "site root",
-    "A directory containing static files from which to generate documentation.",
-    "./docs"
-  )
-
-
-  val projectName: Setting[String] = StringSetting (
-    "-project",
-    "project title",
-    "The name of the project.",
-    ""
-  )
-
-  val projectVersion: Setting[String] = StringSetting (
-    "-project-version",
-    "project version",
-    "The current version of your project.",
-    ""
-  )
-
-  val projectLogo: Setting[String] = StringSetting(
-    "-project-logo",
-    "project logo filename",
-    "The file that contains the project's logo (in /images).",
-    ""
-  )
 }
 
 class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {

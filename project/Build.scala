@@ -65,17 +65,17 @@ object BootstrappedDottyJSPlugin extends DottyJSPlugin(Build.commonBootstrappedS
 object NonBootstrappedDottyJSPlugin extends DottyJSPlugin(Build.commonNonBootstrappedSettings)
 
 object Build {
-  val referenceVersion = "3.0.0-RC2-bin-20210325-ab2664f-NIGHTLY"
+  val referenceVersion = "3.0.0-RC2"
 
   val baseVersion = "3.0.1-RC1"
-  val baseSbtDottyVersion = "0.5.4"
+  val baseSbtDottyVersion = "0.5.5"
 
   // Versions used by the vscode extension to create a new project
   // This should be the latest published releases.
   // TODO: Have the vscode extension fetch these numbers from the Internet
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
-  val publishedSbtDottyVersion = "0.5.3"
+  val publishedSbtDottyVersion = "0.5.4"
 
   /** scala-library version required to compile Dotty.
    *
@@ -291,6 +291,8 @@ object Build {
     disableDocSetting
   )
 
+  private lazy val currentYear: String = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString
+
   lazy val scalacOptionsDocSettings = Seq(
       "-external-mappings:" +
         ".*scala.*::scaladoc3::http://dotty.epfl.ch/api/," +
@@ -309,6 +311,9 @@ object Build {
       // Reflect doesn't expect to see it as a standalone definition
       // and therefore it's easier just not to document it
       "-skip-by-id:scala.runtime.MatchCase",
+      "-project-footer", s"Copyright (c) 2002-$currentYear, LAMP/EPFL",
+      "-author",
+      "-groups"
   )
 
   // Settings used when compiling dotty with a non-bootstrapped dotty
@@ -426,7 +431,7 @@ object Build {
           s"""version.number=${version.value}
              |maven.version.number=${version.value}
              |git.hash=${VersionUtil.gitHash}
-             |copyright.string=Copyright 2002-${Calendar.getInstance().get(Calendar.YEAR)}, LAMP/EPFL
+             |copyright.string=Copyright 2002-$currentYear, LAMP/EPFL
            """.stripMargin
 
         if (!(file.exists && IO.read(file) == contents)) {
@@ -1632,7 +1637,7 @@ object Build {
           val scala3version = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
           val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v${stdlibVersion(Bootstrapped)}}#src/library"
+          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
           val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
           import _root_.scala.sys.process._
