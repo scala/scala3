@@ -3056,6 +3056,10 @@ class Typer extends Namer
         case _ =>
           EmptyTree
 
+    def nestedFailure(ex: TypeError) =
+      rememberSearchFailure(qual,
+        SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
+
     // try an extension method in scope
     try
       val nestedCtx = ctx.fresh.setNewTyperState()
@@ -3066,30 +3070,31 @@ class Typer extends Namer
       for err <- nestedCtx.reporter.allErrors.take(1) do
         rememberSearchFailure(qual,
           SearchFailure(app.withType(FailedExtension(app, selectionProto, err.msg))))
-    catch case ex: TypeError =>
-      rememberSearchFailure(qual,
-        SearchFailure(qual.withType(NestedFailure(ex.toMessage, selectionProto))))
+    catch case ex: TypeError => nestedFailure(ex)
 
     // try an implicit conversion or given extension
     if ctx.mode.is(Mode.ImplicitsEnabled) && !tree.name.isConstructorName && qual.tpe.isValueType then
-      trace(i"try insert impl on qualifier $tree $pt") {
-        val selProto = selectionProto
-        inferView(qual, selProto) match
-          case SearchSuccess(found, _, _, isExtension) =>
-            if isExtension then return found
-            else
-              checkImplicitConversionUseOK(found)
-              return typedSelect(tree, pt, found)
-          case failure: SearchFailure =>
-            if failure.isAmbiguous then
-              return (
-                if canDefineFurther(qual.tpe.widen) then
-                  tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, privateOK)
-                else
-                  err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
-              )
-            rememberSearchFailure(qual, failure)
-      }
+      try
+        trace(i"try insert impl on qualifier $tree $pt") {
+          val selProto = selectionProto
+          inferView(qual, selProto) match
+            case SearchSuccess(found, _, _, isExtension) =>
+              if isExtension then return found
+              else
+                checkImplicitConversionUseOK(found)
+                return typedSelect(tree, pt, found)
+            case failure: SearchFailure =>
+              if failure.isAmbiguous then
+                return (
+                  if canDefineFurther(qual.tpe.widen) then
+                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, privateOK)
+                  else
+                    err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
+                )
+              rememberSearchFailure(qual, failure)
+        }
+      catch case ex: TypeError => nestedFailure(ex)
+
     EmptyTree
   end tryExtensionOrConversion
 
