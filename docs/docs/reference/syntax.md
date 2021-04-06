@@ -161,10 +161,10 @@ Type              ::=  FunType
                     |  FunParamClause ‘=>>’ Type
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
                     |  HKTypeParamClause '=>' Type
-FunArgTypes       ::=  InfixType
-                    |  ‘(’ [ FunArgType {‘,’ FunArgType } ] ‘)’
+FunTypeArgs       ::=  InfixType
+                    |  ‘(’ [ FunArgTypes ] ‘)’
                     |  FunParamClause
 FunParamClause    ::=  ‘(’ TypedFunParam {‘,’ TypedFunParam } ‘)’
 TypedFunParam     ::=  id ‘:’ Type
@@ -189,6 +189,7 @@ Singleton         ::=  SimpleRef
 
 FunArgType        ::=  Type
                     |  ‘=>’ Type
+FunArgTypes       ::=  FunArgType { ‘,’ FunArgType }
 ParamType         ::=  [‘=>’] ParamValueType
 ParamValueType    ::=  Type [‘*’]
 TypeArgs          ::=  ‘[’ Types ‘]’
@@ -311,14 +312,14 @@ HkTypeParam       ::=  {Annotation} [‘+’ | ‘-’] (id [HkTypeParamClause] 
 
 ClsParamClauses   ::=  {ClsParamClause} [[nl] ‘(’ [‘implicit’] ClsParams ‘)’]
 ClsParamClause    ::=  [nl] ‘(’ ClsParams ‘)’
-                    |  [nl] ‘(’ ‘using’ (ClsParams | Types) ‘)’
+                    |  [nl] ‘(’ ‘using’ (ClsParams | FunArgTypes) ‘)’
 ClsParams         ::=  ClsParam {‘,’ ClsParam}
 ClsParam          ::=  {Annotation} [{Modifier} (‘val’ | ‘var’) | ‘inline’] Param
 Param             ::=  id ‘:’ ParamType [‘=’ Expr]
 
 DefParamClauses   ::=  {DefParamClause} [[nl] ‘(’ [‘implicit’] DefParams ‘)’]
 DefParamClause    ::=  [nl] ‘(’ DefParams ‘)’ | UsingParamClause
-UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | Types) ‘)’
+UsingParamClause  ::=  [nl] ‘(’ ‘using’ (DefParams | FunArgTypes) ‘)’
 DefParams         ::=  DefParam {‘,’ DefParam}
 DefParam          ::=  {Annotation} [‘inline’] Param
 ```
