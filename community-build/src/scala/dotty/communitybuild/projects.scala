@@ -247,7 +247,6 @@ object projects:
   lazy val scas = MillCommunityProject(
     project = "scas",
     baseCommand = "scas.application",
-    requiresExperimental = true
   )
 
   lazy val intent = SbtCommunityProject(
