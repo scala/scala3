@@ -1,1 +1,0 @@
-abstract object A {} // error
