@@ -186,11 +186,6 @@ abstract: |
 ../out/pandoc/src_managed/reference/metaprogramming/tasty-inspect.md
 ```
 
-## Erased Terms [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms.html) {#erased-terms}
-```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/metaprogramming/erased-terms.md
-```
-
 ## The Meta-theory of Symmetric Metaprogramming [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/metaprogramming/simple-smp.html) {#simple-smp}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/metaprogramming/simple-smp.md
@@ -264,6 +259,11 @@ abstract: |
 ## Optional Braces [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/other-new-features/indentation.html) {#indentation}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/other-new-features/indentation.md
+```
+
+## Fewer Braces [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/other-new-features/indentation-experimental.html) {#indentation}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/other-new-features/indentation-experimental.md
 ```
 
 ## Explicit Nulls [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html) {#explicit-nulls}
@@ -376,7 +376,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/changed-features/main-functions.md
 ```
 
-## Escapes in interpolations [![](../out/pandoc/images/external.png){width=64px}]() {#interpolation-escapes}
+## Escapes in interpolations [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/changed-features/interpolation-escapes.html) {#interpolation-escapes}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/changed-features/interpolation-escapes.md
 ```
@@ -471,7 +471,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/dropped-features/this-qualifier.md
 ```
 
-## Dropped: `Wildcard Initializer` [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/dropped-features/wildcard-init.html) {#wilcard-init}
+## Dropped: Wildcard Initializer [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/dropped-features/wildcard-init.html) {#wilcard-init}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/dropped-features/wildcard-init.md
 ```
@@ -479,12 +479,27 @@ abstract: |
 [479]: #######################################################################
 
 \newpage
+# Experimental Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/experimental/) {#experimental}
+
+## Erased Definitions [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/experimental/erased-defs.html) {#erased-defs}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/experimental/erased-defs.md
+```
+
+## CanThrow Abilities [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/experimental/canthrow.html) {#canthrow}
+```{.include shift-heading-level-by=1}
+../out/pandoc/src_managed/reference/experimental/canthrow.md
+```
+
+[494]: #######################################################################
+
+\newpage
 # Scala 3 Syntax Summary [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/syntax.html) {#syntax}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/syntax.md
 ```
 
-[487]: #######################################################################
+[503]: #######################################################################
 
 \newpage
 # Appendix {#appendix}
@@ -559,9 +574,9 @@ abstract: |
 ../out/pandoc/src_managed/reference/new-types/union-types-spec.md
 ```
 
-## Erased Terms Spec [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/metaprogramming/erased-terms-spec.html) {#erased-terms-spec}
+## Erased Definitions Spec [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/experimental/erased-defs-spec.html) {#erased-defs-spec}
 ```{.include shift-heading-level-by=1}
-../out/pandoc/src_managed/reference/metaprogramming/erased-terms-spec.md
+../out/pandoc/src_managed/reference/experimental/erased-defs-spec.md
 ```
 
 ## Macros Spec [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/metaprogramming/macros-spec.html) {#macros-spec}
@@ -569,7 +584,7 @@ abstract: |
 ../out/pandoc/src_managed/reference/metaprogramming/macros-spec.md
 ```
 
-[556]: # Referenced in overview.md
+[587]: # Referenced in overview.md
 ## A Classification of Proposed Language Features [![](../out/pandoc/images/external.png){width=64px}](https://dotty.epfl.ch/docs/reference/features-classification.html) {#features-classification}
 ```{.include shift-heading-level-by=1}
 ../out/pandoc/src_managed/reference/features-classification.md

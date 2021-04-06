@@ -100,7 +100,7 @@ if "%__ARG:~0,1%"=="-" (
     set /a __N+=1
 )
 shift
-goto :args_loop
+goto args_loop
 :args_done
 set _REDIRECT_STDOUT=1^>NUL
 if %_DEBUG%==1 set _REDIRECT_STDOUT=1^>^&2
