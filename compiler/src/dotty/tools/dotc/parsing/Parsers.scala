@@ -1324,9 +1324,9 @@ object Parsers {
      *                   |  MatchType
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType    ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *  FunArgTypes    ::=  InfixType
+     *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
@@ -1364,7 +1364,7 @@ object Parsers {
           else
             Function(params, t)
         }
-      def funArgTypesRest(first: Tree, following: () => Tree) = {
+      def funTypeArgsRest(first: Tree, following: () => Tree) = {
         val buf = new ListBuffer[Tree] += first
         while (in.token == COMMA) {
           in.nextToken()
@@ -1387,11 +1387,11 @@ object Parsers {
             val ts = funArgType() match {
               case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
                 isValParamList = true
-                funArgTypesRest(
+                funTypeArgsRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => typedFunParam(in.offset, ident(), imods))
               case t =>
-                funArgTypesRest(t, funArgType)
+                funTypeArgsRest(t, funArgType)
             }
             accept(RPAREN)
             if isValParamList || in.isArrow then
@@ -2907,10 +2907,10 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ContextTypes   ::=  Type {‘,’ Type}
+    /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
     def contextTypes(ofClass: Boolean, nparams: Int, impliedMods: Modifiers): List[ValDef] =
-      val tps = commaSeparated(typ)
+      val tps = commaSeparated(funArgType)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
