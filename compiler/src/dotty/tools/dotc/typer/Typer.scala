@@ -3545,12 +3545,7 @@ class Typer extends Namer
             val target =
               if tree.tpe.isSingleton then
                 val conj = AndType(tree.tpe, pt)
-                if tree.tpe.isStable && !conj.isStable then
-                  // this is needed for -Ycheck. Without the annotation Ycheck will
-                  // skolemize the result type which will lead to different types before
-                  // and after checking. See i11955.scala.
-                  AnnotatedType(conj, Annotation(defn.StableAnnot))
-                else conj
+                conj
               else pt
             gadts.println(i"insert GADT cast from $tree to $target")
             tree.cast(target)
