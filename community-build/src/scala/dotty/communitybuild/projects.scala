@@ -111,12 +111,12 @@ final case class SbtCommunityProject(
     scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
 
   private val baseCommand =
-    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
-    ++ (if scalacOptions.isEmpty then "" else s"""set scalacOptions in Global ++= $scalacOptionsString;""")
+    "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
+    ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
   override val testCommand =
-    """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
+    """set Global/testOptions += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
     ++ s"$baseCommand$sbtTestCommand"
 
   override val publishCommand =
@@ -524,7 +524,7 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
