@@ -145,7 +145,7 @@ object projects:
 
   private def aggregateDoc(in: String)(projects: String*) =
     val tastyFiles =
-      (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
+      (in +: projects).map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value").mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
   lazy val utest = MillCommunityProject(
