@@ -658,7 +658,7 @@ object ProtoTypes {
   def resultTypeApprox(mt: MethodType, wildcardOnly: Boolean = false)(using Context): Type =
     if mt.isResultDependent then
       // First, try to widen all covariant occurrences of parameters in `mt`.
-      // If the resulting method type is no longer result-dependend, return it.
+      // If the resulting method type is no longer result-dependent, return it.
       val tryInterpolate = new TypeMap:
         override def apply(tp: Type) = tp match
           case tp: TermParamRef if tp.binder == mt && variance > 0 => tp.widen
