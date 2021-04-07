@@ -433,9 +433,10 @@ object Checking {
       if (sym.isAllOf(flag1 | flag2)) fail(msg)
     def checkCombination(flag1: FlagSet, flag2: FlagSet) =
       if sym.isAllOf(flag1 | flag2) then fail(i"illegal combination of modifiers: `${flag1.flagsString}` and `${flag2.flagsString}` for: $sym")
-    def checkApplicable(flag: FlagSet, ok: Boolean) =
-      if (!ok && !sym.is(Synthetic))
+    def checkApplicable(flag: Flag, ok: Boolean) =
+      if sym.is(flag, butNot = Synthetic) && !ok then
         fail(ModifierNotAllowedForDefinition(flag))
+        sym.resetFlag(flag)
 
     if (sym.is(Inline) &&
           (  sym.is(ParamAccessor) && sym.owner.isClass
@@ -485,6 +486,15 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail("Traits cannot have secondary constructors" + addendum)
+    checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
+    checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
+    if (sym.isType && !sym.is(Deferred))
+      for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
+        fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
+        sym.setFlag(Private) // break the overriding relationship by making sym Private
+      }
+    checkApplicable(Erased,
+      !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
     checkCombination(Final, Open)
     checkCombination(Sealed, Open)
     checkCombination(Final, Sealed)
@@ -493,17 +503,21 @@ object Checking {
     checkCombination(Private, Override)
     checkCombination(Lazy, Inline)
     checkNoConflict(Lazy, ParamAccessor, s"parameter may not be `lazy`")
-    if (sym.is(Inline)) checkApplicable(Inline, sym.isTerm && !sym.isOneOf(Mutable | Module))
-    if (sym.is(Lazy)) checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
-    if (sym.isType && !sym.is(Deferred))
-      for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
-        fail(CannotHaveSameNameAs(sym, cls, CannotHaveSameNameAs.CannotBeOverridden))
-        sym.setFlag(Private) // break the overriding relationship by making sym Private
-      }
-    if (sym.is(Erased))
-      checkApplicable(Erased,
-        !sym.isOneOf(MutableOrLazy, butNot = Given) && !sym.isType || sym.isClass)
   }
+
+  /** Check for illegal or redundant modifiers on modules. This is done separately
+   *  from checkWellformed, since the original module modifiers don't surivive desugaring
+   */
+  def checkWellFormedModule(mdef: untpd.ModuleDef)(using Context) =
+    val mods = mdef.mods
+    def flagSourcePos(flag: FlagSet) =
+      mods.mods.find(_.flags == flag).getOrElse(mdef).srcPos
+    if mods.is(Abstract) then
+      report.error(ModifierNotAllowedForDefinition(Abstract), flagSourcePos(Abstract))
+    if mods.is(Sealed) then
+      report.error(ModifierNotAllowedForDefinition(Sealed), flagSourcePos(Sealed))
+    if mods.is(Final, butNot = Synthetic) then
+      report.warning(RedundantModifier(Final), flagSourcePos(Final))
 
   /** Check the type signature of the symbol `M` defined by `tree` does not refer
    *  to a private type or value which is invisible at a point where `M` is still

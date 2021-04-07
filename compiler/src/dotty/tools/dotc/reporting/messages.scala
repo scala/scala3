@@ -2364,32 +2364,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(using Context)
-    extends SyntaxMsg(AbstractCannotBeUsedForObjectsID) {
-    def msg = em"${hl("abstract")} modifier cannot be used for objects"
-
-    def explain =
-      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
-           |
-           |You may want to define an abstract class:
-           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
-           |
-           |And extend it in an object:
-           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
-           |""".stripMargin
-  }
-
-  class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(using Context)
-    extends SyntaxMsg(ModifierRedundantForObjectsID) {
-    def msg = em"${hl(modifier)} modifier is redundant for objects"
-
-    def explain =
-      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
-           |You may want to define the object without it:
-           | ${hl("object")} ${mdef.name} { }
-           |""".stripMargin
-  }
-
   class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
     def msg = i"explicit extends clause needed because both enum case and enum class have type parameters"
@@ -2481,9 +2455,15 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class ModifierNotAllowedForDefinition(flag: FlagSet)(using Context)
+  class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
-    def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+    def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
+    def explain = ""
+  }
+
+  class RedundantModifier(flag: Flag)(using Context)
+    extends SyntaxMsg(RedundantModifierID) {
+    def msg = em"Modifier ${hl(flag.flagsString)} is redundant for this definition"
     def explain = ""
   }
 
