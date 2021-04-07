@@ -652,16 +652,28 @@ object ProtoTypes {
 
   /** The result type of `mt`, where all references to parameters of `mt` are
    *  replaced by either wildcards or TypeParamRefs.
+   *  Special case: if all references to parameters in `mt` appear coviarantly,
+   *  they are simply widened to their underlying type.
    */
   def resultTypeApprox(mt: MethodType, wildcardOnly: Boolean = false)(using Context): Type =
     if mt.isResultDependent then
-      def replacement(tp: Type) =
-        if wildcardOnly
-           || ctx.mode.is(Mode.TypevarsMissContext)
-           || !tp.widenExpr.isValueTypeOrWildcard
-        then WildcardType
-        else newDepTypeVar(tp)
-      mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
+      // First, try to widen all covariant occurrences of parameters in `mt`.
+      // If the resulting method type is no longer result-dependend, return it.
+      val tryInterpolate = new TypeMap:
+        override def apply(tp: Type) = tp match
+          case tp: TermParamRef if tp.binder == mt && variance > 0 => tp.widen
+          case _ => mapOver(tp)
+      val (mt1: MethodType) = tryInterpolate(mt): @unchecked
+      if mt1.isResultDependent then
+        // Otherwise replace dependent parameters by wildcards or fresh type variables
+        def replacement(tp: Type) =
+          if wildcardOnly
+            || ctx.mode.is(Mode.TypevarsMissContext)
+            || !tp.widenExpr.isValueTypeOrWildcard
+          then WildcardType
+          else newDepTypeVar(tp)
+        mt.resultType.substParams(mt, mt.paramInfos.map(replacement))
+      else mt1.resultType
     else mt.resultType
 
   /** The normalized form of a type
