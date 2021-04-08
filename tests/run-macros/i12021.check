@@ -1,0 +1,2 @@
+X1: (i: scala.Int) isImplicit=true, isGiven=false
+X2: (i: scala.Int) isImplicit=false, isGiven=true

@@ -2156,8 +2156,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: TermParamClause)
         /** List of parameters of the clause */
         def params: List[ValDef]
-        /** Is this a given parameter clause `(implicit X1, ..., Xn)`, `(given X1, ..., Xn)` or `(given x1: X1, ..., xn: Xn)` */
+        /** Is this an implicit parameter clause `(implicit x1: X1, ..., xn: Xn)` */
         def isImplicit: Boolean
+        /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
+        def isGiven: Boolean
     end TermParamClauseMethods
 
     /** A type parameter clause `[X1, ..., Xn]` */
