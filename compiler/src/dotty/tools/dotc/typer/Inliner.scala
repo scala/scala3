@@ -684,8 +684,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
-        if (!constVal.isEmpty) return constVal
-        report.error(em"not a constant type: ${callTypeArgs.head}; cannot take constValue", call.srcPos)
+        if constVal.isEmpty then
+          val msg = em"not a constant type: ${callTypeArgs.head}; cannot take constValue"
+          return ref(defn.Predef_undefined).withSpan(call.span).withType(ErrorType(msg))
+        else
+          return constVal
       }
       else if (inlinedMethod == defn.Compiletime_constValueOpt) {
         val constVal = tryConstValue
