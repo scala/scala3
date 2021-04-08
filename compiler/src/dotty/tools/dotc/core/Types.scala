@@ -237,7 +237,7 @@ object Types {
     }
 
     def isBottomType(using Context): Boolean =
-      if ctx.explicitNulls && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
 
     def isBottomTypeAfterErasure(using Context): Boolean =
