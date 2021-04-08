@@ -53,7 +53,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    def valueOrError(using FromExpr[T]): T =
+    @deprecated("Use valueOrThrow", "3.0.0")
+    def valueOrError(using e: FromExpr[T]): T =
+      valueOrThrow
+
+    /** Return the value of this expression.
+     *
+     *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
+     *  Otherwise returns the value.
+     */
+    def valueOrThrow(using FromExpr[T]): T =
       val fromExpr = summon[FromExpr[T]]
       def reportError =
         val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be extracted using $fromExpr"

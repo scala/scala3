@@ -8,5 +8,5 @@ object X:
     import quotes.reflect.*
     println("="*120)
     println(b.asTerm)
-    println(b.valueOrError)
+    println(b.valueOrThrow)
     '{()}

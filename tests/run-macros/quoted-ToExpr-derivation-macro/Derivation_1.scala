@@ -7,7 +7,7 @@ object ToExprMaker {
   inline given derived[T](using inline m: Mirror.Of[T]): ToExpr[T] = ${ derivedExpr('m) }
 
   private def derivedExpr[T](mirrorExpr: Expr[Mirror.Of[T]])(using Quotes, Type[T]): Expr[ToExpr[T]] = {
-    val tpe = summonExprOrError[Type[T]]
+    val tpe = summonExprOrThrow[Type[T]]
     mirrorExpr match {
       case '{ $mirrorExpr : Mirror.Sum { type MirroredElemTypes = mirroredElemTypes } } =>
         val liftables = elemTypesToExprs[mirroredElemTypes]
@@ -36,7 +36,7 @@ object ToExprMaker {
     liftables: Seq[ToExpr[_]]
   )(using Type[T]) extends ToExpr[T]:
       def apply(x: T)(using Quotes): Expr[T] =
-        val mirrorExpr = summonExprOrError[Mirror.ProductOf[T]]
+        val mirrorExpr = summonExprOrThrow[Mirror.ProductOf[T]]
         val xProduct = x.asInstanceOf[Product]
         val anyToExprs = liftables.asInstanceOf[Seq[ToExpr[Any]]]
         val elemExprs =
@@ -49,7 +49,7 @@ object ToExprMaker {
 
   private def elemTypesToExprs[X: Type](using Quotes): List[Expr[ToExpr[_]]] =
     Type.of[X] match
-      case '[ head *: tail ] => summonExprOrError[ToExpr[head]] :: elemTypesToExprs[tail]
+      case '[ head *: tail ] => summonExprOrThrow[ToExpr[head]] :: elemTypesToExprs[tail]
       case '[ EmptyTuple ] => Nil
 
   private def elemType[X: Type](ordinal: Int)(using Quotes): Type[_] =
@@ -58,7 +58,7 @@ object ToExprMaker {
         if ordinal == 0 then Type.of[head]
         else elemType[tail](ordinal - 1)
 
-  private def summonExprOrError[T: Type](using Quotes): Expr[T] =
+  private def summonExprOrThrow[T: Type](using Quotes): Expr[T] =
     Expr.summon[T] match
       case Some(expr) => expr
       case None =>
