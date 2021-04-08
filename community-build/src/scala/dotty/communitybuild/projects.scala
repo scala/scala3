@@ -111,12 +111,12 @@ final case class SbtCommunityProject(
     scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
 
   private val baseCommand =
-    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
-    ++ (if scalacOptions.isEmpty then "" else s"""set scalacOptions in Global ++= $scalacOptionsString;""")
+    "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
+    ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
   override val testCommand =
-    """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
+    """set Global/testOptions += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
     ++ s"$baseCommand$sbtTestCommand"
 
   override val publishCommand =
@@ -133,7 +133,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.4.9",
+      "-sbt-version", "1.5.0",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -149,12 +149,12 @@ object projects:
 
   private def forceDoc(projects: String*) =
     projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
     ).mkString(" ")
 
   private def aggregateDoc(in: String)(projects: String*) =
     val tastyFiles =
-      (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
+      (in +: projects).map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value").mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
   lazy val utest = MillCommunityProject(
@@ -524,7 +524,7 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning
