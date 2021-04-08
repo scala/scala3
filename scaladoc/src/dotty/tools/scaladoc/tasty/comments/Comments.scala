@@ -252,44 +252,45 @@ class MarkdownCommentParser(repr: Repr, snippetChecker: SnippetChecker)(using dc
     val nodes = root.getDescendants().asScala.collect {
       case fcb: mda.FencedCodeBlock => fcb
     }.toList
-    val checkingFunc: SnippetChecker.SnippetCheckingFunc = snippetCheckingFunc(owner)
-    nodes.foreach { node =>
-      val snippet = node.getContentChars.toString
-      val lineOffset = node.getStartLineNumber
-      val info = node.getInfo.toString
-      val argOverride =
-        info.split(" ")
-          .find(_.startsWith("sc:"))
-          .map(_.stripPrefix("sc:"))
-          .map(snippets.SCFlagsParser.parse)
-          .flatMap(_.toOption)
-      val snippetCompilationResult = checkingFunc(snippet, lineOffset, argOverride) match {
-        case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if dctx.snippetCompilerArgs.debug =>
-          val s = sequence.BasedSequence.EmptyBasedSequence()
-            .append(wrapped)
-            .append(sequence.BasedSequence.EOL)
-          val content = mdu.BlockContent()
-          content.add(s, 0)
-          node.setContent(content)
-          result
-        case result =>
-          // result.modify(_.each.messages.each.position.each.relativeLine).using(_ - 2)
-          result.map { r =>
-            r.copy(
-              messages = r.messages.map { m =>
-                m.copy(
-                  position = m.position.map { p =>
-                    p.copy(
-                      relativeLine = p.relativeLine - 2
-                    )
-                  }
-                )
-              }
-            )
-          }
+    if nodes.nonEmpty then {
+      val checkingFunc: SnippetChecker.SnippetCheckingFunc = snippetCheckingFunc(owner)
+      nodes.foreach { node =>
+        val snippet = node.getContentChars.toString
+        val lineOffset = node.getStartLineNumber
+        val info = node.getInfo.toString
+        val argOverride =
+          info.split(" ")
+            .find(_.startsWith("sc:"))
+            .map(_.stripPrefix("sc:"))
+            .map(snippets.SCFlagsParser.parse)
+            .flatMap(_.toOption)
+        val snippetCompilationResult = checkingFunc(snippet, lineOffset, argOverride) match {
+          case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if dctx.snippetCompilerArgs.debug =>
+            val s = sequence.BasedSequence.EmptyBasedSequence()
+              .append(wrapped)
+              .append(sequence.BasedSequence.EOL)
+            val content = mdu.BlockContent()
+            content.add(s, 0)
+            node.setContent(content)
+            result
+          case result =>
+            result.map { r =>
+              r.copy(
+                messages = r.messages.map { m =>
+                  m.copy(
+                    position = m.position.map { p =>
+                      p.copy(
+                        relativeLine = p.relativeLine - lineOffset
+                      )
+                    }
+                  )
+                }
+              )
+            }
+        }
+        node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
+        node.unlink()
       }
-      node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
-      node.unlink()
     }
     root
   }

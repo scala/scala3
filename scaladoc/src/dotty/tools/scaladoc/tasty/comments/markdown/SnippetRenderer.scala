@@ -6,10 +6,7 @@ import dotty.tools.scaladoc.snippets._
 
 case class SnippetLine(content: String, lineNo: Int, classes: Set[String] = Set.empty, messages: Seq[String] = Seq.empty):
   def withClass(cls: String) = this.copy(classes = classes + cls)
-  private def escapeQuotes(msg: String): String = msg.flatMap {
-    case '"' => "&quot;"
-    case c => c.toString
-  }
+  private def escapeQuotes(msg: String): String = msg.replace("\"", "&quot;")
   def toHTML =
     val label = if messages.nonEmpty then s"""label="${messages.map(escapeQuotes).mkString("\n")}"""" else ""
     s"""<span id="$lineNo" class="${classes.mkString(" ")}" $label>$content</span>"""
