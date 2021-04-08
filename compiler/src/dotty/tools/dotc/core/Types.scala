@@ -3640,9 +3640,15 @@ object Types {
         case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.InlineParamAnnot)))
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
+      def translateErased(tp: Type): Type = tp match {
+        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.ErasedParamAnnot)))
+        case _ => AnnotatedType(tp, Annotation(defn.ErasedParamAnnot))
+      }
       def paramInfo(param: Symbol) = {
-        val paramType = param.info.annotatedToRepeated
-        if (param.is(Inline)) translateInline(paramType) else paramType
+        var paramType = param.info.annotatedToRepeated
+        if (param.is(Inline)) paramType = translateInline(paramType)
+        if (param.is(Erased)) paramType = translateErased(paramType)
+        paramType
       }
 
       apply(params.map(_.name.asTermName))(
