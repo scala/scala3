@@ -654,6 +654,13 @@ object projects:
     dependencies = List(scalatest)
   )
 
+  lazy val playJson = SbtCommunityProject(
+    project = "play-json",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest, scalatestplusScalacheck),
+  )
+
 end projects
 
 def allProjects = List(
@@ -724,6 +731,7 @@ def allProjects = List(
   projects.akka,
   projects.protoquill,
   projects.onnxScala,
+  projects.playJson,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
