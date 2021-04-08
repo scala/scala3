@@ -131,40 +131,18 @@ object Completion {
 
   /**
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
-   * If several denotations share the same name, the type denotations appear before term denotations inside
-   * the same `Completion`.
+   * If several denotations share the same name, each denotation will be transformed into a separate completion item.
    */
-  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
-    completions
-      .toList.groupBy(_._1.toTermName) // don't distinguish between names of terms and types
-      .toList.map { (name, namedDenots) =>
-        val denots = namedDenots.flatMap(_._2)
-        val typesFirst = denots.sortWith((d1, d2) => d1.isType && !d2.isType)
-        val desc = description(typesFirst)
-        Completion(name.show, desc, typesFirst.map(_.symbol))
-    }
-  }
+  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] =
+    for
+      (name, denots) <- completions.toList
+      denot <- denots
+    yield
+      Completion(name.show, description(denot), List(denot.symbol))
 
-  /**
-   * A description for completion result that represents `symbols`.
-   *
-   * If `denots` contains a single denotation, show its full name in case it's a type, or its type if
-   * it's a term.
-   *
-   * When there are multiple denotations, show their kinds.
-   */
-  def description(denots: List[SingleDenotation])(using Context): String =
-    denots match {
-      case denot :: Nil =>
-        if (denot.isType) denot.symbol.showFullName
-        else denot.info.widenTermRefExpr.show
-
-      case denot :: _ =>
-        denots.map(den => ctx.printer.kindString(den.symbol)).distinct.mkString("", " and ", s" ${denot.name.show}")
-
-      case Nil =>
-        ""
-    }
+  def description(denot: SingleDenotation)(using Context): String =
+    if denot.isType then denot.symbol.showFullName
+    else denot.info.widenTermRefExpr.show
 
   /** Computes code completions depending on the context in which completion is requested
    *  @param mode    Should complete names of terms, types or both
@@ -195,8 +173,9 @@ object Completion {
       var ctx = context
 
       while ctx ne NoContext do
+        given Context = ctx
         if ctx.isImportContext then
-          importedCompletions(using ctx).foreach { (name, denots) =>
+          importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
           }
         else if ctx.owner.isClass then
