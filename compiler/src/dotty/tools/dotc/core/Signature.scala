@@ -50,7 +50,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
-    name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
+    name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated ||
+    name1 == tpnme.WILDCARD || name2 == tpnme.WILDCARD
 
   /** Does this signature coincide with that signature on their parameter parts?
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
