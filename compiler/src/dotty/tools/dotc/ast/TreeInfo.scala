@@ -652,7 +652,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     }
   }
 
-  /** The type arguemnts of a possibly curried call */
+  /** The type arguments of a possibly curried call */
   def typeArgss(tree: Tree): List[List[Tree]] =
     @tailrec
     def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
@@ -661,7 +661,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case _ => argss
     loop(tree, Nil)
 
-  /** The term arguemnts of a possibly curried call */
+  /** The term arguments of a possibly curried call */
   def termArgss(tree: Tree): List[List[Tree]] =
     @tailrec
     def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
@@ -670,7 +670,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       case _ => argss
     loop(tree, Nil)
 
-  /** The type and term arguemnts of a possibly curried call, in the order they are given */
+  /** The type and term arguments of a possibly curried call, in the order they are given */
   def allArgss(tree: Tree): List[List[Tree]] =
     @tailrec
     def loop(tree: Tree, argss: List[List[Tree]]): List[List[Tree]] = tree match
