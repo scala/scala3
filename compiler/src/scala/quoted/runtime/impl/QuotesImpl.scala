@@ -1510,6 +1510,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def params: List[ValDef] = self
         def isImplicit: Boolean =
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
+        def isGiven: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Given)
     end TermParamClauseMethods
 
     type TypeParamClause = List[tpd.TypeDef]
