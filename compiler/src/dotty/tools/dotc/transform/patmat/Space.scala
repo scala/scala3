@@ -265,8 +265,13 @@ trait SpaceLogic {
       case (Prod(tp1, _, _, false), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) Empty
         else a
-      case (Typ(tp1, _), Prod(tp2, _, _, false)) =>
-        a  // approximation
+      case (Typ(tp1, _), Prod(tp2, unappTp, params, false)) =>
+        if unappTp.symbol == defn.TypeTest_unapply then
+          // The `TypeTest[S, T].unapply` covers all `T`s if the scrutinee is of type `S`.
+          // If the scrutinee is not of type `S`, then we would already have an unchecked warning.
+          minus(a, params.head)
+        else
+          a  // approximation
       case (Prod(tp1, fun1, ss1, full), Prod(tp2, fun2, ss2, _)) =>
         if (!isSameUnapply(fun1, fun2)) return a
 
