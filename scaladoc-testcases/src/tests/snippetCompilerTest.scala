@@ -27,13 +27,13 @@ package snippetCompiler
   * val d: Long = "asd"
   * ```
   *
-  * ```scala sc:failing
+  * ```scala sc:fail
   * def a = 2
   * val x = 1 + List()
   * a
   * ```
   *
-  * ```scala sc:failing
+  * ```scala sc:fail
   * def a = 2
   * ```
   *
@@ -45,7 +45,6 @@ package snippetCompiler
 class A { }
 
 /**
- *
  * ```scala sc:compile
  * val c: Int = 4.5
  * ```

@@ -4,11 +4,11 @@ package snippets
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 
-case class WrappedSnippet(snippet: String, lineOffset: Int, columnOffset: Int)
+case class WrappedSnippet(snippet: String, lineOffset: Int, columnOffset: Int, lineBoilerplate: Int, columnBoilerplate: Int)
 
 object WrappedSnippet:
-  private val lineOffset = 2
-  private val columnOffset = 2
+  private val lineBoilerplate = 2
+  private val columnBoilerplate = 2
 
   def apply(str: String): WrappedSnippet =
     val baos = new ByteArrayOutputStream()
@@ -17,7 +17,7 @@ object WrappedSnippet:
     ps.println("object Snippet {")
     str.split('\n').foreach(ps.printlnWithIndent(2, _))
     ps.println("}")
-    WrappedSnippet(baos.toString, lineOffset, columnOffset)
+    WrappedSnippet(baos.toString, 0, 0, lineBoilerplate, columnBoilerplate)
 
   def apply(
     str: String,
@@ -35,7 +35,7 @@ object WrappedSnippet:
     ps.println(s"trait Snippet${classGenerics.getOrElse("")} { ${className.fold("")(cn => s"self: $cn =>")}")
     str.split('\n').foreach(ps.printlnWithIndent(2, _))
     ps.println("}")
-    WrappedSnippet(baos.toString, lineOffset, columnOffset)
+    WrappedSnippet(baos.toString, lineOffset, columnOffset, lineBoilerplate, columnBoilerplate)
 
   extension (ps: PrintStream) private def printlnWithIndent(indent: Int, str: String) =
     ps.println((" " * indent) + str)

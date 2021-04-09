@@ -11,7 +11,7 @@ sealed trait SCFlags(val flagName: String)
 object SCFlags:
   case object Compile extends SCFlags("compile")
   case object NoCompile extends SCFlags("nocompile")
-  case object Fail extends SCFlags("failing")
+  case object Fail extends SCFlags("fail")
 
   def values: Seq[SCFlags] = Seq(Compile, NoCompile, Fail)
 
@@ -42,7 +42,7 @@ object SnippetCompilerArgs:
     |Available flags:
     |compile - Enables snippet checking.
     |nocompile - Disables snippet checking.
-    |failing - Enables snippet checking, asserts that snippet doesn't compile.
+    |fail - Enables snippet checking, asserts that snippet doesn't compile.
     |
     """.stripMargin
 

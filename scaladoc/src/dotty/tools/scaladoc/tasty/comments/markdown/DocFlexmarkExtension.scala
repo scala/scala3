@@ -57,15 +57,6 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
   extends HtmlRenderer.HtmlRendererExtension:
     def rendererOptions(opt: MutableDataHolder): Unit = () // noop
 
-    object ExtendedFencedCodeBlockHandler extends CustomNodeRenderer[ExtendedFencedCodeBlock]:
-      override def render(node: ExtendedFencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
-        html.raw(
-          SnippetRenderer.renderSnippetWithMessages(
-            node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
-            node.compilationResult.toSeq.flatMap(_.messages)
-          )
-        )
-
     object Handler extends CustomNodeRenderer[DocLinkNode]:
       override def render(node: DocLinkNode, c: NodeRendererContext, html: HtmlWriter): Unit =
         html.raw(renderLink(node.target, node.body))
@@ -74,7 +65,6 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
       override def getNodeRenderingHandlers: JSet[NodeRenderingHandler[_]] =
         JSet(
           new NodeRenderingHandler(classOf[DocLinkNode], Handler),
-          new NodeRenderingHandler(classOf[ExtendedFencedCodeBlock], ExtendedFencedCodeBlockHandler),
         )
 
     object Factory extends NodeRendererFactory:
@@ -85,5 +75,10 @@ case class DocFlexmarkRenderer(renderLink: (DocLink, String) => String)
 
 object DocFlexmarkRenderer:
   def render(node: Node)(renderLink: (DocLink, String) => String) =
-    val opts = MarkdownParser.mkMarkdownOptions(Seq(DocFlexmarkRenderer(renderLink)))
+    val opts = MarkdownParser.mkMarkdownOptions(
+      Seq(
+        DocFlexmarkRenderer(renderLink),
+        SnippetRenderingExtension
+      )
+    )
     HtmlRenderer.builder(opts).build().render(node)

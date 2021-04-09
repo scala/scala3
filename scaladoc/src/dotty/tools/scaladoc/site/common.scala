@@ -36,7 +36,8 @@ val defaultMarkdownOptions: DataHolder =
       EmojiExtension.create(),
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
-      WikiLinkExtension.create()
+      WikiLinkExtension.create(),
+      tasty.comments.markdown.SnippetRenderingExtension
     ))
 
 def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(

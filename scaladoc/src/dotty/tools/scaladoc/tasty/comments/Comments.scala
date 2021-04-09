@@ -71,7 +71,7 @@ case class PreparsedComment(
 
 case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
 
-abstract class MarkupConversion[T](val repr: Repr, snippetChecker: SnippetChecker)(using dctx: DocContext) {
+abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): DocPart
   protected def markupToString(t: T): String
@@ -79,6 +79,8 @@ abstract class MarkupConversion[T](val repr: Repr, snippetChecker: SnippetChecke
   protected def filterEmpty(xs: List[String]): List[T]
   protected def filterEmpty(xs: SortedMap[String, String]): SortedMap[String, T]
   protected def processSnippets(t: T): T
+
+  lazy val snippetChecker = dctx.snippetChecker
 
   val qctx: repr.qctx.type = if repr == null then null else repr.qctx // TODO why we do need null?
   val owner: qctx.reflect.Symbol =
@@ -221,8 +223,8 @@ abstract class MarkupConversion[T](val repr: Repr, snippetChecker: SnippetChecke
     )
 }
 
-class MarkdownCommentParser(repr: Repr, snippetChecker: SnippetChecker)(using dctx: DocContext)
-    extends MarkupConversion[mdu.Node](repr, snippetChecker) {
+class MarkdownCommentParser(repr: Repr)(using dctx: DocContext)
+    extends MarkupConversion[mdu.Node](repr) {
 
   def stringToMarkup(str: String) =
     MarkdownParser.parseToMarkdown(str, markdown.DocFlexmarkParser(resolveLink))
@@ -248,56 +250,12 @@ class MarkdownCommentParser(repr: Repr, snippetChecker: SnippetChecker)(using dc
       .filterNot { case (_, v) => v.isEmpty }
       .mapValues(stringToMarkup).to(SortedMap)
 
-  def processSnippets(root: mdu.Node): mdu.Node = {
-    val nodes = root.getDescendants().asScala.collect {
-      case fcb: mda.FencedCodeBlock => fcb
-    }.toList
-    if nodes.nonEmpty then {
-      val checkingFunc: SnippetChecker.SnippetCheckingFunc = snippetCheckingFunc(owner)
-      nodes.foreach { node =>
-        val snippet = node.getContentChars.toString
-        val lineOffset = node.getStartLineNumber
-        val info = node.getInfo.toString
-        val argOverride =
-          info.split(" ")
-            .find(_.startsWith("sc:"))
-            .map(_.stripPrefix("sc:"))
-            .map(snippets.SCFlagsParser.parse)
-            .flatMap(_.toOption)
-        val snippetCompilationResult = checkingFunc(snippet, lineOffset, argOverride) match {
-          case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if dctx.snippetCompilerArgs.debug =>
-            val s = sequence.BasedSequence.EmptyBasedSequence()
-              .append(wrapped)
-              .append(sequence.BasedSequence.EOL)
-            val content = mdu.BlockContent()
-            content.add(s, 0)
-            node.setContent(content)
-            result
-          case result =>
-            result.map { r =>
-              r.copy(
-                messages = r.messages.map { m =>
-                  m.copy(
-                    position = m.position.map { p =>
-                      p.copy(
-                        relativeLine = p.relativeLine - lineOffset
-                      )
-                    }
-                  )
-                }
-              )
-            }
-        }
-        node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
-        node.unlink()
-      }
-    }
-    root
-  }
+  def processSnippets(root: mdu.Node): mdu.Node =
+    FlexmarkSnippetProcessor.processSnippets(root, dctx.snippetCompilerArgs.debug, snippetCheckingFunc(owner))
 }
 
-class WikiCommentParser(repr: Repr, snippetChecker: SnippetChecker)(using DocContext)
-    extends MarkupConversion[wiki.Body](repr, snippetChecker):
+class WikiCommentParser(repr: Repr)(using DocContext)
+    extends MarkupConversion[wiki.Body](repr):
 
   def stringToMarkup(str: String) = wiki.Parser(str, resolverLink).document()
 

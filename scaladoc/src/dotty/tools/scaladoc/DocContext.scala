@@ -76,10 +76,15 @@ case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
 
   lazy val snippetCompilerArgs = snippets.SnippetCompilerArgs.load(args.snippetCompiler, args.snippetCompilerDebug)(using compilerContext)
 
+  lazy val snippetChecker = snippets.SnippetChecker(args.classpath, args.tastyDirs)
+
   lazy val staticSiteContext = args.docsRoot.map(path => StaticSiteContext(
       File(path).getAbsoluteFile(),
       args,
-      sourceLinks
+      sourceLinks,
+      snippetCompilerArgs,
+      snippetChecker
     )(using compilerContext))
+
 
   val externalDocumentationLinks = args.externalMappings
