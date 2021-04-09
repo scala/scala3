@@ -665,19 +665,37 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       case _ => EmptyTree
     }
 
+  private def extractConstantValue(t: Tree): Option[Any] =
+    t match
+      case ConstantValue(v)                            => Some(v)
+      case Inlined(_, Nil, Typed(ConstantValue(v), _)) => Some(v)
+      case _                                           => None
+
+  private def reportErrorConstantValueRequired(arg: Tree): Unit =
+    report.error(em"expected a constant value but found: $arg", arg.srcPos)
+
   /** The Inlined node representing the inlined call */
   def inlined(sourcePos: SrcPos): Tree = {
 
-    // Special handling of `requireConst` and `codeOf`
+    // Special handling of `requireConst`, `codeOf`, `compileTimeEnv`
     callValueArgss match
       case (arg :: Nil) :: Nil =>
         if inlinedMethod == defn.Compiletime_requireConst then
-          arg match
-            case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
-            case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
+          if extractConstantValue(arg).isEmpty then
+            reportErrorConstantValueRequired(arg)
           return Literal(Constant(())).withSpan(sourcePos.span)
         else if inlinedMethod == defn.Compiletime_codeOf then
           return Intrinsics.codeOf(arg, call.srcPos)
+        else if inlinedMethod == defn.Compiletime_envGetOrNull then
+          extractConstantValue(arg) match
+            case Some(key: String) =>
+              ctx.compileTimeEnvMap(key) match {
+                case Some(v) => return Literal(Constant(v))
+                case None    => return Literal(Constant(null))
+              }
+            case _ =>
+              reportErrorConstantValueRequired(arg)
+              return Literal(Constant(null))
       case _ =>
 
   	// Special handling of `constValue[T]` and `constValueOpt[T]`

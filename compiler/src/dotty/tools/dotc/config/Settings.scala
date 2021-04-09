@@ -166,6 +166,14 @@ object Settings {
 
       def matches(argName: String) = (name :: aliases).exists(_ == argName)
 
+      // TODO Do properly
+      if name == "-E" && prefix.isEmpty && arg.startsWith(name) then
+        val s = arg.drop(name.length)
+        if s.isEmpty || s.startsWith("=") then
+          return state // Upstream will report as a bad option
+        else
+          return update(s :: Nil, args)
+
       if (prefix != "" && arg.startsWith(prefix))
         doSet(arg drop prefix.length)
       else if (prefix == "" && matches(arg.takeWhile(_ != ':')))

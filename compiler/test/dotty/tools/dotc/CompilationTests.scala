@@ -190,6 +190,7 @@ class CompilationTests {
       compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "future")),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
       compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFilesInDir("tests/run-custom-args/compileTimeEnv", defaultOptions.and("-Ea", "-Eb=1", "-Ec.b.a=x.y.z=1", "-EmyLogger.level=INFO", "-Xfatal-warnings")),
       compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"))

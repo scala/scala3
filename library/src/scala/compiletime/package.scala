@@ -156,6 +156,25 @@ inline def summonAll[T <: Tuple]: T =
   res.asInstanceOf[T]
 end summonAll
 
+@compileTimeOnly("Illegal reference to `scala.compiletime.envGetOrNull`")
+transparent inline def envGetOrNull(inline key: String): String | Null =
+  // implemented in dotty.tools.dotc.typer.Inliner
+  error("Compiler bug: `envGetOrNull` was not evaluated by the compiler")
+
+@compileTimeOnly("Illegal reference to `scala.compiletime.envGet`")
+transparent inline def envGet(inline key: String): Option[String] =
+  inline envGetOrNull(key) match {
+    case null => None
+    case v    => Some[v.type](v)
+  }
+
+@compileTimeOnly("Illegal reference to `scala.compiletime.envGetOrElse`")
+transparent inline def envGetOrElse(inline key: String, inline default: String): String =
+  inline envGetOrNull(key) match {
+    case null => default
+    case v    => v
+  }
+
 /** Assertion that an argument is by-name. Used for nullability checking. */
 def byName[T](x: => T): T = x
 
@@ -168,4 +187,3 @@ def byName[T](x: => T): T = x
   */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
-

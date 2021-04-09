@@ -226,7 +226,7 @@ class Definitions {
   @tu lazy val ScalaXmlPackageClass: Symbol = getPackageClassIfDefined("scala.xml")
 
   @tu lazy val CompiletimePackageClass: Symbol = requiredPackage("scala.compiletime").moduleClass
-    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageClass.requiredMethod("codeOf")
+    @tu lazy val Compiletime_codeOf       : Symbol = CompiletimePackageClass.requiredMethod("codeOf")
     @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageClass.requiredMethod("erasedValue")
     @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageClass.requiredMethod("uninitialized")
     @tu lazy val Compiletime_error        : Symbol = CompiletimePackageClass.requiredMethod(nme.error)
@@ -234,6 +234,7 @@ class Definitions {
     @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageClass.requiredMethod("constValue")
     @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageClass.requiredMethod("constValueOpt")
     @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageClass.requiredMethod("summonFrom")
+    @tu lazy val Compiletime_envGetOrNull : Symbol = CompiletimePackageClass.requiredMethod("envGetOrNull")
   @tu lazy val CompiletimeTestingPackage: Symbol = requiredPackage("scala.compiletime.testing")
     @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackage.requiredMethod("typeChecks")
     @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackage.requiredMethod("typeCheckErrors")

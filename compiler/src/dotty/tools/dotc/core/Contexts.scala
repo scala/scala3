@@ -491,6 +491,9 @@ object Contexts {
     /** Is the explicit nulls option set? */
     def explicitNulls: Boolean = base.settings.YexplicitNulls.value
 
+    lazy val compileTimeEnvMap: CompileTimeEnvMap =
+      CompileTimeEnvMap.fromSettings
+
     /** Initialize all context fields, except typerState, which has to be set separately
      *  @param  outer   The outer context
      *  @param  origin  The context from which fields are copied

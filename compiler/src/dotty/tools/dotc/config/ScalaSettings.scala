@@ -44,6 +44,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   /** Other settings */
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
+  val compileTimeEnv: Setting[List[String]] = MultiStringSetting("-E", "key[=value]", "Options to pass to the metaprogramming environment. e.g. -Ecom.example.app.mode=RELEASE")
 
   /** Plugin-related setting */
   val plugin: Setting[List[String]]             = MultiStringSetting  ("-Xplugin", "paths", "Load a plugin from each classpath.")
