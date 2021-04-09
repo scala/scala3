@@ -2160,11 +2160,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def isImplicit: Boolean
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
-<<<<<<< HEAD
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
         def isErased: Boolean
-=======
->>>>>>> 813b536f58 (Add TermParamClause.isGiven)
     end TermParamClauseMethods
 
     /** A type parameter clause `[X1, ..., Xn]` */
