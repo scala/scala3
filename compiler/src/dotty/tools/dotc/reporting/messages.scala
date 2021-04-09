@@ -1467,6 +1467,14 @@ import transform.SymUtils._
     def msg = em"""$tp does not conform to its self type $selfType; cannot be instantiated"""
   }
 
+  class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using Context)
+    extends TypeMismatchMsg(found, expected)(IllegalParameterInitID):
+    def msg =
+      em"""illegal parameter initialization of $param.
+          |
+          |  The argument passed for $param has type: $found
+          |  but $cls expects $param to have type: $expected"""
+
   class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends SyntaxMsg(AbstractMemberMayNotHaveModifierID) {

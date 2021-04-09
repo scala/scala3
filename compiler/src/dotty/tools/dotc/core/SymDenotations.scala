@@ -2199,6 +2199,10 @@ object SymDenotations {
     def paramAccessors(using Context): List[Symbol] =
       unforcedDecls.filter(_.is(ParamAccessor))
 
+    /** The term parameter getters of this class. */
+    def paramGetters(using Context): List[Symbol] =
+      paramAccessors.filterNot(_.isSetter)
+
     /** If this class has the same `decls` scope reference in `phase` and
      *  `phase.next`, install a new denotation with a cloned scope in `phase.next`.
      */

@@ -9,7 +9,7 @@ object Test {
     if (scala.util.Properties.isWin)
       assert(returnType.toString == out1 || returnType.toString == out2)
     else if (scala.util.Properties.isMac)
-      assert(returnType.toString == out1)
+      assert(returnType.toString == out1, s"$returnType != $out1")
     else
       assert(returnType.toString == out2)
   }
