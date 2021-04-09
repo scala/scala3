@@ -29,18 +29,18 @@ evaluate the code of the worksheet. Each line of output is printed on the right
 of the expression that produced it. The worksheets run with the classes of your
 project and its dependencies on their classpath.
 
-![](../../images/worksheets/worksheet-run.png "Run worksheet")
+![](images/worksheets/worksheet-run.png "Run worksheet")
 
 By default, the worksheets are also run when the file is saved. This can be
 configured in VSCode preferences:
 
-![](../../images/worksheets/config-autorun.png "Configure run on save")
+![](images/worksheets/config-autorun.png "Configure run on save")
 
 Note that the worksheet are fully integrated with the rest of Dotty IDE: While
 typing, errors are shown, completions are suggested, and you can use all the
 other features of Dotty IDE such as go to definition, find all references, etc.
 
-![](../../images/worksheets/worksheet-help.png "IDE features in the worksheet")
+![](images/worksheets/worksheet-help.png "IDE features in the worksheet")
 
 Implementation details
 ======================

@@ -158,7 +158,7 @@ object Machine:
    //                    State must be Off
 ```
 
-Note that in [Inline](./inline.md) we discussed `erasedValue` and inline
+Note that in [Inline](../metaprogramming/inline.md) we discussed `erasedValue` and inline
 matches. `erasedValue` is implemented with `erased`, so the state machine above
 can be encoded as follows:
 

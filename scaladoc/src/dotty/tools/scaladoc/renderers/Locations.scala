@@ -81,4 +81,4 @@ trait Locations(using ctx: DocContext):
     case Nil => ""
     case seq => seq.mkString("", "/", "/")
 
-  def driExisits(dri: DRI) = true // TODO implement checks!
+  def driExists(dri: DRI) = effectiveMembers.get(dri).isDefined || dri.isStaticFile
