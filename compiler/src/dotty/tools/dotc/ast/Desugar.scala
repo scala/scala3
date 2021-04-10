@@ -7,7 +7,7 @@ import util.Spans._, Types._, Contexts._, Constants._, Names._, NameOps._, Flags
 import Symbols._, StdNames._, Trees._, Phases._, ContextOps._
 import Decorators._, transform.SymUtils._
 import NameKinds.{UniqueName, EvidenceParamName, DefaultGetterName}
-import typer.{FrontEnd, Namer}
+import typer.{FrontEnd, Namer, Checking}
 import util.{Property, SourceFile, SourcePosition}
 import config.Feature.{sourceVersion, migrateTo3, enabled}
 import config.SourceVersion._
@@ -298,7 +298,7 @@ object desugar {
             rhs = vparam.rhs
           )
           .withMods(Modifiers(
-            meth.mods.flags & (AccessFlags | Synthetic),
+            meth.mods.flags & (AccessFlags | Synthetic) | (vparam.mods.flags & Inline),
             meth.mods.privateWithin))
         val rest = defaultGetters(vparams :: paramss1, n + 1)
         if vparam.rhs.isEmpty then rest else defaultGetter :: rest
@@ -602,13 +602,8 @@ object desugar {
     //     def _1: T1 = this.p1
     //     ...
     //     def _N: TN = this.pN (unless already given as valdef or parameterless defdef)
-    //     def copy(p1: T1 = p1: @uncheckedVariance, ...,
-    //              pN: TN = pN: @uncheckedVariance)(moreParams) =
+    //     def copy(p1: T1 = p1..., pN: TN = pN)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
-    //
-    // Note: copy default parameters need @uncheckedVariance; see
-    // neg/t1843-variances.scala for a test case. The test would give
-    // two errors without @uncheckedVariance, one of them spurious.
     val (caseClassMeths, enumScaffolding) = {
       def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
         DefDef(name, Nil, tpt, rhs).withMods(synthetic)
@@ -638,10 +633,8 @@ object desugar {
         }
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
-          def copyDefault(vparam: ValDef) =
-            makeAnnotated("scala.annotation.unchecked.uncheckedVariance", refOfDef(vparam))
           val copyFirstParams = derivedVparamss.head.map(vparam =>
-            cpy.ValDef(vparam)(rhs = copyDefault(vparam)))
+            cpy.ValDef(vparam)(rhs = refOfDef(vparam)))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           DefDef(
@@ -866,16 +859,7 @@ object desugar {
     val mods = mdef.mods
     val moduleName = normalizeName(mdef, impl).asTermName
     def isEnumCase = mods.isEnumCase
-
-    def flagSourcePos(flag: FlagSet) = mods.mods.find(_.flags == flag).fold(mdef.sourcePos)(_.sourcePos)
-
-    if (mods.is(Abstract))
-      report.error(AbstractCannotBeUsedForObjects(mdef), flagSourcePos(Abstract))
-    if (mods.is(Sealed))
-      report.error(ModifierRedundantForObjects(mdef, "sealed"), flagSourcePos(Sealed))
-    // Maybe this should be an error; see https://github.com/scala/bug/issues/11094.
-    if (mods.is(Final) && !mods.is(Synthetic))
-      report.warning(ModifierRedundantForObjects(mdef, "final"), flagSourcePos(Final))
+    Checking.checkWellFormedModule(mdef)
 
     if (mods.is(Package))
       packageModuleDef(mdef)
@@ -909,28 +893,37 @@ object desugar {
       defDef(
         cpy.DefDef(mdef)(
           name = normalizeName(mdef, ext).asTermName,
-          paramss = mdef.paramss match
-            case params1 :: paramss1 if mdef.name.isRightAssocOperatorName =>
-              def badRightAssoc(problem: String) =
-                report.error(i"right-associative extension method $problem", mdef.srcPos)
-                ext.paramss ++ mdef.paramss
-              def noVParam = badRightAssoc("must start with a single parameter")
-              def checkVparam(params: ParamClause) = params match
-                case ValDefs(vparam :: Nil) =>
-                  if !vparam.mods.is(Given) then
-                    val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
-                    leadingUsing ::: params1 :: otherExtParamss ::: paramss1
-                  else badRightAssoc("cannot start with using clause")
-                case _ =>
-                  noVParam
-              params1 match
-                case TypeDefs(_) => paramss1 match
-                  case params2 :: _ => checkVparam(params2)
-                  case _            => noVParam
-                case _ =>
-                  checkVparam(params1)
+          paramss =
+            if mdef.name.isRightAssocOperatorName then
+              val (typaramss, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
-            case _ =>
+              paramss match
+                case params :: paramss1 => // `params` must have a single parameter and without `given` flag
+
+                  def badRightAssoc(problem: String) =
+                    report.error(i"right-associative extension method $problem", mdef.srcPos)
+                    ext.paramss ++ mdef.paramss
+
+                  params match
+                    case ValDefs(vparam :: Nil) =>
+                      if !vparam.mods.is(Given) then
+                        // we merge the extension parameters with the method parameters,
+                        // swapping the operator arguments:
+                        // e.g.
+                        //   extension [A](using B)(c: C)(using D)
+                        //     def %:[E](f: F)(g: G)(using H): Res = ???
+                        // will be encoded as
+                        //   def %:[A](using B)[E](f: F)(c: C)(using D)(g: G)(using H): Res = ???
+                        val (leadingUsing, otherExtParamss) = ext.paramss.span(isUsingOrTypeParamClause)
+                        leadingUsing ::: typaramss ::: params :: otherExtParamss ::: paramss1
+                      else
+                        badRightAssoc("cannot start with using clause")
+                    case _ =>
+                      badRightAssoc("must start with a single parameter")
+                case _ =>
+                  // no value parameters, so not an infix operator.
+                  ext.paramss ++ mdef.paramss
+            else
               ext.paramss ++ mdef.paramss
         ).withMods(mdef.mods | ExtensionMethod)
       )
@@ -1006,12 +999,16 @@ object desugar {
           case tree: TypeDef => tree.name.toString
           case tree: AppliedTypeTree if followArgs && tree.args.nonEmpty =>
             s"${apply(x, tree.tpt)}_${extractArgs(tree.args)}"
+          case InfixOp(left, op, right) =>
+            if followArgs then s"${op.name}_${extractArgs(List(left, right))}"
+            else op.name.toString
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
             extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if (followArgs) s"${extractArgs(tree.args)}_to_${apply("", tree.body)}" else "Function"
+            if followArgs then s"${extractArgs(tree.args)}_to_${apply("", tree.body)}"
+            else "Function"
           case _ => foldOver(x, tree)
         }
       else x
@@ -1313,9 +1310,10 @@ object desugar {
    *      def $anonfun(params) = body
    *      Closure($anonfun)
    */
-  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean)(using Context): Block =
+  def makeClosure(params: List[ValDef], body: Tree, tpt: Tree = null, isContextual: Boolean, span: Span)(using Context): Block =
     Block(
       DefDef(nme.ANON_FUN, params :: Nil, if (tpt == null) TypeTree() else tpt, body)
+        .withSpan(span)
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), if (isContextual) ContextualEmptyTree else EmptyTree))
 

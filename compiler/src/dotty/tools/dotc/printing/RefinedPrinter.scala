@@ -815,14 +815,30 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           if isExtension then
             val paramss =
               if tree.name.isRightAssocOperatorName then
-                // we have the encoding: leadingUsingOrTypeParams rightParam trailingUsing leftParam
-                // we need to swap rightParam and leftParam
-                val (leadingUsing, rest1) = tree.paramss.span(isUsingOrTypeParamClause)
-                val (rightParamss, rest2) = rest1.splitAt(1)
-                val (trailingUsing, rest3) = rest2.span(isUsingClause)
-                val (leftParamss, rest4) = rest3.splitAt(1)
+                // we have the following encoding of tree.paramss:
+                //   (leadingTyParamss ++ leadingUsing
+                //      ++ rightTyParamss ++ rightParamss
+                //      ++ leftParamss ++ trailingUsing ++ rest)
+                //   e.g.
+                //     extension [A](using B)(c: C)(using D)
+                //       def %:[E](f: F)(g: G)(using H): Res = ???
+                //   will have the following values:
+                //   - leadingTyParamss = List(`[A]`)
+                //   - leadingUsing = List(`(using B)`)
+                //   - rightTyParamss = List(`[E]`)
+                //   - rightParamss = List(`(f: F)`)
+                //   - leftParamss = List(`(c: C)`)
+                //   - trailingUsing = List(`(using D)`)
+                //   - rest = List(`(g: G)`, `(using H)`)
+                // we need to swap (rightTyParams ++ rightParamss) with (leftParamss ++ trailingUsing)
+                val (leadingTyParamss, rest1) = tree.paramss.span(isTypeParamClause)
+                val (leadingUsing, rest2) = rest1.span(isUsingClause)
+                val (rightTyParamss, rest3) = rest2.span(isTypeParamClause)
+                val (rightParamss, rest4) = rest3.splitAt(1)
+                val (leftParamss, rest5) = rest4.splitAt(1)
+                val (trailingUsing, rest6) = rest5.span(isUsingClause)
                 if leftParamss.nonEmpty then
-                  leadingUsing ::: leftParamss ::: trailingUsing ::: rightParamss ::: rest4
+                  leadingTyParamss ::: leadingUsing ::: leftParamss ::: trailingUsing ::: rightTyParamss ::: rightParamss ::: rest6
                 else
                   tree.paramss // it wasn't a binary operator, after all.
               else
@@ -925,7 +941,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       else PrintableFlags(isType)
     if (homogenizedView && mods.flags.isTypeFlags) flagMask &~= GivenOrImplicit // drop implicit/given from classes
     val rawFlags = if (sym.exists) sym.flags else mods.flags
-    if (rawFlags.is(Param)) flagMask = flagMask &~ Given
+    if (rawFlags.is(Param)) flagMask = flagMask &~ Given &~ Erased
     val flags = rawFlags & flagMask
     var flagsText = toTextFlags(sym, flags)
     val annotations =

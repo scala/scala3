@@ -35,6 +35,7 @@ object Scaladoc:
     docsRoot: Option[String] = None,
     projectVersion: Option[String] = None,
     projectLogo: Option[String] = None,
+    projectFooter: Option[String] = None,
     defaultSyntax: CommentSyntax = CommentSyntax.Markdown,
     sourceLinks: List[String] = Nil,
     revision: Option[String] = None,
@@ -42,7 +43,12 @@ object Scaladoc:
     socialLinks: List[SocialLinks] = Nil,
     identifiersToSkip: List[String] = Nil,
     regexesToSkip: List[String] = Nil,
-    rootDocPath: Option[String] = None
+    rootDocPath: Option[String] = None,
+    includeAuthors: Boolean = false,
+    includeGroups: Boolean = false,
+    includePrivateAPI: Boolean = false,
+    docCanonicalBaseUrl: String = "",
+    documentSyntheticTypes: Boolean = false,
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -93,10 +99,8 @@ object Scaladoc:
         )(s => newContext.setSetting(s.asInstanceOf[Setting[T]], newValue))
       }
 
-    allSettings.filterNot(scaladocSpecificSettings.contains).foreach(setInGlobal)
-
-    summary.warnings.foreach(report.warning(_))
-    summary.errors.foreach(report.error(_))
+    val commonScalaSettings = (new SettingGroup with CommonScalaSettings).allSettings
+    allSettings.filter(commonScalaSettings.contains).foreach(setInGlobal)
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
@@ -164,6 +168,7 @@ object Scaladoc:
         siteRoot.nonDefault,
         projectVersion.nonDefault,
         projectLogo.nonDefault,
+        projectFooter.nonDefault,
         parseSyntax,
         sourceLinks.get,
         revision.nonDefault,
@@ -171,7 +176,12 @@ object Scaladoc:
         socialLinksParsed,
         skipById.get ++ deprecatedSkipPackages.get,
         skipByRegex.get,
-        docRootContent.nonDefault
+        docRootContent.nonDefault,
+        author.get,
+        groups.get,
+        visibilityPrivate.get,
+        docCanonicalBaseUrl.get,
+        YdocumentSyntheticTypes.get
       )
       (Some(docArgs), newContext)
     }

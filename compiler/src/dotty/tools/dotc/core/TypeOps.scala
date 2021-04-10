@@ -139,6 +139,10 @@ object TypeOps:
           case tp1 => tp1
         }
       case tp: AppliedType =>
+        tp.tycon match
+          case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
+            isFullyDefined(tp, ForceDegree.all)
+          case _ =>
         val normed = tp.tryNormalize
         if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
@@ -194,12 +198,16 @@ object TypeOps:
    */
   def orDominator(tp: Type)(using Context): Type = {
 
-    /** a faster version of cs1 intersect cs2 */
-    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] = {
-      val cs2AsSet = new util.HashSet[ClassSymbol](128)
-      cs2.foreach(cs2AsSet += _)
-      cs1.filter(cs2AsSet.contains)
-    }
+    /** a faster version of cs1 intersect cs2 that treats bottom types correctly */
+    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] =
+      if cs1.head == defn.NothingClass then cs2
+      else if cs2.head == defn.NothingClass then cs1
+      else if cs1.head == defn.NullClass && !ctx.explicitNulls && cs2.head.derivesFrom(defn.ObjectClass) then cs2
+      else if cs2.head == defn.NullClass && !ctx.explicitNulls && cs1.head.derivesFrom(defn.ObjectClass) then cs1
+      else
+        val cs2AsSet = new util.HashSet[ClassSymbol](128)
+        cs2.foreach(cs2AsSet += _)
+        cs1.filter(cs2AsSet.contains)
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
     def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
@@ -687,8 +695,8 @@ object TypeOps:
           tp // break cycles
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          def lo = LazyRef(apply(tp.underlying.loBound))
-          def hi = LazyRef(apply(tp.underlying.hiBound))
+          def lo = LazyRef.of(apply(tp.underlying.loBound))
+          def hi = LazyRef.of(apply(tp.underlying.hiBound))
           val lookup = boundTypeParams.lookup(tp)
           if lookup != null then lookup
           else

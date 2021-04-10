@@ -154,8 +154,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ErasedTypesCanOnlyBeFunctionTypesID,
     CaseClassMissingNonImplicitParamListID,
     EnumerationsShouldNotBeEmptyID,
-    AbstractCannotBeUsedForObjectsID,
-    ModifierRedundantForObjectsID,
+    UNUSED_1,
+    RedundantModifierID,
     TypedCaseDoesNotExplicitlyExtendTypedEnumID,
     IllegalRedefinitionOfStandardKindID,
     NoExtensionMethodAllowedID,
@@ -172,7 +172,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     AlreadyDefinedID,
     CaseClassInInlinedCodeID,
     OverrideTypeMismatchErrorID,
-    OverrideErrorID
+    OverrideErrorID,
+    MatchableWarningID
 
   def errorNumber = ordinal - 2
 }

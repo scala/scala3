@@ -13,7 +13,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
     case md: MdNode => renderMarkdown(md)
     case Nil => raw("")
     case Seq(elem: WikiDocElement) => renderElement(elem)
-    case list: Seq[WikiDocElement] => div(list.map(renderElement))
+    case list: Seq[WikiDocElement @unchecked] => div(list.map(renderElement))
 
   private def renderMarkdown(el: MdNode): AppliedTag =
     raw(DocFlexmarkRenderer.render(el)( (link,name) =>
@@ -46,7 +46,7 @@ class DocRender(signatureRenderer: SignatureRenderer)(using DocContext):
           case 5 => h5(content)
           case 6 => h6(content)
     case Paragraph(text) => p(renderElement(text))
-    case Code(data: String) => code(raw(data)) // TODO add classes
+    case Code(data: String) => pre(code(raw(data))) // TODO add classes
     case HorizontalRule => hr
 
     case UnorderedList(items) => ul(listItems(items))

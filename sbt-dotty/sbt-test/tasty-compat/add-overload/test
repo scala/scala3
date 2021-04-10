@@ -1,0 +1,8 @@
+# compile library A
+> a/compile
+# compile library B, from source, against A
+> b/compile
+# add a new overload to library A'
+> a-changes/compile
+# compile B, from tasty, against A', it should still compile: the overload does not conflict
+> c/compile

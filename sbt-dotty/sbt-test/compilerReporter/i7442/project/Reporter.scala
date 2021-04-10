@@ -23,7 +23,7 @@ object Reporter {
     }
 
   lazy val checkSettings = Seq(
-    compilerReporter in (Compile, compile) := reporter,
+    Compile / compile / compilerReporter := reporter,
     check := (compile in Compile).failure.map(_ => {
       println(reporter.problems.toList)
       assert(reporter.problems.length == 1)

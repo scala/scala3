@@ -73,7 +73,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  scrutinee and pattern types. This does not apply if the pattern type is only applied to type variables,
    *  in which case the subtyping relationship "heals" the type.
    */
-  def constrainPatternType(pat: Type, scrut: Type): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
+  def constrainPatternType(pat: Type, scrut: Type, widenParams: Boolean = true): Boolean = trace(i"constrainPatternType($scrut, $pat)", gadts) {
 
     def classesMayBeCompatible: Boolean = {
       import Flags._
@@ -94,38 +94,50 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     }
 
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
-      val upcasted: Type = scrut match {
+      // Fold a list of types into an AndType
+      def buildAndType(xs: List[Type]): Type = {
+        @annotation.tailrec def recur(acc: Type, rem: List[Type]): Type = rem match {
+          case Nil => acc
+          case x :: rem => recur(AndType(acc, x), rem)
+        }
+        xs match {
+          case Nil => NoType
+          case x :: xs => recur(x, xs)
+        }
+      }
+
+      scrut match {
         case scrut: TypeRef if scrut.symbol.isClass =>
-          // we do not infer constraints following from all parents for performance reasons
-          // in principle however, if `A extends B, C`, then `A` can be treated as `B & C`
-          scrut.firstParent
+          // consider all parents
+          val parents = scrut.parents
+          val andType = buildAndType(parents)
+          !andType.exists || constrainPatternType(pat, andType)
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patClassSym = pat.classSymbol
-          // as above, we do not consider all parents for performance reasons
-          def firstParentSharedWithPat(tp: Type, tpClassSym: ClassSymbol): Symbol = {
+          // find all shared parents in the inheritance hierarchy between pat and scrut
+          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
             var parents = tpClassSym.info.parents
-            parents match {
-              case first :: rest =>
-                if (first.classSymbol == defn.ObjectClass) parents = rest
-              case _ => ;
-            }
-            parents match {
-              case first :: _ =>
-                val firstClassSym = first.classSymbol.asClass
-                val res = if (patClassSym.derivesFrom(firstClassSym)) firstClassSym
-                else firstParentSharedWithPat(first, firstClassSym)
-                res
-              case _ => NoSymbol
+            if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
+              parents = parents.tail
+            parents flatMap { tp =>
+              val sym = tp.classSymbol.asClass
+              if patClassSym.derivesFrom(sym) then List(sym)
+              else allParentsSharedWithPat(tp, sym)
             }
           }
-          val sym = firstParentSharedWithPat(tycon, tycon.symbol.asClass)
-          if (sym.exists) scrut.baseType(sym) else NoType
-        case scrut: TypeProxy => scrut.superType
-        case _ => NoType
+          val allSyms = allParentsSharedWithPat(tycon, tycon.symbol.asClass)
+          val baseClasses = allSyms map scrut.baseType
+          val andType = buildAndType(baseClasses)
+          !andType.exists || constrainPatternType(pat, andType)
+        case _ =>
+          val upcasted: Type = scrut match {
+            case scrut: TypeProxy => scrut.superType
+            case _ => NoType
+          }
+          if (upcasted.exists)
+            constrainSimplePatternType(pat, upcasted, widenParams) || constrainUpcasted(upcasted)
+          else true
       }
-      if (upcasted.exists)
-        constrainSimplePatternType(pat, upcasted) || constrainUpcasted(upcasted)
-      else true
     }
 
     scrut.dealias match {
@@ -143,7 +155,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case pat: RefinedOrRecType =>
           constrainPatternType(stripRefinement(pat), scrut)
         case pat =>
-          constrainSimplePatternType(pat, scrut) || classesMayBeCompatible && constrainUpcasted(scrut)
+          constrainSimplePatternType(pat, scrut, widenParams) || classesMayBeCompatible && constrainUpcasted(scrut)
       }
     }
   }
@@ -182,7 +194,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
    *  case classes without also appropriately extending the relevant case class
    *  (see `RefChecks#checkCaseClassInheritanceInvariant`).
    */
-  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type): Boolean = {
+  def constrainSimplePatternType(patternTp: Type, scrutineeTp: Type, widenParams: Boolean): Boolean = {
     def refinementIsInvariant(tp: Type): Boolean = tp match {
       case tp: ClassInfo => tp.cls.is(Final) || tp.cls.is(Case)
       case tp: TypeProxy => refinementIsInvariant(tp.underlying)
@@ -201,7 +213,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     val widePt =
       if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
-      else widenVariantParams(scrutineeTp)
+      else if widenParams then widenVariantParams(scrutineeTp)
+      else scrutineeTp
     val narrowTp = SkolemType(patternTp)
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)

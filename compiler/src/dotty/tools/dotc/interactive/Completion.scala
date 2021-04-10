@@ -59,7 +59,7 @@ object Completion {
    *
    * Otherwise, provide no completion suggestion.
    */
-  private def completionMode(path: List[Tree], pos: SourcePosition): Mode =
+  def completionMode(path: List[Tree], pos: SourcePosition): Mode =
     path match {
       case (ref: RefTree) :: _ =>
         if (ref.name.isTermName) Mode.Term
@@ -81,7 +81,7 @@ object Completion {
    * Inspect `path` to determine the completion prefix. Only symbols whose name start with the
    * returned prefix should be considered.
    */
-  private def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
+  def completionPrefix(path: List[untpd.Tree], pos: SourcePosition): String =
     path match {
       case (sel: untpd.ImportSelector) :: _ =>
         completionPrefix(sel.imported :: Nil, pos)
@@ -100,7 +100,7 @@ object Completion {
     }
 
   /** Inspect `path` to determine the offset where the completion result should be inserted. */
-  private def completionOffset(path: List[Tree]): Int =
+  def completionOffset(path: List[Tree]): Int =
     path match {
       case (ref: RefTree) :: _ => ref.span.point
       case _ => 0
@@ -131,40 +131,18 @@ object Completion {
 
   /**
    * Return the list of code completions with descriptions based on a mapping from names to the denotations they refer to.
-   * If several denotations share the same name, the type denotations appear before term denotations inside
-   * the same `Completion`.
+   * If several denotations share the same name, each denotation will be transformed into a separate completion item.
    */
-  private def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
-    completions
-      .toList.groupBy(_._1.toTermName) // don't distinguish between names of terms and types
-      .toList.map { (name, namedDenots) =>
-        val denots = namedDenots.flatMap(_._2)
-        val typesFirst = denots.sortWith((d1, d2) => d1.isType && !d2.isType)
-        val desc = description(typesFirst)
-        Completion(name.show, desc, typesFirst.map(_.symbol))
-    }
-  }
+  def describeCompletions(completions: CompletionMap)(using Context): List[Completion] =
+    for
+      (name, denots) <- completions.toList
+      denot <- denots
+    yield
+      Completion(name.show, description(denot), List(denot.symbol))
 
-  /**
-   * A description for completion result that represents `symbols`.
-   *
-   * If `denots` contains a single denotation, show its full name in case it's a type, or its type if
-   * it's a term.
-   *
-   * When there are multiple denotations, show their kinds.
-   */
-  private def description(denots: List[SingleDenotation])(using Context): String =
-    denots match {
-      case denot :: Nil =>
-        if (denot.isType) denot.symbol.showFullName
-        else denot.info.widenTermRefExpr.show
-
-      case denot :: _ =>
-        denots.map(den => ctx.printer.kindString(den.symbol)).distinct.mkString("", " and ", s" ${denot.name.show}")
-
-      case Nil =>
-        ""
-    }
+  def description(denot: SingleDenotation)(using Context): String =
+    if denot.isType then denot.symbol.showFullName
+    else denot.info.widenTermRefExpr.show
 
   /** Computes code completions depending on the context in which completion is requested
    *  @param mode    Should complete names of terms, types or both
@@ -174,7 +152,7 @@ object Completion {
    *  For the results of all `xyzCompletions` methods term names and type names are always treated as different keys in the same map
    *  and they never conflict with each other.
    */
-  private class Completer(val mode: Mode, val prefix: String, pos: SourcePosition) {
+  class Completer(val mode: Mode, val prefix: String, pos: SourcePosition) {
     /** Completions for terms and types that are currently in scope:
      *  the members of the current class, local definitions and the symbols that have been imported,
      *  recursively adding completions from outer scopes.
@@ -195,8 +173,9 @@ object Completion {
       var ctx = context
 
       while ctx ne NoContext do
+        given Context = ctx
         if ctx.isImportContext then
-          importedCompletions(using ctx).foreach { (name, denots) =>
+          importedCompletions.foreach { (name, denots) =>
             addMapping(name, ScopedDenotations(denots, ctx))
           }
         else if ctx.owner.isClass then
@@ -442,11 +421,11 @@ object Completion {
    * The completion mode: defines what kinds of symbols should be included in the completion
    * results.
    */
-  private class Mode(val bits: Int) extends AnyVal {
+  class Mode(val bits: Int) extends AnyVal {
     def is(other: Mode): Boolean = (bits & other.bits) == other.bits
     def |(other: Mode): Mode = new Mode(bits | other.bits)
   }
-  private object Mode {
+  object Mode {
     /** No symbol should be included */
     val None: Mode = new Mode(0)
 

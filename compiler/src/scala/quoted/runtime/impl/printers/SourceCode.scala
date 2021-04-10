@@ -138,7 +138,7 @@ object SourceCode {
         this += "."
         printSelectors(selectors)
 
-      case cdef @ ClassDef(name, DefDef(_, paramss, _, _), parents, derived, self, stats) =>
+      case cdef @ ClassDef(name, DefDef(_, paramss, _, _), parents, self, stats) =>
         printDefAnnotations(cdef)
 
         val flags = cdef.symbol.flags
@@ -201,11 +201,6 @@ object SourceCode {
             printSeparated(xs)
         }
         printSeparated(parents1)
-
-        if (derived.nonEmpty) {
-          this += highlightKeyword(" derives ")
-          printTypeTrees(derived, ", ")
-        }
 
         def keepDefinition(d: Definition): Boolean = {
           val flags = d.symbol.flags
@@ -847,7 +842,7 @@ object SourceCode {
       val name = splicedName(arg.symbol).getOrElse(arg.symbol.name)
       val sym = arg.symbol.owner
       if sym.isDefDef && sym.name == "<init>" then
-        val ClassDef(_, _, _, _, _, body) = sym.owner.tree
+        val ClassDef(_, _, _, _, body) = sym.owner.tree
         body.collectFirst {
           case vdef @ ValDef(`name`, _, _) if vdef.symbol.flags.is(Flags.ParamAccessor) =>
             if (!vdef.symbol.flags.is(Flags.Local)) {
@@ -1253,7 +1248,7 @@ object SourceCode {
     private def printDefinitionName(tree: Definition): this.type = tree match {
       case ValDef(name, _, _) => this += highlightValDef(name)
       case DefDef(name, _, _, _) => this += highlightValDef(name)
-      case ClassDef(name, _, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"))
+      case ClassDef(name, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"))
       case TypeDef(name, _) => this += highlightTypeDef(name)
     }
 

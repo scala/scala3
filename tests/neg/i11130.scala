@@ -9,7 +9,7 @@
   trait PBar extends S[Bar] {
     override type T = Bar
   }
-  class PFooBar extends PBar with PFoo {
+  class PFooBar extends PBar with PFoo { // error
     override type T >: Bar  // error
   }
 

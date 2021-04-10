@@ -22,7 +22,7 @@ object Foo {
 }
 
 object Bar {
-  import compiletime.S
+  import compiletime.ops.int.S
 
   type Plus[A <: Int, B <: Int] <: Int =
     A match {

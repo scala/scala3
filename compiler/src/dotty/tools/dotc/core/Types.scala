@@ -772,15 +772,16 @@ object Types {
           pdenot.asSingleDenotation.derivedSingleDenotation(pdenot.symbol, jointInfo)
         }
         else
+          val isRefinedMethod = rinfo.isInstanceOf[MethodOrPoly]
           val joint = pdenot.meet(
-            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre),
+            new JointRefDenotation(NoSymbol, rinfo, Period.allInRun(ctx.runId), pre, isRefinedMethod),
             pre,
             safeIntersection = ctx.base.pendingMemberSearches.contains(name))
           joint match
             case joint: SingleDenotation
-            if rinfo.isInstanceOf[MethodOrPoly] && rinfo <:< joint.info =>
+            if isRefinedMethod && rinfo <:< joint.info =>
               // use `rinfo` to keep the right parameter names for named args. See i8516.scala.
-              joint.derivedSingleDenotation(joint.symbol, rinfo)
+              joint.derivedSingleDenotation(joint.symbol, rinfo, pre, isRefinedMethod)
             case _ =>
               joint
       }
@@ -927,8 +928,10 @@ object Types {
      */
     final def possibleSamMethods(using Context): Seq[SingleDenotation] = {
       record("possibleSamMethods")
-      abstractTermMembers.toList.filterConserve(m =>
-        !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
+      atPhaseNoLater(erasurePhase) {
+        abstractTermMembers.toList.filterConserve(m =>
+          !m.symbol.matchingMember(defn.ObjectType).exists && !m.symbol.isSuperAccessor)
+      }.map(_.current)
     }
 
     /** The set of abstract type members of this type. */
@@ -1813,10 +1816,12 @@ object Types {
     /** A simplified version of this type which is equivalent wrt =:= to this type.
      *  This applies a typemap to the type which (as all typemaps) follows type
      *  variable instances and reduces typerefs over refined types. It also
-     *  re-evaluates all occurrences of And/OrType with &/| because
-     *  what was a union or intersection of type variables might be a simpler type
-     *  after the type variables are instantiated. Finally, it
-     *  maps poly params in the current constraint set back to their type vars.
+     *
+     *   - re-evaluates all occurrences of And/OrType with &/| because
+     *     what was a union or intersection of type variables might be a simpler type
+     *     after the type variables are instantiated.
+     *   - maps poly params in the current constraint set back to their type vars.
+     *   - forces match types to be fully defined and tries to normalize them.
      *
      *  NOTE: Simplifying an intersection type might change its erasure (for
      *  example, the Java erasure of `Object & Serializable` is `Object`,
@@ -2662,8 +2667,11 @@ object Types {
    *  the future. See also NamedType#withDenot. Test case is neg/opaque-self-encoding.scala.
    */
   private def designatorFor(prefix: Type, name: Name, denot: Denotation)(using Context): Designator = {
+    def ownerIsPrefix(owner: Symbol) = prefix match
+      case prefix: ThisType => prefix.sameThis(owner.thisType)
+      case _ => false
     val sym = denot.symbol
-    if (sym.exists && (prefix.eq(NoPrefix) || prefix.ne(sym.owner.thisType)))
+    if (sym.exists && (prefix.eq(NoPrefix) || !ownerIsPrefix(sym.owner)))
       sym
     else
       name
@@ -2735,6 +2743,12 @@ object Types {
       case that: ThisType => tref.eq(that.tref)
       case _ => false
     }
+
+    /** Check that the rhs is a ThisType that refers to the same class.
+     */
+    def sameThis(that: Type)(using Context): Boolean = (that eq this) || that.match
+      case that: ThisType => this.cls eq that.cls
+      case _ => false
   }
 
   final class CachedThisType(tref: TypeRef) extends ThisType(tref)
@@ -2790,7 +2804,7 @@ object Types {
     }
   }
 
-  case class LazyRef(private var refFn: Context ?=> Type) extends UncachedProxyType with ValueType {
+  case class LazyRef(private var refFn: Context => Type) extends UncachedProxyType with ValueType {
     private var myRef: Type = null
     private var computed = false
 
@@ -2803,7 +2817,7 @@ object Types {
           throw CyclicReference(NoDenotation)
       else
         computed = true
-        val result = refFn
+        val result = refFn(ctx)
         refFn = null
         if result != null then myRef = result
         else assert(myRef != null)  // must have been `update`d
@@ -2825,6 +2839,8 @@ object Types {
     override def equals(other: Any): Boolean = this.eq(other.asInstanceOf[AnyRef])
     override def hashCode: Int = System.identityHashCode(this)
   }
+  object LazyRef:
+    def of(refFn: Context ?=> Type): LazyRef = LazyRef(refFn(using _))
 
   // --- Refined Type and RecType ------------------------------------------------
 
@@ -4004,7 +4020,7 @@ object Types {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    override def tryNormalize(using Context): Type = tycon match {
+    override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
@@ -4014,12 +4030,28 @@ object Types {
           case _ =>
             NoType
         }
-
         tryCompiletimeConstantFold.orElse(tryMatchAlias)
-
       case _ =>
         NoType
     }
+
+    /** Does this application expand to a match type? */
+    def isMatchAlias(using Context): Boolean = tycon.stripTypeVar match
+      case tycon: TypeRef =>
+        tycon.info match
+          case _: MatchAlias => true
+          case _ => false
+      case _ => false
+
+    /** Is this an unreducible application to wildcard arguments?
+     *  This is the case if tycon is higher-kinded. This means
+     *  it is a subtype of a hk-lambda, but not a match alias.
+     *  (normal parameterized aliases are removed in `appliedTo`).
+     *  Applications of hgher-kinded type constructors to wildcard arguments
+     *  are equivalent to existential types, which are not supported.
+     */
+    def isUnreducibleWild(using Context): Boolean =
+      tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
 
     def tryCompiletimeConstantFold(using Context): Type = tycon match {
       case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
@@ -4059,14 +4091,14 @@ object Types {
           val owner = tycon.symbol.owner
           val nArgs = args.length
           val constantType =
-            if (owner == defn.CompiletimePackageObject.moduleClass) name match {
-              case tpnme.S if nArgs == 1 => constantFold1(natValue, _ + 1)
-              case _ => None
-            } else if (owner == defn.CompiletimeOpsAny.moduleClass) name match {
+            if (defn.isCompiletime_S(tycon.symbol)) {
+              if (nArgs == 1) constantFold1(natValue, _ + 1)
+              else None
+            } else if (owner == defn.CompiletimeOpsAnyModuleClass) name match {
               case tpnme.Equals    if nArgs == 2 => constantFold2(constValue, _ == _)
               case tpnme.NotEquals if nArgs == 2 => constantFold2(constValue, _ != _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsInt.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsIntModuleClass) name match {
               case tpnme.Abs      if nArgs == 1 => constantFold1(intValue, _.abs)
               case tpnme.Negate   if nArgs == 1 => constantFold1(intValue, x => -x)
               case tpnme.ToString if nArgs == 1 => constantFold1(intValue, _.toString)
@@ -4094,10 +4126,10 @@ object Types {
               case tpnme.Min if nArgs == 2 => constantFold2(intValue, _ min _)
               case tpnme.Max if nArgs == 2 => constantFold2(intValue, _ max _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsString.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsStringModuleClass) name match {
               case tpnme.Plus if nArgs == 2 => constantFold2(stringValue, _ + _)
               case _ => None
-            } else if (owner == defn.CompiletimeOpsBoolean.moduleClass) name match {
+            } else if (owner == defn.CompiletimeOpsBooleanModuleClass) name match {
               case tpnme.Not if nArgs == 1 => constantFold1(boolValue, x => !x)
               case tpnme.And if nArgs == 2 => constantFold2(boolValue, _ && _)
               case tpnme.Or  if nArgs == 2 => constantFold2(boolValue, _ || _)
@@ -4629,7 +4661,7 @@ object Types {
             RefinedType(selfType, sym.name,
               TypeAlias(
                 withMode(Mode.CheckCyclic)(
-                  LazyRef(force))))
+                  LazyRef.of(force))))
           cinfo.selfInfo match
             case self: Type =>
               cinfo.derivedClassInfo(
@@ -5228,7 +5260,8 @@ object Types {
           derivedSuperType(tp, this(thistp), this(supertp))
 
         case tp: LazyRef =>
-          LazyRef { refCtx ?=>
+          LazyRef { refCtx =>
+            given Context = refCtx
             val ref1 = tp.ref
             if refCtx.runId == mapCtx.runId then this(ref1)
             else // splice in new run into map context
@@ -5287,17 +5320,6 @@ object Types {
     protected def mapClassInfo(tp: ClassInfo): Type =
       derivedClassInfo(tp, this(tp.prefix))
 
-    /** A version of mapClassInfo which also maps parents and self type */
-    protected def mapFullClassInfo(tp: ClassInfo): ClassInfo =
-      tp.derivedClassInfo(
-        prefix = this(tp.prefix),
-        declaredParents = tp.declaredParents.mapConserve(this),
-        selfInfo = tp.selfInfo match {
-          case tp: Type => this(tp)
-          case sym => sym
-        }
-      )
-
     def andThen(f: Type => Type): TypeMap = new TypeMap {
       override def stopAtStatic = thisMap.stopAtStatic
       def apply(tp: Type) = f(thisMap(tp))
@@ -5308,7 +5330,7 @@ object Types {
   abstract class DeepTypeMap(using Context) extends TypeMap {
     override def mapClassInfo(tp: ClassInfo): ClassInfo = {
       val prefix1 = this(tp.prefix)
-      val parents1 = tp.parents mapConserve this
+      val parents1 = tp.declaredParents mapConserve this
       val selfInfo1: TypeOrSymbol = tp.selfInfo match {
         case selfInfo: Type => this(selfInfo)
         case selfInfo => selfInfo
@@ -5482,38 +5504,43 @@ object Types {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if (args.exists(isRange))
-            if (variance > 0) tp.derivedAppliedType(tycon, args.map(rangeToBounds))
-            else {
-              val loBuf, hiBuf = new mutable.ListBuffer[Type]
-              // Given `C[A1, ..., An]` where sone A's are ranges, try to find
-              // non-range arguments L1, ..., Ln and H1, ..., Hn such that
-              // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
-              // ranges that appear in as co- or contravariant arguments.
-              // Fail for non-variant argument ranges.
-              // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
-              // @return  operation succeeded for all arguments.
-              def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
-                case Range(lo, hi) :: args1 =>
-                  val v = tparams.head.paramVarianceSign
-                  if (v == 0) false
-                  else {
-                    if (v > 0) { loBuf += lo; hiBuf += hi }
-                    else { loBuf += hi; hiBuf += lo }
-                    distributeArgs(args1, tparams.tail)
-                  }
-                case arg :: args1 =>
-                  loBuf += arg; hiBuf += arg
+          if args.exists(isRange) then
+            if variance > 0 then
+              tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
+                case tp1: AppliedType if tp1.isUnreducibleWild =>
+                  // don't infer a type that would trigger an error later in
+                  // Checling.checkAppliedType; fall through to default handling instead
+                case tp1 =>
+                  return tp1
+            end if
+            val loBuf, hiBuf = new mutable.ListBuffer[Type]
+            // Given `C[A1, ..., An]` where some A's are ranges, try to find
+            // non-range arguments L1, ..., Ln and H1, ..., Hn such that
+            // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
+            // ranges that appear in as co- or contravariant arguments.
+            // Fail for non-variant argument ranges.
+            // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
+            // @return  operation succeeded for all arguments.
+            def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
+              case Range(lo, hi) :: args1 =>
+                val v = tparams.head.paramVarianceSign
+                if (v == 0) false
+                else {
+                  if (v > 0) { loBuf += lo; hiBuf += hi }
+                  else { loBuf += hi; hiBuf += lo }
                   distributeArgs(args1, tparams.tail)
-                case nil =>
-                  true
-              }
-              if (distributeArgs(args, tp.tyconTypeParams))
-                range(tp.derivedAppliedType(tycon, loBuf.toList),
-                      tp.derivedAppliedType(tycon, hiBuf.toList))
-              else range(defn.NothingType, defn.AnyType)
-                // TODO: can we give a better bound than `topType`?
+                }
+              case arg :: args1 =>
+                loBuf += arg; hiBuf += arg
+                distributeArgs(args1, tparams.tail)
+              case nil =>
+                true
             }
+            if (distributeArgs(args, tp.tyconTypeParams))
+              range(tp.derivedAppliedType(tycon, loBuf.toList),
+                    tp.derivedAppliedType(tycon, hiBuf.toList))
+            else range(defn.NothingType, defn.AnyType)
+              // TODO: can we give a better bound than `topType`?
           else tp.derivedAppliedType(tycon, args)
       }
 

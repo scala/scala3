@@ -52,36 +52,6 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val showPlugins: Setting[Boolean]        = BooleanSetting      ("-Xplugin-list", "Print a synopsis of loaded plugins.")
   val pluginsDir: Setting[String]         = StringSetting       ("-Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
   val pluginOptions: Setting[List[String]]      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
-
-   /** Doctool specific settings */
-  val siteRoot: Setting[String] = StringSetting(
-    "-siteroot",
-    "site root",
-    "A directory containing static files from which to generate documentation.",
-    "./docs"
-  )
-
-
-  val projectName: Setting[String] = StringSetting (
-    "-project",
-    "project title",
-    "The name of the project.",
-    ""
-  )
-
-  val projectVersion: Setting[String] = StringSetting (
-    "-project-version",
-    "project version",
-    "The current version of your project.",
-    ""
-  )
-
-  val projectLogo: Setting[String] = StringSetting(
-    "-project-logo",
-    "project logo filename",
-    "The file that contains the project's logo (in /images).",
-    ""
-  )
 }
 
 class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
@@ -121,7 +91,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val oldSyntax: Setting[Boolean] = BooleanSetting("-old-syntax", "Require `(...)` around conditions.")
   val indent: Setting[Boolean] = BooleanSetting("-indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
   val noindent: Setting[Boolean] = BooleanSetting("-no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = List("-noindent"))
-  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "Allow colons at ends-of-lines to start indentation blocks.")
+  val YindentColons: Setting[Boolean] = BooleanSetting("-Yindent-colons", "(disabled: use -language:experimental.fewerBraces instead)")
 
   /** Decompiler settings */
   val printTasty: Setting[Boolean] = BooleanSetting("-print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
@@ -215,6 +185,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val YretainTrees: Setting[Boolean] = BooleanSetting("-Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting("-Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
   val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting("-Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty")
+  val YnoExperimental: Setting[Boolean] = BooleanSetting("-Yno-experimental", "Disable experimental language features")
 
   val YprofileEnabled: Setting[Boolean] = BooleanSetting("-Yprofile-enabled", "Enable profiling.")
   val YprofileDestination: Setting[String] = StringSetting("-Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "")
@@ -227,7 +198,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   // Extremely experimental language features
   val YnoKindPolymorphism: Setting[Boolean] = BooleanSetting("-Yno-kind-polymorphism", "Disable kind polymorphism.")
   val YexplicitNulls: Setting[Boolean] = BooleanSetting("-Yexplicit-nulls", "Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.")
-  val YerasedTerms: Setting[Boolean] = BooleanSetting("-Yerased-terms", "Allows the use of erased terms.")
   val YcheckInit: Setting[Boolean] = BooleanSetting("-Ysafe-init", "Ensure safe initialization of objects")
   val YrequireTargetName: Setting[Boolean] = BooleanSetting("-Yrequire-targetName", "Warn if an operator is defined without a @targetName annotation")
 

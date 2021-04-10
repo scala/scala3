@@ -1,0 +1,9 @@
+# compile library A
+> a/compile
+# compile library B, from source, against A
+> b/compile
+# change the method parameter names in a refinement in library A'
+> a-changes/compile
+# compile B, from tasty, against A', it should fail to compile: the refinement of `Fn.apply` has changed its
+# named arguments.
+-> c/compile

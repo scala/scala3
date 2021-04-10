@@ -11,6 +11,9 @@ import collection.mutable
 import Denotations.SingleDenotation
 import util.{SimpleIdentityMap, SourceFile, NoSource}
 import typer.ImportInfo.RootRef
+import Comments.CommentsContext
+import Comments.Comment
+import util.Spans.NoSpan
 
 import scala.annotation.tailrec
 
@@ -222,15 +225,15 @@ class Definitions {
 
   @tu lazy val ScalaXmlPackageClass: Symbol = getPackageClassIfDefined("scala.xml")
 
-  @tu lazy val CompiletimePackageObject: Symbol = requiredModule("scala.compiletime.package")
-    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageObject.requiredMethod("codeOf")
-    @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageObject.requiredMethod("erasedValue")
-    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageObject.requiredMethod("uninitialized")
-    @tu lazy val Compiletime_error        : Symbol = CompiletimePackageObject.requiredMethod(nme.error)
-    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageObject.requiredMethod("requireConst")
-    @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageObject.requiredMethod("constValue")
-    @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageObject.requiredMethod("constValueOpt")
-    @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageObject.requiredMethod("summonFrom")
+  @tu lazy val CompiletimePackageClass: Symbol = requiredPackage("scala.compiletime").moduleClass
+    @tu lazy val Compiletime_codeOf: Symbol = CompiletimePackageClass.requiredMethod("codeOf")
+    @tu lazy val Compiletime_erasedValue  : Symbol = CompiletimePackageClass.requiredMethod("erasedValue")
+    @tu lazy val Compiletime_uninitialized: Symbol = CompiletimePackageClass.requiredMethod("uninitialized")
+    @tu lazy val Compiletime_error        : Symbol = CompiletimePackageClass.requiredMethod(nme.error)
+    @tu lazy val Compiletime_requireConst : Symbol = CompiletimePackageClass.requiredMethod("requireConst")
+    @tu lazy val Compiletime_constValue   : Symbol = CompiletimePackageClass.requiredMethod("constValue")
+    @tu lazy val Compiletime_constValueOpt: Symbol = CompiletimePackageClass.requiredMethod("constValueOpt")
+    @tu lazy val Compiletime_summonFrom   : Symbol = CompiletimePackageClass.requiredMethod("summonFrom")
   @tu lazy val CompiletimeTestingPackage: Symbol = requiredPackage("scala.compiletime.testing")
     @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackage.requiredMethod("typeChecks")
     @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackage.requiredMethod("typeCheckErrors")
@@ -241,10 +244,10 @@ class Definitions {
       @tu lazy val CompiletimeTesting_ErrorKind_Parser: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Parser")
       @tu lazy val CompiletimeTesting_ErrorKind_Typer: Symbol = CompiletimeTesting_ErrorKind.requiredMethod("Typer")
   @tu lazy val CompiletimeOpsPackage: Symbol = requiredPackage("scala.compiletime.ops")
-    @tu lazy val CompiletimeOpsAny: Symbol = requiredModule("scala.compiletime.ops.any")
-    @tu lazy val CompiletimeOpsInt: Symbol = requiredModule("scala.compiletime.ops.int")
-    @tu lazy val CompiletimeOpsString: Symbol = requiredModule("scala.compiletime.ops.string")
-    @tu lazy val CompiletimeOpsBoolean: Symbol = requiredModule("scala.compiletime.ops.boolean")
+    @tu lazy val CompiletimeOpsAnyModuleClass: Symbol = requiredModule("scala.compiletime.ops.any").moduleClass
+    @tu lazy val CompiletimeOpsIntModuleClass: Symbol = requiredModule("scala.compiletime.ops.int").moduleClass
+    @tu lazy val CompiletimeOpsStringModuleClass: Symbol = requiredModule("scala.compiletime.ops.string").moduleClass
+    @tu lazy val CompiletimeOpsBooleanModuleClass: Symbol = requiredModule("scala.compiletime.ops.boolean").moduleClass
 
   /** Note: We cannot have same named methods defined in Object and Any (and AnyVal, for that matter)
    *  because after erasure the Any and AnyVal references get remapped to the Object methods
@@ -920,6 +923,8 @@ class Definitions {
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
 
+  @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
+
   // A list of meta-annotations that are relevant for fields and accessors
   @tu lazy val FieldAccessorMetaAnnots: Set[Symbol] =
     Set(FieldMetaAnnot, GetterMetaAnnot, ParamMetaAnnot, SetterMetaAnnot)
@@ -1049,7 +1054,7 @@ class Definitions {
   }
 
   final def isCompiletime_S(sym: Symbol)(using Context): Boolean =
-    sym.name == tpnme.S && sym.owner == CompiletimePackageObject.moduleClass
+    sym.name == tpnme.S && sym.owner == CompiletimeOpsIntModuleClass
 
   private val compiletimePackageAnyTypes: Set[Name] = Set(tpnme.Equals, tpnme.NotEquals)
   private val compiletimePackageIntTypes: Set[Name] = Set(
@@ -1070,11 +1075,11 @@ class Definitions {
   final def isCompiletimeAppliedType(sym: Symbol)(using Context): Boolean =
     compiletimePackageOpTypes.contains(sym.name)
     && (
-         sym.owner == CompiletimePackageObject.moduleClass && sym.name == tpnme.S
-      || sym.owner == CompiletimeOpsAny.moduleClass && compiletimePackageAnyTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsInt.moduleClass && compiletimePackageIntTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsBoolean.moduleClass && compiletimePackageBooleanTypes.contains(sym.name)
-      || sym.owner == CompiletimeOpsString.moduleClass && compiletimePackageStringTypes.contains(sym.name)
+         isCompiletime_S(sym)
+      || sym.owner == CompiletimeOpsAnyModuleClass && compiletimePackageAnyTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsIntModuleClass && compiletimePackageIntTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsBooleanModuleClass && compiletimePackageBooleanTypes.contains(sym.name)
+      || sym.owner == CompiletimeOpsStringModuleClass && compiletimePackageStringTypes.contains(sym.name)
     )
 
   // ----- Scala-2 library patches --------------------------------------
@@ -1108,10 +1113,49 @@ class Definitions {
    *  is read from a classfile.
    */
   def patchStdLibClass(denot: ClassDenotation)(using Context): Unit =
-
     def patch2(denot: ClassDenotation, patchCls: Symbol): Unit =
       val scope = denot.info.decls.openForMutations
+
       def recurse(patch: Symbol) = patch.is(Module) && scope.lookup(patch.name).exists
+
+      def makeClassSymbol(patch: Symbol, parents: List[Type], selfInfo: TypeOrSymbol) =
+        newClassSymbol(
+          owner = denot.symbol,
+          name = patch.name.asTypeName,
+          flags = patch.flags,
+          // need to rebuild a fresh ClassInfo
+          infoFn = cls => ClassInfo(
+            prefix = denot.symbol.thisType,
+            cls = cls,
+            declaredParents = parents, // assume parents in patch don't refer to symbols in the patch
+            decls = newScope,
+            selfInfo =
+              if patch.is(Module)
+              then TermRef(denot.symbol.thisType, patch.name.sourceModuleName)
+              else selfInfo // assume patch self type annotation does not refer to symbols in the patch
+          ),
+          privateWithin = patch.privateWithin,
+          coord = denot.symbol.coord,
+          assocFile = denot.symbol.associatedFile
+        )
+
+      def makeNonClassSymbol(patch: Symbol) =
+        if patch.is(Inline) then
+          // Inline symbols contain trees in annotations, which is coupled
+          // with the underlying symbol.
+          // Changing owner for inline symbols is a simple workaround.
+          patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
+          patch
+        else
+          // change `info` which might contain reference to the patch
+          patch.copy(
+            owner = denot.symbol,
+            info =
+              if patch.is(Module)
+              then TypeRef(denot.symbol.thisType, patch.name.moduleClassName)
+              else patch.info // assume non-object info does not refer to symbols in the patch
+          )
+
       if patchCls.exists then
         val patches = patchCls.info.decls.filter(patch =>
           !patch.isConstructor && !patch.isOneOf(PrivateOrSynthetic))
@@ -1121,9 +1165,16 @@ class Definitions {
         for patch <- patches do
           patch.ensureCompleted()
           if !recurse(patch) then
-            patch.denot = patch.denot.copySymDenotation(owner = denot.symbol)
-            scope.enter(patch)
-          else if patch.isClass then
+            val sym =
+              patch.info match
+              case ClassInfo(_, _, parents, _, selfInfo) =>
+                makeClassSymbol(patch, parents, selfInfo)
+              case _ =>
+                makeNonClassSymbol(patch)
+              end match
+            sym.annotations = patch.annotations
+            scope.enter(sym)
+          if patch.isClass then
             patch2(scope.lookup(patch.name).asClass, patch)
 
     def patchWith(patchCls: Symbol) =
@@ -1718,5 +1769,390 @@ class Definitions {
 
       isInitialized = true
     }
+    addSyntheticSymbolsComments
   }
+
+  def addSyntheticSymbolsComments(using Context): Unit =
+    def add(sym: Symbol, doc: String) = ctx.docCtx.get.addDocstring(sym, Some(Comment(NoSpan, doc)))
+
+    add(AnyClass,
+    """/** Class `Any` is the root of the Scala class hierarchy.  Every class in a Scala
+      | *  execution environment inherits directly or indirectly from this class.
+      | *
+      | * Starting with Scala 2.10 it is possible to directly extend `Any` using ''universal traits''.
+      | * A ''universal trait'' is a trait that extends `Any`, only has `def`s as members, and does no initialization.
+      | *
+      | * The main use case for universal traits is to allow basic inheritance of methods for [[scala.AnyVal value classes]].
+      | * For example,
+      | *
+      | * {{{
+      | *     trait Printable extends Any {
+      | *       def print(): Unit = println(this)
+      | *     }
+      | *     class Wrapper(val underlying: Int) extends AnyVal with Printable
+      | *
+      | *     val w = new Wrapper(3)
+      | *     w.print()
+      | * }}}
+      | *
+      | * See the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]] for more
+      | * details on the interplay of universal traits and value classes.
+      | */
+    """.stripMargin)
+
+    add(Any_==,
+    """/** Test two objects for equality.
+      | *  The expression `x == that` is equivalent to `if (x eq null) that eq null else x.equals(that)`.
+      | *
+      | *  @param  that  the object to compare against this object for equality.
+      | *  @return       `true` if the receiver object is equivalent to the argument; `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Any_!=,
+    """/** Test two objects for inequality.
+      | *
+      | *  @param  that  the object to compare against this object for equality.
+      | *  @return       `true` if !(this == that), `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Any_equals,
+    """/** Compares the receiver object (`this`) with the argument object (`that`) for equivalence.
+      | *
+      | *  Any implementation of this method should be an [[https://en.wikipedia.org/wiki/Equivalence_relation equivalence relation]]:
+      | *
+      | *  - It is reflexive: for any instance `x` of type `Any`, `x.equals(x)` should return `true`.
+      | *  - It is symmetric: for any instances `x` and `y` of type `Any`, `x.equals(y)` should return `true` if and
+      | *    only if `y.equals(x)` returns `true`.
+      | *  - It is transitive: for any instances `x`, `y`, and `z` of type `Any` if `x.equals(y)` returns `true` and
+      | *    `y.equals(z)` returns `true`, then `x.equals(z)` should return `true`.
+      | *
+      | *  If you override this method, you should verify that your implementation remains an equivalence relation.
+      | *  Additionally, when overriding this method it is usually necessary to override `hashCode` to ensure that
+      | *  objects which are "equal" (`o1.equals(o2)` returns `true`) hash to the same [[scala.Int]].
+      | *  (`o1.hashCode.equals(o2.hashCode)`).
+      | *
+      | *  @param  that    the object to compare against this object for equality.
+      | *  @return         `true` if the receiver object is equivalent to the argument; `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Any_hashCode,
+    """/** Calculate a hash code value for the object.
+      | *
+      | *  The default hashing algorithm is platform dependent.
+      | *
+      | *  Note that it is allowed for two objects to have identical hash codes (`o1.hashCode.equals(o2.hashCode)`) yet
+      | *  not be equal (`o1.equals(o2)` returns `false`).  A degenerate implementation could always return `0`.
+      | *  However, it is required that if two objects are equal (`o1.equals(o2)` returns `true`) that they have
+      | *  identical hash codes (`o1.hashCode.equals(o2.hashCode)`).  Therefore, when overriding this method, be sure
+      | *  to verify that the behavior is consistent with the `equals` method.
+      | *
+      | *  @return   the hash code value for this object.
+      | */
+    """.stripMargin)
+
+    add(Any_toString,
+    """/** Returns a string representation of the object.
+      | *
+      | *  The default representation is platform dependent.
+      | *
+      | *  @return a string representation of the object.
+      | */
+    """.stripMargin)
+
+    add(Any_##,
+    """/** Equivalent to `x.hashCode` except for boxed numeric types and `null`.
+      | *  For numerics, it returns a hash value which is consistent
+      | *  with value equality: if two value type instances compare
+      | *  as true, then ## will produce the same hash value for each
+      | *  of them.
+      | *  For `null` returns a hashcode where `null.hashCode` throws a
+      | *  `NullPointerException`.
+      | *
+      | *  @return   a hash value consistent with ==
+      | */
+    """.stripMargin)
+
+    add(Any_isInstanceOf,
+    """/** Test whether the dynamic type of the receiver object is `T0`.
+      | *
+      | *  Note that the result of the test is modulo Scala's erasure semantics.
+      | *  Therefore the expression `1.isInstanceOf[String]` will return `false`, while the
+      | *  expression `List(1).isInstanceOf[List[String]]` will return `true`.
+      | *  In the latter example, because the type argument is erased as part of compilation it is
+      | *  not possible to check whether the contents of the list are of the specified type.
+      | *
+      | *  @return `true` if the receiver object is an instance of erasure of type `T0`; `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Any_asInstanceOf,
+    """/** Cast the receiver object to be of type `T0`.
+      | *
+      | *  Note that the success of a cast at runtime is modulo Scala's erasure semantics.
+      | *  Therefore the expression `1.asInstanceOf[String]` will throw a `ClassCastException` at
+      | *  runtime, while the expression `List(1).asInstanceOf[List[String]]` will not.
+      | *  In the latter example, because the type argument is erased as part of compilation it is
+      | *  not possible to check whether the contents of the list are of the requested type.
+      | *
+      | *  @throws ClassCastException if the receiver object is not an instance of the erasure of type `T0`.
+      | *  @return the receiver object.
+      | */
+    """.stripMargin)
+
+    add(Any_getClass,
+    """/** Returns the runtime class representation of the object.
+      | *
+      | *  @return a class object corresponding to the runtime type of the receiver.
+      | */
+    """.stripMargin)
+
+    add(MatchableClass,
+    """/** The base trait of types that can be safely pattern matched against.
+      | *
+      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/matchable.html]].
+      | */
+    """.stripMargin)
+
+    add(AnyRefAlias,
+    """/** Class `AnyRef` is the root class of all ''reference types''.
+      | *  All types except the value types descend from this class.
+      | */
+    """.stripMargin)
+
+    add(Object_eq,
+    """/** Tests whether the argument (`that`) is a reference to the receiver object (`this`).
+      | *
+      | *  The `eq` method implements an [[https://en.wikipedia.org/wiki/Equivalence_relation equivalence relation]] on
+      | *  non-null instances of `AnyRef`, and has three additional properties:
+      | *
+      | *   - It is consistent: for any non-null instances `x` and `y` of type `AnyRef`, multiple invocations of
+      | *     `x.eq(y)` consistently returns `true` or consistently returns `false`.
+      | *   - For any non-null instance `x` of type `AnyRef`, `x.eq(null)` and `null.eq(x)` returns `false`.
+      | *   - `null.eq(null)` returns `true`.
+      | *
+      | *  When overriding the `equals` or `hashCode` methods, it is important to ensure that their behavior is
+      | *  consistent with reference equality.  Therefore, if two objects are references to each other (`o1 eq o2`), they
+      | *  should be equal to each other (`o1 == o2`) and they should hash to the same value (`o1.hashCode == o2.hashCode`).
+      | *
+      | *  @param  that    the object to compare against this object for reference equality.
+      | *  @return         `true` if the argument is a reference to the receiver object; `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Object_ne,
+    """/** Equivalent to `!(this eq that)`.
+      | *
+      | *  @param  that    the object to compare against this object for reference equality.
+      | *  @return         `true` if the argument is not a reference to the receiver object; `false` otherwise.
+      | */
+    """.stripMargin)
+
+    add(Object_synchronized,
+    """/** Executes the code in `body` with an exclusive lock on `this`.
+      | *
+      | *  @param    body    the code to execute
+      | *  @return           the result of `body`
+      | */
+    """.stripMargin)
+
+    add(Object_clone,
+    """/** Create a copy of the receiver object.
+      | *
+      | *  The default implementation of the `clone` method is platform dependent.
+      | *
+      | *  @note   not specified by SLS as a member of AnyRef
+      | *  @return a copy of the receiver object.
+      | */
+    """.stripMargin)
+
+    add(Object_finalize,
+    """/** Called by the garbage collector on the receiver object when there
+      | *  are no more references to the object.
+      | *
+      | *  The details of when and if the `finalize` method is invoked, as
+      | *  well as the interaction between `finalize` and non-local returns
+      | *  and exceptions, are all platform dependent.
+      | *
+      | *  @note   not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(Object_notify,
+    """/** Wakes up a single thread that is waiting on the receiver object's monitor.
+      | *
+      | *  @note   not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(Object_notifyAll,
+    """/** Wakes up all threads that are waiting on the receiver object's monitor.
+      | *
+      | *  @note   not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(Object_wait,
+    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]].
+      | *
+      | *  @note   not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(Object_waitL,
+    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]].
+      | *
+      | * @param timeout the maximum time to wait in milliseconds.
+      | * @note not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(Object_waitLI,
+    """/** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]]
+      | *
+      | * @param timeout the maximum time to wait in milliseconds.
+      | * @param nanos   additional time, in nanoseconds range 0-999999.
+      | * @note not specified by SLS as a member of AnyRef
+      | */
+    """.stripMargin)
+
+    add(AnyKindClass,
+    """/** The super-type of all types.
+      | *
+      | *   See [[https://dotty.epfl.ch/docs/reference/other-new-features/kind-polymorphism.html]].
+      | */
+    """.stripMargin)
+
+    add(andType,
+    """/** The intersection of two types.
+      | *
+      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/intersection-types.html]].
+      | */
+    """.stripMargin)
+
+    add(orType,
+    """/** The union of two types.
+      | *
+      | *   See [[https://dotty.epfl.ch/docs/reference/new-types/union-types.html]].
+      | */
+    """.stripMargin)
+
+    add(AnyValClass,
+    """/** `AnyVal` is the root class of all ''value types'', which describe values
+      | *  not implemented as objects in the underlying host system. Value classes
+      | *  are specified in Scala Language Specification, section 12.2.
+      | *
+      | *  The standard implementation includes nine `AnyVal` subtypes:
+      | *
+      | *  [[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
+      | *  [[scala.Short]], and [[scala.Byte]] are the ''numeric value types''.
+      | *
+      | *  [[scala.Unit]] and [[scala.Boolean]] are the ''non-numeric value types''.
+      | *
+      | *  Other groupings:
+      | *
+      | *   - The ''subrange types'' are [[scala.Byte]], [[scala.Short]], and [[scala.Char]].
+      | *   - The ''integer types'' include the subrange types as well as [[scala.Int]] and [[scala.Long]].
+      | *   - The ''floating point types'' are [[scala.Float]] and [[scala.Double]].
+      | *
+      | * Prior to Scala 2.10, `AnyVal` was a sealed trait. Beginning with Scala 2.10,
+      | * however, it is possible to define a subclass of `AnyVal` called a ''user-defined value class''
+      | * which is treated specially by the compiler. Properly-defined user value classes provide a way
+      | * to improve performance on user-defined types by avoiding object allocation at runtime, and by
+      | * replacing virtual method invocations with static method invocations.
+      | *
+      | * User-defined value classes which avoid object allocation...
+      | *
+      | *   - must have a single `val` parameter that is the underlying runtime representation.
+      | *   - can define `def`s, but no `val`s, `var`s, or nested `traits`s, `class`es or `object`s.
+      | *   - typically extend no other trait apart from `AnyVal`.
+      | *   - cannot be used in type tests or pattern matching.
+      | *   - may not override `equals` or `hashCode` methods.
+      | *
+      | * A minimal example:
+      | * {{{
+      | *     class Wrapper(val underlying: Int) extends AnyVal {
+      | *       def foo: Wrapper = new Wrapper(underlying * 19)
+      | *     }
+      | * }}}
+      | *
+      | * It's important to note that user-defined value classes are limited, and in some circumstances,
+      | * still must allocate a value class instance at runtime. These limitations and circumstances are
+      | * explained in greater detail in the [[https://docs.scala-lang.org/overviews/core/value-classes.html Value Classes and Universal Traits]].
+      | */
+    """.stripMargin)
+
+    add(NullClass,
+    """/** `Null` is - together with [[scala.Nothing]] - at the bottom of the Scala type hierarchy.
+      | *
+      | * `Null` is the type of the `null` literal. It is a subtype of every type
+      | * except those of value classes. Value classes are subclasses of [[AnyVal]], which includes
+      | * primitive types such as [[Int]], [[Boolean]], and user-defined value classes.
+      | *
+      | * Since `Null` is not a subtype of value types, `null` is not a member of any such type.
+      | * For instance, it is not possible to assign `null` to a variable of type [[scala.Int]].
+      | */
+    """.stripMargin)
+
+    add(NothingClass,
+    """/** `Nothing` is - together with [[scala.Null]] - at the bottom of Scala's type hierarchy.
+      | *
+      | *  `Nothing` is a subtype of every other type (including [[scala.Null]]); there exist
+      | *  ''no instances'' of this type.  Although type `Nothing` is uninhabited, it is
+      | *  nevertheless useful in several ways.  For instance, the Scala library defines a value
+      | *  [[scala.collection.immutable.Nil]] of type `List[Nothing]`. Because lists are covariant in Scala,
+      | *  this makes [[scala.collection.immutable.Nil]] an instance of `List[T]`, for any element of type `T`.
+      | *
+      | *  Another usage for Nothing is the return type for methods which never return normally.
+      | *  One example is method error in [[scala.sys]], which always throws an exception.
+      | */
+    """.stripMargin)
+
+    add(SingletonClass,
+    """/** `Singleton` is used by the compiler as a supertype for singleton types. This includes literal types,
+      | * as they are also singleton types.
+      | *
+      | * {{{
+      | * scala> object A { val x = 42 }
+      | * defined object A
+      | *
+      | * scala> implicitly[A.type <:< Singleton]
+      | * res12: A.type <:< Singleton = generalized constraint
+      | *
+      | * scala> implicitly[A.x.type <:< Singleton]
+      | * res13: A.x.type <:< Singleton = generalized constraint
+      | *
+      | * scala> implicitly[42 <:< Singleton]
+      | * res14: 42 <:< Singleton = generalized constraint
+      | *
+      | * scala> implicitly[Int <:< Singleton]
+      | * ^
+      | * error: Cannot prove that Int <:< Singleton.
+      | * }}}
+      | *
+      | * `Singleton` has a special meaning when it appears as an upper bound on a formal type
+      | * parameter. Normally, type inference in Scala widens singleton types to the underlying
+      | * non-singleton type. When a type parameter has an explicit upper bound of `Singleton`,
+      | * the compiler infers a singleton type.
+      | *
+      | * {{{
+      | * scala> def check42[T](x: T)(implicit ev: T =:= 42): T = x
+      | * check42: [T](x: T)(implicit ev: T =:= 42)T
+      | *
+      | * scala> val x1 = check42(42)
+      | * ^
+      | * error: Cannot prove that Int =:= 42.
+      | *
+      | * scala> def singleCheck42[T <: Singleton](x: T)(implicit ev: T =:= 42): T = x
+      | * singleCheck42: [T <: Singleton](x: T)(implicit ev: T =:= 42)T
+      | *
+      | * scala> val x2 = singleCheck42(42)
+      | * x2: Int = 42
+      | * }}}
+      | *
+      | * See also [[https://docs.scala-lang.org/sips/42.type.html SIP-23 about Literal-based Singleton Types]].
+      | */
+    """.stripMargin)
 }

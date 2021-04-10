@@ -1,5 +1,7 @@
 package scala.runtime.stdLibPatches
 
+import scala.annotation.compileTimeOnly
+
 /** Scala 3 additions and replacements to the `scala.language` object.
  */
 object language:
@@ -29,19 +31,33 @@ object language:
       *
       * @see [[https://dotty.epfl.ch/docs/reference/other-new-features/named-typeargs]]
       */
+    @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
 
     /** Experimental support for generic number literals.
       *
       * @see [[https://dotty.epfl.ch/docs/reference/changed-features/numeric-literals]]
       */
+    @compileTimeOnly("`genericNumberLiterals` can only be used at compile time in import statements")
     object genericNumberLiterals
+
+    /** Experimental support for `erased` modifier
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/erased-defs]]
+     */
+    @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
+    object erasedDefinitions
+
+    /** Experimental support for using indentation for arguments
+     */
+    object fewerBraces
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.
    *  Features in this object are slated for removal. New code should not use them and
    *  old code should migrate away from them.
    */
+  @compileTimeOnly("`deprecated` can only be used at compile time in import statements")
   object deprecated:
 
     /** Symbol literals have been deprecated since 2.13. Since Scala 3.0 they
@@ -49,10 +65,9 @@ object language:
      *  symbol literals are still supported with a language import, but new software
      *  should not use them.
      */
+    @compileTimeOnly("`symbolLiterals` can only be used at compile time in import statements")
     object symbolLiterals
   end deprecated
-
-  object symbolLiterals
 
   /** Where imported, auto-tupling is disabled.
     *
@@ -64,6 +79,7 @@ object language:
     * '''Why allow it?''' Not allowing auto-tupling is difficult to reconcile with
     * operators accepting tuples.
     */
+  @compileTimeOnly("`noAutoTupling` can only be used at compile time in import statements")
   object noAutoTupling
 
   /** Where imported, loose equality using eqAny is disabled.
@@ -73,6 +89,7 @@ object language:
     *
     * @see [[https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality]]
     */
+  @compileTimeOnly("`strictEquality` can only be used at compile time in import statements")
   object strictEquality
 
   /** Where imported, ad hoc extensions of non-open classes in other
@@ -91,6 +108,7 @@ object language:
    *  such extensions should be limited in scope and clearly documented.
    *  That's why the language import is required for them.
    */
+  @compileTimeOnly("`adhocExtensions` can only be used at compile time in import statements")
   object adhocExtensions
 
   /** Unsafe Nulls fot Explicit Nulls
@@ -98,22 +116,27 @@ object language:
     *
     * @see [[http://dotty.epfl.ch/docs/reference/other-new-features/explicit-nulls.html]]
     */
+  @compileTimeOnly("`unsafeNulls` can only be used at compile time in import statements")
   object unsafeNulls
 
+  @compileTimeOnly("`future` can only be used at compile time in import statements")
   object future
 
+  @compileTimeOnly("`future-migration` can only be used at compile time in import statements")
   object `future-migration`
 
   /** Set source version to 3.0-migration.
     *
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
     */
+  @compileTimeOnly("`3.0-migration` can only be used at compile time in import statements")
   object `3.0-migration`
 
   /** Set source version to 3.0.
     *
     * @see [[https://scalacenter.github.io/scala-3-migration-guide/docs/scala-3-migration-mode]]
     */
+  @compileTimeOnly("`3.0` can only be used at compile time in import statements")
   object `3.0`
 
 /* This can be added when we go to 3.1

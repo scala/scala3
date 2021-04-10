@@ -116,7 +116,7 @@ trait ClassLikeSupport:
           parseMethod(c, dd.symbol,specificKind = Kind.Extension(target, _))
         }
       // TODO check given methods?
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isGiven && !dd.symbol.isArtifact =>
         Some(dd.symbol.owner.memberType(dd.name))
           .filterNot(_.exists)
           .map { _ =>
@@ -125,7 +125,7 @@ trait ClassLikeSupport:
             )
           }
 
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
         val exportedTarget = dd.rhs.collect {
           case a: Apply => a.fun.asInstanceOf[Select]
           case s: Select => s
@@ -142,11 +142,11 @@ trait ClassLikeSupport:
         Some(parseMethod(c, dd.symbol, specificKind = Kind.Exported(_))
           .withOrigin(Origin.ExportedFrom(s"$instanceName.$functionName", dri)))
 
-      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod =>
+      case dd: DefDef if !dd.symbol.isHiddenByVisibility && !dd.symbol.isGiven && !dd.symbol.isSyntheticFunc && !dd.symbol.isExtensionMethod && !dd.symbol.isArtifact =>
         Some(parseMethod(c, dd.symbol))
 
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && (!td.symbol.flags.is(Flags.Case) || !td.symbol.flags.is(Flags.Enum)) =>
-        Some(parseTypeDef(c, td))
+        Some(parseTypeDef(td))
 
       case vd: ValDef if !isSyntheticField(vd.symbol)
         && (!vd.symbol.flags.is(Flags.Case) || !vd.symbol.flags.is(Flags.Enum))
@@ -306,7 +306,7 @@ trait ClassLikeSupport:
 
     val enumTypes = companion.membersToDocument.collect {
       case td: TypeDef if !td.symbol.flags.is(Flags.Synthetic) && td.symbol.flags.is(Flags.Enum) && td.symbol.flags.is(Flags.Case) => td
-    }.toList.map(parseTypeDef(classDef, _))
+    }.toList.map(parseTypeDef)
 
     val enumNested = companion.membersToDocument.collect {
       case c: ClassDef if c.symbol.flags.is(Flags.Case) && c.symbol.flags.is(Flags.Enum) => processTree(c)(parseClasslike(c))
@@ -405,7 +405,7 @@ trait ClassLikeSupport:
       memberInfo.get(name).fold(argument.rhs.asSignature)(_.asSignature)
     )
 
-  def parseTypeDef(c: ClassDef, typeDef: TypeDef): Member =
+  def parseTypeDef(typeDef: TypeDef): Member =
     def isTreeAbstract(typ: Tree): Boolean = typ match {
       case TypeBoundsTree(_, _) => true
       case LambdaTypeTree(params, body) => isTreeAbstract(body)

@@ -334,11 +334,13 @@ class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrim
           val insn = iter.next()
           insn match {
             case indy: InvokeDynamicInsnNode
-                // No need to check the exact bsmArgs because we only generate
-                // altMetafactory indy calls for serializable lambdas.
-                if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
-              val implMethod = indy.bsmArgs(1).asInstanceOf[Handle]
-              indyLambdaBodyMethods += implMethod
+              if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
+                import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
+                val metafactoryFlags = indy.bsmArgs(3).asInstanceOf[Integer].toInt
+                val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
+                if isSerializable then
+                  val implMethod = indy.bsmArgs(1).asInstanceOf[Handle]
+                  indyLambdaBodyMethods += implMethod
             case _ =>
           }
         }

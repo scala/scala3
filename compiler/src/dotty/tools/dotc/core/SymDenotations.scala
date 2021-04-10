@@ -896,11 +896,14 @@ object SymDenotations {
      *  accessed via prefix `pre`?
      */
     def membersNeedAsSeenFrom(pre: Type)(using Context): Boolean =
+      def preIsThis = pre match
+        case pre: ThisType => pre.sameThis(thisType)
+        case _ => false
       !(  this.isTerm
        || this.isStaticOwner && !this.seesOpaques
        || ctx.erasedTypes
        || (pre eq NoPrefix)
-       || (pre eq thisType)
+       || preIsThis
        )
 
     /** Is this symbol concrete, or that symbol deferred? */
@@ -1504,8 +1507,11 @@ object SymDenotations {
 
     // ----- copies and transforms  ----------------------------------------
 
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
 
     /** Copy this denotation, overriding selective fields */
     final def copySymDenotation(
@@ -1893,7 +1899,9 @@ object SymDenotations {
      *  someone does a findMember on a subclass.
      */
     def delete(sym: Symbol)(using Context): Unit = {
-      info.decls.openForMutations.unlink(sym)
+      val scope = info.decls.openForMutations
+      scope.unlink(sym, sym.name)
+      if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
       if (myMemberCache != null) myMemberCache.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
@@ -2090,25 +2098,27 @@ object SymDenotations {
             computeTypeProxy
 
           case tp: AndOrType =>
-            def computeAndOrType = {
+            def computeAndOrType: Type =
               val tp1 = tp.tp1
               val tp2 = tp.tp2
+              if !tp.isAnd then
+                if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
+                if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
               val baseTp =
-                if (symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty)
+                if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
                   symbol.typeRef
-                else {
+                else
                   val baseTp1 = recur(tp1)
                   val baseTp2 = recur(tp2)
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
-                  combined match {
+                  combined match
                     case combined: AndOrType
                     if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
-                  }
-                }
+
               if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
               baseTp
-            }
+
             computeAndOrType
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>

@@ -838,6 +838,32 @@ import transform.SymUtils._
     def explain = ""
   }
 
+  class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
+  extends TypeMsg(MatchableWarningID) {
+    def msg =
+      val kind = if pattern then "pattern selector" else "value"
+      em"""${kind} should be an instance of Matchable,,
+          |but it has unmatchable type $tp instead"""
+
+    def explain =
+      if pattern then
+        em"""A value of type $tp cannot be the selector of a match expression
+            |since it is not constrained to be `Matchable`. Matching on unconstrained
+            |values is disallowed since it can uncover implementation details that
+            |were intended to be hidden and thereby can violate paramtetricity laws
+            |for reasoning about programs.
+            |
+            |The restriction can be overridden by appending `.asMatchable` to
+            |the selector value. `asMatchable` needs to be imported from
+            |scala.compiletime. Example:
+            |
+            |    import compiletime.asMatchable
+            |    def f[X](x: X) = x.asMatchable match { ... }"""
+      else
+        em"""The value can be converted to a `Matchable` by appending `.asMatchable`.
+            |`asMatchable` needs to be imported from scala.compiletime."""
+  }
+
   class SeqWildcardPatternPos()(using Context)
   extends SyntaxMsg(SeqWildcardPatternPosID) {
     def msg = em"""${hl("*")} can be used only for last argument"""
@@ -2126,7 +2152,7 @@ import transform.SymUtils._
       val addendum =
         if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
         else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ($scrutTp.show)" + addendum
+      s"The highlighted type test will always succeed since the scrutinee type ${scrutTp.show}" + addendum
     }
     def explain = ""
   }
@@ -2338,32 +2364,6 @@ import transform.SymUtils._
            |""".stripMargin
   }
 
-  class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(using Context)
-    extends SyntaxMsg(AbstractCannotBeUsedForObjectsID) {
-    def msg = em"${hl("abstract")} modifier cannot be used for objects"
-
-    def explain =
-      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
-           |
-           |You may want to define an abstract class:
-           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
-           |
-           |And extend it in an object:
-           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
-           |""".stripMargin
-  }
-
-  class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(using Context)
-    extends SyntaxMsg(ModifierRedundantForObjectsID) {
-    def msg = em"${hl(modifier)} modifier is redundant for objects"
-
-    def explain =
-      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
-           |You may want to define the object without it:
-           | ${hl("object")} ${mdef.name} { }
-           |""".stripMargin
-  }
-
   class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
     def msg = i"explicit extends clause needed because both enum case and enum class have type parameters"
@@ -2457,7 +2457,13 @@ import transform.SymUtils._
 
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
-    def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+    def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
+    def explain = ""
+  }
+
+  class RedundantModifier(flag: Flag)(using Context)
+    extends SyntaxMsg(RedundantModifierID) {
+    def msg = em"Modifier ${hl(flag.flagsString)} is redundant for this definition"
     def explain = ""
   }
 

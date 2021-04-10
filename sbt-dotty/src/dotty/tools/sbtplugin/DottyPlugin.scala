@@ -173,13 +173,18 @@ object DottyPlugin extends AutoPlugin {
   }
 
   override val globalSettings: Seq[Def.Setting[_]] = Seq(
-    onLoad in Global := onLoad.in(Global).value.andThen { state =>
+    Global / onLoad := (Global / onLoad).value.andThen { state =>
 
       val requiredVersion = ">=1.4.4"
 
       val sbtV = sbtVersion.value
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
         sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt $requiredVersion is required.")
+
+      val deprecatedVersion = ">=1.5.0-RC2"
+      val logger = sLog.value
+      if (VersionNumber(sbtV).matchesSemVer(SemanticSelector(deprecatedVersion)))
+        logger.warn(s"The sbt-dotty plugin is no longer neeeded with sbt >= 1.5, please remove it from your build.")
 
       state
     }
@@ -231,8 +236,8 @@ object DottyPlugin extends AutoPlugin {
           scalaOrganization.value
       },
 
-      incOptions in Compile := {
-        val inc = (incOptions in Compile).value
+      Compile / incOptions := {
+        val inc = (Compile / incOptions).value
         if (isDotty.value)
           dottyPatchIncOptions(inc)
         else
@@ -246,7 +251,7 @@ object DottyPlugin extends AutoPlugin {
             dependencyResolution.value,
             scalaModuleInfo.value,
             updateConfiguration.value,
-            (unresolvedWarningConfiguration in update).value,
+            (update / unresolvedWarningConfiguration).value,
             streams.value.log,
           )
           Option(getJar(updateReport, scalaOrganization.value, scala3Artefact(scalaVersion.value, "sbt-bridge"), scalaVersion.value))
@@ -318,11 +323,11 @@ object DottyPlugin extends AutoPlugin {
       // so we need to manually set `classpathOptions in console` to something sensible,
       // ideally this would be "whatever would be set if this plugin was not enabled",
       // but I can't find a way to do this, so we default to whatever is set in ThisBuild.
-      classpathOptions in console := {
+      console / classpathOptions := {
         if (isDotty.value)
           classpathOptions.value // The Dotty REPL doesn't require anything special on its classpath
         else
-          (classpathOptions in console in ThisBuild).value
+          (ThisBuild / console / classpathOptions).value
       },
       classpathOptions := {
         val old = classpathOptions.value
@@ -374,10 +379,10 @@ object DottyPlugin extends AutoPlugin {
       resolvers ++= (if(!useScaladoc.value) Nil else Seq(Resolver.jcenterRepo)),
       useScaladoc := {
         val v = scalaVersion.value
-        v.startsWith("3.0.0") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
+        v.startsWith("3") && !v.startsWith("3.0.0-M1") && !v.startsWith("3.0.0-M2")
       },
       // We need to add doctool classes to the classpath so they can be called
-      scalaInstance in doc := Def.taskDyn {
+      doc / scalaInstance := Def.taskDyn {
         if (isDotty.value)
           if (useScaladoc.value) {
             val v = scalaVersion.value
@@ -387,7 +392,7 @@ object DottyPlugin extends AutoPlugin {
             dottyScalaInstanceTask(name)
           } else dottyScalaInstanceTask(scala3Artefact(scalaVersion.value, "doc"))
         else
-          Def.valueStrict { (scalaInstance in doc).taskValue }
+          Def.valueStrict { (doc / scalaInstance).taskValue }
       }.value,
 
       // Because managedScalaInstance is false, sbt won't add the standard library to our dependencies for us
@@ -464,15 +469,17 @@ object DottyPlugin extends AutoPlugin {
       else Def.task { originalSources }
     }.value,
     scalacOptions ++= {
-      if (isDotty.value) {
+      // From sbt 1.5 scaladoc is natively supported, and so the scalacOptions are already set.
+      val isSbt15 = VersionNumber(sbtVersion.value)
+        .matchesSemVer(SemanticSelector(">=1.5.0-M1"))
+      if (isDotty.value && !isSbt15) {
         val projectName =
           if (configuration.value == Compile)
             name.value
           else
             s"${name.value}-${configuration.value}"
         Seq(
-          "-project", projectName,
-          "-from-tasty"
+          "-project", projectName
         )
       }
       else
@@ -525,7 +532,7 @@ object DottyPlugin extends AutoPlugin {
         dependencyResolution.value,
         scalaModuleInfo.value,
         updateConfiguration.value,
-        (unresolvedWarningConfiguration in update).value,
+        (update / unresolvedWarningConfiguration).value,
         streams.value.log)
     val scalaLibraryJar = getJar(updateReport,
       "org.scala-lang", "scala-library", revision = AllPassFilter)

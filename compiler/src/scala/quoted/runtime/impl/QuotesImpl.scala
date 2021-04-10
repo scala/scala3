@@ -218,13 +218,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end ClassDefTypeTest
 
     object ClassDef extends ClassDefModule:
-      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], derived: List[TypeTree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
+      def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
       }
-      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], List[TypeTree], Option[ValDef], List[Statement]) =
+      def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        (cdef.name.toString, cdef.constructor, cdef.parents, rhs.derived.asInstanceOf[List[TypeTree]], cdef.self, rhs.body)
+        (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
     end ClassDef
 
     given ClassDefMethods: ClassDefMethods with
@@ -233,8 +233,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
           self.rhs.asInstanceOf[tpd.Template].parents
-        def derived: List[TypeTree] =
-          self.rhs.asInstanceOf[tpd.Template].derived.asInstanceOf[List[TypeTree]]
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
@@ -368,7 +366,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           if self.isExpr then Some(new ExprImpl(self, SpliceScope.getCurrent))
           else None
 
-        def tpe: TypeRepr = self.tpe
+        def tpe: TypeRepr = self.tpe.widenSkolem
         def underlyingArgument: Term = new tpd.TreeOps(self).underlyingArgument
         def underlying: Term = new tpd.TreeOps(self).underlying
         def etaExpand(owner: Symbol): Term = self.tpe.widen match {
@@ -748,7 +746,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.Closure(meth, tss => xCheckMacroedOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, TermParamClause(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
           Some((params, body))
         case _ => None
@@ -1512,6 +1510,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def params: List[ValDef] = self
         def isImplicit: Boolean =
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
+        def isGiven: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Given)
     end TermParamClauseMethods
 
     type TypeParamClause = List[tpd.TypeDef]
@@ -2768,6 +2768,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def warning(msg: String, pos: Position): Unit =
         dotc.report.warning(msg, pos)
+
+      def info(msg: String): Unit =
+        dotc.report.echo(msg, Position.ofMacroExpansion)
+
+      def info(msg: String, expr: Expr[Any]): Unit =
+        dotc.report.echo(msg, asTerm(expr).pos)
+
+      def info(msg: String, pos: Position): Unit =
+        dotc.report.echo(msg, pos)
 
     end report
 

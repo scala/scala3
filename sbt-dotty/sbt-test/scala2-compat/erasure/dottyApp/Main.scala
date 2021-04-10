@@ -68,13 +68,46 @@ object Main {
     z.b_55(dummy)
     // z.b_56(dummy)
     // z.a_57(dummy)
+    z.int_58(1)
+    z.int_59(1)
+    z.int_60(1)
+    z.int_61(1)
+    z.int_62(1)
+    z.int_63(1)
+    z.intARRAY_64(dummy)
+    z.object_65(dummy)
+    z.object_66(dummy)
+    z.object_67(dummy)
+    z.object_68(dummy)
+    z.object_69(dummy)
+    z.object_70(dummy)
+    z.object_71(dummy)
+    z.stringARRAY_72(dummy)
+    z.stringARRAY_73(dummy)
+    z.stringARRAY_74(dummy)
+    z.stringARRAY_75(dummy)
+    z.stringARRAY_76(dummy)
+    z.stringARRAY_77(dummy)
+    z.stringARRAY_78(dummy)
+    z.stringARRAY_79(dummy)
+    z.object_80(dummy)
+    z.object_81(dummy)
+    z.objectARRAY_82(dummy)
+    z.object_83(dummy)
+    z.object_84(dummy)
+    z.object_85(dummy)
+    z.aARRAY_86(dummy)
+    z.aARRAY_87(dummy)
+    z.objectARRAY_88(dummy)
+    z.objectARRAY_89(dummy)
+    z.objectARRAY_90(dummy)
 
     val methods = classOf[scala2Lib.Z].getDeclaredMethods.toList ++ classOf[dottyApp.Z].getDeclaredMethods.toList
     methods.foreach { m =>
       m.getName match {
         case s"${prefix}_${suffix}" =>
-          val paramClass = m.getParameterTypes()(0).getSimpleName
-          assert(prefix == paramClass.toLowerCase, s"Method `$m` erased to `$paramClass` which does not match its prefix `$prefix`")
+          val paramClass = m.getParameterTypes()(0).getSimpleName.toLowerCase.replaceAll("""\[\]""", "ARRAY")
+          assert(prefix == paramClass, s"Method `$m` erased to `$paramClass` which does not match its prefix `$prefix`")
         case _ =>
       }
     }

@@ -15,8 +15,8 @@ import Types._, Symbols._, Contexts._
 import Effects._, Summary._
 
 object Potentials {
-  type Potentials = Set[Potential]
-  val empty: Potentials = Set.empty
+  type Potentials = Vector[Potential]
+  val empty: Potentials = Vector.empty
 
   def show(pots: Potentials)(using Context): String =
     pots.map(_.show).mkString(", ")
@@ -31,6 +31,8 @@ object Potentials {
 
     def show(using Context): String
     def source: Tree
+
+    def toPots: Potentials = Vector(this)
   }
 
   sealed trait Refinable extends Potential {
@@ -152,8 +154,6 @@ object Potentials {
   }
 
   // ------------------ operations on potentials ------------------
-
-  extension (pot: Potential) def toPots: Potentials = Potentials.empty + pot
 
   /** Selection on a set of potentials
    *

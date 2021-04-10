@@ -1045,10 +1045,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     }
                   }
 
+                  def byGadtOrdering: Boolean =
+                    ctx.gadt.contains(tycon1sym)
+                    && ctx.gadt.contains(tycon2sym)
+                    && ctx.gadt.isLess(tycon1sym, tycon2sym)
+
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
                     || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
                     || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
+                    || byGadtOrdering
                   ) && {
                     // There are two cases in which we can assume injectivity.
                     // First we check if either sym is a class.
@@ -2128,7 +2134,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else {
       val t2 = distributeAnd(tp2, tp1)
       if (t2.exists) t2
-      else if (isErased) erasedGlb(tp1, tp2, isJava = false)
+      else if (isErased) erasedGlb(tp1, tp2)
       else liftIfHK(tp1, tp2, op, original, _ | _)
         // The ` | ` on variances is needed since variances are associated with bounds
         // not lambdas. Example:
@@ -2443,8 +2449,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             decompose(cls2, tp2).forall(x => provablyDisjoint(x, tp1))
           else
             false
-      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2))
-      if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
+      case (AppliedType(tycon1, args1), AppliedType(tycon2, args2)) if isSame(tycon1, tycon2) =>
         // It is possible to conclude that two types applies are disjoint by
         // looking at covariant type parameters if the said type parameters
         // are disjoin and correspond to fields.
@@ -2514,6 +2519,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         provablyDisjoint(tp1, gadtBounds(tp2.symbol).hi) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TermRef, tp2: TermRef) if isEnumValueOrModule(tp1) && isEnumValueOrModule(tp2) =>
         tp1.termSymbol != tp2.termSymbol
+      case (tp1: Type, tp2: Type) if defn.isTupleType(tp1) =>
+        provablyDisjoint(tp1.toNestedPairs, tp2)
+      case (tp1: Type, tp2: Type) if defn.isTupleType(tp2) =>
+        provablyDisjoint(tp1, tp2.toNestedPairs)
       case (tp1: TypeProxy, tp2: TypeProxy) =>
         provablyDisjoint(tp1.superType, tp2) || provablyDisjoint(tp1, tp2.superType)
       case (tp1: TypeProxy, _) =>
@@ -2687,8 +2696,8 @@ object TypeComparer {
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))
 
-  def constrainPatternType(pat: Type, scrut: Type)(using Context): Boolean =
-    comparing(_.constrainPatternType(pat, scrut))
+  def constrainPatternType(pat: Type, scrut: Type, widenParams: Boolean = true)(using Context): Boolean =
+    comparing(_.constrainPatternType(pat, scrut, widenParams))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))

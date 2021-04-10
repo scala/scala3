@@ -10,6 +10,9 @@ lazy val compilerVersion: String =
   val file = communitybuildDir.resolve("scala3-bootstrapped.version")
   new String(Files.readAllBytes(file), UTF_8)
 
+lazy val compilerSupportExperimental: Boolean =
+  compilerVersion.contains("SNAPSHOT") || compilerVersion.contains("NIGHTLY")
+
 lazy val sbtPluginFilePath: String =
   // Workaround for https://github.com/sbt/sbt/issues/4395
   new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
@@ -37,6 +40,7 @@ sealed trait CommunityProject:
   val dependencies: List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
+  val requiresExperimental: Boolean
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
@@ -45,6 +49,7 @@ sealed trait CommunityProject:
 
   /** Publish this project to the local Maven repository */
   final def publish(): Unit =
+    // TODO what should this do with .requiresExperimental?
     if !published then
       publishDependencies()
       log(s"Publishing $project")
@@ -56,6 +61,11 @@ sealed trait CommunityProject:
       published = true
 
   final def doc(): Unit =
+    if this.requiresExperimental && !compilerSupportExperimental then
+      log(
+        s"Skipping ${this.project} - it needs experimental features unsupported in this build."
+      )
+      return
     publishDependencies()
     log(s"Documenting $project")
     if docCommand eq null then
@@ -75,6 +85,7 @@ final case class MillCommunityProject(
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
     ignoreDocs: Boolean = false,
+    requiresExperimental: Boolean = false,
     ) extends CommunityProject:
   override val binaryName: String = "./mill"
   override val testCommand = s"$baseCommand.test"
@@ -91,7 +102,8 @@ final case class SbtCommunityProject(
     dependencies: List[CommunityProject] = Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
-    scalacOptions: List[String] = SbtCommunityProject.scalacOptions
+    scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
+    requiresExperimental: Boolean = false,
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -99,12 +111,12 @@ final case class SbtCommunityProject(
     scalacOptions.map("\"" + _ + "\"").mkString("List(", ",", ")")
 
   private val baseCommand =
-    "clean; set logLevel in Global := Level.Error; set updateOptions in Global ~= (_.withLatestSnapshots(false)); "
-    ++ (if scalacOptions.isEmpty then "" else s"""set scalacOptions in Global ++= $scalacOptionsString;""")
+    "clean; set Global/logLevel := Level.Error; set Global/updateOptions ~= (_.withLatestSnapshots(false)); "
+    ++ (if scalacOptions.isEmpty then "" else s"""set Global/scalacOptions ++= $scalacOptionsString;""")
     ++ s"++$compilerVersion!; "
 
   override val testCommand =
-    """set testOptions in Global += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
+    """set Global/testOptions += Tests.Argument(TestFramework("munit.Framework"), "+l"); """
     ++ s"$baseCommand$sbtTestCommand"
 
   override val publishCommand =
@@ -121,7 +133,7 @@ final case class SbtCommunityProject(
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
     extraSbtArgs ++ sbtProps ++ List(
-      "-sbt-version", "1.4.7",
+      "-sbt-version", "1.5.0",
       "-Dsbt.supershell=false",
       s"-Ddotty.communitybuild.dir=$communitybuildDir",
       s"--addPluginSbtFile=$sbtPluginFilePath"
@@ -137,12 +149,12 @@ object projects:
 
   private def forceDoc(projects: String*) =
     projects.map(project =>
-      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/tastyFiles).value ;$project/doc"""
+      s""";set $project/Compile/doc/sources ++= ($project/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value ;$project/doc"""
     ).mkString(" ")
 
   private def aggregateDoc(in: String)(projects: String*) =
     val tastyFiles =
-      (in +: projects).map(p => s"($p/Compile/doc/tastyFiles).value").mkString(" ++ ")
+      (in +: projects).map(p => s"($p/Compile/doc/dotty.tools.sbtplugin.DottyPlugin.autoImport.tastyFiles).value").mkString(" ++ ")
     s""";set $in/Compile/doc/sources ++= file("a.scala") +: ($tastyFiles) ;$in/doc"""
 
   lazy val utest = MillCommunityProject(
@@ -234,13 +246,14 @@ object projects:
 
   lazy val scas = MillCommunityProject(
     project = "scas",
-    baseCommand = "scas.application"
+    baseCommand = "scas.application",
   )
 
   lazy val intent = SbtCommunityProject(
     project       = "intent",
     sbtTestCommand   = "test",
-    sbtDocCommand = "doc"
+    sbtDocCommand = "doc",
+    requiresExperimental = true,
   )
 
   lazy val algebra = SbtCommunityProject(
@@ -328,7 +341,7 @@ object projects:
     project       = "stdLib213",
     extraSbtArgs  = List("-Dscala.build.compileWithDotty=true"),
     sbtTestCommand   = """library/compile""",
-    sbtPublishCommand = """set publishArtifact in (library, Compile, packageDoc) := false ;library/publishLocal""",
+    sbtPublishCommand = """set library/Compile/packageDoc/publishArtifact := false; library/publishLocal""",
     // sbtDocCommand = "library/doc" // Does no compile? No idea :/
   )
 
@@ -395,7 +408,8 @@ object projects:
     sbtTestCommand   = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit)
+    dependencies = List(munit),
+    requiresExperimental = true,
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -403,7 +417,8 @@ object projects:
     sbtTestCommand   = "unitTests/test",
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
-    dependencies = List(munit, scodecBits)
+    dependencies = List(munit, scodecBits),
+    requiresExperimental = true,
   )
 
   lazy val scopt = SbtCommunityProject(
@@ -518,7 +533,7 @@ object projects:
 
   lazy val cats = SbtCommunityProject(
     project = "cats",
-    sbtTestCommand = "set scalaJSStage in Global := FastOptStage;buildJVM;validateAllJS",
+    sbtTestCommand = "set Global/scalaJSStage := FastOptStage;buildJVM;validateAllJS",
     sbtPublishCommand = "catsJVM/publishLocal;catsJS/publishLocal",
     dependencies = List(discipline, disciplineMunit, scalacheck, simulacrumScalafixAnnotations),
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Ysafe-init") // disable -Ysafe-init, due to -Xfatal-warning

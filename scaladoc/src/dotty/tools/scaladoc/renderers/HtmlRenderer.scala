@@ -131,6 +131,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       meta(charset := "utf-8"),
       meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
       title(page.link.name),
+      canonicalUrl(absolutePath(page.link.dri)),
       link(
         rel := "shortcut icon",
         `type` := "image/x-icon",
@@ -141,8 +142,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
     )
 
   private def buildNavigation(pageLink: Link): AppliedTag =
-    def navigationIcon(member: Member) = member.kind match {
-      case m if m.isInstanceOf[Classlike] => Seq(span(cls := s"micon ${member.kind.name.head}"))
+    def navigationIcon(member: Member) = member match {
+      case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.head}"))
       case _ => Nil
     }
 
@@ -170,6 +171,14 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           )
     renderNested(navigablePage, toplevel = true)._2
 
+  private def canonicalUrl(l: String): AppliedTag | String =
+    val canon = args.docCanonicalBaseUrl
+    if !canon.isEmpty then
+      val canonicalUrl = if canon.endsWith("/") then canon else canon + "/"
+      link(rel := "canonical", href := canonicalUrl + l)
+    else
+      "" // return empty tag
+
   private def hasSocialLinks = !args.socialLinks.isEmpty
 
   private def socialLinks(whiteIcon: Boolean = true) =
@@ -193,6 +202,13 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           "/"
         )).dropRight(1)
       div(cls := "breadcrumbs")(innerTags:_*)
+
+    def textFooter: String | AppliedTag =
+      args.projectFooter.fold("") { f =>
+        div(id := "footer-text")(
+          raw(f)
+        )
+      }
 
     div(id := "container")(
       div(id := "leftColumn")(
@@ -244,7 +260,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
                 cls := "scaladoc_logo"
               )
             )
+          ),
+          textFooter
         )
       )
-    )
     )

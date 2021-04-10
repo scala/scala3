@@ -251,6 +251,10 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
     case TypeDefs(_) => true
     case _ => isUsingClause(params)
 
+  def isTypeParamClause(params: ParamClause)(using Context): Boolean = params match
+    case TypeDefs(_) => true
+    case _ => false
+
   private val languageSubCategories = Set(nme.experimental, nme.deprecated)
 
   /** If `path` looks like a language import, `Some(name)` where name
@@ -272,8 +276,6 @@ trait TreeInfo[T >: Untyped <: Type] { self: Trees.Instance[T] =>
             case _ => None
         case _ => None
     case _ => None
-
-  def isLanguageImport(path: Tree): Boolean = languageImport(path).isDefined
 
   /** The underlying pattern ignoring any bindings */
   def unbind(x: Tree): Tree = unsplice(x) match {
@@ -328,6 +330,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
 
   def isFunctionWithUnknownParamType(tree: Tree): Boolean =
     functionWithUnknownParamType(tree).isDefined
+
+  def isFunction(tree: Tree): Boolean = tree match
+    case Function(_, _) | Match(EmptyTree, _) => true
+    case Block(Nil, expr) => isFunction(expr)
+    case _ => false
 
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {

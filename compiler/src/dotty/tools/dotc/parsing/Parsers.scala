@@ -28,7 +28,8 @@ import util.Chars
 import scala.annotation.{tailrec, switch}
 import rewrites.Rewrites.{patch, overlapsPatch}
 import reporting._
-import config.Feature.{sourceVersion, migrateTo3, dependentEnabled, symbolLiteralsEnabled}
+import config.Feature
+import config.Feature.{sourceVersion, migrateTo3}
 import config.SourceVersion._
 import config.SourceVersion
 
@@ -42,6 +43,7 @@ object Parsers {
     case InParens      extends Location(true, false, false)
     case InArgs        extends Location(true, false, true)
     case InPattern     extends Location(false, true, false)
+    case InGuard       extends Location(false, false, false)
     case InPatternArgs extends Location(false, true, true) // InParens not true, since it might be an alternative
     case InBlock       extends Location(false, false, false)
     case ElseWhere     extends Location(false, false, false)
@@ -179,6 +181,7 @@ object Parsers {
 
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
+    def isErased = isIdent(nme.erased) && in.erasedEnabled
     def isSimpleLiteral =
       simpleLiteralTokens.contains(in.token)
       || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
@@ -196,12 +199,11 @@ object Parsers {
       in.token match {
         case USCORE => true
         case IDENTIFIER | BACKQUOTED_IDENT =>
-          val nxt = in.lookahead.token
-          nxt == ARROW || nxt == CTXARROW
+          in.lookahead.isArrow
         case LPAREN =>
           val lookahead = in.LookaheadScanner()
           lookahead.skipParens()
-          lookahead.token == ARROW || lookahead.token == CTXARROW
+          lookahead.isArrow
         case _ => false
       }
     } && !in.isSoftModifierInModifierPosition
@@ -307,6 +309,11 @@ object Parsers {
       offset
     }
 
+    def acceptColon(): Int =
+      val offset = in.offset
+      if in.isColon() then { in.nextToken(); offset }
+      else accept(COLON)
+
     /** semi = nl {nl} | `;'
      *  nl  = `\n' // where allowed
      */
@@ -397,22 +404,23 @@ object Parsers {
 
     /** Convert tree to formal parameter list
     */
-    def convertToParams(tree: Tree, mods: Modifiers): List[ValDef] = tree match {
-      case Parens(t) =>
-        convertToParam(t, mods) :: Nil
-      case Tuple(ts) =>
-        ts.map(convertToParam(_, mods))
-      case t: Typed =>
-        report.errorOrMigrationWarning(
-          em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
-          in.sourcePos())
-        if migrateTo3 then
-          patch(source, t.span.startPos, "(")
-          patch(source, t.span.endPos, ")")
-        convertToParam(t, mods) :: Nil
-      case t =>
-        convertToParam(t, mods) :: Nil
-    }
+    def convertToParams(tree: Tree): List[ValDef] =
+      val mods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
+      tree match
+        case Parens(t) =>
+          convertToParam(t, mods) :: Nil
+        case Tuple(ts) =>
+          ts.map(convertToParam(_, mods))
+        case t: Typed =>
+          report.errorOrMigrationWarning(
+            em"parentheses are required around the parameter of a lambda${rewriteNotice()}",
+            in.sourcePos())
+          if migrateTo3 then
+            patch(source, t.span.startPos, "(")
+            patch(source, t.span.endPos, ")")
+          convertToParam(t, mods) :: Nil
+        case t =>
+          convertToParam(t, mods) :: Nil
 
     /** Convert tree to formal parameter
     */
@@ -446,11 +454,10 @@ object Parsers {
      *  Parameters appear in reverse order.
      */
     var placeholderParams: List[ValDef] = Nil
-    var languageImportContext: Context = ctx
 
     def checkNoEscapingPlaceholders[T](op: => T): T =
       val savedPlaceholderParams = placeholderParams
-      val savedLanguageImportContext = languageImportContext
+      val savedLanguageImportContext = in.languageImportContext
       placeholderParams = Nil
       try op
       finally
@@ -458,7 +465,7 @@ object Parsers {
           case vd :: _ => syntaxError(UnboundPlaceholderParameter(), vd.span)
           case _ =>
         placeholderParams = savedPlaceholderParams
-        languageImportContext = savedLanguageImportContext
+        in.languageImportContext = savedLanguageImportContext
 
     def isWildcard(t: Tree): Boolean = t match {
       case Ident(name1) => placeholderParams.nonEmpty && name1 == placeholderParams.head.name
@@ -737,7 +744,7 @@ object Parsers {
         }
       })
       canRewrite &= (in.isAfterLineEnd || statCtdTokens.contains(in.token)) // test (5)
-      if (canRewrite && (!underColonSyntax || in.colonSyntax)) {
+      if (canRewrite && (!underColonSyntax || in.fewerBracesEnabled)) {
         val openingPatchStr =
           if !colonRequired then ""
           else if testChar(startOpening - 1, Chars.isOperatorPart(_)) then " :"
@@ -860,7 +867,7 @@ object Parsers {
           lookahead.nextToken()
           skipParams()
       skipParams()
-      lookahead.token == COLON
+      lookahead.isColon()
 
     def followingIsExtension() =
       val next = in.lookahead.token
@@ -915,7 +922,8 @@ object Parsers {
      *  @param maybePostfix  postfix operators are allowed.
      */
     def infixOps(
-        first: Tree, canStartOperand: Token => Boolean, operand: () => Tree,
+        first: Tree, canStartOperand: Token => Boolean, operand: Location => Tree,
+        location: Location,
         isType: Boolean,
         isOperator: => Boolean,
         maybePostfix: Boolean = false): Tree = {
@@ -936,7 +944,7 @@ object Parsers {
               PostfixOp(od, topInfo.operator)
             }
           }
-          else recur(operand())
+          else recur(operand(location))
         }
         else
           val t = reduceStack(base, top, minPrec, leftAssoc = true, in.name, isType)
@@ -1141,7 +1149,7 @@ object Parsers {
             Quote(t)
           }
           else
-            if !symbolLiteralsEnabled(using languageImportContext) then
+            if !in.featureEnabled(Feature.symbolLiterals) then
               report.errorOrMigrationWarning(
                 em"""symbol literal '${in.name} is no longer supported,
                     |use a string literal "${in.name}" or an application Symbol("${in.name}") instead,
@@ -1228,7 +1236,7 @@ object Parsers {
 
     def colonAtEOLOpt(): Unit = {
       possibleColonOffset = in.lastOffset
-      if (in.token == COLONEOL) in.nextToken()
+      if in.token == COLONEOL then in.nextToken()
     }
 
     def argumentStart(): Unit =
@@ -1316,9 +1324,9 @@ object Parsers {
      *                   |  MatchType
      *                   |  InfixType
      *  FunType        ::=  (MonoFunType | PolyFunType)
-     *  MonoFunType    ::=  FunArgTypes (‘=>’ | ‘?=>’) Type
+     *  MonoFunType    ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type
      *  PolyFunType    ::=  HKTypeParamClause '=>' Type
-     *  FunArgTypes    ::=  InfixType
+     *  FunTypeArgs    ::=  InfixType
      *                   |  `(' [ [ ‘[using]’ ‘['erased']  FunArgType {`,' FunArgType } ] `)'
      *                   |  '(' [ ‘[using]’ ‘['erased'] TypedFunParam {',' TypedFunParam } ')'
      */
@@ -1356,7 +1364,7 @@ object Parsers {
           else
             Function(params, t)
         }
-      def funArgTypesRest(first: Tree, following: () => Tree) = {
+      def funTypeArgsRest(first: Tree, following: () => Tree) = {
         val buf = new ListBuffer[Tree] += first
         while (in.token == COMMA) {
           in.nextToken()
@@ -1374,19 +1382,19 @@ object Parsers {
             functionRest(Nil)
           }
           else {
-            imods = modifiers(funTypeArgMods)
+            if isErased then imods = addModifier(imods)
             val paramStart = in.offset
             val ts = funArgType() match {
-              case Ident(name) if name != tpnme.WILDCARD && in.token == COLON =>
+              case Ident(name) if name != tpnme.WILDCARD && in.isColon() =>
                 isValParamList = true
-                funArgTypesRest(
+                funTypeArgsRest(
                     typedFunParam(paramStart, name.toTermName, imods),
                     () => typedFunParam(in.offset, ident(), imods))
               case t =>
-                funArgTypesRest(t, funArgType)
+                funTypeArgsRest(t, funArgType)
             }
             accept(RPAREN)
-            if isValParamList || in.token == ARROW || in.token == CTXARROW then
+            if isValParamList || in.isArrow then
               functionRest(ts)
             else {
               val ts1 =
@@ -1466,7 +1474,7 @@ object Parsers {
     /** TypedFunParam   ::= id ':' Type */
     def typedFunParam(start: Offset, name: TermName, mods: Modifiers = EmptyModifiers): ValDef =
       atSpan(start) {
-        accept(COLON)
+        acceptColon()
         makeParameter(name, typ(), mods)
       }
 
@@ -1483,12 +1491,15 @@ object Parsers {
     def infixType(): Tree = infixTypeRest(refinedType())
 
     def infixTypeRest(t: Tree): Tree =
-      infixOps(t, canStartTypeTokens, refinedType, isType = true,
+      infixOps(t, canStartTypeTokens, refinedTypeFn, Location.ElseWhere,
+        isType = true,
         isOperator = !followingIsVararg())
 
     /** RefinedType   ::=  WithType {[nl] Refinement}
      */
-    val refinedType: () => Tree = () => refinedTypeRest(withType())
+    val refinedTypeFn: Location => Tree = _ => refinedType()
+
+    def refinedType() = refinedTypeRest(withType())
 
     def refinedTypeRest(t: Tree): Tree = {
       argumentStart()
@@ -1572,7 +1583,7 @@ object Parsers {
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
-          if in.token == LPAREN && dependentEnabled(using languageImportContext)
+          if in.token == LPAREN && in.featureEnabled(Feature.dependent)
           then singletonArgs(AppliedTypeTree(t, inParens(commaSeparated(singleton))))
           else t
         singletonArgs(simpleType1())
@@ -1760,24 +1771,23 @@ object Parsers {
       else atSpan((t.span union cbs.head.span).start) { ContextBounds(t, cbs) }
     }
 
-    def contextBounds(pname: TypeName): List[Tree] = in.token match {
-      case COLON =>
+    def contextBounds(pname: TypeName): List[Tree] =
+      if in.isColon() then
         atSpan(in.skipToken()) {
           AppliedTypeTree(toplevelTyp(), Ident(pname))
         } :: contextBounds(pname)
-      case VIEWBOUND =>
+      else if in.token == VIEWBOUND then
         report.errorOrMigrationWarning(
           "view bounds `<%' are no longer supported, use a context bound `:' instead",
           in.sourcePos())
         atSpan(in.skipToken()) {
           Function(Ident(pname) :: Nil, toplevelTyp())
         } :: contextBounds(pname)
-      case _ =>
+      else
         Nil
-    }
 
     def typedOpt(): Tree =
-      if (in.token == COLON) { in.nextToken(); toplevelTyp() }
+      if in.isColon() then { in.nextToken(); toplevelTyp() }
       else TypeTree().withSpan(Span(in.lastOffset))
 
     def typeDependingOn(location: Location): Tree =
@@ -1807,7 +1817,11 @@ object Parsers {
           if in.token != altToken then
             if toBeContinued(altToken) then
               t = inSepRegion(InCond) {
-                expr1Rest(postfixExprRest(simpleExprRest(t)), Location.ElseWhere)
+                expr1Rest(
+                  postfixExprRest(
+                    simpleExprRest(t, Location.ElseWhere),
+                    Location.ElseWhere),
+                  Location.ElseWhere)
               }
             else
               if rewriteToNewSyntax(t.span) then
@@ -1861,7 +1875,7 @@ object Parsers {
 
     def expr(location: Location): Tree = {
       val start = in.offset
-      def isSpecialClosureStart = in.lookahead.token == ERASED
+      def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
       if in.token == IMPLICIT then
         closure(start, location, modifiers(BitSet(IMPLICIT)))
       else if in.token == LPAREN && isSpecialClosureStart then
@@ -1876,15 +1890,12 @@ object Parsers {
         finally placeholderParams = saved
 
         val t = expr1(location)
-        if (in.token == ARROW || in.token == CTXARROW) {
+        if in.isArrow then
           placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          val paramMods = if in.token == CTXARROW then Modifiers(Given) else EmptyModifiers
-          wrapPlaceholders(closureRest(start, location, convertToParams(t, paramMods)))
-        }
-        else if (isWildcard(t)) {
+          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+        else if isWildcard(t) then
           placeholderParams = placeholderParams ::: saved
           t
-        }
         else wrapPlaceholders(t)
       }
     }
@@ -1966,7 +1977,6 @@ object Parsers {
         atSpan(in.skipToken()) { Throw(expr()) }
       case RETURN =>
         atSpan(in.skipToken()) {
-          colonAtEOLOpt()
           Return(if (isExprIntro) expr() else EmptyTree, EmptyTree)
         }
       case FOR =>
@@ -2093,7 +2103,7 @@ object Parsers {
           Nil
         else
           var mods1 = mods
-          if in.token == ERASED then mods1 = addModifier(mods1)
+          if isErased then mods1 = addModifier(mods1)
           try
             commaSeparated(() => binding(mods1))
           finally
@@ -2151,33 +2161,34 @@ object Parsers {
     /** PostfixExpr   ::= InfixExpr [id [nl]]
      *  InfixExpr     ::= PrefixExpr
      *                  | InfixExpr id [nl] InfixExpr
+     *                  | InfixExpr id `:` IndentedExpr
      *                  | InfixExpr MatchClause
      */
     def postfixExpr(location: Location = Location.ElseWhere): Tree =
-      val t = postfixExprRest(prefixExpr(), location)
+      val t = postfixExprRest(prefixExpr(location), location)
       if location.inArgs && followingIsVararg() then
         Typed(t, atSpan(in.skipToken()) { Ident(tpnme.WILDCARD_STAR) })
       else
         t
 
-    def postfixExprRest(t: Tree, location: Location = Location.ElseWhere): Tree =
-      infixOps(t, in.canStartExprTokens, prefixExpr,
+    def postfixExprRest(t: Tree, location: Location): Tree =
+      infixOps(t, in.canStartExprTokens, prefixExpr, location,
         isType = false,
         isOperator = !(location.inArgs && followingIsVararg()),
         maybePostfix = true)
 
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
-    val prefixExpr: () => Tree = () =>
+    val prefixExpr: Location => Tree = location =>
       if (isIdent && nme.raw.isUnary(in.name)) {
         val start = in.offset
         val op = termIdent()
         if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), canApply = true)
+          simpleExprRest(literal(start), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr()) }
+          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
       }
-      else simpleExpr()
+      else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                 |  ‘new’ TemplateBody
@@ -2194,10 +2205,13 @@ object Parsers {
      *                 |  SimpleExpr `.` MatchClause
      *                 |  SimpleExpr (TypeArgs | NamedTypeArgs)
      *                 |  SimpleExpr1 ArgumentExprs
+     *                 |  SimpleExpr1 `:` IndentedExpr                       -- under language.experimental.fewerBraces
+     *                 |  SimpleExpr1 FunParams (‘=>’ | ‘?=>’) IndentedExpr  -- under language.experimental.fewerBraces
+     *  IndentedExpr  ::=  indent (CaseClauses | Block) outdent
      *  Quoted        ::= ‘'’ ‘{’ Block ‘}’
      *                 |  ‘'’ ‘[’ Type ‘]’
      */
-    def simpleExpr(): Tree = {
+    def simpleExpr(location: Location): Tree = {
       var canApply = true
       val t = in.token match {
         case XMLSTART =>
@@ -2233,39 +2247,70 @@ object Parsers {
           newExpr()
         case MACRO =>
           val start = in.skipToken()
-          MacroTree(simpleExpr())
-        case COLONEOL =>
-          syntaxError("':' not allowed here")
-          in.nextToken()
-          simpleExpr()
+          MacroTree(simpleExpr(Location.ElseWhere))
         case _ =>
-          if (isLiteral) literal()
-          else {
+          if isLiteral then
+            literal()
+          else if in.isColon() then
+            syntaxError(IllegalStartSimpleExpr(tokenString(in.token)))
+            in.nextToken()
+            simpleExpr(location)
+          else
             syntaxErrorOrIncomplete(IllegalStartSimpleExpr(tokenString(in.token)), expectedOffset)
             errorTermTree
-          }
       }
-      simpleExprRest(t, canApply)
+      simpleExprRest(t, location, canApply)
     }
 
-    def simpleExprRest(t: Tree, canApply: Boolean = true): Tree = {
+    def simpleExprRest(t: Tree, location: Location, canApply: Boolean = true): Tree = {
       if (canApply) argumentStart()
       in.token match {
         case DOT =>
           in.nextToken()
-          simpleExprRest(selectorOrMatch(t), canApply = true)
+          simpleExprRest(selectorOrMatch(t), location, canApply = true)
         case LBRACKET =>
           val tapp = atSpan(startOffset(t), in.offset) { TypeApply(t, typeArgs(namedOK = true, wildOK = false)) }
-          simpleExprRest(tapp, canApply = true)
-        case LPAREN | LBRACE | INDENT if canApply =>
+          simpleExprRest(tapp, location, canApply = true)
+        case LPAREN if canApply =>
+          val app = atSpan(startOffset(t), in.offset) {
+            val argExprs @ (args, isUsing) = argumentExprs()
+            if !isUsing && in.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
+              val params = convertToParams(Tuple(args))
+              if params.forall(_.name != nme.ERROR) then
+                applyToClosure(t, in.offset, params)
+              else
+                mkApply(t, argExprs)
+            else
+              mkApply(t, argExprs)
+          }
+          simpleExprRest(app, location, canApply = true)
+        case LBRACE | INDENT if canApply =>
           val app = atSpan(startOffset(t), in.offset) { mkApply(t, argumentExprs()) }
-          simpleExprRest(app, canApply = true)
+          simpleExprRest(app, location, canApply = true)
         case USCORE =>
-          atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
+          if in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled then
+            val app = applyToClosure(t, in.offset, convertToParams(wildcardIdent()))
+            simpleExprRest(app, location, canApply = true)
+          else
+            atSpan(startOffset(t), in.skipToken()) { PostfixOp(t, Ident(nme.WILDCARD)) }
+        case IDENTIFIER
+        if !in.isOperator && in.lookahead.isArrow && location != Location.InGuard && in.fewerBracesEnabled =>
+          val app = applyToClosure(t, in.offset, convertToParams(termIdent()))
+          simpleExprRest(app, location, canApply = true)
         case _ =>
           t
       }
     }
+
+    def applyToClosure(t: Tree, start: Offset, params: List[ValDef]): Tree =
+      atSpan(startOffset(t), in.offset) {
+        val arg = atSpan(start, in.skipToken()) {
+          if in.token != INDENT then
+            syntaxErrorOrIncomplete(i"indented expression expected, ${in} found")
+          Function(params, blockExpr())
+        }
+        Apply(t, arg)
+      }
 
     /** SimpleExpr    ::=  ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
      *                  |  ‘new’ TemplateBody
@@ -2341,10 +2386,9 @@ object Parsers {
           lookahead.nextToken()
           if (lookahead.token == RPAREN)
             !fn.isInstanceOf[Trees.Apply[?]] // allow one () as annotation argument
-          else if (lookahead.token == IDENTIFIER) {
+          else if lookahead.token == IDENTIFIER then
             lookahead.nextToken()
-            lookahead.token != COLON
-          }
+            !lookahead.isColon()
           else in.canStartExprTokens.contains(lookahead.token)
         }
       }
@@ -2355,8 +2399,7 @@ object Parsers {
       else fn
     }
 
-    /** BlockExpr         ::= `{' BlockExprContents `}'
-     *  BlockExprContents ::= CaseClauses | Block
+    /** BlockExpr     ::= <<< (CaseClauses | Block) >>>
      */
     def blockExpr(): Tree = atSpan(in.offset) {
       val simplify = in.token == INDENT
@@ -2384,7 +2427,7 @@ object Parsers {
     /** Guard ::= if PostfixExpr
      */
     def guard(): Tree =
-      if (in.token == IF) { in.nextToken(); postfixExpr() }
+      if (in.token == IF) { in.nextToken(); postfixExpr(Location.InGuard) }
       else EmptyTree
 
     /** Enumerators ::= Generator {semi Enumerator | Guard}
@@ -2609,7 +2652,7 @@ object Parsers {
     /**  InfixPattern ::= SimplePattern {id [nl] SimplePattern}
      */
     def infixPattern(): Tree =
-      infixOps(simplePattern(), in.canStartExprTokens, simplePattern,
+      infixOps(simplePattern(), in.canStartExprTokens, simplePatternFn, Location.InPattern,
         isType = false,
         isOperator = in.name != nme.raw.BAR && !followingIsVararg())
 
@@ -2624,7 +2667,7 @@ object Parsers {
      *  PatVar           ::= id
      *                    |  `_'
      */
-    val simplePattern: () => Tree = () => in.token match {
+    def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
         simpleRef() match
           case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
@@ -2634,7 +2677,7 @@ object Parsers {
       case LPAREN =>
         atSpan(in.offset) { makeTupleOrParens(inParens(patternsOpt())) }
       case QUOTE =>
-        simpleExpr()
+        simpleExpr(Location.ElseWhere)
       case XMLSTART =>
         xmlLiteralPattern()
       case GIVEN =>
@@ -2650,6 +2693,8 @@ object Parsers {
           errorTermTree
         }
     }
+
+    val simplePatternFn: Location => Tree = _ => simplePattern()
 
     def simplePatternRest(t: Tree): Tree =
       if in.token == DOT then
@@ -2684,7 +2729,6 @@ object Parsers {
       case FINAL       => Mod.Final()
       case IMPLICIT    => Mod.Implicit()
       case GIVEN       => Mod.Given()
-      case ERASED      => Mod.Erased()
       case LAZY        => Mod.Lazy()
       case OVERRIDE    => Mod.Override()
       case PRIVATE     => Mod.Private()
@@ -2692,6 +2736,7 @@ object Parsers {
       case SEALED      => Mod.Sealed()
       case IDENTIFIER =>
         name match {
+          case nme.erased if in.erasedEnabled => Mod.Erased()
           case nme.inline => Mod.Inline()
           case nme.opaque => Mod.Opaque()
           case nme.open => Mod.Open()
@@ -2761,7 +2806,7 @@ object Parsers {
         if allowed.contains(in.token)
            || in.isSoftModifier
               && localModifierTokens.subsetOf(allowed) // soft modifiers are admissible everywhere local modifiers are
-              && in.lookahead.token != COLON
+              && !in.lookahead.isColon()
         then
           val isAccessMod = accessModifierTokens contains in.token
           val mods1 = addModifier(mods)
@@ -2774,8 +2819,6 @@ object Parsers {
           mods
       normalize(loop(start))
     }
-
-    val funTypeArgMods: BitSet = BitSet(ERASED)
 
     /** Wrap annotation or constructor in New(...).<init> */
     def wrapNew(tpt: Tree): Select = Select(New(tpt), nme.CONSTRUCTOR)
@@ -2864,14 +2907,14 @@ object Parsers {
     def typeParamClauseOpt(ownerKind: ParamOwner.Value): List[TypeDef] =
       if (in.token == LBRACKET) typeParamClause(ownerKind) else Nil
 
-    /** ContextTypes   ::=  Type {‘,’ Type}
+    /** ContextTypes   ::=  FunArgType {‘,’ FunArgType}
      */
-    def contextTypes(ofClass: Boolean, nparams: Int): List[ValDef] =
-      val tps = commaSeparated(typ)
+    def contextTypes(ofClass: Boolean, nparams: Int, impliedMods: Modifiers): List[ValDef] =
+      val tps = commaSeparated(funArgType)
       var counter = nparams
       def nextIdx = { counter += 1; counter }
       val paramFlags = if ofClass then Private | Local | ParamAccessor else Param
-      tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | Given))
+      tps.map(makeSyntheticParameter(nextIdx, _, paramFlags | Synthetic | impliedMods.flags))
 
     /** ClsParamClause    ::=  ‘(’ [‘erased’] ClsParams ‘)’ | UsingClsParamClause
      *  UsingClsParamClause::= ‘(’ ‘using’ [‘erased’] (ClsParams | ContextTypes) ‘)’
@@ -2899,10 +2942,13 @@ object Parsers {
       def addParamMod(mod: () => Mod) = impliedMods = addMod(impliedMods, atSpan(in.skipToken()) { mod() })
 
       def paramMods() =
-        if in.token == IMPLICIT then addParamMod(() => Mod.Implicit())
+        if in.token == IMPLICIT then
+          addParamMod(() => Mod.Implicit())
         else
-          if isIdent(nme.using) then addParamMod(() => Mod.Given())
-          if in.token == ERASED then addParamMod(() => Mod.Erased())
+          if isIdent(nme.using) then
+            addParamMod(() => Mod.Given())
+          if isErased then
+            addParamMod(() => Mod.Erased())
 
       def param(): ValDef = {
         val start = in.offset
@@ -2929,7 +2975,7 @@ object Parsers {
         }
         atSpan(start, nameStart) {
           val name = ident()
-          accept(COLON)
+          acceptColon()
           if (in.token == ARROW && ofClass && !mods.is(Local))
             syntaxError(VarValParametersMayNotBeCallByName(name, mods.is(Mutable)))
           val tpt = paramType()
@@ -2959,7 +3005,7 @@ object Parsers {
         if in.token == RPAREN && !prefix && !impliedMods.is(Given) then Nil
         else
           val clause =
-            if prefix && !isIdent(nme.using) then param() :: Nil
+            if prefix && !isIdent(nme.using) && !isIdent(nme.erased) then param() :: Nil
             else
               paramMods()
               if givenOnly && !impliedMods.is(Given) then
@@ -2967,9 +3013,9 @@ object Parsers {
               val isParams =
                 !impliedMods.is(Given)
                 || startParamTokens.contains(in.token)
-                || isIdent && (in.name == nme.inline || in.lookahead.token == COLON)
+                || isIdent && (in.name == nme.inline || in.lookahead.isColon())
               if isParams then commaSeparated(() => param())
-              else contextTypes(ofClass, nparams)
+              else contextTypes(ofClass, nparams, impliedMods)
           checkVarArgsRules(clause)
           clause
       }
@@ -3031,18 +3077,24 @@ object Parsers {
     /** Create an import node and handle source version imports */
     def mkImport(outermost: Boolean = false): ImportConstr = (tree, selectors) =>
       val imp = Import(tree, selectors)
-      if isLanguageImport(tree) then
-        languageImportContext = languageImportContext.importContext(imp, NoSymbol)
-        for
-          case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
-          if allSourceVersionNames.contains(imported)
-        do
-          if !outermost then
-            syntaxError(i"source version import is only allowed at the toplevel", id.span)
-          else if ctx.compilationUnit.sourceVersion.isDefined then
-            syntaxError(i"duplicate source version import", id.span)
-          else
-            ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+      languageImport(tree) match
+        case Some(prefix) =>
+          in.languageImportContext = in.languageImportContext.importContext(imp, NoSymbol)
+          if prefix == nme.experimental
+             && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
+          then
+            Feature.checkExperimentalFeature("s", imp.srcPos)
+          for
+            case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
+            if allSourceVersionNames.contains(imported)
+          do
+            if !outermost then
+              syntaxError(i"source version import is only allowed at the toplevel", id.span)
+            else if ctx.compilationUnit.sourceVersion.isDefined then
+              syntaxError(i"duplicate source version import", id.span)
+            else
+              ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+        case None =>
       imp
 
     /** ImportExpr       ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
@@ -3189,13 +3241,7 @@ object Parsers {
         case _ =>
           first :: Nil
       }
-      def emptyType = TypeTree().withSpan(Span(in.lastOffset))
-      val tpt =
-        if (in.token == COLON) {
-          in.nextToken()
-          toplevelTyp()
-        }
-        else emptyType
+      val tpt = typedOpt()
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
           accept(EQUALS)
@@ -3274,15 +3320,7 @@ object Parsers {
         var name = ident.name.asTermName
         val tparams = typeParamClauseOpt(ParamOwner.Def)
         val vparamss = paramClauses(numLeadParams = numLeadParams)
-        var tpt = fromWithinReturnType {
-          if in.token == COLONEOL then in.token = COLON
-     	      // a hack to allow
-      	    //
-      	    //     def f():
-      	    //       T
-            //
-          typedOpt()
-        }
+        var tpt = fromWithinReturnType { typedOpt() }
         if (migrateTo3) newLineOptWhenFollowedBy(LBRACE)
         val rhs =
           if in.token == EQUALS then
@@ -3526,7 +3564,7 @@ object Parsers {
           else Nil
         newLinesOpt()
         val noParams = tparams.isEmpty && vparamss.isEmpty
-        if !(name.isEmpty && noParams) then accept(COLON)
+        if !(name.isEmpty && noParams) then acceptColon()
         val parents =
           if isSimpleLiteral then rejectWildcardType(annotType()) :: Nil
           else constrApp() :: withConstrApps()
@@ -3568,7 +3606,7 @@ object Parsers {
         isUsingClause(extParams)
       do ()
       leadParamss ++= paramClauses(givenOnly = true, numLeadParams = nparams)
-      if in.token == COLON then
+      if in.isColon() then
         syntaxError("no `:` expected here")
         in.nextToken()
       val methods =
@@ -3698,8 +3736,8 @@ object Parsers {
           (EmptyValDef, Nil)
       Template(constr, parents, derived, self, stats)
 
-    def templateBody(): (ValDef, List[Tree]) =
-      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon = true)
+    def templateBody(rewriteWithColon: Boolean = true): (ValDef, List[Tree]) =
+      val r = inDefScopeBraces(templateStatSeq(), rewriteWithColon)
       if in.token == WITH then
         syntaxError(EarlyDefinitionsNotSupported())
         in.nextToken()
@@ -3709,7 +3747,7 @@ object Parsers {
     /** with Template, with EOL <indent> interpreted */
     def withTemplate(constr: DefDef, parents: List[Tree]): Template =
       accept(WITH)
-      val (self, stats) = templateBody()
+      val (self, stats) = templateBody(rewriteWithColon = false)
       Template(constr, parents, Nil, self, stats)
         .withSpan(Span(constr.span.orElse(parents.head.span).start, in.lastOffset))
 
@@ -3962,7 +4000,7 @@ object Parsers {
       EmptyTree
     }
 
-    override def templateBody(): (ValDef, List[Thicket]) = {
+    override def templateBody(rewriteWithColon: Boolean): (ValDef, List[Thicket]) = {
       skipBraces()
       (EmptyValDef, List(EmptyTree))
     }

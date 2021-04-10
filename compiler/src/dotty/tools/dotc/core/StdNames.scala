@@ -466,6 +466,7 @@ object StdNames {
     val equalsNumNum : N        = "equalsNumNum"
     val equalsNumObject : N     = "equalsNumObject"
     val equals_ : N             = "equals"
+    val erased: N               = "erased"
     val error: N                = "error"
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"

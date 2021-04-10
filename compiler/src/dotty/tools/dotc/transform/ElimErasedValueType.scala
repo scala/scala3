@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package transform
 
 import ast.{Trees, tpd}
@@ -80,6 +81,10 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
   private def checkNoClashes(root: Symbol)(using Context) = {
     val opc = atPhase(thisPhase) {
       new OverridingPairs.Cursor(root) {
+        override def isSubParent(parent: Symbol, bc: Symbol)(using Context) =
+          // Need to compute suparents before erasure to not filter out parents
+          // that are bypassed with different types. See neg/11719a.scala.
+          atPhase(elimRepeatedPhase.next) { super.isSubParent(parent, bc) }
         override def exclude(sym: Symbol) =
           !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
         override def matches(sym1: Symbol, sym2: Symbol) =

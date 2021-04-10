@@ -9,22 +9,22 @@ class SourceLinkTest:
   @Test
   def testBasicFailures() =
     def testFailure(template: String, messagePart: String) =
-      val res = SourceLink.parse(template, None)
+      val res = SourceLinkParser(None).parse(template)
       assertTrue(s"Expected failure containing $messagePart: $res", res.left.exists(_.contains(messagePart)))
 
-      val resWithVersion = SourceLink.parse(template, Some("develop"))
+      val resWithVersion = SourceLinkParser(Some("develop")).parse(template)
       assertEquals(res, resWithVersion)
 
     testFailure("ala://ma/kota", "known provider")
-    testFailure("ala=ala=ala://ma/kota", "known provider")
-    testFailure("ala=ala=ala", "subpath")
+    testFailure("ala=ala=ala://ma/kota", "source link syntax")
+    testFailure("ala=ala=ala", "source link syntax")
     testFailure("""€{TPL_OWNER}""", "scaladoc")
 
 
   @Test
   def testProperTemplates() =
     def test(template: String) =
-      val res = try SourceLink.parse(template, Some("develop")) catch
+      val res = try SourceLinkParser(Some("develop")).parse(template) catch
         case e: Exception => throw RuntimeException(s"When testing $template", e)
       assertTrue(s"Bad template: $template", res.isRight)
 
@@ -35,7 +35,6 @@ class SourceLinkTest:
       "https://github.com/scala/scala/blob/2.13.x€{FILE_PATH_EXT}#€{FILE_LINE}"
     ).foreach{ template =>
       test(template)
-      test(s"docs/dotty=$template")
     }
 
 
@@ -43,11 +42,11 @@ class SourceLinkTest:
   def testSourceProviderWithoutRevision() =
     Seq("github", "gitlab").foreach { provider =>
       val template = s"$provider://ala/ma"
-      val res = SourceLink.parse(template, None)
+      val res = SourceLinkParser(None).parse(template)
       assertTrue(s"Expected failure containing missing revision: $res", res.left.exists(_.contains("revision")))
 
       Seq(s"$provider://ala/ma/", s"$provider://ala", s"$provider://ala/ma/develop/on/master").foreach { template =>
-        val res = SourceLink.parse(template, Some("develop"))
+        val res = SourceLinkParser(Some("develop")).parse(template)
         assertTrue(s"Expected failure syntax info: $res", res.left.exists(_.contains("syntax")))
       }
 
@@ -62,7 +61,7 @@ class SourceLinksTest:
   type Args = String | (String, Operation) | (String, Int) | (String, Int, Operation)
 
   private def testLink(config: Seq[String], revision: Option[String])(cases: (Args, String | None.type)*): Unit =
-    val links = SourceLinks.load(config, revision, projectRoot)(using testContext)
+    val links = SourceLinks.load(config, revision)(using testContext)
     cases.foreach { case (args, expected) =>
       val res = args match
         case path: String => links.pathTo(projectRoot.resolve(path))

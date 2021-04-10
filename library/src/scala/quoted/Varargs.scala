@@ -1,6 +1,6 @@
 package scala.quoted
 
-/** Expression reepresentation of literal sequence of expressions.
+/** Expression representation of literal sequence of expressions.
  *
  *  `Varargs` can be used to create the an expression `args` that will be used as varargs `'{ f($args: _*) }`
  *  or it can be used to extract all the arguments of the a varargs.
@@ -16,7 +16,7 @@ object Varargs {
    *
    *  Usage:
    *  ```scala
-   *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equvalent to '{ List(1, 2, 3) }
+   *  '{ List(${Varargs(List(1, 2, 3))}: _*) } // equivalent to '{ List(1, 2, 3) }
    *  ```
    *  @syntax markdown
    */
