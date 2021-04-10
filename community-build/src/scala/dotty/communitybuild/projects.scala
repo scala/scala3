@@ -1,8 +1,9 @@
 package dotty.communitybuild
 
 import java.nio.file._
-import java.io.{PrintWriter, File}
+import java.io.{BufferedReader, InputStreamReader, PrintWriter, File}
 import java.nio.charset.StandardCharsets.UTF_8
+import scala.collection.Iterator
 
 lazy val communitybuildDir: Path = Paths.get(sys.props("user.dir"))
 
@@ -19,6 +20,7 @@ lazy val sbtPluginFilePath: String =
   communitybuildDir.resolve("sbt-dotty-sbt").toAbsolutePath().toString()
 
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
+def error(msg: String) = println(Console.RED + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
 def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: Map[String, String]): Int =
@@ -27,8 +29,18 @@ def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: 
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
   builder.environment.putAll(environment.asJava)
+  
   val process = builder.start()
   val exitCode = process.waitFor()
+  if (exitCode != 0) {
+    val errorStream = process.getErrorStream()
+    val isReader = new InputStreamReader(process.getErrorStream())
+    val br = new BufferedReader(isReader)
+    Iterator.continually(br.readLine()).takeWhile(_ != null).foreach(error(_))
+    br.close()
+    isReader.close()
+    errorStream.close()
+  }
   exitCode
 
 
@@ -656,6 +668,12 @@ object projects:
     dependencies = List(scalatest, scalatestplusJunit, scalatestplusScalacheck)
   )
 
+  lazy val monocle = SbtCommunityProject(
+    project = "Monocle",
+    sbtTestCommand = "monocleJVM/test",
+    dependencies = List(cats, munit, discipline, disciplineMunit)
+  )
+
   lazy val protoquill = SbtCommunityProject(
     project = "protoquill",
     sbtTestCommand = "test",
@@ -746,6 +764,7 @@ def allProjects = List(
   projects.izumiReflect,
   projects.perspective,
   projects.akka,
+  projects.monocle,
   projects.protoquill,
   projects.onnxScala,
   projects.playJson,
@@ -753,3 +772,4 @@ def allProjects = List(
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
+

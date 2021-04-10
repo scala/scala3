@@ -143,6 +143,7 @@ class CommunityBuildTestC extends CommunityBuildTest:
   @Test def geny = projects.geny.run()
   @Test def intent = projects.intent.run()
   @Test def minitest = projects.minitest.run()
+  @Test def monocle = projects.monocle.run()
   @Test def onnxScala = projects.onnxScala.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
