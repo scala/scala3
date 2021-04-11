@@ -792,7 +792,11 @@ class Typer extends Namer
         if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
         else {
           import untpd._
-          typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withSpan(tree.span), pt)
+          val res = typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withSpan(tree.span), pt)
+          val tpe = res.tpe
+          ctx.gadt.narrowPatTp_=(tpe)
+          println(i"$tpe")
+          res
         }
       case _ => ifExpr
     }

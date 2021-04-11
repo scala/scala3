@@ -46,6 +46,8 @@ sealed abstract class GadtConstraint extends Showable {
   def narrowScrutTp_=(tp: Type): Unit
   def narrowScrutTp: Type
 
+  def narrowPatTp_=(tp: Type): Unit
+
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
@@ -75,7 +77,8 @@ final class ProperGadtConstraint private(
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
   private var tpmMapping: SimpleIdentityMap[TermRef, SimpleIdentityMap[Name, TypeVar]],
   private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
-  private var myNarrowScrutTp: Type
+  private var myNarrowScrutTp: Type,
+  private var storedPatTpms: List[(Name, TypeVar)],
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -85,7 +88,8 @@ final class ProperGadtConstraint private(
     reverseMapping = SimpleIdentityMap.empty,
     tpmMapping = SimpleIdentityMap.empty,
     reverseTpmMapping = SimpleIdentityMap.empty,
-    myNarrowScrutTp = null
+    myNarrowScrutTp = null,
+    storedPatTpms = Nil
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -154,6 +158,8 @@ final class ProperGadtConstraint private(
     val scrutNames: Set[Name] = Set.from { scrutTpMems map (_._1) }
     // type member names from the pattern
     val patNames: Set[Name] = Set.from { patTpMems map (_._1) }
+
+    storedPatTpms = Nil
 
     def maybeMapTpMem(path: Option[TermRef], designator: Name): TypeVar =
       path.map(path => mapTpMem(path, designator)).getOrElse(null)
@@ -244,6 +250,7 @@ final class ProperGadtConstraint private(
               )
               reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
             }
+            storedPatTpms = name -> tv :: storedPatTpms
           }
 
           tv
@@ -331,6 +338,14 @@ final class ProperGadtConstraint private(
 
   override def narrowScrutTp_=(tp: Type): Unit = myNarrowScrutTp = tp
   override def narrowScrutTp: Type = myNarrowScrutTp
+
+  override def narrowPatTp_=(tp: Type): Unit = tp match {
+    case path: TermRef =>
+      println(s"$path")
+      storedPatTpms foreach { (name, tvar) =>
+        println(s"  .$name -> $tvar")
+      }
+  }
 
   @annotation.tailrec private def stripInternalTypeVar(tp: Type): Type = tp match {
     case tv: TypeVar =>
@@ -442,7 +457,8 @@ final class ProperGadtConstraint private(
     reverseMapping,
     tpmMapping,
     reverseTpmMapping,
-    myNarrowScrutTp
+    myNarrowScrutTp,
+    storedPatTpms
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -453,6 +469,7 @@ final class ProperGadtConstraint private(
       this.tpmMapping = other.tpmMapping
       this.reverseTpmMapping = other.reverseTpmMapping
       this.myNarrowScrutTp = other.myNarrowScrutTp
+      this.storedPatTpms = other.storedPatTpms
     case _ => ;
   }
 
@@ -562,6 +579,7 @@ final class ProperGadtConstraint private(
     unsupported("EmptyGadtConstraint.addToConstraint")
   override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
+  override def narrowPatTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
