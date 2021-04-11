@@ -1501,7 +1501,7 @@ class Namer { typer: Typer =>
         val approxTp = wildApprox(originalTp)
         approxTp.stripPoly match
           case atp @ defn.ContextFunctionType(_, resType, _)
-          if !defn.isNonRefinedFunction(approxTp) // in this case `resType` is lying, gives us only the non-dependent upper bound
+          if !defn.isNonRefinedFunction(atp) // in this case `resType` is lying, gives us only the non-dependent upper bound
               || resType.existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false) =>
             originalTp
           case _ =>
