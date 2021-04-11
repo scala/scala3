@@ -45,8 +45,24 @@ import scala.collection.mutable
  *  compiled projects.
  *
  */
-case class Dependency(sym: Symbol)(val source: Tree) {
-  def show(using Context): String = "Dep(" + sym.show + ")"
+trait Dependency {
+  def symbol: Symbol
+  def source: Tree
+}
+
+/** Depend on the initialization of another object */
+case class ObjectInit(symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "ObjectInit(" + symbol.show + ")"
+}
+
+/** Depend on usage of an instance, which can be either a class instance or object */
+case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "InstanceUsage(" + symbol.show + ")"
+}
+
+/** Depend on the class */
+case class ClassUsage(symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "ClassUsage(" + symbol.show + ")"
 }
 
 class CycleChecker {
@@ -56,7 +72,7 @@ class CycleChecker {
   val objectsInCurrentRun = mutable.Set.empty[Symbol]
 
   /** Checking state */
-  case class State(visited: mutable.Set[Symbol], path: Vector[Tree])
+  case class State(visited: mutable.Set[Symbol], path: Set[Symbol], trace: Vector[Dependency])
 
   def cacheObjectDependencies(obj: Symbol, deps: List[Dependency]): Unit =
     objectsInCurrentRun += obj
@@ -74,6 +90,34 @@ class CycleChecker {
     }
 
   def check()(using Context): Unit = ???
+
+  private def visit(sym: Symbol, state: State, source: Tree)(using Context): List[Error] = trace("checking " + sym.show, init) {
+    if state.path.contains(sym) then
+      val cycle = state.trace.dropWhile(_.symbol != sym)
+      val objectNum = cycle.filter(dep => dep.symbol.is(Flags.Module) && dep.symbol.isStatic).size
+      val trace = cycle.map(_.source) :+ source
+      val error = CyclicObjectInit(sym, trace)
+      error :: Nil
+    else if state.visited.contains(sym) then
+      Nil
+    else
+      state.visited += sym
+      var path = state.path
+
+      if sym.is(Flags.Module) && sym.isStatic then
+        path = state.path + dep.symbol
+        if sym.isTerm then
+
+      val state2 = state.copy(path = path, trace = trace :+ dep.source)
+      val deps = dependenciesOf(cls)
+      Util.traceIndented("dependencies of " + sym.show + " = " + deps.map(_.sym.show).mkString(","), init)
+      var res: List[Error] = Nil
+      // TODO: stop early
+      deps.foreach { dep =>
+        res = visit(dep.sym, state2, dep.source)
+      }
+      res
+    }
 
   def clean() = {
     summaryCache.clear()

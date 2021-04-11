@@ -247,7 +247,7 @@ object Checking {
           else Errors.empty
         else
           // coarse-grained check if in different file
-          state.dependencies += Dependency(obj.moduleClass)(pot.source)
+          state.dependencies += InstanceUsage(obj.moduleClass)(pot.source)
           Errors.empty
 
       case hot: Hot =>
@@ -263,7 +263,7 @@ object Checking {
           else Errors.empty
         else
           // coarse-grained check if in different file
-          state.dependencies += Dependency(hot.classSymbol)(pot.source)
+          state.dependencies += ClassUsage(hot.classSymbol)(pot.source)
           Errors.empty
 
       case _: Cold =>
@@ -361,12 +361,12 @@ object Checking {
 
         case obj: Global =>
           assert(state.isThisStatic, "encountered global object promotion while checking " + state.thisClass.show)
-          state.dependencies += Dependency(obj.symbol.moduleClass)(pot.source)
+          state.dependencies += InstanceUsage(obj.symbol)(pot.source)
           Errors.empty
 
         case hot: Hot =>
           if !state.isThisStatic then Errors.empty
-          state.dependencies += Dependency(hot.classSymbol)(pot.source)
+          state.dependencies += InstanceUsage(hot.classSymbol)(pot.source)
           Errors.empty
 
         case Fun(pots, effs) =>
@@ -399,7 +399,7 @@ object Checking {
     val obj = eff.potential
     if state.isThisStatic then
       if obj.moduleClass != state.thisClass then
-        state.dependencies += Dependency(obj.symbol)(eff.source)
+        state.dependencies += ObjectInit(obj.symbol)(eff.source)
         Errors.empty
       else
         CyclicObjectInit(obj.symbol, state.path).toErrors
