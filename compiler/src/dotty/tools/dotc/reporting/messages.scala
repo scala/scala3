@@ -50,6 +50,17 @@ import transform.SymUtils._
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
 
+    override def msgSuffix: String =
+      val collectMatchTrace = new TypeAccumulator[String]:
+        def apply(s: String, tp: Type): String =
+          if s.nonEmpty then s
+          else tp match
+            case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
+            case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
+            case _ => foldOver(s, tp)
+      collectMatchTrace(collectMatchTrace("", found), expected)
+  end TypeMismatchMsg
+
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Naming"
 

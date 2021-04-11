@@ -4025,7 +4025,9 @@ object Types {
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
             trace(i"normalize $this", typr, show = true) {
-              alias.applyIfParameterized(args).tryNormalize
+              MatchTypeTrace.recurseWith(this) {
+                alias.applyIfParameterized(args).tryNormalize
+              }
             }
           case _ =>
             NoType
@@ -4537,7 +4539,11 @@ object Types {
         }
 
       record("MatchType.reduce called")
-      if (!Config.cacheMatchReduced || myReduced == null || !isUpToDate) {
+      if !Config.cacheMatchReduced
+          || myReduced == null
+          || !isUpToDate
+          || MatchTypeTrace.isRecording
+      then
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
@@ -4549,7 +4555,6 @@ object Types {
               finally updateReductionContext(cmp.footprint)
             TypeComparer.tracked(matchCases)
           }
-      }
       myReduced
     }
 

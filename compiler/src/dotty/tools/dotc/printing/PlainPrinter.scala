@@ -182,9 +182,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
             case _ => "case " ~ toText(tp)
           }
           def casesText = Text(cases.map(caseText), "\n")
-            atPrec(InfixPrec) { toText(scrutinee) } ~
-            keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-            (" <: " ~ toText(bound) provided !bound.isAny)
+          atPrec(InfixPrec) { toText(scrutinee) } ~
+          keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
+          (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely

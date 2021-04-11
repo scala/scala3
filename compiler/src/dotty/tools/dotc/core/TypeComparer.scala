@@ -2798,10 +2798,20 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
         Some(NoType)
     }
 
-    def recur(cases: List[Type]): Type = cases match {
-      case cas :: cases1 => matchCase(cas).getOrElse(recur(cases1))
-      case Nil => NoType
-    }
+    def recur(remaining: List[Type]): Type = remaining match
+      case cas :: remaining1 =>
+        matchCase(cas) match
+          case None =>
+            recur(remaining1)
+          case Some(NoType) =>
+            if remaining1.isEmpty then MatchTypeTrace.noMatches(scrut, cases)
+            else MatchTypeTrace.stuck(scrut, cas, remaining1)
+            NoType
+          case Some(tp) =>
+            tp
+      case Nil =>
+        MatchTypeTrace.noMatches(scrut, cases)
+        NoType
 
     inFrozenConstraint {
       // Empty types break the basic assumption that if a scrutinee and a
