@@ -16,7 +16,7 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.err
+import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
@@ -45,21 +45,14 @@ import transform.SymUtils._
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
+    override def msgSuffix: String = matchReductionAddendum(tps*)
+
+  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+  extends Message(errorId), ShowMatchTrace(found, expected):
     def kind = "Type Mismatch"
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
-
-    override def msgSuffix: String =
-      val collectMatchTrace = new TypeAccumulator[String]:
-        def apply(s: String, tp: Type): String =
-          if s.nonEmpty then s
-          else tp match
-            case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
-            case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
-            case _ => foldOver(s, tp)
-      collectMatchTrace(collectMatchTrace("", found), expected)
-  end TypeMismatchMsg
 
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Naming"
@@ -292,7 +285,7 @@ import transform.SymUtils._
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
-  extends NotFoundMsg(NotAMemberID) {
+  extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
     //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
     def msg = {

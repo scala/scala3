@@ -20,3 +20,10 @@ type Reverse[X <: Tuple] = X match
 val z1: (B, A) = ??? : Reverse[(A, B)]
 val z2: (B, A, B, A) = ??? : Reverse[(A, B, A, B)]
 val z3: (A, B, A) = ??? : Reverse[(A, B, A)] // error
+
+val _ = summon[M[B]]
+val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]]
+val _ = summon[(A, B, A) =:= Reverse[(A, B, A)]]
+
+val _ = (??? : M[B]).length
+
