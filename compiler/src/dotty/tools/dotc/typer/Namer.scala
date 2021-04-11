@@ -1485,7 +1485,7 @@ class Namer { typer: Typer =>
 
       /** The expected type for a default argument. This is normally the `defaultParamType`
        *  with references to internal parameters replaced by wildcards. This replacement
-       *  makes it possible that the default argument can be a more specific type than the
+       *  makes it possible that the default argument can have a more specific type than the
        *  parameter. For instance, we allow
        *
        *      class C[A](a: A) { def copy[B](x: B = a): C[B] = C(x) }
