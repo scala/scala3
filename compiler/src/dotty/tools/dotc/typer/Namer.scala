@@ -1483,6 +1483,30 @@ class Namer { typer: Typer =>
         case _ =>
           NoType
 
+      /** The expected type for a default argument. This is normally the `defaultParamType`
+       *  with references to internal parameters replaced by wildcards. This replacement
+       *  makes it possible that the default argument can be a more specific type than the
+       *  parameter. For instance, we allow
+       *
+       *      class C[A](a: A) { def copy[B](x: B = a): C[B] = C(x) }
+       *
+       *  However, if the default parameter type is a context function type, we
+       *  have to make sure that wildcard types do not leak into the implicitly
+       *  generated closure's result type. Test case is pos/i12019.scala. If there
+       *  would be a leakage with the wildcard approximation, we pick the original
+       *  default parameter type as expected type.
+       */
+      def expectedDefaultArgType =
+        val originalTp = defaultParamType
+        val approxTp = wildApprox(originalTp)
+        approxTp.stripPoly match
+          case atp @ defn.ContextFunctionType(_, resType, _)
+          if !defn.isNonRefinedFunction(approxTp) // in this case `resType` is lying, gives us only the non-dependent upper bound
+              || resType.existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false) =>
+            originalTp
+          case _ =>
+            approxTp
+
       // println(s"final inherited for $sym: ${inherited.toString}") !!!
       // println(s"owner = ${sym.owner}, decls = ${sym.owner.info.decls.show}")
       // TODO Scala 3.1: only check for inline vals (no final ones)
@@ -1509,7 +1533,7 @@ class Namer { typer: Typer =>
         // expected type but we run it through `wildApprox` to allow default
         // parameters like in `def mkList[T](value: T = 1): List[T]`.
         val defaultTp = defaultParamType
-        val pt = inherited.orElse(wildApprox(defaultTp)).orElse(WildcardType).widenExpr
+        val pt = inherited.orElse(expectedDefaultArgType).orElse(WildcardType).widenExpr
         val tp = typedAheadRhs(pt).tpe
         if (defaultTp eq pt) && (tp frozen_<:< defaultTp) then
           // When possible, widen to the default getter parameter type to permit a
