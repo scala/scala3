@@ -241,6 +241,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         toText(elemtp) ~ "[]"
+      case tp: LazyRef if !printDebug =>
+        try toText(tp.ref)
+        catch case ex: Throwable => "..."
       case tp: SelectionProto =>
         "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
