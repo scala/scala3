@@ -5,7 +5,10 @@ package core
 import Types._, Contexts._, Symbols._, Decorators._
 import util.Property
 
+/** A utility module to produce match type reduction traces in error messages.
+ */
 object MatchTypeTrace:
+
   private enum TraceEntry:
     case TryReduce(scrut: Type)
     case NoMatches(scrut: Type, cases: List[Type])
@@ -17,6 +20,9 @@ object MatchTypeTrace:
 
   private val MatchTrace = new Property.Key[MatchTrace]
 
+  /** Execute `op` and if it involves a failed match type reduction
+   *  return the trace of that reduction. Otherwise return the empty string.
+   */
   def record(op: Context ?=> Any)(using Context): String =
     val trace = new MatchTrace
     inContext(ctx.fresh.setProperty(MatchTrace, trace)) {
@@ -30,6 +36,7 @@ object MatchTypeTrace:
            |${trace.entries.reverse.map(explainEntry)}%\n%"""
     }
 
+  /** Are we running an operation that records a match type trace? */
   def isRecording(using Context): Boolean =
     ctx.property(MatchTrace).isDefined
 
@@ -41,12 +48,22 @@ object MatchTypeTrace:
           case _ =>
       case _ =>
 
+  /** Record a failure that scrutinee `scrut` does not match any case in `cases`.
+   *  Only the first failure is recorded.
+   */
   def noMatches(scrut: Type, cases: List[Type])(using Context) =
     matchTypeFail(NoMatches(scrut, cases))
 
+  /** Record a failure that scrutinee `scrut` does not match `stuckCase` but is
+   *  not disjoint from it either, which means that the remaining cases `otherCases`
+   *  cannot be visited. Only the first failure is recorded.
+   */
   def stuck(scrut: Type, stuckCase: Type, otherCases: List[Type])(using Context) =
     matchTypeFail(Stuck(scrut, stuckCase, otherCases))
 
+  /** Record in the trace that we are trying to reduce `scrut` when performing `op`
+   *  If `op` succeeds the entry is removed after exit. If `op` fails, it stays.
+   */
   def recurseWith(scrut: Type)(op: => Type)(using Context): Type =
     ctx.property(MatchTrace) match
       case Some(trace) =>
