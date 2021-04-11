@@ -1,0 +1,481 @@
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:9:18 ------------------------------------------------------
+9 |  identity[T1[3]]("") // error
+  |                  ^^
+  |                  Found:    ("" : String)
+  |                  Required: Test.T1[(3 : Int)]
+  |
+  |                  Note: a match type could not be fully reduced:
+  |
+  |                    trying to reduce  Test.T1[(3 : Int)]
+  |                    failed since selector  (3 : Int)
+  |                    matches none of the cases
+  |
+  |                      case (1 : Int) => Int
+  |                      case (2 : Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:10:18 -----------------------------------------------------
+10 |  identity[T1[3]](1) // error
+   |                  ^
+   |                  Found:    (1 : Int)
+   |                  Required: Test.T1[(3 : Int)]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T1[(3 : Int)]
+   |                    failed since selector  (3 : Int)
+   |                    matches none of the cases
+   |
+   |                      case (1 : Int) => Int
+   |                      case (2 : Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:11:20 -----------------------------------------------------
+11 |  identity[T1[Int]]("") // error
+   |                    ^^
+   |                    Found:    ("" : String)
+   |                    Required: Test.T1[Int]
+   |
+   |                    Note: a match type could not be fully reduced:
+   |
+   |                      trying to reduce  Test.T1[Int]
+   |                      failed since selector  Int
+   |                      does not match  case (1 : Int) => Int
+   |                      and cannot be shown to be disjoint from it either.
+   |                      Therefore, reduction cannot advance to the remaining case
+   |
+   |                        case (2 : Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:12:20 -----------------------------------------------------
+12 |  identity[T1[Int]](1) // error
+   |                    ^
+   |                    Found:    (1 : Int)
+   |                    Required: Test.T1[Int]
+   |
+   |                    Note: a match type could not be fully reduced:
+   |
+   |                      trying to reduce  Test.T1[Int]
+   |                      failed since selector  Int
+   |                      does not match  case (1 : Int) => Int
+   |                      and cannot be shown to be disjoint from it either.
+   |                      Therefore, reduction cannot advance to the remaining case
+   |
+   |                        case (2 : Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:21:20 -----------------------------------------------------
+21 |  identity[T2[Int]]("") // error
+   |                    ^^
+   |                    Found:    ("" : String)
+   |                    Required: Test.T2[Int]
+   |
+   |                    Note: a match type could not be fully reduced:
+   |
+   |                      trying to reduce  Test.T2[Int]
+   |                      failed since selector  Int
+   |                      does not match  case (1 : Int) => Int
+   |                      and cannot be shown to be disjoint from it either.
+   |                      Therefore, reduction cannot advance to the remaining case
+   |
+   |                        case _ => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:22:18 -----------------------------------------------------
+22 |  identity[T2[2]](1) // error
+   |                  ^
+   |                  Found:    (1 : Int)
+   |                  Required: String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:23:20 -----------------------------------------------------
+23 |  identity[T2[Int]](1) // error
+   |                    ^
+   |                    Found:    (1 : Int)
+   |                    Required: Test.T2[Int]
+   |
+   |                    Note: a match type could not be fully reduced:
+   |
+   |                      trying to reduce  Test.T2[Int]
+   |                      failed since selector  Int
+   |                      does not match  case (1 : Int) => Int
+   |                      and cannot be shown to be disjoint from it either.
+   |                      Therefore, reduction cannot advance to the remaining case
+   |
+   |                        case _ => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:36:18 -----------------------------------------------------
+36 |  identity[T3[A]](1) // error
+   |                  ^
+   |                  Found:    (1 : Int)
+   |                  Required: Test.T3[Test.A]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T3[Test.A]
+   |                    failed since selector  Test.A
+   |                    does not match  case Test.B => Int
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.C => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:37:18 -----------------------------------------------------
+37 |  identity[T3[A]]("") // error
+   |                  ^^
+   |                  Found:    ("" : String)
+   |                  Required: Test.T3[Test.A]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T3[Test.A]
+   |                    failed since selector  Test.A
+   |                    does not match  case Test.B => Int
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.C => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:55:18 -----------------------------------------------------
+55 |  identity[T5[A]](1) // error
+   |                  ^
+   |                  Found:    (1 : Int)
+   |                  Required: Test.T5[Test.A]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T5[Test.A]
+   |                    failed since selector  Test.A
+   |                    does not match  case Test.C => String
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.A => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:56:18 -----------------------------------------------------
+56 |  identity[T5[A]]("") // error
+   |                  ^^
+   |                  Found:    ("" : String)
+   |                  Required: Test.T5[Test.A]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T5[Test.A]
+   |                    failed since selector  Test.A
+   |                    does not match  case Test.C => String
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.A => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:82:18 -----------------------------------------------------
+82 |  identity[T7[D]]("") // error
+   |                  ^^
+   |                  Found:    ("" : String)
+   |                  Required: Test.T7[Test.D]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T7[Test.D]
+   |                    failed since selector  Test.D
+   |                    does not match  case Test.A2 => Int
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.D => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:83:18 -----------------------------------------------------
+83 |  identity[T7[D]](1) // error
+   |                  ^
+   |                  Found:    (1 : Int)
+   |                  Required: Test.T7[Test.D]
+   |
+   |                  Note: a match type could not be fully reduced:
+   |
+   |                    trying to reduce  Test.T7[Test.D]
+   |                    failed since selector  Test.D
+   |                    does not match  case Test.A2 => Int
+   |                    and cannot be shown to be disjoint from it either.
+   |                    Therefore, reduction cannot advance to the remaining case
+   |
+   |                      case Test.D => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:94:19 -----------------------------------------------------
+94 |  identity[T8[E2]](1) // error
+   |                   ^
+   |                   Found:    (1 : Int)
+   |                   Required: Test.T8[Test.E2]
+   |
+   |                   Note: a match type could not be fully reduced:
+   |
+   |                     trying to reduce  Test.T8[Test.E2]
+   |                     failed since selector  Test.E2
+   |                     does not match  case Test.E1 => Int
+   |                     and cannot be shown to be disjoint from it either.
+   |                     Therefore, reduction cannot advance to the remaining case
+   |
+   |                       case Test.E2 => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:95:19 -----------------------------------------------------
+95 |  identity[T8[E1]]("") // error
+   |                   ^^
+   |                   Found:    ("" : String)
+   |                   Required: Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:96:19 -----------------------------------------------------
+96 |  identity[T8[E2]]("") // error
+   |                   ^^
+   |                   Found:    ("" : String)
+   |                   Required: Test.T8[Test.E2]
+   |
+   |                   Note: a match type could not be fully reduced:
+   |
+   |                     trying to reduce  Test.T8[Test.E2]
+   |                     failed since selector  Test.E2
+   |                     does not match  case Test.E1 => Int
+   |                     and cannot be shown to be disjoint from it either.
+   |                     Therefore, reduction cannot advance to the remaining case
+   |
+   |                       case Test.E2 => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:105:40 ----------------------------------------------------
+105 |  identity[T9[Tuple2[Nothing, String]]](1) // error
+    |                                        ^
+    |                                        Found:    (1 : Int)
+    |                                        Required: Test.T9[(Nothing, String)]
+    |
+    |                                        Note: a match type could not be fully reduced:
+    |
+    |                                          trying to reduce  Test.T9[(Nothing, String)]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:106:40 ----------------------------------------------------
+106 |  identity[T9[Tuple2[String, Nothing]]]("1") // error
+    |                                        ^^^
+    |                                        Found:    ("1" : String)
+    |                                        Required: Test.T9[(String, Nothing)]
+    |
+    |                                        Note: a match type could not be fully reduced:
+    |
+    |                                          trying to reduce  Test.T9[(String, Nothing)]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:107:37 ----------------------------------------------------
+107 |  identity[T9[Tuple2[Int, Nothing]]](1) // error
+    |                                     ^
+    |                                     Found:    (1 : Int)
+    |                                     Required: Test.T9[(Int, Nothing)]
+    |
+    |                                     Note: a match type could not be fully reduced:
+    |
+    |                                       trying to reduce  Test.T9[(Int, Nothing)]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:108:37 ----------------------------------------------------
+108 |  identity[T9[Tuple2[Nothing, Int]]]("1") // error
+    |                                     ^^^
+    |                                     Found:    ("1" : String)
+    |                                     Required: Test.T9[(Nothing, Int)]
+    |
+    |                                     Note: a match type could not be fully reduced:
+    |
+    |                                       trying to reduce  Test.T9[(Nothing, Int)]
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:109:29 ----------------------------------------------------
+109 |  identity[T9[Tuple2[_, _]]]("") // error
+    |                             ^^
+    |                             Found:    ("" : String)
+    |                             Required: Test.T9[(?, ?)]
+    |
+    |                             Note: a match type could not be fully reduced:
+    |
+    |                               trying to reduce  Test.T9[(?, ?)]
+    |                               failed since selector  (?, ?)
+    |                               does not match  case (Int, String) => Int
+    |                               and cannot be shown to be disjoint from it either.
+    |                               Therefore, reduction cannot advance to the remaining case
+    |
+    |                                 case (String, Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:110:29 ----------------------------------------------------
+110 |  identity[T9[Tuple2[_, _]]](1) // error
+    |                             ^
+    |                             Found:    (1 : Int)
+    |                             Required: Test.T9[(?, ?)]
+    |
+    |                             Note: a match type could not be fully reduced:
+    |
+    |                               trying to reduce  Test.T9[(?, ?)]
+    |                               failed since selector  (?, ?)
+    |                               does not match  case (Int, String) => Int
+    |                               and cannot be shown to be disjoint from it either.
+    |                               Therefore, reduction cannot advance to the remaining case
+    |
+    |                                 case (String, Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:111:33 ----------------------------------------------------
+111 |  identity[T9[Tuple2[Any, Any]]]("") // error
+    |                                 ^^
+    |                                 Found:    ("" : String)
+    |                                 Required: Test.T9[(Any, Any)]
+    |
+    |                                 Note: a match type could not be fully reduced:
+    |
+    |                                   trying to reduce  Test.T9[(Any, Any)]
+    |                                   failed since selector  (Any, Any)
+    |                                   does not match  case (Int, String) => Int
+    |                                   and cannot be shown to be disjoint from it either.
+    |                                   Therefore, reduction cannot advance to the remaining case
+    |
+    |                                     case (String, Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:112:33 ----------------------------------------------------
+112 |  identity[T9[Tuple2[Any, Any]]](1) // error
+    |                                 ^
+    |                                 Found:    (1 : Int)
+    |                                 Required: Test.T9[(Any, Any)]
+    |
+    |                                 Note: a match type could not be fully reduced:
+    |
+    |                                   trying to reduce  Test.T9[(Any, Any)]
+    |                                   failed since selector  (Any, Any)
+    |                                   does not match  case (Int, String) => Int
+    |                                   and cannot be shown to be disjoint from it either.
+    |                                   Therefore, reduction cannot advance to the remaining case
+    |
+    |                                     case (String, Int) => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:122:39 ----------------------------------------------------
+122 |  identity[TA[Box2[Int, Int, String]]](1) // error
+    |                                       ^
+    |                                       Found:    (1 : Int)
+    |                                       Required: Test.TA[Test.Box2[Int, Int, String]]
+    |
+    |                                       Note: a match type could not be fully reduced:
+    |
+    |                                         trying to reduce  Test.TA[Test.Box2[Int, Int, String]]
+    |                                         failed since selector  Test.Box2[Int, Int, String]
+    |                                         does not match  case Test.Box2[Int, Int, Int] => Int
+    |                                         and cannot be shown to be disjoint from it either.
+    |                                         Therefore, reduction cannot advance to the remaining case
+    |
+    |                                           case Test.Box2[Int, Int, String] => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:123:39 ----------------------------------------------------
+123 |  identity[TA[Box2[Int, Int, String]]]("") // error
+    |                                       ^^
+    |                                       Found:    ("" : String)
+    |                                       Required: Test.TA[Test.Box2[Int, Int, String]]
+    |
+    |                                       Note: a match type could not be fully reduced:
+    |
+    |                                         trying to reduce  Test.TA[Test.Box2[Int, Int, String]]
+    |                                         failed since selector  Test.Box2[Int, Int, String]
+    |                                         does not match  case Test.Box2[Int, Int, Int] => Int
+    |                                         and cannot be shown to be disjoint from it either.
+    |                                         Therefore, reduction cannot advance to the remaining case
+    |
+    |                                           case Test.Box2[Int, Int, String] => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:144:41 ----------------------------------------------------
+144 |  identity[TD[Box2_C[Int, Int, String]]]("") // error
+    |                                         ^^
+    |                                         Found:    ("" : String)
+    |                                         Required: Test.TD[Test.Box2_C[Int, Int, String]]
+    |
+    |                                         Note: a match type could not be fully reduced:
+    |
+    |                                           trying to reduce  Test.TD[Test.Box2_C[Int, Int, String]]
+    |                                           failed since selector  Test.Box2_C[Int, Int, String]
+    |                                           does not match  case Test.Box2_C[Int, Int, Int] => Int
+    |                                           and cannot be shown to be disjoint from it either.
+    |                                           Therefore, reduction cannot advance to the remaining case
+    |
+    |                                             case Test.Box2_C[Int, Int, String] => String
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:153:25 ----------------------------------------------------
+153 |  def a[A]: M[Some[A]] = 1  // error
+    |                         ^
+    |                         Found:    (1 : Int)
+    |                         Required: Test2.M[Some[A]]
+    |
+    |                         Note: a match type could not be fully reduced:
+    |
+    |                           trying to reduce  Test2.M[Some[A]]
+    |                           failed since selector  Some[A]
+    |                           does not match  case Option[Int] => String
+    |                           and cannot be shown to be disjoint from it either.
+    |                           Therefore, reduction cannot advance to the remaining case
+    |
+    |                             case Some[_] => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:154:25 ----------------------------------------------------
+154 |  def b[A]: M[Some[A]] = "" // error
+    |                         ^^
+    |                         Found:    ("" : String)
+    |                         Required: Test2.M[Some[A]]
+    |
+    |                         Note: a match type could not be fully reduced:
+    |
+    |                           trying to reduce  Test2.M[Some[A]]
+    |                           failed since selector  Some[A]
+    |                           does not match  case Option[Int] => String
+    |                           and cannot be shown to be disjoint from it either.
+    |                           Therefore, reduction cannot advance to the remaining case
+    |
+    |                             case Some[_] => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:168:23 ----------------------------------------------------
+168 |    val a: M[Inv[A]] = 1 // error
+    |                       ^
+    |                       Found:    (1 : Int)
+    |                       Required: Test3.M[Test3.Inv[A]]
+    |
+    |                       Note: a match type could not be fully reduced:
+    |
+    |                         trying to reduce  Test3.M[Test3.Inv[A]]
+    |                         failed since selector  Test3.Inv[A]
+    |                         does not match  case Test3.Inv[Int] => String
+    |                         and cannot be shown to be disjoint from it either.
+    |                         Therefore, reduction cannot advance to the remaining case
+    |
+    |                           case _ => Int
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/matchtype-seq.scala:187:25 ----------------------------------------------------
+187 |      val a: M[Inv[A]] = 1 // error
+    |                         ^
+    |                         Found:    (1 : Int)
+    |                         Required: Test4.M[Test4.Inv[Foo.this.A]]
+    |
+    |                         Note: a match type could not be fully reduced:
+    |
+    |                           trying to reduce  Test4.M[Test4.Inv[Foo.this.A]]
+    |                           failed since selector  Test4.Inv[Foo.this.A]
+    |                           does not match  case Test4.Inv[Int] => String
+    |                           and cannot be shown to be disjoint from it either.
+    |                           Therefore, reduction cannot advance to the remaining case
+    |
+    |                             case _ => Int
+
+longer explanation available when compiling with `-explain`
