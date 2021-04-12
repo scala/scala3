@@ -45,22 +45,24 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Returns `None` if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def value(using FromExpr[T]): Option[T] =
-      given Quotes = Quotes.this
-      summon[FromExpr[T]].unapply(self)
+    def value(using FromExpr[T]): Option[T]
 
     /** Return the value of this expression.
      *
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
-    def valueOrError(using FromExpr[T]): T =
-      val fromExpr = summon[FromExpr[T]]
-      def reportError =
-        val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be extracted using $fromExpr"
-        reflect.report.throwError(msg, self)
-      given Quotes = Quotes.this
-      fromExpr.unapply(self).getOrElse(reportError)
+    // TODO: deprecate in 3.1.0 and remove @experimental from valueOrAbort
+    // @deprecated("Use valueOrThrow", "3.1.0")
+    def valueOrError(using FromExpr[T]): T
+
+    /** Return the value of this expression.
+     *
+     *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
+     *  Otherwise returns the value.
+     */
+    @experimental
+    def valueOrAbort(using FromExpr[T]): T
 
   end extension
 
@@ -4169,12 +4171,30 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def error(msg: String, pos: Position): Unit
 
       /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String): Nothing
+
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, expr: Expr[Any]): Nothing
+
+      /** Report an error message at the given position and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, pos: Position): Nothing
+
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String): Nothing
 
-      /** Report an error at the position of `expr` */
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
       /** Report an error message at the given position and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */

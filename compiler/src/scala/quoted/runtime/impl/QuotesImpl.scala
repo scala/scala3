@@ -45,6 +45,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     def matches(that: scala.quoted.Expr[Any]): Boolean =
       treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
+    override def value(using fromExpr: FromExpr[T]): Option[T] =
+      fromExpr.unapply(self)(using QuotesImpl.this)
+
+    override def valueOrError(using FromExpr[T]): T = self.valueOrAbort
+
+    def valueOrAbort(using fromExpr: FromExpr[T]): T =
+      def reportError =
+        val tree = reflect.asTerm(self)
+        val code = reflect.Printer.TreeCode.show(tree)
+        val msg = s"Expected a known value. \n\nThe value of: $code\ncould not be extracted using $fromExpr"
+        reflect.report.throwError(msg, self)
+      fromExpr.unapply(self)(using QuotesImpl.this).getOrElse(reportError)
+
   end extension
 
   extension (self: scala.quoted.Expr[Any])
@@ -2750,14 +2763,23 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.error(msg, pos)
 
       def throwError(msg: String): Nothing =
+        errorAndAbort(msg)
+
+      def throwError(msg: String, expr: Expr[Any]): Nothing =
+        errorAndAbort(msg, expr)
+
+      def throwError(msg: String, pos: Position): Nothing =
+        errorAndAbort(msg, pos)
+
+      def errorAndAbort(msg: String): Nothing =
         error(msg)
         throw new scala.quoted.runtime.StopMacroExpansion
 
-      def throwError(msg: String, expr: Expr[Any]): Nothing =
+      def errorAndAbort(msg: String, expr: Expr[Any]): Nothing =
         error(msg, expr)
         throw new scala.quoted.runtime.StopMacroExpansion
 
-      def throwError(msg: String, pos: Position): Nothing =
+      def errorAndAbort(msg: String, pos: Position): Nothing =
         error(msg, pos)
         throw new scala.quoted.runtime.StopMacroExpansion
 

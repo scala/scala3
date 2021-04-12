@@ -7,5 +7,5 @@ object X:
   private def _blah(b: Expr[Boolean])(using Quotes): Expr[Unit] =
     import quotes.reflect.*
     b.asTerm
-    b.valueOrError
+    b.valueOrAbort
     '{()}

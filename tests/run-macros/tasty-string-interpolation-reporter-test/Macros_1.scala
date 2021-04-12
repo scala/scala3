@@ -52,7 +52,7 @@ object Macro {
 
   private def fooCore(parts: Seq[Expr[String]], args: Seq[Expr[Any]], reporter: Reporter)(using Quotes): Expr[String] = {
     for ((part, idx) <- parts.zipWithIndex) {
-      val v = part.valueOrError
+      val v = part.valueOrAbort
       if (v.contains("#"))
         reporter.errorOnPart("Cannot use #", idx)
     }

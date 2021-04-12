@@ -6,7 +6,7 @@ object PowerMacro {
   inline def power(inline n: Long, x: Double) = ${powerCode('n, 'x)}
 
   def powerCode(n: Expr[Long], x: Expr[Double]) (using Quotes): Expr[Double] =
-    powerCode(n.valueOrError, x)
+    powerCode(n.valueOrAbort, x)
 
   def powerCode(n: Long, x: Expr[Double])(using Quotes): Expr[Double] =
     if (n == 0) '{1.0}
