@@ -50,6 +50,7 @@ class Compiler {
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
     List(new Inlining) ::           // Inline and execute macros
+    List(new PostInlining) ::       // Add mirror support for inlined code
     List(new Staging) ::            // Check staging levels and heal staged types
     List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil

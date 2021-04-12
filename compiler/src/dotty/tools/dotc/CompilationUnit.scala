@@ -43,6 +43,8 @@ class CompilationUnit protected (val source: SourceFile) {
    */
   var needsInlining: Boolean = false
 
+  var needsMirrorSupport: Boolean = false
+
   /** Will be set to `true` if contains `Quote`.
    *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
    */
