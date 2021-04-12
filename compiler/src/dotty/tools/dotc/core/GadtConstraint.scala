@@ -46,7 +46,7 @@ sealed abstract class GadtConstraint extends Showable {
   def narrowScrutTp_=(tp: Type): Unit
   def narrowScrutTp: Type
 
-  def narrowPatTp_=(tp: Type): Unit
+  def narrowPatTp_=(tp: Type)(using Context): Unit
 
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
@@ -339,12 +339,39 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp_=(tp: Type): Unit = myNarrowScrutTp = tp
   override def narrowScrutTp: Type = myNarrowScrutTp
 
-  override def narrowPatTp_=(tp: Type): Unit = tp match {
-    case path: TermRef =>
-      println(s"$path")
-      storedPatTpms foreach { (name, tvar) =>
-        println(s"  .$name -> $tvar")
+  override def narrowPatTp_=(tp: Type)(using Context): Unit = {
+    if storedPatTpms.isEmpty then return
+
+    val path = tp match {
+      case NoType =>
+        import NameKinds.WildcardParamName
+        val path =
+          TermRef(
+            SkolemType(TypeBounds(defn.NothingType, defn.AnyType)),
+            WildcardParamName.fresh(prefix = Names.EmptyTermName)
+          )
+        path
+      case path: TermRef =>
+        path
+    }
+
+    tpmMapping = tpmMapping.updated(
+      path,
+      {
+        var m = tpmMapping(path) match {
+          case null => SimpleIdentityMap.empty
+          case m => m
+        }
+        storedPatTpms foreach { (name, tvar) =>
+          m = m.updated(name, tvar)
+        }
+        m
       }
+    )
+
+    storedPatTpms foreach { (name, tvar) =>
+      reverseTpmMapping = reverseTpmMapping.updated(tvar.origin, TypeRef(path, name))
+    }
   }
 
   @annotation.tailrec private def stripInternalTypeVar(tp: Type): Type = tp match {
@@ -510,7 +537,10 @@ final class ProperGadtConstraint private(
   private def externalize(param: TypeParamRef)(using Context): Type =
     reverseMapping(param) match {
       case sym: Symbol => sym.typeRef
-      case null => param
+      case null => reverseTpmMapping(param) match {
+        case tp: TypeRef => tp
+        case null => param
+      }
     }
 
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
@@ -579,7 +609,7 @@ final class ProperGadtConstraint private(
     unsupported("EmptyGadtConstraint.addToConstraint")
   override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
-  override def narrowPatTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
+  override def narrowPatTp_=(tp: Type)(using Context): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")

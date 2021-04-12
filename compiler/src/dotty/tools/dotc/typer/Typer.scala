@@ -789,13 +789,16 @@ class Typer extends Namer
      */
     def cases(ifPat: => Tree, ifExpr: => Tree, wildName: TermName) = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) =>
-        if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) ifPat
-        else {
+        if (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) {
+          val res = ifPat
+          ctx.gadt.narrowPatTp_=(NoType)
+            // .showing(i"ctx.gadt.narrowPatTp = NoType\n${ctx.gadt.debugBoundsDescription}")
+          res
+        } else {
           import untpd._
           val res = typed(Bind(id.name, Typed(Ident(wildName), tree.tpt)).withSpan(tree.span), pt)
-          val tpe = res.tpe
-          ctx.gadt.narrowPatTp_=(tpe)
-          println(i"$tpe")
+          ctx.gadt.narrowPatTp_=(res.tpe)
+            // .showing(i"ctx.gadt.narrowPatTp = ${res.tpe}\n${ctx.gadt.debugBoundsDescription}")
           res
         }
       case _ => ifExpr

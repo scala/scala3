@@ -213,7 +213,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  one sub-part of isSubType to another.
    */
   protected def recur(tp1: Type, tp2: Type): Boolean = trace(s"isSubType ${traceInfo(tp1, tp2)}${approx.show}", subtyping) {
-
     def monitoredIsSubType = {
       if (pendingSubTypes == null) {
         pendingSubTypes = util.HashSet[(Type, Type)]()
@@ -539,7 +538,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           }
           else if tp1.isLambdaSub && !tp1.isAnyKind then
             return recur(tp1, EtaExpansion(tp2))
-        fourthTry
+
+        def compareGADTTpMem: Boolean = trace(i"compareGADT $tp1 <:< $tp2", subtyping) {
+          val gbounds2 = gadtBounds(tp2)
+          (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo)
+        }
+
+        compareGADTTpMem || fourthTry
     }
 
     def compareTypeParamRef(tp2: TypeParamRef): Boolean =
@@ -782,8 +787,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
               case _ => false
             }
+
+            def compareGADTTpMem: Boolean = trace(i"compareGADTTpMem $tp1 <:< $tp2", subtyping) {
+              val gbounds1 = gadtBounds(tp1)
+              (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2)
+            }
+
             val sym1 = tp1.symbol
-            (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
+            compareGADTTpMem || (sym1 eq NothingClass) && tp2.isValueTypeOrLambda ||
             (sym1 eq NullClass) && isNullable(tp2)
         }
       case tp1 @ AppliedType(tycon1, args1) =>
