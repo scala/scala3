@@ -768,6 +768,7 @@ class Definitions {
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
   @tu lazy val TypeTestClass: ClassSymbol = requiredClass("scala.reflect.TypeTest")
+    @tu lazy val TypeTest_unapply: Symbol = TypeTestClass.requiredMethod(nme.unapply)
   @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)
 
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
@@ -922,7 +923,6 @@ class Definitions {
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
-  @tu lazy val CoversAnnot: ClassSymbol = requiredClass("scala.annotation.covers")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 

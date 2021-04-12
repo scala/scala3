@@ -554,7 +554,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
 
-    val resTp = mt.finalResultType
+    val resTp = mt.instantiate(scrutineeTp :: Nil).finalResultType
 
     val sig =
       if (resTp.isRef(defn.BooleanClass))
@@ -589,27 +589,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type): Boolean =
-    SpaceEngine.isIrrefutable(unapp) || {
-      val mt: MethodType = unapp.widen match {
-        case mt: MethodType => mt
-        case pt: PolyType   =>
-          inContext(ctx.fresh.setExploreTyperState()) {
-            val tvars = pt.paramInfos.map(newTypeVar)
-            val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
-            scrutineeTp <:< mt.paramInfos(0)
-            // force type inference to infer a narrower type: could be singleton
-            // see tests/patmat/i4227.scala
-            mt.paramInfos(0) <:< scrutineeTp
-            isFullyDefined(mt, ForceDegree.all)
-            mt
-          }
-      }
-
-      mt.finalResultType.dealiasKeepAnnots match
-        case AnnotatedType(tp, annot) if annot.matches(defn.CoversAnnot) =>
-          val Apply(TypeApply(_, tpt :: Nil), Nil) = annot.tree: @unchecked
-          scrutineeTp <:< tpt.tpe
-        case _ => false
+    SpaceEngine.isIrrefutable(unapp) || unapp.symbol == defn.TypeTest_unapply && {
+      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen
+      scrutineeTp <:< tp
     }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
