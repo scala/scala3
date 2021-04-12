@@ -1248,8 +1248,11 @@ object Build {
         baseDirectory.value / "../language-server/src/dotty/tools/languageserver/config",
       sbtTestDirectory := baseDirectory.value / "sbt-test",
 
-      // ensure that sbt-dotty is built on sbt 1.4
+      // ensure that sbt-dotty is built with sbt 1.4
       pluginCrossBuild / sbtVersion := "1.4.9",
+
+      // scritped tests are run with current sbt version
+      scriptedSbt := sbtVersion.value,
 
       // The batch mode accidentally became the default with no way to disable
       // it in sbt 1.4 (https://github.com/sbt/sbt/issues/5913#issuecomment-716003195).
