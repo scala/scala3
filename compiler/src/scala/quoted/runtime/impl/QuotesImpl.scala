@@ -1512,6 +1512,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
         def isGiven: Boolean =
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Given)
+        def isErased: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Erased)
     end TermParamClauseMethods
 
     type TypeParamClause = List[tpd.TypeDef]
