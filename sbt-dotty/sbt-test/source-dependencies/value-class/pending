@@ -1,3 +1,5 @@
+## This failing test is pending because it will be solved by removing sbt-dotty
+
 ## Case 1: value class as parameter of method
 $ copy-file changes/A0.scala src/main/scala/A.scala
 $ copy-file changes/B0.scala src/main/scala/B.scala
