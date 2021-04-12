@@ -521,7 +521,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
   }
 
   def isSameUnapply(tp1: TermRef, tp2: TermRef): Boolean =
-    tp1.prefix.isStable && tp2.prefix.isStable && tp1 =:= tp2
+    // always assume two TypeTest[S, T].unapply are the same if they are equal in types
+    (tp1.prefix.isStable && tp2.prefix.isStable || tp1.symbol == defn.TypeTest_unapply)
+    && tp1 =:= tp2
 
   /** Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
   def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int): List[Type] = {
@@ -590,7 +592,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type): Boolean =
     SpaceEngine.isIrrefutable(unapp) || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen
+      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias
       scrutineeTp <:< tp
     }
 
