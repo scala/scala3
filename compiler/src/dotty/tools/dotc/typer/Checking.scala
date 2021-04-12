@@ -467,8 +467,11 @@ object Checking {
     if (sym.is(Trait) && sym.is(Final))
       fail(TraitsMayNotBeFinal(sym))
     // Skip ModuleVal since the annotation will also be on the ModuleClass
-    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.isOneOf(Method | ModuleVal))
-      fail(TailrecNotApplicable(sym))
+    if sym.hasAnnotation(defn.TailrecAnnot) then
+      if !sym.isOneOf(Method | ModuleVal) then
+        fail(TailrecNotApplicable(sym))
+      else if sym.is(Inline) then
+        fail("Inline methods cannot be @tailrec")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
