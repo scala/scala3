@@ -736,14 +736,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         fourthTry
     }
 
-    def tryBaseType(cls2: Symbol) = {
-      val base = nonExprBaseType(tp1, cls2)
-      if (base.exists && (base `ne` tp1))
-        isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
-        base.isInstanceOf[OrType] && fourthTry
-          // if base is a disjunction, this might have come from a tp1 type that
-          // expands to a match type. In this case, we should try to reduce the type
-          // and compare the redux. This is done in fourthTry
+    def tryBaseType(cls2: Symbol): Boolean = {
+      // nonExprBaseType approximates its result in ways that are unsound for GADTs
+      // when it handles intersections. See neg/i11545a.scala for a specific example.
+      // Note that we can't simply freeze GADTs at this point. PatternTypeConstrainer
+      // passes a Skolem here and we _need_ to calculate its base type. Only intersection
+      // types are a problem.
+      if !(ctx.mode.is(Mode.GadtConstraintInference) && tp1.isInstanceOf[AndType]) then
+        val base = nonExprBaseType(tp1, cls2)
+        if (base.exists && (base `ne` tp1))
+          isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
+          base.isInstanceOf[OrType] && fourthTry
+            // if base is a disjunction, this might have come from a tp1 type that
+            // expands to a match type. In this case, we should try to reduce the type
+            // and compare the redux. This is done in fourthTry
+        else fourthTry
       else fourthTry
     }
 
