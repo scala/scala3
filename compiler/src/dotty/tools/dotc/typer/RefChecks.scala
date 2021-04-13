@@ -26,7 +26,7 @@ import Constants.Constant
 import NullOpsDecorator._
 
 object RefChecks {
-  import tpd.{Tree, MemberDef, NamedArg, Literal, Template, DefDef}
+  import tpd._
 
   val name: String = "refchecks"
 
@@ -133,6 +133,27 @@ object RefChecks {
               false
           }
 
+      /** Check that arguments passed to trait parameters conform to the parameter types
+       *  in the current class. This is necessary since parameter types might be narrowed
+       *  through intersection with other parent traits. See neg/i11018.scala.
+       */
+      def checkParamInits(app: Apply): Unit =
+        val parentCls = app.tpe.classSymbol
+        if parentCls.is(Trait) then
+          val params = parentCls.asClass.paramGetters
+          val args = termArgss(app).flatten
+          for (param, arg) <- params.lazyZip(args) do
+            if !param.is(Private) then // its type can be narrowed through intersection -> a check is needed
+              val paramType = cls.thisType.memberInfo(param)
+              if !(arg.tpe <:< paramType) then
+                val argTypes = args.tpes
+                // it could still be OK but we might need to substitute arguments for parameters
+                // to account for dependent parameters. See pos/i11993.scala
+                if !(arg.tpe.subst(params, argTypes) <:< paramType.subst(params, argTypes))
+                then
+                  report.error(IllegalParameterInit(arg.tpe, paramType, param, cls), arg.srcPos)
+
+      for case app: Apply <- parentTrees do checkParamInits(app)
     case _ =>
   }
 
@@ -801,34 +822,7 @@ object RefChecks {
         report.error(problem(), clazz.srcPos)
       }
 
-      // check that basetype and subtype agree on types of trait parameters
-      //
-      // I.e. trait and class parameters not only need to conform to the expected
-      // type of the corresponding base-trait, but also to the type as seen by the
-      // inheriting subtype.
-      def checkTraitParametersOK() = for {
-        parent <- clazz.info.parents
-        parentSym = parent.classSymbol
-        if parentSym.isClass
-        cls = parentSym.asClass
-        if cls.paramAccessors.nonEmpty
-        param <- cls.paramAccessors
-      } {
-        val tpeFromParent = parent.memberInfo(param)
-        val tpeFromClazz = clazz.thisType.memberInfo(param)
-        if (!(tpeFromParent <:< tpeFromClazz)) {
-          val msg =
-            em"""illegal parameter: The types of $param do not match.
-                |
-                |  $param in $cls has type: $tpeFromParent
-                |  but $clazz expects $param to have type: $tpeFromClazz"""
-
-          report.error(msg, clazz.srcPos)
-        }
-      }
-
       checkParameterizedTraitsOK()
-      checkTraitParametersOK()
     }
 
     /** Check that `site` does not inherit conflicting generic instances of `baseCls`,
