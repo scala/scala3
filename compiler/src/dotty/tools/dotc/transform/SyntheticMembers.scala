@@ -552,7 +552,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
       val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
       if (!existingDef(meth, clazz).exists) {
-        meth.entered
+        meth.enteredAfter(thisPhase)
         newBody = newBody :+
           synthesizeDef(meth, vrefss => body(cls, vrefss.head.head))
       }
@@ -565,7 +565,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         val monoType =
           newSymbol(clazz, tpnme.MirroredMonoType, Synthetic, TypeAlias(linked.reachableRawTypeRef), coord = clazz.coord)
         newBody = newBody :+ TypeDef(monoType).withSpan(ctx.owner.span.focus)
-        monoType.entered
+        monoType.enteredAfter(thisPhase)
       }
     }
     def makeSingletonMirror() =
