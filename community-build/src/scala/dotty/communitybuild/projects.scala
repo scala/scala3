@@ -43,10 +43,7 @@ sealed trait CommunityProject:
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
   val requiresExperimental: Boolean
-<<<<<<< HEAD
-=======
   val environment: Map[String, String] = Map.empty
->>>>>>> upstream/master
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
