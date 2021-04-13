@@ -302,6 +302,13 @@ object projects:
     dependencies      = List(scalatest)
   )
 
+  lazy val scalatestplusTestNG = SbtCommunityProject(
+    project = "scalatestplus-testng",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
+  )
+
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
     sbtTestCommand   = "xml/test",
@@ -739,6 +746,7 @@ def allProjects = List(
   projects.protoquill,
   projects.onnxScala,
   projects.playJson,
+  projects.scalatestplusTestNG,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

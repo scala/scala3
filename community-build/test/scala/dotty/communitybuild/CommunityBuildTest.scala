@@ -97,6 +97,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def izumiReflect = projects.izumiReflect.run()
   @Test def scalaSTM = projects.scalaSTM.run()
   @Test def scalatest = projects.scalatest.run()
+  @Test def scalatestplusTestNG = projects.scalatestplusTestNG.run()
   // 'Sciss/Lucre' dependencies:
   // @Test def scissEqual      = projects.scissEqual     .run()
   // @Test def scissFingerTree = projects.scissFingerTree.run()
