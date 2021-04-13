@@ -23,7 +23,7 @@ val apiPageDRI: DRI = DRI(location = "api")
 
 val defaultMarkdownOptions: DataHolder =
   new MutableDataSet()
-    .setFrom(ParserEmulationProfile.KRAMDOWN.getOptions)
+    .setFrom(ParserEmulationProfile.COMMONMARK.getOptions)
     .set(AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT, false)
     .set(AnchorLinkExtension.ANCHORLINKS_ANCHOR_CLASS, "anchor")
     .set(EmojiExtension.ROOT_IMAGE_PATH, "https://github.global.ssl.fastly.net/images/icons/emoji/")

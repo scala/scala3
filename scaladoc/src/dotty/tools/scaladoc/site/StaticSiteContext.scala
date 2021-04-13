@@ -68,12 +68,12 @@ class StaticSiteContext(
       file.getName.endsWith(".html")
 
 
-  private def loadTemplate(from: File, isBlog: Boolean = false): Option[LoadedTemplate] =
+  private def loadTemplate(from: File, isBlog: Boolean): Option[LoadedTemplate] =
     if (!isValidTemplate(from)) None else
       try
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
-        val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
+        val (indexes, children) = allFiles.flatMap(loadTemplate(_, isBlog)).partition(_.templateFile.isIndexPage())
 
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
@@ -135,13 +135,13 @@ class StaticSiteContext(
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
         else template.file.toPath.getParent().resolve(link).normalize()
 
-      val baseFileName = baseFile.getFileName.toString
-      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
-      def trySuffix(pref: String) =
-       if baseFileName == pref then Seq(baseFile.getParent) else Nil
-      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
-
-      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+      baseFile.getFileName.toString.split("\\.").headOption.toSeq.flatMap { baseFileName =>
+        Seq(
+          Some(baseFile.resolveSibling(baseFileName + ".html")),
+          Some(baseFile.resolveSibling(baseFileName + ".md")),
+          Option.when(baseFileName == "index")(baseFile.getParent)
+        ).flatten.filter(Files.exists(_)).map(driFor)
+      }
     }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 
