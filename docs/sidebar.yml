@@ -1,6 +1,5 @@
 sidebar:
     - title: Blog
-      url: blog/index.html
     - title: Usage
       subsection:
         - title: Getting Started
@@ -17,8 +16,6 @@ sidebar:
           url: docs/usage/cbt-projects.html
         - title: Scaladoc
           url: docs/usage/scaladoc
-        - title: Dottydoc [Legacy]
-          url: docs/usage/dottydoc.html
     - title: Reference
       subsection:
         - title: Overview
