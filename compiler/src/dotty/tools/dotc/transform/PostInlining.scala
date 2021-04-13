@@ -5,6 +5,7 @@ import core._
 import Contexts.*
 import DenotTransformers.IdentityDenotTransformer
 import Decorators.*
+import SyntheticMembers.*
 import ast.tpd.*
 
 /** A phase that adds mirror support for anonymous mirrors created at inlining. */
@@ -22,7 +23,11 @@ class PostInlining extends MacroTransform, IdentityDenotTransformer:
   def newTransformer(using Context): Transformer = new Transformer:
     override def transform(tree: Tree)(using Context): Tree =
       super.transform(tree) match
-        case tree1: Template => synthMbr.addMirrorSupport(tree1)
+        case tree1: Template
+        if tree1.hasAttachment(ExtendsSingletonMirror)
+          || tree1.hasAttachment(ExtendsProductMirror)
+          || tree1.hasAttachment(ExtendsSumMirror) =>
+          synthMbr.addMirrorSupport(tree1)
         case tree1 => tree1
 
 object PostInlining:
