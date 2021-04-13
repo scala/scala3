@@ -348,11 +348,8 @@ jobs:
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Test sbt 1.4.x
+      - name: Test sbt
         run: ./project/scripts/sbt "sbt-dotty/scripted; sbt-community-build/scripted"
-
-      - name: Test sbt 1.5.x
-        run: ./project/scripts/sbt "set \`sbt-dotty\`/scriptedSbt := \"1.5.0-RC1\"; sbt-dotty/scripted sbt-dotty/*"
 
   test_java8:
     runs-on: [self-hosted, Linux]
