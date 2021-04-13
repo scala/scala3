@@ -27,6 +27,7 @@ abstract class CommunityBuildTest:
       )
       return
     self.dependencies.foreach(_.publish())
+    self.testOnlyDependencies().foreach(_.publish())
     suite.test(self)
 
   /** Build the given project with the published local compiler and sbt plugin.

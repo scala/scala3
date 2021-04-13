@@ -40,6 +40,7 @@ sealed trait CommunityProject:
   val publishCommand: String
   val docCommand: String
   val dependencies: List[CommunityProject]
+  val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
   val requiresExperimental: Boolean
@@ -87,6 +88,7 @@ final case class MillCommunityProject(
     project: String,
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     ignoreDocs: Boolean = false,
     requiresExperimental: Boolean = false,
     ) extends CommunityProject:
@@ -104,6 +106,7 @@ final case class SbtCommunityProject(
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
