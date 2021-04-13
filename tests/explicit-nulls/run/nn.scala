@@ -15,7 +15,7 @@ object Test {
     val y: String|Null = null
     assertThrowsNPE(y.nn)
     assertThrowsNPE(null.nn)
-    assertThrowsNPE(len(null)) 
+    assertThrowsNPE(len(null))
     assertThrowsNPE(load(null))
   }
 }
