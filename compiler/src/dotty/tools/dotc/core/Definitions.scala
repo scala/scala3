@@ -133,8 +133,7 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    val flags0 = Trait | NoInits
-    val flags = if (name.isContextFunction) flags0 | Final else flags0
+    val flags = Trait | NoInits
     newPermanentClassSymbol(ScalaPackageClass, name, flags, completer)
   }
 

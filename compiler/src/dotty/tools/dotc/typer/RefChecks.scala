@@ -96,7 +96,7 @@ object RefChecks {
 
   /** Check that self type of this class conforms to self types of parents
    *  and required classes. Also check that only `enum` constructs extend
-   *  `java.lang.Enum`.
+   *  `java.lang.Enum` and no user-written class extends ContextFunctionN.
    */
   private def checkParents(cls: Symbol, parentTrees: List[Tree])(using Context): Unit = cls.info match {
     case cinfo: ClassInfo =>
@@ -132,6 +132,8 @@ object RefChecks {
             case _ =>
               false
           }
+      if psyms.exists(defn.isContextFunctionClass) then
+        report.error(CannotExtendContextFunction(cls), cls.sourcePos)
 
       /** Check that arguments passed to trait parameters conform to the parameter types
        *  in the current class. This is necessary since parameter types might be narrowed
