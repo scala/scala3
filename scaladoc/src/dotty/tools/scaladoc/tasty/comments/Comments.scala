@@ -125,64 +125,11 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
       case _ => None
     }
 
-  private def getSnippetCompilerData(sym: qctx.reflect.Symbol): SnippetCompilerData =
-    val packageName = sym.packageName
-    if !sym.isPackageDef then sym.tree match {
-      case c: qctx.reflect.ClassDef =>
-        import qctx.reflect._
-        import dotty.tools.dotc
-        given dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-        val cSym = c.symbol.asInstanceOf[dotc.core.Symbols.ClassSymbol]
-
-        def createTypeConstructor(tpe: dotc.core.Types.Type, topLevel: Boolean = true): String = tpe match {
-            case t @ dotc.core.Types.TypeBounds(upper, lower) => lower match {
-              case l: dotc.core.Types.HKTypeLambda =>
-                (if topLevel then "" else "?") + l.paramInfos.map(p => createTypeConstructor(p, false)).mkString("[",", ","]")
-              case _ => (if topLevel then "" else "_")
-            }
-          }
-        val classType =
-          val ct = cSym.classInfo.selfType.show.replace(".this.",".")
-          Some(ct)
-        val classGenerics = Option.when(
-            !cSym.typeParams.isEmpty
-          )(
-            cSym.typeParams.map(_.typeRef).map(t =>
-              t.show +
-              createTypeConstructor(t.asInstanceOf[dotc.core.Types.TypeRef].underlying)
-            ).mkString("[",", ","]")
-          )
-        SnippetCompilerData(packageName, classType, classGenerics, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
-      case _ => getSnippetCompilerData(sym.maybeOwner)
-    } else SnippetCompilerData(packageName, None, None, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
-
-  private def position(p: Option[qctx.reflect.Position]): SnippetCompilerData.Position =
-    p.fold(SnippetCompilerData.Position(0, 0))(p => SnippetCompilerData.Position(p.startLine, p.startColumn))
-
-  private def hackGetPositionOfDocstring(using Quotes)(s: qctx.reflect.Symbol): Option[qctx.reflect.Position] =
-    import dotty.tools.dotc.core.Comments.CommentsContext
-    import dotty.tools.dotc
-    given ctx: dotc.core.Contexts.Context = qctx.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-    val docCtx = ctx.docCtx.getOrElse {
-      throw new RuntimeException(
-        "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
-      )
-    }
-    val span = docCtx.docstring(s.asInstanceOf[dotc.core.Symbols.Symbol]).span
-    s.pos.flatMap { pos =>
-      docCtx.docstring(s.asInstanceOf[dotc.core.Symbols.Symbol]).map { docstring =>
-        dotty.tools.dotc.util.SourcePosition(
-          pos.sourceFile.asInstanceOf[dotty.tools.dotc.util.SourceFile],
-          docstring.span
-        ).asInstanceOf[qctx.reflect.Position]
-      }
-    }
-
   def snippetCheckingFunc: qctx.reflect.Symbol => SnippetChecker.SnippetCheckingFunc =
     (s: qctx.reflect.Symbol) => {
       val path = s.source.map(_.path)
       val pathBasedArg = dctx.snippetCompilerArgs.get(path)
-      val data = getSnippetCompilerData(s)
+      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
 

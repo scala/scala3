@@ -25,8 +25,7 @@ class SnippetChecker(val classpath: String, val tastyDirs: Seq[File]):
       val wrapped = WrappedSnippet(
         snippet,
         data.map(_.packageName),
-        data.flatMap(_.classType),
-        data.flatMap(_.classGenerics),
+        data.fold(Nil)(_.classInfos),
         data.map(_.imports).getOrElse(Nil),
         lineOffset + data.fold(0)(_.position.line) + 1,
         data.fold(0)(_.position.column)

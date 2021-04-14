@@ -22,8 +22,7 @@ object WrappedSnippet:
   def apply(
     str: String,
     packageName: Option[String],
-    className: Option[String],
-    classGenerics: Option[String],
+    classInfos: Seq[SnippetCompilerData.ClassInfo],
     imports: List[String],
     lineOffset: Int,
     columnOffset: Int
@@ -32,10 +31,15 @@ object WrappedSnippet:
     val ps = new PrintStream(baos)
     ps.println(s"package ${packageName.getOrElse("snippets")}")
     imports.foreach(i => ps.println(s"import $i"))
-    ps.println(s"trait Snippet${classGenerics.getOrElse("")} { ${className.fold("")(cn => s"self: $cn =>")}")
-    str.split('\n').foreach(ps.printlnWithIndent(2, _))
-    ps.println("}")
-    WrappedSnippet(baos.toString, lineOffset, columnOffset, lineBoilerplate, columnBoilerplate)
+    classInfos.zipWithIndex.foreach { (info, i) =>
+      ps.printlnWithIndent(2 * i, s"trait Snippet$i${info.generics.getOrElse("")} { ${info.tpe.fold("")(cn => s"self: $cn =>")}")
+      info.names.foreach{ name =>
+        ps.printlnWithIndent(2 * i + 2, s"val $name = self")
+      }
+    }
+    str.split('\n').foreach(ps.printlnWithIndent(classInfos.size * 2, _))
+    (0 to classInfos.size -1).reverse.foreach( i => ps.printlnWithIndent(i * 2, "}"))
+    WrappedSnippet(baos.toString, lineOffset, columnOffset, classInfos.size + classInfos.flatMap(_.names).size, classInfos.size * 2 + 2)
 
   extension (ps: PrintStream) private def printlnWithIndent(indent: Int, str: String) =
     ps.println((" " * indent) + str)
