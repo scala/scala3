@@ -24,7 +24,7 @@ class Checker extends MiniPhase {
   val phaseName = "initChecker"
 
   // cache of class summary
-  private val baseEnv = Env(null)
+  private val cache = new Cache
 
   override val runsAfter = Set(Pickler.name)
 
@@ -54,7 +54,7 @@ class Checker extends MiniPhase {
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
         safePromoted = mutable.Set.empty,
-        env = baseEnv.withCtx(ctx.withOwner(cls))
+        env = Env(ctx.withOwner(cls), cache)
       )
 
       Checking.checkClassBody(tree)

@@ -74,18 +74,23 @@ trait TraceSyntax:
       while logctx.reporter.isInstanceOf[StoreReporter] do logctx = logctx.outer
       def margin = ctx.base.indentTab * ctx.base.indent
       def doLog(s: String) = if isForced then println(s) else report.log(s)
-      def finalize(result: Any, note: String) =
+      def finalize(msg: String) =
         if !finalized then
           ctx.base.indent -= 1
-          doLog(s"$margin${trailing(result)}$note")
+          doLog(s"$margin$msg")
           finalized = true
       try
         doLog(s"$margin$leading")
         ctx.base.indent += 1
         val res = op
-        finalize(res, "")
+        finalize(trailing(res))
         res
-      catch case ex: Throwable =>
-        finalize("<missing>", s" (with exception $ex)")
-        throw ex
+      catch
+        case ex: runtime.NonLocalReturnControl[T] =>
+          finalize(trailing(ex.value))
+          throw ex
+        case ex: Throwable =>
+          val msg = s"<== $q = <missing> (with exception $ex)"
+          finalize(msg)
+          throw ex
 end TraceSyntax

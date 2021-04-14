@@ -408,13 +408,12 @@ We can already express this using rewrite match expressions and a simple
 helper function, `scala.compiletime.erasedValue`, which is defined as follows:
 
 ```scala
-erased def erasedValue[T]: T = ???
+def erasedValue[T]: T
 ```
 
-The `erasedValue` function _pretends_ to return a value of its type argument
-`T`. In fact, it would always raise a `NotImplementedError` exception when
-called. But the function can in fact never be called, since it is declared
-`erased`, so can only be used at compile-time during type checking.
+The `erasedValue` function _pretends_ to return a value of its type argument `T`.
+Calling this function will always result in a compiletime error unless the call
+is removed from the code while inlining.
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
 

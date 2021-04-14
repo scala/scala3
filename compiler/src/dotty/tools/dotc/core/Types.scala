@@ -237,7 +237,7 @@ object Types {
     }
 
     def isBottomType(using Context): Boolean =
-      if ctx.explicitNulls && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
 
     def isBottomTypeAfterErasure(using Context): Boolean =
@@ -1816,10 +1816,12 @@ object Types {
     /** A simplified version of this type which is equivalent wrt =:= to this type.
      *  This applies a typemap to the type which (as all typemaps) follows type
      *  variable instances and reduces typerefs over refined types. It also
-     *  re-evaluates all occurrences of And/OrType with &/| because
-     *  what was a union or intersection of type variables might be a simpler type
-     *  after the type variables are instantiated. Finally, it
-     *  maps poly params in the current constraint set back to their type vars.
+     *
+     *   - re-evaluates all occurrences of And/OrType with &/| because
+     *     what was a union or intersection of type variables might be a simpler type
+     *     after the type variables are instantiated.
+     *   - maps poly params in the current constraint set back to their type vars.
+     *   - forces match types to be fully defined and tries to normalize them.
      *
      *  NOTE: Simplifying an intersection type might change its erasure (for
      *  example, the Java erasure of `Object & Serializable` is `Object`,

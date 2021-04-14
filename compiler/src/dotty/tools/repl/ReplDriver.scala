@@ -179,11 +179,10 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Completion) = {
-      val displ = completion.label
+    def makeCandidate(label: String) = {
       new Candidate(
-        /* value    = */ displ,
-        /* displ    = */ displ, // displayed value
+        /* value    = */ label,
+        /* displ    = */ label, // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,
@@ -201,7 +200,7 @@ class ReplDriver(settings: Array[String],
         given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
-        completions.map(makeCandidate)
+        completions.map(_.label).distinct.map(makeCandidate)
       }
       .getOrElse(Nil)
   }

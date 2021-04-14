@@ -68,12 +68,12 @@ class StaticSiteContext(
       file.getName.endsWith(".html")
 
 
-  private def loadTemplate(from: File, isBlog: Boolean = false): Option[LoadedTemplate] =
+  private def loadTemplate(from: File, isBlog: Boolean): Option[LoadedTemplate] =
     if (!isValidTemplate(from)) None else
       try
         val topLevelFiles = if isBlog then Seq(from, new File(from, "_posts")) else Seq(from)
         val allFiles = topLevelFiles.filter(_.isDirectory).flatMap(_.listFiles())
-        val (indexes, children) = allFiles.flatMap(loadTemplate(_)).partition(_.templateFile.isIndexPage())
+        val (indexes, children) = allFiles.flatMap(loadTemplate(_, isBlog)).partition(_.templateFile.isIndexPage())
 
         def loadIndexPage(): TemplateFile =
           val indexFiles = from.listFiles { file => file.getName == "index.md" || file.getName == "index.html" }
@@ -87,11 +87,22 @@ class StaticSiteContext(
 
         val templateFile = if (from.isDirectory) loadIndexPage() else loadTemplateFile(from)
 
-        val processedChildren = if !isBlog then children.sortBy(_.templateFile.title) else
-          def dateFrom(p: LoadedTemplate): String =
-            val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
-            pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse("1900-01-01") // blogs without date are last
-          children.sortBy(dateFrom).reverse
+        def dateFrom(p: LoadedTemplate, default: String = "1900-01-01"): String =
+          val pageSettings = p.templateFile.settings.get("page").collect{ case m: Map[String @unchecked, _] => m }
+          pageSettings.flatMap(_.get("date").collect{ case s: String => s}).getOrElse(default) // blogs without date are last
+
+        val processedChildren: Seq[LoadedTemplate] = if !isBlog then children.sortBy(_.templateFile.title) else
+          children.sortBy(dateFrom(_)).reverse
+
+        processedChildren.foreach { child =>
+          val regex = raw"(\d*-\d*-\d*)-(.*)".r
+          val setDate = dateFrom(child, "<no date>")
+          child.templateFile.name match
+            case regex(date, name) if date != setDate =>
+              val msg = s"Date $date in blog file: ${child.templateFile.name} doesn't match date from settings: $setDate."
+              report.warn(msg, from)
+            case name =>
+        }
 
         val processedTemplate = // Set provided name as arg in page for `docs`
           if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
@@ -135,13 +146,13 @@ class StaticSiteContext(
         if link.startsWith("/") then root.toPath.resolve(link.drop(1))
         else template.file.toPath.getParent().resolve(link).normalize()
 
-      val baseFileName = baseFile.getFileName.toString
-      val mdFile = baseFile.resolveSibling(baseFileName.stripSuffix(".html") + ".md")
-      def trySuffix(pref: String) =
-       if baseFileName == pref then Seq(baseFile.getParent) else Nil
-      val strippedIndexes = trySuffix("index.html") ++ trySuffix("index.md")
-
-      (Seq(baseFile, mdFile) ++ strippedIndexes).filter(Files.exists(_)).map(driFor)
+      baseFile.getFileName.toString.split("\\.").headOption.toSeq.flatMap { baseFileName =>
+        Seq(
+          Some(baseFile.resolveSibling(baseFileName + ".html")),
+          Some(baseFile.resolveSibling(baseFileName + ".md")),
+          Option.when(baseFileName == "index")(baseFile.getParent)
+        ).flatten.filter(Files.exists(_)).map(driFor)
+      }
     }.toOption.filter(_.nonEmpty)
     pathsDri.getOrElse(memberLinkResolver(link).toList)
 

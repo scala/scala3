@@ -63,14 +63,11 @@ object CustomCompletion {
   private type CompletionMap = Map[Name, Seq[SingleDenotation]]
 
   private def describeCompletions(completions: CompletionMap)(using Context): List[Completion] = {
-    completions
-      .toList.groupBy(_._1.toTermName) // don't distinguish between names of terms and types
-      .toList.map { (name, namedDenots) =>
-        val denots = namedDenots.flatMap(_._2)
-        val typesFirst = denots.sortWith((d1, d2) => d1.isType && !d2.isType)
-        val desc = Completion.description(typesFirst)
-        Completion(label(name), desc, typesFirst.map(_.symbol))
-    }
+    for
+      (name, denots) <- completions.toList
+      denot <- denots
+    yield
+      Completion(label(name), Completion.description(denot), List(denot.symbol))
   }
 
   class DeepCompleter(mode: Completion.Mode, prefix: String, pos: SourcePosition) extends Completion.Completer(mode, prefix, pos):

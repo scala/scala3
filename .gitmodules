@@ -190,3 +190,6 @@
 [submodule "community-build/community-projects/cask"]
 	path = community-build/community-projects/cask
 	url = https://github.com/dotty-staging/cask.git
+[submodule "community-build/community-projects/play-json"]
+	path = community-build/community-projects/play-json
+	url = https://github.com/dotty-staging/play-json.git

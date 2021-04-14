@@ -45,12 +45,12 @@ These constructs replace existing constructs with the aim of making the language
  - [Export clauses](other-new-features/export.md)
  provide a simple and general way to express aggregation, which can replace the
  previous facade pattern of package objects inheriting from classes.
- - [Vararg patterns](changed-features/vararg-patterns.md) now use the form `: _*` instead of `@ _*`, mirroring vararg expressions,
+ - [Vararg splices](changed-features/vararg-splices.md) now use the form `*` instead of `@ _*`, mirroring vararg expressions,
  - [Creator applications](other-new-features/creator-applications.md) allow using simple function call syntax
  instead of `new` expressions. `new` expressions stay around as a fallback for
  the cases where creator applications cannot be used.
 
-With the exception of early initializers and old-style vararg patterns, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
+With the exception of early initializers and old-style vararg splices, all superseded constructs continue to be available in Scala 3.0. The plan is to deprecate and phase them out later.
 
 Value classes (superseded by opaque type aliases) are a special case. There are currently no deprecation plans for value classes, since we might bring them back in a more general form if they are supported natively by the JVM as is planned by project Valhalla.
 
@@ -70,7 +70,7 @@ For the next several versions, old features will remain available and deprecatio
 These constructs are restricted to make the language safer.
 
  - [Implicit Conversions](contextual/conversions.md): there is only one way to define implicit conversions instead of many, and potentially surprising implicit conversions require a language import.
- - [Given Imports](contextual/import-delegate.md): implicits now require a special form of import, to make the import clearly visible.
+ - [Given Imports](contextual/given-imports.md): implicits now require a special form of import, to make the import clearly visible.
  - [Type Projection](dropped-features/type-projection.md): only classes can be used as prefix `C` of a type projection `C#A`. Type projection on abstract types is no longer supported since it is unsound.
  - [Multiversal equality](contextual/multiversal-equality.md) implements an "opt-in" scheme to rule out nonsensical comparisons with `==` and `!=`.
  - [infix](https://github.com/lampepfl/dotty/pull/5975)
@@ -173,7 +173,7 @@ To enable porting most uses of macros, we are experimenting with the advanced la
 by itself a straightforward implementation of some simple macros and is at the same time an essential building block for the implementation of complex macros.
 - [Quotes and splices](metaprogramming/macros.md) provide a principled way to express macros and staging with a unified set of abstractions.
 - [Type class derivation](contextual/derivation.md) provides an in-language implementation of the `Gen` macro in Shapeless and other foundational libraries. The new implementation is more robust, efficient and easier to use than the macro.
-- [Implicit by-name parameters](contextual/implicit-by-name-parameters.md) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
+- [Implicit by-name parameters](contextual/by-name-context-parameters.md) provide a more robust in-language implementation of the `Lazy` macro in Shapeless.
 
 **Status: not yet settled**
 

@@ -1,0 +1,3 @@
+X1: (i: scala.Int) isImplicit=true, isGiven=false, isErased=false
+X2: (i: scala.Int) isImplicit=false, isGiven=true, isErased=false
+X3: (i: scala.Int) isImplicit=false, isGiven=false, isErased=true

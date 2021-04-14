@@ -1,7 +1,7 @@
 package scala.reflect
 
 /** A `TypeTest[S, T] contains the logic needed to know at runtime if a value of
- *  type `S` can be downcasted to `T`.
+ *  type `S` is an instance of `T`.
  *
  *  If a pattern match is performed on a term of type `s: S` that is uncheckable with `s.isInstanceOf[T]` and
  *  the pattern are of the form:
@@ -12,7 +12,7 @@ package scala.reflect
 @scala.annotation.implicitNotFound(msg = "No TypeTest available for [${S}, ${T}]")
 trait TypeTest[-S, T] extends Serializable:
 
-  /** A TypeTest[S, T] can serve as an extractor that matches only S of type T.
+  /** A TypeTest[S, T] can serve as an extractor that matches if and only if S of type T.
    *
    * The compiler tries to turn unchecked type tests in pattern matches into checked ones
    * by wrapping a `(_: T)` type pattern as `tt(_: T)`, where `tt` is the `TypeTest[S, T]` instance.

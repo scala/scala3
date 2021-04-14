@@ -2290,7 +2290,7 @@ class Typer extends Namer
             var added: Tree = TypeTree(parent).withSpan(cdef.nameSpan.focus)
             if psym.is(Trait) && psym.primaryConstructor.info.takesImplicitParams then
               // classes get a constructor separately using a different context
-              added = ensureConstrCall(cls, added)
+              added = ensureConstrCall(cls, added)(using superCtx)
             added :: parentTrees(parents1, ptrees)
       case _ =>
         ptrees
