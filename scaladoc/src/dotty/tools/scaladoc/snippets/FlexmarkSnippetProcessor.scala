@@ -10,7 +10,7 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 
 object FlexmarkSnippetProcessor:
-  def processSnippets(root: mdu.Node, debug: Boolean, checkingFunc: => SnippetChecker.SnippetCheckingFunc): mdu.Node = {
+  def processSnippets(root: mdu.Node, debug: Boolean, checkingFunc: => SnippetChecker.SnippetCheckingFunc)(using CompilerContext): mdu.Node = {
     lazy val cf: SnippetChecker.SnippetCheckingFunc = checkingFunc
 
     val nodes = root.getDescendants().asScala.collect {
@@ -20,27 +20,37 @@ object FlexmarkSnippetProcessor:
     nodes.foreach { node =>
       val snippet = node.getContentChars.toString
       val lineOffset = node.getStartLineNumber
-      val info = node.getInfo.toString
-      val argOverride =
-        info.split(" ")
-          .find(_.startsWith("sc:"))
-          .map(_.stripPrefix("sc:"))
-          .map(SCFlagsParser.parse)
-          .flatMap(_.toOption)
-      val snippetCompilationResult = cf(snippet, lineOffset, argOverride) match {
-        case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if debug =>
-          val s = sequence.BasedSequence.EmptyBasedSequence()
-            .append(wrapped)
-            .append(sequence.BasedSequence.EOL)
-          val content = mdu.BlockContent()
-          content.add(s, 0)
-          node.setContent(content)
-          result
-        case result => result
-      }
+      val info = node.getInfo.toString.split(" ")
+      if info.contains("scala") then {
+        val argOverride =
+          info
+            .find(_.startsWith("sc:"))
+            .map(_.stripPrefix("sc:"))
+            .map(SCFlagsParser.parse)
+            .flatMap(_ match {
+              case Right(flags) => Some(flags)
+              case Left(error) =>
+                report.warning(
+                  s"""|Error occured during parsing flags in snippet:
+                      |$error""".stripMargin
+                )
+                None
+            })
+        val snippetCompilationResult = cf(snippet, lineOffset, argOverride) match {
+          case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if debug =>
+            val s = sequence.BasedSequence.EmptyBasedSequence()
+              .append(wrapped)
+              .append(sequence.BasedSequence.EOL)
+            val content = mdu.BlockContent()
+            content.add(s, 0)
+            node.setContent(content)
+            result
+          case result => result
+        }
 
-      node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
-      node.unlink()
+        node.insertBefore(new ExtendedFencedCodeBlock(node, snippetCompilationResult))
+        node.unlink()
+      }
     }
 
     root
