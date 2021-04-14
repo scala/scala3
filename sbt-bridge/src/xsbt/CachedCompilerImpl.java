@@ -26,7 +26,7 @@ public class CachedCompilerImpl implements CachedCompiler {
       throw new IllegalArgumentException("output should be a SingleOutput, was a " + output.getClass().getName());
 
     this.outputArgs =
-      new String[] { "-d", ((SingleOutput) output).getOutputDirectory().getAbsolutePath() };
+      new String[] { "-d", ((SingleOutput) output).getOutputDirectoryAsPath().toAbsolutePath().toString() };
   }
 
   public String[] commandArguments(File[] sources) {
