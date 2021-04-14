@@ -139,6 +139,10 @@ object TypeOps:
           case tp1 => tp1
         }
       case tp: AppliedType =>
+        tp.tycon match
+          case tycon: TypeRef if tycon.info.isInstanceOf[MatchAlias] =>
+            isFullyDefined(tp, ForceDegree.all)
+          case _ =>
         val normed = tp.tryNormalize
         if normed.exists then normed else tp.map(simplify(_, theMap))
       case tp: TypeParamRef =>
