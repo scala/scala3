@@ -231,7 +231,8 @@ object Checking {
         val cls = pot match
           case hot: Hot => hot.classSymbol
           case obj: Global => obj.moduleClass
-        state.dependencies += StaticCall(cls, sym)(pot.source)
+        val target = resolve(cls, sym)
+        state.dependencies += StaticCall(cls, target)(pot.source)
         Errors.empty
 
       case _: Cold =>
@@ -330,19 +331,23 @@ object Checking {
           Errors.empty
 
         case MethodReturn(hot: Hot, sym) =>
-          state.dependencies += ProxyUsage(hot.classSymbol, sym)(pot.source)
+          val target = resolve(hot.classSymbol, sym)
+          state.dependencies += ProxyUsage(hot.classSymbol, target)(pot.source)
           Errors.empty
 
         case MethodReturn(obj: Global, sym) =>
-          state.dependencies += ProxyUsage(obj.moduleClass, sym)(pot.source)
+          val target = resolve(obj.moduleClass, sym)
+          state.dependencies += ProxyUsage(obj.moduleClass, target)(pot.source)
           Errors.empty
 
         case FieldReturn(hot: Hot, sym) =>
-          state.dependencies += ProxyUsage(hot.classSymbol, sym)(pot.source)
+          val target = resolve(hot.classSymbol, sym)
+          state.dependencies += ProxyUsage(hot.classSymbol, target)(pot.source)
           Errors.empty
 
         case FieldReturn(obj: Global, sym) =>
-          state.dependencies += ProxyUsage(obj.moduleClass, sym)(pot.source)
+          val target = resolve(obj.moduleClass, sym)
+          state.dependencies += ProxyUsage(obj.moduleClass, target)(pot.source)
           Errors.empty
 
         case Fun(pots, effs) =>

@@ -65,12 +65,18 @@ case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
  *
  *  The method can be either on a static object or on a hot object.
  *  The target of the call is determined statically.
+ *
+ *  Note: Virtual method resolution should have been performed for the target.
+ *
  */
 case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "StaticCall(" + cls.show + ", " + symbol.show + ")"
 }
 
-/** A static method call result is used */
+/** A static method call result is used
+ *
+ *  Note: Virtual method resolution should have been performed for the target.
+ */
  case class ProxyUsage(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "ProxyUsage(" + cls.show + ", " + symbol.show + ")"
 }
@@ -166,8 +172,8 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) then
-      Util.traceIndented("skip " + dep.cls.show + " which is not in current run ", init)
+    if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner)  then
+      Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else {
       val deps = methodDependencies(dep)
@@ -175,8 +181,8 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkProxyUsage(dep: ProxyUsage)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) then
-      Util.traceIndented("skip " + dep.cls.show + " which is not in current run ", init)
+    if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner) then
+      Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else {
       val deps = proxyDependencies(dep)
@@ -239,8 +245,7 @@ class CycleChecker(cache: Cache) {
       }
 
       val pot = Hot(dep.cls)(dep.source)
-      val target = Util.resolve(dep.cls, dep.symbol)
-      val effs = pot.potentialsOf(target)(using env).promote(dep.source)
+      val effs = pot.potentialsOf(dep.symbol)(using env).promote(dep.source)
 
       val errs = effs.flatMap(Checking.check(_)(using state))
       assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList))
@@ -355,8 +360,7 @@ class CycleChecker(cache: Cache) {
     }
 
     val pot = Hot(dep.cls)(dep.source)
-    val target = Util.resolve(dep.cls, dep.symbol)
-    val effs = pot.effectsOf(target)(using env)
+    val effs = pot.effectsOf(dep.symbol)(using env)
 
     val errs = effs.flatMap(Checking.check(_)(using state))
     assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList))
