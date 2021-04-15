@@ -11,9 +11,9 @@ import Decorators._
 import printing.SyntaxHighlighting
 import reporting.trace
 import config.Printers.init
-
-
 import ast.tpd._
+
+import Errors._
 
 import scala.collection.mutable
 
@@ -48,11 +48,12 @@ import scala.collection.mutable
 trait Dependency {
   def symbol: Symbol
   def source: Tree
+  def show(using Context): String
 }
 
 /** Depend on the initialization of another object */
-case class ObjectInit(symbol: Symbol)(val source: Tree) extends Dependency {
-  def show(using Context): String = "ObjectInit(" + symbol.show + ")"
+case class ObjectAccess(symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "ObjectAccess(" + symbol.show + ")"
 }
 
 /** Depend on usage of an instance, which can be either a class instance or object */
@@ -60,130 +61,163 @@ case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "InstanceUsage(" + symbol.show + ")"
 }
 
-/** Depend on the class */
+/** A static method call detected from fine-grained analysis
+ *
+ *  The method can be either on a static object or on a hot object.
+ *  The target of the call is determined statically.
+ */
+case class StaticCall(symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "StaticCall(" + symbol.show + ")"
+}
+
+/** A class is used
+ *
+ *  This is a coarse-grained abstraction
+ */
 case class ClassUsage(symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "ClassUsage(" + symbol.show + ")"
 }
 
+
 class CycleChecker {
   private val summaryCache = mutable.Map.empty[Symbol, List[Dependency]]
 
-  val classesInCurrentRun = mutable.Set.empty[Symbol]
-  val objectsInCurrentRun = mutable.Set.empty[Symbol]
+  private val classesInCurrentRun = mutable.Set.empty[Symbol]
+  private val objectsInCurrentRun = mutable.Set.empty[Symbol]
 
   /** Checking state */
-  case class State(visited: mutable.Set[Symbol], path: Set[Symbol], trace: Vector[Dependency])
+  case class State(visited: mutable.Set[Dependency], path: Vector[Symbol], trace: Vector[Dependency]) {
+    def visit[T](dep: Dependency)(op: State ?=> T): T =
+      this.visited += dep
+      val state2: State = this.copy(trace = trace :+ dep)
+      val res = op(using state2)
+      res
 
-  def cacheObjectDependencies(obj: Symbol, deps: List[Dependency]): Unit =
-    objectsInCurrentRun += obj
-    summaryCache(obj) = deps
+    def withPath[T](obj: Symbol)(op: State ?=> T): T =
+      val state2 = this.copy(path = path :+ obj)
+      val res = op(using state2)
+      res
 
-  def dependenciesOf(sym: Symbol)(using Context): List[Dependency] =
+  }
+
+  def state(using ev: State) = ev
+
+// ----- checking -------------------------------
+  def checkCyclic(): Unit = ???
+
+  private def check(dep: Dependency)(using Context, State): List[Error] =
+    trace("checking dependency " + dep.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
+      if state.visited.contains(dep) then
+        Nil
+      else
+        state.visit(dep) {
+          dep match
+          case dep: ObjectAccess   => checkObjectAccess(dep)
+          case dep: InstanceUsage  => checkInstanceUsage(dep)
+          case dep: StaticCall     => checkStaticCall(dep)
+          case dep: ClassUsage     => checkClassUsage(dep)
+        }
+    }
+
+  private def checkObjectAccess(dep: ObjectAccess)(using Context, State): List[Error] =
+    val obj = dep.symbol
+    if state.path.contains(obj) then
+      val cycle = state.path.dropWhile(_ != obj)
+      if cycle.size > 1 then
+        val trace = state.trace.map(_.source) :+ dep.source
+        val error = CyclicObjectInit(obj, trace)
+        error :: Nil
+      else
+        // TODO: issue a warning for access an object outside its scope during its initialization
+        Nil
+    else
+      val constr = obj.primaryConstructor
+      state.withPath(obj) {
+        check(StaticCall(constr)(dep.source))
+      }
+
+
+  private def checkInstanceUsage(dep: InstanceUsage)(using Context, State): List[Error] =
+    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    else {
+      val cls = dep.symbol
+      val deps = classDependencies(cls, excludeInit = true)
+      deps.flatMap(check(_))
+    }
+
+  private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
+    val cls = dep.symbol.owner
+    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    else {
+      val sym = dep.symbol
+      val deps = methodDependencies(sym)
+      deps.flatMap(check(_))
+    }
+
+  private def checkClassUsage(dep: ClassUsage)(using Context, State): List[Error] =
+    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    else {
+      val cls = dep.symbol
+      val deps = classDependencies(cls, excludeInit = false)
+      deps.flatMap(check(_))
+    }
+
+// ----- analysis of dependencies -------------------------------
+
+  def cacheConstructorDependencies(constr: Symbol, deps: List[Dependency])(using Context): Unit =
+    summaryCache(constr) = deps
+    val cls = constr.owner
+    if cls.is(Flags.Module) && cls.isStatic then
+      objectsInCurrentRun += cls.sourceModule
+    else
+      classesInCurrentRun += cls
+
+  private def classDependencies(sym: Symbol, excludeInit: Boolean)(using Context): List[Dependency] =
     if (summaryCache.contains(sym)) summaryCache(sym)
-    else if (!classesInCurrentRun.contains(sym)) Nil
     else trace("summary for " + sym.show, init) {
-      assert(sym.isClass)
       val cls = sym.asClass
-      val deps = analyze(cls)
+      val deps = analyzeClass(cls, excludeInit)
       summaryCache(cls) = deps
       deps
     }
 
-  def check()(using Context): Unit = ???
-
-  private def visit(sym: Symbol, state: State, source: Tree)(using Context): List[Error] = trace("checking " + sym.show, init) {
-    if state.path.contains(sym) then
-      val cycle = state.trace.dropWhile(_.symbol != sym)
-      val objectNum = cycle.filter(dep => dep.symbol.is(Flags.Module) && dep.symbol.isStatic).size
-      val trace = cycle.map(_.source) :+ source
-      val error = CyclicObjectInit(sym, trace)
-      error :: Nil
-    else if state.visited.contains(sym) then
-      Nil
-    else
-      state.visited += sym
-      var path = state.path
-
-      if sym.is(Flags.Module) && sym.isStatic then
-        path = state.path + dep.symbol
-        if sym.isTerm then
-
-      val state2 = state.copy(path = path, trace = trace :+ dep.source)
-      val deps = dependenciesOf(cls)
-      Util.traceIndented("dependencies of " + sym.show + " = " + deps.map(_.sym.show).mkString(","), init)
-      var res: List[Error] = Nil
-      // TODO: stop early
-      deps.foreach { dep =>
-        res = visit(dep.sym, state2, dep.source)
-      }
-      res
+  private def methodDependencies(sym: Symbol)(using Context): List[Dependency] =
+    if (summaryCache.contains(sym)) summaryCache(sym)
+    else trace("summary for " + sym.show) {
+      val deps = analyzeMethod(sym)
+      summaryCache(sym) = deps
+      deps
     }
 
-  def clean() = {
-    summaryCache.clear()
-    classesInCurrentRun.clear()
-    objectsInCurrentRun.clear()
-  }
+  def isStaticObjectRef(sym: Symbol)(using Context) =
+    sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
 
-  def analyze(cls: ClassSymbol)(using Context): List[Dependency] = {
-    def isStaticObjectRef(sym: Symbol) =
-      sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
-
-    val isStaticObj = isStaticObjectRef(cls)
-
-    if (cls.defTree.isEmpty) return Nil
-
+  private def analyzeClass(cls: ClassSymbol, excludeInit: Boolean)(using Context): List[Dependency] = {
     val cdef = cls.defTree.asInstanceOf[TypeDef]
     val tpl = cdef.rhs.asInstanceOf[Template]
 
     var deps: List[Dependency] = Nil
 
-    def analyzeType(tp: Type, source: Tree): Unit = tp match {
-      case (_: ConstantType) | NoPrefix =>
-
-      case tmref: TermRef if isStaticObjectRef(tmref.symbol) =>
-        deps = Dependency(tmref.symbol)(source) :: deps
-
-      case tmref: TermRef =>
-        analyzeType(tmref.prefix, source)
-
-      case ThisType(tref) =>
-        if isStaticObjectRef(tref.symbol.sourceModule) && tref.symbol != cls
-        then
-          val obj = tref.symbol.sourceModule
-          deps = Dependency(obj)(source) :: deps
-
-      case SuperType(thisTp, _) =>
-        analyzeType(thisTp, source)
-
-      case _: TypeRef | _: AppliedType =>
-        // possible from parent list
-
-      case _ =>
-        throw new Exception("unexpected type: " + tp)
-    }
-
-
     val traverser = new TreeTraverser {
       override def traverse(tree: Tree)(using Context): Unit =
         tree match {
           case tree @ Template(_, parents, self, _) =>
-            if !isStaticObj then
+            if !excludeInit then
               parents.foreach(traverse(_))
             tree.body.foreach {
-              case ddef: DefDef =>
+              case ddef: DefDef if ddef.symbol.isConstructor =>
                 traverse(ddef)
               case vdef: ValDef if vdef.symbol.is(Flags.Lazy) =>
                 traverse(vdef)
               case stat =>
-                if !isStaticObj then traverse(stat)
+                if !excludeInit then traverse(stat)
             }
 
           case tree: RefTree if tree.isTerm =>
-            analyzeType(tree.tpe, tree)
+            analyzeType(tree.tpe, tree, exclude = cls)
 
           case tree: This =>
-            analyzeType(tree.tpe, tree)
+            analyzeType(tree.tpe, tree, exclude = cls)
 
           case tree: ValOrDefDef =>
             traverseChildren(tree.rhs)
@@ -192,7 +226,7 @@ class CycleChecker {
             // don't go into nested classes
 
           case tree: New =>
-            deps = Dependency(tree.tpe.classSymbol)(tree) :: deps
+            deps = ClassUsage(tree.tpe.classSymbol)(tree) :: deps
 
           case _ =>
             traverseChildren(tree)
@@ -202,11 +236,50 @@ class CycleChecker {
     // TODO: the traverser might create duplicate entries for parents
     tpl.parents.foreach { tree =>
       val tp = tree.tpe
-      deps = Dependency(tp.classSymbol)(tree) :: deps
+      val dep =
+        if excludeInit then InstanceUsage(tp.classSymbol)(tree)
+        else ClassUsage(tp.classSymbol)(tree)
+
+      deps = dep :: deps
     }
 
     traverser.traverse(tpl)
     deps
   }
 
+  private def analyzeType(tp: Type, source: Tree, exclude: Symbol)(using Context): Unit = tp match {
+    case (_: ConstantType) | NoPrefix =>
+
+    case tmref: TermRef if isStaticObjectRef(tmref.symbol) =>
+      ObjectAccess(tmref.symbol)(source) :: Nil
+
+    case tmref: TermRef =>
+      analyzeType(tmref.prefix, source, exclude)
+
+    case ThisType(tref) =>
+      if isStaticObjectRef(tref.symbol.sourceModule) && tref.symbol != exclude
+      then
+        val obj = tref.symbol.sourceModule
+        ObjectAccess(obj)(source) :: Nil
+
+    case SuperType(thisTp, _) =>
+      analyzeType(thisTp, source, exclude)
+
+    case _: TypeRef | _: AppliedType =>
+      // possible from parent list
+
+    case _ =>
+      throw new Exception("unexpected type: " + tp)
+  }
+
+
+  private def analyzeMethod(meth: Symbol)(using Context): List[Dependency] = ???
+
+// ----- cleanup ------------------------
+
+  def clean() = {
+    summaryCache.clear()
+    classesInCurrentRun.clear()
+    objectsInCurrentRun.clear()
+  }
 }

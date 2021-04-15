@@ -67,7 +67,7 @@ object Checking {
   given theEnv(using State): Env = summon[State].env
   given theCtx(using State): Context = summon[State].env.ctx
 
-  private def check(eff: Effect)(using state: State): Errors = {
+  private def check(eff: Effect)(using state: State): Errors =
     trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       if (state.visited.contains(eff)) {
         traceIndented("Already checked " + eff.show, init)
@@ -82,7 +82,6 @@ object Checking {
           case eff: AccessGlobal => Checking.checkAccessGlobal(eff)
         }
     }
-  }
 
   private def checkEffects(effs: Effects)(using state: State): Unit = traceOp("checking effects " + Effects.show(effs), init) {
     for {
@@ -234,37 +233,10 @@ object Checking {
         else
           Errors.empty
 
-      case pot @ Global(obj) =>
-        if !state.isThisStatic then
-          Errors.empty
-        else if state.isInSameFile(obj) then
-          // more fine-grained check if in the same source
-          val target = resolve(pot.moduleClass, sym)
-          if (target.hasSource) {
-            val effs = pot.effectsOf(target).toList
-            effs.flatMap(check(_))
-          }
-          else Errors.empty
-        else
-          // coarse-grained check if in different file
-          state.dependencies += InstanceUsage(obj.moduleClass)(pot.source)
-          Errors.empty
-
-      case hot: Hot =>
-        if !state.isThisStatic then
-          Errors.empty
-        else if state.isInSameFile(hot.classSymbol) then
-          // more fine-grained check if in the same source
-          val target = resolve(hot.classSymbol, sym)
-          if (target.hasSource) {
-            val effs = hot.effectsOf(target).toList
-            effs.flatMap(check(_))
-          }
-          else Errors.empty
-        else
-          // coarse-grained check if in different file
-          state.dependencies += ClassUsage(hot.classSymbol)(pot.source)
-          Errors.empty
+      case _: Hot | _: Global  =>
+        // coarse-grained check if in different file
+        state.dependencies += StaticCall(sym)(pot.source)
+        Errors.empty
 
       case _: Cold =>
         CallCold(sym, eff.source, state.path).toErrors
@@ -303,22 +275,16 @@ object Checking {
         else Errors.empty
 
       case hot: Hot =>
-        if state.isThisStatic then
-          val target = resolve(hot.classSymbol, field)
-          if (target.is(Flags.Lazy)) check(MethodCall(hot, target)(eff.source))
-          else Errors.empty
-        else
-          Errors.empty
+        val target = resolve(hot.classSymbol, field)
+        if (target.is(Flags.Lazy)) check(MethodCall(hot, target)(eff.source))
+        else Errors.empty
 
       case obj: Global =>
         // for globals, either accessing the object is an error
         // or all fields are already initialized
-        if state.isThisStatic then
-          val target = resolve(obj.moduleClass, field)
-          if (target.is(Flags.Lazy)) check(MethodCall(obj, target)(eff.source))
-          else Errors.empty
-        else
-          Errors.empty
+        val target = resolve(obj.moduleClass, field)
+        if (target.is(Flags.Lazy)) check(MethodCall(obj, target)(eff.source))
+        else Errors.empty
 
       case _: Cold =>
         AccessCold(field, eff.source, state.path).toErrors
@@ -361,7 +327,7 @@ object Checking {
 
         case obj: Global =>
           assert(state.isThisStatic, "encountered global object promotion while checking " + state.thisClass.show)
-          state.dependencies += InstanceUsage(obj.symbol)(pot.source)
+          state.dependencies += InstanceUsage(obj.moduleClass)(pot.source)
           Errors.empty
 
         case hot: Hot =>
@@ -397,14 +363,8 @@ object Checking {
 
   private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
     val obj = eff.potential
-    if state.isThisStatic then
-      if obj.moduleClass != state.thisClass then
-        state.dependencies += ObjectInit(obj.symbol)(eff.source)
-        Errors.empty
-      else
-        CyclicObjectInit(obj.symbol, state.path).toErrors
-    else
-      Errors.empty
+    state.dependencies += ObjectAccess(obj.symbol)(eff.source)
+    Errors.empty
 
   private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
     pot match {
@@ -439,25 +399,8 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
-          case hot: Hot =>
-            if !state.isThisStatic then
-              Summary.empty
-            else if state.isInSameFile(hot.classSymbol) then
-              val target = resolve(hot.classSymbol, sym)
-              if (target.hasSource) Summary(hot.potentialsOf(target), Effects.empty)
-              else Summary.empty
-            else
-              Summary.empty   // already recorded with effect checking
-
-          case pot @ Global(obj) =>
-            if !state.isThisStatic then
-              Summary.empty
-            else if state.isInSameFile(obj) then
-              val target = resolve(pot.moduleClass, sym)
-              if (target.hasSource) Summary(pot.potentialsOf(target), Effects.empty)
-              else Summary.empty
-            else
-              Summary.empty   // already recorded with effect checking
+          case _: Hot | _: Global =>
+            Summary(Promote(pot)(pot.source))
 
           case _: Cold =>
             Summary.empty // error already reported, ignore
@@ -488,25 +431,8 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
-          case hot: Hot =>
-            if !state.isThisStatic then
-              Summary.empty
-            else if state.isInSameFile(hot.classSymbol) then
-              val target = resolve(hot.classSymbol, sym)
-              if (target.hasSource) Summary(hot.potentialsOf(target), Effects.empty)
-              else Summary.empty
-            else
-              Summary.empty
-
-          case pot @ Global(obj) =>
-            if !state.isThisStatic then
-              Summary.empty
-            else if state.isInSameFile(obj) then
-              val target = resolve(pot.moduleClass, sym)
-              if (target.hasSource) Summary(pot.potentialsOf(target), Effects.empty)
-              else Summary.empty
-            else
-              Summary.empty
+          case _: Hot | _: Global =>
+            Summary(Promote(pot)(pot.source))
 
           case _: Cold =>
             Summary.empty // error already reported, ignore

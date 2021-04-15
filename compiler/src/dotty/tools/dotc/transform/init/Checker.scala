@@ -36,14 +36,13 @@ class Checker extends Phase {
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
     cycleChecker.clean()
     val newUnits = super.runOn(units)
-    cycleChecker.check()
+    cycleChecker.checkCyclic()
     newUnits
 
   val traverser = new TreeTraverser {
     override def traverse(tree: Tree)(using Context): Unit =
       tree match {
         case tdef: TypeDef if tdef.isClassDef =>
-          cycleChecker.classesInCurrentRun += tdef.symbol
           checkClassDef(tdef)
           traverseChildren(tree)
         case _ =>
@@ -85,8 +84,7 @@ class Checker extends Phase {
 
       Checking.checkClassBody(tree)
 
-      if cls.is(Flags.Module) && cls.isStatic then
-        cycleChecker.cacheObjectDependencies(cls.sourceModule, state.dependencies.toList)
+      cycleChecker.cacheConstructorDependencies(cls.primaryConstructor, state.dependencies.toList)
     }
 
     tree
