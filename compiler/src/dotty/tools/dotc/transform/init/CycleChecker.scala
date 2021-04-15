@@ -23,13 +23,13 @@ import scala.collection.mutable
  *
  *  This class is used in checking cyclic initialization of static objects.
  *
- *  For the check to be fast, the algorithm uses a combination of
- *  coarse-grained approximation and fine-grained abstractions.
+ *  For the check to be simple and fast, the algorithm uses a combination of
+ *  coarse-grained analysis and fine-grained analysis.
  *
  *  Fine-grained abstractions are created from the initialization
  *  check for static objects.
  *
- *  Coarse-grained abstractions are constructed as follows:
+ *  Coarse-grained abstractions are created as follows:
  *
  *  - if a static object `O` is used in another class/static-object `B`,
  *    then B -> O
@@ -146,11 +146,9 @@ class CycleChecker {
     }
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
-    val cls = dep.symbol.owner
-    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    if !classesInCurrentRun.contains(dep.cls) then Nil
     else {
-      val sym = dep.symbol
-      val deps = methodDependencies(sym)
+      val deps = methodDependencies(dep.cls, dep.symbol)
       deps.flatMap(check(_))
     }
 
@@ -181,10 +179,10 @@ class CycleChecker {
       deps
     }
 
-  private def methodDependencies(sym: Symbol)(using Context): List[Dependency] =
+  private def methodDependencies(cls: Symbol, sym: Symbol)(using Context): List[Dependency] =
     if (summaryCache.contains(sym)) summaryCache(sym)
     else trace("summary for " + sym.show) {
-      val deps = analyzeMethod(sym)
+      val deps = analyzeMethod(cls, sym)
       summaryCache(sym) = deps
       deps
     }
@@ -251,7 +249,8 @@ class CycleChecker {
     case (_: ConstantType) | NoPrefix =>
 
     case tmref: TermRef if isStaticObjectRef(tmref.symbol) =>
-      ObjectAccess(tmref.symbol)(source) :: Nil
+      val obj = tmref.symbol
+      ObjectAccess(obj)(source) :: InstanceUsage(obj.moduleClass)(source) :: Nil
 
     case tmref: TermRef =>
       analyzeType(tmref.prefix, source, exclude)
@@ -259,8 +258,9 @@ class CycleChecker {
     case ThisType(tref) =>
       if isStaticObjectRef(tref.symbol.sourceModule) && tref.symbol != exclude
       then
-        val obj = tref.symbol.sourceModule
-        ObjectAccess(obj)(source) :: Nil
+        val cls = tref.symbol
+        val obj = cls.sourceModule
+        ObjectAccess(obj)(source) :: InstanceUsage(cls)(source) :: Nil
 
     case SuperType(thisTp, _) =>
       analyzeType(thisTp, source, exclude)
