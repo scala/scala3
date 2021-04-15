@@ -2,7 +2,7 @@ object A {           // error
   val a: Int = B.b
 }
 
-object B {          // error
+object B {
   val b: Int = A.a
 }
 

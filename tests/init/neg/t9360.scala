@@ -5,9 +5,9 @@ class BaseClass(s: String) {
 object Obj {                           // error
   val s: String = "hello"
 
-  object AObj extends BaseClass(s)     // error
+  object AObj extends BaseClass(s)
 
-  object BObj extends BaseClass(s)     // error
+  object BObj extends BaseClass(s)
 
   val list = List(AObj, BObj)
 
