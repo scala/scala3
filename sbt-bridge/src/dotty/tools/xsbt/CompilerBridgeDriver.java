@@ -29,13 +29,13 @@ public class CompilerBridgeDriver extends Driver {
     super();
     this.scalacOptions = scalacOptions;
 
-    if (!output.getSingleOutput().isPresent())
+    if (!output.getSingleOutputAsPath().isPresent())
       throw new IllegalArgumentException("output should be a SingleOutput, was a " + output.getClass().getName());
 
     this.args = new String[scalacOptions.length + 2];
     System.arraycopy(scalacOptions, 0, args, 0, scalacOptions.length);
     args[scalacOptions.length] = "-d";
-    args[scalacOptions.length + 1] = output.getSingleOutput().get().getAbsolutePath();
+    args[scalacOptions.length + 1] = output.getSingleOutputAsPath().get().toAbsolutePath().toString();
   }
 
   private static final String StopInfoError =
