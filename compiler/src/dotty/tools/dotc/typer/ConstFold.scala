@@ -29,12 +29,12 @@ object ConstFold:
   def Apply[T <: Apply](tree: T)(using Context): T =
     tree.fun match
       case Select(xt, op) if foldedBinops.contains(op) =>
-        treeConstant(xt) match
-          case Some(x) =>
+        xt match
+          case ConstantTree(x) =>
             tree.args match
               case yt :: Nil =>
-                treeConstant(yt) match
-                  case Some(y) => tree.withFoldedType(foldBinop(op, x, y))
+                yt match
+                  case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree
               case _ => tree
           case _ => tree
@@ -46,8 +46,8 @@ object ConstFold:
 
   def Select[T <: Select](tree: T)(using Context): T =
     if foldedUnops.contains(tree.name) then
-      treeConstant(tree.qualifier) match
-        case Some(x) => tree.withFoldedType(foldUnop(tree.name, x))
+      tree.qualifier match
+        case ConstantTree(x) => tree.withFoldedType(foldUnop(tree.name, x))
         case _ => tree
     else tree
 
@@ -59,15 +59,16 @@ object ConstFold:
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 
-  private def treeConstant(tree: Tree)(using Context): Option[Constant] =
-    tree match
-      case Inlined(_, Nil, expr) => treeConstant(expr)
-      case Typed(expr, _) => treeConstant(expr)
-      case Literal(c) if c.tag == Constants.NullTag => Some(c)
-      case _ =>
-        tree.tpe.widenTermRefExpr.normalized.simplified match
-          case ConstantType(c) => Some(c)
-          case _ => None
+  private object ConstantTree:
+    def unapply(tree: Tree)(using Context): Option[Constant] =
+      tree match
+        case Inlined(_, Nil, expr) => unapply(expr)
+        case Typed(expr, _) => unapply(expr)
+        case Literal(c) if c.tag == Constants.NullTag => Some(c)
+        case _ =>
+          tree.tpe.widenTermRefExpr.normalized.simplified match
+            case ConstantType(c) => Some(c)
+            case _ => None
 
   extension [T <: Tree](tree: T)(using Context)
     private def withFoldedType(c: Constant | Null): T =
