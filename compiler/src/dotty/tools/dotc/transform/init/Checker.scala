@@ -26,7 +26,7 @@ class Checker extends Phase {
   // cache of class summary
   private val cache = new Cache
 
-  private val cycleChecker = new CycleChecker
+  private val cycleChecker = new CycleChecker(cache)
 
   override val runsAfter = Set(Pickler.name)
 

@@ -46,11 +46,9 @@ object Checking {
       this.visited = state.visited
       res
 
-    def isThisStatic(using Context): Boolean =
-      thisClass.is(Flags.Module) && thisClass.sourceModule.isStatic
 
-    def isInSameFile(that: Symbol)(using Context): Boolean =
-      that.source == that.source
+    def isFieldInitialized(field: Symbol): Boolean =
+      fieldsInited.contains(field)
 
     def visit[T](eff: Effect)(op: State ?=> T): T =
       val state: State = this.copy(path = path :+ eff.source, visited = this.visited + eff)
@@ -67,7 +65,7 @@ object Checking {
   given theEnv(using State): Env = summon[State].env
   given theCtx(using State): Context = summon[State].env.ctx
 
-  private def check(eff: Effect)(using state: State): Errors =
+  private[init] def check(eff: Effect)(using state: State): Errors =
     trace("checking effect " + eff.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
       if (state.visited.contains(eff)) {
         traceIndented("Already checked " + eff.show, init)
@@ -168,23 +166,19 @@ object Checking {
 
     tpl.parents.foreach {
       case tree @ Block(stats, parent) =>
-        if state.isThisStatic then
-          val argss = termArgss(parent)
-          checkStats((stats :: argss).flatten, cls)
-
+        val argss = termArgss(parent)
+        checkStats((stats :: argss).flatten, cls)
         checkConstructor(funPart(parent).symbol, parent.tpe, tree)
 
       case tree @ Apply(Block(stats, parent), args) =>
-        if state.isThisStatic then
-          val argss = termArgss(parent)
-          checkStats((stats :: args :: argss).flatten, cls)
+        val argss = termArgss(parent)
+        checkStats((stats :: args :: argss).flatten, cls)
 
         checkConstructor(funPart(parent).symbol, tree.tpe, tree)
 
       case parent : Apply =>
-        if state.isThisStatic then
-          val argss = termArgss(parent)
-          checkStats(argss.flatten, cls)
+        val argss = termArgss(parent)
+        checkStats(argss.flatten, cls)
 
         checkConstructor(funPart(parent).symbol, parent.tpe, parent)
 
@@ -261,13 +255,13 @@ object Checking {
       case _: ThisRef =>
         val target = resolve(state.thisClass, field)
         if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-        else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+        else if (!state.isFieldInitialized(target)) AccessNonInit(target, state.path).toErrors
         else Errors.empty
 
       case SuperRef(_: ThisRef, supercls) =>
         val target = resolveSuper(state.thisClass, supercls, field)
         if (target.is(Flags.Lazy)) check(MethodCall(pot, target)(eff.source))
-        else if (!state.fieldsInited.contains(target)) AccessNonInit(target, state.path).toErrors
+        else if (!state.isFieldInitialized(target)) AccessNonInit(target, state.path).toErrors
         else Errors.empty
 
       case Warm(cls, outer) =>
@@ -312,7 +306,7 @@ object Checking {
           val classRef = state.thisClass.info.asInstanceOf[ClassInfo].appliedRef
           val allFieldsInited = classRef.fields.forall { denot =>
             val sym = denot.symbol
-            sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.fieldsInited.contains(sym)
+            sym.isOneOf(Flags.Lazy | Flags.Deferred) || state.isFieldInitialized(sym)
           }
           if (allFieldsInited)
             Errors.empty
@@ -328,12 +322,10 @@ object Checking {
           else PromoteWarm(pot, eff.source, state.path).toErrors
 
         case obj: Global =>
-          assert(state.isThisStatic, "encountered global object promotion while checking " + state.thisClass.show)
           state.dependencies += InstanceUsage(obj.moduleClass)(pot.source)
           Errors.empty
 
         case hot: Hot =>
-          if !state.isThisStatic then Errors.empty
           state.dependencies += InstanceUsage(hot.classSymbol)(pot.source)
           Errors.empty
 
@@ -447,11 +439,11 @@ object Checking {
 
       case Outer(pot1, cls) =>
         pot1 match {
-          case _: ThisRef =>
+          case _: ThisRef | _: Hot | _: Global =>
             // all outers for `this` are assumed to be hot
             Summary.empty
 
-          case _: Fun | _: Hot | _: Global =>
+          case _: Fun =>
             throw new Exception("Unexpected code reached " + pot.show)
 
           case warm: Warm =>

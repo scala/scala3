@@ -13,7 +13,7 @@ import reporting.trace
 import config.Printers.init
 import ast.tpd._
 
-import Errors._
+import Errors._, Potentials._, Effects._
 
 import scala.collection.mutable
 
@@ -66,7 +66,7 @@ case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
  *  The method can be either on a static object or on a hot object.
  *  The target of the call is determined statically.
  */
-case class StaticCall(cls: Symbol, symbol: Symbol)(val source: Tree) extends Dependency {
+case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "StaticCall(" + cls.show + ", " + symbol.show + ")"
 }
 
@@ -79,7 +79,7 @@ case class ClassUsage(symbol: Symbol)(val source: Tree) extends Dependency {
 }
 
 
-class CycleChecker {
+class CycleChecker(cache: Cache) {
   private val summaryCache = mutable.Map.empty[Symbol, List[Dependency]]
 
   private val classesInCurrentRun = mutable.Set.empty[Symbol]
@@ -133,7 +133,7 @@ class CycleChecker {
     else
       val constr = obj.primaryConstructor
       state.withPath(obj) {
-        check(StaticCall(constr.owner, constr)(dep.source))
+        check(StaticCall(constr.owner.asClass, constr)(dep.source))
       }
 
 
@@ -148,7 +148,7 @@ class CycleChecker {
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
     if !classesInCurrentRun.contains(dep.cls) then Nil
     else {
-      val deps = methodDependencies(dep.cls, dep.symbol)
+      val deps = methodDependencies(dep)
       deps.flatMap(check(_))
     }
 
@@ -179,11 +179,11 @@ class CycleChecker {
       deps
     }
 
-  private def methodDependencies(cls: Symbol, sym: Symbol)(using Context): List[Dependency] =
-    if (summaryCache.contains(sym)) summaryCache(sym)
-    else trace("summary for " + sym.show) {
-      val deps = analyzeMethod(cls, sym)
-      summaryCache(sym) = deps
+  private def methodDependencies(call: StaticCall)(using Context): List[Dependency] =
+    if (summaryCache.contains(call.symbol)) summaryCache(call.symbol)
+    else trace("summary for " + call.symbol.show) {
+      val deps = analyzeMethod(call)
+      summaryCache(call.symbol) = deps
       deps
     }
 
@@ -272,8 +272,30 @@ class CycleChecker {
       throw new Exception("unexpected type: " + tp)
   }
 
+  private def analyzeMethod(dep: StaticCall)(using Context): List[Dependency] = {
+    val env = Env(ctx.withOwner(dep.cls), cache)
+    val state = new Checking.State(
+      visited = Set.empty,
+      path = Vector.empty,
+      thisClass = dep.cls,
+      fieldsInited = mutable.Set.empty,
+      parentsInited = mutable.Set.empty,
+      safePromoted = mutable.Set(ThisRef()(dep.cls.defTree)),
+      dependencies = mutable.Set.empty,
+      env = env
+    ) {
+      override def isFieldInitialized(field: Symbol): Boolean = true
+    }
 
-  private def analyzeMethod(meth: Symbol)(using Context): List[Dependency] = ???
+    val pot = Hot(dep.cls)(dep.source)
+    val effs = pot.effectsOf(dep.symbol)(using env)
+
+    val errs = effs.flatMap(Checking.check(_)(using state))
+    assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList))
+
+    state.dependencies.toList
+  }
+
 
 // ----- cleanup ------------------------
 

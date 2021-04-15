@@ -46,7 +46,7 @@ object Potentials {
      *
      *  The method performs prefix substitution
      */
-    def effectsOf(sym: Symbol)(implicit env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
+    def effectsOf(sym: Symbol)(using env: Env): Effects = trace("effects of " + sym.show, init, r => Effects.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val effs = env.summaryOf(cls).effectsOf(sym)
       this match
@@ -58,7 +58,7 @@ object Potentials {
      *
      *  The method performs prefix substitution
      */
-    def potentialsOf(sym: Symbol)(implicit env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
+    def potentialsOf(sym: Symbol)(using env: Env): Potentials = trace("potentials of " + sym.show, init, r => Potentials.show(r.asInstanceOf)) {
       val cls = sym.owner.asClass
       val pots = env.summaryOf(cls).potentialsOf(sym)
       this match
