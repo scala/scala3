@@ -212,6 +212,7 @@ object RefChecks {
    *    1.9. If M is erased, O is erased. If O is erased, M is erased or inline.
    *    1.10.  If O is inline (and deferred, otherwise O would be final), M must be inline
    *    1.11.  If O is a Scala-2 macro, M must be a Scala-2 macro.
+   *    1.12.  If O is non-experimental, M must be non-experimental.
    *  2. Check that only abstract classes have deferred members
    *  3. Check that concrete classes do not have deferred definitions
    *     that are not implemented in a subclass.
@@ -477,6 +478,8 @@ object RefChecks {
           overrideError(i"needs to be declared with @targetName(${"\""}${other.targetName}${"\""}) so that external names match")
         else
           overrideError("cannot have a @targetName annotation since external names would be different")
+      else if !other.isExperimental && member.hasAnnotation(defn.ExperimentalAnnot) then // (1.12)
+        overrideError("may not override non-experimental member")
       else
         checkOverrideDeprecated()
     }
@@ -1136,6 +1139,15 @@ object RefChecks {
 
   end checkImplicitNotFoundAnnotation
 
+
+  /** Check that classes extending experimental classes or nested in experimental classes have the @experimental annotation. */
+  private def checkExperimentalInheritance(cls: ClassSymbol)(using Context): Unit =
+    if !cls.hasAnnotation(defn.ExperimentalAnnot) then
+      cls.info.parents.find(_.typeSymbol.isExperimental) match
+        case Some(parent) =>
+          report.error(em"extension of experimental ${parent.typeSymbol} must have @experimental annotation", cls.srcPos)
+        case _ =>
+  end checkExperimentalInheritance
 }
 import RefChecks._
 
@@ -1224,6 +1236,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
+    checkExperimentalInheritance(cls)
     tree
   }
   catch {
