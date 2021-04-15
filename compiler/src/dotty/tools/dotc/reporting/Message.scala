@@ -58,6 +58,9 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   protected def explain: String
 
+  /** A message suffix that can be added for certain subclasses */
+  protected def msgSuffix: String = ""
+
   /** Does this message have an explanation?
    *  This is normally the same as `explain.nonEmpty` but can be overridden
    *  if we need a way to return `true` without actually calling the
@@ -82,7 +85,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   def rawMessage = message
 
   /** The message to report. <nonsensical> tags are filtered out */
-  lazy val message: String = dropNonSensical(msg)
+  lazy val message: String = dropNonSensical(msg + msgSuffix)
 
   /** The explanation to report. <nonsensical> tags are filtered out */
   lazy val explanation: String = dropNonSensical(explain)

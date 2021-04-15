@@ -178,13 +178,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case MatchType(bound, scrutinee, cases) =>
         changePrec(GlobalPrec) {
           def caseText(tp: Type): Text = tp match {
+            case tp: HKTypeLambda => caseText(tp.resultType)
             case defn.MatchCase(pat, body) => "case " ~ toText(pat) ~ " => " ~ toText(body)
             case _ => "case " ~ toText(tp)
           }
           def casesText = Text(cases.map(caseText), "\n")
-            atPrec(InfixPrec) { toText(scrutinee) } ~
-            keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-            (" <: " ~ toText(bound) provided !bound.isAny)
+          atPrec(InfixPrec) { toText(scrutinee) } ~
+          keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
+          (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely

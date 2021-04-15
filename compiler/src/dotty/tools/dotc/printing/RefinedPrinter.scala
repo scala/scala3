@@ -105,15 +105,16 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   override def toTextPrefix(tp: Type): Text = controlled {
     def isOmittable(sym: Symbol) =
-      if (printDebug) false
-      else if (homogenizedView) isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
+      if printDebug then false
+      else if homogenizedView then isEmptyPrefix(sym) // drop <root> and anonymous classes, but not scala, Predef.
+      else if sym.isPackageObject then isOmittablePrefix(sym.owner)
       else isOmittablePrefix(sym)
     tp match {
       case tp: ThisType if isOmittable(tp.cls) =>
         ""
       case tp @ TermRef(pre, _) =>
         val sym = tp.symbol
-        if (sym.isPackageObject && !homogenizedView) toTextPrefix(pre)
+        if sym.isPackageObject && !homogenizedView && !printDebug then toTextPrefix(pre)
         else if (isOmittable(sym)) ""
         else super.toTextPrefix(tp)
       case _ => super.toTextPrefix(tp)
@@ -240,6 +241,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toTextParents(tp.parents) ~~ "{...}"
       case JavaArrayType(elemtp) =>
         toText(elemtp) ~ "[]"
+      case tp: LazyRef if !printDebug =>
+        try toText(tp.ref)
+        catch case ex: Throwable => "..."
       case tp: SelectionProto =>
         "?{ " ~ toText(tp.name) ~
            (Str(" ") provided !tp.name.toSimpleName.last.isLetterOrDigit) ~
