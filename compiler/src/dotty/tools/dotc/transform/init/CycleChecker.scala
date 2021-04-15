@@ -127,20 +127,25 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkObjectAccess(dep: ObjectAccess)(using Context, State): List[Error] =
-    Util.traceIndented("state.path = " + state.path.map(_.show), init)
-    val obj = dep.symbol
-    if state.path.contains(obj) then
-      val cycle = state.path.dropWhile(_ != obj)
-      val trace = state.trace.map(_.source) :+ dep.source
-      if cycle.size > 1 then
-        CyclicObjectInit(obj, trace) :: Nil
+    if !objectsInCurrentRun.contains(dep.symbol) then
+      Util.traceIndented("skip " + dep.symbol.show + " which is not in current run ", init)
+      Nil
+    else {
+      Util.traceIndented("state.path = " + state.path.map(_.show), init)
+      val obj = dep.symbol
+      if state.path.contains(obj) then
+        val cycle = state.path.dropWhile(_ != obj)
+        val trace = state.trace.map(_.source) :+ dep.source
+        if cycle.size > 1 then
+          CyclicObjectInit(obj, trace) :: Nil
+        else
+          ObjectLeakDuringInit(obj, trace) :: Nil
       else
-        ObjectLeakDuringInit(obj, trace) :: Nil
-    else
-      val constr = obj.moduleClass.primaryConstructor
-      state.withPath(obj) {
-        check(StaticCall(constr.owner.asClass, constr)(dep.source))
-      }
+        val constr = obj.moduleClass.primaryConstructor
+        state.withPath(obj) {
+          check(StaticCall(constr.owner.asClass, constr)(dep.source))
+        }
+    }
 
 
   private def checkInstanceUsage(dep: InstanceUsage)(using Context, State): List[Error] =
