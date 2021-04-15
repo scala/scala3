@@ -9,7 +9,7 @@ import Types._
 import Symbols._
 import Decorators._
 import printing.SyntaxHighlighting
-import reporting.trace
+import reporting._
 import config.Printers.init
 import ast.tpd._
 
@@ -114,12 +114,12 @@ class CycleChecker(cache: Cache) {
 
   private def check(dep: Dependency)(using Context, State): List[Error] =
     trace("checking dependency " + dep.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
-      if state.visited.contains(dep) then
-        Nil
-      else
-        state.visit(dep) {
+      dep match
+      case dep: ObjectAccess   => checkObjectAccess(dep)
+      case _ =>
+        if state.visited.contains(dep) then Nil
+        else state.visit(dep) {
           dep match
-          case dep: ObjectAccess   => checkObjectAccess(dep)
           case dep: InstanceUsage  => checkInstanceUsage(dep)
           case dep: StaticCall     => checkStaticCall(dep)
           case dep: ClassUsage     => checkClassUsage(dep)
@@ -127,6 +127,7 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkObjectAccess(dep: ObjectAccess)(using Context, State): List[Error] =
+    Util.traceIndented("state.path = " + state.path.map(_.show), init)
     val obj = dep.symbol
     if state.path.contains(obj) then
       val cycle = state.path.dropWhile(_ != obj)
@@ -138,14 +139,16 @@ class CycleChecker(cache: Cache) {
         // TODO: issue a warning for access an object outside its scope during its initialization
         Nil
     else
-      val constr = obj.primaryConstructor
+      val constr = obj.moduleClass.primaryConstructor
       state.withPath(obj) {
         check(StaticCall(constr.owner.asClass, constr)(dep.source))
       }
 
 
   private def checkInstanceUsage(dep: InstanceUsage)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    if !classesInCurrentRun.contains(dep.symbol) then
+      Util.traceIndented("skip " + dep.symbol.show + " which is not in current run ", init)
+      Nil
     else {
       val cls = dep.symbol
       val deps = classDependencies(cls, excludeInit = true)
@@ -153,14 +156,18 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) then Nil
+    if !classesInCurrentRun.contains(dep.cls) then
+      Util.traceIndented("skip " + dep.cls.show + " which is not in current run ", init)
+      Nil
     else {
       val deps = methodDependencies(dep)
       deps.flatMap(check(_))
     }
 
   private def checkClassUsage(dep: ClassUsage)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.symbol) then Nil
+    if !classesInCurrentRun.contains(dep.symbol) then
+      Util.traceIndented("skip " + dep.symbol.show + " which is not in current run ", init)
+      Nil
     else {
       val cls = dep.symbol
       val deps = classDependencies(cls, excludeInit = false)
@@ -170,12 +177,13 @@ class CycleChecker(cache: Cache) {
 // ----- analysis of dependencies -------------------------------
 
   def cacheConstructorDependencies(constr: Symbol, deps: List[Dependency])(using Context): Unit =
+    Util.traceIndented("deps for " + constr.show + " = " + deps.map(_.show), init)
     summaryCache(constr) = deps
     val cls = constr.owner
+
+    classesInCurrentRun += cls
     if cls.is(Flags.Module) && cls.isStatic then
       objectsInCurrentRun += cls.sourceModule
-    else
-      classesInCurrentRun += cls
 
   private def classDependencies(sym: Symbol, excludeInit: Boolean)(using Context): List[Dependency] =
     if (summaryCache.contains(sym)) summaryCache(sym)
@@ -186,13 +194,14 @@ class CycleChecker(cache: Cache) {
       deps
     }
 
-  private def methodDependencies(call: StaticCall)(using Context): List[Dependency] =
+  private def methodDependencies(call: StaticCall)(using Context): List[Dependency] = trace("dependencies of " + call.symbol.show, init, _.asInstanceOf[List[Dependency]].map(_.show).toString) {
     if (summaryCache.contains(call.symbol)) summaryCache(call.symbol)
     else trace("summary for " + call.symbol.show) {
       val deps = analyzeMethod(call)
       summaryCache(call.symbol) = deps
       deps
     }
+  }
 
   def isStaticObjectRef(sym: Symbol)(using Context) =
     sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
