@@ -329,6 +329,22 @@ object Checking {
           state.dependencies += InstanceUsage(hot.classSymbol)(pot.source)
           Errors.empty
 
+        case MethodReturn(hot: Hot, sym) =>
+          state.dependencies += ProxyUsage(hot.classSymbol, sym)(pot.source)
+          Errors.empty
+
+        case MethodReturn(obj: Global, sym) =>
+          state.dependencies += ProxyUsage(obj.moduleClass, sym)(pot.source)
+          Errors.empty
+
+        case FieldReturn(hot: Hot, sym) =>
+          state.dependencies += ProxyUsage(hot.classSymbol, sym)(pot.source)
+          Errors.empty
+
+        case FieldReturn(obj: Global, sym) =>
+          state.dependencies += ProxyUsage(obj.moduleClass, sym)(pot.source)
+          Errors.empty
+
         case Fun(pots, effs) =>
           val errs1 = state.test {
             effs.toList.flatMap(check(_))

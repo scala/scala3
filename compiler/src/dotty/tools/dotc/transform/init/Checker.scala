@@ -44,6 +44,7 @@ class Checker extends Phase {
       tree match {
         case tdef: TypeDef if tdef.isClassDef =>
           checkClassDef(tdef)
+          cycleChecker.classesInCurrentRun += tdef.symbol
           traverseChildren(tree)
         case _ =>
           traverseChildren(tree)
