@@ -78,6 +78,15 @@ object Errors {
       report.warning(show + stacktrace, obj.srcPos)
   }
 
+  case class ObjectLeakDuringInit(obj: Symbol, trace: Seq[Tree]) extends Error {
+    def source: Tree = trace.last
+    def show(using Context): String =
+      obj.show + " leaked during its initialization " + "."
+
+    override def issue(using Context): Unit =
+      report.warning(show + stacktrace, obj.srcPos)
+  }
+
   /** Promote `this` under initialization to fully-initialized */
   case class PromoteThis(pot: ThisRef, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String = "Promote the value under initialization to fully-initialized."

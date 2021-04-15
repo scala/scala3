@@ -104,10 +104,8 @@ object Summarization {
           else {
             assert(summary.pots.size == 1)
             val outer = summary.pots.head
-            val pot =
-              if outer.isGlobal then Hot(cls)(expr)
-              else Warm(cls, outer)(expr)
-            summary.dropPotentials + pot
+            if outer.isGlobal then Summary(Hot(cls)(expr))
+            else summary.dropPotentials + Warm(cls, outer)(expr)
           }
         }
 

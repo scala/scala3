@@ -131,13 +131,11 @@ class CycleChecker(cache: Cache) {
     val obj = dep.symbol
     if state.path.contains(obj) then
       val cycle = state.path.dropWhile(_ != obj)
+      val trace = state.trace.map(_.source) :+ dep.source
       if cycle.size > 1 then
-        val trace = state.trace.map(_.source) :+ dep.source
-        val error = CyclicObjectInit(obj, trace)
-        error :: Nil
+        CyclicObjectInit(obj, trace) :: Nil
       else
-        // TODO: issue a warning for access an object outside its scope during its initialization
-        Nil
+        ObjectLeakDuringInit(obj, trace) :: Nil
     else
       val constr = obj.moduleClass.primaryConstructor
       state.withPath(obj) {
