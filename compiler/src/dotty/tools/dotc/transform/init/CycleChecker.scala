@@ -66,8 +66,8 @@ case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
  *  The method can be either on a static object or on a hot object.
  *  The target of the call is determined statically.
  */
-case class StaticCall(symbol: Symbol)(val source: Tree) extends Dependency {
-  def show(using Context): String = "StaticCall(" + symbol.show + ")"
+case class StaticCall(cls: Symbol, symbol: Symbol)(val source: Tree) extends Dependency {
+  def show(using Context): String = "StaticCall(" + cls.show + ", " + symbol.show + ")"
 }
 
 /** A class is used
@@ -133,7 +133,7 @@ class CycleChecker {
     else
       val constr = obj.primaryConstructor
       state.withPath(obj) {
-        check(StaticCall(constr)(dep.source))
+        check(StaticCall(constr.owner, constr)(dep.source))
       }
 
 

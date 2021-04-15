@@ -233,9 +233,11 @@ object Checking {
         else
           Errors.empty
 
-      case _: Hot | _: Global  =>
-        // coarse-grained check if in different file
-        state.dependencies += StaticCall(sym)(pot.source)
+      case pot @ (_: Hot | _: Global)  =>
+        val cls = pot match
+          case hot: Hot => hot.classSymbol
+          case obj: Global => obj.moduleClass
+        state.dependencies += StaticCall(cls, sym)(pot.source)
         Errors.empty
 
       case _: Cold =>
