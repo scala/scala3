@@ -1,17 +1,17 @@
 class A
 class B
 
-given A with {}
-given B with {}
+given A()
+given B()
 
 trait Foo
 trait Bar
 
-given Foo with {}
-given Bar with {}
+given Foo()
+given Bar()
 
 trait C
 trait Baz[A]
 
-given C with {}
-given [A]: Baz[A] with {}
+given C()
+given [A]: Baz[A]()

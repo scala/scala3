@@ -110,11 +110,11 @@ object Instances extends Common:
         println(summon[Context].value)
       }
       locally {
-        given d[T]: D[T] with {}
+        given d[T]: D[T]()
         println(summon[D[Int]])
       }
       locally {
-        given (using Context): D[Int] with {}
+        given (using Context): D[Int]()
         println(summon[D[Int]])
       }
   end C

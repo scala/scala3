@@ -1,8 +1,8 @@
 
 case class A(x: String)
 case class B(x: String)
-given a1: A("default") with {}
-given b1: B("default") with {}
+given a1: A("default")
+given b1: B("default")
 val a2 = A("explicit")
 val b2 = B("explicit")
 

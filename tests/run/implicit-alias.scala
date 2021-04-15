@@ -6,7 +6,7 @@ object Test extends App {
 
   class TC1
 
-  given TC1 with {}
+  given TC1()
 
   class TV(val tc: TC) extends AnyVal
 

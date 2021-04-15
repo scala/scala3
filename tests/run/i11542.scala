@@ -2,7 +2,7 @@ object demo {
 
   trait Reader[A]
 
-  given Reader[Int] with {}
+  given Reader[Int]()
 
   inline def summonReader[T <: Tuple]: List[Reader[_]] = inline compiletime.erasedValue[T] match {
     case _: EmptyTuple => Nil

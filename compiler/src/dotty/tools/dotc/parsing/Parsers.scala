@@ -3585,7 +3585,10 @@ object Parsers {
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val templ = withTemplate(makeConstructor(tparams1, vparamss1), parents)
+          val constr = makeConstructor(tparams1, vparamss1)
+          val templ =
+            if in.token == WITH then withTemplate(constr, parents)
+            else Template(constr, parents, Nil, EmptyValDef, Nil)
           if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef

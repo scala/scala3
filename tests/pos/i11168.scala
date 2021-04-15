@@ -1,5 +1,5 @@
 trait Foo
-given foo: Foo with {}
+given foo: Foo()
 
 extension (using Foo)(x: Any)
   def foo1[A] = ???
