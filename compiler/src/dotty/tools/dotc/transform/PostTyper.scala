@@ -243,10 +243,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
     private object dropInlines extends TreeMap {
       override def transform(tree: Tree)(using Context): Tree = tree match {
         case Inlined(call, _, expansion) =>
-          val newExpansion = tree.tpe match
-            case ConstantType(c) => Literal(c)
-            case _ => Typed(ref(defn.Predef_undefined), TypeTree(tree.tpe))
-          cpy.Inlined(tree)(call, Nil, newExpansion.withSpan(tree.span))
+          val newExpansion = PruneErasedDefs.trivialErasedTree(tree)
+          cpy.Inlined(tree)(call, Nil, newExpansion)
         case _ => super.transform(tree)
       }
     }
@@ -282,7 +280,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
               tpd.cpy.Apply(tree)(
                 tree.fun,
                 tree.args.mapConserve(arg =>
-                  if (methType.isImplicitMethod && arg.span.isSynthetic) ref(defn.Predef_undefined)
+                  if (methType.isImplicitMethod && arg.span.isSynthetic)
+                    PruneErasedDefs.trivialErasedTree(arg)
                   else dropInlines.transform(arg)))
             else
               tree
@@ -414,12 +413,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             //     case x: (_: Tree[?])
         case m @ MatchTypeTree(bounds, selector, cases) =>
           // Analog to the case above for match types
-          def tranformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+          def transformIgnoringBoundsCheck(x: CaseDef): CaseDef =
             withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
           cpy.MatchTypeTree(tree)(
             super.transform(bounds),
             super.transform(selector),
-            cases.mapConserve(tranformIgnoringBoundsCheck)
+            cases.mapConserve(transformIgnoringBoundsCheck)
           )
         case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
           superAcc.withInvalidCurrentClass(super.transform(tree))

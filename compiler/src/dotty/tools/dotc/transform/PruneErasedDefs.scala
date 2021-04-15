@@ -22,6 +22,7 @@ import ast.tpd
  */
 class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
   import tpd._
+  import PruneErasedDefs._
 
   override def phaseName: String = PruneErasedDefs.name
 
@@ -39,19 +40,19 @@ class PruneErasedDefs extends MiniPhase with SymTransformer { thisTransform =>
 
   override def transformValDef(tree: ValDef)(using Context): Tree =
     if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
-    else cpy.ValDef(tree)(rhs = trivialErasedTree(tree))
+    else cpy.ValDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
     if !tree.symbol.isEffectivelyErased || tree.rhs.isEmpty then tree
-    else cpy.DefDef(tree)(rhs = trivialErasedTree(tree))
-
-  private def trivialErasedTree(tree: Tree)(using Context): Tree =
-    tree.tpe.widenTermRefExpr.dealias.normalized match
-      case ConstantType(c) => Literal(c)
-      case _ => ref(defn.Predef_undefined)
+    else cpy.DefDef(tree)(rhs = trivialErasedTree(tree.rhs))
 
 }
 
 object PruneErasedDefs {
+  import tpd._
+
   val name: String = "pruneErasedDefs"
+
+  def trivialErasedTree(tree: Tree)(using Context): Tree =
+    ref(defn.Compiletime_erasedValue).appliedToType(tree.tpe).withSpan(tree.span)
 }
