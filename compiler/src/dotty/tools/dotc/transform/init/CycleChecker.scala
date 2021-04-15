@@ -105,8 +105,8 @@ class CycleChecker(cache: Cache) {
       val res = op(using state2)
       res
 
-    def withPath[T](obj: Symbol)(op: State ?=> T): T =
-      val state2 = this.copy(path = path :+ obj)
+    def visitObject[T](dep: ObjectAccess)(op: State ?=> T): T =
+      val state2 = this.copy(path = path :+ dep.symbol, trace = trace :+ dep)
       val res = op(using state2)
       res
 
@@ -155,8 +155,8 @@ class CycleChecker(cache: Cache) {
           ObjectLeakDuringInit(obj, trace) :: Nil
       else
         val constr = obj.moduleClass.primaryConstructor
-        state.withPath(obj) {
-          check(StaticCall(constr.owner.asClass, constr)(dep.source))
+        state.visitObject(dep) {
+          check(StaticCall(constr.owner.asClass, constr)(constr.defTree))
         }
     }
 
