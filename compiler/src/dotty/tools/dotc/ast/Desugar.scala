@@ -946,7 +946,7 @@ object desugar {
       tree.withMods(mods)
     else if tree.name.startsWith("$") && !tree.isBackquoted then
       report.error(
-        """Quoted pattern variable names starting with $ are not suported anymore.
+        """Quoted pattern variable names starting with $ are not supported anymore.
           |Use lower cases type pattern name instead.
           |""".stripMargin,
         tree.srcPos)
