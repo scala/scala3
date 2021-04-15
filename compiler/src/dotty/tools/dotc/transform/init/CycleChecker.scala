@@ -103,7 +103,14 @@ class CycleChecker(cache: Cache) {
   def state(using ev: State) = ev
 
 // ----- checking -------------------------------
-  def checkCyclic(): Unit = ???
+  def checkCyclic()(using Context): Unit = {
+    val state = State(visited = mutable.Set.empty, path = Vector.empty, trace = Vector.empty)
+    objectsInCurrentRun.foreach { obj =>
+      val dep = ObjectAccess(obj)(obj.defTree)
+      val errors = check(dep)(using ctx, state)
+      errors.foreach(_.issue)
+    }
+  }
 
   private def check(dep: Dependency)(using Context, State): List[Error] =
     trace("checking dependency " + dep.show, init, errs => Errors.show(errs.asInstanceOf[Errors])) {
