@@ -340,6 +340,12 @@ class CycleChecker(cache: Cache) {
       // possible from parent list
       Nil
 
+    case AnnotatedType(tp, _) =>
+      analyzeType(tp, source, exclude)
+
+    case _: AndOrType | _: RefinedOrRecType =>
+      Nil
+
     case _ =>
       throw new Exception("unexpected type: " + tp)
   }
