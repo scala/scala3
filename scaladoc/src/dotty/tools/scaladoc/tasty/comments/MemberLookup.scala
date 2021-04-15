@@ -103,13 +103,15 @@ trait MemberLookup {
     members.asInstanceOf[Iterator[Symbol]]
   }
 
-  private def hackIsNotAbsent(using Quotes)(rsym: quotes.reflect.Symbol) = {
+  private def hackIsNotAbsent(using Quotes)(rsym: quotes.reflect.Symbol) =
     import dotty.tools.dotc
     given dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
     val sym = rsym.asInstanceOf[dotc.core.Symbols.Symbol]
     // note: Predef has .info = NoType for some reason
-    sym.isCompleted && sym.info.exists
-  }
+    val iorc = sym.infoOrCompleter
+    iorc match
+      case _: dotc.core.SymDenotations.ModuleCompleter | dotc.core.SymDenotations.NoCompleter | dotc.core.Types.NoType | _: dotc.core.NoLoader => false
+      case _ => true
 
   private def localLookup(using Quotes)(
     sel: MemberLookup.Selector,
