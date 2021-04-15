@@ -13,10 +13,14 @@ import MegaPhase.MiniPhase
 import StdNames.nme
 import ast.tpd
 
-/** This phase replaces `compiletime.uninitialized` on the right hand side
- *  of a mutable field definition by `_`. This avoids a "is declared erased, but is
- *  in fact used" error in Erasure and communicates to Constructors that the
- *  variable does not have an initializer.
+/** This phase replaces `compiletime.uninitialized` on the right hand side of a mutable field definition by `_`.
+ *  This avoids a
+ *  ```scala
+ *  "@compileTimeOnly("`uninitialized` can only be used as the right hand side of a mutable field definition")`
+ *  ```
+ *  error in Erasure and communicates to Constructors that the variable does not have an initializer.
+ *
+ *  @syntax markdown
  */
 class UninitializedDefs extends MiniPhase:
   import tpd._
