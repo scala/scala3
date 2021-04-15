@@ -634,12 +634,32 @@ trait Applications extends Compatibility {
         // matches expected type
         false
       case argtpe =>
-        def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-          case _ => false
-        }
+        val argtpe1 = argtpe.widen
+
+        def SAMargOK =
+          defn.isFunctionType(argtpe1) && formal.match
+            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case _ => false
+
         isCompatible(argtpe, formal)
-        || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
+        // Only allow SAM-conversion to PartialFunction if implicit conversions
+        // are enabled. This is necessary to avoid ambiguity between an overload
+        // taking a PartialFunction and one taking a Function1 because
+        // PartialFunction extends Function1 but Function1 is SAM-convertible to
+        // PartialFunction. Concretely, given:
+        //
+        //   def foo(a: Int => Int): Unit = println("1")
+        //   def foo(a: PartialFunction[Int, Int]): Unit = println("2")
+        //
+        // - `foo(x => x)` will print 1, because the PartialFunction overload
+        //   won't be seen as applicable in the first call to
+        //   `resolveOverloaded`, this behavior happens to match what Java does
+        //   since PartialFunction is not a SAM type according to Java
+        //   (`isDefined` is abstract).
+        // - `foo { case x if x % 2 == 0 => x }` will print 2, because both
+        //    overloads are applicable, but PartialFunction is a subtype of
+        //    Function1 so it's more specific.
+        || (!formal.isRef(defn.PartialFunctionClass) || ctx.mode.is(Mode.ImplicitsEnabled)) && SAMargOK
         || argMatch == ArgMatch.CompatibleCAP
             && {
               val argtpe1 = argtpe.widen
