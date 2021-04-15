@@ -81,7 +81,7 @@ object Access:
    val NoPermission: Permission = 0
    val Read: Permission = 1
    val Write: Permission = 2
-   val ReadWrite: Permissions = Read | Write
+   val ReadWrite: Permissions = Read & Write
    val ReadOrWrite: PermissionChoice = Read | Write
 
 end Access
