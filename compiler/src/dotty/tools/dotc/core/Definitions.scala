@@ -1030,13 +1030,13 @@ class Definitions {
 
   /** An extractor for multi-dimensional arrays.
    *  Note that this will also extract the high bound if an
-   *  element type is a wildcard. E.g.
+   *  element type is a wildcard upper-bounded by an array. E.g.
    *
    *     Array[? <: Array[? <: Number]]
    *
    *  would match
    *
-   *     MultiArrayOf(<Number>, 2)
+   *     MultiArrayOf(<? <: Number>, 2)
    */
   object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(using Context): Type =
@@ -1044,7 +1044,8 @@ class Definitions {
     def unapply(tp: Type)(using Context): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
         def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
-          case TypeBounds(lo, hi) => recur(hi)
+          case tp @ TypeBounds(lo, hi @ MultiArrayOf(finalElemTp, n)) =>
+            Some(finalElemTp, n)
           case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
           case _ => Some(elemtp, 1)
         }

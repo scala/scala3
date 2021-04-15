@@ -65,5 +65,11 @@ object Test {
     arr4(x)
     arr5(x)
     arr6(x)
+
+
+    val str: Any = ""
+    assert(!str.isInstanceOf[Array[?]])
+    assert(!str.isInstanceOf[Array[Array[?]]])
+    assert(!str.isInstanceOf[Array[? <: Array[?]]])
   }
 }
