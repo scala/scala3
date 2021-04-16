@@ -103,6 +103,7 @@ a `:` at the end of a line.
                 |  indent ts outdent
 :<<< ts >>>   ::=  [nl] ‘{’ ts ‘}’
                 |  `:` indent ts outdent
+```
 
 ## Keywords
 
