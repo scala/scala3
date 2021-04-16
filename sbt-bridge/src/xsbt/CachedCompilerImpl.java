@@ -14,6 +14,9 @@ import dotty.tools.dotc.Main;
 import dotty.tools.xsbt.InterfaceCompileFailed;
 import dotty.tools.xsbt.DelegatingReporter;
 
+// deprecation warnings are suppressed because scala3-sbt-bridge must stay compatible with Zinc 1.3
+// see https://github.com/lampepfl/dotty/issues/10816
+@SuppressWarnings("deprecation")
 public class CachedCompilerImpl implements CachedCompiler {
   private final String[] args;
   private final String[] outputArgs;
