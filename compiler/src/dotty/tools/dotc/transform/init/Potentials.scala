@@ -159,8 +159,11 @@ object Potentials {
       "Fun[pots = " + potentials.map(_.show).mkString(";") + ", effs = " + effects.map(_.show).mkString(";") + "]"
   }
 
-  /** Reference to a global object */
-  case class Global(symbol: Symbol)(val source: Tree) extends Refinable {
+  /** Reference to a global object
+   *
+   *  @param enclosingClass The class where the reference appears in
+   */
+  case class Global(symbol: Symbol, enclosingClass: ClassSymbol)(val source: Tree) extends Refinable {
     def show(using Context): String = symbol.show
 
     def moduleClass(using Context): ClassSymbol = symbol.moduleClass.asClass

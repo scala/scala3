@@ -17,8 +17,6 @@ import Errors._, Potentials._, Effects._
 
 import scala.collection.mutable
 
-
-
 /** The dependencies of a static object or a class
  *
  *  This class is used in checking cyclic initialization of static objects.

@@ -227,13 +227,18 @@ object Checking {
         else
           Errors.empty
 
-      case pot @ (_: Hot | _: Global)  =>
-        val cls = pot match
-          case hot: Hot => hot.classSymbol
-          case obj: Global => obj.moduleClass
-        val target = resolve(cls, sym)
-        state.dependencies += StaticCall(cls, target)(pot.source)
+      case hot: Hot =>
+        val target = resolve(hot.classSymbol, sym)
+        state.dependencies += StaticCall(hot.classSymbol, target)(pot.source)
         Errors.empty
+
+      case obj: Global  =>
+        val target = resolve(obj.moduleClass, sym)
+        if obj.enclosingClass == state.thisClass && obj.moduleClass == state.thisClass then
+          check(MethodCall(ThisRef()(obj.source), target)(eff.source))
+        else
+          state.dependencies += StaticCall(obj.moduleClass, target)(pot.source)
+          Errors.empty
 
       case _: Cold =>
         CallCold(sym, eff.source, state.path).toErrors
@@ -281,6 +286,8 @@ object Checking {
         // or all fields are already initialized
         val target = resolve(obj.moduleClass, field)
         if (target.is(Flags.Lazy)) check(MethodCall(obj, target)(eff.source))
+        else if obj.enclosingClass == state.thisClass && obj.moduleClass == state.thisClass then
+          check(FieldAccess(ThisRef()(obj.source), target)(eff.source))
         else Errors.empty
 
       case _: Cold =>
@@ -378,7 +385,8 @@ object Checking {
 
   private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
     val obj = eff.potential
-    state.dependencies += ObjectAccess(obj.symbol)(eff.source)
+    if obj.enclosingClass != obj.moduleClass then
+      state.dependencies += ObjectAccess(obj.symbol)(eff.source)
     Errors.empty
 
   private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {

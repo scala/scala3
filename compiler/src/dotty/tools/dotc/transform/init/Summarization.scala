@@ -46,7 +46,8 @@ object Summarization {
         else if (!sym.exists) // polymorphic function apply and structural types
           Summary(pots.promote(expr) ++ effs)
         else if (sym.is(Flags.Module) && sym.isStatic)
-          Summary(effs) + Global(sym)(expr)
+          val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+          Summary(effs) + Global(sym, enclosing)(expr)
         else {
           val Summary(pots2, effs2) = pots.select(expr.symbol, expr)
           Summary(pots2, effs ++ effs2)
@@ -249,7 +250,8 @@ object Summarization {
           // self reference to an object inside the object
           Summary(ThisRef()(source))
         else
-          val pot = Global(tmref.symbol)(source)
+          val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+          val pot = Global(tmref.symbol, enclosing)(source)
           Summary(pot) + AccessGlobal(pot)
 
       case tmref: TermRef =>
@@ -261,16 +263,14 @@ object Summarization {
         }
 
       case ThisType(tref) =>
+        val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
         if tref.symbol.is(Flags.Module, butNot = Flags.Package)
           && tref.symbol.isStatic
-          && env.ctx.owner.isStatic
-          && tref.symbol != env.ctx.owner
         then
           val sym = tref.symbol.sourceModule
-          val pot = Global(sym)(source)
+          val pot = Global(sym, enclosing)(source)
           Summary(pot) + AccessGlobal(pot)
         else
-          val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
           val cls = tref.symbol.asClass
           resolveThis(cls, ThisRef()(source), enclosing, source)
 
@@ -312,7 +312,8 @@ object Summarization {
     else if (pot.size > 2) Summary(Promote(pot)(source))
     else if (cls.is(Flags.Module) && !cur.ownersIterator.exists(_ == cls)) {
       // Dotty uses O$.this outside of the object O
-      val pot = Global(cls.sourceModule)(source)
+      val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+      val pot = Global(cls.sourceModule, enclosing)(source)
       Summary(pot) + AccessGlobal(pot)
     }
     else {
