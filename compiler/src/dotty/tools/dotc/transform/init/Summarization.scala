@@ -245,14 +245,9 @@ object Summarization {
       if tmref.symbol.is(Flags.Module, butNot = Flags.Package)
          && tmref.symbol.isStatic
       =>
-        val cls = tmref.symbol.moduleClass
-        if cls == env.ctx.owner.lexicallyEnclosingClass then
-          // self reference to an object inside the object
-          Summary(ThisRef()(source))
-        else
-          val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
-          val pot = Global(tmref.symbol, enclosing)(source)
-          Summary(pot) + AccessGlobal(pot)
+        val enclosing = env.ctx.owner.lexicallyEnclosingClass.asClass
+        val pot = Global(tmref.symbol, enclosing)(source)
+        Summary(pot) + AccessGlobal(pot)
 
       case tmref: TermRef =>
         val Summary(pots, effs) = analyze(tmref.prefix, source)
