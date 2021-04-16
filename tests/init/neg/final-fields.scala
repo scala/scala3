@@ -22,7 +22,7 @@ object Test0 extends U {
 object Test1 extends U {
   final val f1 = 1
   final val f3 = f1 + f2
-  final val f2 = 2
+  final val f2 = 2           // error: but constant folding avoided the issue
   val f4: 3 = f3
 
 
