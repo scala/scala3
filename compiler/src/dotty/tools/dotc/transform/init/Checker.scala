@@ -29,6 +29,7 @@ class Checker extends Phase {
   private val cycleChecker = new CycleChecker(cache)
 
   override val runsAfter = Set(Pickler.name)
+  val runsBefore = Set(ExpandSAMs.name)
 
   override def isEnabled(using Context): Boolean =
     super.isEnabled && ctx.settings.YcheckInit.value

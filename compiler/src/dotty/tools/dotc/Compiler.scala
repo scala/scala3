@@ -57,6 +57,7 @@ class Compiler {
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
   protected def transformPhases: List[List[Phase]] =
+    List(new init.Checker) ::        // Check initialization of objects
     List(new FirstTransform,         // Some transformations to put trees into a canonical form
          new CheckReentrant,         // Internal use only: Check that compiled program has no data races involving global vars
          new ElimPackagePrefixes,    // Eliminate references to package prefixes in Select nodes
@@ -65,7 +66,6 @@ class Compiler {
          new BetaReduce,             // Reduce closure applications
          new InlineVals,             // Check right hand-sides of an `inline val`s
          new ExpandSAMs) ::          // Expand single abstract method closures to anonymous classes
-    List(new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
