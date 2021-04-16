@@ -15,6 +15,15 @@ package lookupInheritedMembers {
    * [[tests.lookupInheritedMembers.pack2.B.x]]
    * [[tests.lookupInheritedMembers.pack2.B.y]]
    * [[tests.lookupInheritedMembers.pack2.B.MyType]]
+   *
    */
   class LookupInheritedMembers
+
+  /**
+   * This look up is problematic, because is lazyloaded by dotty.
+   *
+   * [[java.util.Formatter]]
+   */
+  class JavaInheritedMembers
 }
+

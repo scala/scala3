@@ -38,6 +38,9 @@ class LookupTestCases[Q <: Quotes](val q: Quotes) {
 
       "java.util.AbstractCollection" -> cls("java.util.AbstractCollection"),
       "java.lang.String" -> cls("java.lang.String"),
+      "java.util.Formatter" -> cls("java.util.Formatter"),
+      "java.io.Flushable" -> cls("java.io.Flushable"),
+      "java.util.List" -> cls("java.util.List"),
 
       "tests.lookupInheritedMembers.pack1.A.x" ->
         cls("tests.lookupInheritedMembers.pack1.A").fun("x"),
