@@ -116,7 +116,7 @@ object Errors {
 
   case class CallUnknown(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String =
-      "Calling the external method " + meth.show + " may cause initialization errors" + "."
+      "Unable to analyze external " + meth.show + "."
   }
 
   /** Promote a value under initialization to fully-initialized */

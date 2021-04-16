@@ -247,7 +247,7 @@ class CycleChecker(cache: Cache) {
       val effs = pot.potentialsOf(dep.symbol)(using env).promote(dep.source)
 
       val errs = effs.flatMap(Checking.check(_)(using state))
-      assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList))
+      errs.foreach(_.issue)
 
       val deps = state.dependencies.toList
       proxyCache(dep.symbol) = deps
@@ -364,7 +364,7 @@ class CycleChecker(cache: Cache) {
     val effs = pot.effectsOf(dep.symbol)(using env)
 
     val errs = effs.flatMap(Checking.check(_)(using state))
-    assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList) + " while analyzing " + dep.show)
+    errs.foreach(_.issue)
 
     state.dependencies.toList
   }
