@@ -38,7 +38,8 @@ object Checking {
     parentsInited: mutable.Set[ClassSymbol],
     safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
     dependencies: mutable.Set[Dependency],     // if the current class is a static object, its dependencies
-    env: Env
+    env: Env,
+    init: Boolean = false                      // whether object is initialized, used in CycleChecker
   ) {
     def withOwner[T](sym: Symbol)(op: State ?=> T): T =
       val state = this.copy(env = env.withOwner(sym))
@@ -48,7 +49,7 @@ object Checking {
 
 
     def isFieldInitialized(field: Symbol): Boolean =
-      fieldsInited.contains(field)
+      init || fieldsInited.contains(field)
 
     def visit[T](eff: Effect)(op: State ?=> T): T =
       val state: State = this.copy(path = path :+ eff.source, visited = this.visited + eff)

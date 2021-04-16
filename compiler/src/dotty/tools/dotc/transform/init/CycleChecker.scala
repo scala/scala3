@@ -226,7 +226,7 @@ class CycleChecker(cache: Cache) {
   }
 
   private def proxyDependencies(dep: ProxyUsage)(using Context): List[Dependency] = trace("dependencies of " + dep.symbol.show, init, _.asInstanceOf[List[Dependency]].map(_.show).toString) {
-    if (proxyCache.contains(dep.symbol)) summaryCache(dep.symbol)
+    if (proxyCache.contains(dep.symbol)) proxyCache(dep.symbol)
     else trace("summary for " + dep.symbol.show) {
       val env = Env(ctx.withOwner(dep.cls), cache)
       val state = new Checking.State(
@@ -350,7 +350,7 @@ class CycleChecker(cache: Cache) {
 
   private def analyzeMethod(dep: StaticCall)(using Context): List[Dependency] = {
     val env = Env(ctx.withOwner(dep.cls), cache)
-    val state = new Checking.State(
+    val state = Checking.State(
       visited = Set.empty,
       path = Vector.empty,
       thisClass = dep.cls,
@@ -358,16 +358,15 @@ class CycleChecker(cache: Cache) {
       parentsInited = mutable.Set.empty,
       safePromoted = mutable.Set(ThisRef()(dep.cls.defTree)),
       dependencies = mutable.Set.empty,
-      env = env
-    ) {
-      override def isFieldInitialized(field: Symbol): Boolean = true
-    }
+      env = env,
+      init = true
+    )
 
     val pot = Hot(dep.cls)(dep.source)
     val effs = pot.effectsOf(dep.symbol)(using env)
 
     val errs = effs.flatMap(Checking.check(_)(using state))
-    assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList))
+    assert(errs.isEmpty, "unexpected errors: " + Errors.show(errs.toList) + " while analyzing " + dep.show)
 
     state.dependencies.toList
   }
