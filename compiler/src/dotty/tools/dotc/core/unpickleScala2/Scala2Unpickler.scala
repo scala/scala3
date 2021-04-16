@@ -792,7 +792,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           OrType(args(0), args(1), soft = false)
         }
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-        else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
+        //else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
         val lo = readTypeRef()
