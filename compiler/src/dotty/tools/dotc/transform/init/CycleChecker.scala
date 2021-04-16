@@ -24,10 +24,10 @@ import scala.collection.mutable
  *  For the check to be simple and fast, the algorithm uses a combination of
  *  coarse-grained analysis and fine-grained analysis.
  *
- *  Fine-grained abstractions are created from the initialization
+ *  Fine-grained dependencies are collected from the initialization
  *  check for static objects.
  *
- *  Coarse-grained abstractions are created as follows:
+ *  Coarse-grained dependencies are created as follows:
  *
  *  - if a static object `O` is used in another class/static-object `B`,
  *    then B -> O
@@ -374,6 +374,7 @@ class CycleChecker(cache: Cache) {
 
   def clean() = {
     summaryCache.clear()
+    proxyCache.clear()
     classesInCurrentRun.clear()
     objectsInCurrentRun.clear()
   }

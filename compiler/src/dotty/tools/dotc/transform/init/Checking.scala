@@ -37,9 +37,9 @@ object Checking {
     fieldsInited: mutable.Set[Symbol],
     parentsInited: mutable.Set[ClassSymbol],
     safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
-    dependencies: mutable.Set[Dependency],     // if the current class is a static object, its dependencies
+    dependencies: mutable.Set[Dependency],     // dependencies collected for checking global objects
     env: Env,
-    init: Boolean = false                      // whether object is initialized, used in CycleChecker
+    init: Boolean = false                      // whether the object is initialized, used in CycleChecker
   ) {
     def withOwner[T](sym: Symbol)(op: State ?=> T): T =
       val state = this.copy(env = env.withOwner(sym))
