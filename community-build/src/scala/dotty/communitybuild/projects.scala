@@ -40,6 +40,7 @@ sealed trait CommunityProject:
   val publishCommand: String
   val docCommand: String
   val dependencies: List[CommunityProject]
+  val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
   val requiresExperimental: Boolean
@@ -87,6 +88,7 @@ final case class MillCommunityProject(
     project: String,
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     ignoreDocs: Boolean = false,
     requiresExperimental: Boolean = false,
     ) extends CommunityProject:
@@ -104,6 +106,7 @@ final case class SbtCommunityProject(
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
@@ -273,15 +276,17 @@ object projects:
     sbtDocCommand = forceDoc("jvm")
   )
 
-  lazy val scalatest = SbtCommunityProject(
+  lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
     project       = "scalatest",
-    sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
-    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal",
-    sbtDocCommand = ";scalacticDotty/doc" // fails with missing type ;scalatestDotty/doc"
+    sbtTestCommand   = "scalacticDotty/clean; scalacticDottyJS/clean; scalacticTestDotty/test; scalatestTestDotty/test; scalacticDottyJS/compile; scalatestDottyJS/compile",
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
+    sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
     // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
     // org.scalatest.Outcome
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
+    dependencies = List(scalaXml),
+    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -299,9 +304,17 @@ object projects:
     dependencies      = List(scalatest)
   )
 
+  lazy val scalatestplusTestNG = SbtCommunityProject(
+    project = "scalatestplus-testng",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
+  )
+
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
-    sbtTestCommand   = "xml/test",
+    sbtTestCommand = "xml/test",
+    sbtPublishCommand = "xml/publishLocal",
     sbtDocCommand = "xml/doc"
   )
 
@@ -736,6 +749,7 @@ def allProjects = List(
   projects.protoquill,
   projects.onnxScala,
   projects.playJson,
+  projects.scalatestplusTestNG,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

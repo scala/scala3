@@ -193,3 +193,6 @@
 [submodule "community-build/community-projects/play-json"]
 	path = community-build/community-projects/play-json
 	url = https://github.com/dotty-staging/play-json.git
+[submodule "community-build/community-projects/scalatestplus-testng"]
+	path = community-build/community-projects/scalatestplus-testng
+	url = https://github.com/dotty-staging/scalatestplus-testng.git
