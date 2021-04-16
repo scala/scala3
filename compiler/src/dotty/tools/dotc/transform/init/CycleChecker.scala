@@ -237,7 +237,8 @@ class CycleChecker(cache: Cache) {
         parentsInited = mutable.Set.empty,
         safePromoted = mutable.Set(ThisRef()(dep.cls.defTree)),
         dependencies = mutable.Set.empty,
-        env = env
+        env = env,
+        init = true
       ) {
         override def isFieldInitialized(field: Symbol): Boolean = true
       }
@@ -341,11 +342,8 @@ class CycleChecker(cache: Cache) {
     case AnnotatedType(tp, _) =>
       analyzeType(tp, source, exclude)
 
-    case _: AndOrType | _: RefinedOrRecType =>
-      Nil
-
     case _ =>
-      throw new Exception("unexpected type: " + tp)
+      Nil
   }
 
   private def analyzeMethod(dep: StaticCall)(using Context): List[Dependency] = {
