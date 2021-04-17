@@ -792,7 +792,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           OrType(args(0), args(1), soft = false)
         }
         else if (args.nonEmpty) tycon.safeAppliedTo(EtaExpandIfHK(sym.typeParams, args.map(translateTempPoly)))
-        //else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
+        else if (sym.typeParams.nonEmpty) tycon.EtaExpand(sym.typeParams)
         else tycon
       case TYPEBOUNDStpe =>
         val lo = readTypeRef()
@@ -1011,9 +1011,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def deferredAnnot(end: Int)(using Context): Annotation = {
     val start = readIndex
-    val atp = readTypeRef()
     val phase = ctx.phase
-    Annotation.deferred(atp.typeSymbol)(
+    Annotation.deferredSymAndTree(
+        atReadPos(start, () => atPhase(phase)(readTypeRef().typeSymbol)))(
         atReadPos(start, () => atPhase(phase)(readAnnotationContents(end))))
   }
 
