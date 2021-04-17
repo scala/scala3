@@ -174,7 +174,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     OverrideTypeMismatchErrorID,
     OverrideErrorID,
     MatchableWarningID,
-    IllegalParameterInitID
+    IllegalParameterInitID,
+    CannotExtendFunctionID
 
   def errorNumber = ordinal - 2
 }

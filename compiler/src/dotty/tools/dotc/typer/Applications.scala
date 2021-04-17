@@ -614,7 +614,6 @@ trait Applications extends Compatibility {
 
   /** The degree to which an argument has to match a formal parameter */
   enum ArgMatch:
-    case SubType       // argument is a relaxed subtype of formal
     case Compatible    // argument is compatible with formal
     case CompatibleCAP // capture-converted argument is compatible with formal
 
@@ -635,21 +634,38 @@ trait Applications extends Compatibility {
         // matches expected type
         false
       case argtpe =>
-        def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-          case _ => false
-        }
-        if argMatch == ArgMatch.SubType then
-          argtpe relaxed_<:< formal.widenExpr
-        else
-          isCompatible(argtpe, formal)
-          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
-          || argMatch == ArgMatch.CompatibleCAP
-              && {
-                val argtpe1 = argtpe.widen
-                val captured = captureWildcards(argtpe1)
-                (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
-              }
+        val argtpe1 = argtpe.widen
+
+        def SAMargOK =
+          defn.isFunctionType(argtpe1) && formal.match
+            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case _ => false
+
+        isCompatible(argtpe, formal)
+        // Only allow SAM-conversion to PartialFunction if implicit conversions
+        // are enabled. This is necessary to avoid ambiguity between an overload
+        // taking a PartialFunction and one taking a Function1 because
+        // PartialFunction extends Function1 but Function1 is SAM-convertible to
+        // PartialFunction. Concretely, given:
+        //
+        //   def foo(a: Int => Int): Unit = println("1")
+        //   def foo(a: PartialFunction[Int, Int]): Unit = println("2")
+        //
+        // - `foo(x => x)` will print 1, because the PartialFunction overload
+        //   won't be seen as applicable in the first call to
+        //   `resolveOverloaded`, this behavior happens to match what Java does
+        //   since PartialFunction is not a SAM type according to Java
+        //   (`isDefined` is abstract).
+        // - `foo { case x if x % 2 == 0 => x }` will print 2, because both
+        //    overloads are applicable, but PartialFunction is a subtype of
+        //    Function1 so it's more specific.
+        || (!formal.isRef(defn.PartialFunctionClass) || ctx.mode.is(Mode.ImplicitsEnabled)) && SAMargOK
+        || argMatch == ArgMatch.CompatibleCAP
+            && {
+              val argtpe1 = argtpe.widen
+              val captured = captureWildcards(argtpe1)
+              (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
+            }
 
     /** The type of the given argument */
     protected def argType(arg: Arg, formal: Type): Type
@@ -1863,17 +1879,10 @@ trait Applications extends Compatibility {
           else
             alts
 
-        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
-          val alts2 = alts.filterConserve(alt =>
-            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.SubType)
+        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
+          alts.filterConserve(alt =>
+            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
           )
-          if (alts2.isEmpty && !ctx.isAfterTyper)
-            alts.filterConserve(alt =>
-              isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
-            )
-          else
-            alts2
-        }
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)

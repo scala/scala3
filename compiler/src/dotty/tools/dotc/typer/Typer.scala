@@ -1398,10 +1398,6 @@ class Typer extends Namer
                   else
                     report.error(ex"result type of lambda is an underspecified SAM type $pt", tree.srcPos)
                     pt
-                if (pt.classSymbol.isOneOf(FinalOrSealed)) {
-                  val offendingFlag = pt.classSymbol.flags & FinalOrSealed
-                  report.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.srcPos)
-                }
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
