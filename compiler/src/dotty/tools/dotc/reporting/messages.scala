@@ -1562,6 +1562,12 @@ import transform.SymUtils._
       def explain = ""
     }
 
+  class CannotExtendContextFunction(sym: Symbol)(using Context)
+    extends SyntaxMsg(CannotExtendFunctionID) {
+      def msg = em"""$sym cannot extend a context function class"""
+      def explain = ""
+    }
+
   class JavaEnumParentArgs(parent: Type)(using Context)
     extends TypeMsg(JavaEnumParentArgsID) {
       def msg = em"""not enough arguments for constructor Enum: ${hl("(name: String, ordinal: Int)")}: ${hl(parent.show)}"""
