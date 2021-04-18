@@ -1249,6 +1249,8 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
               case _ =>
                 false
             }
+          case Alternative(pats) =>
+            pats.exists(reducePattern(caseBindingMap, scrut, _))
           case Inlined(EmptyTree, Nil, ipat) =>
             reducePattern(caseBindingMap, scrut, ipat)
           case _ => false
