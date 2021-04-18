@@ -168,8 +168,7 @@ Export clauses are processed when the type information of the enclosing object o
 
     With export clauses, the following steps are added:
 
- 6. Compute the types of all paths in export clauses in a context logically
-    inside the class but not considering any imports or exports in that class.
+ 6. Compute the types of all paths in export clauses.
  7. Enter export aliases for the eligible members of all paths in export clauses.
 
 It is important that steps 6 and 7 are done in sequence: We first compute the types of _all_
