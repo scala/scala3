@@ -70,6 +70,7 @@ object Inliner {
         || (ctx.phase == Phases.typerPhase && needsTransparentInlining(tree))
       )
       && !ctx.typer.hasInliningErrors
+      && !ctx.base.stopInlining
   }
 
   private def needsTransparentInlining(tree: Tree)(using Context): Boolean =
@@ -140,6 +141,7 @@ object Inliner {
         val body = bodyToInline(tree.symbol) // can typecheck the tree and thereby produce errors
         new Inliner(tree, body).inlined(tree.srcPos)
       else
+        ctx.base.stopInlining = true
         val (reason, setting) =
           if reachedInlinedTreesLimit then ("inlined trees", ctx.settings.XmaxInlinedTrees)
           else ("successive inlines", ctx.settings.XmaxInlines)
@@ -150,6 +152,10 @@ object Inliner {
               |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
+    if ctx.base.stopInlining && enclosingInlineds.isEmpty then
+      ctx.base.stopInlining = false
+        // we have completely backed out of the call that overflowed;
+        // reset so that further inline calls can be expanded
     tree2
   }
 

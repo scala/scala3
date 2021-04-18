@@ -922,6 +922,9 @@ object Contexts {
 
     private[core] var denotTransformers: Array[DenotTransformer] = _
 
+    /** Flag to suppress inlining, set after overflow */
+    private[dotc] var stopInlining: Boolean = false
+
     // Reporters state
     private[dotc] var indent: Int = 0
 
