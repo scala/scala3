@@ -867,15 +867,12 @@ trait Applications extends Compatibility {
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 
-      // Warning: The following lines are dirty and fragile.
-      // We record that auto-tupling or untupling was demanded as a side effect in adapt.
-      // If it was, we assume the tupled-dual proto-type in the rest of the application,
-      // until, possibly, we have to fall back to insert an implicit on the qualifier.
-      // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
-      // otherwise we would get possible cross-talk between different `adapt` calls using the same
-      // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
-      // a modified tree but this would be more convoluted and less efficient.
-      val proto = if (originalProto.hasTupledDual) originalProto.tupledDual else originalProto
+      // If adaptation created a tupled dual of `originalProto`, pick the right version
+      // (tupled or not) of originalProto to proceed.
+      val proto =
+        if originalProto.hasTupledDual && needsTupledDual(fun1.tpe, originalProto)
+        then originalProto.tupledDual
+        else originalProto
 
       // If some of the application's arguments are function literals without explicitly declared
       // parameter types, relate the normalized result type of the application with the
@@ -1112,6 +1109,40 @@ trait Applications extends Compatibility {
     case _ =>
       tree
   }
+
+  /** Is `tp` a unary function type or an overloaded type with with only unary function
+   *  types as alternatives?
+   */
+  def isUnary(tp: Type)(using Context): Boolean = tp match {
+    case tp: MethodicType =>
+      tp.firstParamTypes match {
+        case ptype :: Nil => !ptype.isRepeatedParam
+        case _ => false
+      }
+    case tp: TermRef =>
+      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+    case _ =>
+      false
+  }
+
+  /** Should we tuple or untuple the argument before application?
+    *  If auto-tupling is enabled then
+    *
+    *   - we tuple n-ary arguments where n > 0 if the function consists
+    *     only of unary alternatives
+    *   - we untuple tuple arguments of infix operations if the function
+    *     does not consist only of unary alternatives.
+    */
+  def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    pt.args match
+      case untpd.Tuple(elems) :: Nil =>
+        elems.length > 1
+        && pt.applyKind == ApplyKind.InfixTuple
+        && !isUnary(funType)
+      case args =>
+        args.lengthCompare(1) > 0
+        && isUnary(funType)
+        && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`
    *  or `copy` method of an enum case, widen its type to the underlying

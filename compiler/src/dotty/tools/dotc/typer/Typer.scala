@@ -3198,37 +3198,6 @@ class Typer extends Namer
       }
     }
 
-    def isUnary(tp: Type): Boolean = tp match {
-      case tp: MethodicType =>
-        tp.firstParamTypes match {
-          case ptype :: Nil => !ptype.isRepeatedParam
-          case _ => false
-        }
-      case tp: TermRef =>
-        tp.denot.alternatives.forall(alt => isUnary(alt.info))
-      case _ =>
-        false
-    }
-
-    /** Should we tuple or untuple the argument before application?
-     *  If auto-tupling is enabled then
-     *
-     *   - we tuple n-ary arguments where n > 0 if the function consists
-     *     only of unary alternatives
-     *   - we untuple tuple arguments of infix operations if the function
-     *     does not consist only of unary alternatives.
-     */
-    def needsTupledDual(funType: Type, pt: FunProto): Boolean =
-      pt.args match
-        case untpd.Tuple(elems) :: Nil =>
-          elems.length > 1
-          && pt.applyKind == ApplyKind.InfixTuple
-          && !isUnary(funType)
-        case args =>
-          args.lengthCompare(1) > 0
-          && isUnary(funType)
-          && autoTuplingEnabled
-
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
