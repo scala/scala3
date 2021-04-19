@@ -68,6 +68,9 @@ There are two rules:
        if  match  return  then  throw  try  while  yield
        ```
 
+     - after the closing `)` of a condition in an old-style `if` or `while`.
+     - after the closing `)` or `}` of the enumerations of an old-style `for` loop without a `do`.
+
     If an `<indent>` is inserted, the indentation width of the token on the next line
     is pushed onto `IW`, which makes it the new current indentation width.
 
