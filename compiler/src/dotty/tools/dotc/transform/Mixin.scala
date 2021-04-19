@@ -147,7 +147,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // !decl.isClass avoids forcing nested traits, preventing cycles
         if !decl.isClass && needsTraitSetter(decl) then
           val setter = makeTraitSetter(decl.asTerm)
-          setter.validFor = Period(ctx.runId, thisPhase.next.id, decl.validFor.lastPhaseId)
+          setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
           modified = true
       if modified then
