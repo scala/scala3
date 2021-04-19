@@ -2342,7 +2342,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         *  Usage:
         *  ```scala
         *  typeRepr.asType match
-        *    case '[$t] =>
+        *    case '[t] =>
         *      '{ val x: t = ... }
         *  ```
         *  @syntax markdown
