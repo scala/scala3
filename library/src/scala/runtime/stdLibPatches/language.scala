@@ -18,6 +18,7 @@ object language:
    *
    *  @group experimental
    */
+  @scala.annotation.experimental
   object experimental:
 
     /* Experimental support for richer dependent types (disabled for now)

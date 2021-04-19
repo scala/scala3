@@ -2,9 +2,12 @@ package scala.util
 import scala.math.{BigInt}
 import quoted._
 import annotation.internal.sharable
+import annotation.experimental
+
 
 /** A type class for types that admit numeric literals.
  */
+@experimental
 trait FromDigits[T] {
 
   /** Convert `digits` string to value of type `T`
@@ -20,6 +23,7 @@ trait FromDigits[T] {
   def fromDigits(digits: String): T
 }
 
+@experimental
 object FromDigits {
 
   /** A subclass of `FromDigits` that also allows to convert whole number literals
