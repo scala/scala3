@@ -67,7 +67,7 @@ object NonBootstrappedDottyJSPlugin extends DottyJSPlugin(Build.commonNonBootstr
 object Build {
   val referenceVersion = "3.0.0-RC2-bin-20210325-ab2664f-NIGHTLY"
 
-  val baseVersion = "3.0.0-RC2"
+  val baseVersion = "3.0.0-RC3"
   val baseSbtDottyVersion = "0.5.4"
 
   // Versions used by the vscode extension to create a new project
