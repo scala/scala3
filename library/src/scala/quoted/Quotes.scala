@@ -3477,7 +3477,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  **Anti-pattern**: The following code is an anti-pattern:
          *
-         *      symbol.tree.info
+         *      symbol.tree.tpe
          *
          *  It should be replaced by the following code:
          *
