@@ -180,18 +180,6 @@ h5:hover a.anchor:hover {
   font-family: var(--font-family-monospace);
 }
 
-/* code */
-pre, code {
-  font-variant-ligatures: none;
-}
-pre {
-  padding: 0;
-  font-size: 13px;
-  background: var(--pre-bg);
-  border-radius: 2px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
 /* admonitions */
 blockquote {
   padding: 0 1em;

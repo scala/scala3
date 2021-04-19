@@ -49,7 +49,8 @@ def emptyTemplate(file: File, title: String): TemplateFile = TemplateFile(
   title = title,
   hasFrame = true,
   resources = List.empty,
-  layout = None
+  layout = None,
+  configOffset = 0
 )
 
 final val ConfigSeparator = "---"
@@ -107,6 +108,7 @@ def loadTemplateFile(file: File): TemplateFile = {
     title = stringSetting(allSettings, "title").getOrElse(name),
     hasFrame = !stringSetting(allSettings, "hasFrame").contains("false"),
     resources = (listSetting(allSettings, "extraCSS") ++ listSetting(allSettings, "extraJS")).flatten.toList,
-    layout = stringSetting(allSettings, "layout")
+    layout = stringSetting(allSettings, "layout"),
+    configOffset = config.size
   )
 }

@@ -43,7 +43,7 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
               }
             }
           val classType =
-            val ct = cSym.classInfo.selfType.toText(printer).show.replace(".this","").stripPrefix(s"$packageName.")
+            val ct = cSym.classInfo.selfType.toText(printer).show.replace(".this","").replace("\n", " ").stripPrefix(s"$packageName.")
             Some(ct)
           val classNames = collectNames(cSym.classInfo.selfType)
           val classGenerics = Option.when(

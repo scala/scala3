@@ -53,6 +53,7 @@ case class TemplateFile(
   hasFrame: Boolean,
   resources: List[String],
   layout: Option[String],
+  configOffset: Int
 ):
   def isIndexPage() = file.isFile && (file.getName == "index.md" || file.getName == "index.html")
 
@@ -63,7 +64,13 @@ case class TemplateFile(
       val pathBasedArg = ssctx.snippetCompilerArgs.get(path)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
-          ssctx.snippetChecker.checkSnippet(str, None, arg, lineOffset).collect {
+          val compilerData = SnippetCompilerData(
+            "staticsitesnippet",
+            Seq(SnippetCompilerData.ClassInfo(None, Nil, None)),
+            Nil,
+            SnippetCompilerData.Position(configOffset - 1, 0)
+          )
+          ssctx.snippetChecker.checkSnippet(str, Some(compilerData), arg, lineOffset).collect {
               case r: SnippetCompilationResult if !r.isSuccessful =>
                 val msg = s"In static site (${file.getAbsolutePath}):\n${r.getSummary}"
                 report.error(msg)(using ssctx.outerCtx)
