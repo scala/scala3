@@ -196,9 +196,12 @@ class CycleChecker(cache: Cache) {
   private def methodDependencies(call: StaticCall)(using Context): List[Dependency] = trace("dependencies of " + call.symbol.show, init, _.asInstanceOf[List[Dependency]].map(_.show).toString) {
     if (summaryCache.contains(call.symbol)) summaryCache(call.symbol)
     else trace("summary for " + call.symbol.show) {
-      val deps = analyzeMethod(call)
-      summaryCache(call.symbol) = deps
-      deps
+      if call.symbol.isOneOf(Flags.Method | Flags.Lazy) then
+        val deps = analyzeMethod(call)
+        summaryCache(call.symbol) = deps
+        deps
+      else
+        Nil
     }
   }
 
@@ -260,6 +263,12 @@ class CycleChecker(cache: Cache) {
             deps += InstanceUsage(cls, cls)(Vector(tree))
             deps += StaticCall(cls, tree.symbol)(Vector(tree))
 
+          case tree @ Select(qual, name) if name.isTermName && isStaticObjectRef(qual.symbol) =>
+            val cls = qual.symbol.moduleClass.asClass
+            deps += ObjectAccess(qual.symbol)(Vector(tree))
+            deps += StaticCall(cls, tree.symbol)(Vector(tree))
+            deps += ProxyUsage(cls, tree.symbol)(Vector(tree))
+
           case tree: RefTree if tree.isTerm =>
             deps ++= analyzeType(tree.tpe, tree, exclude = cls)
 
@@ -294,6 +303,13 @@ class CycleChecker(cache: Cache) {
       val obj = tmref.symbol
       val cls = obj.moduleClass.asClass
       ObjectAccess(obj)(Vector(source)) :: InstanceUsage(cls, cls)(Vector(source)) :: Nil
+
+    case tmref @ TermRef(prefix: TermRef, _) if isStaticObjectRef(prefix.symbol) =>
+      val obj = prefix.symbol
+      val cls = obj.moduleClass.asClass
+      ObjectAccess(obj)(Vector(source)) ::
+      StaticCall(cls, tmref.symbol)(Vector(source)) ::
+      ProxyUsage(cls, tmref.symbol)(Vector(source)) :: Nil
 
     case tmref: TermRef =>
       analyzeType(tmref.prefix, source, exclude)
