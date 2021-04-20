@@ -3533,10 +3533,11 @@ class Typer extends Namer
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
              && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
-               (tree.tpe.widenExpr frozen_<:< pt)
-                // we overshot; a cast is not needed, after all. (this happens a lot. We should
-                // find out whether we can make GADTused more precise)
-                .showing(i"false alarm for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}", gadts)
+               val res = (tree.tpe.widenExpr frozen_<:< pt)
+               if res then
+                 // we overshot; a cast is not needed, after all.
+                 gadts.println(i"unnecessary GADTused for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}")
+               res
               } =>
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
