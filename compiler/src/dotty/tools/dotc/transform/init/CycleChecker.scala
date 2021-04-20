@@ -179,9 +179,9 @@ class CycleChecker(cache: Cache) {
   def cacheConstructorDependencies(constr: Symbol, deps: List[Dependency])(using Context): Unit =
     Util.traceIndented("deps for " + constr.show + " = " + deps.map(_.show), init)
     summaryCache(constr) = deps
-    val cls = constr.owner
+    val cls = constr.owner.asClass
 
-    if cls.is(Flags.Module) && cls.isStatic then
+    if isStaticObjectClass(cls) then
       objectsInCurrentRun += cls.sourceModule
 
   private def instanceDependencies(sym: Symbol, instanceClass: ClassSymbol)(using Context): List[Dependency] =
@@ -236,6 +236,9 @@ class CycleChecker(cache: Cache) {
   def isStaticObjectRef(sym: Symbol)(using Context) =
     sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
 
+  def isStaticObjectClass(cls: ClassSymbol)(using Context) =
+    cls.is(Flags.Module) && cls.isStatic
+
   private def analyzeClass(cls: ClassSymbol, instanceClass: ClassSymbol)(using Context): List[Dependency] = {
     val cdef = cls.defTree.asInstanceOf[TypeDef]
     val tpl = cdef.rhs.asInstanceOf[Template]
@@ -263,13 +266,10 @@ class CycleChecker(cache: Cache) {
             deps += InstanceUsage(cls, cls)(Vector(tree))
             deps += StaticCall(cls, tree.symbol)(Vector(tree))
 
-          case tree @ Select(qual, name) if name.isTermName && isStaticObjectRef(qual.symbol) =>
-            val cls = qual.symbol.moduleClass.asClass
-            deps += ObjectAccess(qual.symbol)(Vector(tree))
-            deps += StaticCall(cls, tree.symbol)(Vector(tree))
-            deps += ProxyUsage(cls, tree.symbol)(Vector(tree))
+          case tree @ Select(qual, name) if name.isTermName && qual.tpe.isStable =>
+            deps ++= analyzeType(tree.tpe, tree, exclude = cls)
 
-          case tree: RefTree if tree.isTerm =>
+          case tree: Ident if tree.isTerm =>
             deps ++= analyzeType(tree.tpe, tree, exclude = cls)
 
           case tree: This =>
@@ -296,6 +296,12 @@ class CycleChecker(cache: Cache) {
     deps.toList
   }
 
+  private def useObjectMember(obj: Symbol, member: Symbol, source: Tree)(using Context): List[Dependency] =
+    val cls = obj.moduleClass.asClass
+    ObjectAccess(obj)(Vector(source)) ::
+    StaticCall(cls, member)(Vector(source)) ::
+    ProxyUsage(cls, member)(Vector(source)) :: Nil
+
   private def analyzeType(tp: Type, source: Tree, exclude: Symbol)(using Context): List[Dependency] = tp match {
     case (_: ConstantType) | NoPrefix => Nil
 
@@ -305,11 +311,11 @@ class CycleChecker(cache: Cache) {
       ObjectAccess(obj)(Vector(source)) :: InstanceUsage(cls, cls)(Vector(source)) :: Nil
 
     case tmref @ TermRef(prefix: TermRef, _) if isStaticObjectRef(prefix.symbol) =>
-      val obj = prefix.symbol
-      val cls = obj.moduleClass.asClass
-      ObjectAccess(obj)(Vector(source)) ::
-      StaticCall(cls, tmref.symbol)(Vector(source)) ::
-      ProxyUsage(cls, tmref.symbol)(Vector(source)) :: Nil
+      useObjectMember(prefix.symbol, tmref.symbol, source)
+
+    case tmref @ TermRef(prefix: ThisType, _) if isStaticObjectClass(prefix.cls) && prefix.cls != exclude =>
+      val obj = prefix.cls.sourceModule
+      useObjectMember(obj, tmref.symbol, source)
 
     case tmref: TermRef =>
       analyzeType(tmref.prefix, source, exclude)
