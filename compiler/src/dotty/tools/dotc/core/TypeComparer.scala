@@ -273,6 +273,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   if tp1.asInstanceOf[TypeRef].canDropAlias then return false
                 case _ =>
               }
+
+              (tp1, tp2) match {
+                case (tp1: TermRef, tp2: TermRef) =>
+                case _ =>
+              }
+
               val sym2 = tp2.symbol
               var sym1 = tp1.symbol
               if (sym1.is(ModuleClass) && sym2.is(ModuleVal))
