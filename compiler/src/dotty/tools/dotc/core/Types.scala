@@ -1888,7 +1888,15 @@ object Types {
       case st => st
     }
 
-    /** Same as superType, except that opaque types are treated as transparent aliases */
+    /** Same as superType, except for two differences:
+     *   - opaque types are treated as transparent aliases
+     *   - applied type are matchtype-reduced if possible
+     *
+     *  Note: the reason to reduce match type aliases here and not in `superType`
+     *  is that `superType` is context-independent and cached, whereas matchtype
+     *  reduction depends on context and should not be cached (at least not without
+     *  the very specific cache invalidation condition for matchtypes).
+     */
     def translucentSuperType(using Context): Type = superType
   }
 
@@ -4011,7 +4019,7 @@ object Types {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
-        superType
+        tryNormalize.orElse(superType)
     }
 
     inline def map(inline op: Type => Type)(using Context) =
