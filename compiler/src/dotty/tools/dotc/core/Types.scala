@@ -4011,7 +4011,7 @@ object Types {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
-        superType
+        tryNormalize.orElse(superType)
     }
 
     inline def map(inline op: Type => Type)(using Context) =
