@@ -331,11 +331,11 @@ object Checking {
           else PromoteWarm(pot, eff.source, state.path).toErrors
 
         case obj: Global =>
-          state.dependencies += InstanceUsage(obj.moduleClass)(pot.source)
+          state.dependencies += InstanceUsage(obj.moduleClass, obj.moduleClass)(pot.source)
           Errors.empty
 
         case hot: Hot =>
-          state.dependencies += InstanceUsage(hot.classSymbol)(pot.source)
+          state.dependencies += InstanceUsage(hot.classSymbol, hot.classSymbol)(pot.source)
           Errors.empty
 
         case MethodReturn(hot: Hot, sym) =>

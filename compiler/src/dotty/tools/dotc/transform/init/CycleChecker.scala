@@ -55,7 +55,7 @@ case class ObjectAccess(symbol: Symbol)(val source: Tree) extends Dependency {
 }
 
 /** Depend on usage of an instance, which can be either a class instance or object */
-case class InstanceUsage(symbol: Symbol)(val source: Tree) extends Dependency {
+case class InstanceUsage(symbol: ClassSymbol, instanceClass: ClassSymbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "InstanceUsage(" + symbol.show + ")"
 }
 
@@ -83,7 +83,7 @@ case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extend
  *
  *  This is a coarse-grained abstraction
  */
-case class ClassUsage(symbol: Symbol)(val source: Tree) extends Dependency {
+case class ClassUsage(symbol: ClassSymbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "ClassUsage(" + symbol.show + ")"
 }
 
@@ -158,16 +158,13 @@ class CycleChecker(cache: Cache) {
         }
     }
 
-
   private def checkInstanceUsage(dep: InstanceUsage)(using Context, State): List[Error] =
     if !classesInCurrentRun.contains(dep.symbol) then
       Util.traceIndented("skip " + dep.symbol.show + " which is not in current run ", init)
       Nil
-    else {
-      val cls = dep.symbol
-      val deps = classDependencies(cls, excludeInit = true)
+    else
+      val deps = instanceDependencies(dep.symbol, dep.instanceClass)
       deps.flatMap(check(_))
-    }
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
     if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner)  then
@@ -193,7 +190,7 @@ class CycleChecker(cache: Cache) {
       Nil
     else {
       val cls = dep.symbol
-      val deps = classDependencies(cls, excludeInit = false)
+      val deps = classDependencies(cls)
       deps.flatMap(check(_))
     }
 
@@ -207,11 +204,20 @@ class CycleChecker(cache: Cache) {
     if cls.is(Flags.Module) && cls.isStatic then
       objectsInCurrentRun += cls.sourceModule
 
-  private def classDependencies(sym: Symbol, excludeInit: Boolean)(using Context): List[Dependency] =
+  private def classDependencies(sym: Symbol)(using Context): List[Dependency] =
     if (summaryCache.contains(sym)) summaryCache(sym)
     else trace("summary for " + sym.show, init) {
       val cls = sym.asClass
-      val deps = analyzeClass(cls, excludeInit)
+      val deps = analyzeClass(cls, cls)
+      summaryCache(cls) = deps
+      deps
+    }
+
+  private def instanceDependencies(sym: Symbol, instanceClass: ClassSymbol)(using Context): List[Dependency] =
+    if (summaryCache.contains(sym)) summaryCache(sym)
+    else trace("summary for " + sym.show, init) {
+      val cls = sym.asClass
+      val deps = analyzeClass(cls, instanceClass)
       summaryCache(cls) = deps
       deps
     }
@@ -258,7 +264,7 @@ class CycleChecker(cache: Cache) {
   def isStaticObjectRef(sym: Symbol)(using Context) =
     sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
 
-  private def analyzeClass(cls: ClassSymbol, excludeInit: Boolean)(using Context): List[Dependency] = {
+  private def analyzeClass(cls: ClassSymbol, instanceClass: ClassSymbol)(using Context): List[Dependency] = {
     val cdef = cls.defTree.asInstanceOf[TypeDef]
     val tpl = cdef.rhs.asInstanceOf[Template]
 
@@ -268,16 +274,18 @@ class CycleChecker(cache: Cache) {
       override def traverse(tree: Tree)(using Context): Unit =
         tree match {
           case tree @ Template(_, parents, self, _) =>
-            if !excludeInit then
-              parents.foreach(traverse(_))
             tree.body.foreach {
               case ddef: DefDef if !ddef.symbol.isConstructor =>
                 traverse(ddef)
               case vdef: ValDef if vdef.symbol.is(Flags.Lazy) =>
                 traverse(vdef)
-              case stat =>
-                if !excludeInit then traverse(stat)
+              case stat => // TODO: promote potential of fields
             }
+
+          case tree @ Select(inst: New, _) if tree.symbol.isConstructor =>
+            val cls = inst.tpe.classSymbol.asClass
+            deps += InstanceUsage(cls, cls)(tree)
+            deps += StaticCall(cls, tree.symbol)(tree)
 
           case tree: RefTree if tree.isTerm =>
             deps ++= analyzeType(tree.tpe, tree, exclude = cls)
@@ -291,9 +299,6 @@ class CycleChecker(cache: Cache) {
           case tdef: TypeDef =>
             // don't go into nested classes
 
-          case tree: New =>
-            deps += ClassUsage(tree.tpe.classSymbol)(tree)
-
           case _ =>
             traverseChildren(tree)
         }
@@ -302,11 +307,7 @@ class CycleChecker(cache: Cache) {
     // TODO: the traverser might create duplicate entries for parents
     tpl.parents.foreach { tree =>
       val tp = tree.tpe
-      val dep =
-        if excludeInit then InstanceUsage(tp.classSymbol)(tree)
-        else ClassUsage(tp.classSymbol)(tree)
-
-      deps += dep
+      deps += InstanceUsage(tp.classSymbol.asClass, instanceClass)(tree)
     }
 
     traverser.traverse(tpl)
@@ -318,7 +319,8 @@ class CycleChecker(cache: Cache) {
 
     case tmref: TermRef if isStaticObjectRef(tmref.symbol) =>
       val obj = tmref.symbol
-      ObjectAccess(obj)(source) :: InstanceUsage(obj.moduleClass)(source) :: Nil
+      val cls = obj.moduleClass.asClass
+      ObjectAccess(obj)(source) :: InstanceUsage(cls, cls)(source) :: Nil
 
     case tmref: TermRef =>
       analyzeType(tmref.prefix, source, exclude)
@@ -326,9 +328,9 @@ class CycleChecker(cache: Cache) {
     case ThisType(tref) =>
       if isStaticObjectRef(tref.symbol.sourceModule) && tref.symbol != exclude
       then
-        val cls = tref.symbol
+        val cls = tref.symbol.asClass
         val obj = cls.sourceModule
-        ObjectAccess(obj)(source) :: InstanceUsage(cls)(source) :: Nil
+        ObjectAccess(obj)(source) :: InstanceUsage(cls, cls)(source) :: Nil
       else
         Nil
 
