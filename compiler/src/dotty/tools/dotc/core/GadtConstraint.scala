@@ -19,7 +19,7 @@ sealed abstract class GadtConstraint extends Showable {
   def bounds(sym: Symbol)(using Context): TypeBounds
 
   /** Simiar to [[bounds]], while retrieve bounds for type members. */
-  def bounds(path: TermRef, designator: Name)(using Context): TypeBounds
+  def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
@@ -27,7 +27,7 @@ sealed abstract class GadtConstraint extends Showable {
    *       Using this in isSubType can lead to infinite recursion. Consider `bounds` instead.
    */
   def fullBounds(sym: Symbol)(using Context): TypeBounds
-  def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds
+  def fullBounds(path: SingletonType, designator: Name)(using Context): TypeBounds
 
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
@@ -81,7 +81,7 @@ final class ProperGadtConstraint private(
   private var myConstraint: Constraint,
   private var mapping: SimpleIdentityMap[Symbol, TypeVar],
   private var reverseMapping: SimpleIdentityMap[TypeParamRef, Symbol],
-  private var tpmMapping: SimpleIdentityMap[TermRef, SimpleIdentityMap[Name, TypeVar]],
+  private var tpmMapping: SimpleIdentityMap[SingletonType, SimpleIdentityMap[Name, TypeVar]],
   private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var myNarrowScrutTp: Type,
   private var storedPatTpms: List[(Name, TypeVar)],
@@ -359,16 +359,18 @@ final class ProperGadtConstraint private(
     if storedPatTpms.isEmpty then return
 
     val path = tp match {
-      case NoType =>
-        import NameKinds.WildcardParamName
-        val path =
-          TermRef(
-            SkolemType(TypeBounds(defn.NothingType, defn.AnyType)),
-            WildcardParamName.fresh(prefix = Names.EmptyTermName)
-          )
-        path
       case path: TermRef =>
         path
+      case tp =>
+        import NameKinds.WildcardParamName
+        // val path =
+        // TermRef(
+        //   SkolemType(TypeBounds(defn.NothingType, defn.AnyType)),
+        //   WildcardParamName.fresh(prefix = Names.EmptyTermName)
+        // )
+        // path
+        SkolemType(TypeBounds(defn.NothingType, defn.AnyType))
+          .withName(WildcardParamName.fresh(Names.EmptyTermName))
     }
 
     tpmMapping = tpmMapping.updated(
@@ -463,7 +465,7 @@ final class ProperGadtConstraint private(
           // .ensuring(containsNoInternalTypes(_))
     }
 
-  override def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds =
+  override def fullBounds(path: SingletonType, designator: Name)(using Context): TypeBounds =
     mapTpMem(path, designator) match {
       case null => null
       case tv =>
@@ -471,12 +473,12 @@ final class ProperGadtConstraint private(
         // .ensuring(containsNoInternalTypes(_))
     }
 
-  private def mapTpMem(path: TermRef, designator: Name): TypeVar = tpmMapping(path) match {
+  private def mapTpMem(path: SingletonType, designator: Name): TypeVar = tpmMapping(path) match {
     case null => null
     case nameMapping => nameMapping(designator)
   }
 
-  override def bounds(path: TermRef, designator: Name)(using Context): TypeBounds =
+  override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds =
     mapTpMem(path, designator) match {
       case null => null
       case tv =>
@@ -624,8 +626,12 @@ final class ProperGadtConstraint private(
       sb ++= i"$sym: ${fullBounds(sym)}\n"
     }
     tpmMapping.foreachBinding { case (path, nameMapping) =>
+      def showSingleton(tp: SingletonType): String = tp match {
+        case tp: TermRef => tp.symbol.show
+        case _ => tp.show
+      }
       nameMapping.foreachBinding { case (name, _) =>
-        sb ++= i"(${path.symbol}).$name: ${fullBounds(path, name)}\n"
+        sb ++= i"(${showSingleton(path)}).$name: ${fullBounds(path, name)}\n"
       }
     }
     sb.result
@@ -634,9 +640,9 @@ final class ProperGadtConstraint private(
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
-  override def bounds(path: TermRef, designator: Name)(using Context): TypeBounds = null
+  override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
-  override def fullBounds(path: TermRef, designator: Name)(using Context): TypeBounds = null
+  override def fullBounds(path: SingletonType, designator: Name)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
