@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<language name="Scala" version="11" kateversion="5.62" section="Sources"
+          extensions="*.scala;*.sbt" mimetype="text/x-scala" license="LGPL"
+          author="Stephane Micheloud (stephane.micheloud@alumni.epfl.ch)">
+<!--
+adapted from "java.xml" by Alfredo Luiz Foltran Fialho (alfoltran@ig.com.br)
+-->
+  <highlighting>
+    <list name="scala2">
+      <item>Actor</item>
+      <item>ActorProxy</item>
+      <item>ActorTask</item>
+      <item>ActorThread</item>
+      <item>AllRef</item>
+      <item>Any</item>
+      <item>AnyRef</item>
+      <item>Application</item>
+      <item>AppliedType</item>
+      <item>Array</item>
+      <item>ArrayBuffer</item>
+      <item>Attribute</item>
+      <item>BoxedArray</item>
+      <item>BoxedBooleanArray</item>
+      <item>BoxedByteArray</item>
+      <item>BoxedCharArray</item>
+      <item>Buffer</item>
+      <item>BufferedIterator</item>
+      <item>Char</item>
+      <item>Console</item>
+      <item>Enumeration</item>
+      <item>Fluid</item>
+      <item>Function</item>
+      <item>IScheduler</item>
+      <item>ImmutableMapAdaptor</item>
+      <item>ImmutableSetAdaptor</item>
+      <item>Int</item>
+      <item>Iterable</item>
+      <item>List</item>
+      <item>ListBuffer</item>
+      <item>None</item>
+      <item>Option</item>
+      <item>Ordered</item>
+      <item>Pair</item>
+      <item>PartialFunction</item>
+      <item>Pid</item>
+      <item>Predef</item>
+      <item>PriorityQueue</item>
+      <item>PriorityQueueProxy</item>
+      <item>Reaction</item>
+      <item>Ref</item>
+      <item>Responder</item>
+      <item>RichInt</item>
+      <item>RichString</item>
+      <item>Rule</item>
+      <item>RuleTransformer</item>
+      <item>Script</item>
+      <item>Seq</item>
+      <item>SerialVersionUID</item>
+      <item>Some</item>
+      <item>Stream</item>
+      <item>Symbol</item>
+      <item>TcpService</item>
+      <item>TcpServiceWorker</item>
+      <item>Triple</item>
+      <item>Unit</item>
+      <item>Value</item>
+      <item>WorkerThread</item>
+      <item>serializable</item>
+      <item>transient</item>
+      <item>volatile</item>
+    </list>
+    <list name="java15">
+      <include>java15##Java</include>
+    </list>
+    <list name="keywords">
+      <item>abstract</item>
+      <item>class</item>
+      <item>def</item>
+      <item>enum</item>
+      <item>export</item>
+      <item>extends</item>
+      <item>false</item>
+      <item>final</item>
+      <item>given</item>
+      <item>implicit</item>
+      <item>import</item>
+      <item>lazy</item>
+      <item>new</item>
+      <item>null</item>
+      <item>object</item>
+      <item>override</item>
+      <item>package</item>
+      <item>private</item>
+      <item>protected</item>
+      <item>sealed</item>
+      <item>super</item>
+      <item>then</item>
+      <item>this</item>
+      <item>trait</item>
+      <item>true</item>
+      <item>type</item>
+      <item>val</item>
+      <item>var</item>
+      <item>with</item>
+    </list>
+    <list name="control flow">
+      <item>case</item>
+      <item>catch</item>
+      <item>do</item>
+      <item>else</item>
+      <item>finally</item>
+      <item>for</item>
+      <item>if</item>
+      <item>match</item>
+      <item>return</item>
+      <item>throw</item>
+      <item>try</item>
+      <item>while</item>
+      <item>yield</item>
+    </list>
+    <list name="types">
+      <item>boolean</item>
+      <item>byte</item>
+      <item>char</item>
+      <item>double</item>
+      <item>float</item>
+      <item>int</item>
+      <item>long</item>
+      <item>short</item>
+      <item>unit</item>
+    </list>
+    <contexts>
+      <context attribute="Normal Text" lineEndContext="#stay" name="Normal">
+        <DetectSpaces context="#stay"/>
+
+        <!-- Comment next line if you don't use Javadoc tool -->
+        <!-- <IncludeRules context="##Javadoc"/> -->
+        <Detect2Chars attribute="Comment" context="CommentSingleLine" char="/" char1="/"/>
+        <Detect2Chars attribute="Comment" context="CommentMultiline" char="/" char1="*" beginRegion="Comment"/>
+
+        <DetectChar attribute="Symbol" context="#stay" char="{" beginRegion="Brace1"/>
+        <DetectChar attribute="Symbol" context="#stay" char="}" endRegion="Brace1"/>
+        <DetectChar attribute="Annotation" context="Annotation" char="@"/>
+        <Float attribute="Float" context="Float Suffixes"/>
+        <AnyChar attribute="Symbol" context="#stay" String=".()[]&amp;|+,-/*&lt;=&gt;;!%?:~^"/>
+        <HlCHex attribute="Hex" context="Int Suffixes"/>
+        <Int attribute="Decimal" context="Int Suffixes"/>
+
+        <DetectChar attribute="String" context="String" char="&quot;"/>
+        <DetectChar context="Char" char="'" lookAhead="1"/>
+        <Detect2Chars attribute="String Interpolation" context="StringInterpolatorS" char="s" char1="&quot;"/>
+        <Detect2Chars attribute="String Interpolation" context="StringInterpolatorF" char="f" char1="&quot;"/>
+        <StringDetect attribute="Raw String" context="StringInterpolatorRaw" String="raw&quot;"/>
+
+        <WordDetect attribute="Keyword" context="SoftKeywordEnd" String="end"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordErased" String="erased"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordExtension" String="extension"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordInline" String="inline"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordOpaque" String="opaque"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordOpen" String="open"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordTransparent" String="transparent"/>
+        <WordDetect attribute="Keyword" context="SoftKeywordUsing" String="using"/>
+
+        <keyword attribute="Keyword" context="#stay" String="keywords"/>
+        <keyword attribute="Control Flow" context="#stay" String="control flow"/>
+        <keyword attribute="Data Type" context="#stay" String="types"/>
+        <keyword attribute="Java15" context="#stay" String="java15"/>
+        <keyword attribute="Scala2" context="#stay" String="scala2"/>
+
+        <RegExpr attribute="Function" context="#stay" String="\b[_a-zA-Z]\w*(?=[\s]*(?:/\*\s*\d+\s*\*/\s*)?[(])" />
+        <DetectIdentifier context="#stay"/>
+      </context>
+
+      <context attribute="Float" lineEndContext="#pop" name="Float Suffixes" fallthroughContext="#pop">
+        <AnyChar attribute="Float" context="#pop" String="fdFD"/>
+      </context>
+      <context attribute="Decimal" lineEndContext="#pop" name="Int Suffixes" fallthroughContext="#pop">
+        <AnyChar attribute="Decimal" context="#pop" String="Ll"/>
+      </context>
+
+      <context attribute="Normal Text" lineEndContext="#pop" name="Annotation" fallthroughContext="#pop">
+        <RegExpr attribute="Annotation" context="#pop" String="[_a-zA-Z]+(\.[0-9_a-zA-Z]+)*"/>
+      </context>
+
+      <context attribute="Normal Text" lineEndContext="#stay" name="Char">
+        <HlCChar attribute="Char" context="#pop"/>
+        <RegExpr attribute="Char" context="#pop" String="'\\u+[0-9a-fA-F]{4}'"/>
+        <RegExpr attribute="Error" context="#pop" String="'(\\(u+[0-9a-fA-F]*|.))?'?"/>
+      </context>
+
+      <context attribute="String" lineEndContext="#pop" name="String" fallthroughContext="#pop!SingleLineString">
+        <Detect2Chars attribute="String" context="#pop!MultiLineString" char="&quot;" char1="&quot;"/>
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="SingleLineString">
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineString">
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar context="MultiLineStringFinal" char="&quot;" lookAhead="1"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringFinal">
+        <StringDetect context="MultiLineStringNoFinal" String="&quot;&quot;&quot;&quot;" lookAhead="1"/>
+        <StringDetect attribute="String" context="#pop#pop" String="&quot;&quot;&quot;"/>
+        <Detect2Chars attribute="String" context="#pop" char="&quot;" char1="&quot;"/>
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringNoFinal">
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="StringEscapedChar">
+        <HlCStringChar attribute="String Char" context="#pop"/>
+        <RegExpr attribute="String Char" context="#pop" String="\\u+[0-9a-fA-F]{4}"/>
+        <RegExpr attribute="Error" context="#pop" String="\\(u+[0-9a-fA-F]*|.)?"/>
+      </context>
+
+      <context attribute="String" lineEndContext="#pop" name="StringInterpolatorS" fallthroughContext="#pop!SingleLineStringInterpolatorS">
+        <Detect2Chars attribute="String Interpolation" context="#pop!MultiLineStringInterpolatorS" char="&quot;" char1="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="SingleLineStringInterpolatorS">
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar context="Interpolation" char="$" lookAhead="1"/>
+        <DetectChar attribute="String Interpolation" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolatorS">
+        <DetectChar context="Interpolation" char="$" lookAhead="1"/>
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar context="MultiLineStringInterpolarFinal" char="&quot;" lookAhead="1"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolarFinal">
+        <StringDetect context="MultiLineStringInterpolarNoFinal" String="&quot;&quot;&quot;&quot;" lookAhead="1"/>
+        <StringDetect attribute="String Interpolation" context="#pop#pop" String="&quot;&quot;&quot;"/>
+        <Detect2Chars attribute="String" context="#pop" char="&quot;" char1="&quot;"/>
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolarNoFinal">
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="Interpolation">
+        <Detect2Chars attribute="String Interpolation" context="#pop!InInterpolation" char="$" char1="{"/>
+        <Detect2Chars attribute="String Char" context="#pop" char="$" char1="$"/>
+        <DetectChar attribute="String Interpolation" context="#pop!Variable" char="$"/>
+      </context>
+      <context attribute="String Interpolation" lineEndContext="#stay" name="InInterpolation">
+        <DetectChar attribute="String Interpolation" context="#pop" char="}"/>
+        <IncludeRules context="Normal"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="Variable" fallthroughContext="#pop">
+        <DetectIdentifier attribute="String Interpolation" context="#pop"/>
+      </context>
+
+      <context attribute="String" lineEndContext="#pop" name="StringInterpolatorF" fallthroughContext="#pop!SingleLineStringInterpolatorF">
+        <Detect2Chars attribute="String Interpolation" context="#pop!MultiLineStringInterpolatorF" char="&quot;" char1="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="SingleLineStringInterpolatorF">
+        <Detect2Chars attribute="String Interpolation" context="InInterpolation" char="$" char1="{"/>
+        <Detect2Chars attribute="String Char" context="#stay" char="$" char1="$"/>
+        <DetectChar attribute="String Interpolation" context="VariableF" char="$"/>
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar attribute="String Interpolation" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolatorF">
+        <Detect2Chars attribute="String Interpolation" context="InInterpolation" char="$" char1="{"/>
+        <Detect2Chars attribute="String Char" context="#stay" char="$" char1="$"/>
+        <DetectChar attribute="String Interpolation" context="VariableF" char="$"/>
+        <DetectChar context="StringEscapedChar" char="\" lookAhead="1"/>
+        <DetectChar context="MultiLineStringInterpolarFinal" char="&quot;" lookAhead="1"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="VariableF" fallthroughContext="#pop">
+        <DetectIdentifier attribute="String Interpolation" context="#pop!PrintfString"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="PrintfString" fallthroughContext="#pop">
+        <RegExpr attribute="String Interpolation" context="#stay" String="%((\d+\$)?[-#+ 0,(]*\d*((\.\d+)?[a-hosxA-CEGHSX]|[tT][aAbBcCdDeFhHIjklLmMNpPQrRsSTyYzZ])|[%n])" />
+      </context>
+
+      <context attribute="String" lineEndContext="#pop" name="StringInterpolatorRaw" fallthroughContext="#pop!SingleLineStringInterpolatorRaw">
+        <Detect2Chars attribute="Raw String" context="#pop!MultiLineStringInterpolatorRaw" char="&quot;" char1="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#pop" name="SingleLineStringInterpolatorRaw">
+        <DetectChar context="Interpolation" char="$" lookAhead="1"/>
+        <DetectChar attribute="Raw String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolatorRaw">
+        <DetectChar context="Interpolation" char="$" lookAhead="1"/>
+        <DetectChar context="MultiLineStringInterpolarRawFinal" char="&quot;" lookAhead="1"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolarRawFinal">
+        <StringDetect context="MultiLineStringInterpolarRawNoFinal" String="&quot;&quot;&quot;&quot;" lookAhead="1"/>
+        <StringDetect attribute="Raw String" context="#pop#pop" String="&quot;&quot;&quot;"/>
+        <Detect2Chars attribute="String" context="#pop" char="&quot;" char1="&quot;"/>
+        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+      </context>
+      <context attribute="String" lineEndContext="#stay" name="MultiLineStringInterpolarRawNoFinal">
+        <DetectChar attribute="Raw String" context="#pop" char="&quot;"/>
+      </context>
+
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordEnd" fallthroughContext="#pop">
+        <RegExpr attribute="Normal Text" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordErased" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="def|val"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordExtension" fallthroughContext="#pop">
+        <RegExpr attribute="Symbol" context="#pop" String="\(|\["/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordInline" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="def|given|val"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordOpaque" fallthroughContext="#pop">
+        <StringDetect attribute="Keyword" context="#pop" String="type"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordOpen" fallthroughContext="#pop">
+        <StringDetect attribute="Keyword" context="#pop" String="class"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordTransparent" fallthroughContext="#pop">
+        <RegExpr attribute="Keyword" context="#pop" String="(inline[\s]+)?def"/>
+      </context>
+      <context attribute="Keyword" lineEndContext="#pop" name="SoftKeywordUsing" fallthroughContext="#pop">
+        <RegExpr attribute="Normal Text" context="#pop" String="[_a-zA-Z][0-9_a-zA-Z]*"/>
+      </context>
+
+      <context attribute="Comment" lineEndContext="#pop" name="CommentSingleLine">
+        <DetectSpaces />
+        <IncludeRules context="##Comments"/>
+      </context>
+      <context attribute="Comment" lineEndContext="#stay" name="CommentMultiline">
+        <Detect2Chars attribute="Comment" context="#pop" char="*" char1="/" endRegion="Comment"/>
+        <Detect2Chars attribute="Comment" context="CommentMultiline" char="/" char1="*" beginRegion="Comment"/>
+        <DetectSpaces />
+        <IncludeRules context="##Comments"/>
+      </context>
+
+    </contexts>
+    <itemDatas>
+      <itemData name="Normal Text"  defStyleNum="dsNormal" spellChecking="false"/>
+      <itemData name="Keyword"      defStyleNum="dsKeyword" spellChecking="false"/>
+      <itemData name="Control Flow" defStyleNum="dsControlFlow" spellChecking="false"/>
+      <itemData name="Annotation"   defStyleNum="dsAttribute" spellChecking="false"/>
+      <itemData name="Function"     defStyleNum="dsFunction" spellChecking="false"/>
+      <itemData name="Data Type"    defStyleNum="dsDataType" spellChecking="false"/>
+      <itemData name="Decimal"      defStyleNum="dsDecVal" spellChecking="false"/>
+      <itemData name="Hex"          defStyleNum="dsBaseN" spellChecking="false"/>
+      <itemData name="Float"        defStyleNum="dsFloat" spellChecking="false"/>
+      <itemData name="Char"         defStyleNum="dsChar" spellChecking="false"/>
+      <itemData name="String"       defStyleNum="dsString"/>
+      <itemData name="String Char"  defStyleNum="dsChar" spellChecking="false"/>
+      <itemData name="Raw String"   defStyleNum="dsVerbatimString"/>
+      <itemData name="String Interpolation" defStyleNum="dsSpecialString"/>
+      <itemData name="Comment"      defStyleNum="dsComment"/>
+      <itemData name="Symbol"       defStyleNum="dsOperator" spellChecking="false"/>
+      <itemData name="Scala2"       defStyleNum="dsBuiltIn"/>
+      <itemData name="Java15"       defStyleNum="dsExtension"/>
+      <itemData name="Error"        defStyleNum="dsError"/>
+    </itemDatas>
+  </highlighting>
+  <general>
+    <comments>
+      <comment name="singleLine" start="//"/>
+      <comment name="multiLine" start="/*" end="*/" region="Comment"/>
+    </comments>
+    <keywords casesensitive="1"/>
+  </general>
+</language>
+<!-- kate: replace-tabs on; tab-width 2; indent-width 2; -->
