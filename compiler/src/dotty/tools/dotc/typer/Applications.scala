@@ -118,7 +118,7 @@ object Applications {
   }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
-    tp.widenExpr.dealias match
+    tp.widenExpr.dealias.normalized match
     case tp: AppliedType =>
       if defn.isTupleClass(tp.tycon.typeSymbol) then
         tp.args
