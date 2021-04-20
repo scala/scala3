@@ -43,15 +43,15 @@ class SnippetCompiler(
     if (msgOrNull == null) "" else msgOrNull
 
   private def createReportMessage(wrappedSnippet: WrappedSnippet, arg: SnippetCompilerArg, diagnostics: Seq[Diagnostic]): Seq[SnippetCompilerMessage] = {
-    val line = wrappedSnippet.lineOffset
-    val column = wrappedSnippet.columnOffset
-    val lineBoilerplate = wrappedSnippet.lineBoilerplate
+    val line = wrappedSnippet.outerLineOffset
+    val column = wrappedSnippet.outerColumnOffset
+    val innerLineOffset = wrappedSnippet.innerLineOffset
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
         val diagPos = diagnostic.position.get
         val pos = Some(
-          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - lineBoilerplate)
+          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - innerLineOffset)
         )
         val msg = nullableMessage(diagnostic.message)
         val level = MessageLevel.fromOrdinal(diagnostic.level)

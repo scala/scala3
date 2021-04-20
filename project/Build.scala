@@ -1353,7 +1353,7 @@ object Build {
             "-doc-root-content", docRootFile.toString,
             "-Ydocument-synthetic-types",
             "-snippet-compiler:" +
-              s"$dottyLibRoot=compile" +
+              s"$dottyLibRoot=compile," +
               "docs=compile"
           )
         ))
