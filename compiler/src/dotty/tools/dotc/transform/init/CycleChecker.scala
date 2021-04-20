@@ -216,9 +216,7 @@ class CycleChecker(cache: Cache) {
         dependencies = mutable.Set.empty,
         env = env,
         init = true
-      ) {
-        override def isFieldInitialized(field: Symbol): Boolean = true
-      }
+      )
 
       val pot = Hot(dep.cls)(dep.source)
       val effs = pot.potentialsOf(dep.symbol)(using env).promote(dep.source)

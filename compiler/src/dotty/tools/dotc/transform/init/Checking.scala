@@ -30,7 +30,7 @@ object Checking {
    *
    */
 
-  case class State(
+  final case class State(
     var visited: Set[Effect],                  // effects that have been checked or are being checked
     path: Vector[Tree],                        // the path that leads to the current effect
     thisClass: ClassSymbol,                    // the concrete class of `this`
@@ -46,7 +46,6 @@ object Checking {
       val res = op(using state)
       this.visited = state.visited
       res
-
 
     def isFieldInitialized(field: Symbol): Boolean =
       init || fieldsInited.contains(field)
