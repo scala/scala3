@@ -248,9 +248,13 @@ class CycleChecker(cache: Cache) {
             tree.body.foreach {
               case ddef: DefDef if !ddef.symbol.isConstructor =>
                 traverse(ddef)
-              case vdef: ValDef if vdef.symbol.is(Flags.Lazy) =>
-                traverse(vdef)
-              case stat => // TODO: promote potential of fields
+              case vdef: ValDef =>
+                if vdef.symbol.is(Flags.Lazy) then
+                  traverse(vdef)
+                else
+                  deps += ProxyUsage(instanceClass, vdef.symbol)(vdef)
+              case stat =>
+
             }
 
           case tree @ Select(inst: New, _) if tree.symbol.isConstructor =>
