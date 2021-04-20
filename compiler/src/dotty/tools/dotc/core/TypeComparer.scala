@@ -276,6 +276,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
               (tp1, tp2) match {
                 case (tp1: TermRef, tp2: TermRef) =>
+                  val sym1 = tp1.symbol
+                  val sym2 = tp2.symbol
+                  if ctx.gadt.isEqual(sym1, sym2) then
+                    return true
                 case _ =>
               }
 

@@ -51,6 +51,12 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
+  /** Record a equation between two singleton types. */
+  def addEquation(tp1: Symbol, tp2: Symbol): Unit
+
+  /** Check whether two singletons are equal. */
+  def isEqual(tp1: Symbol, tp2: Symbol): Boolean
+
   /** Is the symbol registered in the constraint?
    *
    * @note this is true even if the symbol is constrained to be equal to another type, unlike [[Constraint.contains]].
@@ -79,6 +85,8 @@ final class ProperGadtConstraint private(
   private var reverseTpmMapping: SimpleIdentityMap[TypeParamRef, TypeRef],
   private var myNarrowScrutTp: Type,
   private var storedPatTpms: List[(Name, TypeVar)],
+  /** Disjoint set to check whether two singletons are equal. */
+  private var myDisjMapping: SimpleIdentityMap[Symbol, Symbol]
 ) extends GadtConstraint with ConstraintHandling {
   import dotty.tools.dotc.config.Printers.{gadts, gadtsConstr}
 
@@ -89,7 +97,8 @@ final class ProperGadtConstraint private(
     tpmMapping = SimpleIdentityMap.empty,
     reverseTpmMapping = SimpleIdentityMap.empty,
     myNarrowScrutTp = null,
-    storedPatTpms = Nil
+    storedPatTpms = Nil,
+    myDisjMapping = SimpleIdentityMap.empty
   )
 
   /** Exposes ConstraintHandling.subsumes */
@@ -340,6 +349,13 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp: Type = myNarrowScrutTp
 
   override def narrowPatTp_=(tp: Type)(using Context): Unit = {
+    (tp, myNarrowScrutTp) match {
+      case (pat: TermRef, scrut: TermRef) =>
+        addEquation(pat.symbol, scrut.symbol)
+          // .showing(i"equalize singletons $pat == $scrut")
+      case _ =>
+    }
+
     if storedPatTpms.isEmpty then return
 
     val path = tp match {
@@ -417,6 +433,28 @@ final class ProperGadtConstraint private(
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
+  /** Find the parent of the singleton type in the disjoint set. */
+  private def findParent(tp: Symbol): Symbol = {
+    @annotation.tailrec def recur(tp: Symbol): Symbol = myDisjMapping(tp) match {
+      case null =>
+        myDisjMapping = myDisjMapping.updated(tp, tp)
+        tp
+      case tp1 if tp1 eq tp => tp1
+      case tp1 => recur(tp1)
+    }
+    recur(tp)
+  }
+
+  override def addEquation(tp1: Symbol, tp2: Symbol): Unit = {
+    val p1 = findParent(tp1)
+    val p2 = findParent(tp2)
+    if !(p1 eq p2) then
+      myDisjMapping = myDisjMapping.updated(tp1, p2)
+  }
+
+  override def isEqual(tp1: Symbol, tp2: Symbol): Boolean =
+    findParent(tp1) eq findParent(tp2)
+
   override def fullBounds(sym: Symbol)(using Context): TypeBounds =
     mapping(sym) match {
       case null => null
@@ -485,7 +523,8 @@ final class ProperGadtConstraint private(
     tpmMapping,
     reverseTpmMapping,
     myNarrowScrutTp,
-    storedPatTpms
+    storedPatTpms,
+    myDisjMapping
   )
 
   def restore(other: GadtConstraint): Unit = other match {
@@ -497,6 +536,7 @@ final class ProperGadtConstraint private(
       this.reverseTpmMapping = other.reverseTpmMapping
       this.myNarrowScrutTp = other.myNarrowScrutTp
       this.storedPatTpms = other.storedPatTpms
+      this.myDisjMapping = other.myDisjMapping
     case _ => ;
   }
 
@@ -611,6 +651,10 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
   override def narrowPatTp_=(tp: Type)(using Context): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
+
+  override def addEquation(tp1: Symbol, tp2: Symbol): Unit = ()
+
+  override def isEqual(tp1: Symbol, tp2: Symbol): Boolean = false
 
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = unsupported("EmptyGadtConstraint.approximation")
 
