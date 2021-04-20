@@ -135,7 +135,7 @@ object Foo:
    given fooNotTagged[A](using NotGiven[Tagged[A]]): Foo[A] = Foo(false)
 
 @main def test(): Unit =
-   given Tagged[Int] with {}
+   given Tagged[Int]()
    assert(summon[Foo[Int]].value) // fooTagged is found
    assert(!summon[Foo[String]].value) // fooNotTagged is found
 ```
