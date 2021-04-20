@@ -75,18 +75,9 @@ case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extend
  *
  *  Note: Virtual method resolution should have been performed for the target.
  */
- case class ProxyUsage(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
+case class ProxyUsage(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
   def show(using Context): String = "ProxyUsage(" + cls.show + ", " + symbol.show + ")"
 }
-
-/** A class is used
- *
- *  This is a coarse-grained abstraction
- */
-case class ClassUsage(symbol: ClassSymbol)(val source: Tree) extends Dependency {
-  def show(using Context): String = "ClassUsage(" + symbol.show + ")"
-}
-
 
 class CycleChecker(cache: Cache) {
   private val summaryCache = mutable.Map.empty[Symbol, List[Dependency]]
@@ -133,7 +124,6 @@ class CycleChecker(cache: Cache) {
           case dep: InstanceUsage  => checkInstanceUsage(dep)
           case dep: StaticCall     => checkStaticCall(dep)
           case dep: ProxyUsage     => checkProxyUsage(dep)
-          case dep: ClassUsage     => checkClassUsage(dep)
         }
     }
 
@@ -184,16 +174,6 @@ class CycleChecker(cache: Cache) {
       deps.flatMap(check(_))
     }
 
-  private def checkClassUsage(dep: ClassUsage)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.symbol) then
-      Util.traceIndented("skip " + dep.symbol.show + " which is not in current run ", init)
-      Nil
-    else {
-      val cls = dep.symbol
-      val deps = classDependencies(cls)
-      deps.flatMap(check(_))
-    }
-
 // ----- analysis of dependencies -------------------------------
 
   def cacheConstructorDependencies(constr: Symbol, deps: List[Dependency])(using Context): Unit =
@@ -203,15 +183,6 @@ class CycleChecker(cache: Cache) {
 
     if cls.is(Flags.Module) && cls.isStatic then
       objectsInCurrentRun += cls.sourceModule
-
-  private def classDependencies(sym: Symbol)(using Context): List[Dependency] =
-    if (summaryCache.contains(sym)) summaryCache(sym)
-    else trace("summary for " + sym.show, init) {
-      val cls = sym.asClass
-      val deps = analyzeClass(cls, cls)
-      summaryCache(cls) = deps
-      deps
-    }
 
   private def instanceDependencies(sym: Symbol, instanceClass: ClassSymbol)(using Context): List[Dependency] =
     if (summaryCache.contains(sym)) summaryCache(sym)
