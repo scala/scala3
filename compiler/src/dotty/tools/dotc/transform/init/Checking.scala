@@ -229,7 +229,7 @@ object Checking {
 
       case hot: Hot =>
         val target = resolve(hot.classSymbol, sym)
-        state.dependencies += StaticCall(hot.classSymbol, target)(pot.source)
+        state.dependencies += StaticCall(hot.classSymbol, target)(state.path)
         Errors.empty
 
       case obj: Global  =>
@@ -237,7 +237,7 @@ object Checking {
         if obj.enclosingClass == state.thisClass && obj.moduleClass == state.thisClass then
           check(MethodCall(ThisRef()(obj.source), target)(eff.source))
         else
-          state.dependencies += StaticCall(obj.moduleClass, target)(pot.source)
+          state.dependencies += StaticCall(obj.moduleClass, target)(state.path)
           Errors.empty
 
       case _: Cold =>
@@ -330,31 +330,31 @@ object Checking {
           else PromoteWarm(pot, eff.source, state.path).toErrors
 
         case obj: Global =>
-          state.dependencies += InstanceUsage(obj.moduleClass, obj.moduleClass)(pot.source)
+          state.dependencies += InstanceUsage(obj.moduleClass, obj.moduleClass)(state.path)
           Errors.empty
 
         case hot: Hot =>
-          state.dependencies += InstanceUsage(hot.classSymbol, hot.classSymbol)(pot.source)
+          state.dependencies += InstanceUsage(hot.classSymbol, hot.classSymbol)(state.path)
           Errors.empty
 
         case MethodReturn(hot: Hot, sym) =>
           val target = resolve(hot.classSymbol, sym)
-          state.dependencies += ProxyUsage(hot.classSymbol, target)(pot.source)
+          state.dependencies += ProxyUsage(hot.classSymbol, target)(state.path)
           Errors.empty
 
         case MethodReturn(obj: Global, sym) =>
           val target = resolve(obj.moduleClass, sym)
-          state.dependencies += ProxyUsage(obj.moduleClass, target)(pot.source)
+          state.dependencies += ProxyUsage(obj.moduleClass, target)(state.path)
           Errors.empty
 
         case FieldReturn(hot: Hot, sym) =>
           val target = resolve(hot.classSymbol, sym)
-          state.dependencies += ProxyUsage(hot.classSymbol, target)(pot.source)
+          state.dependencies += ProxyUsage(hot.classSymbol, target)(state.path)
           Errors.empty
 
         case FieldReturn(obj: Global, sym) =>
           val target = resolve(obj.moduleClass, sym)
-          state.dependencies += ProxyUsage(obj.moduleClass, target)(pot.source)
+          state.dependencies += ProxyUsage(obj.moduleClass, target)(state.path)
           Errors.empty
 
         case Fun(pots, effs) =>
@@ -386,7 +386,7 @@ object Checking {
   private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
     val obj = eff.potential
     if obj.enclosingClass != obj.moduleClass then
-      state.dependencies += ObjectAccess(obj.symbol)(eff.source)
+      state.dependencies += ObjectAccess(obj.symbol)(state.path)
     Errors.empty
 
   private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {

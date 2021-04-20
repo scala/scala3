@@ -45,17 +45,17 @@ import scala.collection.mutable
  */
 trait Dependency {
   def symbol: Symbol
-  def source: Tree
+  def source: Vector[Tree]
   def show(using Context): String
 }
 
 /** Depend on the initialization of another object */
-case class ObjectAccess(symbol: Symbol)(val source: Tree) extends Dependency {
+case class ObjectAccess(symbol: Symbol)(val source: Vector[Tree]) extends Dependency {
   def show(using Context): String = "ObjectAccess(" + symbol.show + ")"
 }
 
 /** Depend on usage of an instance, which can be either a class instance or object */
-case class InstanceUsage(symbol: ClassSymbol, instanceClass: ClassSymbol)(val source: Tree) extends Dependency {
+case class InstanceUsage(symbol: ClassSymbol, instanceClass: ClassSymbol)(val source: Vector[Tree]) extends Dependency {
   def show(using Context): String = "InstanceUsage(" + symbol.show + ")"
 }
 
@@ -67,7 +67,7 @@ case class InstanceUsage(symbol: ClassSymbol, instanceClass: ClassSymbol)(val so
  *  Note: Virtual method resolution should have been performed for the target.
  *
  */
-case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
+case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Vector[Tree]) extends Dependency {
   def show(using Context): String = "StaticCall(" + cls.show + ", " + symbol.show + ")"
 }
 
@@ -75,7 +75,7 @@ case class StaticCall(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extend
  *
  *  Note: Virtual method resolution should have been performed for the target.
  */
-case class ProxyUsage(cls: ClassSymbol, symbol: Symbol)(val source: Tree) extends Dependency {
+case class ProxyUsage(cls: ClassSymbol, symbol: Symbol)(val source: Vector[Tree]) extends Dependency {
   def show(using Context): String = "ProxyUsage(" + cls.show + ", " + symbol.show + ")"
 }
 
@@ -107,7 +107,7 @@ class CycleChecker(cache: Cache) {
   def checkCyclic()(using Context): Unit = {
     val state = State(visited = mutable.Set.empty, path = Vector.empty, trace = Vector.empty)
     objectsInCurrentRun.foreach { obj =>
-      val dep = ObjectAccess(obj)(obj.defTree)
+      val dep = ObjectAccess(obj)(Vector(obj.defTree))
       val errors = check(dep)(using ctx, state)
       errors.foreach(_.issue)
     }
@@ -136,7 +136,7 @@ class CycleChecker(cache: Cache) {
       val obj = dep.symbol
       if state.path.contains(obj) then
         val cycle = state.path.dropWhile(_ != obj)
-        val trace = state.trace.dropWhile(_.symbol != obj).map(_.source) :+ dep.source
+        val trace = state.trace.dropWhile(_.symbol != obj).flatMap(_.source) ++ dep.source
         if cycle.size > 1 then
           CyclicObjectInit(cycle, trace) :: Nil
         else
@@ -144,7 +144,7 @@ class CycleChecker(cache: Cache) {
       else
         val constr = obj.moduleClass.primaryConstructor
         state.visitObject(dep) {
-          check(StaticCall(constr.owner.asClass, constr)(obj.moduleClass.defTree))
+          check(StaticCall(constr.owner.asClass, constr)(Vector(obj.moduleClass.defTree)))
         }
     }
 
@@ -218,8 +218,8 @@ class CycleChecker(cache: Cache) {
         init = true
       )
 
-      val pot = Hot(dep.cls)(dep.source)
-      val effs = pot.potentialsOf(dep.symbol)(using env).promote(dep.source)
+      val pot = Hot(dep.cls)(dep.source.last)
+      val effs = pot.potentialsOf(dep.symbol)(using env).map(pot => Promote(pot)(pot.source))
 
       val errs = effs.flatMap(Checking.check(_)(using state))
       errs.foreach(_.issue)
@@ -250,15 +250,15 @@ class CycleChecker(cache: Cache) {
                 if vdef.symbol.is(Flags.Lazy) then
                   traverse(vdef)
                 else
-                  deps += ProxyUsage(instanceClass, vdef.symbol)(vdef)
+                  deps += ProxyUsage(instanceClass, vdef.symbol)(Vector(vdef))
               case stat =>
 
             }
 
           case tree @ Select(inst: New, _) if tree.symbol.isConstructor =>
             val cls = inst.tpe.classSymbol.asClass
-            deps += InstanceUsage(cls, cls)(tree)
-            deps += StaticCall(cls, tree.symbol)(tree)
+            deps += InstanceUsage(cls, cls)(Vector(tree))
+            deps += StaticCall(cls, tree.symbol)(Vector(tree))
 
           case tree: RefTree if tree.isTerm =>
             deps ++= analyzeType(tree.tpe, tree, exclude = cls)
@@ -280,7 +280,7 @@ class CycleChecker(cache: Cache) {
     // TODO: the traverser might create duplicate entries for parents
     tpl.parents.foreach { tree =>
       val tp = tree.tpe
-      deps += InstanceUsage(tp.classSymbol.asClass, instanceClass)(tree)
+      deps += InstanceUsage(tp.classSymbol.asClass, instanceClass)(Vector(tree))
     }
 
     traverser.traverse(tpl)
@@ -293,7 +293,7 @@ class CycleChecker(cache: Cache) {
     case tmref: TermRef if isStaticObjectRef(tmref.symbol) =>
       val obj = tmref.symbol
       val cls = obj.moduleClass.asClass
-      ObjectAccess(obj)(source) :: InstanceUsage(cls, cls)(source) :: Nil
+      ObjectAccess(obj)(Vector(source)) :: InstanceUsage(cls, cls)(Vector(source)) :: Nil
 
     case tmref: TermRef =>
       analyzeType(tmref.prefix, source, exclude)
@@ -303,7 +303,7 @@ class CycleChecker(cache: Cache) {
       then
         val cls = tref.symbol.asClass
         val obj = cls.sourceModule
-        ObjectAccess(obj)(source) :: InstanceUsage(cls, cls)(source) :: Nil
+        ObjectAccess(obj)(Vector(source)) :: InstanceUsage(cls, cls)(Vector(source)) :: Nil
       else
         Nil
 
@@ -335,7 +335,7 @@ class CycleChecker(cache: Cache) {
       init = true
     )
 
-    val pot = Hot(dep.cls)(dep.source)
+    val pot = Hot(dep.cls)(dep.source.last)
     val effs = pot.effectsOf(dep.symbol)(using env)
 
     val errs = effs.flatMap(Checking.check(_)(using state))
