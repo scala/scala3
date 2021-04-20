@@ -84,8 +84,9 @@ Generating Documentation
 To generate this page and other static page docs, run
 ```bash
 $ sbt
-> genDocs
+> scaladoc/generateScalaDocumentation
 ```
+For more information, see `scaladoc/README.md`.
 
 Before contributing to Dotty, we invite you to consult the
 [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
