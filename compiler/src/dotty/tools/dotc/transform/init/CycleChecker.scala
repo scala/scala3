@@ -84,7 +84,7 @@ class CycleChecker(cache: Cache) {
   private val proxyCache = mutable.Map.empty[Symbol, List[Dependency]]
 
   val classesInCurrentRun = mutable.Set.empty[Symbol]
-  val objectsInCurrentRun = mutable.Set.empty[Symbol]
+  val objectsInCurrentRun = new mutable.ListBuffer[Symbol]
 
   /** Checking state */
   case class State(visited: mutable.Set[Dependency], path: Vector[Symbol], trace: Vector[Dependency]) {

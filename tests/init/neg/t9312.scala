@@ -15,7 +15,7 @@ object DeadLockTest {
       def siblings = parent.children - this
     }
 
-    object Child1 extends Child     // error
+    object Child1 extends Child
     object Child2 extends Child
 
     final val children = Set(Child1, Child2)
