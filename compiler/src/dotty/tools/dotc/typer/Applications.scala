@@ -2101,7 +2101,11 @@ trait Applications extends Compatibility {
             else defn.FunctionOf(commonParamTypes, WildcardType)
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
-            withMode(Mode.ImplicitsEnabled)(pt.typedArg(arg, commonFormal))
+            withMode(Mode.ImplicitsEnabled) {
+              // We can cache the adapted argument here because the expected type
+              // is a common type shared by all overloading candidates.
+              pt.cacheArg(arg, pt.typedArg(arg, commonFormal))
+            }
         }
         recur(altFormals.map(_.tail), args1)
       case _ =>
