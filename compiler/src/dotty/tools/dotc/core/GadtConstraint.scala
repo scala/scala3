@@ -6,7 +6,7 @@ import Decorators._
 import Contexts._
 import Types._
 import Symbols._
-import Names.Name
+import Names.{Name, Designator}
 import util.SimpleIdentityMap
 import collection.mutable
 import printing._
@@ -240,6 +240,7 @@ final class ProperGadtConstraint private(
           reverseTpmMapping = reverseTpmMapping.updated(tvar.origin, TypeRef(path, name))
         }
         tvars
+          // .showing(i"created tvars for type members of ${path.symbol}\n${debugBoundsDescription}")
       case m => m
     }
 
@@ -330,6 +331,30 @@ final class ProperGadtConstraint private(
     case _ => tp
   }
 
+  private def internalizeTypeMember(path: TermRef, designator: Name)(using Context): TypeVar = {
+    def collectTypeMembers(tp: Type): List[(Name, TypeBounds)] = {
+      val typeMemeberNames: List[Name] = tp.memberNames(typeNameFilter).toList
+
+      typeMemeberNames.flatMap { name =>
+        tp.findMember(name, tp).info match {
+          case tb: TypeBounds => Some(name -> tb)
+          case _ => None
+        }
+      }
+    }
+
+    val widenPath = path.widen
+    val tpMems = collectTypeMembers(widenPath)
+    val m = fetchTypeVars(widenPath, path, tpMems)
+
+    m(designator).ensuring(_ ne null, i"can not get type variable of $designator for $path")
+  }
+
+  private def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = designator match {
+    case s: Symbol => internalizeTypeMember(path, s.name)
+    case n: Name => internalizeTypeMember(path, n)
+  }
+
   private def addBound(tvar: TypeVar, bound: Type, isUpper: Boolean)(using Context): Boolean = {
     val symTvar: TypeVar = stripInternalTypeVar(tvar) match {
       case tv: TypeVar => tv
@@ -339,6 +364,9 @@ final class ProperGadtConstraint private(
     }
 
     val internalizedBound = bound match {
+      case TypeRef(path: TermRef, d: Designator) =>
+        val tvar = internalizeTypeMember(path, d)
+        stripInternalTypeVar(tvar)
       case nt: NamedType =>
         val ntTvar = mapping(nt.symbol)
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
