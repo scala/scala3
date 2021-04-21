@@ -159,6 +159,78 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
+  private def mapType(tp: Type)(using Context): TypeVar = tp match {
+    case TypeRef(path: SingletonType, des: Symbol) => mapTpMem(path, des.name)
+    case TypeRef(path: SingletonType, des: Name) => mapTpMem(path, des)
+    case tp: NamedType => mapping(tp.symbol)
+    case _ => null
+  }
+
+  private def createTypeVars(widenPath: Type, tpMems: List[(Name, TypeBounds)])(using Context): SimpleIdentityMap[Name, TypeVar] = {
+    import NameKinds.DepParamName
+
+    val names = tpMems map (_._1)
+
+    var res: SimpleIdentityMap[Name, TypeVar] = SimpleIdentityMap.empty
+
+    val poly1 = PolyType(names.map { name => DepParamName.fresh(name.toTypeName) })(
+      pt => tpMems.map { (name, tb) =>
+        def getTvarOfName(name: Name): TypeParamRef = {
+          val idx = names.indexOf(name).ensuring(_ != -1, "can not find name in name list")
+          pt.paramRefs(idx)
+        }
+
+        def processBounds(tb: TypeBounds): TypeBounds = {
+          def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
+            def loop(tp: Type) = substDependentSyms(tp, isUpper)
+            tp match {
+              case tp @ AndType(tp1, tp2) if !isUpper =>
+                tp.derivedAndType(loop(tp1), loop(tp2))
+              case tp @ OrType(tp1, tp2) if isUpper =>
+                tp.derivedOrType(loop(tp1), loop(tp2))
+              case TypeRef(tp, des: Symbol) if tp == widenPath =>
+                getTvarOfName(des.name)
+              case TypeRef(_ : RecThis, des : Symbol) =>
+                getTvarOfName(des.name)
+              case TypeRef(tp, des: Name) if tp == widenPath =>
+                getTvarOfName(des)
+              case TypeRef(_ : RecThis, des : Name) =>
+                getTvarOfName(des)
+              case tp: Type =>
+                mapType(tp) match {
+                  case tv: TypeVar => tv.origin
+                  case null => tp
+                }
+              case tp => tp
+            }
+          }
+          tb match {
+            case alias : TypeAlias =>
+              alias.derivedAlias(substDependentSyms(alias.lo, isUpper = false))
+            case _ =>
+              tb.derivedTypeBounds(
+                lo = substDependentSyms(tb.lo, isUpper = false),
+                hi = substDependentSyms(tb.hi, isUpper = true)
+              )
+          }
+        }
+        processBounds(tb)
+      },
+      pt => defn.AnyType
+    )
+
+    val tvars = names.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
+      val tv = TypeVar(paramRef, creatorState = null)
+      res = res.updated(name, tv)
+      tv
+    }
+
+    if addToConstraint(poly1, tvars) then
+      res
+    else
+      null
+  }
+
   override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
     import NameKinds.DepParamName
     // add type member names, from both scrutinee and pattern
