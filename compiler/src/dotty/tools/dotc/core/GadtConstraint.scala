@@ -231,162 +231,31 @@ final class ProperGadtConstraint private(
       null
   }
 
+  /** Fetch type variables for type members of the singleton type. Create new type variables if not exist. */
+  private def fetchTypeVars(widenPath: Type, path: TermRef, tpMems: List[(Name, TypeBounds)])(using Context): SimpleIdentityMap[Name, TypeVar] =
+    tpmMapping(path) match {
+      case null =>
+        val tvars = createTypeVars(widenPath, tpMems)
+        tpmMapping = tpmMapping.updated(path, tvars)
+        tvars.foreachBinding { (name, tvar) =>
+          reverseTpmMapping = reverseTpmMapping.updated(tvar.origin, TypeRef(path, name))
+        }
+        tvars
+      case m => m
+    }
+
   override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
-    import NameKinds.DepParamName
-    // add type member names, from both scrutinee and pattern
-    val tpmNames: List[Name] = { (scrutTpMems ++ patTpMems) map (_._1) }.distinct
-    // type member names from the scrutinee
     val scrutNames: Set[Name] = Set.from { scrutTpMems map (_._1) }
-    // type member names from the pattern
     val patNames: Set[Name] = Set.from { patTpMems map (_._1) }
+    val sharedNames: Set[Name] = scrutNames intersect patNames
 
-    storedPatTpms = Nil
-
-    def maybeMapTpMem(path: Option[TermRef], designator: Name): TypeVar =
-      path.map(path => mapTpMem(path, designator)).getOrElse(null)
-
-    def nullEither[T <: AnyRef](x1: => T, x2: => T): T =
-      if x1 eq null then
-        x2
-      else
-        x1
-
-    // classify names into two groups, those internalized before and those new
-    val (internalizedNames, newNames): (List[Name], List[Name]) = {
-      val m = tpmNames groupBy { name =>
-       nullEither(mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) ne null
-      }
-
-      (m.getOrElse(true, Nil), m.getOrElse(false, Nil))
+    val scrutTvars: SimpleIdentityMap[Name, TypeVar] = fetchTypeVars(scrut, scrutPath, scrutTpMems)
+    val patTvars: SimpleIdentityMap[Name, TypeVar] = maybePatPath match {
+      case None => createTypeVars(pat, patTpMems)
+      case Some(path) => fetchTypeVars(pat, path, patTpMems)
     }
 
-    var equalTvars: List[(TypeVar, TypeVar)] = Nil
-
-    val existingTvars: List[TypeVar] = internalizedNames map { name =>
-      (mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) match {
-        case (null, tvar2: TypeVar) =>
-          if scrutNames contains name then {
-            tpmMapping = tpmMapping.updated(
-              scrutPath,
-              tpmMapping(scrutPath) match {
-                case null => SimpleIdentityMap.empty.updated(name, tvar2)
-                case m => m.updated(name, tvar2)
-              }
-            )
-            reverseTpmMapping = reverseTpmMapping.updated(tvar2.origin, TypeRef(scrutPath, name))
-          }
-          tvar2
-        case (tvar1: TypeVar, null) =>
-          if patNames contains name then {
-            maybePatPath map { patPath =>
-              tpmMapping = tpmMapping.updated(
-                patPath,
-                tpmMapping(patPath) match {
-                  case null => SimpleIdentityMap.empty.updated(name, tvar1)
-                  case m => m.updated(name, tvar1)
-                }
-              )
-              reverseTpmMapping = reverseTpmMapping.updated(tvar1.origin, TypeRef(scrutPath, name))
-            }
-          }
-          tvar1
-        case (tvar1: TypeVar, tvar2: TypeVar) =>
-          equalTvars = tvar1 -> tvar2 :: equalTvars
-          tvar1
-      }
-    }
-
-    val poly1 =
-      if newNames.nonEmpty then
-        PolyType(newNames map { name => DepParamName.fresh(name.toTypeName) })(
-          _ => newNames map { _ => TypeBounds(defn.NothingType, defn.AnyType) },
-          _ => defn.AnyType
-        )
-      else
-        null
-    val newTvars =
-      if newNames.nonEmpty then
-        newNames.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
-          val tv = TypeVar(paramRef, creatorState = null)
-
-          if scrutNames contains name then {
-            tpmMapping = tpmMapping.updated(
-              scrutPath,
-              tpmMapping(scrutPath) match {
-                case null => SimpleIdentityMap.empty.updated(name, tv)
-                case m => m.updated(name, tv)
-              }
-            )
-            reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
-          }
-
-          if patNames contains name then {
-            maybePatPath map { patPath =>
-              tpmMapping = tpmMapping.updated(
-                patPath,
-                tpmMapping(patPath) match {
-                  case null => SimpleIdentityMap.empty.updated(name, tv)
-                  case m => m.updated(name, tv)
-                }
-              )
-              reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
-            }
-            storedPatTpms = name -> tv :: storedPatTpms
-          }
-
-          tv
-        }
-        else
-          Nil
-
-    // type member names, reordered
-    val tpmNames1 = internalizedNames ++ newNames
-    // type variables associated to type members, ordered the same way as tpmNames1
-    val tvars = existingTvars ++ newTvars
-
-    // build a map from member names to type vars
-    val tvarOfName: Map[Name, TypeVar] = Map.from { tpmNames1 zip tvars }
-    def getTvarOfName(name: Name): TypeVar = (tvarOfName get name).ensuring(_.isDefined, "member name is not in collected name list").get
-
-    // substitute dependent symbols in tb
-    def processBounds(tb: TypeBounds): TypeBounds = {
-      def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
-        def loop(tp: Type) = substDependentSyms(tp, isUpper)
-        tp match {
-          case tp @ AndType(tp1, tp2) if !isUpper =>
-            tp.derivedAndType(loop(tp1), loop(tp2))
-          case tp @ OrType(tp1, tp2) if isUpper =>
-            tp.derivedOrType(loop(tp1), loop(tp2))
-          case TypeRef(tp, des: Symbol) if tp == scrut || tp == pat =>
-            getTvarOfName(des.name)
-          case TypeRef(_ : RecThis, des : Symbol) =>
-            getTvarOfName(des.name)
-          case TypeRef(tp, des: Name) if tp == scrut || tp == pat =>
-            getTvarOfName(des)
-          case TypeRef(_ : RecThis, des : Name) =>
-            getTvarOfName(des)
-          case tp: NamedType =>
-            mapping(tp.symbol) match {
-              case tv: TypeVar => tv
-              case null => tp
-            }
-          case tp => tp
-        }
-      }
-      tb match {
-        case alias : TypeAlias =>
-          alias.derivedAlias(substDependentSyms(alias.lo, isUpper = false))
-        case _ =>
-          tb.derivedTypeBounds(
-            lo = substDependentSyms(tb.lo, isUpper = false),
-            hi = substDependentSyms(tb.hi, isUpper = true)
-          )
-      }
-    }
-
-    def addPolyOk: Boolean =
-      (poly1 eq null) || addToConstraint(poly1, newTvars)
-        .showing(i"added to constraint: [$poly1]%, %\n$debugBoundsDescription", gadts)
+    storedPatTpms = patTvars.toList
 
     def addUpperBound(tp1: Type, tp2: Type): Boolean = {
       (
@@ -399,23 +268,200 @@ final class ProperGadtConstraint private(
       }
     }
 
-    def addBoundsOk: List[Boolean] = (scrutTpMems ++ patTpMems) map { (name, tb) =>
-      val tvar = getTvarOfName(name)
-      val tb1 = processBounds(tb)
-
-      {
-        tb1.lo.isRef(defn.NothingClass) || addUpperBound(tb1.lo, tvar)
-      } && {
-        tb1.hi.isAny || addUpperBound(tvar, tb1.hi)
+    (scrutTvars ne null) && (patTvars ne null) && {
+      sharedNames forall { name =>
+        val tv1 = scrutTvars(name).ensuring(_ ne null, "")
+        val tv2 = patTvars(name).ensuring(_ ne null, "")
+        addUpperBound(tv1, tv2) && addUpperBound(tv2, tv1)
       }
     }
-
-    def eqTvarsOk = equalTvars map { (tvar1, tvar2) =>
-      addUpperBound(tvar1, tvar2) && addUpperBound(tvar2, tvar1)
-    }
-
-    addPolyOk && (addBoundsOk forall identity) && (eqTvarsOk forall identity)
   }
+
+  // override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean = {
+  //   import NameKinds.DepParamName
+  //   // add type member names, from both scrutinee and pattern
+  //   val tpmNames: List[Name] = { (scrutTpMems ++ patTpMems) map (_._1) }.distinct
+  //   // type member names from the scrutinee
+  //   val scrutNames: Set[Name] = Set.from { scrutTpMems map (_._1) }
+  //   // type member names from the pattern
+  //   val patNames: Set[Name] = Set.from { patTpMems map (_._1) }
+
+  //   storedPatTpms = Nil
+
+  //   def maybeMapTpMem(path: Option[TermRef], designator: Name): TypeVar =
+  //     path.map(path => mapTpMem(path, designator)).getOrElse(null)
+
+  //   def nullEither[T <: AnyRef](x1: => T, x2: => T): T =
+  //     if x1 eq null then
+  //       x2
+  //     else
+  //       x1
+
+  //   // classify names into two groups, those internalized before and those new
+  //   val (internalizedNames, newNames): (List[Name], List[Name]) = {
+  //     val m = tpmNames groupBy { name =>
+  //      nullEither(mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) ne null
+  //     }
+
+  //     (m.getOrElse(true, Nil), m.getOrElse(false, Nil))
+  //   }
+
+  //   var equalTvars: List[(TypeVar, TypeVar)] = Nil
+
+  //   val existingTvars: List[TypeVar] = internalizedNames map { name =>
+  //     (mapTpMem(scrutPath, name), maybeMapTpMem(maybePatPath, name)) match {
+  //       case (null, tvar2: TypeVar) =>
+  //         if scrutNames contains name then {
+  //           tpmMapping = tpmMapping.updated(
+  //             scrutPath,
+  //             tpmMapping(scrutPath) match {
+  //               case null => SimpleIdentityMap.empty.updated(name, tvar2)
+  //               case m => m.updated(name, tvar2)
+  //             }
+  //           )
+  //           reverseTpmMapping = reverseTpmMapping.updated(tvar2.origin, TypeRef(scrutPath, name))
+  //         }
+  //         tvar2
+  //       case (tvar1: TypeVar, null) =>
+  //         if patNames contains name then {
+  //           maybePatPath map { patPath =>
+  //             tpmMapping = tpmMapping.updated(
+  //               patPath,
+  //               tpmMapping(patPath) match {
+  //                 case null => SimpleIdentityMap.empty.updated(name, tvar1)
+  //                 case m => m.updated(name, tvar1)
+  //               }
+  //             )
+  //             reverseTpmMapping = reverseTpmMapping.updated(tvar1.origin, TypeRef(scrutPath, name))
+  //           }
+  //         }
+  //         tvar1
+  //       case (tvar1: TypeVar, tvar2: TypeVar) =>
+  //         equalTvars = tvar1 -> tvar2 :: equalTvars
+  //         tvar1
+  //     }
+  //   }
+
+  //   val poly1 =
+  //     if newNames.nonEmpty then
+  //       PolyType(newNames map { name => DepParamName.fresh(name.toTypeName) })(
+  //         _ => newNames map { _ => TypeBounds(defn.NothingType, defn.AnyType) },
+  //         _ => defn.AnyType
+  //       )
+  //     else
+  //       null
+  //   val newTvars =
+  //     if newNames.nonEmpty then
+  //       newNames.lazyZip(poly1.paramRefs).map { (name, paramRef) =>
+  //         val tv = TypeVar(paramRef, creatorState = null)
+
+  //         if scrutNames contains name then {
+  //           tpmMapping = tpmMapping.updated(
+  //             scrutPath,
+  //             tpmMapping(scrutPath) match {
+  //               case null => SimpleIdentityMap.empty.updated(name, tv)
+  //               case m => m.updated(name, tv)
+  //             }
+  //           )
+  //           reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+  //         }
+
+  //         if patNames contains name then {
+  //           maybePatPath map { patPath =>
+  //             tpmMapping = tpmMapping.updated(
+  //               patPath,
+  //               tpmMapping(patPath) match {
+  //                 case null => SimpleIdentityMap.empty.updated(name, tv)
+  //                 case m => m.updated(name, tv)
+  //               }
+  //             )
+  //             reverseTpmMapping = reverseTpmMapping.updated(tv.origin, TypeRef(scrutPath, name))
+  //           }
+  //           storedPatTpms = name -> tv :: storedPatTpms
+  //         }
+
+  //         tv
+  //       }
+  //       else
+  //         Nil
+
+  //   // type member names, reordered
+  //   val tpmNames1 = internalizedNames ++ newNames
+  //   // type variables associated to type members, ordered the same way as tpmNames1
+  //   val tvars = existingTvars ++ newTvars
+
+  //   // build a map from member names to type vars
+  //   val tvarOfName: Map[Name, TypeVar] = Map.from { tpmNames1 zip tvars }
+  //   def getTvarOfName(name: Name): TypeVar = (tvarOfName get name).ensuring(_.isDefined, "member name is not in collected name list").get
+
+  //   // substitute dependent symbols in tb
+  //   def processBounds(tb: TypeBounds): TypeBounds = {
+  //     def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
+  //       def loop(tp: Type) = substDependentSyms(tp, isUpper)
+  //       tp match {
+  //         case tp @ AndType(tp1, tp2) if !isUpper =>
+  //           tp.derivedAndType(loop(tp1), loop(tp2))
+  //         case tp @ OrType(tp1, tp2) if isUpper =>
+  //           tp.derivedOrType(loop(tp1), loop(tp2))
+  //         case TypeRef(tp, des: Symbol) if tp == scrut || tp == pat =>
+  //           getTvarOfName(des.name)
+  //         case TypeRef(_ : RecThis, des : Symbol) =>
+  //           getTvarOfName(des.name)
+  //         case TypeRef(tp, des: Name) if tp == scrut || tp == pat =>
+  //           getTvarOfName(des)
+  //         case TypeRef(_ : RecThis, des : Name) =>
+  //           getTvarOfName(des)
+  //         case tp: NamedType =>
+  //           mapping(tp.symbol) match {
+  //             case tv: TypeVar => tv
+  //             case null => tp
+  //           }
+  //         case tp => tp
+  //       }
+  //     }
+  //     tb match {
+  //       case alias : TypeAlias =>
+  //         alias.derivedAlias(substDependentSyms(alias.lo, isUpper = false))
+  //       case _ =>
+  //         tb.derivedTypeBounds(
+  //           lo = substDependentSyms(tb.lo, isUpper = false),
+  //           hi = substDependentSyms(tb.hi, isUpper = true)
+  //         )
+  //     }
+  //   }
+
+  //   def addPolyOk: Boolean =
+  //     (poly1 eq null) || addToConstraint(poly1, newTvars)
+  //       .showing(i"added to constraint: [$poly1]%, %\n$debugBoundsDescription", gadts)
+
+  //   def addUpperBound(tp1: Type, tp2: Type): Boolean = {
+  //     (
+  //       stripInternalTypeVar(tp1),
+  //       stripInternalTypeVar(tp2)
+  //     ) match {
+  //       case (tv1 : TypeVar, t2) => addBound(tv1, t2, isUpper = true)
+  //       case (t1, tv2: TypeVar) => addBound(tv2, t1, isUpper = false)
+  //       case (t1, t2) => isSub(t1, t2)
+  //     }
+  //   }
+
+  //   def addBoundsOk: List[Boolean] = (scrutTpMems ++ patTpMems) map { (name, tb) =>
+  //     val tvar = getTvarOfName(name)
+  //     val tb1 = processBounds(tb)
+
+  //     {
+  //       tb1.lo.isRef(defn.NothingClass) || addUpperBound(tb1.lo, tvar)
+  //     } && {
+  //       tb1.hi.isAny || addUpperBound(tvar, tb1.hi)
+  //     }
+  //   }
+
+  //   def eqTvarsOk = equalTvars map { (tvar1, tvar2) =>
+  //     addUpperBound(tvar1, tvar2) && addUpperBound(tvar2, tvar1)
+  //   }
+
+  //   addPolyOk && (addBoundsOk forall identity) && (eqTvarsOk forall identity)
+  // }
 
   override def narrowScrutTp_=(tp: Type): Unit = myNarrowScrutTp = tp
   override def narrowScrutTp: Type = myNarrowScrutTp
