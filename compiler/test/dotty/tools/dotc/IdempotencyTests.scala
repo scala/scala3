@@ -20,7 +20,7 @@ class IdempotencyTests {
 
   // Flaky test on Windows
   // https://github.com/lampepfl/dotty/issues/11885
-  val filter = FileFilter.exclude("i6507b")
+  val filter = FileFilter.exclude("i6507b.scala")
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
