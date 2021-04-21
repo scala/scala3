@@ -133,7 +133,7 @@ fi
 # *-------------------------------------------------*/
 
 find_lib () {
-  local lib=$(find $PROG_HOME/lib/ -name "$1")
+  local lib=$(ls $PROG_HOME/lib/$1)
   if [ -n "$CYGPATHCMD" ]; then
     "$CYGPATHCMD" -am $lib
   elif [[ $mingw ||  $msys ]]; then
