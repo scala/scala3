@@ -167,6 +167,9 @@ object Potentials {
     def show(using Context): String = symbol.show
 
     def moduleClass(using Context): ClassSymbol = symbol.moduleClass.asClass
+
+    def appearsInside(sym: Symbol)(using Context): Boolean =
+      enclosingClass.ownersIterator.exists(_ == sym)
   }
 
   /** The potential of a hot object

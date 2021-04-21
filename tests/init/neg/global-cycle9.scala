@@ -1,4 +1,4 @@
-object Names {              // error
+object Names {
   abstract class Name
 
   abstract class TermName extends Name:
@@ -17,4 +17,12 @@ object Names {              // error
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName
 
   val nameTable = NameTable()
+}
+
+object A {              // error
+  val n: Int = B.m
+}
+
+object B {
+  val m: Int = A.n
 }

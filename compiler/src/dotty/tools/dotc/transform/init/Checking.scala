@@ -89,6 +89,14 @@ object Checking {
     } error.issue
   }
 
+  /** Whether it's known to be safe to access an object */
+  private def isObjectAccessSafe(obj: Global)(using state: State): Boolean =
+    obj.moduleClass == state.thisClass
+    && (obj.enclosingClass == state.thisClass
+        || obj.appearsInside(state.thisClass) && state.superConstrCalled)
+
+// ------- checking construtor ---------------------------
+
   /** Check that the given concrete class may be initialized safely
    *
    *  It assumes that all definitions are properly summarized before-hand.
@@ -197,6 +205,8 @@ object Checking {
     tpl.body.foreach { checkClassBodyStat(_) }
   }
 
+// ------- checking effects ---------------------------
+
   private def checkMethodCall(eff: MethodCall)(using state: State): Errors =
     val MethodCall(pot, sym) = eff
     pot match {
@@ -234,12 +244,18 @@ object Checking {
 
       case hot: Hot =>
         val target = resolve(hot.classSymbol, sym)
-        state.dependencies += StaticCall(hot.classSymbol, target)(state.path)
-        Errors.empty
+        if (target.hasSource && hot.classSymbol.owner == state.thisClass) { // for inner classes of objects
+          val effs = hot.effectsOf(target).toList
+          effs.flatMap { check(_) }
+        }
+        else {
+          state.dependencies += StaticCall(hot.classSymbol, target)(state.path)
+          Errors.empty
+        }
 
       case obj: Global  =>
         val target = resolve(obj.moduleClass, sym)
-        if obj.enclosingClass == state.thisClass && obj.moduleClass == state.thisClass then
+        if isObjectAccessSafe(obj) then
           check(MethodCall(ThisRef()(obj.source), target)(eff.source))
         else
           state.dependencies += StaticCall(obj.moduleClass, target)(state.path)
@@ -291,7 +307,7 @@ object Checking {
         // or all fields are already initialized
         val target = resolve(obj.moduleClass, field)
         if (target.is(Flags.Lazy)) check(MethodCall(obj, target)(eff.source))
-        else if obj.enclosingClass == state.thisClass && obj.moduleClass == state.thisClass then
+        else if isObjectAccessSafe(obj) then
           check(FieldAccess(ThisRef()(obj.source), target)(eff.source))
         else Errors.empty
 
@@ -390,11 +406,11 @@ object Checking {
 
   private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
     val obj = eff.potential
-    if obj.moduleClass != state.thisClass
-       || obj.enclosingClass != state.thisClass && !state.superConstrCalled
-    then
+    if !isObjectAccessSafe(obj) then
       state.dependencies += ObjectAccess(obj.symbol)(state.path)
     Errors.empty
+
+// ------- expansion of potentials ---------------------------
 
   private def expand(pot: Potential)(using state: State): Summary = trace("expand " + pot.show, init, _.asInstanceOf[Summary].show) {
     pot match {

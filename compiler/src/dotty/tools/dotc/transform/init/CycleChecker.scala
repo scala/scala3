@@ -13,7 +13,7 @@ import reporting._
 import config.Printers.init
 import ast.tpd._
 
-import Errors._, Potentials._, Effects._
+import Errors._, Potentials._, Effects._, Util._
 
 import scala.collection.mutable
 
@@ -99,6 +99,8 @@ class CycleChecker(cache: Cache) {
       val res = op(using state2)
       res
 
+    def stackTrace: Vector[Tree] = trace.flatMap(_.source)
+
   }
 
   def state(using ev: State) = ev
@@ -160,6 +162,8 @@ class CycleChecker(cache: Cache) {
     if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner)  then
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
+    else if !dep.symbol.hasSource then
+      CallUnknown(dep.symbol, dep.source.last, state.stackTrace) :: Nil
     else {
       val deps = methodDependencies(dep)
       deps.flatMap(check(_))
@@ -169,6 +173,8 @@ class CycleChecker(cache: Cache) {
     if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner) then
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
+    else if !dep.symbol.hasSource then
+      CallUnknown(dep.symbol, dep.source.last, state.stackTrace) :: Nil
     else {
       val deps = proxyDependencies(dep)
       deps.flatMap(check(_))

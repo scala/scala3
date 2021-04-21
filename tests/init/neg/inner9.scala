@@ -1,11 +1,11 @@
-object Flags {     // error
+object Flags {
   class Inner {
     println(b)
   }
 
   new Flags.Inner
 
-  val b = 5
+  val b = 5        // error
 }
 
 object Flags2 {
