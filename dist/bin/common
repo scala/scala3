@@ -134,9 +134,9 @@ fi
 
 find_lib () {
   local lib=$(find $PROG_HOME/lib/ -name "$1")
-  if [ -n "${CYGPATHCMD-}" ]; then
-    $CYGPATHCMD -am $lib
-  elif [[ ${mingw-} ||  ${msys-} ]]; then
+  if [ -n "$CYGPATHCMD" ]; then
+    "$CYGPATHCMD" -am $lib
+  elif [[ $mingw ||  $msys ]]; then
     echo $lib | sed 's|/|\\\\|g'
   else
     echo $lib
