@@ -201,7 +201,6 @@ final class ProperGadtConstraint private(
                   case tv: TypeVar => tv.origin
                   case null => tp
                 }
-              case tp => tp
             }
           }
           tb match {
@@ -270,8 +269,8 @@ final class ProperGadtConstraint private(
 
     (scrutTvars ne null) && (patTvars ne null) && {
       sharedNames forall { name =>
-        val tv1 = scrutTvars(name).ensuring(_ ne null, "")
-        val tv2 = patTvars(name).ensuring(_ ne null, "")
+        val tv1 = scrutTvars(name).ensuring(_ ne null, i"can not find $name in created type variables for scrutinee")
+        val tv2 = patTvars(name).ensuring(_ ne null, i"can not find $name in created type variables for pattern")
         addUpperBound(tv1, tv2) && addUpperBound(tv2, tv1)
       }
     }
