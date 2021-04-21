@@ -19,7 +19,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def defintionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
-      def renderDef(d: Overriden): Seq[TagArg] =
+      def renderDef(d: Overridden): Seq[TagArg] =
         Seq(" -> ", signatureRenderer.renderLink(d.name, d.dri))
       val headNode = m.inheritedFrom.map(form => signatureRenderer.renderLink(form.name, form.dri))
       val tailNodes = defs.flatMap(renderDef)

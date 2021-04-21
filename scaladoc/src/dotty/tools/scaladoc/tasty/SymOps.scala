@@ -105,7 +105,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
     def isExported: Boolean = sym.flags.is(Flags.Exported)
 
-    def isOverriden: Boolean = sym.flags.is(Flags.Override)
+    def isOverridden: Boolean = sym.flags.is(Flags.Override)
 
     def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
 

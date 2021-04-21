@@ -107,7 +107,7 @@ class StaticSiteContext(
         val processedTemplate = // Set provided name as arg in page for `docs`
           if from.getParentFile.toPath == docsPath && templateFile.isIndexPage() then
             if templateFile.title != "index" then
-              report.warn("Property `title` will be overriden by project name", from)
+              report.warn("Property `title` will be overridden by project name", from)
 
             templateFile.copy(title = args.name)
           else templateFile

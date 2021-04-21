@@ -364,9 +364,9 @@ trait ClassLikeSupport:
           Kind.Implicit(basicKind, None)
       else specificKind(basicKind)
 
-    val origin = if !methodSymbol.isOverriden then Origin.RegularlyDefined else
-      val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
-      Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
+    val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
+      val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
+      Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
     mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 

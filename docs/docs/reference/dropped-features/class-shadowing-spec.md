@@ -7,7 +7,7 @@ Spec diff: in section [5.1.4 Overriding](https://www.scala-lang.org/files/archiv
 
 > Why do we want to make this change to the language?
 
-Class shadowing is irregular compared to other types of overrides. Indeed, inner classes are not actually overriden but simply shadowed.
+Class shadowing is irregular compared to other types of overrides. Indeed, inner classes are not actually overridden but simply shadowed.
 
 
 > How much existing code is going to be affected?
