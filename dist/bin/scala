@@ -65,10 +65,16 @@ while [[ $# -gt 0 ]]; do
       execute_run=true
       shift
       ;;
-    -cp | -classpath)
-      CLASS_PATH="$2"
+    -cp | -classpath )
+      CLASS_PATH="$2${PSEP}"
       class_path_count+=1
       shift
+      shift
+      ;;
+    -cp*|-classpath*)
+      # hashbang can combine args, e.g. "-classpath 'lib/*'"
+      CLASS_PATH="${1#* *}${PSEP}"
+      class_path_count+=1
       shift
       ;;
     -with-compiler)
