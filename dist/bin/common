@@ -133,14 +133,18 @@ fi
 # *-------------------------------------------------*/
 
 find_lib () {
-  local lib=$(ls $PROG_HOME/lib/$1)
-  if [ -n "$CYGPATHCMD" ]; then
-    "$CYGPATHCMD" -am $lib
-  elif [[ $mingw ||  $msys ]]; then
-    echo $lib | sed 's|/|\\\\|g'
-  else
-    echo $lib
-  fi
+  for lib in "$PROG_HOME"/lib/$1 ; do
+    if [[ -e "$lib" ]]; then
+      if [ -n "$CYGPATHCMD" ]; then
+        "$CYGPATHCMD" -am "$lib"
+      elif [[ $mingw ||  $msys ]]; then
+        echo "$lib" | sed 's|/|\\\\|g'
+      else
+        echo "$lib"
+      fi
+      return
+    fi
+  done
 }
 
 DOTTY_COMP=$(find_lib "*scala3-compiler*")
