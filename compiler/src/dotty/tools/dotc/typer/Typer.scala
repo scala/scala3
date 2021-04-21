@@ -3824,7 +3824,7 @@ class Typer extends Namer
         }
 
         if isDefiniteNotSubtype then
-          // We could check whether `equals` is overriden.
+          // We could check whether `equals` is overridden.
           // Reasons for not doing so:
           // - it complicates the protocol
           // - such code patterns usually implies hidden errors in the code

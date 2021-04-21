@@ -76,10 +76,10 @@ enum Origin:
   case ImplicitlyAddedBy(name: String, dri: DRI)
   case ExtensionFrom(name: String, dri: DRI)
   case ExportedFrom(name: String, dri: Option[DRI])
-  case Overrides(overridenMembers: Seq[Overriden])
+  case Overrides(overriddenMembers: Seq[Overridden])
   case RegularlyDefined
 
-case class Overriden(name: String, dri: DRI)
+case class Overridden(name: String, dri: DRI)
 
 case class InheritedFrom(name: String, dri: DRI)
 

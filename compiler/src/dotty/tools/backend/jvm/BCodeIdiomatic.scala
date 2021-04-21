@@ -34,7 +34,7 @@ trait BCodeIdiomatic {
       case (Some(release), None) => release
       case (None, Some(target)) => target
       case (Some(release), Some(_)) =>
-        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overriden by ${ctx.settings.release.name}")
+        report.warning(s"The value of ${ctx.settings.Xtarget.name} was overridden by ${ctx.settings.release.name}")
         release
       case (None, None) => "8" // least supported version by default
 
