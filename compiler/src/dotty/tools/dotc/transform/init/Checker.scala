@@ -81,6 +81,7 @@ class Checker extends Phase {
         parentsInited = mutable.Set.empty,
         safePromoted = mutable.Set.empty,
         dependencies = mutable.Set.empty,
+        superConstrCalled = false,
         env = Env(ctx.withOwner(cls), cache)
       )
 

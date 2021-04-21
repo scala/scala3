@@ -38,6 +38,7 @@ object Checking {
     parentsInited: mutable.Set[ClassSymbol],
     safePromoted: mutable.Set[Potential],      // Potentials that can be safely promoted
     dependencies: mutable.Set[Dependency],     // dependencies collected for checking global objects
+    var superConstrCalled: Boolean,            // Wether super constructor has been called for the current object
     env: Env,
     init: Boolean = false                      // whether the object is initialized, used in CycleChecker
   ) {
@@ -187,6 +188,10 @@ object Checking {
         if (cls.primaryConstructor.exists)
           checkConstructor(cls.primaryConstructor, ref.tpe, ref)
     }
+
+    // Global objects can be safely accessed after super constructor is called
+    if cls == state.thisClass then
+      state.superConstrCalled = true
 
     // check class body
     tpl.body.foreach { checkClassBodyStat(_) }
@@ -385,7 +390,9 @@ object Checking {
 
   private def checkAccessGlobal(eff: AccessGlobal)(using state: State): Errors =
     val obj = eff.potential
-    if obj.enclosingClass != obj.moduleClass then
+    if obj.moduleClass != state.thisClass
+       || obj.enclosingClass != state.thisClass && !state.superConstrCalled
+    then
       state.dependencies += ObjectAccess(obj.symbol)(state.path)
     Errors.empty
 

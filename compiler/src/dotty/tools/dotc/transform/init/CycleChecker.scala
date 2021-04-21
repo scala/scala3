@@ -217,6 +217,7 @@ class CycleChecker(cache: Cache) {
         parentsInited = mutable.Set.empty,
         safePromoted = mutable.Set(ThisRef()(dep.cls.defTree)),
         dependencies = mutable.Set.empty,
+        superConstrCalled = true,
         env = env,
         init = true
       )
@@ -353,6 +354,7 @@ class CycleChecker(cache: Cache) {
       parentsInited = mutable.Set.empty,
       safePromoted = mutable.Set(ThisRef()(dep.cls.defTree)),
       dependencies = mutable.Set.empty,
+      superConstrCalled = true,
       env = env,
       init = true
     )
