@@ -3501,12 +3501,31 @@ class Typer extends Namer
                 typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
                 //typr.println(TypeComparer.explained(tree.tpe <:< pt))
                 adaptToSubType(wtp)
-          case CompareResult.OKwithGADTUsed if pt.isValueType =>
+          case CompareResult.OKwithGADTUsed
+          if pt.isValueType
+             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
+               val res = (tree.tpe.widenExpr frozen_<:< pt)
+               if res then
+                 // we overshot; a cast is not needed, after all.
+                 gadts.println(i"unnecessary GADTused for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}")
+               res
+              } =>
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
             // if the expected type is a supertype of the GADT bound. It would be good to come
             // up with a test case for this.
-            tree.cast(pt)
+            val target =
+              if tree.tpe.isSingleton then
+                val conj = AndType(tree.tpe, pt)
+                if tree.tpe.isStable && !conj.isStable then
+                  // this is needed for -Ycheck. Without the annotation Ycheck will
+                  // skolemize the result type which will lead to different types before
+                  // and after checking. See i11955.scala.
+                  AnnotatedType(conj, Annotation(defn.StableAnnot))
+                else conj
+              else pt
+            gadts.println(i"insert GADT cast from $tree to $target")
+            tree.cast(target)
           case _ =>
             tree
     }

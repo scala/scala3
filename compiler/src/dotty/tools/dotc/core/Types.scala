@@ -168,7 +168,7 @@ object Types {
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
-      case tp: AnnotatedType => tp.parent.isStable
+      case tp: AnnotatedType => tp.annot.symbol == defn.StableAnnot || tp.parent.isStable
       case tp: AndType =>
         // TODO: fix And type check when tp contains type parames for explicit-nulls flow-typing
         // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
