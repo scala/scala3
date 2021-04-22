@@ -68,6 +68,9 @@ sealed abstract class GadtConstraint extends Showable {
    */
   def contains(sym: Symbol)(using Context): Boolean
 
+  /** Is the path-dependent type registered in the constraint? */
+  def contains(path: SingletonType, d: Designator)(using Context): Boolean
+
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
 
@@ -492,6 +495,8 @@ final class ProperGadtConstraint private(
 
   override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
 
+  override def contains(path: SingletonType, d: Designator)(using Context): Boolean = mapTpMem(path, nameOfDesignator(d)) ne null
+
   override def approximation(sym: Symbol, fromBelow: Boolean)(using Context): Type = {
     val res = approximation(tvarOrError(sym).origin, fromBelow = fromBelow)
     gadts.println(i"approximating $sym ~> $res")
@@ -637,6 +642,7 @@ final class ProperGadtConstraint private(
   override def isEmpty: Boolean = true
 
   override def contains(sym: Symbol)(using Context) = false
+  override def contains(path: SingletonType, d: Designator)(using Context) = false
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = unsupported("EmptyGadtConstraint.addToConstraint")
   override def addToConstraint(scrut: Type, pat: Type, scrutPath: TermRef, scrutTpMems: List[(Name, TypeBounds)], patTpMems: List[(Name, TypeBounds)], maybePatPath: Option[TermRef] = None)(using Context): Boolean =
