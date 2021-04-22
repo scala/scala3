@@ -1,4 +1,5 @@
-package snippetCompiler
+package tests
+package snippetCompilerTests
 
 /**
   * ```scala sc:compile
@@ -44,15 +45,6 @@ package snippetCompiler
   */
 class A {
   trait B
-  val a = new B {
-    /**
-      * ```scala sc:compile
-      * 2 + List()
-      * ```
-      *
-      */
-    def a = 3
-  }
 }
 
 /**
@@ -72,53 +64,5 @@ trait Quotes {
       *
       */
     def a = 3
-  }
-}
-
-trait Quotes2[A] {
-  val r1: r1Module[_] = ???
-  trait r1Module[A] {
-     type X
-     object Y {
-      /**
-        * ```scala sc:compile
-        * 2 + List()
-        * ```
-        *
-        */
-       type YY
-     }
-     val z: zModule = ???
-     trait zModule {
-      /**
-        * ```scala sc:compile
-        * 2 + List()
-        * ```
-        *
-        */
-       type ZZ
-     }
-  }
-  object r2 {
-    type X
-    object Y {
-      /**
-        * ```scala sc:compile
-        * 2 + List()
-        * ```
-        *
-        */
-      type YY
-    }
-    val z: zModule = ???
-    trait zModule {
-      /**
-        * ```scala sc:compile
-        * 2 + List()
-        * ```
-        *
-        */
-      type ZZ
-    }
   }
 }

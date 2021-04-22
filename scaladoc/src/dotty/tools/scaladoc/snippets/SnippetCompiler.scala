@@ -19,7 +19,7 @@ import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.interfaces.Diagnostic._
 
 class SnippetCompiler(
-  classpath: String = System.getProperty("java.class.path"), //Probably needs to be done better
+  classpath: String,
   val scalacOptions: String = "",
   target: AbstractFile = new VirtualDirectory("(memory)")
 ):
@@ -46,12 +46,13 @@ class SnippetCompiler(
     val line = wrappedSnippet.outerLineOffset
     val column = wrappedSnippet.outerColumnOffset
     val innerLineOffset = wrappedSnippet.innerLineOffset
+    val innerColumnOffset = wrappedSnippet.innerColumnOffset
     val infos = diagnostics.toSeq.sortBy(_.pos.source.path)
     val errorMessages = infos.map {
       case diagnostic if diagnostic.position.isPresent =>
         val diagPos = diagnostic.position.get
         val pos = Some(
-          Position(diagPos.line + line, diagPos.column + column, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - innerLineOffset)
+          Position(diagPos.line + line - innerLineOffset, diagPos.column + column - innerColumnOffset, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - innerLineOffset)
         )
         val msg = nullableMessage(diagnostic.message)
         val level = MessageLevel.fromOrdinal(diagnostic.level)
@@ -92,5 +93,5 @@ class SnippetCompiler(
       additionalMessages(wrappedSnippet, arg, context)
 
     val t = Option.when(!context.reporter.hasErrors)(target)
-    SnippetCompilationResult(wrappedSnippet.snippet, isSuccessful(arg, context), t, messages)
+    SnippetCompilationResult(wrappedSnippet, isSuccessful(arg, context), t, messages)
   }

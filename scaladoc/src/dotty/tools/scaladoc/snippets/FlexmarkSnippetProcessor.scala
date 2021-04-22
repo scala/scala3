@@ -39,7 +39,7 @@ object FlexmarkSnippetProcessor:
         val snippetCompilationResult = cf(snippet, lineOffset, argOverride) match {
           case result@Some(SnippetCompilationResult(wrapped, _, _, _)) if debug =>
             val s = sequence.BasedSequence.EmptyBasedSequence()
-              .append(wrapped)
+              .append(wrapped.snippet)
               .append(sequence.BasedSequence.EOL)
             val content = mdu.BlockContent()
             content.add(s, 0)

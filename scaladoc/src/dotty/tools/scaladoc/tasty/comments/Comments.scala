@@ -129,7 +129,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
     (s: qctx.reflect.Symbol) => {
       val path = s.source.map(_.path)
       val pathBasedArg = dctx.snippetCompilerArgs.get(path)
-      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s)
+      val data = SnippetCompilerDataCollector[qctx.type](qctx).getSnippetCompilerData(s, s)
       (str: String, lineOffset: SnippetChecker.LineOffset, argOverride: Option[SCFlags]) => {
           val arg = argOverride.fold(pathBasedArg)(pathBasedArg.overrideFlag(_))
 

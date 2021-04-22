@@ -10,7 +10,7 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
   object SymOps extends SymOps[qctx.type](qctx)
   export SymOps._
 
-  def getSnippetCompilerData(sym: Symbol): SnippetCompilerData =
+  def getSnippetCompilerData(sym: Symbol, originalSym: Symbol): SnippetCompilerData =
     val packageName = sym.packageName
     if !sym.isPackageDef then sym.tree match {
       case c: qctx.reflect.ClassDef =>
@@ -57,9 +57,9 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
           SnippetCompilerData.ClassInfo(classType, classNames, classGenerics)
         }
         val firstProcessed = allProcessed.head
-        SnippetCompilerData(packageName, allProcessed.reverse, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
-      case _ => getSnippetCompilerData(sym.maybeOwner)
-    } else SnippetCompilerData(packageName, Nil, Nil, position(hackGetPositionOfDocstring(using qctx)(sym)))
+        SnippetCompilerData(packageName, allProcessed.reverse, Nil, position(hackGetPositionOfDocstring(using qctx)(originalSym)))
+      case _ => getSnippetCompilerData(sym.maybeOwner, originalSym)
+    } else SnippetCompilerData(packageName, Nil, Nil, position(hackGetPositionOfDocstring(using qctx)(originalSym)))
 
   private def position(p: Option[qctx.reflect.Position]): SnippetCompilerData.Position =
     p.fold(SnippetCompilerData.Position(0, 0))(p => SnippetCompilerData.Position(p.startLine, p.startColumn))
@@ -73,7 +73,6 @@ class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
         "DocCtx could not be found and documentations are unavailable. This is a compiler-internal error."
       )
     }
-    val span = docCtx.docstring(s.asInstanceOf[Symbols.Symbol]).span
     s.pos.flatMap { pos =>
       docCtx.docstring(s.asInstanceOf[Symbols.Symbol]).map { docstring =>
         dotty.tools.dotc.util.SourcePosition(

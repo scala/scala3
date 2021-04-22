@@ -12,7 +12,7 @@ case class SnippetCompilerMessage(position: Option[Position], message: String, l
     }
 
 case class SnippetCompilationResult(
-  wrappedSnippet: String,
+  wrappedSnippet: WrappedSnippet,
   isSuccessful: Boolean,
   result: Option[AbstractFile],
   messages: Seq[SnippetCompilerMessage]
