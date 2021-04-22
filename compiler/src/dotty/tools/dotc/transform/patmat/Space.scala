@@ -402,8 +402,8 @@ class SpaceEngine(using Context) extends SpaceLogic {
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
 
-    case Typed(expr, _) =>
-      Typ(erase(expr.tpe.stripAnnots), true)
+    case Typed(_, tpt) =>
+      Typ(erase(tpt.tpe.stripAnnots), true)
 
     case This(_) =>
       Typ(pat.tpe.stripAnnots, false)
