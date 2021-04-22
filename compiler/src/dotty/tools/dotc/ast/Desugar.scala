@@ -1554,14 +1554,21 @@ object desugar {
         }
       }
 
+      /** Is `pat` of the form `x`, `x T`, or `given T`? when used as the lhs of a generator,
+       *  these are all considered irrefutable.
+       */
+      def isVarBinding(pat: Tree): Boolean = pat match
+        case pat @ Bind(_, pat1) if pat.mods.is(Given) => isVarBinding(pat1)
+        case IdPattern(_) => true
+        case _ => false
+
       def needsNoFilter(gen: GenFrom): Boolean =
         if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
           false
-        else (
-          gen.checkMode != GenCheckMode.FilterNow ||
-          IdPattern.unapply(gen.pat).isDefined ||
-          isIrrefutable(gen.pat, gen.expr)
-        )
+        else
+          gen.checkMode != GenCheckMode.FilterNow
+          || isVarBinding(gen.pat)
+          || isIrrefutable(gen.pat, gen.expr)
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
