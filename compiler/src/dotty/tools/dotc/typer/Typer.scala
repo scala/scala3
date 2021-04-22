@@ -1594,11 +1594,13 @@ class Typer extends Namer
     }
 
     tree.pat match {
-      case _: untpd.Tuple =>
-        // Do not record scrutinee path if the pattern is a Tuple.
-        gadtCtx.gadt.narrowScrutTp_=(null)
-      case _ =>
+      // Only record scrutinee path if the pattern is a Bind or an Ident.
+      case _: Trees.Typed[_] =>
         gadtCtx.gadt.narrowScrutTp_=(sel.tpe)
+      case _: Trees.Ident[_] =>
+        gadtCtx.gadt.narrowScrutTp_=(sel.tpe)
+      case _ =>
+        gadtCtx.gadt.narrowScrutTp_=(null)
     }
 
     val pat1 = typedPattern(tree.pat, wideSelType)(using gadtCtx)
