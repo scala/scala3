@@ -51,7 +51,7 @@ abstract class DottyJSPlugin(settings: Seq[Setting[_]]) extends AutoPlugin {
       _.filter(!_.name.startsWith("junit-interface"))
     },
     libraryDependencies +=
-      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").withDottyCompat(scalaVersion.value),
+      ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test").cross(CrossVersion.for3Use2_13),
 
     // Typecheck the Scala.js IR found on the classpath
     scalaJSLinkerConfig ~= (_.withCheckIR(true)),
@@ -610,7 +610,7 @@ object Build {
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-ir" % scalaJSVersion % "sourcedeps").cross(CrossVersion.for3Use2_13),
       (Compile / sourceGenerators) += Def.task {
         val s = streams.value
         val cacheDir = s.cacheDirectory
@@ -720,9 +720,9 @@ object Build {
     enablePlugins(NonBootstrappedDottyJSPlugin).
     settings(
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
-      unmanagedSourceDirectories in Compile :=
-        (unmanagedSourceDirectories in (`scala3-library`, Compile)).value
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
+      Compile / unmanagedSourceDirectories :=
+        (`scala3-library` / Compile / unmanagedSourceDirectories).value
     )
 
   /** The dotty standard library compiled with the Scala.js back-end, to produce
@@ -739,7 +739,7 @@ object Build {
     enablePlugins(BootstrappedDottyJSPlugin).
     settings(
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-library" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
       Compile / unmanagedSourceDirectories ++=
         (`scala3-library-bootstrapped` / Compile / unmanagedSourceDirectories).value,
 
@@ -1071,7 +1071,7 @@ object Build {
 
       // We need JUnit in the Compile configuration
       libraryDependencies +=
-        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).withDottyCompat(scalaVersion.value),
+        ("org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion).cross(CrossVersion.for3Use2_13),
 
       (Compile / sourceGenerators) += Def.task {
         import org.scalajs.linker.interface.CheckedBehavior
@@ -1740,7 +1740,7 @@ object Build {
       pr.settings(
         Test / fork := false,
         scalaJSUseMainModuleInitializer := true,
-        libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").withDottyCompat(scalaVersion.value)
+        libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
       )
     }
 

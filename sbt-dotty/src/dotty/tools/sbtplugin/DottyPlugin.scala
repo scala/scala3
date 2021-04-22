@@ -16,7 +16,7 @@ import java.util.Optional
 import java.util.{Enumeration, Collections}
 import java.net.URL
 import scala.util.Properties.isJavaAtLeast
-
+import scala.annotation.nowarn
 
 object DottyPlugin extends AutoPlugin {
   object autoImport {
@@ -106,6 +106,7 @@ object DottyPlugin extends AutoPlugin {
        *  libraryDependencies ~= (_.map(_.withDottyCompat(scalaVersion.value)))
        *  }}}
        */
+      @deprecated("Use `.cross(CrossVersion.for3Use2_13)` instead, available in sbt >= 1.5.0 (cf https://eed3si9n.com/sbt-1.5.0)", "0.5.5")
       def withDottyCompat(scalaVersion: String): ModuleID = {
         val name = moduleID.name
         if (name != "scala3-library" && name != "scala3-compiler" &&
@@ -181,10 +182,12 @@ object DottyPlugin extends AutoPlugin {
       if (!VersionNumber(sbtV).matchesSemVer(SemanticSelector(requiredVersion)))
         sys.error(s"The sbt-dotty plugin cannot work with this version of sbt ($sbtV), sbt $requiredVersion is required.")
 
-      val deprecatedVersion = ">=1.5.0-RC2"
+      val deprecatedVersion = ">=1.5.0"
       val logger = sLog.value
-      if (VersionNumber(sbtV).matchesSemVer(SemanticSelector(deprecatedVersion)))
-        logger.warn(s"The sbt-dotty plugin is no longer neeeded with sbt >= 1.5, please remove it from your build.")
+      if (VersionNumber(sbtV).matchesSemVer(SemanticSelector(deprecatedVersion))) {
+        logger.warn(s"The sbt-dotty plugin is no longer neeeded with sbt >= 1.5.0, please remove it from your build.")
+        logger.warn(s"For more information, see https://eed3si9n.com/sbt-1.5.0")
+      }
 
       state
     }
@@ -434,7 +437,7 @@ object DottyPlugin extends AutoPlugin {
             // Apply withDottyCompat to the dependency on scalajs-test-bridge
             .map { moduleID =>
               if (moduleID.organization == "org.scala-js" && moduleID.name == "scalajs-test-bridge")
-                moduleID.withDottyCompat(scalaVersion.value)
+                moduleID.withDottyCompat(scalaVersion.value): @nowarn
               else
                 moduleID
             }
