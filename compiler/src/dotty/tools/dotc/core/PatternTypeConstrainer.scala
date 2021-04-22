@@ -5,7 +5,7 @@ package core
 import Decorators._
 import Symbols._
 import Types._
-import Names.Name
+import Names.{Name, Designator}
 import Flags._
 import Contexts.ctx
 import dotty.tools.dotc.reporting.trace
@@ -189,7 +189,20 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         }
       }
 
-    {
+    def internalizePathDepTypes(tp: Type): Boolean = {
+      tp match {
+        case AppliedType(tp, tparams) =>
+          tparams foreach {
+            case TypeRef(path: TermRef, d: Designator) =>
+              ctx.gadt.internalizeTypeMember(path, d)
+            case _ =>
+          }
+        case _ =>
+      }
+      true
+    }
+
+    (touchedTypeMembers || internalizePathDepTypes(scrut) || internalizePathDepTypes(pat)) && {
       scrut.dealias match {
         case OrType(scrut1, scrut2) =>
           either(constrainPatternType(pat, scrut1, true), constrainPatternType(pat, scrut2, true))
