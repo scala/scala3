@@ -194,7 +194,11 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case AppliedType(tp, tparams) =>
           tparams foreach {
             case TypeRef(path: TermRef, d: Designator) =>
-              ctx.gadt.internalizeTypeMember(path, d)
+              d match {
+                case s: Symbol if s.isClass =>
+                case _ =>
+                  ctx.gadt.internalizeTypeMember(path, d)
+              }
             case _ =>
           }
         case _ =>

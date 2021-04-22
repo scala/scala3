@@ -355,7 +355,8 @@ final class ProperGadtConstraint private(
     val tpMems = collectTypeMembers(widenPath)
     val m = fetchTypeVars(widenPath, path, tpMems)
 
-    m(designator).ensuring(_ ne null, i"can not get type variable of $designator for $path")
+    m(designator)
+      // .ensuring(_ ne null, i"can not get type variable of $designator for $path")
   }
 
   override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = designator match {

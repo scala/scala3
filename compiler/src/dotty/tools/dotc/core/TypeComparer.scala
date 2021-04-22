@@ -525,7 +525,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         def compareGADTTpMem: Boolean = trace(i"compareGADT $tp1 <:< $tp2", subtyping) {
           val gbounds2 = gadtBounds(tp2)
-          (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo) || narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false)
+          (gbounds2 != null) && { isSubTypeWhenFrozen(tp1, gbounds2.lo) || narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false) }
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || tryLiftedToThis2 || fourthTry
 
@@ -787,7 +787,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
             def compareGADTTpMem: Boolean = trace(i"compareGADTTpMem $tp1 <:< $tp2", subtyping) {
               val gbounds1 = gadtBounds(tp1)
-              (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2) || narrowGADTTpmBounds(tp1, tp2, approx, isUpper = true)
+              (gbounds1 != null) && { isSubTypeWhenFrozen(gbounds1.hi, tp2) || narrowGADTTpmBounds(tp1, tp2, approx, isUpper = true) }
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT || compareGADTTpMem || tryLiftedToThis1
           case _ =>
