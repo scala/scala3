@@ -958,7 +958,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** Extractors for splices */
   object Spliced {
-    /** Extracts the content of a spliced expresion tree.
+    /** Extracts the content of a spliced expression tree.
      *  The result can be the contents of a term splice, which
      *  will return a term tree.
      */
