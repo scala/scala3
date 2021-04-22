@@ -123,6 +123,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
   protected def gadtAddLowerBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = false)
   protected def gadtAddUpperBound(sym: Symbol, b: Type): Boolean = ctx.gadt.addBound(sym, b, isUpper = true)
+  protected def gadtAddLowerBound(path: SingletonType, d: Designator, tb: Type): Boolean = ctx.gadt.addBound(path, d, tb, isUpper = false)
+  protected def gadtAddUpperBound(path: SingletonType, d: Designator, tb: Type): Boolean = ctx.gadt.addBound(path, d, tb, isUpper = true)
 
   protected def typeVarInstance(tvar: TypeVar)(using Context): Type = tvar.underlying
 
@@ -523,7 +525,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         def compareGADTTpMem: Boolean = trace(i"compareGADT $tp1 <:< $tp2", subtyping) {
           val gbounds2 = gadtBounds(tp2)
-          (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo)
+          (gbounds2 ne null) && isSubTypeWhenFrozen(tp1, gbounds2.lo) || narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false)
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || tryLiftedToThis2 || fourthTry
 
@@ -785,7 +787,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             }
             def compareGADTTpMem: Boolean = trace(i"compareGADTTpMem $tp1 <:< $tp2", subtyping) {
               val gbounds1 = gadtBounds(tp1)
-              (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2)
+              (gbounds1 != null) && isSubTypeWhenFrozen(gbounds1.hi, tp2) || narrowGADTTpmBounds(tp1, tp2, approx, isUpper = true)
             }
             isSubType(hi1, tp2, approx.addLow) || compareGADT || compareGADTTpMem || tryLiftedToThis1
           case _ =>
@@ -1832,6 +1834,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       else if (isUpper) gadtAddUpperBound(tparam, bound)
       else gadtAddLowerBound(tparam, bound)
     }
+  }
+
+  private def narrowGADTTpmBounds(tp: NamedType, bound: Type, approx: ApproxState, isUpper: Boolean): Boolean = tp match {
+    case TypeRef(path: TermRef, des: Designator) =>
+      val boundImprecise = approx.high || approx.low
+      ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
+        gadts.println(i"narrow gadt bound of type member ${path.symbol}.$des from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tp.symbol)}")
+        if (bound.isRef(tp.symbol)) false
+        else if (isUpper) gadtAddUpperBound(path, des, bound)
+        else gadtAddLowerBound(path, des, bound)
+      }
+    case _ => false
   }
 
   // Tests around `matches`

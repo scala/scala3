@@ -53,6 +53,9 @@ sealed abstract class GadtConstraint extends Showable {
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
+  /** Similar to [[GadtConstraint.addBound]], but constrain a type ref already in the constraint. */
+  def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean
+
   /** Record a equation between two singleton types. */
   def addEquation(tp1: Symbol, tp2: Symbol): Unit
 
@@ -406,6 +409,9 @@ final class ProperGadtConstraint private(
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean =
     addBound(tvarOrError(sym), bound, isUpper)
 
+  override def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean =
+    addBound(tvarOrError(path, designator), bound, isUpper)
+
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
 
@@ -562,7 +568,7 @@ final class ProperGadtConstraint private(
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
-  private def tvarOrError(path: TermRef, designator: Name)(using Context): TypeVar = {
+  private def tvarOrError(path: SingletonType, designator: Name)(using Context): TypeVar = {
     def get: TypeVar =
       tpmMapping(path) match {
         case null => null
@@ -570,6 +576,14 @@ final class ProperGadtConstraint private(
       }
 
     get.ensuring(_ ne null, i"not a constrainable path-dependent type: $path.$designator")
+  }
+
+  private def tvarOrError(path: SingletonType, designator: Designator)(using Context): TypeVar =
+    tvarOrError(path, nameOfDesignator(designator))
+
+  private def nameOfDesignator(d: Designator)(using Context): Name = d match {
+    case s: Symbol => s.name
+    case n: Name => n
   }
 
   private def containsNoInternalTypes(
@@ -631,6 +645,7 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
   override def narrowPatTp_=(tp: Type)(using Context): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
+  override def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = null
 
   override def addEquation(tp1: Symbol, tp2: Symbol): Unit = ()
