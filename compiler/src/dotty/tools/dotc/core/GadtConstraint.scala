@@ -48,6 +48,8 @@ sealed abstract class GadtConstraint extends Showable {
 
   def narrowPatTp_=(tp: Type)(using Context): Unit
 
+  def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar
+
   /** Further constrain a symbol already present in the constraint. */
   def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean
 
@@ -350,7 +352,7 @@ final class ProperGadtConstraint private(
     m(designator).ensuring(_ ne null, i"can not get type variable of $designator for $path")
   }
 
-  private def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = designator match {
+  override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = designator match {
     case s: Symbol => internalizeTypeMember(path, s.name)
     case n: Name => internalizeTypeMember(path, n)
   }
@@ -369,8 +371,16 @@ final class ProperGadtConstraint private(
           case s: Symbol if s.isClass =>
             bound
           case _ =>
-            val tvar = internalizeTypeMember(path, d)
-            stripInternalTypeVar(tvar)
+            // val tvar = internalizeTypeMember(path, d)
+            val n = d match {
+              case d: Symbol => d.name
+              case d: Name => d
+            }
+            mapTpMem(path, n) match {
+              case null => bound
+              case tvar: TypeVar =>
+                stripInternalTypeVar(tvar)
+            }
         }
       case nt: NamedType =>
         val ntTvar = mapping(nt.symbol)
@@ -621,6 +631,7 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
   override def narrowPatTp_=(tp: Type)(using Context): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
+  override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = null
 
   override def addEquation(tp1: Symbol, tp2: Symbol): Unit = ()
 
