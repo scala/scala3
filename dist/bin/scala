@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
 # Try to autodetect real location of the script
-
-if [ -z "$PROG_HOME" ] ; then
+if [ -z "${PROG_HOME-}" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
 
@@ -27,8 +26,8 @@ if [ -z "$PROG_HOME" ] ; then
   cd "$saveddir"
 fi
 
-addJvmOptions () {
-  jvm_options+=("'$1'")
+addJava () {
+  java_args+=("'$1'")
 }
 
 addScalacOptions () {
@@ -65,7 +64,7 @@ while [[ $# -gt 0 ]]; do
       execute_run=true
       shift
       ;;
-    -cp | -classpath )
+    -cp | -classpath)
       CLASS_PATH="$2${PSEP}"
       class_path_count+=1
       shift
@@ -100,23 +99,27 @@ while [[ $# -gt 0 ]]; do
       ;;
     -version)
       # defer to scalac, then exit
-      addScalacOptions "${1}"
       shift
-      eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]}"
+      eval "\"$PROG_HOME/bin/scalac\" -version"
       scala_exit_status=$?
       onExit
       ;;
     -J*)
-      addJvmOptions "${1:2}"
+      addJava "${1:2}"
       addScalacOptions "${1}"
       shift ;;
     *)
       if [ $execute_script == false ]; then
-        # is a script if extension .scala or .sc or if has scala hash bang
-        if [[ -e "$1" && ("$1" == *.scala || "$1" == *.sc || -f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
+        if [[ "$1" == *.scala || "$1" == *.sc ]]; then
+          # is a script if extension .scala or .sc
+          # (even if file not found, to avoid adding likely typo to residual_args)
+          execute_script=true
+          target_script="$1"
+        elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
           execute_script=true
           target_script="$1"
         else
+          # unrecognized args appearing prior to a script name
           residual_args+=("$1")
         fi
       else
@@ -128,8 +131,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+[ -n "${script_trace-}" ] && set -x
 if [ $execute_script == true ]; then
-  [ -n "${script_trace-}" ] && set -x
   if [ "$CLASS_PATH" ]; then
     cp_arg="-classpath \"$CLASS_PATH\""
   fi
@@ -141,8 +144,10 @@ if [ $execute_script == true ]; then
     scala_exit_status=$?
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
-    residual_args+=($setScriptName)
-    eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} ${residual_args[@]} -script $target_script ${script_args[@]}"
+    set -- ${cp_arg-} ${java_options[@]} ${residual_args[@]} -script "$target_script" ${script_args[@]}
+    prepScalacCommandLine "$@"
+    # exec here would prevent onExit from being called, leaving terminal in unusable state
+    eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${java_args[@]}" "${residual_args[@]}"
     scala_exit_status=$?
   fi
 elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then
@@ -151,7 +156,7 @@ elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indic
   fi
   eval "\"$PROG_HOME/bin/scalac\" ${cp_arg-} ${java_options[@]} -repl ${residual_args[@]}"
   scala_exit_status=$?
-elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
+elif [ ${#residual_args[@]} -ne 0 ]; then
   cp_arg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
     cp_arg+="$PSEP."
@@ -165,7 +170,7 @@ elif [ $execute_repl == true ] || [ ${#residual_args[@]} -ne 0 ]; then
     cp_arg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${jvm_options[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
 else
   echo "warning: command option is not correct."

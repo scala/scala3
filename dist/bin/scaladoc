@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Try to autodetect real location of the script
 if [ -z "$PROG_HOME" ] ; then
   ## resolve links - $0 may be a link to PROG_HOME
   PRG="$0"
@@ -27,7 +28,6 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-default_java_opts="-Xmx768m -Xms768m"
 withCompiler=true
 
 CompilerMain=dotty.tools.dotc.Main
