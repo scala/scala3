@@ -187,7 +187,11 @@ classpathArgs () {
   toolchain+="$JLINE_TERMINAL_JNA$PSEP"
   toolchain+="$JNA$PSEP"
 
-  jvm_cp_args="-classpath \"$toolchain\""
+  if [ -n "$jvm_cp_args" ]; then
+    jvm_cp_args="$toolchain$jvm_cp_args"
+  else
+    jvm_cp_args="$toolchain$PSEP"
+  fi
 }
 
 default_java_opts="-Xmx768m -Xms768m"

@@ -151,9 +151,19 @@ if [ $execute_script == true ]; then
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
     set -- ${cp_arg-} ${java_options[@]} ${residual_args[@]} -script "$target_script" ${script_args[@]}
+    PROG_MAIN=$ScriptingMain
     prepScalacCommandLine "$@"
     # exec here would prevent onExit from being called, leaving terminal in unusable state
-    eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$cp_arg\"" "${java_args[@]}" "${residual_args[@]}"
+    eval "\"$JAVACMD\"" \
+         ${JAVA_OPTS:-$default_java_opts} \
+         "${DEBUG-}" \
+         "${java_args[@]}" \
+         "-classpath \"$jvm_cp_args\"" \
+         -Dscala.usejavacp=true \
+         "$PROG_NAME"  \
+         "${scala_args[@]}" \
+         "${residual_args[@]}" \
+         "${scripting_string-}"
     scala_exit_status=$?
   fi
 elif [ $execute_repl == true ] || ([ $execute_run == false ] && [ $options_indicator == 0 ]); then

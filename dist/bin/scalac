@@ -28,16 +28,17 @@ fi
 
 source "$PROG_HOME/bin/common"
 
-PROG_NAME=$CompilerMain
+[ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
 
 prepScalacCommandLine "$@"
 
 # exec here would prevent onExit from being called, leaving terminal in unusable state
+[ -n "$script_trace" ] && set -x
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${DEBUG-}" \
      "${java_args[@]}" \
-     "$jvm_cp_args" \
+     -classpath "$jvm_cp_args" \
      -Dscala.usejavacp=true \
      "$PROG_NAME"  \
      "${scala_args[@]}" \
