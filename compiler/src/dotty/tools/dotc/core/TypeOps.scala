@@ -420,46 +420,48 @@ object TypeOps:
           sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
         case _ => true
 
-      def apply(tp: Type): Type = tp match {
-        case tp: TermRef
-        if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
-          tp.info.widenExpr.dealias match {
-            case info: SingletonType => apply(info)
-            case info => range(defn.NothingType, apply(info))
-          }
-        case tp: TypeRef if toAvoid(tp.symbol) =>
-          tp.info match {
-            case info: AliasingBounds =>
-              apply(info.alias)
-            case TypeBounds(lo, hi) =>
-              range(atVariance(-variance)(apply(lo)), apply(hi))
-            case info: ClassInfo =>
-              range(defn.NothingType, apply(classBound(info)))
-            case _ =>
-              emptyRange // should happen only in error cases
-          }
-        case tp: ThisType =>
-          // ThisType is only used inside a class.
-          // Therefore, either they don't appear in the type to be avoided, or
-          // it must be a class that encloses the block whose type is to be avoided.
-          tp
-        case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
-          range(defn.NothingType, apply(tp.info))
-        case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
-          val lo = TypeComparer.instanceType(
-            tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
-          val lo1 = apply(lo)
-          if (lo1 ne lo) lo1 else tp
-        case tp: LazyRef =>
-          if localParamRefs.contains(tp.ref) then tp
-          else if isExpandingBounds then emptyRange
-          else mapOver(tp)
-        case tl: HKTypeLambda =>
-          localParamRefs ++= tl.paramRefs
-          mapOver(tl)
-        case _ =>
-          mapOver(tp)
-      }
+      def apply(tp: Type): Type =
+        val tp1 = tp match
+          case tp: TermRef
+          if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
+            tp.info.widenExpr.dealias match {
+              case info: SingletonType => apply(info)
+              case info => range(defn.NothingType, apply(info))
+            }
+          case tp: TypeRef if toAvoid(tp.symbol) =>
+            tp.info match {
+              case info: AliasingBounds =>
+                apply(info.alias)
+              case TypeBounds(lo, hi) =>
+                range(atVariance(-variance)(apply(lo)), apply(hi))
+              case info: ClassInfo =>
+                range(defn.NothingType, apply(classBound(info)))
+              case _ =>
+                emptyRange // should happen only in error cases
+            }
+          case tp: ThisType =>
+            // ThisType is only used inside a class.
+            // Therefore, either they don't appear in the type to be avoided, or
+            // it must be a class that encloses the block whose type is to be avoided.
+            tp
+          case tp: SkolemType if partsToAvoid(Nil, tp.info).nonEmpty =>
+            range(defn.NothingType, apply(tp.info))
+          case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
+            val lo = TypeComparer.instanceType(
+              tp.origin, fromBelow = variance > 0 || variance == 0 && tp.hasLowerBound)(using mapCtx)
+            val lo1 = apply(lo)
+            if (lo1 ne lo) lo1 else tp
+          case tp: LazyRef =>
+            if localParamRefs.contains(tp.ref) then tp
+            else if isExpandingBounds then emptyRange
+            else mapOver(tp)
+          case tl: HKTypeLambda =>
+            localParamRefs ++= tl.paramRefs
+            mapOver(tl)
+          case _ =>
+            mapOver(tp)
+        if tp1 ne tp then tp1.normalized else tp
+      end apply
 
       /** Three deviations from standard derivedSelect:
        *   1. We first try a widening conversion to the type's info with
