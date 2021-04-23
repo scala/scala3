@@ -328,7 +328,7 @@ object SourceCode {
         }
         this
 
-      case Ident("_") =>
+      case Wildcard() =>
         this += "_"
 
       case tree: Ident =>
@@ -453,6 +453,15 @@ object SourceCode {
               printTypeOrAnnots(tpt.tpe)
             }
         }
+      case TypedTree(tree1, tpt) =>
+        printPattern(tree1)
+        tree1 match
+          case Wildcard() =>
+            this += ":"
+            printType(tpt.tpe)
+          case _ => // Alternatives, Unapply, Bind
+            this
+
 
       case Assign(lhs, rhs) =>
         printTree(lhs)
@@ -896,13 +905,13 @@ object SourceCode {
     }
 
     private def printPattern(pattern: Tree): this.type = pattern match {
-      case Ident("_") =>
+      case Wildcard() =>
         this += "_"
 
-      case Bind(name, Ident("_")) =>
+      case Bind(name, Wildcard()) =>
         this += name
 
-      case Bind(name, Typed(Ident("_"), tpt)) =>
+      case Bind(name, Typed(Wildcard(), tpt)) =>
         this += highlightValDef(name) += ": "
         printTypeTree(tpt)
 
@@ -928,9 +937,13 @@ object SourceCode {
       case Alternatives(trees) =>
         inParens(printPatterns(trees, " | "))
 
-      case Typed(Ident("_"), tpt) =>
-        this += "_: "
-        printTypeTree(tpt)
+      case TypedTree(tree1, tpt) =>
+        tree1 match
+          case Wildcard() =>
+            this += "_: "
+            printTypeTree(tpt)
+          case _ =>
+            printPattern(tree1)
 
       case v: Term =>
         printTree(v)
