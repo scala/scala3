@@ -27,7 +27,7 @@ if [ -z "$PROG_HOME" ] ; then
 fi
 
 source "$PROG_HOME/bin/common"
-
+default_java_opts="-Xmx768m -Xms768m"
 withCompiler=true
 
 CompilerMain=dotty.tools.dotc.Main

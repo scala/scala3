@@ -192,6 +192,11 @@ classpathArgs () {
 
 default_java_opts="-Xmx768m -Xms768m"
 
+CompilerMain=dotty.tools.dotc.Main
+DecompilerMain=dotty.tools.dotc.decompiler.Main
+ReplMain=dotty.tools.repl.Main
+ScriptingMain=dotty.tools.scripting.Main
+
 addJava () {
   java_args+=("'$1'")
 }
@@ -206,11 +211,6 @@ addScripting () {
 }
 prepScalacCommandLine () {
   withCompiler=true
-
-  CompilerMain=dotty.tools.dotc.Main
-  DecompilerMain=dotty.tools.dotc.decompiler.Main
-  ReplMain=dotty.tools.repl.Main
-  ScriptingMain=dotty.tools.scripting.Main
 
   while [[ $# -gt 0 ]]; do
   case "$1" in
