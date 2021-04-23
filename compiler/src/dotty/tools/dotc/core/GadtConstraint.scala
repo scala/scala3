@@ -57,7 +57,7 @@ sealed abstract class GadtConstraint extends Showable {
   def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean
 
   /** Record a equation between two singleton types. */
-  def addEquation(tp1: Symbol, tp2: Symbol): Unit
+  def addEquality(tp1: Symbol, tp2: Symbol): Unit
 
   /** Check whether two singletons are equal. */
   def isEqual(tp1: Symbol, tp2: Symbol): Boolean
@@ -294,7 +294,7 @@ final class ProperGadtConstraint private(
   override def narrowPatTp_=(tp: Type)(using Context): Unit = {
     (tp, myNarrowScrutTp) match {
       case (pat: TermRef, scrut: TermRef) =>
-        addEquation(pat.symbol, scrut.symbol)
+        addEquality(pat.symbol, scrut.symbol)
           // .showing(i"equalize singletons $pat == $scrut")
       case _ =>
     }
@@ -432,7 +432,7 @@ final class ProperGadtConstraint private(
     recur(tp)
   }
 
-  override def addEquation(tp1: Symbol, tp2: Symbol): Unit = {
+  override def addEquality(tp1: Symbol, tp2: Symbol): Unit = {
     val p1 = findParent(tp1)
     val p2 = findParent(tp2)
     if !(p1 eq p2) then
@@ -664,7 +664,7 @@ final class ProperGadtConstraint private(
   override def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = null
 
-  override def addEquation(tp1: Symbol, tp2: Symbol): Unit = ()
+  override def addEquality(tp1: Symbol, tp2: Symbol): Unit = ()
 
   override def isEqual(tp1: Symbol, tp2: Symbol): Boolean = false
 
