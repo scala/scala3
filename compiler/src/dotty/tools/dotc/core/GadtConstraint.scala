@@ -378,14 +378,9 @@ final class ProperGadtConstraint private(
           case s: Symbol if s.isClass =>
             bound
           case _ =>
-            // val tvar = internalizeTypeMember(path, d)
-            val n = d match {
-              case d: Symbol => d.name
-              case d: Name => d
-            }
-            mapTpMem(path, n) match {
+            internalizeTypeMember(path, d) match {
               case null => bound
-              case tvar: TypeVar =>
+              case tvar =>
                 stripInternalTypeVar(tvar)
             }
         }

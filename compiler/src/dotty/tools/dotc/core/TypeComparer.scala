@@ -523,9 +523,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
             { isBottom(tp1) || GADTusage(tp2.symbol) }
         }
+        def internalizeTypeMember = tp2 match {
+          case TypeRef(path: TermRef, d: Designator) =>
+            ctx.gadt.internalizeTypeMember(path, d) != null
+          case _ => false
+        }
         def compareGADTTpMem: Boolean = trace(i"compareGADT $tp1 <:< $tp2", subtyping) {
           val gbounds2 = gadtBounds(tp2)
-          (gbounds2 != null) && { isSubTypeWhenFrozen(tp1, gbounds2.lo) || narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false) }
+          { (gbounds2 != null) && isSubTypeWhenFrozen(tp1, gbounds2.lo) } || { internalizeTypeMember && narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false) }
         }
         isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || tryLiftedToThis2 || fourthTry
 

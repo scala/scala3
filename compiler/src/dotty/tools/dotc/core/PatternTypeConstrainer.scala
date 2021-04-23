@@ -189,24 +189,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         }
       }
 
-    def internalizePathDepTypes(tp: Type): Boolean = {
-      tp match {
-        case AppliedType(tp, tparams) =>
-          tparams foreach {
-            case TypeRef(path: TermRef, d: Designator) =>
-              d match {
-                case s: Symbol if s.isClass =>
-                case _ =>
-                  ctx.gadt.internalizeTypeMember(path, d)
-              }
-            case _ =>
-          }
-        case _ =>
-      }
-      true
-    }
-
-    (touchedTypeMembers || internalizePathDepTypes(scrut) || internalizePathDepTypes(pat)) && {
+    {
       scrut.dealias match {
         case OrType(scrut1, scrut2) =>
           either(constrainPatternType(pat, scrut1, true), constrainPatternType(pat, scrut2, true))
