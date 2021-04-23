@@ -71,6 +71,9 @@ sealed abstract class GadtConstraint extends Showable {
   /** Is the path-dependent type registered in the constraint? */
   def contains(path: SingletonType, d: Designator)(using Context): Boolean
 
+  /** Is the named type registered in the constraint? Properly handles both type parameters and path-dependent types. */
+  def contains(nt: NamedType)(using Context): Boolean
+
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
 
@@ -492,6 +495,13 @@ final class ProperGadtConstraint private(
           //.ensuring(containsNoInternalTypes(_))
     }
 
+  override def contains(nt: NamedType)(using Context): Boolean = nt match {
+    case TypeRef(path: SingletonType, d: Designator) =>
+      contains(path, d)
+    case nt =>
+      contains(nt.symbol)
+  }
+
   override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
 
   override def contains(path: SingletonType, d: Designator)(using Context): Boolean = mapTpMem(path, nameOfDesignator(d)) ne null
@@ -640,6 +650,7 @@ final class ProperGadtConstraint private(
 
   override def isEmpty: Boolean = true
 
+  override def contains(nt: NamedType)(using Context) = false
   override def contains(sym: Symbol)(using Context) = false
   override def contains(path: SingletonType, d: Designator)(using Context) = false
 
