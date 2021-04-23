@@ -118,6 +118,12 @@ while [[ $# -gt 0 ]]; do
         elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
           execute_script=true
           target_script="$1"
+          if [ ! -f $target_script ]; then
+            # likely a typo or missing script file, quit early
+            echo "not found: $target_script" 1>&2
+            scala_exit_status=2
+            onExit
+          fi
         else
           # unrecognized args appearing prior to a script name
           residual_args+=("$1")
