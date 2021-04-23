@@ -185,9 +185,9 @@ classpathArgs () {
   toolchain+="$JLINE_READER$PSEP"
   toolchain+="$JLINE_TERMINAL$PSEP"
   toolchain+="$JLINE_TERMINAL_JNA$PSEP"
-  toolchain+="$JNA$PSEP"
+  [ -n "${JNA-}" ] && toolchain+="$JNA$PSEP"
 
-  if [ -n "$jvm_cp_args" ]; then
+  if [ -n "${jvm_cp_args-}" ]; then
     jvm_cp_args="$toolchain$jvm_cp_args"
   else
     jvm_cp_args="$toolchain$PSEP"
@@ -201,6 +201,9 @@ DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
 ScriptingMain=dotty.tools.scripting.Main
 
+declare -a residual_args
+declare -a script_args
+
 addJava () {
   java_args+=("'$1'")
 }
@@ -210,44 +213,6 @@ addScala () {
 addResidual () {
   residual_args+=("'$1'")
 }
-addScripting () {
-  scripting_args+=("'$1'")
-}
-prepScalacCommandLine () {
-  withCompiler=true
-
-  while [[ $# -gt 0 ]]; do
-  case "$1" in
-             --) shift; for arg; do addResidual "$arg"; done; set -- ;;
-    -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-         -debug) DEBUG="$DEBUG_STR" && shift ;;
-      -q|-quiet) quiet=true && shift ;;
-
-      # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
-      -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
-          -repl) PROG_NAME="$ReplMain" && shift ;;
-        -script) PROG_NAME="$ScriptingMain" && target_script="$2" && shift && shift
-                 while [[ $# -gt 0 ]]; do addScripting "$1" && shift ; done ;;
-       -compile) PROG_NAME="$CompilerMain" && shift ;;
-     -decompile) PROG_NAME="$DecompilerMain" && shift ;;
-   -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
-           -run) PROG_NAME="$ReplMain" && shift ;;
-        -colors) colors=true && shift ;;
-     -no-colors) unset colors && shift ;;
-    -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE" && shift ;;
-
-            # break out -D and -J options and add them to java_args so
-            # they reach the JVM in time to do some good. The -D options
-            # will be available as system properties.
-            -D*) addJava "$1" && shift ;;
-            -J*) addJava "${1:2}" && shift ;;
-              *) addResidual "$1" && shift ;;
-    esac
-  done
-
-  classpathArgs
-
-  if [ "$PROG_NAME" == "$ScriptingMain" ]; then
-    scripting_string="-script $target_script ${scripting_args[@]}"
-  fi
+addScript () {
+  script_args+=("'$1'")
 }
