@@ -16,7 +16,7 @@ class SLSelect[S]:
 
   def fold[S](s0:S)(step: (S,SLSelect[S])=> S): S = {
      ???
-  }  
+  }
 
   def fold_async[S](s0:S)(step: (S,SLSelect[S])=> Future[S]): Future[S] = {
      ???
@@ -27,7 +27,7 @@ class SLSelect[S]:
       await(s0.onRead(ch)(f).runAsync())
 
   def runAsync(): Future[S] = ???
-      
+
 
 
 object X:
@@ -36,21 +36,21 @@ object X:
    processImpl[T]('f)
  }
 
- def processImpl[T:Type](t:Expr[T])(using Quotes):Expr[Future[T]] = 
+ def processImpl[T:Type](t:Expr[T])(using Quotes):Expr[Future[T]] =
    import quotes.reflect._
    val r = processTree[T](t.asTerm)
    r.asExprOf[Future[T]]
 
- 
- def processTree[T:Type](using Quotes)(t: quotes.reflect.Term):quotes.reflect.Term = 
+
+ def processTree[T:Type](using Quotes)(t: quotes.reflect.Term):quotes.reflect.Term =
    import quotes.reflect._
    val r: Term = t match
      case Inlined(_,List(),body) => processTree(body)
-     case Inlined(d,bindings,body) => 
+     case Inlined(d,bindings,body) =>
        Inlined(d,bindings,processTree[T](body))
      case Block(stats,expr) => Block(stats,processTree(expr))
      case Apply(Apply(TypeApply(Select(x,"fold"),targs),List(state)),List(fun)) =>
-       val nFun = processLambda[T](fun) 
+       val nFun = processLambda[T](fun)
        Apply(Apply(TypeApply(Select.unique(x,"fold_async"),targs),List(state)),List(nFun))
      case Apply(TypeApply(Ident("await"),targs),List(body)) => body
      case Typed(x,tp) => Typed(processTree(x), Inferred(TypeRepr.of[Future].appliedTo(tp.tpe)) )
@@ -58,8 +58,8 @@ object X:
    val checker = new TreeMap() {}
    checker.transformTerm(r)(Symbol.spliceOwner)
    r
-  
- def processLambda[T:Type](using Quotes)(fun: quotes.reflect.Term):quotes.reflect.Term = 
+
+ def processLambda[T:Type](using Quotes)(fun: quotes.reflect.Term):quotes.reflect.Term =
    import quotes.reflect._
 
    def changeArgs(oldArgs:List[Tree], newArgs:List[Tree], body:Term, owner: Symbol):Term =

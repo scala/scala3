@@ -166,12 +166,16 @@ object Extractors {
         this += "CaseDef(" += pat += ", " += guard += ", " += body += ")"
       case TypeCaseDef(pat, body) =>
         this += "TypeCaseDef(" += pat += ", " += body += ")"
+      case WildcardPattern() =>
+        this += "WildcardPattern()"
       case Bind(name, body) =>
         this += "Bind(\"" += name += "\", " += body += ")"
       case Unapply(fun, implicits, patterns) =>
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
         this += "Alternatives(" ++= patterns += ")"
+      case TypedTree(tree, tpt) =>
+        this += "TypedTree(" += tree += ", " += tpt += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {

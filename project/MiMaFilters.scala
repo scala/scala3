@@ -11,5 +11,10 @@ object MiMaFilters {
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.getJPath"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.name"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.path"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.WildcardPatternTypeTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.WildcardPattern"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeTypeTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTree"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeMethods"),
   )
 }

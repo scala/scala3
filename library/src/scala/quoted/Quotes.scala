@@ -133,7 +133,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Apply
    *           |                             +- TypeApply
    *           |                             +- Super
-   *           |                             +- Typed
    *           |                             +- Assign
    *           |                             +- Block
    *           |                             +- Closure
@@ -146,7 +145,16 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |                             +- Inlined
    *           |                             +- SelectOuter
    *           |                             +- While
+   *           |                             +---+- Typed
+   *           |                                /
+   *           +- TypedTree +------------------·
+   *           +- WildcardPattern
+   *           +- Bind
+   *           +- Unapply
+   *           +- Alternatives
    *           |
+   *           +- CaseDef
+   *           +- TypeCaseDef
    *           |
    *           +- TypeTree ----+- Inferred
    *           |               +- TypeIdent
@@ -164,13 +172,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *           |
    *           +- TypeBoundsTree
    *           +- WildcardTypeTree
-   *           |
-   *           +- CaseDef
-   *           |
-   *           +- TypeCaseDef
-   *           +- Bind
-   *           +- Unapply
-   *           +- Alternatives
    *
    *  +- ParamClause -+- TypeParamClause
    *                  +- TermParamClause
@@ -1120,8 +1121,12 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `Typed` */
     given TypedTypeTest: TypeTest[Tree, Typed]
 
-    /** Tree representing a type ascription `x: T` in the source code */
-    type Typed <: Term
+    /** Tree representing a type ascription `x: T` in the source code.
+     *
+     *  Also represents a pattern that contains a term `x`.
+     *  Other `: T` patterns use the more general `TypedTree`.
+     */
+    type Typed <: Term & TypedTree
 
     /** Module object of `type Typed`  */
     val Typed: TypedModule
@@ -2048,6 +2053,56 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     end TypeCaseDefMethods
 
     // ----- Patterns ------------------------------------------------
+
+    /** Pattern representing a `_` wildcard. */
+    type WildcardPattern <: Tree
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardPattern` */
+    given WildcardPatternTypeTest: TypeTest[Tree, WildcardPattern]
+
+    /** Module object of `type WildcardPattern`  */
+    val WildcardPattern: WildcardPatternModule
+
+    /** Methods of the module object `val WildcardPattern` */
+    trait WildcardPatternModule { this: WildcardPattern.type =>
+      def apply(): WildcardPattern
+      def unapply(pattern: WildcardPattern): true
+    }
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypedTree` */
+    given TypedTreeTypeTest: TypeTest[Tree, TypedTree]
+
+    /** Tree representing a type ascription or pattern `x: T` in the source code
+     *
+     *  The tree `x` may contain a `Constant`, `Ref`, `Wildcard`, `Bind`, `Unapply` or `Alternatives`.
+     */
+    type TypedTree <: Tree
+
+    /** Module object of `type TypedTree`  */
+    val TypedTree: TypedTreeModule
+
+    /** Methods of the module object `val TypedTree` */
+    trait TypedTreeModule { this: TypedTree.type =>
+
+      /** Create a type ascription `<x: Tree>: <tpt: TypeTree>` */
+      def apply(expr: Tree, tpt: TypeTree): TypedTree
+
+      def copy(original: Tree)(expr: Tree, tpt: TypeTree): TypedTree
+
+      /** Matches `<expr: Tree>: <tpt: TypeTree>` */
+      def unapply(x: TypedTree): (Tree, TypeTree)
+    }
+
+    /** Makes extension methods on `TypedTree` available without any imports */
+    given TypedTreeMethods: TypedTreeMethods
+
+    /** Extension methods of `TypedTree` */
+    trait TypedTreeMethods:
+      extension (self: TypedTree)
+        def tree: Tree
+        def tpt: TypeTree
+      end extension
+    end TypedTreeMethods
 
     /** Pattern representing a `_ @ _` binding. */
     type Bind <: Tree
@@ -4341,9 +4396,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case TypeBoundsTree(lo, hi) => foldTree(foldTree(x, lo)(owner), hi)(owner)
           case CaseDef(pat, guard, body) => foldTree(foldTrees(foldTree(x, pat)(owner), guard)(owner), body)(owner)
           case TypeCaseDef(pat, body) => foldTree(foldTree(x, pat)(owner), body)(owner)
+          case WildcardPattern() => x
           case Bind(_, body) => foldTree(x, body)(owner)
           case Unapply(fun, implicits, patterns) => foldTrees(foldTrees(foldTree(x, fun)(owner), implicits)(owner), patterns)(owner)
           case Alternatives(patterns) => foldTrees(x, patterns)(owner)
+          case TypedTree(tree1, tpt) => foldTree(foldTree(x, tree1)(owner), tpt)(owner)
         }
       }
     end TreeAccumulator
@@ -4401,12 +4458,15 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
             transformCaseDef(tree)(owner)
           case tree: TypeCaseDef =>
             transformTypeCaseDef(tree)(owner)
+          case WildcardPattern() => tree
           case pattern: Bind =>
             Bind.copy(pattern)(pattern.name, pattern.pattern)
           case pattern: Unapply =>
             Unapply.copy(pattern)(transformTerm(pattern.fun)(owner), transformSubTrees(pattern.implicits)(owner), transformTrees(pattern.patterns)(owner))
           case pattern: Alternatives =>
             Alternatives.copy(pattern)(transformTrees(pattern.patterns)(owner))
+          case TypedTree(expr, tpt) =>
+            TypedTree.copy(tree)(transformTree(expr)(owner), transformTypeTree(tpt)(owner))
         }
       }
 
@@ -4457,7 +4517,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case New(tpt) =>
             New.copy(tree)(transformTypeTree(tpt)(owner))
           case Typed(expr, tpt) =>
-            Typed.copy(tree)(/*FIXME #12222: transformTerm(expr)(owner)*/transformTree(expr)(owner).asInstanceOf[Term], transformTypeTree(tpt)(owner))
+            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
             NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>
