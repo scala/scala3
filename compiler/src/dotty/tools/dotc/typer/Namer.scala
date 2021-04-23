@@ -973,7 +973,7 @@ class Namer { typer: Typer =>
     def init(): Context = index(params)
 
     /** The forwarders defined by export `exp` */
-    def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
+    private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
       val SKIP = "(skip)" // A string indicating that no forwarders for this kind of symbol are emitted
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
