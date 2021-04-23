@@ -38,7 +38,7 @@ eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
      "${DEBUG-}" \
      "${java_args[@]}" \
-     -classpath "$jvm_cp_args" \
+     "-classpath \"$jvm_cp_args\"" \
      -Dscala.usejavacp=true \
      "$PROG_NAME"  \
      "${scala_args[@]}" \
