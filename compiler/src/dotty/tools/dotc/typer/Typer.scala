@@ -1560,9 +1560,9 @@ class Typer extends Namer
       super.transform(trt.withType(stripTypeVars(trt.tpe))) match {
         case b: Bind =>
           val sym = b.symbol
-          if (sym.name != tpnme.WILDCARD)
-            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(sym)
-            else report.error(new DuplicateBind(b, cdef), b.srcPos)
+          assert(sym.name != tpnme.WILDCARD)
+          if ctx.scope.lookup(b.name) == NoSymbol then ctx.enter(sym)
+          else report.error(new DuplicateBind(b, cdef), b.srcPos)
           if (!ctx.isAfterTyper) {
             val bounds = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
@@ -1969,8 +1969,9 @@ class Typer extends Namer
       //val ptt = if (lo.isEmpty && hi.isEmpty) pt else
       if (ctx.isAfterTyper) tree1
       else {
-        val wildcardSym = newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe & pt, tree.span)
-        untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
+        val boundName = WildcardParamName.fresh().toTypeName
+        val wildcardSym = newPatternBoundSymbol(boundName, tree1.tpe & pt, tree.span)
+        untpd.Bind(boundName, tree1).withType(wildcardSym.typeRef)
       }
     else tree1
   }
