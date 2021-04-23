@@ -411,8 +411,11 @@ final class ProperGadtConstraint private(
   override def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean =
     addBound(tvarOrError(path, designator), bound, isUpper)
 
+  private def isLess(tvar1: TypeVar, tvar2: TypeVar)(using Context): Boolean =
+    constraint.isLess(tvar1.origin, tvar2.origin)
+
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
-    constraint.isLess(tvarOrError(sym1).origin, tvarOrError(sym2).origin)
+    isLess(tvarOrError(sym1), tvarOrError(sym2))
 
   /** Find the parent of the singleton type in the disjoint set. */
   private def findParent(tp: Symbol): Symbol = {
