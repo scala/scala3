@@ -341,11 +341,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TermTypeTest extends TypeTest[Tree, Term]:
       def unapply(x: Tree): Option[Term & x.type] = x match
-        case x: tpd.PatternTree => None
+        case x: (tpd.Ident & x.type) =>
+          if x.isTerm && x.name != nme.WILDCARD then Some(x)
+          else None
+        case x: (tpd.Typed & x.type) =>
+          // Matches `Typed` but not `TypedTree`
+          TypedTypeTest.unapply(x)
         case x: (tpd.SeqLiteral & x.type) => Some(x)
         case x: (tpd.Inlined & x.type) => Some(x)
         case x: (tpd.NamedArg & x.type) => Some(x)
-        case _ => if x.isTerm then Some(x) else None
+        case x: tpd.PatternTree => None
+        case _ =>
+          if x.isTerm then Some(x)
+          else None
     end TermTypeTest
 
     object Term extends TermModule:
@@ -429,7 +437,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object IdentTypeTest extends TypeTest[Tree, Ident]:
       def unapply(x: Tree): Option[Ident & x.type] = x match
-        case x: (tpd.Ident & x.type) if x.isTerm => Some(x)
+        case x: (tpd.Ident & x.type) if x.isTerm && x.name != nme.WILDCARD => Some(x)
         case _ => None
     end IdentTypeTest
 
@@ -655,7 +663,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypedTypeTest extends TypeTest[Tree, Typed]:
       def unapply(x: Tree): Option[Typed & x.type] = x match
-        case x: (tpd.Typed & x.type) => Some(x)
+        case x: (tpd.Typed & x.type) =>
+          x.expr match
+            case TermTypeTest(_) => Some(x)
+            case _ => None
         case _ => None
     end TypedTypeTest
 
@@ -1405,6 +1416,45 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def rhs: TypeTree = self.body
       end extension
     end TypeCaseDefMethods
+
+
+    type WildcardPattern = tpd.Ident
+
+    object WildcardPatternTypeTest extends TypeTest[Tree, WildcardPattern]:
+      def unapply(x: Tree): Option[WildcardPattern & x.type] = x match
+        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
+        case _ => None
+    end WildcardPatternTypeTest
+
+    object WildcardPattern extends WildcardPatternModule:
+      def apply(): WildcardPattern =
+        withDefaultPos(untpd.Ident(nme.WILDCARD).withType(dotc.core.Symbols.defn.AnyType))
+      def unapply(pattern: WildcardPattern): true = true
+    end WildcardPattern
+
+    type TypedTree = tpd.Typed
+
+    object TypedTreeTypeTest extends TypeTest[Tree, TypedTree]:
+      def unapply(x: Tree): Option[TypedTree & x.type] = x match
+        case x: (tpd.Typed & x.type) => Some(x)
+        case _ => None
+    end TypedTreeTypeTest
+
+    object TypedTree extends TypedTreeModule:
+      def apply(expr: Term, tpt: TypeTree): Typed =
+        withDefaultPos(tpd.Typed(xCheckMacroValidExpr(expr), tpt))
+      def copy(original: Tree)(expr: Term, tpt: TypeTree): Typed =
+        tpd.cpy.Typed(original)(xCheckMacroValidExpr(expr), tpt)
+      def unapply(x: Typed): (Term, TypeTree) =
+        (x.expr, x.tpt)
+    end TypedTree
+
+    given TypedTreeMethods: TypedTreeMethods with
+      extension (self: Typed)
+        def tree: Tree = self.expr
+        def tpt: TypeTree = self.tpt
+      end extension
+    end TypedTreeMethods
 
     type Bind = tpd.Bind
 

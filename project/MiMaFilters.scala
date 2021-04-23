@@ -11,5 +11,18 @@ object MiMaFilters {
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.getJPath"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.name"),
     exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule#SourceFileMethods.path"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.WildcardTypeTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.Wildcard"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeTypeTest"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTree"),
+    exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeMethods"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.WildcardTypeTest"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.Wildcard"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeTypeTest"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTree"),
+    exclude[DirectMissingMethodProblem]("scala.quoted.Quotes#reflectModule.TypedTreeMethods"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$TypedTreeMethods"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$TypedTreeModule"),
+    exclude[MissingClassProblem]("scala.quoted.Quotes$reflectModule$WildcardModule"),
   )
 }
