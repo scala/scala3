@@ -177,7 +177,7 @@ object Build {
     outputStrategy := Some(StdoutOutput),
 
     // enable verbose exception messages for JUnit
-    (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v"),
+    (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
   ) ++
     // Spawns a repl with the correct classpath
     addCommandAlias("repl", "scala3-compiler-bootstrapped/console")
