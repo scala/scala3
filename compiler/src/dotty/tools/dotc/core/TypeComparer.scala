@@ -1698,58 +1698,68 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
     trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
-      // If the member is an abstract type and the prefix is a path, compare the member itself
-      // instead of its bounds. This case is needed situations like:
-      //
-      //    class C { type T }
-      //    val foo: C
-      //    foo.type <: C { type T {= , <: , >:} foo.T }
-      //
-      // or like:
-      //
-      //    class C[T]
-      //    C[?] <: C[TV]
-      //
-      // where TV is a type variable. See i2397.scala for an example of the latter.
-      def matchAbstractTypeMember(info1: Type) = info1 match {
-        case TypeBounds(lo, hi) if lo ne hi =>
-          tp2.refinedInfo match {
-            case rinfo2: TypeBounds if tp1.isStable =>
-              val ref1 = tp1.widenExpr.select(name)
-              isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
-            case _ =>
-              false
-          }
-        case _ => false
-      }
 
-      // A relaxed version of isSubType, which compares method types
-      // under the standard arrow rule which is contravarient in the parameter types,
-      // but only if `tp2.refinedName` is also defined in the underlying class of tp2.
-      // The reason for the "but only" retriction is that if `tp2.refinedName`
-      // is not otherwise defined, we will have to resort to reflection to invoke
-      // the member. And reflection needs to know exact parameter types. The relaxation is
-      // needed to correctly compare dependent function types.
-      // See {pos,neg}/i12211.scala as test cases.
-      def isSubInfo(info1: Type, info2: Type): Boolean =
-        info2 match
-          case info2: MethodType
-          if tp2.underlyingClassRef(refinementOK = true).member(tp2.refinedName).exists =>
-            info1 match
-              case info1: MethodType =>
-                matchingMethodParams(info1, info2, precise = false)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case _ => isSubType(info1, info2)
-          case _ => isSubType(info1, info2)
+      def qualifies(m: SingleDenotation): Boolean =
+        // If the member is an abstract type and the prefix is a path, compare the member itself
+        // instead of its bounds. This case is needed situations like:
+        //
+        //    class C { type T }
+        //    val foo: C
+        //    foo.type <: C { type T {= , <: , >:} foo.T }
+        //
+        // or like:
+        //
+        //    class C[T]
+        //    C[?] <: C[TV]
+        //
+        // where TV is a type variable. See i2397.scala for an example of the latter.
+        def matchAbstractTypeMember(info1: Type): Boolean = info1 match {
+          case TypeBounds(lo, hi) if lo ne hi =>
+            tp2.refinedInfo match {
+              case rinfo2: TypeBounds if tp1.isStable =>
+                val ref1 = tp1.widenExpr.select(name)
+                isSubType(rinfo2.lo, ref1) && isSubType(ref1, rinfo2.hi)
+              case _ =>
+                false
+            }
+          case _ => false
+        }
 
-      def qualifies(m: SingleDenotation) =
-        isSubInfo(m.info.widenExpr, tp2.refinedInfo.widenExpr)
+        // An additional check for type member matching: If the refinement of the
+        // supertype `tp2` does not refer to a member symbol defined in the parent of `tp2`.
+        // then the symbol referred to in the subtype must have a signature that coincides
+        // in its parameters with the refinement's signature. The reason for the check
+        // is that if the refinement does not refer to a member symbol, we will have to
+        // resort to reflection to invoke the member. And reflection needs to know exact
+        // erased parameter types. See neg/i12211.scala.
+        def sigsOK(symInfo: Type, info2: Type) =
+          tp2.underlyingClassRef(refinementOK = true).member(name).exists
+          || symInfo.isInstanceOf[MethodType]
+              && symInfo.signature.consistentParams(info2.signature)
+
+        // A relaxed version of isSubType, which compares method types
+        // under the standard arrow rule which is contravarient in the parameter types,
+        // but under the condition that signatures might have to match (see sigsOK)
+        // This releaxed version is needed to correctly compare dependent function types.
+        // See pos/i12211.scala.
+        def isSubInfo(info1: Type, info2: Type, symInfo: Type): Boolean =
+          info2 match
+            case info2: MethodType =>
+              info1 match
+                case info1: MethodType =>
+                  matchingMethodParams(info1, info2, precise = false)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo.stripPoly.resultType)
+                  && sigsOK(symInfo, info2)
+                case _ => isSubType(info1, info2)
+            case _ => isSubType(info1, info2)
+
+        isSubInfo(m.info.widenExpr, tp2.refinedInfo.widenExpr, m.symbol.info)
         || matchAbstractTypeMember(m.info)
+      end qualifies
 
-      tp1.member(name) match { // inlined hasAltWith for performance
+      tp1.member(name) match // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
         case mbr => mbr hasAltWith qualifies
-      }
     }
 
   final def ensureStableSingleton(tp: Type): SingletonType = tp.stripTypeVar match {
