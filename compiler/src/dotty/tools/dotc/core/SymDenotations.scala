@@ -432,8 +432,8 @@ object SymDenotations {
           TypeBounds.empty
 
       info match
-        case TypeAlias(alias) if isOpaqueAlias && owner.isClass =>
-          setAlias(alias)
+        case info: AliasingBounds if isOpaqueAlias && owner.isClass =>
+          setAlias(info.alias)
           HKTypeLambda.boundsFromParams(tparams, bounds(rhs))
         case _ =>
           info
