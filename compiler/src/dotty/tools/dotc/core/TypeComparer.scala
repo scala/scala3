@@ -1698,8 +1698,6 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   protected def hasMatchingMember(name: Name, tp1: Type, tp2: RefinedType): Boolean =
     trace(i"hasMatchingMember($tp1 . $name :? ${tp2.refinedInfo}), mbr: ${tp1.member(name).info}", subtyping) {
-      val rinfo2 = tp2.refinedInfo
-
       // If the member is an abstract type and the prefix is a path, compare the member itself
       // instead of its bounds. This case is needed situations like:
       //
@@ -1725,8 +1723,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case _ => false
       }
 
+      // A relaxed version of isSubType, which compares method types
+      // under the standard arrow rule which is contravarient in the parameter types,
+      // but only if `tp2.refinedName` is also defined in the underlying class of tp2.
+      // The reason for the "but only" retriction is that if `tp2.refinedName`
+      // is not otherwise defined, we will have to resort to reflection to invoke
+      // the member. And reflection needs to know exact parameter types. The relaxation is
+      // needed to correctly compare dependent function types.
+      // See {pos,neg}/i12211.scala as test cases.
+      def isSubInfo(info1: Type, info2: Type): Boolean =
+        info2 match
+          case info2: MethodType
+          if tp2.underlyingClassRef(refinementOK = true).member(tp2.refinedName).exists =>
+            info1 match
+              case info1: MethodType =>
+                matchingMethodParams(info1, info2, precise = false)
+                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+              case _ => isSubType(info1, info2)
+          case _ => isSubType(info1, info2)
+
       def qualifies(m: SingleDenotation) =
-        isSubType(m.info.widenExpr, rinfo2.widenExpr) || matchAbstractTypeMember(m.info)
+        isSubInfo(m.info.widenExpr, tp2.refinedInfo.widenExpr)
+        || matchAbstractTypeMember(m.info)
 
       tp1.member(name) match { // inlined hasAltWith for performance
         case mbr: SingleDenotation => qualifies(mbr)
@@ -1841,15 +1859,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
-   *  to override `tp2` ? This is the case if they're pairwise `=:=`.
+   *  to override `tp2` ? Two modes: precise or not.
+   *  If `precise` is set (which is the default) this is the case if they're pairwise `=:=`.
+   *  Otherwise parameters in `tp2` must be subtypes of corresponding parameters in `tp1`.
    */
-  def matchingMethodParams(tp1: MethodType, tp2: MethodType): Boolean = {
+  def matchingMethodParams(tp1: MethodType, tp2: MethodType, precise: Boolean = true): Boolean = {
     def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
       case formal1 :: rest1 =>
         formals2 match {
           case formal2 :: rest2 =>
             val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
-            isSameTypeWhenFrozen(formal1, formal2a) && loop(rest1, rest2)
+            val paramsMatch =
+              if precise then isSameTypeWhenFrozen(formal1, formal2a)
+              else isSubTypeWhenFrozen(formal2a, formal1)
+            paramsMatch && loop(rest1, rest2)
           case nil =>
             false
         }
