@@ -1,7 +1,7 @@
 import scala.compiletime.error
 
 object BadFilters:
-  def withFilter(f: Int => Boolean): BadFilters.type = ???//error("Unexpected withFilter call")
+  inline def withFilter(f: Int => Boolean): BadFilters.type = error("Unexpected withFilter call")
   def foreach(f: Int => Unit): Unit = f(42)
 
 @main def Test =
