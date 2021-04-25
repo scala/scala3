@@ -1747,9 +1747,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case info2: MethodType =>
               info1 match
                 case info1: MethodType =>
+                  val symInfo1 = symInfo.stripPoly
                   matchingMethodParams(info1, info2, precise = false)
-                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo.stripPoly.resultType)
-                  && sigsOK(symInfo, info2)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1), symInfo1.resultType)
+                  && sigsOK(symInfo1, info2)
                 case _ => isSubType(info1, info2)
             case _ => isSubType(info1, info2)
 
