@@ -114,11 +114,81 @@ final class ProperGadtConstraint private(
 
   /** Exposes ConstraintHandling.subsumes */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
+    def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
+      if (c2 eq pre) true
+      else if (c1 eq pre) false
+      else {
+        val saved = constraint
+
+        // compute type parameters in c1 added after `pre`
+        val params1 = c1.domainParams.toSet
+        val params2 = c2.domainParams.toSet
+        val preParams = pre.domainParams.toSet
+        val newParams1 = params1.diff(preParams)
+        val newParams2 = params2.diff(preParams)
+        /** Bridge from type param refs in c2 (right) to c1 (left).
+          */
+        val bridge: SimpleIdentityMap[TypeParamRef, TypeParamRef] = {
+          var res: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+
+          (left, right) match {
+            case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+              newParams1 foreach { p1 =>
+                val tp1 = left.externalize(p1)
+                val p2: TypeParamRef = right.mapType(tp1) match {
+                  case null => null
+                  case tvar => tvar.origin
+                }
+                p2 match {
+                  case null =>
+                  case tpr2 => res = res.updated(tpr2, p1)
+                }
+              }
+
+              newParams2 foreach { p2 =>
+                val tp2 = left.externalize(p2)
+                left.mapType(tp2) match {
+                  case null =>
+                    // Types newly registered in `right` is not contained in `left`,
+                    // return false directly
+                    return false
+                  case _ =>
+                }
+              }
+            case _ =>
+          }
+
+          res
+        }
+
+        def bridgeParam(tpr: TypeParamRef): TypeParamRef = bridge(tpr) match {
+          case null => tpr
+          case tpr2 => tpr2
+        }
+
+        try {
+          // checks existing type parameters in `pre`
+          def existing: Boolean = pre.forallParams { p =>
+            c1.contains(p) &&
+              c2.upper(p).forall { q =>
+                c1.isLess(p, bridgeParam(q))
+              } && isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
+          }
+
+          // checks added type parameters in `add1`
+          def added: Boolean = ???
+
+          existing
+        } finally constraint = saved
+      }
+    }
+
     def extractConstraint(g: GadtConstraint) = g match {
       case s: ProperGadtConstraint => s.constraint
       case EmptyGadtConstraint => OrderingConstraint.empty
     }
-    subsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
+
+    checkSubsumes(extractConstraint(left), extractConstraint(right), extractConstraint(pre))
   }
 
   override def addToConstraint(params: List[Symbol])(using Context): Boolean = {
