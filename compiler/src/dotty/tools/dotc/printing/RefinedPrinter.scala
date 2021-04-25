@@ -20,6 +20,7 @@ import typer.ProtoTypes._
 import Trees._
 import TypeApplications._
 import Decorators._
+import NameKinds.WildcardParamName
 import util.Chars.isOperatorPart
 import transform.TypeUtils._
 import transform.SymUtils._
@@ -76,8 +77,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   }
 
   override def nameString(name: Name): String =
-    if ctx.settings.YdebugNames.value
-    then name.debugString
+    if ctx.settings.YdebugNames.value then name.debugString
+    else if name.isTypeName && name.is(WildcardParamName) && !printDebug then "_"
     else super.nameString(name)
 
   override protected def simpleNameString(sym: Symbol): String =
@@ -962,9 +963,6 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   def optText[T >: Untyped](tree: List[Tree[T]])(encl: Text => Text): Text =
     if (tree.exists(!_.isEmpty)) encl(blockText(tree)) else ""
-
-  override protected def ParamRefNameString(name: Name): String =
-    name.toString
 
   override protected def treatAsTypeParam(sym: Symbol): Boolean = sym.is(TypeParam)
 

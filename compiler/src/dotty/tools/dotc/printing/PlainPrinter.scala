@@ -257,7 +257,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
   }
 
-  protected def ParamRefNameString(name: Name): String = name.toString
+  protected def ParamRefNameString(name: Name): String = nameString(name)
 
   protected def ParamRefNameString(param: ParamRef): String =
     ParamRefNameString(param.binder.paramNames(param.paramNum))
