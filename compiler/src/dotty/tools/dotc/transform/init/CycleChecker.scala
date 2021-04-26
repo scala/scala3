@@ -112,6 +112,13 @@ class CycleChecker(cache: Cache) {
   def state(using ev: State) = ev
 
 // ----- checking -------------------------------
+  def allowExternalCall(meth: Symbol)(using Context): Boolean =
+    meth.isConstructor &&
+     (meth.owner.isAllOf(Flags.JavaInterface)
+     || meth.owner.isAllOf(Flags.NoInitsTrait)
+     || defn.isFunctionClass(meth.owner)
+     )
+
   def checkCyclic()(using Context): Unit = {
     val state = State(visited = mutable.Set.empty, path = Vector.empty, trace = Vector.empty)
     objectsInCurrentRun.foreach { obj =>
@@ -186,11 +193,11 @@ class CycleChecker(cache: Cache) {
       deps.flatMap(check(_))
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) then
+    if !classesInCurrentRun.contains(dep.cls) || allowExternalCall(dep.symbol) then
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else if !dep.symbol.hasSource then
-      CallUnknown(dep.symbol, dep.source.last, state.stackTrace) :: Nil
+      CallUnknown(dep.symbol, dep.source.last, dep.source) :: Nil
     else {
       val deps = methodDependencies(dep)
       deps.flatMap(check(_))
@@ -201,7 +208,7 @@ class CycleChecker(cache: Cache) {
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else if !dep.symbol.hasSource then
-      CallUnknown(dep.symbol, dep.source.last, state.stackTrace) :: Nil
+      CallUnknown(dep.symbol, dep.source.last, dep.source) :: Nil
     else {
       val deps = proxyDependencies(dep)
       deps.flatMap(check(_))
