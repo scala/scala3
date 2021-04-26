@@ -186,7 +186,7 @@ class CycleChecker(cache: Cache) {
       deps.flatMap(check(_))
 
   private def checkStaticCall(dep: StaticCall)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner)  then
+    if !classesInCurrentRun.contains(dep.cls) then
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else if !dep.symbol.hasSource then
@@ -197,7 +197,7 @@ class CycleChecker(cache: Cache) {
     }
 
   private def checkProxyUsage(dep: ProxyUsage)(using Context, State): List[Error] =
-    if !classesInCurrentRun.contains(dep.cls) || !classesInCurrentRun.contains(dep.symbol.owner) then
+    if !classesInCurrentRun.contains(dep.cls) then
       Util.traceIndented("skip " + dep.show + " which is not in current run ", init)
       Nil
     else if !dep.symbol.hasSource then
