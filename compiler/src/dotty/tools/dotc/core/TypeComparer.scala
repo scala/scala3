@@ -1740,7 +1740,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // A relaxed version of isSubType, which compares method types
         // under the standard arrow rule which is contravarient in the parameter types,
         // but under the condition that signatures might have to match (see sigsOK)
-        // This releaxed version is needed to correctly compare dependent function types.
+        // This relaxed version is needed to correctly compare dependent function types.
         // See pos/i12211.scala.
         def isSubInfo(info1: Type, info2: Type, symInfo: Type): Boolean =
           info2 match

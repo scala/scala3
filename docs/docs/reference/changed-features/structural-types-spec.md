@@ -12,7 +12,7 @@ RefineStatSeq ::=  RefineStat {semi RefineStat}
 RefineStat    ::= ‘val’ VarDcl | ‘def’ DefDcl | ‘type’ {nl} TypeDcl
 ```
 
-## Implementation of structural types
+## Implementation of Structural Types
 
 The standard library defines a universal marker trait
 [`scala.Selectable`](https://github.com/lampepfl/dotty/blob/master/library/src/scala/Selectable.scala):
@@ -82,21 +82,49 @@ Note that `v`'s static type does not necessarily have to conform to `Selectable`
 conversion that can turn `v` into a `Selectable`, and the selection methods could also be available as
 [extension methods](../contextual/extension-methods.md).
 
-## Limitations of structural types
+## Limitations of Structural Types
 
 - Dependent methods cannot be called via structural call.
-- Overloaded methods cannot be called via structural call.
-- Refinements do not handle polymorphic methods.
 
-## Differences with Scala 2 structural types
+- Refinements may not introduce overloads: If a refinement specifies the signature
+  of a method `m`, and `m` is also defined in the parent type of the refinement, then
+  the new signature must properly override the existing one.
+
+- Subtyping of structural refinements must preserve erased parameter types: Assume
+  we want to prove `S <: T { def m(x: A): B }`. Then, as usual, `S` must have a member method `m` that can take an argument of type `A`. Furthermore, if `m` is not a member of `T` (i.e. the refinement is structural), an additional condition applies. In this case, the member _definition_ `m` of `S` will have a parameter
+  with type `A'` say. The additional condition is that the erasure of `A'` and `A` is the same. Here is an example:
+
+  ```scala
+  class Sink[A] { def put(x: A): Unit = {} }
+  val a = Sink[String]()
+  val b: { def put(x: String): Unit } = a  // error
+  b.put("abc") // looks for a method with a `String` parameter
+  ```
+  The second to last line is not well-typed, since the erasure of the parameter type of `put` in class `Sink` is `Object`, but the erasure of the refinement of the type of `b` is `String`. This additional condition is necessary, since we will have to resort to reflection to call a structural member like `put` in the type of `b` above. The condition ensures that the statically known parameter types of the refinement correspond up to erasure to the parameter types of the selected call target at runtime.
+
+  The usual reflection dispatch algorithms need to know exact erased parameter types. For instance, if the example above would typecheck, the call
+  `b.put("abc")` on the last line would look for a method `put` in the runtime type of `b` that takes a `String` parameter. But the `put` method is the one from class `Sink`, which takes an `Object` parameter. Hence the call would fail at runtime with a `NoSuchMethodException`.
+
+  One might hope for a "more intelligent" reflexive dispatch algorithm that does not require exact parameter type matching. Unfortunately, this can always run into ambiguities. For instance, continuing the example above, we might introduce a new subclass `Sink1` of `Sink` and change the definition of `a` as follows:
+
+  ```scala
+  class Sink1[A] extends Sink[A] { def put(x: "123") = ??? }
+  val a: Sink[String] = Sink1[String]()
+  ```
+
+  Now there are two `put` methods in the runtime type of `b` with erased parameter
+  types `Object` and `String`, respectively. Yet dynamic dispatch still needs to go
+  to the first `put` method, even though the second looks like a better match.
+
+## Differences with Scala 2 Structural Types
 
 - Scala 2 supports structural types by means of Java reflection. Unlike
   Scala 3, structural calls do not rely on a mechanism such as
   `Selectable`, and reflection cannot be avoided.
-- In Scala 2, structural calls to overloaded methods are possible.
+- In Scala 2, refinements can introduce overloads.
 - In Scala 2, mutable `var`s are allowed in refinements. In Scala 3,
   they are no longer allowed.
-
+- Scala 2 does not impose the "same-erasure" restriction on subtyping of structural types. It allows some calls to fail at runtime instead.
 
 ## Context
 
