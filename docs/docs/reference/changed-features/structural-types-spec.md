@@ -100,7 +100,7 @@ conversion that can turn `v` into a `Selectable`, and the selection methods coul
   val b: { def put(x: String): Unit } = a  // error
   b.put("abc") // looks for a method with a `String` parameter
   ```
-  The second to last line is not well-typed, since the erasure of the parameter type of `put` in class `Sink` is `Object`, but the erasure of the refinement of the type of `b` is `String`. This additional condition is necessary, since we will have to resort to reflection to call a structural member like `put` in the type of `b` above. The condition ensures that the statically known parameter types of the refinement correspond up to erasure to the parameter types of the selected call target at runtime.
+  The second to last line is not well-typed, since the erasure of the parameter type of `put` in class `Sink` is `Object`, but the erasure of `put`'s parameter in the type of `b` is `String`. This additional condition is necessary, since we will have to resort to reflection to call a structural member like `put` in the type of `b` above. The condition ensures that the statically known parameter types of the refinement correspond up to erasure to the parameter types of the selected call target at runtime.
 
   The usual reflection dispatch algorithms need to know exact erased parameter types. For instance, if the example above would typecheck, the call
   `b.put("abc")` on the last line would look for a method `put` in the runtime type of `b` that takes a `String` parameter. But the `put` method is the one from class `Sink`, which takes an `Object` parameter. Hence the call would fail at runtime with a `NoSuchMethodException`.
