@@ -95,6 +95,10 @@ object Checking {
     && (obj.enclosingClass == state.thisClass
         || obj.appearsInside(state.thisClass) && state.superConstrCalled)
 
+  /** Whether the obj is directly nested inside the current class */
+  private def isNestedObject(obj: Global)(using state: State): Boolean =
+    obj.symbol.owner == state.thisClass
+
 // ------- checking construtor ---------------------------
 
   /** Check that the given concrete class may be initialized safely
@@ -257,6 +261,9 @@ object Checking {
         val target = resolve(obj.moduleClass, sym)
         if isObjectAccessSafe(obj) then
           check(MethodCall(ThisRef()(obj.source), target)(eff.source))
+        else if isNestedObject(obj) then
+          val pot = FieldReturn(ThisRef()(obj.source), obj.symbol)(obj.source)
+          check(MethodCall(pot, target)(eff.source))
         else
           state.dependencies += StaticCall(obj.moduleClass, target)(state.path)
           Errors.empty
