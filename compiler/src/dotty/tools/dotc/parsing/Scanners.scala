@@ -377,8 +377,8 @@ object Scanners {
       && {
         // Is current lexeme  assumed to start an expression?
         // This is the case if the lexime is one of the tokens that
-        // starts an expression. Furthermore, if the previous token is
-        // in backticks, the lexeme may not be a binary operator.
+        // starts an expression or it is a COLONEOL. Furthermore, if
+        // the previous token is in backticks, the lexeme may not be a binary operator.
         // I.e. in
         //
         //   a
@@ -388,7 +388,7 @@ object Scanners {
         // in backticks and is a binary operator. Hence, `x` is not classified as a
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
-          canStartExprTokens.contains(lexeme.token)
+          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONEOL)
           && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
