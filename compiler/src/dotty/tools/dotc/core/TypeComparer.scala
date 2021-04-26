@@ -532,7 +532,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val gbounds2 = gadtBounds(tp2)
           { (gbounds2 != null) && isSubTypeWhenFrozen(tp1, gbounds2.lo) } || { internalizeTypeMember && narrowGADTTpmBounds(tp2, tp1, approx, isUpper = false) }
         }
-        isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || tryLiftedToThis2 || fourthTry
+        def gadtOrdering: Boolean = tp1 match {
+          case tp1: NamedType if ctx.gadt.contains(tp1) && ctx.gadt.contains(tp2) =>
+            ctx.gadt.isLess(tp1, tp2)
+          case _ => false
+        }
+
+        isSubApproxHi(tp1, info2.lo) || compareGADT || compareGADTTpMem || gadtOrdering || tryLiftedToThis2 || fourthTry
 
       case _ =>
         val cls2 = tp2.symbol
