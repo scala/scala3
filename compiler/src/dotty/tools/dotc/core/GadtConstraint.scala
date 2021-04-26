@@ -679,6 +679,14 @@ final class ProperGadtConstraint private(
   private def tvarOrError(path: SingletonType, designator: Designator)(using Context): TypeVar =
     tvarOrError(path, nameOfDesignator(designator))
 
+  private def tvarOrError(ntp: NamedType)(using Context): TypeVar = ntp match {
+    case TypeRef(path: SingletonType, designator: Designator) =>
+      tvarOrError(path, designator)
+    case ntp =>
+      tvarOrError(ntp.symbol)
+  }
+
+
   private def nameOfDesignator(d: Designator)(using Context): Name = d match {
     case s: Symbol => s.name
     case n: Name => n
