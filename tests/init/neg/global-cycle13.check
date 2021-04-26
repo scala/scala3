@@ -1,0 +1,11 @@
+-- Error: tests/init/neg/global-cycle13.scala:1:0 ----------------------------------------------------------------------
+1 |object Names {             // error
+  |^
+  |object Names leaked during its initialization . Calling trace:
+  |[34m[ global-cycle13.scala:1 ][0m -> object Names {             // error
+  |[34m[ global-cycle13.scala:21 ][0m  ->   val nameTable = NameTable()
+  |[34m[ global-cycle13.scala:14 ][0m   ->     add(0, EmptyTermName)
+  |                                            ^^^^^^^^^^^^^
+  |                                            Leaking the object may cause initialization problems
+  |[34m[ global-cycle13.scala:18 ][0m    ->   val EmptyTermName: SimpleName = SimpleName(-1, 0)
+  |[34m[ global-cycle13.scala:8 ][0m     ->     def foo() = println(EmptyTermName.toString)

@@ -42,8 +42,8 @@ object Errors {
       this
 
     private def stacktracePrefix: String =
-      val str = if traceSuppressed then "suppressed" else "full"
-      " Calling trace (" +  str + "):\n"
+      val note = if traceSuppressed then " (suppressed)" else ""
+      " Calling trace" +  note + ":\n"
 
     private val render = new MessageRendering {}
 

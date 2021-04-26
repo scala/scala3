@@ -56,7 +56,7 @@ case class ObjectAccess(symbol: Symbol)(val source: Vector[Tree]) extends Depend
 
 /** Depend on usage of an instance, which can be either a class instance or object */
 case class InstanceUsage(symbol: ClassSymbol, instanceClass: ClassSymbol)(val source: Vector[Tree]) extends Dependency {
-  def show(using Context): String = "InstanceUsage(" + symbol.show + ")"
+  def show(using Context): String = "InstanceUsage(" + symbol.show + "," + instanceClass.show + ")"
 }
 
 /** A static method call detected from fine-grained analysis
@@ -147,7 +147,7 @@ class CycleChecker(cache: Cache) {
         val ctor = obj.moduleClass.primaryConstructor
         var trace = state.trace.dropWhile(_.symbol != ctor) :+ dep
 
-        val pinpointOpt = trace.find(_.isInstanceOf[InstanceUsage])
+        val pinpointOpt = trace.find(dep => dep.isInstanceOf[InstanceUsage] || dep.isInstanceOf[ProxyUsage])
         val traceSuppress = trace.size > traceNumberLimit
         if traceSuppress then
           // truncate trace up to the first escape of object
@@ -244,7 +244,7 @@ class CycleChecker(cache: Cache) {
       val env = Env(ctx.withOwner(dep.cls), cache)
       val state = new Checking.State(
         visited = Set.empty,
-        path = dep.source,
+        path = Vector.empty,
         thisClass = dep.cls,
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
