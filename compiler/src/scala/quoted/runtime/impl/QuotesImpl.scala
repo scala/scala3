@@ -1022,7 +1022,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeIdentTypeTest extends TypeTest[Tree, TypeIdent]:
       def unapply(x: Tree): Option[TypeIdent & x.type] = x match
-        case tpt: (tpd.Ident & x.type) if tpt.isType => Some(tpt)
+        case tpt: (tpd.Ident & x.type) if tpt.isType && tpt.name != nme.WILDCARD => Some(tpt)
         case _ => None
     end TypeIdentTypeTest
 
@@ -1336,7 +1336,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object WildcardTypeTreeTypeTest extends TypeTest[Tree, WildcardTypeTree]:
       def unapply(x: Tree): Option[WildcardTypeTree & x.type] = x match
-        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
+        case x: (tpd.Ident & x.type) if x.isType && x.name == nme.WILDCARD => Some(x)
         case _ => None
     end WildcardTypeTreeTypeTest
 
