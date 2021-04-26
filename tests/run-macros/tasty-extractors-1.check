@@ -52,7 +52,7 @@ TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 Inlined(None, Nil, Match(Literal(StringConstant("f")), List(CaseDef(Typed(Ident("_"), TypeIdent("String")), None, Block(Nil, Literal(UnitConstant()))))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
-Inlined(None, Nil, Match(Typed(Literal(StringConstant("g")), TypeIdent("Any")), List(CaseDef(Alternative(List(Typed(Ident("_"), TypeIdent("String")), Typed(Ident("_"), TypeIdent("Int")))), None, Block(Nil, Literal(UnitConstant()))))))
+Inlined(None, Nil, Match(Typed(Literal(StringConstant("g")), TypeIdent("Any")), List(CaseDef(Alternatives(List(Typed(Ident("_"), TypeIdent("String")), Typed(Ident("_"), TypeIdent("Int")))), None, Block(Nil, Literal(UnitConstant()))))))
 TypeRef(ThisType(TypeRef(NoPrefix(), "scala")), "Unit")
 
 Inlined(None, Nil, Match(Literal(StringConstant("h")), List(CaseDef(Ident("_"), Some(Literal(BooleanConstant(false))), Block(Nil, Literal(UnitConstant()))))))
