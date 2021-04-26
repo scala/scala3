@@ -274,26 +274,33 @@ final class ProperGadtConstraint private(
     val poly1 = PolyType(names.map { name => DepParamName.fresh(name.toTypeName) })(
       pt => tpMems.map { (name, tb) =>
         def getTvarOfName(name: Name): TypeParamRef = {
-          val idx = names.indexOf(name).ensuring(_ != -1, "can not find name in name list")
-          pt.paramRefs(idx)
+          names.indexOf(name) match {
+            case -1 => null
+            case idx =>
+              pt.paramRefs(idx)
+          }
         }
 
         def processBounds(tb: TypeBounds): TypeBounds = {
           def substDependentSyms(tp: Type, isUpper: Boolean)(using Context): Type = {
             def loop(tp: Type) = substDependentSyms(tp, isUpper)
+            def maybeTvarOfName(name: Name): Type = getTvarOfName(name) match {
+              case null => tp
+              case tpr => tpr
+            }
             tp match {
               case tp @ AndType(tp1, tp2) if !isUpper =>
                 tp.derivedAndType(loop(tp1), loop(tp2))
               case tp @ OrType(tp1, tp2) if isUpper =>
                 tp.derivedOrType(loop(tp1), loop(tp2))
               case TypeRef(tp, des: Symbol) if tp == widenPath =>
-                getTvarOfName(des.name)
+                maybeTvarOfName(des.name)
               case TypeRef(_ : RecThis, des : Symbol) =>
-                getTvarOfName(des.name)
+                maybeTvarOfName(des.name)
               case TypeRef(tp, des: Name) if tp == widenPath =>
-                getTvarOfName(des)
+                maybeTvarOfName(des)
               case TypeRef(_ : RecThis, des : Name) =>
-                getTvarOfName(des)
+                maybeTvarOfName(des)
               case tp: Type =>
                 mapType(tp) match {
                   case tv: TypeVar => tv.origin
@@ -332,12 +339,15 @@ final class ProperGadtConstraint private(
   private def fetchTypeVars(widenPath: Type, path: TermRef, tpMems: List[(Name, TypeBounds)])(using Context): SimpleIdentityMap[Name, TypeVar] =
     tpmMapping(path) match {
       case null =>
-        val tvars = createTypeVars(widenPath, tpMems)
-        tpmMapping = tpmMapping.updated(path, tvars)
-        tvars.foreachBinding { (name, tvar) =>
-          reverseTpmMapping = reverseTpmMapping.updated(tvar.origin, TypeRef(path, name))
+        createTypeVars(widenPath, tpMems) match {
+          case null => null
+          case tvars =>
+            tpmMapping = tpmMapping.updated(path, tvars)
+            tvars.foreachBinding { (name, tvar) =>
+              reverseTpmMapping = reverseTpmMapping.updated(tvar.origin, TypeRef(path, name))
+            }
+            tvars
         }
-        tvars
           // .showing(i"created tvars for type members of ${path.symbol}\n${debugBoundsDescription}")
       case m => m
     }
@@ -445,7 +455,10 @@ final class ProperGadtConstraint private(
     val tpMems = collectTypeMembers(widenPath)
     val m = fetchTypeVars(widenPath, path, tpMems)
 
-    m(designator)
+    m match {
+      case null => null
+      case m => m(designator)
+    }
       // .ensuring(_ ne null, i"can not get type variable of $designator for $path")
   }
 
