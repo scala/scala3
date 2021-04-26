@@ -414,7 +414,7 @@ class ImplicitSearchError(
 
   private def hiddenImplicitsAddendum: String =
     def hiddenImplicitNote(s: SearchSuccess) =
-      em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+      em"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
     val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
 
