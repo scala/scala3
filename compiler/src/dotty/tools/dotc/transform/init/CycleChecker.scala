@@ -147,6 +147,7 @@ class CycleChecker(cache: Cache) {
         val ctor = obj.moduleClass.primaryConstructor
         var trace = state.trace.dropWhile(_.symbol != ctor) :+ dep
 
+        val pinpointOpt = trace.find(_.isInstanceOf[InstanceUsage])
         val traceSuppress = trace.size > traceNumberLimit
         if traceSuppress then
           // truncate trace up to the first escape of object
@@ -159,10 +160,16 @@ class CycleChecker(cache: Cache) {
             trace = trace :+ elem
 
         val locations = trace.flatMap(_.source)
-        if cycle.size > 1 then
-          CyclicObjectInit(cycle, locations, traceSuppress) :: Nil
-        else
-          ObjectLeakDuringInit(obj, locations, traceSuppress) :: Nil
+        val warning =
+          if cycle.size > 1 then
+            CyclicObjectInit(cycle, locations, traceSuppress)
+          else
+            ObjectLeakDuringInit(obj, locations, traceSuppress)
+
+        if pinpointOpt.nonEmpty then
+          warning.pinpoint(pinpointOpt.get.source.last, "Leaking the object may cause initialization problems")
+
+        warning :: Nil
       else
         val constr = obj.moduleClass.primaryConstructor
         state.visitObject(dep) {

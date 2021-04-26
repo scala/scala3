@@ -8,6 +8,9 @@ import ast.tpd._
 import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
+import util.{ SimpleIdentityMap, SourcePosition }
+
+import reporting.MessageRendering
 
 import Effects._, Potentials._
 
@@ -30,9 +33,30 @@ object Errors {
 
     def toErrors: Errors = this :: Nil
 
+    /** pinpoints in stacktrace */
+    private var pinpoints: SimpleIdentityMap[Tree, String] = SimpleIdentityMap.empty
+
+    def pinpoint(tree: Tree, msg: String): this.type =
+      this.pinpoints = this.pinpoints.updated(tree, msg)
+      this
+
     private def stacktracePrefix: String =
       val str = if traceSuppressed then "suppressed" else "full"
       " Calling trace (" +  str + "):\n"
+
+    private val render = new MessageRendering {}
+
+    private def pinpointText(pos: SourcePosition, msg: String, offset: Int)(using Context): String =
+      val carets = render.hl("Warning") {
+        if (pos.startLine == pos.endLine)
+          "^" * math.max(1, pos.endColumn - pos.startColumn)
+        else "^"
+      }
+
+      val padding = pos.startColumnPadding + (" " * offset)
+      val marker = padding + carets
+      val textline = padding + msg
+      "\n" + marker + "\n" + textline
 
     def stacktrace(using Context): String = if (trace.isEmpty) "" else stacktracePrefix + {
       var indentCount = 0
@@ -45,8 +69,12 @@ object Errors {
         val line =
           if pos.source.exists then
             val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.trim)
-            i"$code\t$loc"
+            val code = SyntaxHighlighting.highlight(pos.lineContent.stripLineEnd)
+            val pinpoint =
+              if !pinpoints.contains(tree) then ""
+              else pinpointText(pos, pinpoints(tree), indentCount + 3)
+
+            i"$code\t$loc" + pinpoint
           else
             tree.show
 
