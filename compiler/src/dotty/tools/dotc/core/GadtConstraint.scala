@@ -288,7 +288,18 @@ final class ProperGadtConstraint private(
               case null => tp
               case tpr => tpr
             }
-            tp match {
+            def stripLazyRef(tp: Type): Type = tp match {
+              case tp @ RefinedType(parent, name, tb) =>
+                tp.derivedRefinedType(stripLazyRef(parent), name, stripLazyRef(tb))
+              case tp: RecType =>
+                tp.derivedRecType(stripLazyRef(tp.parent))
+              case tb: TypeBounds =>
+                tb.derivedTypeBounds(stripLazyRef(tb.lo), stripLazyRef(tb.hi))
+              case ref: LazyRef =>
+                ref.stripLazyRef
+              case _ => tp
+            }
+            stripLazyRef(tp) match {
               case tp @ AndType(tp1, tp2) if !isUpper =>
                 tp.derivedAndType(loop(tp1), loop(tp2))
               case tp @ OrType(tp1, tp2) if isUpper =>
@@ -704,7 +715,6 @@ final class ProperGadtConstraint private(
     case ntp =>
       tvarOrError(ntp.symbol)
   }
-
 
   private def nameOfDesignator(d: Designator)(using Context): Name = d match {
     case s: Symbol => s.name
