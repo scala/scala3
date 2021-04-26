@@ -1857,8 +1857,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       val boundImprecise = approx.high || approx.low
       ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
         gadts.println(i"narrow gadt bound of type member ${path.symbol}.$des from ${if (isUpper) "above" else "below"} to $bound ${bound.toString} ${bound.isRef(tp.symbol)}")
-        if (bound.isRef(tp.symbol)) false
-        else if (isUpper) gadtAddUpperBound(path, des, bound)
+        if (isUpper) gadtAddUpperBound(path, des, bound)
         else gadtAddLowerBound(path, des, bound)
       }
     case _ => false
