@@ -32,6 +32,9 @@ sealed abstract class GadtConstraint extends Showable {
   /** Is `sym1` ordered to be less than `sym2`? */
   def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean
 
+  /** Is `tp1` ordered to be less than `tp2`? Both type parameters and path-dependent types are considered. */
+  def isLess(tp1: NamedType, tp2: NamedType)(using Context): Boolean
+
   /** Add symbols to constraint, correctly handling inter-dependencies.
    *
    * @see [[ConstraintHandling.addToConstraint]]
@@ -504,6 +507,9 @@ final class ProperGadtConstraint private(
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
     isLess(tvarOrError(sym1), tvarOrError(sym2))
 
+  override def isLess(tp1: NamedType, tp2: NamedType)(using Context): Boolean =
+    isLess(tvarOrError(tp1), tvarOrError(tp2))
+
   /** Find the parent of the singleton type in the disjoint set. */
   private def findParent(tp: Symbol): Symbol = {
     @annotation.tailrec def recur(tp: Symbol): Symbol = myDisjMapping(tp) match {
@@ -739,6 +745,7 @@ final class ProperGadtConstraint private(
   override def fullBounds(path: SingletonType, designator: Name)(using Context): TypeBounds = null
 
   override def isLess(sym1: Symbol, sym2: Symbol)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
+  override def isLess(ntp1: NamedType, ntp2: NamedType)(using Context): Boolean = unsupported("EmptyGadtConstraint.isLess")
 
   override def isEmpty: Boolean = true
 
