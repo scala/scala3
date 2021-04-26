@@ -117,14 +117,15 @@ trait TypeAssigner {
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
-    var qualType = qual1.tpe.widenIfUnstable
-    if !qualType.isError then
-      val prevQual = qualType
-      if !qualType.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
+    val qualType0 = qual1.tpe.widenIfUnstable
+    val qualType =
+      if !qualType0.hasSimpleKind && tree.name != nme.CONSTRUCTOR then
         // constructors are selected on typeconstructor, type arguments are passed afterwards
-        qualType = errorType(em"$prevQual takes type parameters", qual1.srcPos)
-      else if !qualType.isInstanceOf[TermType] then
-        qualType = errorType(em"$prevQual is illegal as a selection prefix", qual1.srcPos)
+        errorType(em"$qualType0 takes type parameters", qual1.srcPos)
+      else if !qualType0.isInstanceOf[TermType] && !qualType0.isError then
+        errorType(em"$qualType0 is illegal as a selection prefix", qual1.srcPos)
+      else
+        qualType0
 
     def arrayElemType = qual1.tpe.widen match
       case JavaArrayType(elemtp) => elemtp
