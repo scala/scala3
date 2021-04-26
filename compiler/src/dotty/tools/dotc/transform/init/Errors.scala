@@ -64,21 +64,29 @@ object Errors {
       var last: SourcePosition = NoSourcePosition
       val sb = new StringBuilder
       trace.foreach { tree =>
-        indentCount += 1
         val pos = tree.sourcePos
-        val prefix =  (" " * indentCount) + "-> "
         var pinpoint = ""
         val line =
           if pos.source.exists then
             val locText = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
             val loc = Highlighting.Blue(locText)
             val code = SyntaxHighlighting.highlight(pos.lineContent)
-            if pinpoints.contains(tree) then
-              pinpoint = pinpointText(pos, pinpoints(tree), locText.length + prefix.length)
 
-            i"$loc$prefix$code"
+            var prefix = loc + " "
+            if locText.size <= indentCount then
+              prefix = prefix +  (" " * (indentCount - locText.size + 1))
+              indentCount = indentCount + 1
+            else
+              indentCount = locText.length + 1
+
+            if pinpoints.contains(tree) then
+              pinpoint = pinpointText(pos, pinpoints(tree), indentCount + 4)
+
+            i"$prefix-> $code"
           else
-            tree.show
+            indentCount += 1
+            val prefix = " " * indentCount
+            i"$prefix-> ${tree.show}"
 
         if (last.source != pos.source || last.line != pos.line)
           sb.append(line + pinpoint)
