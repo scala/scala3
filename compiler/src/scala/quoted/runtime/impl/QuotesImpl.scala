@@ -186,10 +186,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object StatementTypeTest extends TypeTest[Tree, Statement]:
       def unapply(x: Tree): Option[Statement & x.type] = x match
-        case _: tpd.PatternTree => None
-        case _ =>
-          if x.isTerm then TermTypeTest.unapply(x)
-          else DefinitionTypeTest.unapply(x)
+        case TermTypeTest(x: x.type) => Some(x)
+        case DefinitionTypeTest(x: x.type) => Some(x)
+        case ImportTypeTest(x: x.type) => Some(x)
+        case ExportTypeTest(x: x.type) => Some(x)
+        case _ => None
     end StatementTypeTest
 
     type Definition = tpd.MemberDef
