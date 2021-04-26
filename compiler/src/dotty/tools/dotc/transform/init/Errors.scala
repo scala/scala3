@@ -23,12 +23,18 @@ object Errors {
     def trace: Seq[Tree]
     def show(using Context): String
 
+    def traceSuppressed: Boolean = false
+
     def issue(using Context): Unit =
       report.warning(show + stacktrace, source.srcPos)
 
     def toErrors: Errors = this :: Nil
 
-    def stacktrace(using Context): String = if (trace.isEmpty) "" else " Calling trace:\n" + {
+    private def stacktracePrefix: String =
+      val str = if traceSuppressed then "suppressed" else "full"
+      " Calling trace (" +  str + "):\n"
+
+    def stacktrace(using Context): String = if (trace.isEmpty) "" else stacktracePrefix + {
       var indentCount = 0
       var last: String = ""
       val sb = new StringBuilder
@@ -69,7 +75,7 @@ object Errors {
       report.warning(show + stacktrace, field.srcPos)
   }
 
-  case class CyclicObjectInit(objs: Seq[Symbol], trace: Seq[Tree]) extends Error {
+  case class CyclicObjectInit(objs: Seq[Symbol], trace: Seq[Tree], override val traceSuppressed: Boolean) extends Error {
     def source: Tree = trace.last
     def show(using Context): String =
       "Cyclic object initialization for " + objs.map(_.show).mkString(", ") + "."
@@ -78,10 +84,9 @@ object Errors {
       report.warning(show + stacktrace, objs.head.srcPos)
   }
 
-  case class ObjectLeakDuringInit(obj: Symbol, trace: Seq[Tree]) extends Error {
+  case class ObjectLeakDuringInit(obj: Symbol, trace: Seq[Tree], override val traceSuppressed: Boolean) extends Error {
     def source: Tree = trace.last
-    def show(using Context): String =
-      obj.show + " leaked during its initialization " + "."
+    def show(using Context): String = obj.show + " leaked during its initialization " + "."
 
     override def issue(using Context): Unit =
       report.warning(show + stacktrace, obj.srcPos)

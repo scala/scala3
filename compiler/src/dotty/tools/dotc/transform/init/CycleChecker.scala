@@ -86,6 +86,12 @@ class CycleChecker(cache: Cache) {
   val classesInCurrentRun = mutable.Set.empty[Symbol]
   val objectsInCurrentRun = new mutable.ListBuffer[Symbol]
 
+  /** The limit of stack trace shown to programmers
+   *
+   *  TODO: make it configurable from command-line for debugging purposes
+   */
+  val traceNumberLimit = 10
+
   /** Checking state */
   case class State(visited: mutable.Set[Dependency], path: Vector[Symbol], trace: Vector[Dependency]) {
     def visit[T](dep: Dependency)(op: State ?=> T): T =
@@ -138,11 +144,25 @@ class CycleChecker(cache: Cache) {
       val obj = dep.symbol
       if state.path.contains(obj) then
         val cycle = state.path.dropWhile(_ != obj)
-        val trace = state.trace.dropWhile(_.symbol != obj).flatMap(_.source) ++ dep.source
+        val ctor = obj.moduleClass.primaryConstructor
+        var trace = state.trace.dropWhile(_.symbol != ctor) :+ dep
+
+        val traceSuppress = trace.size > traceNumberLimit
+        if traceSuppress then
+          // truncate trace up to the first escape of object
+          val iter = trace.iterator
+          trace = Vector.empty
+          var elem = iter.next()
+          trace = trace :+ elem
+          while iter.hasNext && !elem.isInstanceOf[InstanceUsage] do
+            elem = iter.next()
+            trace = trace :+ elem
+
+        val locations = trace.flatMap(_.source)
         if cycle.size > 1 then
-          CyclicObjectInit(cycle, trace) :: Nil
+          CyclicObjectInit(cycle, locations, traceSuppress) :: Nil
         else
-          ObjectLeakDuringInit(obj, trace) :: Nil
+          ObjectLeakDuringInit(obj, locations, traceSuppress) :: Nil
       else
         val constr = obj.moduleClass.primaryConstructor
         state.visitObject(dep) {
