@@ -315,7 +315,7 @@ class ImplicitSearchError(
   }
 
   private def defaultImplicitNotFoundMessage = {
-    em"no implicit argument of type $pt was found${location("for")}"
+    ex"no implicit argument of type $pt was found${location("for")}"
   }
 
   /** Construct a custom error message given an ambiguous implicit
