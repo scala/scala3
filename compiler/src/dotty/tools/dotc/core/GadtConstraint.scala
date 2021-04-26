@@ -114,71 +114,85 @@ final class ProperGadtConstraint private(
 
   /** Exposes ConstraintHandling.subsumes */
   def subsumes(left: GadtConstraint, right: GadtConstraint, pre: GadtConstraint)(using Context): Boolean = {
+    // When new types are registered after pre, for left to subsume right, it should contain all types
+    // newly registered in right.
     def checkSubsumes(c1: Constraint, c2: Constraint, pre: Constraint): Boolean = {
       if (c2 eq pre) true
       else if (c1 eq pre) false
       else {
         val saved = constraint
 
-        // compute type parameters in c1 added after `pre`
+        /** Compute type parameters in c1 added after `pre`
+          */
         val params1 = c1.domainParams.toSet
         val params2 = c2.domainParams.toSet
         val preParams = pre.domainParams.toSet
         val newParams1 = params1.diff(preParams)
         val newParams2 = params2.diff(preParams)
-        /** Bridge from type param refs in c2 (right) to c1 (left).
+
+        def checkNewParams: Boolean = (left, right) match {
+          case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
+            newParams2 forall { p2 =>
+              val tp2 = right.externalize(p2)
+              left.mapType(tp2) != null
+            }
+          case _ => true
+        }
+
+        /** Bridge between type param refs in c2 (right) and c1 (left).
           */
-        val bridge: SimpleIdentityMap[TypeParamRef, TypeParamRef] = {
-          var res: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+        val (bridge1, bridge2) = {
+          var bridge1: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
+          var bridge2: SimpleIdentityMap[TypeParamRef, TypeParamRef] = SimpleIdentityMap.empty
 
           (left, right) match {
+            // only meaningful when both constraints are proper
             case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
               newParams1 foreach { p1 =>
                 val tp1 = left.externalize(p1)
-                val p2: TypeParamRef = right.mapType(tp1) match {
-                  case null => null
-                  case tvar => tvar.origin
-                }
-                p2 match {
+                right.mapType(tp1) match {
                   case null =>
-                  case tpr2 => res = res.updated(tpr2, p1)
-                }
-              }
-
-              newParams2 foreach { p2 =>
-                val tp2 = left.externalize(p2)
-                left.mapType(tp2) match {
-                  case null =>
-                    // Types newly registered in `right` is not contained in `left`,
-                    // return false directly
-                    return false
-                  case _ =>
+                  case tvar2 =>
+                    bridge1 = bridge1.updated(p1, tvar2.origin)
+                    bridge2 = bridge2.updated(tvar2.origin, p1)
                 }
               }
             case _ =>
           }
 
-          res
+          (bridge1, bridge2)
         }
 
-        def bridgeParam(tpr: TypeParamRef): TypeParamRef = bridge(tpr) match {
+        def bridgeParam(bridge: SimpleIdentityMap[TypeParamRef, TypeParamRef])(tpr: TypeParamRef): TypeParamRef = bridge(tpr) match {
           case null => tpr
-          case tpr2 => tpr2
+          case tpr1 => tpr1
         }
+        val bridgeParam1 = bridgeParam(bridge1)
+        val bridgeParam2 = bridgeParam(bridge2)
 
         try {
           // checks existing type parameters in `pre`
           def existing: Boolean = pre.forallParams { p =>
             c1.contains(p) &&
               c2.upper(p).forall { q =>
-                c1.isLess(p, bridgeParam(q))
+                c1.isLess(p, bridgeParam2(q))
               } && isSubTypeWhenFrozen(c1.nonParamBounds(p), c2.nonParamBounds(p))
           }
 
-          // checks added type parameters in `add1`
-          def added: Boolean = ???
+          // checks new type parameters in `c1`
+          def added: Boolean = newParams1 forall { p1 =>
+            bridge1(p1) match {
+              case null =>
+                // p1 is in `left` but not in `right`
+                true
+              case p2 =>
+                c2.upper(p2).forall { q =>
+                  c1.isLess(p1, bridgeParam2(q))
+                } && isSubTypeWhenFrozen(c1.nonParamBounds(p1), c2.nonParamBounds(p2))
+            }
+          }
 
-          existing
+          existing && checkNewParams && added
         } finally constraint = saved
       }
     }
