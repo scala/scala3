@@ -97,7 +97,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             new ExprImpl(self, SpliceScope.getCurrent)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
-            case _ => throw new Exception("Expected a Term but was: " + self)
+            case _ => throw new Exception("Expected a Term but was: " + Printer.TreeStructure.show(self))
       end extension
 
       extension (self: Tree)
