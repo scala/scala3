@@ -48,16 +48,14 @@ object Errors {
     private val render = new MessageRendering {}
 
     private def pinpointText(pos: SourcePosition, msg: String, offset: Int)(using Context): String =
-      val carets = render.hl("Warning") {
+      val carets = render.hl("Warning")({
         if (pos.startLine == pos.endLine)
           "^" * math.max(1, pos.endColumn - pos.startColumn)
         else "^"
-      }
+      } + " <~~ " + msg)
 
       val padding = pos.startColumnPadding + (" " * offset)
-      val marker = padding + carets
-      val textline = padding + msg
-      marker + "\n" + textline + "\n"
+      padding + carets + "\n"
 
     def stacktrace(using Context): String = if (trace.isEmpty) "" else stacktracePrefix + {
       var indentCount = 0

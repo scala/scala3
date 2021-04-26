@@ -174,7 +174,7 @@ class CycleChecker(cache: Cache) {
             ObjectLeakDuringInit(obj, locations, traceSuppress)
 
         if pinpointOpt.nonEmpty then
-          warning.pinpoint(pinpointOpt.get.source.last, "Leaking the object may cause initialization problems")
+          warning.pinpoint(pinpointOpt.get.source.last, "Unsafe leaking of object")
 
         warning :: Nil
       else

@@ -5,7 +5,6 @@
   |[ global-cycle13.scala:1 ] -> object Names {             // error
   |[ global-cycle13.scala:21 ]  ->   val nameTable = NameTable()
   |[ global-cycle13.scala:14 ]   ->     add(0, EmptyTermName)
-  |                                            ^^^^^^^^^^^^^
-  |                                            Leaking the object may cause initialization problems
+  |                                            ^^^^^^^^^^^^^ <~~ Unsafe leaking of object
   |[ global-cycle13.scala:18 ]    ->   val EmptyTermName: SimpleName = SimpleName(-1, 0)
   |[ global-cycle13.scala:8 ]      ->     def foo() = println(EmptyTermName.toString)
