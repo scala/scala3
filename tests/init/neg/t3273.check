@@ -1,22 +1,20 @@
 -- Error: tests/init/neg/t3273.scala:4:42 ------------------------------------------------------------------------------
 4 |  val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |                                  ^^^^^^^^^^^^^^^
-  |             Promoting the value to fully-initialized is unsafe.
-  |              Calling trace (full):
-  |              -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |            Promoting the value to fully-initialized is unsafe.  Calling trace (full):
+  |            [34m[ t3273.scala:4 ][0m ->   val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
   |
-  |             The unsafe promotion may cause the following problem(s):
+  |            The unsafe promotion may cause the following problem(s):
   |
-  |             1. Access non-initialized value num1. Calling trace (full):
-  |              -> val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error	[ t3273.scala:4 ]
+  |            1. Access non-initialized value num1. Calling trace (full):
+  |            [34m[ t3273.scala:4 ][0m ->   val num1: LazyList[Int] = 1 #:: num1.map(_ + 1)                        // error
 -- Error: tests/init/neg/t3273.scala:5:61 ------------------------------------------------------------------------------
 5 |  val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |             Promoting the value to fully-initialized is unsafe.
-  |              Calling trace (full):
-  |              -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |            Promoting the value to fully-initialized is unsafe.  Calling trace (full):
+  |            [34m[ t3273.scala:5 ][0m ->   val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error
   |
-  |             The unsafe promotion may cause the following problem(s):
+  |            The unsafe promotion may cause the following problem(s):
   |
-  |             1. Access non-initialized value num2. Calling trace (full):
-  |              -> val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error	[ t3273.scala:5 ]
+  |            1. Access non-initialized value num2. Calling trace (full):
+  |            [34m[ t3273.scala:5 ][0m ->   val num2: LazyList[Int] = 1 #:: num2.iterator.map(_ + 1).to(LazyList)  // error

@@ -8,9 +8,10 @@ import ast.tpd._
 import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
-import util.{ SimpleIdentityMap, SourcePosition }
+import util.{ SimpleIdentityMap, SourcePosition, NoSourcePosition }
 
 import reporting.MessageRendering
+import printing.Highlighting
 
 import Effects._, Potentials._
 
@@ -56,31 +57,33 @@ object Errors {
       val padding = pos.startColumnPadding + (" " * offset)
       val marker = padding + carets
       val textline = padding + msg
-      "\n" + marker + "\n" + textline
+      marker + "\n" + textline + "\n"
 
     def stacktrace(using Context): String = if (trace.isEmpty) "" else stacktracePrefix + {
       var indentCount = 0
-      var last: String = ""
+      var last: SourcePosition = NoSourcePosition
       val sb = new StringBuilder
       trace.foreach { tree =>
         indentCount += 1
         val pos = tree.sourcePos
-        val prefix = s"${ " " * indentCount }-> "
+        val prefix =  (" " * indentCount) + "-> "
+        var pinpoint = ""
         val line =
           if pos.source.exists then
-            val loc = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
-            val code = SyntaxHighlighting.highlight(pos.lineContent.stripLineEnd)
-            val pinpoint =
-              if !pinpoints.contains(tree) then ""
-              else pinpointText(pos, pinpoints(tree), indentCount + 3)
+            val locText = "[ " + pos.source.file.name + ":" + (pos.line + 1) + " ]"
+            val loc = Highlighting.Blue(locText)
+            val code = SyntaxHighlighting.highlight(pos.lineContent)
+            if pinpoints.contains(tree) then
+              pinpoint = pinpointText(pos, pinpoints(tree), locText.length + prefix.length)
 
-            i"$code\t$loc" + pinpoint
+            i"$loc$prefix$code"
           else
             tree.show
 
-        if (last != line)  sb.append(prefix + line + "\n")
+        if (last.source != pos.source || last.line != pos.line)
+          sb.append(line + pinpoint)
 
-        last = line
+        last = pos
       }
       sb.toString
     }
@@ -161,7 +164,7 @@ object Errors {
 
     def show(using Context): String = {
       var index = 0
-      "Promoting the value to fully-initialized is unsafe.\n" + stacktrace +
+      "Promoting the value to fully-initialized is unsafe. " + stacktrace +
         "\nThe unsafe promotion may cause the following problem(s):\n" +
         (errors.flatMap(_.flatten).map { error =>
           index += 1
