@@ -258,13 +258,13 @@ object Checking {
         }
 
       case obj: Global  =>
-        val target = resolve(obj.moduleClass, sym)
         if isObjectAccessSafe(obj) then
-          check(MethodCall(ThisRef()(obj.source), target)(eff.source))
+          check(MethodCall(ThisRef()(obj.source), sym)(eff.source))
         else if isNestedObject(obj) then
           val pot = FieldReturn(ThisRef()(obj.source), obj.symbol)(obj.source)
-          check(MethodCall(pot, target)(eff.source))
+          check(MethodCall(pot, sym)(eff.source))
         else
+          val target = resolve(obj.moduleClass, sym)
           state.dependencies += StaticCall(obj.moduleClass, target)(state.path)
           Errors.empty
 
@@ -452,7 +452,13 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary.empty // warning already issued in call effect
 
-          case _: Hot | _: Global =>
+          case obj: Global =>
+            if isObjectAccessSafe(obj) then
+              expand(MethodReturn(ThisRef()(obj.source), sym)(pot.source))
+            else
+              Summary(Promote(pot)(pot.source))
+
+          case _: Hot =>
             Summary(Promote(pot)(pot.source))
 
           case _: Cold =>
@@ -484,7 +490,13 @@ object Checking {
             if (target.hasSource) Summary(warm.potentialsOf(target), Effects.empty)
             else Summary(Cold()(pot.source))
 
-          case _: Hot | _: Global =>
+          case obj: Global =>
+            if isObjectAccessSafe(obj) then
+              expand(FieldReturn(ThisRef()(obj.source), sym)(pot.source))
+            else
+              Summary(Promote(pot)(pot.source))
+
+          case _: Hot =>
             Summary(Promote(pot)(pot.source))
 
           case _: Cold =>

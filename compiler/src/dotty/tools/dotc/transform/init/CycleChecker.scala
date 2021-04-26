@@ -244,7 +244,7 @@ class CycleChecker(cache: Cache) {
       val env = Env(ctx.withOwner(dep.cls), cache)
       val state = new Checking.State(
         visited = Set.empty,
-        path = Vector.empty,
+        path = dep.source,
         thisClass = dep.cls,
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
