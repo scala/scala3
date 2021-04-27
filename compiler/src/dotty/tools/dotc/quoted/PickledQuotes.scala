@@ -181,25 +181,43 @@ object PickledQuotes {
 
   /** Unpickle TASTY bytes into it's tree */
   private def unpickle(pickled: String | List[String], isType: Boolean)(using Context): Tree = {
-    val bytes = pickled match
-      case pickled: String => TastyString.unpickle(pickled)
-      case pickled: List[String] => TastyString.unpickle(pickled)
+    QuotesCache.getTree(pickled) match
+      case Some(tree) =>
+        quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
+        tree
+      case _ =>
+        val bytes = pickled match
+          case pickled: String => TastyString.unpickle(pickled)
+          case pickled: List[String] => TastyString.unpickle(pickled)
 
-    quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.show(bytes)}")
+        quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.show(bytes)}")
 
-    val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-    val unpickler = new DottyUnpickler(bytes, mode)
-    unpickler.enter(Set.empty)
+        val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
+        val unpickler = new DottyUnpickler(bytes, mode)
+        unpickler.enter(Set.empty)
 
-    val tree = unpickler.tree
+        val tree = unpickler.tree
 
-    // Make sure trees and positions are fully loaded
-    new TreeTraverser {
-      def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
-    }.traverse(tree)
+        var cacheable = true // TODO: can we remove this?
 
-    quotePickling.println(i"**** unpickled quote\n$tree")
-    tree
+        // Make sure trees and positions are fully loaded
+        new TreeTraverser {
+          def traverse(tree: Tree)(using Context): Unit =
+            tree match
+              case _: DefTree =>
+                if !tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot)
+                && !tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
+                then
+                  cacheable = false
+              case _ =>
+            traverseChildren(tree)
+        }.traverse(tree)
+
+        quotePickling.println(i"**** unpickled quote\n$tree")
+        if cacheable then
+          QuotesCache(pickled) = tree
+
+        tree
   }
 
 }

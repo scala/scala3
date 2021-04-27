@@ -4,6 +4,7 @@ package staging
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
+import dotty.tools.dotc.quoted.QuotesCache
 import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
 import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
@@ -33,8 +34,11 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           new VirtualDirectory("<quote compilation output>")
     end outDir
 
-    val ctx0 = setup(settings.compilerArgs.toArray :+ "dummy.scala", initCtx.fresh).get._2
-    val ctx = setCompilerSettings(ctx0.fresh.setSetting(ctx0.settings.outputDir, outDir), settings)
+    val ctx = {
+      val ctx0 = QuotesCache.init(initCtx.fresh)
+      val ctx1 = setup(settings.compilerArgs.toArray :+ "dummy.scala", ctx0).get._2
+      setCompilerSettings(ctx1.fresh.setSetting(ctx1.settings.outputDir, outDir), settings)
+    }
 
     new QuoteCompiler().newRun(ctx).compileExpr(exprBuilder) match
       case Right(value) =>
