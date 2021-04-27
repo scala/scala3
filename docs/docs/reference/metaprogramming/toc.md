@@ -18,7 +18,7 @@ introduce the following fundamental facilities:
    runtime code generation (multi-stage programming).
 
 2. [Compile-time ops](./compiletime-ops.md) are helper definitions in the
-   standard library that provide support for compile-time operations over values.
+   standard library that provide support for compile-time operations over values and types.
 
 3. [Macros](./macros.md) are built on two well-known fundamental
    operations: quotation and splicing.  Quotation converts program code to
@@ -44,4 +44,3 @@ introduce the following fundamental facilities:
 6. [TASTy Inspection](./tasty-inspect.md) Typed abstract syntax trees are serialized
    in a custom compressed binary format stored in `.tasty` files. TASTy inspection allows
    to load these files and analyze their content's tree structure.
-
