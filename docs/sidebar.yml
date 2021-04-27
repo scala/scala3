@@ -79,6 +79,8 @@ sidebar:
               url: docs/reference/metaprogramming/toc.html
             - title: Inline
               url: docs/reference/metaprogramming/inline.html
+            - title: Compile-time ops
+              url: docs/reference/metaprogramming/compiletime-ops.html
             - title: Macros
               url: docs/reference/metaprogramming/macros.html
             - title: Runtime Staging
