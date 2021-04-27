@@ -4016,13 +4016,10 @@ object Types {
     }
 
     override def translucentSuperType(using Context): Type = tycon match {
-      case tycon: TypeRef =>
-        if tycon.symbol.isOpaqueAlias then
-          tycon.translucentSuperType.applyIfParameterized(args)
-        else
-          tryMatchAlias(tycon).orElse(superType)
+      case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
+        tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
-        superType
+        tryNormalize.orElse(superType)
     }
 
     inline def map(inline op: Type => Type)(using Context) =
@@ -4037,20 +4034,19 @@ object Types {
         case nil => x
       foldArgs(op(x, tycon), args)
 
-    private def tryMatchAlias(tycon: TypeRef)(using Context) = tycon.info match {
-      case MatchAlias(alias) =>
-        trace(i"normalize $this", typr, show = true) {
-          MatchTypeTrace.recurseWith(this) {
-            alias.applyIfParameterized(args).tryNormalize
-          }
-        }
-      case _ =>
-        NoType
-    }
-
     override def tryNormalize(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
-        tryCompiletimeConstantFold.orElse(tryMatchAlias(tycon))
+        def tryMatchAlias = tycon.info match {
+          case MatchAlias(alias) =>
+            trace(i"normalize $this", typr, show = true) {
+              MatchTypeTrace.recurseWith(this) {
+                alias.applyIfParameterized(args).tryNormalize
+              }
+            }
+          case _ =>
+            NoType
+        }
+        tryCompiletimeConstantFold.orElse(tryMatchAlias)
       case _ =>
         NoType
     }
