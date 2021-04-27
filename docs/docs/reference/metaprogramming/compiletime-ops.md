@@ -1,11 +1,11 @@
 ---
 layout: doc-page
-title: "Compiletime operations"
+title: "Compile-time operations"
 ---
 
 ## The `scala.compiletime` Package
 
-The [`scala.compiletime`](https://dotty.epfl.ch/api/scala/compiletime.html) package contains helper definitions that provide support for compile time operations over values. They are described in the following.
+The [`scala.compiletime`](https://dotty.epfl.ch/api/scala/compiletime.html) package contains helper definitions that provide support for compile-time operations over values. They are described in the following.
 
 ### `constValue` and `constValueOpt`
 
@@ -43,7 +43,7 @@ def erasedValue[T]: T
 ```
 
 The `erasedValue` function _pretends_ to return a value of its type argument `T`.
-Calling this function will always result in a compiletime error unless the call
+Calling this function will always result in a compile-time error unless the call
 is removed from the code while inlining.
 
 Using `erasedValue`, we can then define `defaultValue` as follows:
@@ -270,5 +270,5 @@ transparent inline def summonInline[T]: T = summonFrom {
 
 ## Reference
 
-For more information about compiletime operation, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
+For more information about compile-time operations, see [PR #4768](https://github.com/lampepfl/dotty/pull/4768),
 which explains how `summonFrom`'s predecessor (implicit matches) can be used for typelevel programming and code specialization and [PR #7201](https://github.com/lampepfl/dotty/pull/7201) which explains the new `summonFrom` syntax.
