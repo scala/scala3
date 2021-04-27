@@ -1,0 +1,28 @@
+#+name: ino
+#+begin_src elisp :cache yes
+  "hello"
+#+end_src
+
+#+RESULTS[9cba8df315d6438fc077ee36aa5df982584c7a6a]: ino
+: hello
+
+* Test
+
+  #+begin_src elisp :var ino=ino :results silent
+    (magit-branch-and-checkout (concat "investigate/" ino) "HEAD")
+  #+end_src
+
+  #+begin_src elisp :var ino=ino :results silent
+    (write-file (concat "i" ino "-description.org"))
+  #+end_src
+
+  #+begin_src elisp :var ino=ino :results silent
+    (find-file (concat "i" ino ".scala"))
+  #+end_src
+
+* $ISSUE$
+
+#+begin_src elisp
+  (sbt/run-until-output "scala3-compiler-bootstrapped/compile")
+  (sbt/compile-file-for-output "issue/$ISSUE$.scala")
+#+end_src
