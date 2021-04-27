@@ -3343,7 +3343,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /////////////
 
     /** Symbol of a definition.
-    *  Then can be compared with == to know if the definition is the same.
+    *   Symbols can be compared with `==` to know if two definitions are the same.
     */
     type Symbol <: AnyRef
 
