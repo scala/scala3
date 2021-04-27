@@ -137,7 +137,7 @@ final class ProperGadtConstraint private(
           case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
             newParams2 forall { p2 =>
               val tp2 = right.externalize(p2)
-              left.mapType(tp2) != null
+              left.tvarOfType(tp2) != null
             }
           case _ => true
         }
@@ -153,7 +153,7 @@ final class ProperGadtConstraint private(
             case (left: ProperGadtConstraint, right: ProperGadtConstraint) =>
               newParams1 foreach { p1 =>
                 val tp1 = left.externalize(p1)
-                right.mapType(tp1) match {
+                right.tvarOfType(tp1) match {
                   case null =>
                   case tvar2 =>
                     bridge1 = bridge1.updated(p1, tvar2.origin)
@@ -257,9 +257,12 @@ final class ProperGadtConstraint private(
       .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
-  private def mapType(tp: Type)(using Context): TypeVar = tp match {
-    case TypeRef(path: SingletonType, des: Symbol) => mapTpMem(path, des.name)
-    case TypeRef(path: SingletonType, des: Name) => mapTpMem(path, des)
+  private def tvarOfType(tp: Type)(using Context): TypeVar = tp match {
+    case tp @ TypeRef(path: SingletonType, des: Designator) =>
+      mapTpMem(path, des) match {
+        case null => mapping(tp.symbol)
+        case tp => tp
+      }
     case tp: NamedType => mapping(tp.symbol)
     case _ => null
   }
@@ -316,7 +319,7 @@ final class ProperGadtConstraint private(
               case TypeRef(_ : RecThis, des : Name) =>
                 maybeTvarOfName(des)
               case tp: Type =>
-                mapType(tp) match {
+                tvarOfType(tp) match {
                   case tv: TypeVar => tv.origin
                   case null => tp
                 }
@@ -491,7 +494,7 @@ final class ProperGadtConstraint private(
 
     val internalizedBound = bound match {
       case nt: NamedType =>
-        val ntTvar = mapType(nt)
+        val ntTvar = tvarOfType(nt)
         if (ntTvar ne null) stripInternalTypeVar(ntTvar) else bound
       case _ => bound
     }
@@ -568,6 +571,8 @@ final class ProperGadtConstraint private(
     case null => null
     case nameMapping => nameMapping(designator)
   }
+
+  private def mapTpMem(path: SingletonType, designator: Designator)(using Context): TypeVar = mapTpMem(path, nameOfDesignator(designator))
 
   override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds =
     mapTpMem(path, designator) match {
