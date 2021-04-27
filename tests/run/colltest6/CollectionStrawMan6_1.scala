@@ -1,13 +1,14 @@
 package colltest6
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.uncheckedVariance
 import annotation.tailrec
+import compiletime.uninitialized
 
 class LowPriority {
-  import CollectionStrawMan6._
+  import CollectionStrawMan6.*
 
   /** Convert array to iterable via view. Lower priority than ArrayOps */
   implicit def arrayToView[T](xs: Array[T]): ArrayView[T] = new ArrayView[T](xs)
@@ -110,7 +111,7 @@ object CollectionStrawMan6 extends LowPriority {
   /** Base trait for companion objects of collections */
   trait IterableFactory[+C[X] <: Iterable[X]] extends FromIterable[C] {
     def empty[X]: C[X] = fromIterable(View.Empty)
-    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
+    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs*))
   }
 
   /** Base trait for generic collections */
@@ -607,7 +608,7 @@ object CollectionStrawMan6 extends LowPriority {
   class LazyList[+A](expr: => LazyList.Evaluated[A])
   extends LinearSeq[A] with LinearSeqLike[A, LazyList] {
     private[this] var evaluated = false
-    private[this] var result: LazyList.Evaluated[A] = _
+    private[this] var result: LazyList.Evaluated[A] = uninitialized
 
     def force: LazyList.Evaluated[A] = {
       if (!evaluated) {
@@ -804,7 +805,7 @@ object CollectionStrawMan6 extends LowPriority {
 
     /** A view with given elements */
     case class Elems[A](xs: A*) extends View[A] {
-      def iterator = Iterator(xs: _*)
+      def iterator = Iterator(xs*)
       override def knownSize = xs.length // should be: xs.knownSize, but A*'s are not sequences in this strawman.
     }
 
@@ -961,7 +962,7 @@ object CollectionStrawMan6 extends LowPriority {
       len
     }
     def filter(p: A => Boolean): Iterator[A] = new Iterator[A] {
-      private var hd: A = _
+      private var hd: A = uninitialized
       private var hdDefined: Boolean = false
 
       def hasNext: Boolean = hdDefined || {

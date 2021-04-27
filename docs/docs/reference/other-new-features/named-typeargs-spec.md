@@ -20,7 +20,7 @@ Note in particular that named arguments cannot be passed to type constructors:
 class C[T]
 
 val x: C[T = Int] = // error
-  new C[T = Int] // error
+   new C[T = Int] // error
 
 class E extends C[T = Int] // error
 ```

@@ -343,8 +343,8 @@ abstract class Tasty {
 
 // The concrete implementation - hidden from users.
 object ReflectionImpl extends Tasty {
-  import definitions._
-  import dotty.tools.dotc._
+  import definitions.*
+  import dotty.tools.dotc.*
   import ast.tpd
   import core.{Types, Symbols, Contexts}
   import util.Spans
@@ -411,8 +411,8 @@ object ReflectionImpl extends Tasty {
    as fast as native access.
 
 object ReflectionImpl extends TastyAST {
-  import definitions._
-  import dotty.tools.dotc._
+  import definitions.*
+  import dotty.tools.dotc.*
   import ast.tpd
   import core.{Types, Symbols, Contexts}
   import util.{Positions}

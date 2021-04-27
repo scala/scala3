@@ -18,9 +18,9 @@ object LineNumberMacro2 {
 }
 
 object LineNumberMacro3 {
-  import scala.quoted._
-  def thisLineNumberExpr(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
-    Expr(rootPosition.startLine + 1)
+  import scala.quoted.*
+  def thisLineNumberExpr(using Quotes): Expr[Int] = {
+    import quotes.reflect.*
+    Expr(Position.ofMacroExpansion.startLine + 1)
   }
 }

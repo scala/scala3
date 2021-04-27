@@ -1,0 +1,8 @@
+> a/compile
+$ mkdir b-input
+# Add A to the classpath of b but not the annotations referenced by the members of A
+$ copy-file a-output/A.class b-input/A.class
+$ copy-file a-output/A.tasty b-input/A.tasty
+# B should still be able to compile even though ExtractAPI forces the
+# annotations of all inherited members.
+> b/compile

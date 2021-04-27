@@ -1,4 +1,4 @@
-import macros._
+import macros.*
 
 object Test {
   val foo = new Foo

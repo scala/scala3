@@ -1,11 +1,10 @@
 package implConv
 
 object B {
-  import A._
+  import A.{_, given}
 
   "".foo
 
-  val x: Int = ""  // error: feature
+  val x: Int = ""  // ok
   val y: String = 1 // error: feature
-
 }

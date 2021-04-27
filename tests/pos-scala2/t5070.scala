@@ -10,7 +10,7 @@ trait WebDSL[W <: Web] {
 }
 object Test {
   def t[W <: Web](implicit webDSL: WebDSL[W]): Unit = {
-    import webDSL._
+    import webDSL.*
     implicitly[LocalNameCompanion] // succeeds
     implicitly[Companion1[W#LocalName]] // fails
   }

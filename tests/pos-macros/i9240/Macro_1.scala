@@ -1,14 +1,13 @@
-import scala.quoted._
-import scala.tasty._
+import scala.quoted.*
 
 inline def diveInto[T]: String = ${ diveIntoImpl[T]() }
 
-def diveIntoImpl[T]()(implicit qctx: QuoteContext, ttype: scala.quoted.Type[T]): Expr[String] =
-  import qctx.tasty._
-  Expr( unwindType(qctx.tasty)(Type.of[T]) )
+def diveIntoImpl[T]()(implicit qctx: Quotes, ttype: Type[T]): Expr[String] =
+  import quotes.reflect.*
+  Expr( unwindType(TypeRepr.of[T]) )
 
-def unwindType(reflect: Reflection)(aType: reflect.Type): String =
-  import reflect._
+def unwindType(using Quotes)(aType: quotes.reflect.TypeRepr): String =
+  import quotes.reflect.*
 
   aType match {
     case AppliedType(t,tob) =>

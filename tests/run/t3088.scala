@@ -1,4 +1,4 @@
-import collection.mutable._
+import collection.mutable.*
 
 object Test {
   def main(args: Array[String]): Unit = {

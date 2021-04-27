@@ -1,0 +1,5 @@
+
+-- Error: tests/neg-custom-args/fatal-warnings/i9408b/Test_2.scala:6:20 ------------------------------------------------
+6 |  val length: Int = "abc" // error
+  |                    ^^^^^
+  |The conversion (test.conversions.Conv.implicitLength : String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.

@@ -1,16 +1,16 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   enum Exp {
     case Int2(x: Int)
     case Add(e1: Exp, e2: Exp)
   }
-  import Exp._
+  import Exp.*
 
-  def evalTest(e: Exp)(using QuoteContext): Expr[Option[Int]] = e match {
+  def evalTest(e: Exp)(using Quotes): Expr[Option[Int]] = e match {
     case Int2(x) => '{ Some(${Expr(x)}) }
     case Add(e1, e2) =>
      '{
@@ -25,8 +25,8 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     val test = Add(Int2(1), Int2(1))
-    def res(using QuoteContext) = evalTest(test)
+    def res(using Quotes) = evalTest(test)
     println("run : " + run(res))
-    println("show : " + withQuoteContext(res.show))
+    println("show : " + withQuotes(res.show))
   }
 }

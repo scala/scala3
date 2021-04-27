@@ -1,0 +1,104 @@
+/* button */
+.search span {
+    background: #ED3522;
+    fill: #fff;
+    cursor: pointer;
+    border: none;
+    padding: 9px;
+    border-radius: 24px;
+    box-shadow: 0 0 16px #F27264;
+}
+.search span:hover {
+    fill: #F27264;
+}
+
+@media(max-width: 576px) {
+    .search span {
+        background: none;
+        fill: var(--icon-color);
+        cursor: pointer;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+        margin-top: 2px;
+    }
+    .search span:hover {
+        fill: var(--link-hover-fg);
+    }
+}
+
+#scaladoc-search {
+    margin-top: 10px;
+    cursor: pointer;
+    position: fixed;
+    top: 0;
+    right: 20px;
+    z-index: 5;
+}
+
+#scaladoc-searchbar.hidden {
+    display: none;
+}
+
+#scaladoc-searchbar {
+    position: fixed;
+    top: 50px;
+    right: 40px;
+    z-index: 5;
+    width: calc(100% - 360px);
+    box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
+    font-size: 13px;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
+}
+
+#scaladoc-searchbar-input {
+    width: 100%;
+    min-height: 32px;
+    border: none;
+    border-bottom: 1px solid #bbb;
+    padding: 10px;
+}
+
+#scaladoc-searchbar-input:focus {
+    outline: none;
+}
+
+#scaladoc-searchbar-results {
+    background: white;
+    display: flex;
+    flex-direction: column;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.scaladoc-searchbar-result {
+    background: white;
+    line-height: 32px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.scaladoc-searchbar-result:first-of-type {
+    margin-top: 10px;
+}
+
+.scaladoc-searchbar-result[selected] {
+    background-color: #d4edff;
+}
+
+.scaladoc-searchbar-result a {
+    color: #1f2326;
+}
+
+.scaladoc-searchbar-result .scaladoc-searchbar-location {
+    color: gray;
+}
+
+#searchBar {
+    display: inline-flex;
+}
+
+.pull-right {
+    float: right;
+    margin-left: auto
+}

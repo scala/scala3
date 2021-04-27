@@ -1,8 +1,7 @@
-import scala.quoted._
-def foo[T](using qctx: QuoteContext, tpe: Type[T]): Expr[Any] =
-  '{ (using qctx: QuoteContext) =>
+import scala.quoted.*
+def foo[T](using Quotes, Type[T]): Expr[Any] =
+  '{ (q: Quotes) ?=>
     type TT = T
-    val t = '[TT]
+    val t = Type.of[TT]
     ???
   }
-

@@ -1,5 +1,5 @@
 class A(i:Int){
-  @scala.annotation.alpha("E") def this() = this(3) // error
+  @scala.annotation.targetName("E") def this() = this(3) // error
 }
 object O{
   def main(args: Array[String]) = {

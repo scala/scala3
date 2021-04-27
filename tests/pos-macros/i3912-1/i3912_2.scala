@@ -1,5 +1,5 @@
-import scala.quoted._
-import Macros._
+import scala.quoted.*
+import Macros.*
 
 class Test {
   val a: Unit = foo()

@@ -1,5 +1,5 @@
-import scala.quoted._
+import scala.quoted.*
 
-def f(using QuoteContext)(x: Expr[Any]) = x match {
+def f(using Quotes)(x: Expr[Any]) = x match {
   case '{ identity($y(x)) } => // error: access to value x from wrong staging level
 }

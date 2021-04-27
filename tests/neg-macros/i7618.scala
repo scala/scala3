@@ -1,6 +1,6 @@
 package macros
 
-import scala.quoted._
+import scala.quoted.*
 
 enum Exp {
   case Num(n: Int)
@@ -10,9 +10,9 @@ enum Exp {
 }
 
 object Compiler {
-  import Exp._
+  import Exp.*
 
-  inline def compile(e: Exp, env: Map[String, Expr[Int]])(using ctx: QuoteContext): Expr[Int] = inline e match {
+  inline def compile(e: Exp, env: Map[String, Expr[Int]])(using ctx: Quotes): Expr[Int] = inline e match {
     case Num(n) =>
       Expr(n)
     case Plus(e1, e2) =>
@@ -26,11 +26,11 @@ object Compiler {
 
 object Example {
   def run(): Unit = {
-    import Exp._
+    import Exp.*
 
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    Compiler.compile(letExp, Map.empty)(using QuoteContext.macroContext) // error // error
+    Compiler.compile(letExp, Map.empty)(using Quotes.macroContext) // error
   }
 }

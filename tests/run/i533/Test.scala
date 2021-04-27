@@ -3,6 +3,6 @@ object Test {
     val x = new Array[Integer](1)
     x(0) = 10
     println(JA.get(x))
-    println(JA.getVarargs(x: _*))
+    println(JA.getVarargs(x*))
   }
 }

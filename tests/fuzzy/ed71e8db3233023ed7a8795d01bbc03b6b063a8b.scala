@@ -1,6 +1,6 @@
 class i0 {
 def i1: Nothing = {
-def this(i2: Dynamic): Int = i2.i3(i4: _*)
+def this(i2: Dynamic): Int = i2.i3(i4*)
 }
 }
 var i3 = 0

@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def foo(inline n: Int) = ${fooImpl('n)}
 
-def fooImpl(n: Expr[Int])(using qctx: QuoteContext) = {
-  val res = Expr.ofList(List.tabulate(n.unliftOrError)(i => Expr("#" + i)))
+def fooImpl(n: Expr[Int])(using Quotes) = {
+  val res = Expr.ofList(List.tabulate(n.valueOrError)(i => Expr("#" + i)))
   '{ ${Expr(res.show)} + "\n" + $res.toString + "\n" }
 }

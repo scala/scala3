@@ -9,7 +9,7 @@ object `gadt-accumulatable` {
 
   sealed abstract class Every[+T] protected (underlying: Vector[T]) extends /*PartialFunction[Int, T] with*/ Product with Serializable
   final case class One[+T](loneElement: T) extends Every[T](Vector(loneElement))
-  final case class Many[+T](firstElement: T, secondElement: T, otherElements: T*) extends Every[T](firstElement +: secondElement +: Vector(otherElements: _*))
+  final case class Many[+T](firstElement: T, secondElement: T, otherElements: T*) extends Every[T](firstElement +: secondElement +: Vector(otherElements*))
 
   class Accumulatable[G, ERR, EVERY[_]] { }
 
@@ -27,7 +27,7 @@ object `gadt-accumulatable` {
                 val tail = results.tail
                 val second = tail.head
                 val rest = tail.tail
-                Bad(Many(first, second, rest: _*))
+                Bad(Many(first, second, rest*))
             }
           case Bad(myBad) => Bad(myBad)
         }

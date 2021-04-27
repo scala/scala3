@@ -1,5 +1,5 @@
 
-import scala.language.{ postfixOps }
+import scala.language.postfixOps
 
 object Test {
 
@@ -617,7 +617,7 @@ object Test {
     case class X(p: String, ps: String*)
     def bar =
       X("a", "b") match {
-        case X(p, ps:_*) => foo(ps: _*)
+        case X(p, ps:_*) => foo(ps*)
       }
     def run(): Unit = { assertEquals("Foo", bar) }
   }

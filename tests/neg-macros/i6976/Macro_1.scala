@@ -1,12 +1,12 @@
 package playground
 
-import scala.quoted._
+import scala.quoted.*
 
 object macros {
   inline def mcr(x: => Any) = ${mcrImpl('x)}
 
-  def mcrImpl(body: Expr[Any])(using ctx: QuoteContext) : Expr[Any] = {
-    import ctx.tasty._
-    body.unseal match { case Block(_, _) => '{2} }
+  def mcrImpl(body: Expr[Any])(using ctx: Quotes) : Expr[Any] = {
+    import ctx.reflect.*
+    body.asTerm match { case Block(_, _) => '{2} }
   }
 }

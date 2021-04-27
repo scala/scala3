@@ -1,5 +1,5 @@
 
-import scala.language.{ existentials }
+import scala.language.existentials
 
 object Test {
   def f() = { case class Bar(x: Int); Bar }

@@ -54,7 +54,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     val sources = List(
       mkSource("assert(true)", "()"),
       mkSource("assert(true, ???)", "()"),
-      mkSource("assert(false)", "assertFail()")
+      mkSource("assert(false)", "scala.runtime.Scala3RunTime.assertFailed()")
     )
     for (source <- sources)
       checkBCode(source) { dir =>
@@ -73,7 +73,9 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       }
   }
 
-  @Test def inlineLocally = {
+  /** Disabled since locally comes from Predef now
+  @Test
+  def inlineLocally = {
     val source =
          """
          |class Foo {
@@ -100,6 +102,31 @@ class InlineBytecodeTests extends DottyBytecodeTest {
 
       assert(instructions1 == instructions2,
         "`locally` was not properly inlined in `meth1`\n" +
+        diffInstructions(instructions1, instructions2))
+    }
+  }
+  */
+
+  @Test def inlineNn = {
+    val source =
+      s"""
+         |class Foo {
+         |  def meth1(x: Int | Null): Int = x.nn
+         |  def meth2(x: Int | Null): Int = scala.runtime.Scala3RunTime.nn(x)
+         |}
+         """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName("Foo.class", directory = false).input
+      val clsNode = loadClassNode(clsIn)
+      val meth1 = getMethod(clsNode, "meth1")
+      val meth2 = getMethod(clsNode, "meth2")
+
+      val instructions1 = instructionsFromMethod(meth1)
+      val instructions2 = instructionsFromMethod(meth2)
+
+      assert(instructions1 == instructions2,
+        "`nn` was not properly inlined in `meth1`\n" +
         diffInstructions(instructions1, instructions2))
     }
   }
@@ -368,14 +395,14 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(fun)
       val expected =
         List(
-          IntOp(BIPUSH, 10)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(ICONST_1)
-          , Op(IADD)
-          , VarOp(ISTORE, 1)
-          , VarOp(ILOAD, 1)
-          , Op(IRETURN)
+          IntOp(BIPUSH, 10),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(ICONST_1),
+          Op(IADD),
+          VarOp(ISTORE, 1),
+          VarOp(ILOAD, 1),
+          Op(IRETURN),
         )
       assert(instructions == expected,
         "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
@@ -522,6 +549,174 @@ class InlineBytecodeTests extends DottyBytecodeTest {
       assert(instructions == expected,
         "`i was not properly inlined in `test`\n" + diffInstructions(instructions, expected))
 
+    }
+  }
+
+  @Test def beta_reduce_under_block = {
+    val source = """class Test:
+                   |  def test =
+                   |    {
+                   |      val a = 3
+                   |      (i: Int) => i + a
+                   |    }.apply(2)
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected =
+        List(
+          Op(ICONST_3),
+          VarOp(ISTORE, 1),
+          Op(ICONST_2),
+          VarOp(ILOAD, 1),
+          Op(IADD),
+          Op(IRETURN),
+        )
+
+      assert(instructions == expected,
+        "`i was not properly beta-reduced in `test`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def i9456 = {
+    val source = """class Foo {
+                   |  def test: Int = inline2(inline1(2.+))
+                   |
+                   |  inline def inline1(inline f: Int => Int): Int => Int = i => f(1)
+                   |
+                   |  inline def inline2(inline f: Int => Int): Int = f(2) + 3
+                   |}
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Foo.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      val fun = getMethod(clsNode, "test")
+      val instructions = instructionsFromMethod(fun)
+      val expected = // TODO room for constant folding
+        List(
+          Op(ICONST_1),
+          VarOp(ISTORE, 1),
+          Op(ICONST_2),
+          VarOp(ILOAD, 1),
+          Op(IADD),
+          Op(ICONST_3),
+          Op(IADD),
+          Op(IRETURN),
+        )
+      assert(instructions == expected,
+        "`f` was not properly inlined in `fun`\n" + diffInstructions(instructions, expected))
+
+    }
+  }
+
+  @Test def any_eq_specialization = {
+    val source = """class Test:
+                   |  inline def eql(x: Any, y: Any) = x == y
+                   |
+                   |  def testAny(x: Any, y: Any) = eql(x, y)
+                   |  def testAnyExpected(x: Any, y: Any) = x == y
+                   |
+                   |  def testBoolean(x: Boolean, y: Boolean) = eql(x, y)
+                   |  def testBooleanExpected(x: Boolean, y: Boolean) = x == y
+                   |
+                   |  def testByte(x: Byte, y: Byte) = eql(x, y)
+                   |  def testByteExpected(x: Byte, y: Byte) = x == y
+                   |
+                   |  def testShort(x: Short, y: Short) = eql(x, y)
+                   |  def testShortExpected(x: Short, y: Short) = x == y
+                   |
+                   |  def testInt(x: Int, y: Int) = eql(x, y)
+                   |  def testIntExpected(x: Int, y: Int) = x == y
+                   |
+                   |  def testLong(x: Long, y: Long) = eql(x, y)
+                   |  def testLongExpected(x: Long, y: Long) = x == y
+                   |
+                   |  def testFloat(x: Float, y: Float) = eql(x, y)
+                   |  def testFloatExpected(x: Float, y: Float) = x == y
+                   |
+                   |  def testDouble(x: Double, y: Double) = eql(x, y)
+                   |  def testDoubleExpected(x: Double, y: Double) = x == y
+                   |
+                   |  def testChar(x: Char, y: Char) = eql(x, y)
+                   |  def testCharExpected(x: Char, y: Char) = x == y
+                   |
+                   |  def testUnit(x: Unit, y: Unit) = eql(x, y)
+                   |  def testUnitExpected(x: Unit, y: Unit) = x == y
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
+        val meth1      = getMethod(clsNode, s"test$cls")
+        val meth2      = getMethod(clsNode, s"test${cls}Expected")
+
+        val instructions1 = instructionsFromMethod(meth1)
+        val instructions2 = instructionsFromMethod(meth2)
+
+        assert(instructions1 == instructions2,
+          s"`==` was not properly specialized when inlined in `test$cls`\n" +
+          diffInstructions(instructions1, instructions2))
+    }
+  }
+
+  @Test def any_neq_specialization = {
+    val source = """class Test:
+                   |  inline def neql(x: Any, y: Any) = x != y
+                   |
+                   |  def testAny(x: Any, y: Any) = neql(x, y)
+                   |  def testAnyExpected(x: Any, y: Any) = x != y
+                   |
+                   |  def testBoolean(x: Boolean, y: Boolean) = neql(x, y)
+                   |  def testBooleanExpected(x: Boolean, y: Boolean) = x != y
+                   |
+                   |  def testByte(x: Byte, y: Byte) = neql(x, y)
+                   |  def testByteExpected(x: Byte, y: Byte) = x != y
+                   |
+                   |  def testShort(x: Short, y: Short) = neql(x, y)
+                   |  def testShortExpected(x: Short, y: Short) = x != y
+                   |
+                   |  def testInt(x: Int, y: Int) = neql(x, y)
+                   |  def testIntExpected(x: Int, y: Int) = x != y
+                   |
+                   |  def testLong(x: Long, y: Long) = neql(x, y)
+                   |  def testLongExpected(x: Long, y: Long) = x != y
+                   |
+                   |  def testFloat(x: Float, y: Float) = neql(x, y)
+                   |  def testFloatExpected(x: Float, y: Float) = x != y
+                   |
+                   |  def testDouble(x: Double, y: Double) = neql(x, y)
+                   |  def testDoubleExpected(x: Double, y: Double) = x != y
+                   |
+                   |  def testChar(x: Char, y: Char) = neql(x, y)
+                   |  def testCharExpected(x: Char, y: Char) = x != y
+                   |
+                   |  def testUnit(x: Unit, y: Unit) = neql(x, y)
+                   |  def testUnitExpected(x: Unit, y: Unit) = x != y
+                 """.stripMargin
+
+    checkBCode(source) { dir =>
+      val clsIn      = dir.lookupName("Test.class", directory = false).input
+      val clsNode    = loadClassNode(clsIn)
+
+      for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
+        val meth1      = getMethod(clsNode, s"test$cls")
+        val meth2      = getMethod(clsNode, s"test${cls}Expected")
+
+        val instructions1 = instructionsFromMethod(meth1)
+        val instructions2 = instructionsFromMethod(meth2)
+
+        assert(instructions1 == instructions2,
+          s"`!=` was not properly specialized when inlined in `test$cls`\n" +
+          diffInstructions(instructions1, instructions2))
     }
   }
 }

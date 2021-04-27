@@ -1,5 +1,5 @@
 
-import Asserts._
+import Asserts.*
 
 object Test {
   def main(args: Array[String]): Unit = {

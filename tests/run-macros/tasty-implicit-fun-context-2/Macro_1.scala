@@ -1,14 +1,14 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
 
-  type Macro[X] = QuoteContext ?=> Expr[X]
-  type Tastier[X] = QuoteContext ?=> X
+  type Macro[X] = Quotes ?=> Expr[X]
+  type Tastier[X] = Quotes ?=> X
 
   implicit inline def foo: String =
     ${fooImpl}
 
-  def fooImpl(using QuoteContext): QuoteContext ?=> Tastier[QuoteContext ?=> Macro[String]] = {
+  def fooImpl(using Quotes): Quotes ?=> Tastier[Quotes ?=> Macro[String]] = {
     '{"abc"}
   }
 

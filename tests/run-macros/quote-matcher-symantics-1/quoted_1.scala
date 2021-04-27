@@ -1,16 +1,16 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 
 object Macros {
 
   inline def lift[T](sym: Symantics[T])(inline a: DSL): T = ${impl[T]('sym, 'a)}
 
-  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using qctx: QuoteContext): Expr[T] = {
+  private def impl[T: Type](sym: Expr[Symantics[T]], a: Expr[DSL])(using Quotes): Expr[T] = {
 
     def lift(e: Expr[DSL]): Expr[T] = e match {
 
-      case '{ LitDSL(${ Const(c) }) } =>
+      case '{ LitDSL(${ Expr(c) }) } =>
         '{ $sym.value(${Expr(c)}) }
 
       case '{ ($x: DSL) + ($y: DSL) } =>
@@ -20,8 +20,8 @@ object Macros {
         '{ $sym.times(${lift(x)}, ${lift(y)}) }
 
       case _ =>
-        import qctx.tasty._
-        error("Expected explicit DSL", e.unseal.pos)
+        import quotes.reflect.*
+        report.error("Expected explicit DSL", e.asTerm.pos)
         '{ ??? }
 
     }

@@ -5,26 +5,38 @@ package config
 import core._
 import Contexts._, Symbols._, Names._, NameOps._, Phases._
 import StdNames.nme
-import Decorators.{_, given _}
-import util.SrcPos
+import Decorators.{_, given}
+import util.{SrcPos, NoSourcePosition}
 import SourceVersion._
 import reporting.Message
+import NameKinds.QualifiedName
 
 object Feature:
 
-/** Is `feature` enabled by by a command-line setting? The enabling setting is
+  def experimental(str: PreName): TermName =
+    QualifiedName(nme.experimental, str.toTermName)
+
+  private def deprecated(str: PreName): TermName =
+    QualifiedName(nme.deprecated, str.toTermName)
+
+  private val namedTypeArguments = experimental("namedTypeArguments")
+  private val genericNumberLiterals = experimental("genericNumberLiterals")
+  val scala2macros = experimental("macros")
+
+  val dependent = experimental("dependent")
+  val erasedDefinitions = experimental("erasedDefinitions")
+  val symbolLiterals = deprecated("symbolLiterals")
+  val fewerBraces = experimental("fewerBraces")
+
+  /** Is `feature` enabled by by a command-line setting? The enabling setting is
    *
    *       -language:<prefix>feature
    *
    *  where <prefix> is the fully qualified name of `owner`, followed by a ".",
    *  but subtracting the prefix `scala.language.` at the front.
    */
-  def enabledBySetting(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    def toPrefix(sym: Symbol): String =
-      if !sym.exists || sym == defn.LanguageModule.moduleClass then ""
-      else toPrefix(sym.owner) + sym.name.stripModuleClassSuffix + "."
-    val prefix = if owner ne NoSymbol then toPrefix(owner) else ""
-    ctx.base.settings.language.value.contains(prefix + feature)
+  def enabledBySetting(feature: TermName)(using Context): Boolean =
+    ctx.base.settings.language.value.contains(feature.toString)
 
   /** Is `feature` enabled by by an import? This is the case if the feature
    *  is imported by a named import
@@ -35,33 +47,31 @@ object Feature:
    *
    *       import owner.{ feature => _ }
    */
-  def enabledByImport(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    atPhase(typerPhase) {
-      ctx.importInfo != null
-      && ctx.importInfo.featureImported(feature,
-          if owner.exists then owner else defn.LanguageModule.moduleClass)
-    }
+  def enabledByImport(feature: TermName)(using Context): Boolean =
+    //atPhase(typerPhase) {
+      ctx.importInfo != null && ctx.importInfo.featureImported(feature)
+    //}
 
   /** Is `feature` enabled by either a command line setting or an import?
    *  @param  feature   The name of the feature
    *  @param  owner     The prefix symbol (nested in `scala.language`) where the
    *                    feature is defined.
    */
-  def enabled(feature: TermName, owner: Symbol = NoSymbol)(using Context): Boolean =
-    enabledBySetting(feature, owner) || enabledByImport(feature, owner)
+  def enabled(feature: TermName)(using Context): Boolean =
+    enabledBySetting(feature) || enabledByImport(feature)
 
   /** Is auto-tupling enabled? */
-  def autoTuplingEnabled(using Context): Boolean =
-    !enabled(nme.noAutoTupling)
+  def autoTuplingEnabled(using Context): Boolean = !enabled(nme.noAutoTupling)
 
-  def dynamicsEnabled(using Context): Boolean =
-    enabled(nme.dynamics)
+  def dynamicsEnabled(using Context): Boolean = enabled(nme.dynamics)
 
-  def dependentEnabled(using Context) =
-    enabled(nme.dependent, defn.LanguageExperimentalModule.moduleClass)
+  def dependentEnabled(using Context) = enabled(dependent)
 
-  def scala2ExperimentalMacroEnabled(using Context) =
-    enabled("macros".toTermName, defn.LanguageExperimentalModule.moduleClass)
+  def namedTypeArgsEnabled(using Context) = enabled(namedTypeArguments)
+
+  def genericNumberLiteralsEnabled(using Context) = enabled(genericNumberLiterals)
+
+  def scala2ExperimentalMacroEnabled(using Context) = enabled(scala2macros)
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -72,8 +82,7 @@ object Feature:
       case Some(v) => v
       case none => sourceVersionSetting
 
-  def migrateTo3(using Context): Boolean =
-    sourceVersion == `3.0-migration` || enabledBySetting(nme.Scala2Compat)
+  def migrateTo3(using Context): Boolean = sourceVersion == `3.0-migration`
 
   /** If current source migrates to `version`, issue given warning message
    *  and return `true`, otherwise return `false`.
@@ -87,5 +96,23 @@ object Feature:
       true
     else
       false
+
+  private val assumeExperimentalIn = Set("dotty.tools.vulpix.ParallelTesting")
+
+  def checkExperimentalFeature(which: String, srcPos: SrcPos = NoSourcePosition)(using Context) =
+    def hasSpecialPermission =
+      new Exception().getStackTrace.exists(elem =>
+        assumeExperimentalIn.exists(elem.getClassName().startsWith(_)))
+    if !(Properties.experimental || hasSpecialPermission)
+       || ctx.settings.YnoExperimental.value
+    then
+      //println(i"${new Exception().getStackTrace.map(_.getClassName).toList}%\n%")
+      report.error(i"Experimental feature$which may only be used with nightly or snapshot version of compiler", srcPos)
+
+  /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
+  def checkExperimentalSettings(using Context): Unit =
+    for setting <- ctx.settings.language.value
+        if setting.startsWith("experimental.") && setting != "experimental.macros"
+    do checkExperimentalFeature(s" $setting")
 
 end Feature

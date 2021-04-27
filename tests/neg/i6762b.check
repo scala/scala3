@@ -1,5 +1,7 @@
--- [E007] Type Mismatch Error: tests/neg/i6762b.scala:4:39 -------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i6762b.scala:4:44 -------------------------------------------------------------
 4 |def f(word: String): Expr[G[String]] = word.toExpr // error
-  |                                       ^^^^
+  |                                       ^^^^^^^^^^^
   |                                       Found:    Expr[String]
   |                                       Required: Expr[G[String]]
+
+longer explanation available when compiling with `-explain`

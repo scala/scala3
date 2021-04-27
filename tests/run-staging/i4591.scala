@@ -1,15 +1,15 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
 
-  def foo[T: Type](init: Expr[T])(using QuoteContext): Expr[Unit] = '{
+  def foo[T: Type](init: Expr[T])(using Quotes): Expr[Unit] = '{
     var x = $init
     println(x)
   }
 
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     run(foo('{Option(9)}))
   }
 

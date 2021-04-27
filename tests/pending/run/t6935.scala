@@ -1,7 +1,7 @@
 object Test {
 
   def main(args: Array[String]): Unit = {
-    import java.io._
+    import java.io.*
     val bytes = new ByteArrayOutputStream()
     val out = new ObjectOutputStream(bytes)
     out.writeObject(())

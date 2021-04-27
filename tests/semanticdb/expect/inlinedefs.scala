@@ -2,8 +2,6 @@ package inlinedefs
 
 object FakePredef:
 
-  def assertFail(): Nothing = throw new java.lang.AssertionError("assertion failed")
-
   /** Super long padded documentation
    *  Lorem ipsum dolor sit amet, consectetur adipiscing elit,
    *  sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -15,5 +13,5 @@ object FakePredef:
    */
   transparent inline final def assert(inline assertion: Boolean): Unit = {
     if (!assertion)
-      assertFail()
+      throw new java.lang.AssertionError("assertion failed")
   }

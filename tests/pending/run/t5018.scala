@@ -1,8 +1,8 @@
 
 
 
-import java.io._
-import collection._
+import java.io.*
+import collection.*
 
 
 

@@ -1,5 +1,5 @@
 
-import scala.compiletime.ops.int._
+import scala.compiletime.ops.int.*
 
 object Test {
   type Fib[N <: Int] <: Int = N match {

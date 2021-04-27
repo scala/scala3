@@ -1,0 +1,16 @@
+-- Error: tests/neg/abstract-givens.scala:11:8 -------------------------------------------------------------------------
+11 |  given s[T](using T): Seq[T] with // error
+   |        ^
+   |instance cannot be created, since def iterator: => Iterator[A] in trait IterableOnce in package scala.collection is not defined 
+-- [E164] Declaration Error: tests/neg/abstract-givens.scala:8:8 -------------------------------------------------------
+8 |  given y(using Int): String = summon[Int].toString * 22 // error
+  |        ^
+  |      error overriding given instance y in trait T of type (using x$1: Int): String;
+  |        given instance y of type (using x$1: Int): String cannot override final member given instance y in trait T
+-- [E163] Declaration Error: tests/neg/abstract-givens.scala:9:8 -------------------------------------------------------
+9 |  given z[T](using T): Seq[T] = List(summon[T]) // error
+  |        ^
+  |        error overriding given instance z in trait T of type [T](using x$1: T): List[T];
+  |          given instance z of type [T](using x$1: T): Seq[T] has incompatible type
+
+longer explanation available when compiling with `-explain`

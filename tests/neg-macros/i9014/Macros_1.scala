@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 trait Bar
-inline given as Bar = ${ impl }
-def impl(using qctx: QuoteContext): Expr[Bar] = report.throwError("Failed to expand!")
+inline given Bar = ${ impl }
+def impl(using Quotes): Expr[Bar] = quotes.reflect.report.throwError("Failed to expand!")

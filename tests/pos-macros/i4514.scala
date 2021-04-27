@@ -1,5 +1,5 @@
-import scala.quoted._
+import scala.quoted.*
 object Foo {
   inline def foo[X](x: X): Unit = ${fooImpl('x)}
-  def fooImpl[X: Type](x: X)(using QuoteContext): Expr[Unit] = '{}
+  def fooImpl[X: Type](x: X)(using Quotes): Expr[Unit] = '{}
 }

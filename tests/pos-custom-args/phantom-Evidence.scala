@@ -1,6 +1,6 @@
 /** In this implementation variant of =:= (called =::=) we erase all instantiations and definitions of =::= */
 object WithNormalState {
-  import Utils._
+  import Utils.*
 
   trait State
   sealed trait On extends State
@@ -24,5 +24,5 @@ object WithNormalState {
 
 object Utils {
   type =::=[From, To]
-  implicit erased def tpEquals[A]: A =::= A = ???
+  erased given tpEquals[A]: A =::= A = ???
 }

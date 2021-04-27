@@ -1,9 +1,9 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 class Foo {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def foo: Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def foo: Unit = withQuotes {
     val q = '{ ${ '{ ${ '{ 5 } } } } }
     println(q.show)
   }

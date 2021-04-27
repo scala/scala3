@@ -1,7 +1,7 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
-  given QuoteContext = ???
+  given Quotes = ???
 
   def a[A: Type](): Unit = {
     b[Expr[A]]()

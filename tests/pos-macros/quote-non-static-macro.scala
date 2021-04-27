@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Foo {
   inline def foo: Unit = ${Foo.impl}
@@ -14,5 +14,5 @@ object Foo {
   object Quox {
     inline def foo: Unit = ${Foo.impl}
   }
-  def impl(using QuoteContext): Expr[Unit] = '{}
+  def impl(using Quotes): Expr[Unit] = '{}
 }

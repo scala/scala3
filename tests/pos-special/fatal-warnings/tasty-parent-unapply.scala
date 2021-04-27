@@ -1,12 +1,10 @@
-import scala.quoted._
-
-import scala.tasty.Reflection
+import scala.quoted.*
 
 object Macros {
 
 
-  def impl(reflect: Reflection): Unit = {
-    import reflect.{_, given _}
+  def impl(using Quotes): Unit = {
+    import quotes.reflect.*
 
     def foo(tree: Tree, term: Term, typeTree: TypeTree, parent: Tree) = {
 

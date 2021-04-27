@@ -11,6 +11,7 @@ import StdNames.nme
 import TastyUnpickler._
 import util.Spans.offsetToInt
 import printing.Highlighting._
+import dotty.tools.tasty.TastyFormat.ASTsSection
 
 /** Reads the package and class name of the class contained in this TASTy */
 class TastyClassName(bytes: Array[Byte]) {
@@ -21,14 +22,10 @@ class TastyClassName(bytes: Array[Byte]) {
   /** Returns a tuple with the package and class names */
   def readName(): Option[(TermName, TermName)] = unpickle(new TreeSectionUnpickler)
 
-  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](TreePickler.sectionName) {
+  class TreeSectionUnpickler extends SectionUnpickler[(TermName, TermName)](ASTsSection) {
     import dotty.tools.tasty.TastyFormat._
     def unpickle(reader: TastyReader, tastyName: NameTable): (TermName, TermName) = {
       import reader._
-      def readName() = {
-        val idx = readNat()
-        nameAtRef(NameRef(idx))
-      }
       def readNames(packageName: TermName): (TermName, TermName) = {
         val tag = readByte()
         if (tag >= firstLengthTreeTag) {
@@ -36,7 +33,7 @@ class TastyClassName(bytes: Array[Byte]) {
           val end = currentAddr + len
           tag match {
             case TYPEDEF =>
-              val className = readName()
+              val className = reader.readName()
               goto(end)
               (packageName, className)
             case IMPORT | VALDEF =>
@@ -48,7 +45,14 @@ class TastyClassName(bytes: Array[Byte]) {
         }
         else tag match {
           case TERMREFpkg | TYPEREFpkg =>
-            val subPackageName = readName()
+            val subPackageName = reader.readName()
+            readNames(subPackageName)
+          case SHAREDtype =>
+            val addr = reader.readAddr()
+            val reader2 = reader.subReader(addr, reader.endAddr)
+            val tag2 = reader2.readByte()
+            assert(tag2 == TERMREFpkg || tag2 == TYPEREFpkg)
+            val subPackageName = reader2.readName()
             readNames(subPackageName)
           case _ =>
             readNames(packageName)
@@ -56,5 +60,11 @@ class TastyClassName(bytes: Array[Byte]) {
       }
       readNames(nme.EMPTY_PACKAGE)
     }
+
+    extension (reader: TastyReader) def readName() = {
+      val idx = reader.readNat()
+      nameAtRef(NameRef(idx))
+    }
   }
+
 }

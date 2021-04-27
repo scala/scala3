@@ -3,7 +3,7 @@ layout: doc-page
 title: Lazy Vals initialization
 ---
 
-Dotty implements [Version 6](https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html#version-6---no-synchronization-on-this-and-concurrent-initialization-of-fields)
+Scala 3 implements [Version 6](https://docs.scala-lang.org/sips/improved-lazy-val-initialization.html#version-6---no-synchronization-on-this-and-concurrent-initialization-of-fields)
 of the [SIP-20] improved lazy vals initialization proposal.
 
 ## Motivation
@@ -23,11 +23,11 @@ class Foo {
 }
 ```
 
-The Dotty compiler will generate code equivalent to:
+The Scala 3 compiler will generate code equivalent to:
 
 ```scala
 class Foo {
-  import dotty.runtime.LazyVals
+  import scala.runtime.LazyVals
   var value_0: Int = _
   var bitmap: Long = 0L
   val bitmap_offset: Long = LazyVals.getOffset(classOf[LazyCell], "bitmap")

@@ -101,9 +101,11 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
       val parents1 =
         for (parent <- impl.parents) yield
           val parentCls = parent.tpe.classSymbol.asClass
-          parent match // ensure class parent is a constructor
+          parent match
+            // if we are in a regular class and first parent is also a regular class,
+            // make sure we have a contructor
             case parent: TypeTree
-            if !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
+            if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
               New(parent.tpe, Nil).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
@@ -167,12 +169,14 @@ object ExplicitOuter {
   private def newOuterSym(owner: ClassSymbol, cls: ClassSymbol, name: TermName, flags: FlagSet)(using Context) = {
     val outerThis = owner.owner.enclosingClass.thisType
     val outerCls = outerClass(cls)
+    val prefix = owner.thisType.baseType(cls).normalizedPrefix
     val target =
       if (owner == cls)
         outerCls.appliedRef
       else
         outerThis.baseType(outerCls).orElse(
-  		    outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty)))
+          if prefix == NoPrefix then outerCls.typeRef.appliedTo(outerCls.typeParams.map(_ => TypeBounds.empty))
+          else prefix.widen)
     val info = if (flags.is(Method)) ExprType(target) else target
     atPhaseNoEarlier(explicitOuterPhase.next) { // outer accessors are entered at explicitOuter + 1, should not be defined before.
       newSymbol(owner, name, Synthetic | flags, info, coord = cls.coord)
@@ -213,11 +217,13 @@ object ExplicitOuter {
      cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
        needsOuterIfReferenced(parent.classSymbol.asClass)))
 
-  /** Class is always instantiated in the compilation unit where it is defined */
+  /** Class is only instantiated in the compilation unit where it is defined */
   private def hasLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
     // Modules are normally locally instantiated, except if they are declared in a trait,
     // in which case they will be instantiated in the classes that mix in the trait.
-    cls.owner.isTerm || cls.is(Private, butNot = Module) || (cls.is(Module) && !cls.owner.is(Trait))
+    cls.owner.ownersIterator.takeWhile(!_.isStatic).exists(_.isTerm)
+    || cls.is(Private, butNot = Module)
+    || cls.is(Module) && !cls.owner.is(Trait)
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
@@ -241,9 +247,11 @@ object ExplicitOuter {
   private def hasOuter(cls: ClassSymbol)(using Context): Boolean =
     needsOuterIfReferenced(cls) && outerAccessor(cls).exists
 
-  /** Class constructor takes an outer argument. Can be called only after phase ExplicitOuter. */
-  def hasOuterParam(cls: ClassSymbol)(using Context): Boolean =
-    !cls.is(Trait) && needsOuterIfReferenced(cls) && outerAccessor(cls).exists
+  /** Class constructor needs an outer argument. Can be called only after phase ExplicitOuter. */
+  def needsOuterParam(cls: ClassSymbol)(using Context): Boolean =
+    !cls.is(Trait) && needsOuterIfReferenced(cls) && (
+      cls.is(JavaDefined) || // java inner class doesn't has outer accessor
+      outerAccessor(cls).exists)
 
   /** Tree references an outer class of `cls` which is not a static owner.
    */
@@ -349,11 +357,11 @@ object ExplicitOuter {
    */
   class OuterOps(val ictx: Context) extends AnyVal {
     /** The context of all operations of this class */
-    given Context = ictx
+    given [Dummy]: Context = ictx
 
     /** If `cls` has an outer parameter add one to the method type `tp`. */
     def addParam(cls: ClassSymbol, tp: Type): Type =
-      if (hasOuterParam(cls)) {
+      if (needsOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp
         mt.derivedLambdaType(
           nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
@@ -374,12 +382,19 @@ object ExplicitOuter {
           case TypeApply(Select(r, nme.asInstanceOf_), args) =>
             outerArg(r) // cast was inserted, skip
         }
-        if (hasOuterParam(cls))
+        if (needsOuterParam(cls))
           methPart(fun) match {
             case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
           }
         else Nil
       }
+      else Nil
+
+    /** If the constructors of the given `cls` need to be passed an outer
+     *  argument, the singleton list with the argument, otherwise Nil.
+     */
+    def argsForNew(cls: ClassSymbol, tpe: Type): List[Tree] =
+      if (needsOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
       else Nil
 
     /** A path of outer accessors starting from node `start`. `start` defaults to the
@@ -396,7 +411,7 @@ object ExplicitOuter {
              count: Int = -1): Tree =
       try
         @tailrec def loop(tree: Tree, count: Int): Tree =
-          val treeCls = tree.tpe.widen.classSymbol
+          val treeCls = tree.tpe.classSymbol
           report.log(i"outer to $toCls of $tree: ${tree.tpe}, looking for ${atPhaseNoLater(lambdaLiftPhase)(outerAccName(treeCls.asClass))} in $treeCls")
           if (count == 0 || count < 0 && treeCls == toCls) tree
           else

@@ -1,6 +1,6 @@
-21: Pattern Match Exhaustivity: List(_, _, _, _: _*), List(_)
+21: Pattern Match Exhaustivity: List(_, _, _, _*), List(_)
 27: Pattern Match Exhaustivity: Nil
-32: Pattern Match Exhaustivity: List(_, _: _*)
+32: Pattern Match Exhaustivity: List(_, _*)
 39: Pattern Match Exhaustivity: Bar3
 44: Pattern Match Exhaustivity: (Bar2, Bar2)
 50: Pattern Match Exhaustivity: (Bar2, Bar2)

@@ -32,13 +32,13 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
     case ref: ClassDenotation if ref.symbol != defn.PolyFunctionClass && ref.derivesFrom(defn.PolyFunctionClass) =>
       val cinfo = ref.classInfo
       val newParent = functionTypeOfPoly(cinfo)
-      val newParents = cinfo.classParents.map(parent =>
+      val newParents = cinfo.declaredParents.map(parent =>
         if (parent.typeSymbol == defn.PolyFunctionClass)
           newParent
         else
           parent
       )
-      ref.copySymDenotation(info = cinfo.derivedClassInfo(classParents = newParents))
+      ref.copySymDenotation(info = cinfo.derivedClassInfo(declaredParents = newParents))
     case _ =>
       ref
   }

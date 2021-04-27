@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
-def f(using QuoteContext): Unit =
+def f(using Quotes): Unit =
   '{ type T[X] = List[X] }

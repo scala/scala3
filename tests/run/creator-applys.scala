@@ -1,3 +1,4 @@
+//import language.experimental.namedTypeArguments
 object Test extends App {
   class A {
     def run = "A"
@@ -27,11 +28,11 @@ object Test extends App {
   val x5 = C[String, Int]("a", 1)
   assert(x5.run == "C a 1")
 
-  val x5a = C[S = String, T = Int]("a", 1)
-  assert(x5a.run == "C a 1")
+//  val x5a = C[S = String, T = Int]("a", 1)
+//  assert(x5a.run == "C a 1")
 
-  val x5b = C[T = Int]("a", 1)
-  assert(x5b.run == "C a 1")
+//  val x5b = C[T = Int]("a", 1)
+//  assert(x5b.run == "C a 1")
 
   val x6 = C("a", 1)
   assert((x6: C[String, Int]).run == "C a 1")
@@ -108,47 +109,6 @@ object Test3 {
 
   val x6 = Test1.C("a", 1)
   assert((x6: Test1.C[String, Int]).run == "C a 1")
-  Test4
-}
-
-object Test4 {
-  type A = Test.A
-  type AA[T] = A
-  type B[T] = Test.B[T]
-  type C[T] = Test.C[T, Int]
-
-  val x1 = A()
-  assert(x1.run == "A")
-
-  val x1a = AA[Int]()
-  assert(x1a.run == "A")
-
-  val x2 = B[String]()
-  assert(x2.run == "B")
-
-  val x3: B[String] = B()
-  assert(x3.run == "B")
-
-  val x5 = C[String]("a", 1)
-  assert(x5.run == "C a 1")
-  Test5
-}
-
-object Test5 {
-  val x1 = Test4.A()
-  assert(x1.run == "A")
-
-  val x1a = Test4.AA[Int]()
-  assert(x1a.run == "A")
-
-  val x2 = Test4.B[String]()
-  assert(x2.run == "B")
-
-  val x3: Test4.B[String] = Test4.B()
-  assert(x3.run == "B")
-
-  val x5 = Test4.C[String]("a", 1)
-  assert(x5.run == "C a 1")
   Test6
 }
 
@@ -161,4 +121,7 @@ object Test6 {
   }
   val x1 = A()
   assert(x1.run == "X")
+
+  val x = StringBuilder()
+  val y = java.lang.Object()
 }

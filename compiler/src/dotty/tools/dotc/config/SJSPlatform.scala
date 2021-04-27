@@ -23,8 +23,7 @@ class SJSPlatform()(using Context) extends JavaPlatform {
   /** Is the SAMType `cls` also a SAM under the rules of the Scala.js back-end? */
   override def isSam(cls: ClassSymbol)(using Context): Boolean =
     defn.isFunctionClass(cls)
-      || jsDefinitions.isJSFunctionClass(cls)
-      || jsDefinitions.isJSThisFunctionClass(cls)
+      || cls.superClass == jsDefinitions.JSFunctionClass
 
   /** Is the given class symbol eligible for Java serialization-specific methods?
    *

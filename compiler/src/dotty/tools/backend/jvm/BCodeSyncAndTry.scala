@@ -18,7 +18,7 @@ import dotty.tools.dotc.ast.tpd.TreeOps
  *
  */
 trait BCodeSyncAndTry extends BCodeBodyBuilder {
-  import int.{_, given _}
+  import int.{_, given}
   import tpd._
   import bTypes._
   import coreBTypes._

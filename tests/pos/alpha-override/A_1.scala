@@ -1,5 +1,5 @@
 // Scala
-import annotation.alpha
+import annotation.targetName
 class A_1 {
-  @alpha("bar") def foo(): Int = 1
+  @targetName("bar") def foo(): Int = 1
 }

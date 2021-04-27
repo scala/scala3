@@ -31,7 +31,7 @@ object desugar {
 
   object patDefs {
 
-    import caseClasses._
+    import caseClasses.*
 
     val xs: List[Int] = Cons(1, Cons(2, Nil))
 
@@ -75,8 +75,7 @@ object desugar {
     type ~[X, Y] = Tuple2[X, Y]
     val pair: Int ~ String = 1 -> "abc"
     def foo(xs: Int*) = xs.length
-    foo(list: _*)
-    println(list: _*)
+    foo(list*)
     (list length)
     - desugar.x
     def bar(x: => Int) = x

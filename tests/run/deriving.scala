@@ -4,11 +4,11 @@ object T
 case class A(x: Int, y: Int) extends T
 case object B extends T
 
-sealed trait U
+sealed trait U // U MUST NOT have a companion here!
 case class C() extends U
 
 object Test extends App {
-  import deriving.{Mirror, EmptyProduct}
+  import deriving.*
 
   case class AA[X >: Null <: AnyRef](x: X, y: X, z: String)
 
@@ -21,7 +21,7 @@ object Test extends App {
   }
   summon[Mirror.Of[B.type]] match {
     case m: Mirror.Product =>
-      println(m.fromProduct(EmptyProduct))
+      println(m.fromProduct(EmptyTuple))
   }
   summon[Mirror.Of[T]] match {
     case m: Mirror.SumOf[T] =>

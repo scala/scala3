@@ -49,7 +49,7 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
       for (superAcc <- mixin.info.decls.filter(_.isSuperAccessor))
         yield {
           util.Stats.record("super accessors")
-          polyDefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))
+          DefDef(mkForwarderSym(superAcc.asTerm), forwarderRhsFn(rebindSuper(cls, superAcc)))
       }
 
     val overrides = mixins.flatMap(superAccessors)
@@ -60,11 +60,11 @@ class ResolveSuper extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformDefDef(ddef: DefDef)(using Context): Tree = {
     val meth = ddef.symbol.asTerm
     if (meth.isSuperAccessor && !meth.is(Deferred)) {
-      assert(ddef.rhs.isEmpty)
+      assert(ddef.rhs.isEmpty, ddef.symbol)
       val cls = meth.owner.asClass
       val ops = new MixinOps(cls, thisPhase)
       import ops._
-      polyDefDef(meth, forwarderRhsFn(rebindSuper(cls, meth)))
+      DefDef(meth, forwarderRhsFn(rebindSuper(cls, meth)))
     }
     else ddef
   }
@@ -82,20 +82,24 @@ object ResolveSuper {
     var bcs = base.info.baseClasses.dropWhile(acc.owner != _).tail
     var sym: Symbol = NoSymbol
 
-    var mix: Name = nme.EMPTY
-    val memberName = acc.name.unexpandedName match
-      case SuperAccessorName(ExpandPrefixName(name, mixName)) =>
-        mix = mixName.toTypeName
-        name
-      case SuperAccessorName(name) =>
-        name
+    def decomposeSuperName(superName: Name): (Name, TypeName) =
+      superName.unexpandedName match
+        case SuperAccessorName(ExpandPrefixName(name, mixName)) =>
+          (name, mixName.toTypeName)
+        case SuperAccessorName(name) =>
+          (name, EmptyTypeName)
+
+    val (memberName, mix) = decomposeSuperName(acc.name.unexpandedName)
+    val targetName =
+      if acc.name == acc.targetName then memberName
+      else decomposeSuperName(acc.targetName)._1
 
     report.debuglog(i"starting rebindsuper from $base of ${acc.showLocated}: ${acc.info} in $bcs, name = $memberName")
 
     while (bcs.nonEmpty && sym == NoSymbol) {
       val other = bcs.head.info.nonPrivateDecl(memberName)
         .filterWithPredicate(denot => mix.isEmpty || denot.symbol.owner.name == mix)
-        .matchingDenotation(base.thisType, base.thisType.memberInfo(acc))
+        .matchingDenotation(base.thisType, base.thisType.memberInfo(acc), targetName)
       report.debuglog(i"rebindsuper ${bcs.head} $other deferred = ${other.symbol.is(Deferred)}")
       if other.exists && !other.symbol.is(Deferred) then
         sym = other.symbol
@@ -104,11 +108,11 @@ object ResolveSuper {
         val otherTp = other.asSeenFrom(base.typeRef).info
         val accTp = acc.asSeenFrom(base.typeRef).info
         if (!(otherTp.overrides(accTp, matchLoosely = true)))
-          report.error(IllegalSuperAccessor(base, memberName, acc, accTp, other.symbol, otherTp), base.srcPos)
+          report.error(IllegalSuperAccessor(base, memberName, targetName, acc, accTp, other.symbol, otherTp), base.srcPos)
 
       bcs = bcs.tail
     }
-    assert(sym.exists)
+    assert(sym.exists, i"cannot rebind $acc, ${acc.targetName} $memberName")
     sym
   }
 }

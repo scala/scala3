@@ -1,5 +1,5 @@
-scala> import scala.quoted._; inline def myMacro[T]: Unit = ${ myMacroImpl[T] }; def myMacroImpl[T](using qctx: QuoteContext): Expr[Unit] = '{}; println(myMacro[Int])
-1 | import scala.quoted._; inline def myMacro[T]: Unit = ${ myMacroImpl[T] }; def myMacroImpl[T](using qctx: QuoteContext): Expr[Unit] = '{}; println(myMacro[Int])
-  |                                                                                                                                                   ^^^^^^^^^^^^
+scala> import scala.quoted._; inline def myMacro[T]: Unit = ${ myMacroImpl[T] }; def myMacroImpl[T](using Quotes): Expr[Unit] = '{}; println(myMacro[Int])
+1 | import scala.quoted._; inline def myMacro[T]: Unit = ${ myMacroImpl[T] }; def myMacroImpl[T](using Quotes): Expr[Unit] = '{}; println(myMacro[Int])
+  |                                                                                                                                       ^^^^^^^^^^^^
   |      Cannot call macro method myMacroImpl defined in the same source file
   | This location contains code that was inlined from rs$line$1:1

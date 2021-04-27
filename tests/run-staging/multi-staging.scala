@@ -1,19 +1,19 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit =
-    val s1: QuoteContext ?=> Expr[Int] = {
-      given Toolbox = Toolbox.make(getClass.getClassLoader)
-      run[QuoteContext ?=> Expr[Int]] { stage1('{2}) }
+    val s1: Quotes ?=> Expr[Int] = {
+      given Compiler = Compiler.make(getClass.getClassLoader)
+      run[Quotes ?=> Expr[Int]] { stage1('{2}) }
     }
     {
-      given Toolbox = Toolbox.make(getClass.getClassLoader)
+      given Compiler = Compiler.make(getClass.getClassLoader)
       println(run(s1))
     }
-  def stage1(x: Expr[Int])(using qctx: QuoteContext): Expr[QuoteContext ?=> Expr[Int]] =
-    val code = '{ (using qctx1: QuoteContext) =>
+  def stage1(x: Expr[Int])(using Quotes): Expr[Quotes ?=> Expr[Int]] =
+    val code = '{ (q1: Quotes) ?=>
       val x1 = $x
       '{ 1 + ${Expr(x1)} }
     }

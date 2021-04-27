@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Decorators._
 import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.NameKinds._
+import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.Contexts._
@@ -31,7 +32,7 @@ import dotty.tools.dotc.transform.SymUtils._
  *
  */
 trait BCodeSkelBuilder extends BCodeHelpers {
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface.{symExtensions, _}
   import tpd._
   import bTypes._
@@ -180,7 +181,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToArgs(Nil)
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Nil)
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
@@ -220,6 +221,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       addClassFields()
 
       innerClassBufferASM ++= classBTypeFromSymbol(claszSymbol).info.memberClasses
+
+      val companion = claszSymbol.companionClass
+      if companion.isTopLevelModuleClass then
+        innerClassBufferASM ++= classBTypeFromSymbol(companion).info.memberClasses
+
       gen(cd.rhs)
       addInnerClassesASM(cnode, innerClassBufferASM.toList)
 
@@ -237,7 +243,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJClass(jclass: asm.ClassVisitor): Unit = {
 
       val ps = claszSymbol.info.parents
-      val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.widenDealias.typeSymbol)
+      val superClass: String = if (ps.isEmpty) ObjectReference.internalName else internalName(ps.head.typeSymbol)
       val interfaceNames0 = classBTypeFromSymbol(claszSymbol).info.interfaces map {
         case classBType =>
           if (classBType.isNestedClass) { innerClassBufferASM += classBType }
@@ -535,7 +541,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
     def lineNumber(tree: Tree): Unit = {
       if (!emitLines || !tree.span.exists) return;
-      val nr = ctx.source.atSpan(tree.span).line + 1
+      val nr = ctx.source.offsetToLine(tree.span.point) + 1
       if (nr != lastEmittedLineNr) {
         lastEmittedLineNr = nr
         lastInsn match {
@@ -577,6 +583,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
            * trait method. This is required for super calls to this method, which
            * go through the static forwarder in order to work around limitations
            * of the JVM.
+           *
+           * For the $init$ method, we must not leave it as a default method, but
+           * instead we must put the whole body in the static method. If we leave
+           * it as a default method, Java classes cannot extend Scala classes that
+           * extend several Scala traits, since they then inherit unrelated default
+           * $init$ methods. See #8599. scalac does the same thing.
+           *
            * In theory, this would go in a separate MiniPhase, but it would have to
            * sit in a MegaPhase of its own between GenSJSIR and GenBCode, so the cost
            * is not worth it. We directly do it in this back-end instead, which also
@@ -586,9 +599,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           val needsStaticImplMethod =
             claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
           if needsStaticImplMethod then
-            genStaticForwarderForDefDef(dd)
-
-          genDefDef(dd)
+            if sym.name == nme.TRAIT_CONSTRUCTOR then
+              genTraitConstructorDefDef(dd)
+            else
+              genStaticForwarderForDefDef(dd)
+              genDefDef(dd)
+          else
+            genDefDef(dd)
 
         case tree: Template =>
           val body =
@@ -603,7 +620,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    def initJMethod(flags: Int, paramAnnotations: List[List[Annotation]]): Unit = {
+    def initJMethod(flags: Int, params: List[Symbol]): Unit = {
 
       val jgensig = getGenericSignature(methSymbol, claszSymbol)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
@@ -625,9 +642,46 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // TODO param names: (m.params map (p => javaName(p.sym)))
 
       emitAnnotations(mnode, others)
-      emitParamAnnotations(mnode, paramAnnotations)
+      emitParamNames(mnode, params)
+      emitParamAnnotations(mnode, params.map(_.annotations))
 
     } // end of method initJMethod
+
+    private def genTraitConstructorDefDef(dd: DefDef): Unit =
+      val statifiedDef = makeStatifiedDefDef(dd)
+      genDefDef(statifiedDef)
+
+    /** Creates a copy of the given DefDef that is static and where an explicit
+     *  self parameter represents the original `this` value.
+     *
+     *  Example: from
+     *  {{{
+     *  trait Enclosing {
+     *    def foo(x: Int): String = this.toString() + x
+     *  }
+     *  }}}
+     *  the statified version of `foo` would be
+     *  {{{
+     *  static def foo($self: Enclosing, x: Int): String = $self.toString() + x
+     *  }}}
+     */
+    private def makeStatifiedDefDef(dd: DefDef): DefDef =
+      val origSym = dd.symbol.asTerm
+      val newSym = makeStatifiedDefSymbol(origSym, origSym.name)
+      tpd.DefDef(newSym, { paramRefss =>
+        val selfParamRef :: regularParamRefs = paramRefss.head
+        val enclosingClass = origSym.owner.asClass
+        new TreeTypeMap(
+          typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
+            .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
+          treeMap = {
+            case tree: This if tree.symbol == enclosingClass => selfParamRef
+            case tree => tree
+          },
+          oldOwners = origSym :: Nil,
+          newOwners = newSym :: Nil
+        ).transform(dd.rhs)
+      })
 
     private def genStaticForwarderForDefDef(dd: DefDef): Unit =
       val forwarderDef = makeStaticForwarder(dd)
@@ -646,24 +700,27 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      */
     private def makeStaticForwarder(dd: DefDef): DefDef =
       val origSym = dd.symbol.asTerm
-      val name = traitSuperAccessorName(origSym)
-      val info = origSym.info match
-        case mt: MethodType =>
-          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
-      val sym = origSym.copy(
-        name = name.toTermName,
-        flags = Method | JavaStatic,
-        info = info
-      )
-      tpd.DefDef(sym.asTerm, { paramss =>
+      val name = traitSuperAccessorName(origSym).toTermName
+      val sym = makeStatifiedDefSymbol(origSym, name)
+      tpd.DefDef(sym, { paramss =>
         val params = paramss.head
         tpd.Apply(params.head.select(origSym), params.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
+    private def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName): TermSymbol =
+      val info = origSym.info match
+        case mt: MethodType =>
+          MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+      origSym.copy(
+        name = name.toTermName,
+        flags = Method | JavaStatic,
+        info = info
+      ).asTerm
+
     def genDefDef(dd: DefDef): Unit = {
       val rhs = dd.rhs
-      val vparamss = dd.vparamss
+      val vparamss = dd.termParamss
       // the only method whose implementation is not emitted: getClass()
       if (dd.symbol eq defn.Any_getClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")
@@ -690,15 +747,15 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val isNative         = methSymbol.hasAnnotation(NativeAttr)
       val isAbstractMethod = (methSymbol.is(Deferred) || (methSymbol.owner.isInterface && ((methSymbol.is(Deferred))  || methSymbol.isClassConstructor)))
-      val flags = GenBCodeOps.mkFlags(
-        javaFlags(methSymbol),
-        if (isAbstractMethod)        asm.Opcodes.ACC_ABSTRACT   else 0,
-        if (false /*methSymbol.isStrictFP*/)   asm.Opcodes.ACC_STRICT     else 0,
-        if (isNative)                asm.Opcodes.ACC_NATIVE     else 0  // native methods of objects are generated in mirror classes
-      )
+      val flags =
+        import GenBCodeOps.addFlagIf
+        javaFlags(methSymbol)
+          .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
+          .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
+          .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
-      initJMethod(flags, params.map(p => p.symbol.annotations))
+      initJMethod(flags, params.map(_.symbol))
 
 
       if (!isAbstractMethod && !isNative) {

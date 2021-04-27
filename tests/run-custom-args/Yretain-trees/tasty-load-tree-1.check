@@ -1,2 +1,2 @@
-DefDef("foo", Nil, Nil, TypeIdent("Int"), Some(Apply(Select(Literal(Constant(1)), "+"), List(Literal(Constant(2))))))
-ValDef("bar", TypeIdent("Int"), Some(Apply(Select(Literal(Constant(2)), "+"), List(Literal(Constant(3))))))
+DefDef("foo", Nil, TypeIdent("Int"), Some(Apply(Select(Literal(IntConstant(1)), "+"), List(Literal(IntConstant(2))))))
+ValDef("bar", TypeIdent("Int"), Some(Apply(Select(Literal(IntConstant(2)), "+"), List(Literal(IntConstant(3))))))

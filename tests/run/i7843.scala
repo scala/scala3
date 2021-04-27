@@ -1,4 +1,4 @@
-import scala.concurrent._, duration._
+import scala.concurrent._, duration.*
 
 object Test {
   implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global

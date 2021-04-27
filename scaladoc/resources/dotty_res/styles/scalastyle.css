@@ -1,0 +1,786 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Lato:wght@400;700&family=Roboto+Slab:wght@700&display=swap');
+
+:root {
+  /* Color Settings */
+  --border-light: #DADFE6;
+  --border-medium: #abc;
+
+  --code-bg: #F4F5FA;
+  --symbol-fg: #333;
+  --link-fg: #00607D;
+  --link-hover-fg: #00A0D0;
+  --inactive-fg: #777;
+  --title-fg: #00485E;
+
+  --link-sig-fd: #2da0d1;
+  --link-sig-hover-fd: #7c99a5;
+
+  --leftbar-bg: #003048;
+  --leftbar-fg: #fff;
+  --leftbar-current-bg: #0090BB;
+  --leftbar-current-fg: #fff;
+  --leftbar-hover-bg: #00485E;
+  --leftbar-hover-fg: #fff;
+  --logo-fg: var(--leftbar-fg);
+
+  --icon-color: #00485E;
+  --active-tab-color: #00A0D0;
+  --selected-fg: #00303E;
+  --selected-bg: #BFE7F3;
+
+  /* Font Settings */
+  --mono-font: "Fira Code", monospace;
+  --text-font: "Lato", sans-serif;
+  --title-font: "Roboto Slab", serif;
+  --leftbar-font-size: 15px;
+
+  /* Layout Settings (changes on small screens) */
+  --side-width: 255px;
+  --content-padding: 24px 42px;
+  --footer-height: 42px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Lato", sans-serif;
+  font-size: 16px;
+}
+
+/* Page layout */
+#container {
+  min-height: 100%;
+}
+#leftColumn {
+  position: fixed;
+  width: var(--side-width);
+  height: 100%;
+  border-right: none;
+  background: var(--leftbar-bg);
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+}
+main {
+  min-height: calc(100vh - var(--footer-height) - 24px);
+}
+#content {
+  margin-left: var(--side-width);
+  padding: var(--content-padding);
+  padding-bottom: calc(24px + var(--footer-height));
+}
+
+/* Text */
+h1, h2, h3 {
+  font-family: var(--title-font);
+  color: var(--title-fg);
+}
+pre, code, .monospace, .hljs {
+  font-family: var(--mono-font);
+  background: var(--code-bg);
+  font-variant-ligatures: none;
+}
+code {
+  font-size: .8em;
+  padding: 0 .3em;
+}
+pre code, pre code.hljs {
+  font-size: 1em;
+  padding: 0;
+}
+pre, .symbol.monospace {
+  padding: 10px 8px 10px 12px;
+  font-weight: 500;
+  font-size: 12px;
+}
+a, a:visited, span[data-unresolved-link] {
+  text-decoration: none;
+  color: var(--link-fg);
+}
+a:hover, a:active {
+  color: var(--link-hover-fg);
+  text-decoration: underline;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  min-width: 400px;
+}
+td, th {
+  border: 1px solid var(--border-medium);
+  padding: .5rem;
+}
+th {
+  border-bottom: 2px solid var(--border-medium);
+}
+
+/* Left bar toggler, only on small screens */
+#leftToggler {
+  display: none;
+  color: var(--icon-color);
+  cursor: pointer;
+}
+
+/* Left bar */
+#paneSearch {
+  display: none;
+}
+#logo>span {
+  display: inline-block;
+  padding: 8px 8px 8px 8px;
+  vertical-align: middle;
+}
+
+#logo img {
+  max-height: 54px;
+  max-width: 54px;
+  cursor: pointer;
+}
+
+#logo .projectName {
+  color: var(--leftbar-fg);
+  font-size: 28px;
+  font-weight: bold;
+}
+
+#logo .projectVersion {
+  color: var(--leftbar-fg);
+  font-size: 12px;
+}
+
+.scaladoc_logo {
+  width: 116px;
+}
+
+/* Navigation */
+#sideMenu2 {
+  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  height: 100%;
+  font-size: var(--leftbar-font-size);
+}
+
+/* divs in sidebar represent entry and its children */
+#sideMenu2 div {
+  padding-left: 0.7em;
+  position: relative;
+  display: none;
+}
+
+#sideMenu2 div.expanded {
+  display: block;
+}
+
+/* hide children of hidden entries even if are expanded */
+#sideMenu2 div>div.expanded {
+  display: none;
+}
+
+/* show direct children of currently exmanded node*/
+#sideMenu2 div.expanded>div {
+  display: block;
+}
+/* always show top level entry*/
+#sideMenu2>div{
+  display: block;
+}
+
+#sideMenu2 span.micon {
+  height: 16px;
+  width: 16px;
+  margin-right: 8px;
+}
+
+/* 'a's in side menu represent text of entry with link */
+#sideMenu2 a {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  color: var(--leftbar-fg);
+  margin-right: .5rem;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  margin-top: 1px;
+  margin-bottom: 1px;
+  width: 100%;
+  /* This trick adds selected background stretching to the left side of screen */
+  margin-left: calc(0px - var(--side-width));
+  padding-left: var(--side-width);
+  width: calc(2 * var(--side-width));
+}
+
+#sideMenu2 a.selected {
+  background: var(--leftbar-current-bg);
+  font-weight: bold;
+}
+
+#sideMenu2 a:hover {
+  color: var(--leftbar-hover-fg);
+  background: var(--leftbar-hover-bg);
+}
+
+/* spans represent a expand button */
+#sideMenu2 span.ar {
+  align-items: center;
+  cursor: pointer;
+  position: absolute;
+  right: 1em;
+  top: 0px;
+  padding: 4px;
+}
+
+#sideMenu2 span.ar::before {
+  content: "\e903"; /* arrow down */
+  font-family: "dotty-icons" !important;
+  font-size: 20px;
+  line-height: var(--leftbar-font-size);
+  color: var(--leftbar-fg);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+#sideMenu2 .expanded>span.ar::before {
+  content: "\e905"; /* arrow up */
+}
+
+#sideMenu2 .div:hover>span.ar::before {
+  color: var(--leftbar-current-bg);
+}
+
+/* Cover */
+.cover h1 {
+  font-size: 38px;
+  margin-top: 1rem;
+  margin-bottom: .25rem;
+}
+
+/* Tabs */
+.section-tab {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 6px 4px 6px;
+  margin: 1rem 1rem 0 0;
+  border-bottom: 1px solid grey;
+  cursor: pointer;
+}
+.section-tab[data-active=""] {
+  color: unset;
+  font-weight: bold;
+  border-bottom: 2px solid var(--active-tab-color);
+}
+.tabs-section-body > :not([data-active]) {
+  display: none;
+}
+
+/* Tabs content */
+.table {
+  /*! display: flex; */
+  flex-direction: column;
+}
+.table-row {
+  border-bottom: 2px solid var(--border-light);
+  padding: 8px 24px 8px 0;
+}
+.main-subrow  {
+  margin-bottom: .5em;
+}
+.main-subrow > span > a, .main-subrow > span > span[data-unresolved-link] {
+  text-decoration: none;
+  font-style: normal;
+  font-weight: bold;
+  color: unset;
+  font-size: 18px;
+}
+.main-subrow .anchor-icon { /* Link Anchor */
+  margin-left: .25rem;
+  opacity: 0;
+  transition: 0.2s 0.5s;
+  cursor: pointer;
+}
+.main-subrow .anchor-icon > svg {
+  margin-bottom: -5px;
+  fill: var(--link-fg);
+}
+.main-subrow:hover .anchor-icon {
+  opacity: 1;
+  transition: 0.2s;
+}
+.brief-with-platform-tags ~ .main-subrow {
+  padding-top: 0;
+}
+
+span[data-unresolved-link].deprecated, a.deprecated, div.deprecated {
+  text-decoration: line-through;
+}
+.brief {
+  white-space: pre-wrap;
+  overflow: hidden;
+  margin-bottom: .5em;
+}
+/* Declarations */
+.symbol.monospace {
+  color: var(--symbol-fg);
+  display: block;
+  white-space: normal;
+  position: relative;
+  padding-right: 24px; /* avoid the copy button */
+  margin: 1em 0;
+}
+.symbol .top-right-position {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+/* "copy to clipboard" button */
+.copy-popup-wrapper {
+  display: none;
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  width: max-content;
+  cursor: default;
+  border: 1px solid var(--border-light);
+  box-sizing: border-box;
+  box-shadow: 0px 5px 10px var(--border-light);
+  border-radius: 3px;
+  font-weight: normal;
+}
+.copy-popup-wrapper.active-popup {
+  display: flex;
+  align-items: center;
+}
+.copy-popup-wrapper.popup-to-left {
+  left: -14rem;
+}
+.copy-popup-wrapper svg {
+  padding: 8px;
+}
+.copy-popup-wrapper:last-child {
+  padding-right: 14px;
+}
+
+/* Lists of definitions, e.g. doc @tags */
+dl {
+  background: transparent;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+dl > div > ol {
+  list-style-type: none;
+}
+
+dl.attributes > dt {
+  display: block;
+  float: left;
+  font-style: italic;
+  font-weight: bold;
+}
+dl.attributes > dt.implicit {
+  font-weight: bold;
+  color: darkgreen;
+}
+dl.attributes > dd {
+  display: block;
+  padding-left: 6em;
+  margin-bottom: 5px;
+  min-height: 15px;
+}
+
+/* params list documentation */
+dl.paramsdesc {
+  display: flex;
+  flex-flow: row wrap;
+}
+dl.paramsdesc dt {
+  flex-basis: 20%;
+  padding: 2px 0;
+  text-align: left;
+  font-weight: bold;
+}
+dl.paramsdesc dd {
+  flex-basis: 80%;
+  flex-grow: 1;
+  margin: 0;
+  padding: 2px 0;
+}
+
+.platform-dependent-row dl.attributes > dd {
+  padding-left: 3em;
+}
+
+/* Workaround for dynamically rendered content inside hidden tab.
+There's some limitation of css/html that causes wrong width/height property of elements that are rendered dynamically inside element with display:none;
+Same solution is already used in Dokka.
+*/
+.platform-hinted[data-togglable="Type hierarchy"] > .content:not([data-active]),
+.tabs-section-body > *[data-togglable="Type hierarchy"]:not([data-active]) {
+    display: block !important;
+    visibility: hidden;
+    height: 0;
+    position: fixed;
+    top: 0;
+}
+
+
+/* Footer */
+footer {
+  display: flex;
+  bottom: 0px;
+  align-items: center;
+  position: fixed;
+  margin-top: 1rem;
+  margin-left: var(--side-width);
+  width: calc(100% - var(--side-width));
+  min-height: var(--footer-height);
+  border-top: 1px solid var(--border-light);
+}
+footer span.go-to-top-icon {
+  background-color: white;
+}
+footer > span:first-child {
+  margin-left: 24px;
+  padding-left: 0;
+}
+footer > span:last-child {
+  margin-right: 24px;
+  padding-right: 0;
+}
+footer > span {
+  padding: 0 16px;
+}
+footer .padded-icon {
+  padding-left: 0.5em;
+}
+footer .pull-right {
+  margin-left: auto;
+}
+
+
+.documentableElement .modifiers {
+  display: table-cell;
+  padding-right: 0.5em;
+  min-width: 10em;
+  max-width: 10em;
+  overflow: hidden;
+  direction: rtl;
+  white-space: nowrap;
+  text-indent: 0em;
+}
+
+.documentableElement .modifiers .other-modifiers {
+  color: gray;
+}
+
+.kind {
+  margin-left: 0.5em;
+}
+
+.other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.documentableElement.expand .modifiers {
+  display: inline-table;
+  min-width: 7em;
+}
+
+.documentableElement .signature {
+  color: #5a5a5a;
+  display: table-cell;
+  white-space: pre-wrap;
+}
+
+.signature a, .signature a:visited, .signature span[data-unresolved-link] {
+  color: var(--link-sig-fd);
+}
+
+.expand .signature {
+  display: inline;
+}
+
+.documentableElement {
+  width: 100%;
+  color: var(--symbol-fg);
+  white-space: normal;
+  position: relative;
+  margin: 0;
+  padding: 5px 4px 5px 4px;
+  font-weight: 500;
+  font-size: 12px;
+  background: var(--code-bg);
+  border: 0.25em solid white;
+}
+
+.documentableElement>div {
+  display: table;
+}
+
+.expand.documentableElement>div {
+  display: block;
+  padding-left: 3em;
+}
+
+.expand.documentableElement>div.header {
+  display: block;
+  padding-left: 7.5em;
+  text-indent: -4.5em;
+}
+
+.documentableElement>div .cover {
+  display: none;
+}
+
+.documentableElement.expand>div .cover {
+  display: block;
+}
+
+.expand .doc {
+  margin-left: 6.5em;
+}
+
+.doc code {
+  padding: 0;
+}
+
+.documentableElement:hover {
+  cursor: pointer;
+  border-left: 0.25em solid var(--leftbar-bg);
+}
+
+.expand.documentableElement {
+  border-left: 0.25em solid var(--leftbar-bg);
+}
+.documentableElement .annotations {
+  color: gray;
+  display: none;
+}
+
+.documentableElement.expand .annotations {
+  display: inline-block;
+}
+
+.documentableElement.expand .documentableBrief {
+  display: none;
+}
+
+.documentableAnchor {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="darkgray" xmlns="http://www.w3.org/2000/svg"><path d="M21.2496 5.3C20.3496 4.5 19.2496 4 18.0496 4C16.8496 4 15.6496 4.5 14.8496 5.3L10.3496 9.8L11.7496 11.2L16.2496 6.7C17.2496 5.7 18.8496 5.7 19.8496 6.7C20.8496 7.7 20.8496 9.3 19.8496 10.3L15.3496 14.8L16.7496 16.2L21.2496 11.7C22.1496 10.8 22.5496 9.7 22.5496 8.5C22.5496 7.3 22.1496 6.2 21.2496 5.3Z"></path><path d="M8.35 16.7998C7.35 17.7998 5.75 17.7998 4.75 16.7998C3.75 15.7998 3.75 14.1998 4.75 13.1998L9.25 8.6998L7.85 7.2998L3.35 11.7998C1.55 13.5998 1.55 16.3998 3.35 18.1998C4.25 19.0998 5.35 19.4998 6.55 19.4998C7.75 19.4998 8.85 19.0998 9.75 18.1998L14.25 13.6998L12.85 12.2998L8.35 16.7998Z"></path></svg> ');
+}
+
+.memberDocumentation {
+  font-size: 14px;
+}
+
+.memberDocumentation>p{
+  margin: .5em 0 0 0;
+}
+
+.tabs .names .tab {
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 6px 4px 6px;
+  margin: 1rem 1rem 0 0;
+  border-bottom: 1px solid grey;
+  cursor: pointer;
+}
+
+.tabs .names .tab.selected {
+  color: unset;
+  font-weight: bold;
+  border-bottom: 2px solid var(--active-tab-color);
+}
+
+.tabs .names {
+  margin-bottom: 20px;
+}
+
+.tabs .contents .tab{
+  display: none;
+}
+
+.tabs .contents .tab.selected {
+  display: block;
+}
+
+.diagram-class {
+  width: 100%;
+  max-height: 400px;
+  position: relative;
+}
+
+.cover-header {
+  display: flex;
+  flex-direction: row;
+  padding-top: 1em;
+}
+
+.micon {
+  box-sizing: content-box;
+  height: 5.7em;
+  width: 5.7em;
+  color:transparent;
+}
+
+.micon.c {
+  content: url("../images/class.svg")
+}
+
+.micon.c-wc {
+  content: url("../images/class_comp.svg")
+}
+
+.micon.o {
+  content: url("../images/object.svg")
+}
+
+.micon.o-wc {
+  content: url("../images/object_comp.svg")
+}
+
+.micon.t {
+  content: url("../images/trait.svg")
+}
+
+.micon.t-wc {
+  content: url("../images/trait_comp.svg")
+}
+
+.micon.e {
+  content: url("../images/enum.svg")
+}
+
+.micon.e-wc {
+  content: url("../images/enum_comp.svg")
+}
+
+.micon.g {
+  content: url("../images/given.svg")
+}
+
+#leftColumn .socials {
+  margin-left: 5%;
+  margin-right: 5%;
+}
+
+footer {
+  color: grey;
+}
+
+footer .socials {
+  margin-left: 10px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.social-icon {
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.social-icon img {
+  height: 20px;
+  width: 20px;
+}
+
+#generated-by {
+  margin-right: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* Large Screens */
+@media(min-width: 1100px) {
+  :root {
+    --content-padding: 24px 64px;
+  }
+}
+/* Landscape phones, portait tablets */
+@media(max-width: 768px) {
+  :root {
+    --content-padding: 12px 12px;
+  }
+  .cover h1 {
+    font-size: 32px;
+  }
+  table {
+    width: 100%;
+  }
+  pre, .symbol.monospace {
+    overflow-x: auto;
+  }
+  .symbol .top-right-position {
+    /* The "copy content" button doesn't work well with overflow-x */
+    display: none;
+  }
+  footer > span:first-child {
+    margin-left: 12px;
+  }
+  footer > span:last-child {
+    margin-right: 12px;
+  }
+}
+/* Portrait phones */
+@media(max-width: 576px) {
+  :root {
+    --side-width: 0;
+    --content-padding: 48px 12px;
+  }
+
+  /* Togglable left column */
+  #leftColumn {
+    --side-width: 85vw;
+    margin-left: -85vw; /* closed by default */
+    transition: margin .25s ease-out;
+  }
+  #leftColumn.open {
+    margin-left: 0;
+  }
+  #leftColumn.open ~ #main #searchBar {
+    display: none;
+  }
+
+  #leftToggler {
+    display: unset;
+    position: absolute;
+    top: 5px;
+    left: 12px;
+    z-index: 5;
+    font-size: 30px;
+  }
+  #leftColumn.open ~ #main #leftToggler {
+    left: unset;
+    right: 5vw;
+  }
+  .icon-toggler::before {
+    content: "\e90a"; /* menu icon */
+  }
+  #leftColumn.open ~ #main .icon-toggler::before {
+    content: "\e900"; /* clear icon */
+  }
+  /* --- */
+  .cover h1 {
+    margin-top: 0;
+  }
+  .table-row {
+    padding-right: 0;
+  }
+  .main-subrow .anchor-icon {
+    display: none;
+  }
+}
+
+footer {
+  background-color: white;
+}

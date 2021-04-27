@@ -74,7 +74,7 @@ object DesugarEnums {
         tparam.info.bounds.hi
       else {
         def problem =
-          if (!tparam.isOneOf(VarianceFlags)) "is non variant"
+          if (!tparam.isOneOf(VarianceFlags)) "is invariant"
           else "has bounds that depend on a type parameter in the same parameter list"
         errorType(i"""cannot determine type argument for enum parent $enumClass,
                      |type parameter $tparam $problem""", ctx.source.atSpan(span))
@@ -125,12 +125,12 @@ object DesugarEnums {
         // Singleton enum values always construct a new anonymous class, which will not be checked by the init-checker,
         // so this warning will always persist even if the implementation of the anonymous class is safe.
         // TODO: remove @unchecked after https://github.com/lampepfl/dotty-feature-requests/issues/135 is resolved.
-        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef)))
+        Annotated(ArrayLiteral(enumValues, rawEnumClassRef), New(ref(defn.UncheckedAnnot.typeRef), Nil))
       ValDef(nme.DOLLAR_VALUES, TypeTree(), uncheckedValues)
         .withFlags(Private | Synthetic)
 
     val valuesDef =
-      DefDef(nme.values, Nil, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
+      DefDef(nme.values, Nil, defn.ArrayType.ofRawEnum, valuesDot(nme.clone_))
         .withFlags(Synthetic)
 
     val valuesOfBody: Tree =
@@ -142,7 +142,7 @@ object DesugarEnums {
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
       Match(Ident(nme.nameDollar), stringCases)
-    val valueOfDef = DefDef(nme.valueOf, Nil, List(param(nme.nameDollar, defn.StringType) :: Nil),
+    val valueOfDef = DefDef(nme.valueOf, List(param(nme.nameDollar, defn.StringType) :: Nil),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
@@ -152,43 +152,42 @@ object DesugarEnums {
   }
 
   private def enumLookupMethods(constraints: EnumConstraints)(using Context): List[Tree] =
-    def scaffolding: List[Tree] = if constraints.cached then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
+    def scaffolding: List[Tree] =
+      if constraints.isEnumeration then enumScaffolding(constraints.enumCases.map(_._2)) else Nil
     def valueCtor: List[Tree] = if constraints.requiresCreator then enumValueCreator :: Nil else Nil
-    def byOrdinal: List[Tree] =
-      if isJavaEnum || !constraints.cached then Nil
+    def fromOrdinal: Tree =
+      def throwArg(ordinal: Tree) =
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Select(ordinal, nme.toString_) :: Nil)))
+      if !constraints.cached then
+        fromOrdinalMeth(throwArg)
       else
-        val defaultCase =
-          val ord = Ident(nme.ordinal)
-          val err = Throw(New(TypeTree(defn.IndexOutOfBoundsException.typeRef), List(Select(ord, nme.toString_) :: Nil)))
-          CaseDef(ord, EmptyTree, err)
-        val valueCases = constraints.enumCases.map((i, enumValue) =>
-          CaseDef(Literal(Constant(i)), EmptyTree, enumValue)
-        ) ::: defaultCase :: Nil
-        val fromOrdinalDef = DefDef(nme.fromOrdinalDollar, Nil, List(param(nme.ordinalDollar_, defn.IntType) :: Nil),
-          rawRef(enumClass.typeRef), Match(Ident(nme.ordinalDollar_), valueCases))
-            .withFlags(Synthetic | Private)
-        fromOrdinalDef :: Nil
+        def default(ordinal: Tree) =
+          CaseDef(Ident(nme.WILDCARD), EmptyTree, throwArg(ordinal))
+        if constraints.isEnumeration then
+          fromOrdinalMeth(ordinal =>
+            Try(Apply(valuesDot(nme.apply), ordinal), default(ordinal) :: Nil, EmptyTree))
+        else
+          fromOrdinalMeth(ordinal =>
+            Match(ordinal,
+              constraints.enumCases.map((i, enumValue) => CaseDef(Literal(Constant(i)), EmptyTree, enumValue))
+              :+ default(ordinal)))
 
-    scaffolding ::: valueCtor ::: byOrdinal
+    if !enumClass.exists then
+      // in the case of a double definition of an enum that only defines class cases (see tests/neg/i4470c.scala)
+      // it seems `enumClass` might be `NoSymbol`; in this case we provide no scaffolding.
+      Nil
+    else
+      scaffolding ::: valueCtor ::: fromOrdinal :: Nil
   end enumLookupMethods
 
   /** A creation method for a value of enum type `E`, which is defined as follows:
    *
    *   private def $new(_$ordinal: Int, $name: String) = new E with scala.runtime.EnumValue {
-   *     def ordinal = _$ordinal   // if `E` does not derive from `java.lang.Enum`
-   *     def enumLabel = $name     // if `E` does not derive from `java.lang.Enum`
-   *     def enumLabel = this.name // if `E` derives from `java.lang.Enum`
+   *     def ordinal = _$ordinal // if `E` does not derive from `java.lang.Enum`
    *   }
    */
   private def enumValueCreator(using Context) = {
-    val fieldMethods =
-      if isJavaEnum then
-        val enumLabelDef = enumLabelMeth(Select(This(Ident(tpnme.EMPTY)), nme.name))
-        enumLabelDef :: Nil
-      else
-        val ordinalDef   = ordinalMeth(Ident(nme.ordinalDollar_))
-        val enumLabelDef = enumLabelMeth(Ident(nme.nameDollar))
-        ordinalDef :: enumLabelDef :: Nil
+    val fieldMethods = if isJavaEnum then Nil else ordinalMeth(Ident(nme.ordinalDollar_)) :: Nil
     val creator = New(Template(
       constr = emptyConstructor,
       parents = enumClassRef :: scalaRuntimeDot(tpnme.EnumValue) :: Nil,
@@ -196,55 +195,9 @@ object DesugarEnums {
       self = EmptyValDef,
       body = fieldMethods
     ).withAttachment(ExtendsSingletonMirror, ()))
-    DefDef(nme.DOLLAR_NEW, Nil,
+    DefDef(nme.DOLLAR_NEW,
         List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
-  }
-
-  /** The return type of an enum case apply method and any widening methods in which
-   *  the apply's right hand side will be wrapped. For parents of the form
-   *
-   *      extends E(args) with T1(args1) with ... TN(argsN)
-   *
-   *  and type parameters `tparams` the generated widen method is
-   *
-   *      def C$to$E[tparams](x$1: E[tparams] with T1 with ... TN) = x$1
-   *
-   *  @param cdef            The case definition
-   *  @param parents         The declared parents of the enum case
-   *  @param tparams         The type parameters of the enum case
-   *  @param appliedEnumRef  The enum class applied to `tparams`.
-   */
-  def enumApplyResult(
-      cdef: TypeDef,
-      parents: List[Tree],
-      tparams: List[TypeDef],
-      appliedEnumRef: Tree)(using Context): (Tree, List[DefDef]) = {
-
-    def extractType(t: Tree): Tree = t match {
-      case Apply(t1, _) => extractType(t1)
-      case TypeApply(t1, ts) => AppliedTypeTree(extractType(t1), ts)
-      case Select(t1, nme.CONSTRUCTOR) => extractType(t1)
-      case New(t1) => t1
-      case t1 => t1
-    }
-
-    val parentTypes = parents.map(extractType)
-    parentTypes.head match {
-      case parent: RefTree if parent.name == enumClass.name =>
-        // need a widen method to compute correct type parameters for enum base class
-        val widenParamType = parentTypes.tail.foldLeft(appliedEnumRef)(makeAndType)
-        val widenParam = makeSyntheticParameter(tpt = widenParamType)
-        val widenDef = DefDef(
-          name = s"${cdef.name}$$to$$${enumClass.name}".toTermName,
-          tparams = tparams,
-          vparamss = (widenParam :: Nil) :: Nil,
-          tpt = TypeTree(),
-          rhs = Ident(widenParam.name))
-        (TypeTree(), widenDef :: Nil)
-      case _ =>
-        (parentTypes.reduceLeft(makeAndType), Nil)
-    }
   }
 
   /** Is a type parameter in `enumTypeParams` referenced from an enum class case that has
@@ -297,7 +250,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.exists(_.exists(valDefHasRef)) || parents.exists(parentHasRef)
+    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of
@@ -328,16 +281,14 @@ object DesugarEnums {
   private def isJavaEnum(using Context): Boolean = enumClass.derivesFrom(defn.JavaEnumClass)
 
   def ordinalMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.ordinal, Nil, Nil, TypeTree(defn.IntType), body)
-
-  def enumLabelMeth(body: Tree)(using Context): DefDef =
-    DefDef(nme.enumLabel, Nil, Nil, TypeTree(defn.StringType), body)
+    DefDef(nme.ordinal, Nil, TypeTree(defn.IntType), body).withAddedFlags(Synthetic)
 
   def ordinalMethLit(ord: Int)(using Context): DefDef =
     ordinalMeth(Literal(Constant(ord)))
 
-  def enumLabelLit(name: String)(using Context): DefDef =
-    enumLabelMeth(Literal(Constant(name)))
+  def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
+    DefDef(nme.fromOrdinal, (param(nme.ordinal, defn.IntType) :: Nil) :: Nil,
+      rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */
   def expandEnumModule(name: TermName, impl: Template, mods: Modifiers, definesLookups: Boolean, span: Span)(using Context): Tree = {
@@ -347,11 +298,9 @@ object DesugarEnums {
       expandSimpleEnumCase(name, mods, definesLookups, span)
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Object, definesLookups)
-      val ordinalDef   = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
-      val enumLabelDef = enumLabelLit(name.toString)
       val impl1 = cpy.Template(impl)(
         parents = impl.parents :+ scalaRuntimeDot(tpnme.EnumValue),
-        body = ordinalDef ::: enumLabelDef :: Nil
+        body = if isJavaEnum then Nil else ordinalMethLit(tag) :: Nil
       ).withAttachment(ExtendsSingletonMirror, ())
       val vdef = ValDef(name, TypeTree(), New(impl1)).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)

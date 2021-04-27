@@ -1,5 +1,5 @@
 object Test {
-  import pack._
+  import pack.*
 
   Foo.list().packList()
 }

@@ -1,4 +1,4 @@
 object Test {
-  import pack._
+  import pack.*
   Foo.innerList().isInnerList()
 }

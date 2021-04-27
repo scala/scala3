@@ -1,3 +1,4 @@
+> recordPreviousIterations
 > compile
 $ copy-file changes/A2.scala A.scala
 # Second compilation round, there should be no third round (we don't need to recompile B.scala)

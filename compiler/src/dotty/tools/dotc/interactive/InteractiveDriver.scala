@@ -32,7 +32,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive).addMode(Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    val ctx = setup(settings.toArray, rootCtx)._2
+    val ctx = setup(settings.toArray, rootCtx) match
+      case Some((_, ctx)) => ctx
+      case None => rootCtx
     ctx.initialize()(using ctx)
     ctx
   }
@@ -57,7 +59,7 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
   // Presence of a file with one of these suffixes indicates that the
   // corresponding class has been pickled with TASTY.
-  private val tastySuffixes = List(".hasTasty", ".tasty")
+  private val tastySuffix = ".tasty"
 
   // FIXME: All the code doing classpath handling is very fragile and ugly,
   // improving this requires changing the dotty classpath APIs to handle our usecases.
@@ -143,13 +145,15 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
   def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, toSource(uri, sourceCode))
 
   def run(uri: URI, source: SourceFile): List[Diagnostic] = {
+    import typer.ImportInfo._
+
     val previousCtx = myCtx
     try {
       val reporter =
         new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
       val run = compiler.newRun(using myInitCtx.fresh.setReporter(reporter))
-      myCtx = run.runContext
+      myCtx = run.runContext.withRootImports
 
       given Context = myCtx
 
@@ -218,11 +222,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       while (entries.hasMoreElements) {
         val entry = entries.nextElement()
         val name = entry.getName
-        tastySuffixes.find(name.endsWith) match {
-          case Some(tastySuffix) =>
-            buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-          case _ =>
-        }
+        if name.endsWith(tastySuffix) then
+          buffer += name.replace("/", ".").stripSuffix(tastySuffix).toTypeName
       }
     }
     finally zipFile.close()
@@ -235,13 +236,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
         override def visitFile(path: Path, attrs: BasicFileAttributes) = {
           if (!attrs.isDirectory) {
             val name = path.getFileName.toString
-            for {
-              tastySuffix <- tastySuffixes
-              if name.endsWith(tastySuffix)
-            }
-            {
+            if name.endsWith(tastySuffix) then
               buffer += dir.relativize(path).toString.replace("/", ".").stripSuffix(tastySuffix).toTypeName
-            }
           }
           FileVisitResult.CONTINUE
         }

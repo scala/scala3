@@ -41,6 +41,7 @@ object Mode {
    */
   val TypevarsMissContext: Mode = newMode(4, "TypevarsMissContext")
 
+  /** Are we looking for cyclic references? */
   val CheckCyclic: Mode = newMode(5, "CheckCyclic")
 
   /** We are in a pattern alternative */
@@ -112,4 +113,18 @@ object Mode {
 
   /** Are we in a quote in a pattern? */
   val QuotedPattern: Mode = newMode(25, "QuotedPattern")
+
+  /** Are we typechecking the rhs of an extension method? */
+  val InExtensionMethod: Mode = newMode(26, "InExtensionMethod")
+
+  /** Are we resolving a TypeTest node? */
+  val InTypeTest: Mode = newMode(27, "InTypeTest")
+
+  /** Are we enforcing null safety? */
+  val SafeNulls = newMode(28, "SafeNulls")
+
+  /** We are typing the body of the condition of an `inline if` or the scrutinee of an `inline match`
+   *  This mode forces expansion of inline calls in those positions even during typing.
+   */
+  val ForceInline: Mode = newMode(29, "ForceInline")
 }

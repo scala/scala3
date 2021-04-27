@@ -1,24 +1,24 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 // DYNAMIC
 
 object Test {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
 
     {
       val intComplex = new RingComplex(RingInt)
-      import intComplex._
+      import intComplex.*
 
       println(Complex(1, 2) * Complex(4, 2))
     }
 
     {
       val intExprComplex = new RingComplex(new RingIntExpr)
-      import intExprComplex._
+      import intExprComplex.*
 
       val res = Complex('{1}, '{2}) * Complex('{4}, '{2})
       println(s"Complex(${res.re.show}, ${res.im.show})")
@@ -26,7 +26,7 @@ object Test {
 
     // {
     //   val intExprComplex = implicitly[Ring[Expr[Complex[Int]]]]
-    //   import intExprComplex._
+    //   import intExprComplex.*
 
     //   val res = '{Complex(1, 2)} * '{Complex(4, 2)}
     //   println(res.show)

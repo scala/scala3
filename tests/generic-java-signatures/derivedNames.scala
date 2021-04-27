@@ -8,6 +8,8 @@ object Test {
     val out2 = "Test$Foo$A<Test$Foo<T1>$B$>"               // Linux and sometimes Windows
     if (scala.util.Properties.isWin)
       assert(returnType.toString == out1 || returnType.toString == out2)
+    else if (scala.util.Properties.isMac)
+      assert(returnType.toString == out1, s"$returnType != $out1")
     else
       assert(returnType.toString == out2)
   }

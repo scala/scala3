@@ -13,7 +13,7 @@ import Decorators._
 import NameKinds._
 import StdNames.nme
 import Contexts._
-import Names.Name
+import Names.{Name, TermName}
 import NameKinds.{InlineAccessorName, UniqueInlineName}
 import NameOps._
 import Annotations._
@@ -40,7 +40,9 @@ object PrepareInlineable {
     /** A tree map which inserts accessors for non-public term members accessed from inlined code.
      */
     abstract class MakeInlineableMap(val inlineSym: Symbol) extends TreeMap with Insert {
-      def accessorNameKind: PrefixNameKind = InlineAccessorName
+      def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName =
+        val accName = InlineAccessorName(name)
+        if site.is(Trait) then accName.expandedName(site) else accName
 
       /** A definition needs an accessor if it is private, protected, or qualified private
        *  and it is not part of the tree that gets inlined. The latter test is implemented
@@ -122,9 +124,10 @@ object PrepareInlineable {
       def preTransform(tree: Tree)(using Context): Tree = tree match {
         case _: Apply | _: TypeApply | _: RefTree
         if needsAccessor(tree.symbol) && tree.isTerm && !tree.symbol.isConstructor =>
-          val (refPart, targs, argss) = decomposeCall(tree)
+          val refPart = funPart(tree)
+          val argss = allArgss(tree)
           val qual = qualifier(refPart)
-          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, [$targs%, %], ($argss%, %))")
+          inlining.println(i"adding receiver passing inline accessor for $tree/$refPart -> (${qual.tpe}, $refPart: ${refPart.getClass}, $argss%, %")
 
           // Need to dealias in order to cagtch all possible references to abstracted over types in
           // substitutions
@@ -159,10 +162,12 @@ object PrepareInlineable {
             accessorInfo = abstractQualType(addQualType(dealiasMap(accessedType))),
             accessed = accessed)
 
-          ref(accessor)
-            .appliedToTypeTrees(localRefs.map(TypeTree(_)) ++ targs)
-            .appliedToArgss((qual :: Nil) :: argss)
-            .withSpan(tree.span)
+          val (leadingTypeArgs, otherArgss) = splitArgs(argss)
+          val argss1 = joinArgs(
+            localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
+            (qual :: Nil) :: otherArgss
+          )
+          ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 
             // TODO: Handle references to non-public types.
             // This is quite tricky, as such types can appear anywhere, including as parts
@@ -174,7 +179,11 @@ object PrepareInlineable {
             //  myAccessors += TypeDef(accessor).withPos(tree.pos.focus)
             //  ref(accessor).withSpan(tree.span)
             //
-        case _ => tree
+        case _: TypeDef if tree.symbol.is(Case) =>
+          report.error(reporting.CaseClassInInlinedCode(tree), tree)
+          tree
+        case _ =>
+          tree
       }
     }
 
@@ -206,8 +215,7 @@ object PrepareInlineable {
 
   /** The type ascription `rhs: tpt`, unless `original` is `transparent`. */
   def wrapRHS(original: untpd.DefDef, tpt: Tree, rhs: Tree)(using Context): Tree =
-    if original.mods.hasMod(classOf[untpd.Mod.Transparent]) then rhs
-    else Typed(rhs, tpt)
+    if original.mods.is(Transparent) then rhs else Typed(rhs, tpt)
 
   /** Return result of evaluating `op`, but drop `Inline` flag and `Body` annotation
    *  of `sym` in case that leads to errors.
@@ -218,6 +226,7 @@ object PrepareInlineable {
     finally
       if ctx.reporter.errorCount != initialErrorCount then
         sym.resetFlag(Inline)
+        sym.resetFlag(Transparent)
         sym.removeAnnotation(defn.BodyAnnot)
 
   /** Register inline info for given inlineable method `sym`.
@@ -237,7 +246,7 @@ object PrepareInlineable {
         if (!ctx.isAfterTyper) {
           val inlineCtx = ctx
           inlined.updateAnnotation(LazyBodyAnnotation {
-            given ctx as Context = inlineCtx
+            given ctx: Context = inlineCtx
             var inlinedBody = dropInlineIfError(inlined, treeExpr)
             if inlined.isInlineMethod then
               inlinedBody = dropInlineIfError(inlined,
@@ -249,7 +258,7 @@ object PrepareInlineable {
         }
     }
 
-  def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
+  private def checkInlineMethod(inlined: Symbol, body: Tree)(using Context): body.type = {
     if (inlined.owner.isClass && inlined.owner.seesOpaques)
       report.error(em"Implementation restriction: No inline methods allowed where opaque type aliases are in scope", inlined.srcPos)
     if Inliner.inInlineMethod(using ctx.outer) then
@@ -266,7 +275,7 @@ object PrepareInlineable {
         case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
         case Block(Nil, expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)
-        case Block(DefDef(nme.ANON_FUN, _, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+        case Block(DefDef(nme.ANON_FUN, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
           report.error(
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.
@@ -278,10 +287,10 @@ object PrepareInlineable {
             """Malformed macro.
               |
               |Expected the splice ${...} to be at the top of the RHS:
-              |  inline def foo(inline x: X, ..., y: Y): Int = ${impl(x, ... '{y}})
+              |  inline def foo(inline x: X, ..., y: Y): Int = ${ impl('x, ... 'y) }
               |
               | * The contents of the splice must call a static method
-              | * All arguments must be quoted or inline
+              | * All arguments must be quoted
             """.stripMargin, inlined.srcPos)
       }
       checkMacro(body)

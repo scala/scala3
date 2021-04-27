@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Types._, Contexts._, Symbols._, Decorators._
+import Types._, Contexts._, Symbols._, Decorators._, TypeApplications._
 import util.SimpleIdentityMap
 import collection.mutable
 import printing.Printer
@@ -297,7 +297,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   /** If `inst` is a TypeBounds, make sure it does not contain toplevel
    *  references to `param` (see `Constraint#occursAtToplevel` for a definition
    *  of "toplevel").
-   *  Any such references are replace by `Nothing` in the lower bound and `Any`
+   *  Any such references are replaced by `Nothing` in the lower bound and `Any`
    *  in the upper bound.
    *  References can be direct or indirect through instantiations of other
    *  parameters in the constraint.
@@ -360,13 +360,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *    Q <: tp  implies  Q <: P      and isUpper = true, or
    *    tp <: Q  implies  P <: Q      and isUpper = false
    */
-  private def dependentParams(tp: Type, isUpper: Boolean): List[TypeParamRef] = tp match
+  private def dependentParams(tp: Type, isUpper: Boolean)(using Context): List[TypeParamRef] = tp match
     case param: TypeParamRef if contains(param) =>
       param :: (if (isUpper) upper(param) else lower(param))
     case tp: AndType if isUpper  =>
       dependentParams(tp.tp1, isUpper) | (dependentParams(tp.tp2, isUpper))
     case tp: OrType if !isUpper =>
       dependentParams(tp.tp1, isUpper).intersect(dependentParams(tp.tp2, isUpper))
+    case EtaExpansion(tycon) =>
+      dependentParams(tycon, isUpper)
     case _ =>
       Nil
 
@@ -391,7 +393,9 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     order(this, param1, param2).checkNonCyclic()
 
   def unify(p1: TypeParamRef, p2: TypeParamRef)(using Context): This =
-    val p1Bounds = (nonParamBounds(p1) & nonParamBounds(p2)).substParam(p2, p1)
+    val bound1 = nonParamBounds(p1).substParam(p2, p1)
+    val bound2 = nonParamBounds(p2).substParam(p2, p1)
+    val p1Bounds = bound1 & bound2
     updateEntry(p1, p1Bounds).replace(p2, p1)
 
 // ---------- Replacements and Removals -------------------------------------
@@ -504,7 +508,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         merge(this.boundsMap, that.boundsMap, mergeEntries),
         merge(this.lowerMap, that.lowerMap, mergeParams),
         merge(this.upperMap, that.upperMap, mergeParams))
-  }.reporting(i"constraint merge $this with $other = $result", constr)
+  }.showing(i"constraint merge $this with $other = $result", constr)
 
   def rename(tl: TypeLambda)(using Context): OrderingConstraint = {
     assert(contains(tl))
@@ -537,7 +541,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
         val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos
-        paramInfos = TypeBounds(lo, LazyRef(hi)) :: pinfos1
+        paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
     }
@@ -644,7 +648,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
 // ---------- toText -----------------------------------------------------
 
-  override def toText(printer: Printer): Text = {
+  private def contentsToText(printer: Printer): Text =
     //Printer.debugPrintUnique = true
     def entryText(tp: Type) = tp match {
       case tp: TypeBounds =>
@@ -653,20 +657,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         " := " ~ tp.toText(printer)
     }
     val indent = 3
-    val header: Text = "Constraint("
-    val uninstVarsText = " uninstVars = " ~
-      Text(uninstVars map (_.toText(printer)), ", ") ~ ";"
+    val uninstVarsText = " uninstantiated variables: " ~
+      Text(uninstVars.map(_.toText(printer)), ", ")
     val constrainedText =
-      " constrained types = " ~ Text(domainLambdas map (_.toText(printer)), ", ")
+      " constrained types: " ~ Text(domainLambdas map (_.toText(printer)), ", ")
     val boundsText =
-      " bounds = " ~ {
+      " bounds: " ~ {
         val assocs =
           for (param <- domainParams)
           yield (" " * indent) ~ param.toText(printer) ~ entryText(entry(param))
         Text(assocs, "\n")
       }
     val orderingText =
-      " ordering = " ~ {
+      " ordering: " ~ {
         val deps =
           for {
             param <- domainParams
@@ -679,8 +682,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         Text(deps, "\n")
       }
     //Printer.debugPrintUnique = false
-    Text.lines(List(header, uninstVarsText, constrainedText, boundsText, orderingText, ")"))
-  }
+    Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText))
+
+  override def toText(printer: Printer): Text =
+    Text.lines(List("Constraint(", contentsToText(printer), ")"))
+
+  def contentsToString(using Context): String =
+    contentsToText(ctx.printer).show
 
   override def toString: String = {
     def entryText(tp: Type): String = tp match {

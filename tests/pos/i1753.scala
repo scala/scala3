@@ -13,8 +13,8 @@ trait BCodeIdiomatic {
 }
 
 trait BCodeSkelBuilder extends BCodeIdiomatic {
-  import int._
-  import bTypes._
+  import int.*
+  import bTypes.*
   val b: BTypesFromSymbols[int.type] = bTypes
   val x: int.type = bTypes.int
   val y: bTypes.int.type = int

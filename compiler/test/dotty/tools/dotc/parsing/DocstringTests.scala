@@ -474,10 +474,57 @@ class DocstringTests extends DocstringTest {
     }
   }
 
+
+  @Test def overNL = {
+    val source =
+      """
+      |/** Class1 */
+      |
+      |class Class1
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(c: TypeDef)) =>
+        checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
+    }
+  }
+
+  @Test def overComment = {
+    val source =
+      """
+      |/** Class1 */
+      |// foo
+      |class Class1
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(c: TypeDef)) =>
+        checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
+    }
+  }
+
   @Test def withAnnotation = {
     val source =
       """
       |/** Class1 */
+      |@SerialVersionUID(1)
+      |class Class1
+      """.stripMargin
+
+    import dotty.tools.dotc.ast.untpd._
+    checkFrontend(source) {
+      case p @ PackageDef(_, Seq(c: TypeDef)) =>
+        checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
+    }
+  }
+
+  @Test def withAnnotationOverComment = {
+    val source =
+      """
+      |/** Class1 */
+      |// foo
       |@SerialVersionUID(1)
       |class Class1
       """.stripMargin

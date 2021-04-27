@@ -1,15 +1,15 @@
-import scala.tools.nsc._  
+import scala.tools.nsc._
 
 object Test {
-  
+
   /**
    *  ...
    */
-  
+
   val testCode = """
-  
+
     class xyz[A] extends annotation.TypeConstraint
-    
+
     def loopWhile[T](cond: =>Boolean)(body: =>(Unit @xyz[T])): Unit @ xyz[T] = {{
       if (cond) {{
         body
@@ -24,17 +24,17 @@ object Test {
         (): @xyz[Int]
       }}
     }}
-    
+
   """
-  
+
   def main(args: Array[String]): Unit = {
     val settings = new Settings()
     settings.classpath.value = System.getProperty("java.class.path")
     val tool = new interpreter.IMain(settings)
     val global = tool.global
 
-    import global._
-    import definitions._
+    import global.*
+    import definitions.*
 
     object checker extends AnnotationChecker {
 
@@ -45,11 +45,11 @@ object Test {
 
       }
     }
-    
+
     global.addAnnotationChecker(checker)
-    
+
     tool.interpret(testCode)
-    
+
   }
 
 }

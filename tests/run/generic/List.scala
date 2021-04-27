@@ -1,13 +1,13 @@
 package generic
 
-import Shapes._
+import Shapes.*
 
 /** enum List[T] {
  *    case Cons(x: T, xs: List[T])
  *    case Nil()
  *  }
  */
-sealed trait List0[T] extends Enum
+sealed trait List0[T] extends EnumLike
 object List0 {
   abstract case class Cons[T](hd: T, tl: List0[T]) extends List0[T] {
     def ordinal = 0
@@ -47,11 +47,11 @@ object List0 {
 }
 
 /** enum List[+T] {
- *    case Cons(x: T, xs: List[T])
+ *    case Cons[T](x: T, xs: List[T]) extends List[T]
  *    case Nil extends List[Nothing]
  *  }
  */
-sealed trait List[+T] extends Enum
+sealed trait List[+T] extends EnumLike
 object List {
   abstract case class Cons[T](hd: T, tl: List[T]) extends List[T] {
     def ordinal = 0

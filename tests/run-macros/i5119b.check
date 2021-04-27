@@ -1,4 +1,4 @@
-Apply(Ident("foo"), List(Literal(Constant(1))))
-Apply(Ident("foo"), List(Literal(Constant(2))))
-Apply(Ident("foo"), List(Literal(Constant(4))))
-Apply(Ident("foo"), List(Literal(Constant(3))))
+Apply(Ident("foo"), List(Literal(IntConstant(1))))
+Apply(Ident("foo"), List(Literal(IntConstant(2))))
+Apply(Ident("foo"), List(Literal(IntConstant(4))))
+Apply(Ident("foo"), List(Literal(IntConstant(3))))

@@ -41,7 +41,7 @@ object DottyIDEPlugin extends AutoPlugin {
   }
 
   private def isDottyVersion(version: String) =
-    version.startsWith("0.")
+    version.startsWith("0.") || version.startsWith("3.")
 
 
   /** Return a new state derived from `state` such that scalaVersion returns `newScalaVersion` in all
@@ -51,7 +51,7 @@ object DottyIDEPlugin extends AutoPlugin {
     val extracted = Project.extract(state)
     val settings = extracted.structure.data
 
-    if (projRefs.forall(projRef => scalaVersion.in(projRef).get(settings).get == newScalaVersion))
+    if (projRefs.forall(projRef => (projRef / scalaVersion).get(settings).get == newScalaVersion))
       state
     else {
       def matchingSetting(setting: Setting[_]) =
@@ -60,7 +60,7 @@ object DottyIDEPlugin extends AutoPlugin {
 
       val newSettings = extracted.session.mergeSettings.collect {
         case setting if matchingSetting(setting) =>
-          scalaVersion in setting.key.scope := newScalaVersion
+          setting.key.scope / scalaVersion := newScalaVersion
       }
       val newSession = extracted.session.appendRaw(newSettings)
       BuiltinCommands.reapply(newSession, extracted.structure, state)
@@ -82,14 +82,14 @@ object DottyIDEPlugin extends AutoPlugin {
 
     val (dottyVersions, dottyProjRefs) =
       structure.allProjectRefs.flatMap { projRef =>
-        if (excludeFromIDE.in(projRef).get(settings) == Some(true))
+        if ((projRef / excludeFromIDE).get(settings) == Some(true))
           None
         else {
-          val version = scalaVersion.in(projRef).get(settings).get
+          val version = (projRef / scalaVersion).get(settings).get
           if (isDottyVersion(version))
             Some((version, projRef))
           else
-            crossScalaVersions.in(projRef).get(settings).get.filter(isDottyVersion).sorted.lastOption match {
+            (projRef / crossScalaVersions).get(settings).get.filter(isDottyVersion).sorted.lastOption match {
               case Some(v) =>
                 Some((v, projRef))
               case _ =>
@@ -134,11 +134,11 @@ object DottyIDEPlugin extends AutoPlugin {
     val joinedTask = projRefs.flatMap { projRef =>
       val project = Project.getProjectForReference(projRef, structure).get
       project.configurations.flatMap { config =>
-        excludeFromIDE.in(projRef, config).get(settings) match {
+        (projRef / config / excludeFromIDE).get(settings) match {
           case Some(true) =>
             None // skip this configuration
           case _ =>
-            key.in(projRef, config).get(settings)
+            (projRef / config / key).get(settings)
         }
       }
     }.join
@@ -234,10 +234,22 @@ object DottyIDEPlugin extends AutoPlugin {
     // IDE plugins to parse JSON.
     val dlsVersion = dottyVersion
       .replace("-nonbootstrapped", "") // The language server is only published bootstrapped
-    val dlsBinaryVersion = dlsVersion.split("\\.").take(2).mkString(".")
+    val dlsBinaryVersion = dlsVersion.split("[\\.-]").toList match {
+      case "0" :: minor :: _ => s"0.$minor"
+      case "3" :: minor :: patch :: suffix =>
+        s"3.$minor.$patch" + (suffix match {
+          case milestone :: _ => s"-$milestone"
+          case Nil => ""
+        })
+      case _ => throw new RuntimeException(
+        s"Version $dlsVersion is not a Scala 3 version.")
+    }
     val pwArtifact = new PrintWriter(artifactFile)
     try {
-      pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+      if (dottyVersion.startsWith("0."))
+        pwArtifact.println(s"ch.epfl.lamp:dotty-language-server_${dlsBinaryVersion}:${dlsVersion}")
+      else
+        pwArtifact.println(s"org.scala-lang:scala3-language-server_${dlsBinaryVersion}:${dlsVersion}")
     } finally {
       pwArtifact.close()
     }
@@ -276,7 +288,7 @@ object DottyIDEPlugin extends AutoPlugin {
   private def makeId(name: String, config: String): String = s"$name/$config"
 
   private def projectConfigTask(config: Configuration): Initialize[Task[Option[ProjectConfig]]] = Def.taskDyn {
-    val depClasspath = Attributed.data((dependencyClasspath in config).value)
+    val depClasspath = Attributed.data((config / dependencyClasspath).value)
     val projectName = name.value
 
     // Try to detect if this is a real Scala project or not. This is pretty
@@ -285,7 +297,15 @@ object DottyIDEPlugin extends AutoPlugin {
     // doesn't work for empty projects.
     val isScalaProject = (
           // Our `dotty-library` project is a Scala project
-          (projectName.startsWith("dotty-library") || depClasspath.exists(_.getAbsolutePath.contains("dotty-library")))
+          (
+            projectName.startsWith("dotty-library") ||
+            projectName.startsWith("scala3-library") ||
+            depClasspath.exists { d =>
+              val absolutePath = d.getAbsolutePath
+              absolutePath.contains("dotty-library") ||
+              absolutePath.contains("scala3-library")
+            }
+         )
        && depClasspath.exists(_.getAbsolutePath.contains("scala-library"))
     )
 
@@ -294,14 +314,14 @@ object DottyIDEPlugin extends AutoPlugin {
       // Not needed to generate the config, but this guarantees that the
       // generated config is usable by an IDE without any extra compilation
       // step.
-      val _ = (compile in config).value
+      val _ = (config / compile).value
 
       val project = thisProject.value
       val id = makeId(project.id, config.name)
-      val compilerVersion = (scalaVersion in config).value
-      val compilerArguments = (scalacOptions in config).value
-      val sourceDirectories = (unmanagedSourceDirectories in config).value ++ (managedSourceDirectories in config).value
-      val classDir = (classDirectory in config).value
+      val compilerVersion = (config / scalaVersion).value
+      val compilerArguments = (config / scalacOptions).value
+      val sourceDirectories = (config / unmanagedSourceDirectories).value ++ (config / managedSourceDirectories).value
+      val classDir = (config / classDirectory).value
       val extracted = Project.extract(state.value)
       val settings = extracted.structure.data
 
@@ -311,7 +331,7 @@ object DottyIDEPlugin extends AutoPlugin {
         // We filter out dependencies that do not compile using Dotty
         val classpathProjectDependencies =
           project.dependencies.filter { d =>
-            val version = scalaVersion.in(d.project).get(settings).get
+            val version = (d.project / scalaVersion).get(settings).get
             isDottyVersion(version)
           }.map(d => projectDependencyName(d, config, project, logger))
         val configDependencies =
@@ -341,8 +361,8 @@ object DottyIDEPlugin extends AutoPlugin {
     // TODO: It would be better to use Def.derive to define projectConfig in
     // every configuration where the keys it depends on exist, however this
     // currently breaks aggregated tasks: https://github.com/sbt/sbt/issues/3580
-    projectConfig in Compile := projectConfigTask(Compile).value,
-    projectConfig in Test := projectConfigTask(Test).value
+    Compile / projectConfig := projectConfigTask(Compile).value,
+    Test / projectConfig := projectConfigTask(Test).value
   )
 
   override def buildSettings: Seq[Setting[_]] = Seq(
@@ -373,6 +393,10 @@ object DottyIDEPlugin extends AutoPlugin {
     }
 
   ) ++ addCommandAlias("launchIDE", ";configureIDE;runCode")
+
+  override def globalSettings: Seq[Setting[_]] = Seq(
+    excludeLintKeys += excludeFromIDE
+  )
 
   // Ported from Bloop
   /**
@@ -408,7 +432,7 @@ object DottyIDEPlugin extends AutoPlugin {
       val eligibleConfigs = activeProjectConfigs.filter { c =>
         val configKey = ConfigKey.configurationToKey(c)
         // Consider only configurations where the `compile` key is defined
-        val eligibleKey = compile in (thisProjectRef, configKey)
+        val eligibleKey = (thisProjectRef / configKey / compile)
         eligibleKey.get(data) match {
           case Some(t) =>
             // Sbt seems to return tasks for the extended configurations (looks like a big bug)

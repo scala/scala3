@@ -37,14 +37,14 @@ object TripleBippy {
 
 object Test {
   def f(x: Any) = x match {
-    case Bippy('B' | 'b', 'O' | 'o', 'B' | 'b', xs : _*) => xs
+    case Bippy('B' | 'b', 'O' | 'o', 'B' | 'b', xs *) => xs
     case _                                               => "nope"
   }
 
   def g(x: Any): String = x match {
-    case TripleBippy(3 :: Nil, 3.0, 'b', chars : _*)       => "1: " + chars
-    case TripleBippy(5 :: Nil, 5.0, 'b' | 'B', chars : _*) => "2: " + chars
-    case TripleBippy(_, _, chars : _*)                     => "3: " + chars
+    case TripleBippy(3 :: Nil, 3.0, 'b', chars *)       => "1: " + chars
+    case TripleBippy(5 :: Nil, 5.0, 'b' | 'B', chars *) => "2: " + chars
+    case TripleBippy(_, _, chars *)                     => "3: " + chars
     case _                                                 => "nope"
   }
 

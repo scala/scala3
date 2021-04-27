@@ -1,6 +1,6 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
   inline def foo(): Int = ${$x} // error
-  def x(using QuoteContext): Expr[Expr[Int]] = '{ '{1} }
+  def x(using Quotes): Expr[Expr[Int]] = '{ '{1} }
 }

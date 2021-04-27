@@ -1,11 +1,11 @@
-import scala.quoted._
+import scala.quoted.*
 
 trait Quoted {
   def foo: Int
 }
 inline def quote: Quoted = ${ quoteImpl }
 
-def quoteImpl(using qctx: QuoteContext): Expr[Quoted] = '{
+def quoteImpl(using Quotes): Expr[Quoted] = '{
   new Quoted {
     def foo = ???
   }

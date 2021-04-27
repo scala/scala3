@@ -18,12 +18,12 @@ LIST='- [ ] Publish artifacts to Maven via CI
   - [ ] On `<rc-branch>`, set `baseVersion` to `<rc-version>` and `git tag` it as `<rc-version>`. This will publish artefacts to Sonatype and GitHub Release.
   - [ ] On `master`, set `baseVersion` to `<next-version>`
 - [ ] Update `scalaVersion` (and, if applicable, the `sbt-dotty` version) in the Dotty ecosystem projects
-  - [ ] https://github.com/lampepfl/dotty-example-project [![Build Status](https://travis-ci.org/lampepfl/dotty-example-project.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-example-project)
+  - [ ] https://github.com/scala/scala3-example-project [![Build Status](https://travis-ci.org/scala/scala3-example-project.svg?branch=master)](https://travis-ci.org/scala/scala3-example-project)
     - [ ] Committed to `master`
-  - [ ] https://github.com/lampepfl/dotty-example-project/tree/mill
-  - [ ] https://github.com/lampepfl/dotty.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty.g8/)
+  - [ ] https://github.com/scala/scala3-example-project/tree/mill
+  - [ ] https://github.com/scala/scala3.g8 [![Build Status](https://travis-ci.org/scala/scala3.g8.svg?branch=master)](https://travis-ci.org/scala/scala3.g8/)
     - [ ] Committed to `master`
-  - [ ] https://github.com/lampepfl/dotty-cross.g8 [![Build Status](https://travis-ci.org/lampepfl/dotty-cross.g8.svg?branch=master)](https://travis-ci.org/lampepfl/dotty-cross.g8/)
+  - [ ] https://github.com/scala/scala3-cross.g8 [![Build Status](https://travis-ci.org/scala/scala3-cross.g8.svg?branch=master)](https://travis-ci.org/scala/scala3-cross.g8/)
     - [ ] Committed to `master`
   - [ ] https://github.com/lampepfl/homebrew-brew [![Build Status](https://travis-ci.org/lampepfl/homebrew-brew.svg?branch=master)](https://travis-ci.org/lampepfl/homebrew-brew)
     - [ ] Committed to `master`

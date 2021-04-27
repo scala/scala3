@@ -3,7 +3,7 @@ package scala.util.control {
 object NonLocalReturns {
 
   class ReturnThrowable[T] extends ControlThrowable {
-    private var myResult: T = _
+    private var myResult: T = compiletime.uninitialized
     def throwReturn(result: T): Nothing = {
       myResult = result
       throw this
@@ -27,7 +27,7 @@ object NonLocalReturns {
 
 object Test extends App {
 
-  import scala.util.control.NonLocalReturns._
+  import scala.util.control.NonLocalReturns.*
   import scala.collection.mutable.ListBuffer
 
   def has(xs: List[Int], elem: Int) =

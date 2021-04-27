@@ -1,12 +1,12 @@
-import generic._
-import Tree._
-import List._
-import java.io._
-import Shapes._
-import SearchResult._
+import generic.*
+import Tree.*
+import List.*
+import java.io.*
+import Shapes.*
+import SearchResult.*
 
 object Test {
-  import Serialization._
+  import Serialization.*
 
   private var lCount, tCount, sCount = 0
 

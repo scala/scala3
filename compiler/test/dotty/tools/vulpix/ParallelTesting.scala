@@ -25,7 +25,9 @@ import dotc.report
 import dotc.interfaces.Diagnostic.ERROR
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
+import dotc.config.Config
 import dotc.util.DiffUtil
+import io.AbstractFile
 import dotty.tools.vulpix.TestConfiguration.defaultOptions
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -35,7 +37,6 @@ import dotty.tools.vulpix.TestConfiguration.defaultOptions
  *  test suite itself runs with a high level of concurrency.
  */
 trait ParallelTesting extends RunnerOrchestration { self =>
-
   import ParallelTesting._
 
   /** If the running environment supports an interactive terminal, each `Test`
@@ -104,7 +105,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
             |the test can be reproduced by running from SBT (prefix it with ./bin/ if you
             |want to run from the command line):""".stripMargin
       )
-      sb.append("\n\ndotc ")
+      sb.append("\n\nscalac ")
       flags.all.foreach { arg =>
         if (lineLen > maxLen) {
           sb.append(delimiter)
@@ -472,7 +473,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
-          override def doCompile(comp: Compiler, files: List[String])(using Context) =
+          override def doCompile(comp: Compiler, files: List[AbstractFile])(using Context) =
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
@@ -504,11 +505,7 @@ trait ParallelTesting extends RunnerOrchestration { self =>
       tastyOutput.mkdir()
       val flags = flags0 and ("-d", tastyOutput.getPath) and "-from-tasty"
 
-      def tastyFileToClassName(f: JFile): String = {
-        val pathStr = targetDir.toPath.relativize(f.toPath).toString.replace(JFile.separatorChar, '.')
-        pathStr.stripSuffix(".tasty").stripSuffix(".hasTasty")
-      }
-      val classes = flattenFiles(targetDir).filter(isTastyFile).map(tastyFileToClassName)
+      val classes = flattenFiles(targetDir).filter(isTastyFile).map(_.toString)
 
       val reporter =
         TestReporter.reporter(realStdout, logLevel =
@@ -1373,5 +1370,5 @@ object ParallelTesting {
   }
 
   def isTastyFile(f: JFile): Boolean =
-    f.getName.endsWith(".hasTasty") || f.getName.endsWith(".tasty")
+    f.getName.endsWith(".tasty")
 }

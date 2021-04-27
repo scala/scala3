@@ -21,7 +21,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    *  Overridden in RefinedPrinter.
    */
   protected def curCtx: Context = _ctx.addMode(Mode.Printing)
-  protected given [DummyToEnforceDef] as Context = curCtx
+  protected given [DummyToEnforceDef]: Context = curCtx
 
   protected def printDebug = ctx.settings.YprintDebug.value
 
@@ -39,7 +39,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     limiter.register(str)
     Texts.Str(str, lineRange)
 
-  given stringToText as Conversion[String, Text] = Str(_)
+  given stringToText: Conversion[String, Text] = Str(_)
 
   /** If true, tweak output so it is the same before and after pickling */
   protected def homogenizedView: Boolean = ctx.settings.YtestPickler.value
@@ -56,6 +56,9 @@ class PlainPrinter(_ctx: Context) extends Printer {
           homogenize(tp1) & homogenize(tp2)
         case OrType(tp1, tp2) =>
           homogenize(tp1) | homogenize(tp2)
+        case AnnotatedType(parent, annot)
+        if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+          homogenize(parent)
         case tp: SkolemType =>
           homogenize(tp.info)
         case tp: LazyRef =>
@@ -175,13 +178,14 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case MatchType(bound, scrutinee, cases) =>
         changePrec(GlobalPrec) {
           def caseText(tp: Type): Text = tp match {
+            case tp: HKTypeLambda => caseText(tp.resultType)
             case defn.MatchCase(pat, body) => "case " ~ toText(pat) ~ " => " ~ toText(body)
             case _ => "case " ~ toText(tp)
           }
           def casesText = Text(cases.map(caseText), "\n")
-            atPrec(InfixPrec) { toText(scrutinee) } ~
-            keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
-            (" <: " ~ toText(bound) provided !bound.isAny)
+          atPrec(InfixPrec) { toText(scrutinee) } ~
+          keywordStr(" match ") ~ "{" ~ casesText ~ "}" ~
+          (" <: " ~ toText(bound) provided !bound.isAny)
         }.close
       case tp: PreviousErrorType if ctx.settings.XprintTypes.value =>
         "<error>" // do not print previously reported error message because they may try to print this error type again recuresevely
@@ -216,7 +220,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           toTextGlobal(tp.resultType)
         }
       case AnnotatedType(tpe, annot) =>
-        toTextLocal(tpe) ~ " " ~ toText(annot)
+        if annot.symbol == defn.InlineParamAnnot || annot.symbol == defn.ErasedParamAnnot then toText(tpe)
+        else toTextLocal(tpe) ~ " " ~ toText(annot)
       case tp: TypeVar =>
         if (tp.isInstantiated)
           toTextLocal(tp.instanceOpt) ~ (Str("^") provided printDebug)
@@ -252,7 +257,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     Text(lam.paramNames.lazyZip(lam.paramInfos).map(paramText), ", ")
   }
 
-  protected def ParamRefNameString(name: Name): String = name.toString
+  protected def ParamRefNameString(name: Name): String = nameString(name)
 
   protected def ParamRefNameString(param: ParamRef): String =
     ParamRefNameString(param.binder.paramNames(param.paramNum))
@@ -416,13 +421,15 @@ class PlainPrinter(_ctx: Context) extends Printer {
       if (sym.isClass) "package object class"
       else "package object"
     else if (sym.isAnonymousClass) "anonymous class"
-    else if (flags.is(ModuleClass)) "module class"
-    else if (flags.is(ModuleVal)) "module"
+    else if (flags.is(ModuleClass)) "object class"
+    else if (flags.is(ModuleVal)) "object"
     else if (flags.is(Trait)) "trait"
     else if (sym.isClass) "class"
     else if (sym.isType) "type"
     else if (sym.isGetter) "getter"
     else if (sym.isSetter) "setter"
+    else if sym.is(Param) then "parameter"
+    else if sym.is(Given) then "given instance"
     else if (flags.is(Lazy)) "lazy value"
     else if (flags.is(Mutable)) "variable"
     else if (sym.isClassConstructor && sym.isPrimaryConstructor) "primary constructor"
@@ -525,7 +532,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
     case ClazzTag => "classOf[" ~ toText(const.typeValue) ~ "]"
     case CharTag => literalText(s"'${escapedChar(const.charValue)}'")
     case LongTag => literalText(const.longValue.toString + "L")
-    case EnumTag => literalText(const.symbolValue.name.toString)
+    case DoubleTag => literalText(const.doubleValue.toString + "d")
+    case FloatTag => literalText(const.floatValue.toString + "f")
     case _ => literalText(String.valueOf(const.value))
   }
 

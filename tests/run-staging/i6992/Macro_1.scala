@@ -1,23 +1,33 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
-given Toolbox = Toolbox.make(getClass.getClassLoader)
 
 object macros {
   inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 
   class Foo { val x = 10 }
 
-  def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] = {
-    import ctx.tasty._
-    try {
-      body match {
-        case '{$x: Foo} => Expr(run(x).x)
+  def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] =
+    MyTest.mcrImpl(body)
+}
+
+package scala {
+  object MyTest {
+    import macros.*
+
+   given Compiler = Compiler.make(getClass.getClassLoader)
+
+    def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] = {
+      import ctx.reflect.*
+      try {
+        body match {
+          case '{$x: Foo} => Expr(run(x).x)
+        }
+      } catch {
+        case ex: Exception if ex.getClass.getName == "scala.quoted.runtime.impl.ScopeException" =>
+          '{"OK"}
       }
-    } catch {
-      case ex: scala.quoted.ScopeException =>
-        '{"OK"}
     }
   }
 }

@@ -66,7 +66,7 @@ object Test {
     assertEquals("applyDynamic(bazApply)(1)", foo.bazApply(1))
     assertEquals("applyDynamic(bazApply)(1, 2, 3)", foo.bazApply(1, 2, 3))
     assertEquals("applyDynamic(bazApply)(1, 2, a)", foo.bazApply(1, 2, "a"))
-    assertEquals("applyDynamic(bazApply)(1, 2, a)", foo.bazApply(List(1, 2, "a"): _*))
+    assertEquals("applyDynamic(bazApply)(1, 2, a)", foo.bazApply(List(1, 2, "a")*))
 
     assertEquals("applyDynamicNamed(bazApply)((a,1))", foo.bazApply(a = 1))
     assertEquals("applyDynamicNamed(bazApply)((a,1), (b,2))", foo.bazApply(a = 1, b = 2))
@@ -111,7 +111,7 @@ object Test {
     assertEquals("applyDynamic(apply)(1)", foo(1))
     assertEquals("applyDynamic(apply)(1, 2, 3)", foo(1, 2, 3))
     assertEquals("applyDynamic(apply)(1, 2, a)", foo(1, 2, "a"))
-    assertEquals("applyDynamic(apply)(1, 2, a)", foo(List(1, 2, "a"): _*))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo(List(1, 2, "a")*))
 
     assertEquals("applyDynamicNamed(apply)((a,1))", foo(a = 1))
     assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", foo(a = 1, b = 2))
@@ -123,7 +123,7 @@ object Test {
     assertEquals("applyDynamic(apply)(1)", foo.apply(1))
     assertEquals("applyDynamic(apply)(1, 2, 3)", foo.apply(1, 2, 3))
     assertEquals("applyDynamic(apply)(1, 2, a)", foo.apply(1, 2, "a"))
-    assertEquals("applyDynamic(apply)(1, 2, a)", foo.apply(List(1, 2, "a"): _*))
+    assertEquals("applyDynamic(apply)(1, 2, a)", foo.apply(List(1, 2, "a")*))
 
     assertEquals("applyDynamicNamed(apply)((a,1))", foo.apply(a = 1))
     assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", foo.apply(a = 1, b = 2))
@@ -139,7 +139,7 @@ object Test {
     assertEquals("applyDynamic(apply)(1)", bar.foo(1))
     assertEquals("applyDynamic(apply)(1, 2, 3)", bar.foo(1, 2, 3))
     assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo(1, 2, "a"))
-    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo(List(1, 2, "a"): _*))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo(List(1, 2, "a")*))
 
     assertEquals("applyDynamicNamed(apply)((a,1))", bar.foo(a = 1))
     assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", bar.foo(a = 1, b = 2))
@@ -151,7 +151,7 @@ object Test {
     assertEquals("applyDynamic(apply)(1)", bar.foo.apply(1))
     assertEquals("applyDynamic(apply)(1, 2, 3)", bar.foo.apply(1, 2, 3))
     assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo.apply(1, 2, "a"))
-    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo.apply(List(1, 2, "a"): _*))
+    assertEquals("applyDynamic(apply)(1, 2, a)", bar.foo.apply(List(1, 2, "a")*))
 
     assertEquals("applyDynamicNamed(apply)((a,1))", bar.foo.apply(a = 1))
     assertEquals("applyDynamicNamed(apply)((a,1), (b,2))", bar.foo.apply(a = 1, b = 2))

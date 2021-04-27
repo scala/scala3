@@ -10,7 +10,7 @@ import org.junit.Assert.{assertEquals, assertTrue, fail}
 class WorksheetRun(marker: CodeMarker, expected: Seq[(CodeRange, String)], strict: Boolean) extends WorksheetAction {
 
   override def execute(): Exec[Unit] = {
-    val result = triggerRun(marker).get(30, TimeUnit.SECONDS)
+    val result = triggerRun(marker).get(60, TimeUnit.SECONDS)
     assertTrue(result.success)
 
     val logs = worksheetOutput(marker).map(out => (out.range, out.content))

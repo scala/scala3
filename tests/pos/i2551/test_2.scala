@@ -1,4 +1,4 @@
-import scala.meta._
+import scala.meta.*
 
 object Test {
   val v = Version()

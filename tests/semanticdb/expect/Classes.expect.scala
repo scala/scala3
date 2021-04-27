@@ -1,5 +1,5 @@
 package classes
-import scala.language/*->scalaShadowing::language.*/.experimental/*->scalaShadowing::language.experimental.*/.macros/*->scalaShadowing::language.experimental.macros.*/
+import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
 class C1/*<-classes::C1#*/(val x1/*<-classes::C1#x1.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/
 
 class C2/*<-classes::C2#*/(val x2/*<-classes::C2#x2.*/: Int/*->scala::Int#*/) extends AnyVal/*->scala::AnyVal#*//*->scala::AnyVal#`<init>`().*/

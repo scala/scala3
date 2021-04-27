@@ -1,12 +1,12 @@
 scala> import quoted._
-scala> import quoted.staging._
-scala> implicit def toolbox: Toolbox = Toolbox.make(getClass.getClassLoader)
-def toolbox: quoted.staging.Toolbox
+scala> import quoted.staging.{Compiler => StagingCompiler, _}
+scala> implicit def compiler: StagingCompiler = StagingCompiler.make(getClass.getClassLoader)
+def compiler: quoted.staging.Compiler
 scala> def fn[T : Type](v : T) = println("ok")
 def fn[T](v: T)(implicit evidence$1: quoted.Type[T]): Unit
-scala> withQuoteContext { fn("foo") }
+scala> withQuotes { fn("foo") }
 ok
-scala> withQuoteContext { fn((1,2)) }
+scala> withQuotes { fn((1,2)) }
 ok
-scala> withQuoteContext { fn(1) }
+scala> withQuotes { fn(1) }
 ok

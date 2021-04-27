@@ -1,5 +1,3 @@
-import annotation.infix
-
 object ExtMethods:
 
   case class Circle(x: Double, y: Double, radius: Double)
@@ -9,11 +7,11 @@ object ExtMethods:
 
   val circle = Circle(0, 0, 1)
   circle.circumference
-  assert(circle.circumference == extension_circumference(circle))
+  assert(circle.circumference == circumference(circle))
 
   extension (x: String) def < (y: String) = x.compareTo(y) < 0
   extension [Elem](x: Elem) def #: (xs: Seq[Elem]) = x +: xs
-  extension (x: Number) @infix def min (y: Number) = x
+  extension (x: Number) infix def min (y: Number) = x
 
   assert("a" < "bb")
   val xs = 1 #: Vector(2, 3)
@@ -22,7 +20,7 @@ object ExtMethods:
   extension [T](xs: List[T])
     def second = xs.tail.head
 
-  assert(List(1, 2, 3).second[Int] == List(1, 2, 3).second)
+  assert(second[Int](List(1, 2, 3)) == List(1, 2, 3).second)
 
   extension [T: Numeric](x: T)
     def + (y: T): T = summon[Numeric[T]].plus(x, y)
@@ -72,18 +70,18 @@ object ExtMethods:
   end SafeDiv
 
   def test1 =
-    given ops1 as IntOps // brings safeMod into scope
+    given ops1: IntOps() // brings safeMod into scope
     1.safeMod(2)
 
   class Lst[T](xs: T*):
     private val elems = xs.toList
     def foldLeft[U](x: U)(op: (U, T) => U): U = elems.foldLeft(x)(op)
-    def ++ (other: Lst[T]): Lst[T] = Lst(elems ++ other.elems: _*)
+    def ++ (other: Lst[T]): Lst[T] = Lst((elems ++ other.elems)*)
 
   trait Ord[T]:
     extension (x: T) def less (y: T): Boolean
   object Ord:
-    given Ord[Int]:
+    given Ord[Int] with
       extension (x: Int) def less (y: Int): Boolean = x < y
   end Ord
 
@@ -92,7 +90,7 @@ object ExtMethods:
     extension [T](xs: Lst[Lst[T]])
       def flatten: Lst[T] = xs.foldLeft(Lst())(_ ++ _)
 
-    given ord[T: Ord] as Ord[Lst[T]]:
+    given ord[T: Ord]: Ord[Lst[T]] with
       extension (xs: Lst[T])
         def less (ys: Lst[T]): Boolean = ???
   end Lst
@@ -103,7 +101,7 @@ object ExtMethods:
 
     summon[Ord[Lst[Lst[Int]]]]
 
-    assert(Lst.ord[Lst[Int]].extension_less(xss)(Lst(Lst(3))))
+    assert(Lst.ord[Lst[Int]].less(xss)(Lst(Lst(3))))
     assert(xss `less` Lst(Lst(3)))
     assert(xss.flatten `less` Lst(3))
 
@@ -117,7 +115,7 @@ object ExtMethods:
       require(exponent > 0)
       if exponent == 0 then 1 else x * (x ** (exponent - 1))
 
-  import DoubleOps.{**, extension_**}
-  assert(2.0 ** 3 == extension_**(2.0)(3))
+  import DoubleOps.**
+  assert(2.0 ** 3 == **(2.0)(3))
 
 end ExtMethods

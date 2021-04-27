@@ -9,8 +9,9 @@ import scala.io.Codec
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.tasty.TastyPrinter
-import dotty.tools.dotc.quoted.QuoteContextImpl
 import dotty.tools.io.File
+
+import scala.quoted.runtime.impl.QuotesImpl
 
 /** Phase that prints the trees in all loaded compilation units.
  *
@@ -40,11 +41,11 @@ class DecompilationPrinter extends Phase {
   private def printToOutput(out: PrintStream)(using Context): Unit = {
     val unit = ctx.compilationUnit
     if (ctx.settings.printTasty.value)
-      println(new TastyPrinter(unit.pickled.head._2()).printContents())
+      println(TastyPrinter.show(unit.pickled.head._2()))
     else {
       val unitFile = unit.source.toString.replace("\\", "/").replace(".class", ".tasty")
       out.println(s"/** Decompiled from $unitFile */")
-      out.println(QuoteContextImpl.showTree(unit.tpdTree))
+      out.println(QuotesImpl.showDecompiledTree(unit.tpdTree))
     }
   }
 }

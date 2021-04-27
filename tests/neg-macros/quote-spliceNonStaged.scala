@@ -1,7 +1,7 @@
 package quotes
-import scala.quoted._
+import scala.quoted.*
 
 object Quotes_1 {
-  def printHello(using QuoteContext): Expr[Unit] = '{ println("Hello") }
+  def printHello(using Quotes): Expr[Unit] = '{ println("Hello") }
   $printHello // error
 }

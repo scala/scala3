@@ -1,9 +1,9 @@
 package example
 
-import scala.annotation.meta.param/*->scala::annotation::meta::param.*/
-import scala.language/*->scalaShadowing::language.*/.existentials/*->scalaShadowing::language.existentials.*/
-import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
-import types.Test/*->types::Test.*/._
+import scala.annotation.meta.param/*->scala::annotation::meta::param#*/
+import scala.language/*->scala::language.*/.existentials/*->scala::language.existentials.*/
+import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
+import types.Test/*->types::Test.*/.*
 
 class InstrumentTyper/*<-example::InstrumentTyper#*/ { self/*<-local0*/: AnyRef/*->scala::AnyRef#*/ =>
   def all/*<-example::InstrumentTyper#all().*/ = List/*->scala::package.List.*//*->scala::collection::IterableFactory#apply().*/(

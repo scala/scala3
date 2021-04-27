@@ -3,7 +3,7 @@ package analyzer
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.transform.{ReifyQuotes, FirstTransform}
+import dotty.tools.dotc.transform.{PickleQuotes, FirstTransform}
 import dotty.tools.dotc.plugins._
 
 /** Set the `defTree` property of symbols for compile plugins
@@ -16,7 +16,7 @@ class SetDefTree extends PluginPhase {
   import tpd._
 
   override val phaseName: String = SetDefTree.name
-  override def runsAfter: Set[String] = Set(ReifyQuotes.name)
+  override def runsAfter: Set[String] = Set(PickleQuotes.name)
   override def runsBefore: Set[String] = Set(FirstTransform.name)
     // don't allow plugins to change tasty
     // research plugins can still change the phase plan at will

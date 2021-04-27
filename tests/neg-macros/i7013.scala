@@ -1,6 +1,6 @@
-import quoted._
+import quoted.*
 
-def foo()(using QuoteContext) = {
+def foo()(using Quotes) = {
   class C
-  '[C] // error
+  Type[C] // error
 }

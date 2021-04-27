@@ -561,6 +561,93 @@ class TestBCode extends DottyBytecodeTest {
     }
   }
 
+  /* Test that vals in traits cause appropriate `releaseFence()` calls to be emitted. */
+
+  private def checkReleaseFence(releaseFenceExpected: Boolean, outputClassName: String, source: String): Unit = {
+    checkBCode(source) { dir =>
+      val clsIn = dir.lookupName(outputClassName, directory = false)
+      val clsNode = loadClassNode(clsIn.input)
+      val method = getMethod(clsNode, "<init>")
+
+      val hasReleaseFence = instructionsFromMethod(method).exists {
+        case Invoke(_, _, "releaseFence", _, _) => true
+        case _ => false
+      }
+
+      assertEquals(source, releaseFenceExpected, hasReleaseFence)
+    }
+  }
+
+  @Test def testInsertReleaseFence(): Unit = {
+    // An empty trait does not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // A val in a class does not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |}
+        |class Bar extends Foo {
+        |  val x: Int = 5
+        |}
+      """.stripMargin)
+
+    // A val in a trait causes a releaseFence.
+    checkReleaseFence(true, "Bar.class",
+      """trait Foo {
+        |  val x: Int = 5
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // The presence of a var in the trait does not invalidate the need for a releaseFence.
+    // Also, indirect mixin.
+    checkReleaseFence(true, "Bar.class",
+      """trait Parent {
+        |  val x: Int = 5
+        |  var y: Int = 6
+        |}
+        |trait Foo extends Parent
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // The presence of a var in the class does not invalidate the need for a releaseFence.
+    checkReleaseFence(true, "Bar.class",
+      """trait Foo {
+        |  val x: Int = 5
+        |}
+        |class Bar extends Foo {
+        |  var y: Int = 6
+        |}
+      """.stripMargin)
+
+    // When inheriting trait vals through a superclass, no releaseFence is inserted.
+    checkReleaseFence(false, "Bar.class",
+      """trait Parent {
+        |  val x: Int = 5
+        |  var y: Int = 6
+        |}
+        |class Foo extends Parent // releaseFence in Foo, but not in Bar
+        |class Bar extends Foo
+      """.stripMargin)
+
+    // Various other stuff that do not cause a releaseFence.
+    checkReleaseFence(false, "Bar.class",
+      """trait Foo {
+        |  var w: Int = 1
+        |  final val x = 2
+        |  def y: Int = 3
+        |  lazy val z: Int = 4
+        |
+        |  def add(a: Int, b: Int): Int = a + b
+        |}
+        |class Bar extends Foo
+      """.stripMargin)
+  }
+
   /* Test that objects compile to *final* classes. */
 
   private def checkFinalClass(outputClassName: String, source: String) = {

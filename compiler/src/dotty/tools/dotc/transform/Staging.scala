@@ -35,10 +35,12 @@ class Staging extends MacroTransform {
 
   override def phaseName: String = Staging.name
 
+  override def runsAfter: Set[String] = Set(Inlining.name)
+
   override def allowsImplicitSearch: Boolean = true
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
-    if (ctx.phase <= reifyQuotesPhase) {
+    if (ctx.phase <= pickleQuotesPhase) {
       // Recheck that PCP holds but do not heal any inconsistent types as they should already have been heald
       tree match {
         case PackageDef(pid, _) if tree.symbol.owner == defn.RootClass =>
@@ -49,7 +51,7 @@ class Staging extends MacroTransform {
                 else i"${sym.name}.this"
               val errMsg = s"\nin ${ctx.owner.fullName}"
               assert(
-                ctx.owner.hasAnnotation(defn.InternalQuoted_QuoteTypeTagAnnot) ||
+                ctx.owner.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) ||
                 (sym.isType && levelOf(sym) > 0),
                 em"""access to $symStr from wrong staging level:
                     | - the definition is at level ${levelOf(sym)},

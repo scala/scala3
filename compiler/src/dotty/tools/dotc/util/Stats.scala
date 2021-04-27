@@ -28,6 +28,10 @@ import collection.mutable
       hits(name) += n
     }
 
+  def doRecordSize(fn: String, coll: scala.collection.Iterable[_]): coll.type =
+    doRecord(fn, coll.size)
+    coll
+
   inline def trackTime[T](fn: String)(inline op: T): T =
     if (enabled) doTrackTime(fn)(op) else op
 

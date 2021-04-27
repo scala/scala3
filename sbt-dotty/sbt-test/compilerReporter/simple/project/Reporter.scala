@@ -23,7 +23,7 @@ object Reporter {
     }
 
   lazy val checkSettings = Seq(
-    compilerReporter in (Compile, compile) := reporter,
+    Compile / compile / compilerReporter := reporter,
     check := (compile in Compile).failure.map(_ => {
       val problems = reporter.problems
       println(problems.toList)
@@ -32,11 +32,11 @@ object Reporter {
       // make sure position reported by zinc are proper
       val mainProblem = problems.head
 
-      val line = mainProblem.position().line() 
+      val line = mainProblem.position().line()
       assert(line.isPresent() == true)
       assert(line.get() == 9)
 
-      val pointer = mainProblem.position().pointer() 
+      val pointer = mainProblem.position().pointer()
       assert(pointer.isPresent() == true)
       assert(pointer.get() == 10)
 

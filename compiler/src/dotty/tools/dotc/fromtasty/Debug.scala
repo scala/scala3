@@ -36,20 +36,19 @@ object Debug {
 
     val fromTastyOut = Files.createDirectory(tmpOut.resolve("from-tasty"))
 
-    val extensions = List("tasty", "hasTasty").map(_.toLowerCase)
-    val classes = Directory(fromSourcesOut).walk.filter(x => x.isFile && extensions.exists(_ == x.extension.toLowerCase)).map { x =>
-      val source = x.toString
-      // transform foo/bar/Baz.hasTasty into foo.bar.Baz
-      source.substring(fromSourcesOut.toString.length + 1, source.length - x.extension.length - 1).replace('/', '.')
-    }.toList
+    val tastyFiles =
+      Directory(fromSourcesOut).walk
+        .filter(x => x.isFile && "tasty".equalsIgnoreCase(x.extension))
+        .map(_.toString)
+        .toList
 
     val fromTastyArgs =
       "-from-tasty" ::
       "-d" :: fromTastyOut.toString ::
       insertClasspathInArgs(args.filterNot(_.endsWith(".scala")).toList, fromSourcesOut.toString) :::
-      classes
+      tastyFiles
 
-    println("Compiling TASTY from .class sources")
+    println("Compiling from .tasty sources")
     val compilation2 = dotc.Main.process(fromTastyArgs.toArray)
 
     if (compilation2.hasErrors) {
@@ -58,6 +57,8 @@ object Debug {
       // In this case we do not delete the generated class files to allow further debugging.
       // For example `dotc -decompile` on one of the intermediate class files.
       sys.exit(1)
+    } else {
+      println("Recompilation successful")
     }
 
     Directory(tmpOut).deleteRecursively()

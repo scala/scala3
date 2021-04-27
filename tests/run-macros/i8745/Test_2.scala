@@ -1,6 +1,6 @@
-import Macro._
+import Macro.*
 
 @main def Test() = { //hello
-  import Companion._
+  import Companion.*
   mac(fun("blah"))
 }

@@ -15,7 +15,7 @@ type Person = ResolvingSelectable {
 
 
 @main def Test =
-  given Resolver:
+  given Resolver with
     def resolve(label: String) = label match
       case "name" => "Emma"
       case "age" => 8

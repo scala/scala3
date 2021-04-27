@@ -19,7 +19,7 @@ by tne
 A symbol refers to a definition in a source program. Traditionally,
  compilers store context-dependent data in a _symbol table_. The
  symbol then is the central reference to address context-dependent
- data. But for `dotc`'s requirements it turns out that symbols are
+ data. But for `scalac`'s requirements it turns out that symbols are
  both too little and too much for this task.
 
 Too little: The attributes of a symbol depend on the phase. Examples:
@@ -32,23 +32,23 @@ a trait). So a functional compiler, a `Symbol` by itself met mean
 much. Instead we are more interested in the attributes of a symbol at
 a given phase.
 
-`dotc` has a concept for "attributes of a symbol at
+`scalac` has a concept for "attributes of a symbol at
 
 Too much: If a symbol is used to refer to a definition in another
 compilation unit, we get problems for incremental recompilation. The
 unit containing the symbol might be changed and recompiled, which
 might mean that the definition referred to by the symbol is deleted or
 changed. This leads to the problem of stale symbols that refer to
-definitions that no longer exist in this form. `scalac` tried to
+definitions that no longer exist in this form. Scala 2 compiler tried to
 address this problem by _rebinding_ symbols appearing in certain cross
 module references, but it turned out to be too difficult to do this
-reliably for all kinds of references. `dotc` attacks the problem at
+reliably for all kinds of references. Scala 3 compiler attacks the problem at
 the root instead. The fundamental problem is that symbols are too
 specific to serve as a cross-module reference in a system with
 incremental compilation. They refer to a particular definition, but
 that definition may not persist unchanged after an edit.
 
-`dotc` uses instead a different approach: A cross module reference is
+`scalac` uses instead a different approach: A cross module reference is
 always type, either a `TermRef` or ` TypeRef`. A reference type contains
 a prefix type and a name. The definition the type refers to is established
 dynamically based on these fields.

@@ -25,7 +25,7 @@ type i11 <: i10
 type i19 = i10
 val i11: i5[i12] = ???
 }
-import i12._
+import i12.*
 val i20: i12 = ???
 i16 i14 {
 type i18[i3[i1, i2]] = i15[i5[i10]#i14,

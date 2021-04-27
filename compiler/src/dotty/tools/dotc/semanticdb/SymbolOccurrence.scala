@@ -5,7 +5,7 @@ import scala.annotation.internal.sharable
 
 object SymbolOccurrence {
 
-  sealed trait Role(val value: Int) extends SemanticdbEnum derives Eql {
+  sealed trait Role(val value: Int) extends SemanticdbEnum derives CanEqual {
     def isDefinition: Boolean = this == Role.DEFINITION
     def isReference: Boolean = this == Role.REFERENCE
   }
@@ -33,7 +33,7 @@ final case class SymbolOccurrence(
   symbol: String,
   range: Option[Range],
   role: SymbolOccurrence.Role
-) extends SemanticdbMessage[SymbolOccurrence] derives Eql {
+) extends SemanticdbMessage[SymbolOccurrence] derives CanEqual {
   @sharable
   private var __serializedSizeCachedValue: Int = 0
   private def __computeSerializedValue(): Int = {

@@ -1,4 +1,4 @@
-import scala.compiletime.ops.boolean._
+import scala.compiletime.ops.boolean.*
 
 object Test {
   type Xor[A <: Boolean, B <: Boolean] = (A && ![B]) || (![A] && B)

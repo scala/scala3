@@ -1,6 +1,6 @@
 package flags
 
-import scala.language/*->scalaShadowing::language.*/.experimental/*->scalaShadowing::language.experimental.*/.macros/*->scalaShadowing::language.experimental.macros.*/
+import scala.language/*->scala::language.*/.experimental/*->scala::language.experimental.*/.macros/*->scala::language.experimental.macros.*/
 
 package object p {
   p/*<-flags::p::package.*/rivate lazy val x/*<-flags::p::package.x.*/ = 1

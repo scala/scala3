@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def foo = ${fooImpl}
 
-def fooImpl(using qctx: QuoteContext) = {
+def fooImpl(using Quotes) = {
   val res = Expr.ofList(List('{"One"}))
   Expr(res.show)
 }

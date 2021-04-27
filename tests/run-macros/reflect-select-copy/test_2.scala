@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   class Box(val x: Int) {
     def >(y: Int): Boolean = x > y

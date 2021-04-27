@@ -3,7 +3,7 @@ package analyzer
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.transform.MegaPhase._
-import dotty.tools.dotc.transform.{ReifyQuotes, FirstTransform}
+import dotty.tools.dotc.transform.{PickleQuotes, FirstTransform}
 import dotty.tools.dotc.plugins._
 
 /** Unset the `defTree` property of symbols. See the doc for `SetDefTree` */

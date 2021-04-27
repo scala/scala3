@@ -1,21 +1,29 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def ret(using QuoteContext): Expr[Int => Int] = '{ (x: Int) =>
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def ret(using Quotes): Expr[Int => Int] = '{ (x: Int) =>
     ${
-      val z = run('{x + 1}) // throws a RunScopeException
+      val z = run('{x + 1}) // throws scala.quoted.runtime.impl.ScopeException =>
       Expr(z)
     }
   }
   def main(args: Array[String]): Unit = {
-    try {
-      run(ret).apply(10)
-      throw new Exception
-    } catch {
-      case ex: scala.quoted.ScopeException =>
-        // ok
+    scala.mytest.myTest()
+  }
+}
+
+package scala {
+  package mytest {
+    def myTest()(using Compiler) = {
+      try {
+        run(Test.ret).apply(10)
+        throw new Exception
+      } catch {
+        case ex: Exception if ex.getClass.getName == "scala.quoted.runtime.impl.ScopeException" =>
+          // ok
+      }
     }
   }
 }

@@ -1,10 +1,10 @@
 
-import scala.language.{ implicitConversions }
+import scala.language.implicitConversions
 import runtime.ScalaRunTime
 
 object Test {
   val p = new Pattern { }
-  import p._
+  import p.*
   implicit object IntOps extends NumericOps[Int] {
     def zero = 0
     def one = 1
@@ -108,7 +108,7 @@ trait Pattern {
 
   trait Expr[T] {
 
-    import Expr._
+    import Expr.*
 
     /** Evaluates value of the expression. */
     def eval(context: Any => Any): T

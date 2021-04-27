@@ -50,9 +50,13 @@ class GenBCode extends Phase {
     myOutput
   }
 
+  private var myPrimitives: DottyPrimitives = null
+
   def run(using Context): Unit =
-    GenBCodePipeline(
-      DottyBackendInterface(outputDir, superCallsMap)
+    if myPrimitives == null then myPrimitives = new DottyPrimitives(ctx)
+    new GenBCodePipeline(
+      DottyBackendInterface(outputDir, superCallsMap),
+      myPrimitives
     ).run(ctx.compilationUnit.tpdTree)
 
 
@@ -74,7 +78,7 @@ object GenBCode {
   val name: String = "genBCode"
 }
 
-class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BCodeSyncAndTry {
+class GenBCodePipeline(val int: DottyBackendInterface, val primitives: DottyPrimitives)(using Context) extends BCodeSyncAndTry {
   import DottyBackendInterface.symExtensions
 
   private var tree: Tree = _
@@ -230,33 +234,27 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
         for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
           val store = if (mirrorC ne null) mirrorC else plainC
           val tasty =
-            if (!ctx.settings.YemitTastyInClass.value) {
-              val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
-              val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
-              try outstream.write(binary())
-              catch case ex: ClosedByInterruptException =>
-                try
-                  outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-                catch case _: Throwable =>
-                throw ex
-              finally outstream.close()
+            val outTastyFile = getFileForClassfile(outF, store.name, ".tasty")
+            val outstream = new DataOutputStream(outTastyFile.bufferedOutput)
+            try outstream.write(binary())
+            catch case ex: ClosedByInterruptException =>
+              try
+                outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
+              catch case _: Throwable =>
+              throw ex
+            finally outstream.close()
 
-              val uuid = new TastyHeaderUnpickler(binary()).readHeader()
-              val lo = uuid.getMostSignificantBits
-              val hi = uuid.getLeastSignificantBits
+            val uuid = new TastyHeaderUnpickler(binary()).readHeader()
+            val lo = uuid.getMostSignificantBits
+            val hi = uuid.getLeastSignificantBits
 
-              // TASTY attribute is created but only the UUID bytes are stored in it.
-              // A TASTY attribute has length 16 if and only if the .tasty file exists.
-              val buffer = new TastyBuffer(16)
-              buffer.writeUncompressedLong(lo)
-              buffer.writeUncompressedLong(hi)
-              buffer.bytes
-            } else {
-              // Create an empty file to signal that a tasty section exist in the corresponding .class
-              // This is much cheaper and simpler to check than doing classfile parsing
-              getFileForClassfile(outF, store.name, ".hasTasty")
-              binary()
-            }
+            // TASTY attribute is created but only the UUID bytes are stored in it.
+            // A TASTY attribute has length 16 if and only if the .tasty file exists.
+            val buffer = new TastyBuffer(16)
+            buffer.writeUncompressedLong(lo)
+            buffer.writeUncompressedLong(hi)
+            buffer.bytes
+
           val dataAttr = createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
           store.visitAttribute(dataAttr)
         }
@@ -336,11 +334,13 @@ class GenBCodePipeline(val int: DottyBackendInterface)(using Context) extends BC
           val insn = iter.next()
           insn match {
             case indy: InvokeDynamicInsnNode
-                // No need to check the exact bsmArgs because we only generate
-                // altMetafactory indy calls for serializable lambdas.
-                if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
-              val implMethod = indy.bsmArgs(1).asInstanceOf[Handle]
-              indyLambdaBodyMethods += implMethod
+              if indy.bsm == BCodeBodyBuilder.lambdaMetaFactoryAltMetafactoryHandle =>
+                import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
+                val metafactoryFlags = indy.bsmArgs(3).asInstanceOf[Integer].toInt
+                val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
+                if isSerializable then
+                  val implMethod = indy.bsmArgs(1).asInstanceOf[Handle]
+                  indyLambdaBodyMethods += implMethod
             case _ =>
           }
         }

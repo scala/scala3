@@ -24,7 +24,7 @@ object Get2As1 {
     def get2as11X:V = tuToV()(2)  // error
   }
   class Or11Nothing extends Or11X[Nothing]
-  def get2as1:1 = new Or11Nothing().get2as11X // error
+  def get2as1:1 = new Or11Nothing().get2as11X // ok
 
   def main(a:Array[String]) = {
     println(get2as1) // prints 2

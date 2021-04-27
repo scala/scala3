@@ -58,6 +58,16 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   protected def explain: String
 
+  /** A message suffix that can be added for certain subclasses */
+  protected def msgSuffix: String = ""
+
+  /** Does this message have an explanation?
+   *  This is normally the same as `explain.nonEmpty` but can be overridden
+   *  if we need a way to return `true` without actually calling the
+   *  `explain` method.
+   */
+  def canExplain: Boolean = explain.nonEmpty
+
   private var myMsg: String | Null = null
   private var myIsNonSensical: Boolean = false
 
@@ -75,7 +85,7 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   def rawMessage = message
 
   /** The message to report. <nonsensical> tags are filtered out */
-  lazy val message: String = dropNonSensical(msg)
+  lazy val message: String = dropNonSensical(msg + msgSuffix)
 
   /** The explanation to report. <nonsensical> tags are filtered out */
   lazy val explanation: String = dropNonSensical(explain)
@@ -95,22 +105,25 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     * that was captured in the original message.
     */
   def persist: Message = new Message(errorId) {
-    val kind    = self.kind
-    val msg     = self.msg
-    val explain = self.explain
+    val kind       = self.kind
+    val msg        = self.msg
+    val explain    = self.explain
+    override val canExplain = self.canExplain
   }
 
   def append(suffix: => String): Message = mapMsg(_ ++ suffix)
 
   def mapMsg(f: String => String): Message = new Message(errorId):
-    val kind    = self.kind
-    def msg     = f(self.msg)
-    def explain = self.explain
+    val kind       = self.kind
+    def msg        = f(self.msg)
+    def explain    = self.explain
+    override def canExplain = self.canExplain
 
   def appendExplanation(suffix: => String): Message = new Message(errorId):
-    val kind    = self.kind
-    def msg     = self.msg
-    def explain = self.explain ++ suffix
+    val kind       = self.kind
+    def msg        = self.msg
+    def explain    = self.explain ++ suffix
+    override def canExplain = true
 
   override def toString = msg
 }

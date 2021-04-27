@@ -1,0 +1,8 @@
+name: Scala CLA
+on: [pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: ./project/scripts/check-cla.sh

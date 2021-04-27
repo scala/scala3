@@ -22,6 +22,7 @@ import dotty.tools.dotc.reporting.{Message, Diagnostic}
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 import dotty.tools.dotc.{CompilationUnit, Driver}
+import dotty.tools.dotc.config.CompilerCommand
 import dotty.tools.io._
 import org.jline.reader._
 
@@ -67,9 +68,14 @@ class ReplDriver(settings: Array[String],
   private def initialCtx = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive | Mode.ReadComments)
     rootCtx.setSetting(rootCtx.settings.YcookComments, true)
-    val ictx = setup(settings, rootCtx)._2
-    ictx.base.initialize()(using ictx)
-    ictx
+    setup(settings, rootCtx) match
+      case Some((files, ictx)) =>
+        shouldStart = true
+        ictx.base.initialize()(using ictx)
+        ictx
+      case None =>
+        shouldStart = false
+        rootCtx
   }
 
   /** the initial, empty state of the REPL session */
@@ -91,12 +97,21 @@ class ReplDriver(settings: Array[String],
   }
 
   private var rootCtx: Context = _
+  private var shouldStart: Boolean = _
   private var compiler: ReplCompiler = _
   private var rendering: Rendering = _
 
   // initialize the REPL session as part of the constructor so that once `run`
   // is called, we're in business
   resetToInitial()
+
+  override protected def command: CompilerCommand = ReplCommand
+
+  /** Try to run REPL if there is nothing that prevents us doing so.
+   *
+   *  Possible reason for unsuccessful run are raised flags in CLI like --help or --version
+   */
+  final def tryRunning = if shouldStart then runUntilQuit()
 
   /** Run REPL with `state` until `:quit` command found
    *
@@ -164,11 +179,10 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Candidate] = {
-    def makeCandidate(completion: Completion) = {
-      val displ = completion.label
+    def makeCandidate(label: String) = {
       new Candidate(
-        /* value    = */ displ,
-        /* displ    = */ displ, // displayed value
+        /* value    = */ label,
+        /* displ    = */ label, // displayed value
         /* group    = */ null,  // can be used to group completions together
         /* descr    = */ null,  // TODO use for documentation?
         /* suffix   = */ null,
@@ -186,7 +200,7 @@ class ReplDriver(settings: Array[String],
         given Context = state.context.fresh.setCompilationUnit(unit)
         val srcPos = SourcePosition(file, Span(cursor))
         val (_, completions) = Completion.completions(srcPos)
-        completions.map(makeCandidate)
+        completions.map(_.label).distinct.map(makeCandidate)
       }
       .getOrElse(Nil)
   }
@@ -291,9 +305,7 @@ class ReplDriver(settings: Array[String],
         info.bounds.hi.finalResultType
           .membersBasedOnFlags(required = Method, excluded = Accessor | ParamAccessor | Synthetic | Private)
           .filterNot { denot =>
-            denot.symbol.owner == defn.AnyClass ||
-            denot.symbol.owner == defn.ObjectClass ||
-            denot.symbol.isConstructor
+            defn.topClasses.contains(denot.symbol.owner) || denot.symbol.isConstructor
           }
 
       val vals =
@@ -309,7 +321,9 @@ class ReplDriver(settings: Array[String],
         defs.map(rendering.renderMethod) ++
         vals.flatMap(rendering.renderVal)
 
-      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), formattedMembers)
+      val diagnostics = if formattedMembers.isEmpty then rendering.forceModule(symbol) else formattedMembers
+
+      (state.copy(valIndex = state.valIndex - vals.count(resAndUnit)), diagnostics)
     }
     else (state, Seq.empty)
 
@@ -382,7 +396,7 @@ class ReplDriver(settings: Array[String],
         case _  =>
           compiler.typeOf(expr)(newRun(state)).fold(
             displayErrors,
-            res => out.println(SyntaxHighlighting.highlight(res)(using state.context))
+            res => out.println(res)  // result has some highlights
           )
       }
       state

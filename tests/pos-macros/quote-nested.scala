@@ -1,11 +1,11 @@
 import scala.annotation.tailrec
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
 
   inline def foo: Unit = ${ nested() }
 
-  private def nested()(using QuoteContext): Expr[Unit] = '{
+  private def nested()(using Quotes): Expr[Unit] = '{
     var i = 0
     ${
       val x: Expr[Double] = '{

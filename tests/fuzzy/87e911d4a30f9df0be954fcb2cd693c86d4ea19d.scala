@@ -7,7 +7,7 @@ trait i6 extends i3 {
 var i1: Int
 }
 class i4 {
-import i0._
+import i0.*
 val i7 = new i3 {}
 }
 object i8 {

@@ -6,7 +6,7 @@ class C {
 }
 
 class Test(val c: C) {
-  import c._
+  import c.*
   def test(f: Foo) = f match { // not exhaustive
     case f: One =>
     case f: Two =>

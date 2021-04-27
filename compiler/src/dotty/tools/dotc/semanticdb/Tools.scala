@@ -4,7 +4,7 @@ import java.nio.file._
 import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.semanticdb.Scala3.{_, given _}
+import dotty.tools.dotc.semanticdb.Scala3.{_, given}
 
 object Tools:
 
@@ -144,5 +144,5 @@ object Tools:
     sb.append(if occ.role.isReference then " -> " else " <- ").append(occ.symbol).nl
   end processOccurrence
 
-  extension (sb: StringBuilder):
+  extension (sb: StringBuilder)
     private inline def nl = sb.append(System.lineSeparator)

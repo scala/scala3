@@ -48,7 +48,7 @@ class InterceptedMethods extends MiniPhase {
 
   // TODO: add missing cases from scalac
   private def poundPoundValue(tree: Tree)(using Context) = {
-    val s = tree.tpe.widen.typeSymbol
+    val s = tree.tpe.typeSymbol
 
     def staticsCall(methodName: TermName): Tree =
       ref(defn.staticsMethodRef(methodName)).appliedTo(tree)
@@ -73,7 +73,7 @@ class InterceptedMethods extends MiniPhase {
     }
 
     if tree.fun.symbol == defn.Any_!= then
-      qual.select(defn.Any_==).appliedToArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
+      qual.select(defn.Any_==).appliedToTermArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
     else
       tree
   }

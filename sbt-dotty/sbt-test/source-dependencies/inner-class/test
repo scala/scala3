@@ -1,0 +1,13 @@
+> recordPreviousIterations
+> run
+
+# Recompile B (no meaningful change, this is just so that the dependencies on A.InnerClass are
+# recorded using the `binaryDependency` sbt callback, which will only work correctly
+# if we call it with the inner class binary name and not the top-level class name).
+$ copy-file changes/B2.scala B.scala
+> compile
+
+# Change the signature of A.Inner#foo, this requires B to be recompiled,
+# otherwise run will fail:
+$ copy-file changes/A2.scala A.scala
+> run

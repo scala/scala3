@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
   inline def foo(inline x: Int): Int = ${
@@ -9,5 +9,5 @@ object Test {
       '{ '{ 'x } } // error
     )
   }
-  def fooImpl(a: Int, b: Expr[Int], c: Expr[QuoteContext ?=> Expr[Int]], d: Expr[QuoteContext ?=> Expr[QuoteContext ?=> Expr[Int]]]): Expr[Int] = ???
+  def fooImpl(a: Int, b: Expr[Int], c: Expr[Quotes ?=> Expr[Int]], d: Expr[Quotes ?=> Expr[Quotes ?=> Expr[Int]]]): Expr[Int] = ???
 }

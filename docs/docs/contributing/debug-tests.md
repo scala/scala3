@@ -15,13 +15,13 @@ Both are usually pre-installed on macOS and linux distributions.
 First, compile the file `tests/debug/while.scala`:
 
 ```shell
-$ dotc tests/debug/while.scala
+$ scalac tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled (suppose the main class is `Test`):
 
 ```shell
-$ dotr -d Test
+$ scala -d Test
 ```
 
 Third, start JDB:
@@ -83,13 +83,13 @@ compiler/test/debug/Gen tests/debug/while.scala > robot
 First, compile the file `tests/debug/while.scala`:
 
 ```shell
-$ dotc tests/debug/while.scala
+$ scalac tests/debug/while.scala
 ```
 
 Second, run the compiled class with debugging enabled:
 
 ```shell
-$ dotr -d Test
+$ scala -d Test
 ```
 
 Finally, run the expect script:

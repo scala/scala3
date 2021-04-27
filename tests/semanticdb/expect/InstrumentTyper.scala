@@ -3,7 +3,7 @@ package example
 import scala.annotation.meta.param
 import scala.language.existentials
 import scala.language.higherKinds
-import types.Test._
+import types.Test.*
 
 class InstrumentTyper { self: AnyRef =>
   def all = List(

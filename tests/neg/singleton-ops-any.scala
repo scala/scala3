@@ -1,4 +1,4 @@
-import scala.compiletime.ops.any._
+import scala.compiletime.ops.any.*
 
 object Test {
   val t32: 1 == 1 = true

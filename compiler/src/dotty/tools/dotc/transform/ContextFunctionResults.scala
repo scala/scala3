@@ -46,7 +46,7 @@ object ContextFunctionResults:
   def contextResultCount(sym: Symbol)(using Context): Int =
     sym.getAnnotation(defn.ContextResultCountAnnot) match
       case Some(annot) =>
-        val ast.Trees.Literal(Constant(crCount: Int)) :: Nil: @unchecked = annot.arguments
+        val ast.Trees.Literal(Constant(crCount: Int)) :: Nil = annot.arguments: @unchecked
         crCount
       case none => 0
 
@@ -73,7 +73,7 @@ object ContextFunctionResults:
     def contextParamCount(tp: Type, crCount: Int): Int =
       if crCount == 0 then 0
       else
-        val defn.ContextFunctionType(params, resTpe, isErased): @unchecked = tp
+        val defn.ContextFunctionType(params, resTpe, isErased) = tp: @unchecked
         val rest = contextParamCount(resTpe, crCount - 1)
         if isErased then rest else params.length + rest
 
@@ -106,7 +106,7 @@ object ContextFunctionResults:
       def missingCR(tp: Type, crCount: Int): (Type, Int) =
         if crCount == 0 then (tp, 0)
         else
-          val defn.ContextFunctionType(formals, resTpe, isErased): @unchecked = tp
+          val defn.ContextFunctionType(formals, resTpe, isErased) = tp: @unchecked
           val result @ (rt, nparams) = missingCR(resTpe, crCount - 1)
           assert(nparams <= paramCount)
           if nparams == paramCount || isErased then result

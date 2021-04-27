@@ -1,0 +1,8 @@
+-- [E049] Reference Error: tests/neg/i9803.scala:15:10 -----------------------------------------------------------------
+15 |  println(f421()) // error
+   |          ^^^^
+   |          Reference to f421 is ambiguous,
+   |          it is both imported by name by import bugs.shadowing.x.f421
+   |          and imported by name subsequently by import bugs.shadowing.y.f421
+
+longer explanation available when compiling with `-explain`

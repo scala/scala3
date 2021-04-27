@@ -11,7 +11,7 @@ import dotty.tools.dotc.report
  * the compiler cake (Global).
  */
 final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
-  import interface.{_, given _}
+  import interface.{_, given}
   import DottyBackendInterface.symExtensions
 
   /**
@@ -26,8 +26,8 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     // always top-level. However, SI-8900 shows an example where the weak name-based implementation
     // of isDelambdafyFunction failed (for a function declared in a package named "lambda").
     classSym.isAnonymousClass || {
-      val originalOwnerLexicallyEnclosingClass = classSym.originalOwner.originalLexicallyEnclosingClass
-      originalOwnerLexicallyEnclosingClass != NoSymbol && !originalOwnerLexicallyEnclosingClass.isClass
+      val originalOwner = classSym.originalOwner
+      originalOwner != NoSymbol && !originalOwner.isClass
     }
   }
 
@@ -59,9 +59,9 @@ final class BCodeAsmCommon[I <: DottyBackendInterface](val interface: I) {
     def enclosingMethod(sym: Symbol): Option[Symbol] = {
       if (sym.isClass || sym == NoSymbol) None
       else if (sym.is(Method)) Some(sym)
-      else enclosingMethod(sym.originalOwner.originalLexicallyEnclosingClass)
+      else enclosingMethod(sym.originalOwner)
     }
-    enclosingMethod(classSym.originalOwner.originalLexicallyEnclosingClass)
+    enclosingMethod(classSym.originalOwner)
   }
 
   /**

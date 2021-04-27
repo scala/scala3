@@ -7,10 +7,10 @@ object Test extends App {
 
   implicit object IArray {
     def initialize[A](body: => Array[A]): IArray[A] = body
-    def apply[A: ClassTag](xs: A*): IArray[A] = initialize(Array(xs: _*))
+    def apply[A: ClassTag](xs: A*): IArray[A] = initialize(Array(xs*))
 
     // These should be inline but that does not work currently. Try again
-    // once inliner is moved to ReifyQuotes
+    // once inliner is moved to PickleQuotes
     extension [A](ia: IArray[A]) def length: Int = (ia: Array[A]).length
     extension [A](ia: IArray[A]) def apply (i: Int): A = (ia: Array[A])(i)
 

@@ -4,7 +4,7 @@ object Macros {
 
   inline def foo: A = ${ fooImpl }
 
-  def fooImpl(using qctx: QuoteContext): Expr[A] = {
+  def fooImpl(using Quotes): Expr[A] = {
     new B().f
     '{ new A; }
   }

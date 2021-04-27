@@ -12,7 +12,7 @@ object opassign {
   }
 
   class Ref {
-    var x: Int = _
+    var x: Int = compiletime.uninitialized
   }
   val r = new Ref
   r.x += 1

@@ -43,13 +43,13 @@ object logs {
       // This is the second way to unlift the logarithm type
       def toDouble: Double = math.exp(`this`)
       def +(that: Logarithm): Logarithm = Logarithm(math.exp(`this`) + math.exp(that))
-      def *(that: Logarithm): Logarithm = Logarithm(`this` + that)
+      def *(that: Logarithm): Logarithm = `this` + that
     }
   }
 }
 
 object Test {
-  import logs._
+  import logs.*
   val l = Logarithm(2.0)
   val d: Double = l       // error: found: Logarithm, required: Double
   val l2: Logarithm = 1.0 // error: found: Double, required: Logarithm

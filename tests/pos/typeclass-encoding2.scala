@@ -61,13 +61,13 @@ object runtime {
       (implicit ev: TypeClassCommon { type This = From }): ev.Instance { type This = From } =
     ev.inject(x)
 }
-import runtime._
+import runtime.*
 
 object semiGroups {
 
   trait SemiGroup extends TypeClass {
     val commons: SemiGroupCommon
-    import commons._
+    import commons.*
     def add(that: This): This
   }
   trait SemiGroupCommon extends TypeClassCommon {
@@ -79,7 +79,7 @@ object semiGroups {
 
   trait Monoid extends SemiGroup {
     val commons: MonoidCommon
-    import commons._
+    import commons.*
   }
   trait MonoidCommon extends SemiGroupCommon {
     type Instance <: Monoid
@@ -179,7 +179,7 @@ object ord {
 
   trait Ord extends TypeClass {
     val commons: OrdCommon
-    import commons._
+    import commons.*
     def compareTo(that: This): Int
     def < (that: This) = compareTo(that) < 0
     def > (that: This) = compareTo(that) > 0
@@ -198,7 +198,7 @@ object ord {
     val minimum: Int = Int.MinValue
     def inject($this: Int) = new Ord {
       val commons: IntOrd.this.type = IntOrd.this
-      import commons._
+      import commons.*
       def compareTo(that: this.This): Int =
         if (this < that) -1 else if (this > that) +1 else 0
     }
@@ -210,7 +210,7 @@ object ord {
     def minimum: List[T] = Nil
     def inject($this: List[T]) = new Ord {
       val commons: self.type = self
-      import commons._
+      import commons.*
       def compareTo(that: List[T]): Int = ($this, that) match {
         case (Nil, Nil) => 0
         case (Nil, _) => -1
@@ -294,13 +294,13 @@ object runtime1 {
       }): ev.Instance[A] { type This = [X] =>> From[X] } =
     ev.inject(x)
 }
-import runtime1._
+import runtime1.*
 
 object functors {
 
   trait Functor[A] extends TypeClass1 {
     val commons: FunctorCommon
-    import commons._
+    import commons.*
     def map[B](f: A => B): This[B]
   }
   trait FunctorCommon extends TypeClassCommon1 {
@@ -313,7 +313,7 @@ object functors {
 
   trait Monad[A] extends Functor[A] {
     val commons: MonadCommon
-    import commons._
+    import commons.*
     def flatMap[B](f: A => This[B]): This[B]
     def map[B](f: A => B) = this.flatMap(f.andThen(commons.pure))
   }
@@ -334,7 +334,7 @@ object functors {
     def pure[A](x: A) = x :: Nil
     def inject[A]($this: List[A]) = new Monad[A] {
       val commons: ListMonad.this.type = ListMonad
-      import commons._
+      import commons.*
       def flatMap[B](f: A => List[B]): List[B] = $this.flatMap(f)
     }
   }

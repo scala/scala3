@@ -1,5 +1,5 @@
 object Outer {
-  import Inner._
+  import Inner.*
 
   deathname
 

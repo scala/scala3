@@ -1,0 +1,9 @@
+-- Error: tests/neg/i4986a.scala:6:57 ----------------------------------------------------------------------------------
+6 |  def foo(l: Lst[Int]) = l.map[Int, List[String]](x => 1) // error
+  |                                                         ^
+  |Cannot construct a collection of type List[String] with elements of type Int based on a collection of type List[Int]..
+  |I found:
+  |
+  |    collection.BuildFrom.buildFromIterableOps[Nothing, Nothing, Nothing]
+  |
+  |But method buildFromIterableOps in trait BuildFromLowPriority2 does not match type collection.BuildFrom[List[Int], Int, List[String]].

@@ -1,7 +1,7 @@
 package colltest5
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 import annotation.unchecked.uncheckedVariance
 import annotation.tailrec
@@ -31,7 +31,7 @@ object CollectionStrawMan5 {
   /** Base trait for companion objects of collections */
   trait IterableFactory[+C[X] <: Iterable[X]] extends FromIterable[C] {
     def empty[X]: C[X] = fromIterable(View.Empty)
-    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs: _*))
+    def apply[A](xs: A*): C[A] = fromIterable(View.Elems(xs*))
   }
 
   /** Base trait for generic collections */
@@ -370,7 +370,7 @@ object CollectionStrawMan5 {
       override def knownLength = 0
     }
     case class Elems[A](xs: A*) extends View[A] {
-      def iterator = Iterator(xs: _*)
+      def iterator = Iterator(xs*)
       override def knownLength = xs.length
     }
     case class Filter[A](val underlying: Iterable[A], p: A => Boolean) extends View[A] {
@@ -437,7 +437,7 @@ object CollectionStrawMan5 {
       -1
     }
     def filter(p: A => Boolean): Iterator[A] = new Iterator[A] {
-      private var hd: A = _
+      private var hd: A = compiletime.uninitialized
       private var hdDefined: Boolean = false
 
       def hasNext: Boolean = hdDefined || {

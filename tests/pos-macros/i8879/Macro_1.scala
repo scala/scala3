@@ -2,17 +2,17 @@ case class Foo[A](a: A)
 
 object Test {
 
-  import scala.quoted._
+  import scala.quoted.*
 
-  def impl[T](t: T)(using qctx: QuoteContext, tt: Type[T]): Expr[Any] = {
+  def impl[T](t: T)(using Quotes, Type[T]): Expr[Any] = {
 
-    import qctx.tasty._
-    import util._
+    import quotes.reflect.*
+    import util.*
 
-    val foo = Type.of[Foo[String]]
-    val symbol = foo.typeSymbol.field("a")
+    val foo = TypeRepr.of[Foo[String]]
+    val symbol = foo.typeSymbol.memberField("a")
     val a = foo.select(symbol)
-    assert(a <:< defn.StringType)
+    assert(a <:< TypeRepr.of[String])
 
     '{???}
   }

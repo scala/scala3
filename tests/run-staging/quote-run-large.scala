@@ -1,9 +1,9 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {
-    def a(using QuoteContext) = '{ // '
+    def a(using Quotes) = '{ // '
      class Foo(x: Int) {
         override def toString(): String = s"Foo($x)"
         def foo1: Int = x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x + x
@@ -60,9 +60,9 @@ object Test {
       new Foo(5)
     }
 
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
 
-    withQuoteContext {
+    withQuotes {
       a.show // Force unpiclking of the expression
     }
   }

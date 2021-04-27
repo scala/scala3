@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
 
   inline def f64Pow5Split: Array[Long] = ${ f64Pow5SplitExpr }
-  private def f64Pow5SplitExpr(using QuoteContext): Expr[Array[Long]] = Expr {
+  private def f64Pow5SplitExpr(using Quotes): Expr[Array[Long]] = Expr {
     val ss = new Array[Long](652)
     var pow5 = BigInt(1)
     var i = 0

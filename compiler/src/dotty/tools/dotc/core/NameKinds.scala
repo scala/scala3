@@ -124,6 +124,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -173,6 +174,7 @@ object NameKinds {
     type ThisInfo = NumberedInfo
     case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -318,6 +320,7 @@ object NameKinds {
   val PatMatStdBinderName: UniqueNameKind    = new UniqueNameKind("x")
   val PatMatAltsName: UniqueNameKind         = new UniqueNameKind("matchAlts")
   val PatMatResultName: UniqueNameKind       = new UniqueNameKind("matchResult")
+  val PatMatGivenVarName: UniqueNameKind     = new UniqueNameKind("$given")
 
   val LocalOptInlineLocalObj: UniqueNameKind = new UniqueNameKind("ilo")
 
@@ -364,20 +367,24 @@ object NameKinds {
   val ModuleClassName: SuffixNameKind = new SuffixNameKind(OBJECTCLASS, "$", optInfoString = "ModuleClass")
   val ImplMethName: SuffixNameKind = new SuffixNameKind(IMPLMETH, "$")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
+  val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {
 
-    case class SignedInfo(sig: Signature) extends Info {
+    case class SignedInfo(sig: Signature, target: TermName) extends Info {
       assert(sig ne Signature.NotAMethod)
-      override def toString: String = s"$infoString $sig"
+      override def toString: String =
+        val targetStr = if target.isEmpty then "" else s" @$target"
+        s"$infoString $sig$targetStr"
+      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
-    def apply(qual: TermName, sig: Signature): TermName =
-      qual.derived(new SignedInfo(sig))
-    def unapply(name: DerivedName): Option[(TermName, Signature)] = name match {
-      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig))
+    def apply(qual: TermName, sig: Signature, target: TermName): TermName =
+      qual.derived(new SignedInfo(sig, target))
+    def unapply(name: DerivedName): Option[(TermName, Signature, TermName)] = name match {
+      case DerivedName(underlying, info: SignedInfo) => Some((underlying, info.sig, info.target))
       case _ => None
     }
 

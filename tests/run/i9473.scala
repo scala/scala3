@@ -1,4 +1,4 @@
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.{erasedValue, summonInline}
 
 inline def summonAll[T <: Tuple]: List[Eq[_]] = inline erasedValue[T] match {
@@ -11,7 +11,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] {
+  given Eq[Int] with {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -36,7 +36,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](using m: Mirror.Of[T]) as Eq[T] = {
+  inline given derived[T](using m: Mirror.Of[T]): Eq[T] = {
     lazy val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -52,7 +52,7 @@ enum Tree[T] derives Eq {
 
 @main
 def Test = {
-  import Tree._
+  import Tree.*
 
   val t1 = Branch(Leaf(1), Leaf(1))
   assert(summon[Eq[Tree[Int]]].eqv(t1, t1))

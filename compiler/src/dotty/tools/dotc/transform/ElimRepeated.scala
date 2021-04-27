@@ -31,7 +31,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
   override def changesMembers: Boolean = true // the phase adds vararg forwarders
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
-    elimRepeated(tp)
+    elimRepeated(tp, sym.is(JavaDefined))
 
   /** Create forwarder symbols for the methods that are annotated
    *  with `@varargs` or that override java varargs.
@@ -43,7 +43,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       val hasAnnotation = hasVarargsAnnotation(sym)
       val hasRepeatedParam = hasRepeatedParams(sym)
       if hasRepeatedParam then
-        if isJavaVarargsOverride || hasAnnotation || parentHasAnnotation(sym) then
+        val parentHasAnnotation = parentHasVarargsAnnotation(sym)
+        if isJavaVarargsOverride || hasAnnotation || parentHasAnnotation then
           // java varargs are more restrictive than scala's
           // see https://github.com/scala/bug/issues/11714
           val validJava = isValidJavaVarArgs(sym.info)
@@ -54,7 +55,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
                       |""".stripMargin,
               sym.sourcePos)
           else
-            addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation)
+            addVarArgsForwarder(sym, isJavaVarargsOverride, hasAnnotation, parentHasAnnotation)
       else if hasAnnotation then
         report.error("A method without repeated parameters cannot be annotated with @varargs", sym.sourcePos)
     end
@@ -79,7 +80,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   private def hasVarargsAnnotation(sym: Symbol)(using Context) = sym.hasAnnotation(defn.VarargsAnnot)
 
-  private def parentHasAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
+  private def parentHasVarargsAnnotation(sym: Symbol)(using Context) = sym.allOverriddenSymbols.exists(hasVarargsAnnotation)
 
   private def isVarargsMethod(sym: Symbol)(using Context) =
     hasVarargsAnnotation(sym) ||
@@ -87,15 +88,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       (sym.allOverriddenSymbols.exists(s => s.is(JavaDefined) || hasVarargsAnnotation(s)))
 
   /** Eliminate repeated parameters from method types. */
-  private def elimRepeated(tp: Type)(using Context): Type = tp.stripTypeVar match
+  private def elimRepeated(tp: Type, isJava: Boolean)(using Context): Type = tp.stripTypeVar match
     case tp @ MethodTpe(paramNames, paramTypes, resultType) =>
-      val resultType1 = elimRepeated(resultType)
+      val resultType1 = elimRepeated(resultType, isJava)
       val paramTypes1 =
         val lastIdx = paramTypes.length - 1
         if lastIdx >= 0 then
           val last = paramTypes(lastIdx)
           if last.isRepeatedParam then
-            val isJava = tp.isJavaMethod
             // We need to be careful when handling Java repeated parameters
             // of the form `Object...` or `T...` where `T` is unbounded:
             // in both cases, `Object` will have been translated to `FromJavaObject`
@@ -116,21 +116,9 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         else paramTypes
       tp.derivedLambdaType(paramNames, paramTypes1, resultType1)
     case tp: PolyType =>
-      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType))
+      tp.derivedLambdaType(tp.paramNames, tp.paramInfos, elimRepeated(tp.resultType, isJava))
     case tp =>
       tp
-
-  def transformTypeOfTree(tree: Tree)(using Context): Tree =
-    tree.withType(elimRepeated(tree.tpe))
-
-  override def transformTypeApply(tree: TypeApply)(using Context): Tree =
-    transformTypeOfTree(tree)
-
-  override def transformIdent(tree: Ident)(using Context): Tree =
-    transformTypeOfTree(tree)
-
-  override def transformSelect(tree: Select)(using Context): Tree =
-    transformTypeOfTree(tree)
 
   override def transformApply(tree: Apply)(using Context): Tree =
     val args = tree.args.mapConserve {
@@ -146,7 +134,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
           arg.expr
       case arg => arg
     }
-    transformTypeOfTree(cpy.Apply(tree)(tree.fun, args))
+    cpy.Apply(tree)(tree.fun, args)
 
   /** Convert sequence argument to Java array */
   private def seqToArray(tree: Tree)(using Context): Tree = tree match
@@ -221,15 +209,14 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .get
         .symbol.asTerm
       // Generate the method
-      val forwarderDef = polyDefDef(forwarderSym, trefs => vrefss => {
-        val init :+ (last :+ vararg) = vrefss
+      val forwarderDef = DefDef(forwarderSym, prefss => {
+        val init :+ (last :+ vararg) = prefss
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
         ref(sym.termRef)
-          .appliedToTypes(trefs)
           .appliedToArgss(init)
-          .appliedToArgs(last :+ wrapArray(vararg, elemtp))
+          .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
         })
       Thicket(tree, forwarderDef)
     else
@@ -237,7 +224,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is there a repeated parameter in some parameter list? */
   private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
-    sym.info.paramInfoss.flatten.exists(_.isRepeatedParam)
+    sym.info.paramInfoss.nestedExists(_.isRepeatedParam)
 
   /** Is this the type of a method that has a repeated parameter type as
    *  its last parameter in the last parameter list?
@@ -259,6 +246,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *
    *  @param original the original method symbol
    *  @param isBridge true if we are generating a "bridge" (synthetic override forwarder)
+   *  @param hasAnnotation true if the method is annotated with `@varargs`
+   *  @param parentHasAnnotation true if the method overrides a method that is annotated with `@varargs`
    *
    *  A forwarder is necessary because the following holds:
    *    - the varargs in `original` will change from `RepeatedParam[T]` to `Seq[T]` after this phase
@@ -266,7 +255,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
    *  The solution is to add a method that converts its argument from `Array[? <: T]` to `Seq[T]` and
    *  forwards it to the original method.
    */
-  private def addVarArgsForwarder(original: Symbol, isBridge: Boolean, hasAnnotation: Boolean)(using Context): Unit =
+  private def addVarArgsForwarder(original: Symbol, isBridge: Boolean, hasAnnotation: Boolean, parentHasAnnotation: Boolean)(using Context): Unit =
     val owner = original.owner
     if !owner.isClass then
       report.error("inner methods cannot be annotated with @varargs", original.sourcePos)
@@ -281,7 +270,10 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
     // The java-compatible forwarder symbol
     val forwarder =
       original.copy(
-        flags = if isBridge then flags | Artifact else flags,
+        flags =
+          if isBridge then flags | Artifact
+          else if hasAnnotation && !parentHasAnnotation then flags &~ Override
+          else flags,
         info = toJavaVarArgs(original.info)
       ).asTerm
 
@@ -296,7 +288,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         val src =
           if hasAnnotation then "@varargs"
           else if isBridge then "overriding a java varargs method"
-          else "@varargs (on overriden method)"
+          else "@varargs (on overridden method)"
         report.error(s"$src produces a forwarder method that conflicts with ${conflict.showDcl}", original.srcPos)
       case Nil =>
         forwarder.enteredAfter(thisPhase)

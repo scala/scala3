@@ -7,7 +7,7 @@ object SymbolInformation {
 
   val defaultInstance = SymbolInformation("", Language.UNKNOWN_LANGUAGE, SymbolInformation.Kind.UNKNOWN_KIND, 0, "")
 
-  sealed trait Kind(val value: Int) extends SemanticdbEnum derives Eql {
+  sealed trait Kind(val value: Int) extends SemanticdbEnum derives CanEqual {
     def isUnknownKind: Boolean = this == Kind.UNKNOWN_KIND
     def isLocal: Boolean = this == Kind.LOCAL
     def isField: Boolean = this == Kind.FIELD
@@ -67,7 +67,7 @@ object SymbolInformation {
     }
   }
 
-  sealed trait Property(val value: Int) extends SemanticdbEnum derives Eql {
+  sealed trait Property(val value: Int) extends SemanticdbEnum derives CanEqual {
     def isUnknownProperty: Boolean = this == Property.UNKNOWN_PROPERTY
     def isAbstract: Boolean = this == Property.ABSTRACT
     def isFinal: Boolean = this == Property.FINAL
@@ -131,7 +131,7 @@ final case class SymbolInformation(
   kind: SymbolInformation.Kind,
   properties: Int,
   displayName: String
-) extends SemanticdbMessage[SymbolInformation] derives Eql {
+) extends SemanticdbMessage[SymbolInformation] derives CanEqual {
     @sharable
     private var __serializedSizeCachedValue: Int = 0
     private def __computeSerializedValue(): Int = {

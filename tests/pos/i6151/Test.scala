@@ -1,3 +1,3 @@
-import Expect._
+import Expect.*
 @Outcome(ExpectVal)
 class SimpleTest

@@ -47,7 +47,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   import bTypes._
   import tpd._
   import coreBTypes._
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface._
 
   def ScalaATTRName: String = "Scala"
@@ -338,6 +338,14 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     /*
      * must-single-thread
      */
+    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol]) =
+      for param <- params do
+        var access = asm.Opcodes.ACC_FINAL
+        jmethod.visitParameter(param.name.mangledString, access)
+
+    /*
+     * must-single-thread
+     */
     def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]]): Unit =
       val annotationss = pannotss map (_ filter shouldEmitAnnotation)
       if (annotationss forall (_.isEmpty)) return
@@ -377,14 +385,10 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
               assert(const.value != null, const) // TODO this invariant isn't documented in `case class Constant`
               av.visit(name, const.stringValue) // `stringValue` special-cases null, but that execution path isn't exercised for a const with StringTag
             case ClazzTag => av.visit(name, typeToTypeKind(TypeErasure.erasure(const.typeValue))(bcodeStore)(innerClasesStore).toASMType)
-            case EnumTag =>
-              val edesc = innerClasesStore.typeDescriptor(const.tpe) // the class descriptor of the enumeration class.
-              val evalue = const.symbolValue.javaSimpleName // value the actual enumeration value.
-              av.visitEnum(name, edesc, evalue)
           }
         case Ident(nme.WILDCARD) =>
           // An underscore argument indicates that we want to use the default value for this parameter, so do not emit anything
-        case t: tpd.RefTree if t.symbol.denot.owner.isAllOf(JavaEnumTrait) =>
+        case t: tpd.RefTree if t.symbol.owner.linkedClass.isAllOf(JavaEnumTrait) =>
           val edesc = innerClasesStore.typeDescriptor(t.tpe) // the class descriptor of the enumeration class.
           val evalue = t.symbol.javaSimpleName // value the actual enumeration value.
           av.visitEnum(name, edesc, evalue)
@@ -454,7 +458,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
 
     private def retentionPolicyOf(annot: Annotation): Symbol =
       annot.tree.tpe.typeSymbol.getAnnotation(AnnotationRetentionAttr).
-        flatMap(_.argumentConstant(0).map(_.symbolValue)).getOrElse(AnnotationRetentionClassAttr)
+        flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(AnnotationRetentionClassAttr)
 
     private def assocsFromApply(tree: Tree): List[(Name, Tree)] = {
       tree match {
@@ -472,7 +476,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
   } // end of trait BCAnnotGen
 
   trait BCJGenSigGen {
-    import int.{_, given _}
+    import int.{_, given}
 
     def getCurrentCUnit(): CompilationUnit
 
@@ -922,7 +926,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
     val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-    val erasedMemberType = TypeErasure.erasure(memberTpe)
+    val erasedMemberType = TypeErasure.fullErasure(memberTpe)
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
     else null

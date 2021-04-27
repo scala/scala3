@@ -1,10 +1,10 @@
 trait T extends Array { // error // error
-  def t1(as: String*): Array[String] = { varargs1(as: _*) } // error
-  def t2(as: String*): Array[String] = { super.varargs1(as: _*) } // error
+  def t1(as: String*): Array[String] = { varargs1(as*) } // error
+  def t2(as: String*): Array[String] = { super.varargs1(as*) } // error
 }
 class C extends Base_1 { // error
-  def c1(as: String*): Array[String] = { varargs1(as: _*) } // error
-  def c2(as: String*): Array[String] = { super.varargs1(as: _*) } // error
+  def c1(as: String*): Array[String] = { varargs1(as*) } // error
+  def c2(as: String*): Array[String] = { super.varargs1(as*) } // error
 }
 object Test extends App {
   val t = new T {}  // error

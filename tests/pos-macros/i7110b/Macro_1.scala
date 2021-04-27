@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def m[T](sym: Symantics {type R = T}) : T = ${  mImpl[T]('{sym}) }
 
-  def mImpl[T: Type](using qctx: QuoteContext)(sym: Expr[Symantics { type R = T }]): Expr[T] =  '{
+  def mImpl[T: Type](using Quotes)(sym: Expr[Symantics { type R = T }]): Expr[T] =  '{
     $sym.Meth(42)
   }
 }

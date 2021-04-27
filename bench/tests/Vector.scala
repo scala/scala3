@@ -12,8 +12,9 @@ package immutable
 
 import scala.annotation.unchecked.uncheckedVariance
 import scala.compat.Platform
-import scala.collection.generic._
+import scala.collection.generic.*
 import scala.collection.mutable.Builder
+import compiletime.uninitialized
 
 /** Companion object to the Vector class
  */
@@ -741,13 +742,13 @@ final class VectorBuilder[A]() extends Builder[A,Vector[A]] with VectorPointer[A
 
 
 private[immutable] trait VectorPointer[T] {
-  private[immutable] var depth: Int = _
-  private[immutable] var display0: Array[AnyRef] = _
-  private[immutable] var display1: Array[AnyRef] = _
-  private[immutable] var display2: Array[AnyRef] = _
-  private[immutable] var display3: Array[AnyRef] = _
-  private[immutable] var display4: Array[AnyRef] = _
-  private[immutable] var display5: Array[AnyRef] = _
+  private[immutable] var depth: Int = uninitialized
+  private[immutable] var display0: Array[AnyRef] = uninitialized
+  private[immutable] var display1: Array[AnyRef] = uninitialized
+  private[immutable] var display2: Array[AnyRef] = uninitialized
+  private[immutable] var display3: Array[AnyRef] = uninitialized
+  private[immutable] var display4: Array[AnyRef] = uninitialized
+  private[immutable] var display5: Array[AnyRef] = uninitialized
 
   // used
   private[immutable] final def initFrom[U](that: VectorPointer[U]): Unit = initFrom(that, that.depth)

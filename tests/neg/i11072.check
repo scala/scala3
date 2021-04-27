@@ -1,0 +1,4 @@
+-- Error: tests/neg/i11072.scala:3:17 ----------------------------------------------------------------------------------
+3 |enum Foo derives Sealed { // error
+  |                 ^
+  |                 Sealed[Foo] cannot be derived since trait Sealed has no companion object

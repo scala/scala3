@@ -1,1 +1,1 @@
-import scala.collection.{ Seq => A, Seq => B } // error: Seq is renamed twice
+import scala.collection.{ Seq as A, Seq as B } // error: Seq is renamed twice

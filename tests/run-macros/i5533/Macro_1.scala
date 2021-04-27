@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
@@ -7,12 +7,12 @@ object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${assertImpl('condition)}
 
-  def assertImpl(condition: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def assertImpl(condition: Expr[Boolean])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect.*
 
-    val tree = condition.unseal
+    val tree = condition.asTerm
 
-    val expr = tree.seal.cast[Boolean]
+    val expr = tree.asExprOf[Boolean]
 
     '{println($expr)}
   }

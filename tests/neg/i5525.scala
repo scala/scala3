@@ -29,6 +29,6 @@ enum Foo11 {
   protected case C9  // ok
 }
 
-enum Foo12 {  // error: enums must contain at least one case
-  inline    case C10() // error // error // error (inline treated as ident here)
+enum Foo12 {
+  inline    case C10() // error: only access modifiers allowed
 }

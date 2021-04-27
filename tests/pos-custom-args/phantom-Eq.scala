@@ -1,5 +1,5 @@
 object PhantomEq {
-  import EqUtil._
+  import EqUtil.*
 
   "ghi" === "jkl"
   3 === 4
@@ -17,16 +17,15 @@ object EqUtil {
   type PhantomEq[-L, -R]
   type PhantomEqEq[T] = PhantomEq[T, T]
 
-  implicit class EqualsDeco[T](val x: T) extends AnyVal {
-    def ===[U] (y: U) (using erased ce: PhantomEq[T, U]) = x.equals(y)
-  }
+  extension [T](x: T)
+    def ===[U](y: U)(using erased PhantomEq[T, U]) = x.equals(y)
 
-  implicit erased def eqString: PhantomEqEq[String] = ???
-  implicit erased def eqInt: PhantomEqEq[Int]       = ???
-  implicit erased def eqDouble: PhantomEqEq[Double] = ???
+  erased given eqString: PhantomEqEq[String] = ???
+  erased given eqInt: PhantomEqEq[Int]       = ???
+  erased given eqDouble: PhantomEqEq[Double] = ???
 
-  implicit erased def eqByteNum: PhantomEq[Byte, Number] = ???
-  implicit erased def eqNumByte: PhantomEq[Number, Byte] = ???
+  erased given eqByteNum: PhantomEq[Byte, Number] = ???
+  erased given eqNumByte: PhantomEq[Number, Byte] = ???
 
-  implicit erased def eqSeq[T, U] (using erased eq: PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
+  erased given eqSeq[T, U](using erased PhantomEq[T, U]): PhantomEq[Seq[T], Seq[U]] = ???
 }

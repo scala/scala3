@@ -1,1 +1,1 @@
-class I0 { List(null: _*) }
+class I0 { List(null*) }

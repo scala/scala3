@@ -12,8 +12,8 @@ import core.Contexts._
 import Potentials._
 
 object Effects {
-  type Effects = Set[Effect]
-  val empty: Effects = Set.empty
+  type Effects = Vector[Effect]
+  val empty: Effects = Vector.empty
 
   def show(effs: Effects)(using Context): String =
     effs.map(_.show).mkString(", ")
@@ -25,13 +25,15 @@ object Effects {
     def show(using Context): String
 
     def source: Tree
+
+    def toEffs: Effects = Vector(this)
   }
 
-  /** An effect means that a value that's possibly under initialization
+  /** A promotion effect means that a value that's possibly under initialization
    *  is promoted from the initializing world to the fully-initialized world.
    *
    *  Essentially, this effect enforces that the object pointed to by
-   *  `potential` is fully initialized.
+   *  `potential` is transitively initialized.
    *
    *  This effect is trigger in several scenarios:
    *  - a potential is used as arguments to method calls or new-expressions
@@ -58,10 +60,8 @@ object Effects {
 
   // ------------------ operations on effects ------------------
 
-  extension (eff: Effect) def toEffs: Effects = Effects.empty + eff
-
   def asSeenFrom(eff: Effect, thisValue: Potential)(implicit env: Env): Effect =
-    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, effs => show(effs.asInstanceOf[Effects])) { eff match {
+    trace(eff.show + " asSeenFrom " + thisValue.show + ", current = " + currentClass.show, init, _.asInstanceOf[Effect].show) { eff match {
       case Promote(pot) =>
         val pot1 = Potentials.asSeenFrom(pot, thisValue)
         Promote(pot1)(eff.source)

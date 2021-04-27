@@ -23,7 +23,7 @@ class Drop {
 
   @Benchmark
   def tupleDrop(): Tuple = {
-    runtime.Tuple.drop(tuple, half)
+    runtime.Tuples.drop(tuple, half)
   }
 
   @Benchmark

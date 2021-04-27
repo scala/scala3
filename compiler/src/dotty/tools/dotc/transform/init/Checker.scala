@@ -9,6 +9,7 @@ import ast.tpd
 import dotty.tools.dotc.core._
 import Contexts._
 import Types._
+import Symbols._
 
 import dotty.tools.dotc.transform._
 import MegaPhase._
@@ -23,7 +24,7 @@ class Checker extends MiniPhase {
   val phaseName = "initChecker"
 
   // cache of class summary
-  private val baseEnv = Env(null)
+  private val cache = new Cache
 
   override val runsAfter = Set(Pickler.name)
 
@@ -45,14 +46,15 @@ class Checker extends MiniPhase {
       }
 
     // A concrete class may not be instantiated if the self type is not satisfied
-    if (instantiable) {
+    if (instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass) {
       implicit val state: Checking.State = Checking.State(
         visited = Set.empty,
         path = Vector.empty,
         thisClass = cls,
         fieldsInited = mutable.Set.empty,
         parentsInited = mutable.Set.empty,
-        env = baseEnv.withCtx(ctx.withOwner(cls))
+        safePromoted = mutable.Set.empty,
+        env = Env(ctx.withOwner(cls), cache)
       )
 
       Checking.checkClassBody(tree)

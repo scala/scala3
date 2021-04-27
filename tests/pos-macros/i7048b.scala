@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 trait IsExpr {
   type Underlying
@@ -6,7 +6,7 @@ trait IsExpr {
 
 val foo: IsExpr = ???
 
-def g()(using QuoteContext): Unit = {
-  val a = '[foo.Underlying]
+def g()(using Quotes): Unit = {
+  val a = Type.of[foo.Underlying]
   ()
 }

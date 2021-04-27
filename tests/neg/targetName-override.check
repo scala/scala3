@@ -1,0 +1,19 @@
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:16:35 -------------------------------------------------
+16 |  @targetName("foo1") override def foo() = 1    // error: should not have a target name
+   |                                   ^
+   |error overriding method foo in class Alpha of type (): Int;
+   |  method foo of type (): Int should not have a @targetName annotation since the overridden member hasn't one either
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:18:25 -------------------------------------------------
+18 |  @targetName("baz") def foo(x: String): String = x ++ x   // error: has a different target name annotation
+   |                         ^
+   | error overriding method foo in class Alpha of type (x: String): String;
+   |   method foo of type (x: String): String has a different target name annotation; it should be @targetName(foo1)
+-- [E164] Declaration Error: tests/neg/targetName-override.scala:20:15 -------------------------------------------------
+20 |  override def ++ (xs: Alpha[String]): Alpha[String] = this   // error: misses a targetname annotation
+   |               ^
+   |      error overriding method ++ in class Alpha of type (xs: Alpha[String]): Alpha[String];
+   |        method ++ of type (xs: Alpha[String]): Alpha[String] misses a target name annotation @targetName(append)
+-- Error: tests/neg/targetName-override.scala:14:6 ---------------------------------------------------------------------
+14 |class Beta extends Alpha[String] {  // error: needs to be abstract
+   |      ^
+   |class Beta needs to be abstract, since there is a deferred declaration of method foo in class Alpha of type (x: String): String which is not implemented in a subclass

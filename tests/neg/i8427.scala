@@ -2,6 +2,6 @@
 trait T
 
 object Test {
-  var t: T = _
+  var t: T = compiletime.uninitialized
   def main(args: Array[String]) = println("hi")
 }

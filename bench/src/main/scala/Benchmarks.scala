@@ -17,6 +17,8 @@ import scala.collection.JavaConverters._
 import scala.io.Source
 import scala.util.Using
 
+import dotty.tools.io.AbstractFile
+
 object Bench {
   val COMPILE_OPTS_FILE = "compile.txt"
 
@@ -93,11 +95,11 @@ class CompilerOptions {
 
 class Worker extends Driver {
   // override to avoid printing summary information
-  override  def doCompile(compiler: Compiler, fileNames: List[String])(implicit ctx: Context): Reporter =
-    if (fileNames.nonEmpty)
+  override  def doCompile(compiler: Compiler, files: List[AbstractFile])(implicit ctx: Context): Reporter =
+    if (files.nonEmpty)
       try {
         val run = compiler.newRun
-        run.compile(fileNames)
+        run.compile(files)
         ctx.reporter
       }
       catch {

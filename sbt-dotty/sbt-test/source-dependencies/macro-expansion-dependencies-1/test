@@ -1,7 +1,17 @@
+$ copy-file changes/MacroCompileError.scala Macro.scala
+> clean
+> compile
+
+$ copy-file changes/MacroRuntimeError.scala Macro.scala
+> clean
+> compile
+
+$ copy-file changes/Main.scala Main.scala
 $ copy-file changes/Macro.scala Macro.scala
+> clean
 > run
 
-# use an implemntation of the macro that emits a compile time error
+# use an implemntation of the macro that emits a compile-time error
 $ copy-file changes/MacroCompileError.scala Macro.scala
 -> compile
 

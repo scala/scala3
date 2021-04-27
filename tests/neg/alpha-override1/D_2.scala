@@ -1,7 +1,7 @@
-import annotation.alpha
+import annotation.targetName
 class D extends B_1 {
-  @alpha("bar") def foo(): Int = 3
+  @targetName("bar") def foo(): Int = 3
 }
 class E extends B_1 {
-  @alpha("baz") override def bar(): Int = 3 // error: cannot have an @alpha annotation since external names would be different
+  @targetName("baz") override def bar(): Int = 3 // error: cannot have an @targetName annotation since external names would be different
 }

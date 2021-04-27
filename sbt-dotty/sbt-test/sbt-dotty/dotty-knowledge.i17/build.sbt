@@ -3,7 +3,7 @@ val dottyVersion = "0.22.0-RC1"
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "dotty-simple",
+    name := "scala3-simple",
     version := "0.1.0",
 
     scalaVersion := dottyVersion,

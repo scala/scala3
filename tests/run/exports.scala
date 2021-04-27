@@ -7,7 +7,7 @@ object Test extends App {
   class Printer {
     def print() = println("printing")
     object cfg extends Config
-    given config as Config
+    given config: Config()
   }
 
   class Scanner {
@@ -18,7 +18,7 @@ object Test extends App {
 
   object Copier {
     val printer = new Printer
-    export printer.{given _, _}
+    export printer.{given, _}
     export Scanner.{scan => scanIt, _}
 
     val config2 = summon[Config]
@@ -31,7 +31,7 @@ object Test extends App {
   Copier.config2
 
   def test() = {
-    import Copier._
+    import Copier.*
     print()
     scanIt()
     val x = config2

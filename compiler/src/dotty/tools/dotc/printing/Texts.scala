@@ -168,7 +168,7 @@ object Texts {
     /** The given texts `xs`, each on a separate line */
     def lines(xs: Traversable[Text]): Vertical = Vertical(xs.toList.reverse)
 
-    extension (text: => Text):
+    extension (text: => Text)
       def provided(cond: Boolean): Text = if (cond) text else Str("")
 
   }

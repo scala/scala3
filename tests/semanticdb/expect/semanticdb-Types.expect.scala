@@ -1,7 +1,7 @@
 package types
 
-import scala.language/*->scalaShadowing::language.*/.existentials/*->scalaShadowing::language.existentials.*/
-import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
+import scala.language/*->scala::language.*/.existentials/*->scala::language.existentials.*/
+import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
 
 class ann/*<-types::ann#*/[T/*<-types::ann#[T]*/](x/*<-types::ann#x.*/: T/*->types::ann#[T]*/) extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 class ann1/*<-types::ann1#*/ extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/

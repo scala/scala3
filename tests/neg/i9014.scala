@@ -1,4 +1,4 @@
 trait Bar
 object Bar:
-  inline given as Bar = compiletime.error("Failed to expand!")
-  val tests = summon[Bar] // error
+  inline given Bar = compiletime.error("Failed to expand!")
+  val tests = summon[Bar] // error: Failed to expand!

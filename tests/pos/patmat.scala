@@ -35,10 +35,10 @@ object Test {
   }
 
   enum Option[+T] {
-    case Some(value: T)
+    case Some[T](value: T) extends Option[T]
     case None
   }
-  import Option._
+  import Option.*
 
   val x: Option[String] = Some("abc")
 

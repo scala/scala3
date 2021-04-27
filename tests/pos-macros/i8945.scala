@@ -6,7 +6,7 @@ trait Context {
 }
 
 class MacroImpl(val c: Context) {
-  import c.universe._
+  import c.universe.*
   def mono: Literal = ???
 }
 
@@ -21,7 +21,7 @@ object Macros {
   }
 
   object Macros3 {
-    def monoImpl(using quoted.QuoteContext) = '{()}
+    def monoImpl(using quoted.Quotes) = '{()}
   }
 
 }

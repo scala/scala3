@@ -1,5 +1,5 @@
 object Test {
-  import Lib._
+  import Lib.*
 
   def main(args: Array[String]): Unit = {
     foo(true)

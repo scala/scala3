@@ -9,7 +9,7 @@ trait Universe {
 
 object Test extends App {
   val u: Universe = ???
-  import u._
+  import u.*
 
   def foo(name: Name) = ???
   def foo(name: TermName) = ???

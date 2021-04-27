@@ -23,7 +23,7 @@ object Test {
 
   val f: Int => String = _.toString
 
-  import FunctorSyntax._
+  import FunctorSyntax.*
 
   f.map((s: String) => s.reverse)
 }

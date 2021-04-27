@@ -1,4 +1,4 @@
-import scala.math._
+import scala.math.*
 import collection.immutable.NumericRange
 object Test {
   val r1: scala.collection.immutable.Range.Partial[_, _] = ???

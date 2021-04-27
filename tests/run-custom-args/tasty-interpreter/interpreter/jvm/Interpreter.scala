@@ -1,16 +1,16 @@
 package scala.tasty.interpreter
 package jvm
 
+import scala.quoted.*
 import scala.tasty.interpreter.jvm.JVMReflection
-import scala.tasty.Reflection
 
-class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpreter[R](reflect0) {
-  import reflect.{_, given _}
+class Interpreter[Q <: Quotes & Singleton](using q0: Q) extends TreeInterpreter[Q] {
+  import q.reflect.*
 
   // All references are represented by themselves and values are boxed
   type AbstractAny = Any
 
-  val jvmReflection = new JVMReflection(reflect)
+  val jvmReflection = new JVMReflection(using q)
 
   def interpretNew(fn: Tree, argss: List[List[Term]]): Result = {
     if (fn.symbol.isDefinedInCurrentRun) {
@@ -20,7 +20,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
         sym.tree match
           case tree: ClassDef =>
             val parentSymbols = tree.parents.tail.map(_.asInstanceOf[TypeTree].symbol).head
-            import java.lang.reflect._
+            import java.lang.reflect.*
             val handler: InvocationHandler = new InvocationHandler() {
               def invoke(proxy: Object, method: Method, args: scala.Array[Object]): Object = {
                 if (LOG) {
@@ -29,7 +29,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                 }
 
                 // println(method)
-                val symbol = sym.methods.find(_.name == method.getName).get
+                val symbol = sym.memberMethods.find(_.name == method.getName).get
 
                 if (symbol.isDefinedInCurrentRun) {
                   val argsList = if (args == null) Nil else args.toList
@@ -37,7 +37,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
                 }
                 else {
                   assert(method.getClass == classOf[Object])
-                  method.invoke(this, args: _*)
+                  method.invoke(this, args*)
                 }
               }
             }
@@ -71,7 +71,7 @@ class Interpreter[R <: Reflection & Singleton](reflect0: R) extends TreeInterpre
           // FIXME not necesarly static
           jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)
         case _ =>
-          if (fn.symbol.flags.is(Flags.Object))
+          if (fn.symbol.flags.is(Flags.Module))
             jvmReflection.loadModule(fn.symbol.moduleClass)
           else
             jvmReflection.interpretStaticVal(fn.symbol.owner, fn.symbol)

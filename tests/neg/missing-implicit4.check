@@ -19,7 +19,7 @@
 -- Error: tests/neg/missing-implicit4.scala:20:42 ----------------------------------------------------------------------
 20 |    List(1, 2, 3).traverse(x => Option(x)) // error
    |                                          ^
-   |no implicit argument of type Zip[Option] was found for an implicit parameter of method extension_traverse in trait Traverse
+   |no implicit argument of type Zip[Option] was found for an implicit parameter of method traverse in trait Traverse
    |
    |The following import might fix the problem:
    |

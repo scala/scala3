@@ -1,4 +1,4 @@
-import scala.collection.mutable._
+import scala.collection.mutable.*
 class Node
 
 class A {

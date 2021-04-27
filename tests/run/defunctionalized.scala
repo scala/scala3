@@ -18,7 +18,7 @@ def filter(f: Filter, elems: List[Int]): List[Int] = elems match
 
 val xs = List(1, 2, 3, 4, 5)
 
-import Filter._
+import Filter.*
 
 @main def Test =
   println(filter(IsOdd      , xs))

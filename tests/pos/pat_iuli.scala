@@ -7,7 +7,7 @@ trait Ops { self: MyCodes =>
 }
 
 trait Blox { self: MyCodes =>
-  import opcodes._
+  import opcodes.*
   class Basick {
     var foo: Instru = null
 

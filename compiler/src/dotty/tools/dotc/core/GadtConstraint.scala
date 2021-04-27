@@ -125,7 +125,7 @@ final class ProperGadtConstraint private(
 
     // The replaced symbols are picked up here.
     addToConstraint(poly1, tvars)
-      .reporting(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+      .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {
@@ -158,7 +158,7 @@ final class ProperGadtConstraint private(
         case bound =>
           addBoundTransitively(symTvar.origin, bound, isUpper)
       }
-    ).reporting({
+    ).showing({
       val descr = if (isUpper) "upper" else "lower"
       val op = if (isUpper) "<:" else ">:"
       i"adding $descr bound $sym $op $bound = $result"
@@ -173,7 +173,7 @@ final class ProperGadtConstraint private(
       case null => null
       case tv =>
         fullBounds(tv.origin)
-          .ensuring(containsNoInternalTypes(_))
+          // .ensuring(containsNoInternalTypes(_))
     }
 
   override def bounds(sym: Symbol)(using Context): TypeBounds =
@@ -187,7 +187,7 @@ final class ProperGadtConstraint private(
             case tb => tb
           }
         retrieveBounds
-          //.reporting(i"gadt bounds $sym: $result", gadts)
+          //.showing(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
 
@@ -223,24 +223,27 @@ final class ProperGadtConstraint private(
   override protected def isSub(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSubType(tp1, tp2)
   override protected def isSame(tp1: Type, tp2: Type)(using Context): Boolean = TypeComparer.isSameType(tp1, tp2)
 
-   override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
-     constraint.nonParamBounds(param) match {
-       case TypeAlias(tpr: TypeParamRef) => TypeAlias(externalize(tpr))
-       case tb => tb
-     }
+  override def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
+    val externalizeMap = new TypeMap {
+      def apply(tp: Type): Type = tp match {
+        case tpr: TypeParamRef => externalize(tpr)
+        case tp => mapOver(tp)
+      }
+    }
+    externalizeMap(constraint.nonParamBounds(param)).bounds
 
-   override def fullLowerBound(param: TypeParamRef)(using Context): Type =
-     constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
-       (t, u) => t | externalize(u)
-     }
+  override def fullLowerBound(param: TypeParamRef)(using Context): Type =
+    constraint.minLower(param).foldLeft(nonParamBounds(param).lo) {
+      (t, u) => t | externalize(u)
+    }
 
-   override def fullUpperBound(param: TypeParamRef)(using Context): Type =
-     constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
-       val eu = externalize(u)
-       // Any as the upper bound means "no bound", but if F is higher-kinded,
-       // Any & F = F[_]; this is wrong for us so we need to short-circuit
-       if t.isAny then eu else t & eu
-     }
+  override def fullUpperBound(param: TypeParamRef)(using Context): Type =
+    constraint.minUpper(param).foldLeft(nonParamBounds(param).hi) { (t, u) =>
+      val eu = externalize(u)
+      // Any as the upper bound means "no bound", but if F is higher-kinded,
+      // Any & F = F[_]; this is wrong for us so we need to short-circuit
+      if t.isAny then eu else t & eu
+    }
 
   // ---- Private ----------------------------------------------------------
 

@@ -11,7 +11,12 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
   /** Hashcode is left-shifted by 1, so lowest bit is not lost
    *  when taking the index.
    */
-  final def hash(x: Key): Int = x.hashCode << 1
+  final def hash(key: Key): Int =
+    val h = key.hashCode
+    // Part of the MurmurHash3 32 bit finalizer
+    val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+    val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+    (if j==0 then 0x41081989 else j) << 1
 
   final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
 

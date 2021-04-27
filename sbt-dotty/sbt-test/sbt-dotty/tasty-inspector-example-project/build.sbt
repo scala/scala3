@@ -10,6 +10,6 @@ lazy val app = project
   .in(file("app"))
   .settings(
     scalaVersion := dottyVersion,
-    libraryDependencies += "ch.epfl.lamp" %% "dotty-tasty-inspector" % scalaVersion.value,
+    libraryDependencies += "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
   )
   .dependsOn(lib)

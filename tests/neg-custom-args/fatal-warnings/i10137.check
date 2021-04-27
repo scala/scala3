@@ -1,0 +1,10 @@
+-- Error: tests/neg-custom-args/fatal-warnings/i10137.scala:2:12 -------------------------------------------------------
+2 |  @main def main(): Unit = println("Hello, World!") // error
+  |            ^
+  |            The class `foo.main` generated from `@main` will shadow the existing class main in package scala.
+  |            The existing definition might no longer be found on recompile.
+-- Error: tests/neg-custom-args/fatal-warnings/i10137.scala:4:10 -------------------------------------------------------
+4 |@main def List(): Unit = println("List") // error
+  |          ^
+  |          The class `List` generated from `@main` will shadow the existing type List in package scala.
+  |          The existing definition might no longer be found on recompile.

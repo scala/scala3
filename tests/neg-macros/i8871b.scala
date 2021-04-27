@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 object Macro {
-  def impl[A : Type](using qctx: QuoteContext): Unit = {
-    import qctx.tasty._
-    val tpe/*: quoted.Type[? <: AnyKind]*/ = Type.of[A].seal
+  def impl[A : Type](using Quotes) = {
+    import quotes.reflect.*
+    val tpe/*: Type[? <: AnyKind]*/ = TypeRepr.of[A].asType
     '{ f[$tpe] } // error
   }
   def f[T <: AnyKind]: Unit = ()

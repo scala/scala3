@@ -5,8 +5,8 @@ def testLocalInstance =
   }
 
   object instances {
-    given zipOption as Zip[Option] = ???
-    given traverseList as Traverse[List] = ???
+    given zipOption: Zip[Option] = ???
+    given traverseList: Traverse[List] = ???
   }
 
   def ff(using xs: Zip[Option]) = ???

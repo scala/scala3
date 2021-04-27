@@ -1,6 +1,6 @@
 object foo
 object bar
 
-import foo._, bar._
+import foo._, bar.*
 
 object eq

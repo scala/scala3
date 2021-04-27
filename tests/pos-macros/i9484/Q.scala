@@ -1,6 +1,6 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Q {
   inline def f(): Any = ${ fExpr }
-  def fExpr(using QuoteContext): Expr[Any] = { new LC; Expr(1) }
+  def fExpr(using Quotes): Expr[Any] = { new LC; Expr(1) }
 }

@@ -1,2 +1,2 @@
-Select(Typed(Apply(Select(New(TypeIdent("StringContextOps")), "<init>"), List(Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(Typed(Repeated(List(Literal(Constant("Hello World ")), Literal(Constant("!"))), Inferred()), Inferred()))))), TypeIdent("StringContextOps")), "inline$sc")
-Typed(Repeated(List(Literal(Constant(1))), Inferred()), Inferred())
+Select(Typed(Apply(Select(New(TypeIdent("StringContextOps")), "<init>"), List(Apply(Select(Select(Select(Ident("_root_"), "scala"), "StringContext"), "apply"), List(Typed(Repeated(List(Literal(StringConstant("Hello World ")), Literal(StringConstant("!"))), Inferred()), Inferred()))))), TypeIdent("StringContextOps")), "inline$sc")
+Typed(Repeated(List(Literal(IntConstant(1))), Inferred()), Inferred())

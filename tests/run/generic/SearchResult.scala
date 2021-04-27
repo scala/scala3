@@ -1,6 +1,6 @@
 package generic
 
-import Shapes._
+import Shapes.*
 
 /** enum SearchResult {
  *    case Success(result: Color)
@@ -9,7 +9,7 @@ import Shapes._
  *    case Ambiguous(alt1: SearchResult, alt2: SearchResult)
  *  }
  */
-sealed trait SearchResult extends Enum
+sealed trait SearchResult extends EnumLike
 
 object SearchResult {
 

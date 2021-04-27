@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:16:20 ------------------------------------------------------
+16 |  val length: Int = "qwerty" // error
+   |                    ^^^^^^^^
+   |The conversion (Test3.implicitLength : String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:21:20 ------------------------------------------------------
+21 |  val length: Int = "qwerty" // error
+   |                    ^^^^^^^^
+   |The conversion (Test4.implicitLength : => String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:26:20 ------------------------------------------------------
+26 |  val length: Int = "qwerty" // error
+   |                    ^^^^^^^^
+   |The conversion (Test5.implicitLength : [A] => String => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:31:20 ------------------------------------------------------
+31 |  val length: Int = "qwerty" // error
+   |                    ^^^^^^^^
+   |The conversion (Test6.implicitLength : Map[String, Int]) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:35:60 ------------------------------------------------------
+35 |  implicit def a2int[A](a: A)(implicit ev: A => Int): Int = a // error
+   |                                                            ^
+   |The conversion (ev : A => Int) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.
+-- Error: tests/neg-custom-args/fatal-warnings/i9408a.scala:59:2 -------------------------------------------------------
+59 |  123.foo // error
+   |  ^^^
+   |The conversion (Test11.a2foo : [A] => A => Test11.Foo) will not be applied implicitly here in Scala 3 because only implicit methods and instances of Conversion class will continue to work as implicit views.

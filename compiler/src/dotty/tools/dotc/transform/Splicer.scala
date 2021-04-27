@@ -24,8 +24,10 @@ import dotty.tools.repl.AbstractFileClassLoader
 
 import scala.reflect.ClassTag
 
-import dotty.tools.dotc.quoted._
-import scala.quoted.QuoteContext
+import dotty.tools.dotc.quoted.{PickledQuotes, QuoteUtils}
+
+import scala.quoted.Quotes
+import scala.quoted.runtime.impl._
 
 /** Utility class to splice quoted expressions */
 object Splicer {
@@ -37,20 +39,21 @@ object Splicer {
    *
    *  See: `Staging`
    */
-  def splice(tree: Tree, pos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
+  def splice(tree: Tree, splicePos: SrcPos, spliceExpansionPos: SrcPos, classLoader: ClassLoader)(using Context): Tree = tree match {
     case Quoted(quotedTree) => quotedTree
     case _ =>
       val macroOwner = newSymbol(ctx.owner, nme.MACROkw, Macro | Synthetic, defn.AnyType, coord = tree.span)
       try
-        inContext(ctx.withOwner(macroOwner)) {
+        val sliceContext = SpliceScope.contextWithNewSpliceScope(splicePos.sourcePos).withOwner(macroOwner)
+        inContext(sliceContext) {
           val oldContextClassLoader = Thread.currentThread().getContextClassLoader
           Thread.currentThread().setContextClassLoader(classLoader)
           try {
-            val interpreter = new Interpreter(pos, classLoader)
+            val interpreter = new Interpreter(spliceExpansionPos, classLoader)
 
             // Some parts of the macro are evaluated during the unpickling performed in quotedExprToTree
-            val interpretedExpr = interpreter.interpret[QuoteContext => scala.quoted.Expr[Any]](tree)
-            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuoteContextImpl())))
+            val interpretedExpr = interpreter.interpret[Quotes => scala.quoted.Expr[Any]](tree)
+            val interpretedTree = interpretedExpr.fold(tree)(macroClosure => PickledQuotes.quotedExprToTree(macroClosure(QuotesImpl())))
 
             checkEscapedVariables(interpretedTree, macroOwner)
           } finally {
@@ -60,20 +63,20 @@ object Splicer {
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
-        case ex: scala.quoted.report.StopQuotedContext if ctx.reporter.hasErrors =>
+        case ex: scala.quoted.runtime.StopMacroExpansion if ctx.reporter.hasErrors =>
            // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
-          EmptyTree
+          ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
         case NonFatal(ex) =>
           val msg =
             s"""Failed to evaluate macro.
                |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}
                |    ${ex.getStackTrace.takeWhile(_.getClassName != "dotty.tools.dotc.transform.Splicer$").drop(1).mkString("\n    ")}
              """.stripMargin
-          report.error(msg, pos)
-          EmptyTree
+          report.error(msg, spliceExpansionPos)
+          ref(defn.Predef_undefined).withType(ErrorType(msg))
       }
   }
 
@@ -143,20 +146,14 @@ object Splicer {
         case Block(Nil, expr) => checkIfValidArgument(expr)
         case Typed(expr, _) => checkIfValidArgument(expr)
 
-        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
           // OK
 
-        case TypeApply(fn, quoted :: Nil) if fn.symbol == defn.QuotedTypeModule_apply =>
+        case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
 
         case Literal(Constant(value)) =>
           // OK
-
-        case Call(fn, args)
-            if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
-               fn.symbol.is(Module) || fn.symbol.isStatic ||
-               (fn.qualifier.symbol.is(Module) && fn.qualifier.symbol.isStatic) =>
-          args.foreach(_.foreach(checkIfValidArgument))
 
         case NamedArg(_, arg) =>
           checkIfValidArgument(arg)
@@ -164,7 +161,7 @@ object Splicer {
         case SeqLiteral(elems, _) =>
           elems.foreach(checkIfValidArgument)
 
-        case tree: Ident if tree.symbol.is(Inline) || summon[Env].contains(tree.symbol) =>
+        case tree: Ident if summon[Env].contains(tree.symbol) =>
           // OK
 
         case _ =>
@@ -179,7 +176,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, Nil, (ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, ValDefs(ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
@@ -188,6 +185,9 @@ object Splicer {
 
         case Typed(expr, _) =>
           checkIfValidStaticCall(expr)
+
+        case Apply(Select(Apply(fn, quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
+          // OK, canceled and warning emitted
 
         case Call(fn, args)
             if (fn.symbol.isConstructor && fn.symbol.owner.owner.is(Package)) ||
@@ -226,7 +226,7 @@ object Splicer {
       }
 
     def interpretTree(tree: Tree)(implicit env: Env): Object = tree match {
-      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.InternalQuoted_exprQuote =>
+      case Apply(Select(Apply(TypeApply(fn, _), quoted :: Nil), nme.apply), _) if fn.symbol == defn.QuotedRuntime_exprQuote =>
         val quoted1 = quoted match {
           case quoted: Ident if quoted.symbol.isAllOf(InlineByNameProxy) =>
             // inline proxy for by-name parameter
@@ -236,7 +236,7 @@ object Splicer {
         }
         interpretQuote(quoted1)
 
-      case Apply(Select(TypeApply(fn, quoted :: Nil), _), _) if fn.symbol == defn.QuotedTypeModule_apply =>
+      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
         interpretTypeQuote(quoted)
 
       case Literal(Constant(value)) =>
@@ -250,7 +250,7 @@ object Splicer {
           interpretModuleAccess(fn.symbol)
         else if (fn.symbol.is(Method) && fn.symbol.isStatic) {
           val staticMethodCall = interpretedStaticMethodCall(fn.symbol.owner, fn.symbol)
-          staticMethodCall(args.flatten.map(interpretTree))
+          staticMethodCall(interpretArgs(args, fn.symbol.info))
         }
         else if fn.symbol.isStatic then
           assert(args.isEmpty)
@@ -260,7 +260,7 @@ object Splicer {
             interpretModuleAccess(fn.qualifier.symbol)
           else {
             val staticMethodCall = interpretedStaticMethodCall(fn.qualifier.symbol.moduleClass, fn.symbol)
-            staticMethodCall(args.flatten.map(interpretTree))
+            staticMethodCall(interpretArgs(args, fn.symbol.info))
           }
         else if (env.contains(fn.symbol))
           env(fn.symbol)
@@ -269,7 +269,7 @@ object Splicer {
         else
           unexpectedTree(tree)
 
-      case closureDef((ddef @ DefDef(_, _, (arg :: Nil) :: Nil, _, _))) =>
+      case closureDef((ddef @ DefDef(_, ValDefs(arg :: Nil) :: Nil, _, _))) =>
         (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
       // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -289,6 +289,32 @@ object Splicer {
         unexpectedTree(tree)
     }
 
+    private def interpretArgs(argss: List[List[Tree]], fnType: Type)(using Env): List[Object] = {
+      def interpretArgsGroup(args: List[Tree], argTypes: List[Type]): List[Object] =
+        assert(args.size == argTypes.size)
+        val view =
+          for (arg, info) <- args.lazyZip(argTypes) yield
+            info match
+              case _: ExprType => () => interpretTree(arg) // by-name argument
+              case _ => interpretTree(arg) // by-value argument
+        view.toList
+
+      fnType.dealias match
+        case fnType: MethodType if fnType.isErasedMethod => interpretArgs(argss, fnType.resType)
+        case fnType: MethodType =>
+          val argTypes = fnType.paramInfos
+          assert(argss.head.size == argTypes.size)
+          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
+          val argTypes :+ resType = fnType.args
+          interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
+        case fnType: PolyType => interpretArgs(argss, fnType.resType)
+        case fnType: ExprType => interpretArgs(argss, fnType.resType)
+        case _ =>
+          assert(argss.isEmpty)
+          Nil
+    }
+
     private def interpretBlock(stats: List[Tree], expr: Tree)(implicit env: Env) = {
       var unexpected: Option[Object] = None
       val newEnv = stats.foldLeft(env)((accEnv, stat) => stat match {
@@ -303,10 +329,10 @@ object Splicer {
     }
 
     private def interpretQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Expr(Inlined(EmptyTree, Nil, PickledQuotes.healOwner(tree)).withSpan(tree.span), QuoteContextImpl.scopeId)
+      new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(tree, ctx.owner)).withSpan(tree.span), SpliceScope.getCurrent)
 
     private def interpretTypeQuote(tree: Tree)(implicit env: Env): Object =
-      new scala.internal.quoted.Type(PickledQuotes.healOwner(tree), QuoteContextImpl.scopeId)
+      new TypeImpl(QuoteUtils.changeOwnerOfTree(tree, ctx.owner), SpliceScope.getCurrent)
 
     private def interpretLiteral(value: Any)(implicit env: Env): Object =
       value.asInstanceOf[Object]
@@ -397,7 +423,7 @@ object Splicer {
           throw new StopInterpretation(sw.toString, pos)
         case ex: InvocationTargetException =>
           ex.getTargetException match {
-            case ex: scala.quoted.report.StopQuotedContext =>
+            case ex: scala.quoted.runtime.StopMacroExpansion =>
               throw ex
             case MissingClassDefinedInCurrentRun(sym) if ctx.compilationUnit.isSuspendable =>
               if (ctx.settings.XprintSuspension.value)

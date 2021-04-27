@@ -1,4 +1,0 @@
--- [E105] Syntax Error: tests/neg/i7359-d.scala:3:6 --------------------------------------------------------------------
-3 |  def wait(a: Long): Unit // error
-  |      ^
-  |      Traits cannot redefine final method wait from class AnyRef.

@@ -31,12 +31,14 @@ object Printers {
   val init = noPrinter
   val inlining = noPrinter
   val interactiv = noPrinter
+  val matchTypes = noPrinter
   val nullables = noPrinter
   val overload = noPrinter
   val patmatch = noPrinter
   val pickling = noPrinter
   val quotePickling = noPrinter
   val plugins = noPrinter
+  val refcheck = noPrinter
   val simplify = noPrinter
   val staging = noPrinter
   val subtyping = noPrinter

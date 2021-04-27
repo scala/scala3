@@ -6,7 +6,7 @@ object Test {
   foo((new Foo[Int]: Foo[_]))
 }
 
-import java.nio.file._
+import java.nio.file.*
 import java.util.stream.Collectors
 
 object Foo {

@@ -1,0 +1,61 @@
+@font-face {
+  font-family: 'dotty-icons';
+  src:
+    url('../fonts/dotty-icons.woff?kefi7x') format('woff'),
+    url('../fonts/dotty-icons.ttf?kefi7x') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'dotty-icons' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-git:before {
+  content: "\e908";
+}
+.icon-clear:before {
+  content: "\e900";
+}
+.icon-content_copy:before {
+  content: "\e90b";
+}
+.icon-create:before {
+  content: "\e907";
+}
+.icon-link:before {
+  content: "\e901";
+}
+.icon-vertical_align_top:before {
+  content: "\e902";
+}
+.icon-keyboard_arrow_down:before {
+  content: "\e903";
+}
+.icon-keyboard_arrow_right:before {
+  content: "\e904";
+}
+.icon-keyboard_arrow_up:before {
+  content: "\e905";
+}
+.icon-menu:before {
+  content: "\e90a";
+}
+.icon-check_circle:before {
+  content: "\e909";
+}
+.icon-search:before {
+  content: "\e906";
+}

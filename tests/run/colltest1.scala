@@ -1,7 +1,7 @@
 /*
  * filter: inliner warnings; re-run with
  */
-import scala.collection._
+import scala.collection.*
 import scala.language.postfixOps
 
 object Test extends App {

@@ -1,7 +1,7 @@
-import Function._
+import Function.*
 
 object Test extends App {
-  var xyz: (Int, String, Boolean) = _
+  var xyz: (Int, String, Boolean) = compiletime.uninitialized
   xyz = (1, "abc", true)
   Console.println(xyz)
   xyz match {

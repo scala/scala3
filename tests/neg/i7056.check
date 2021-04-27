@@ -1,0 +1,7 @@
+-- [E008] Not Found Error: tests/neg/i7056.scala:19:10 -----------------------------------------------------------------
+19 |val z = x.idnt1  // error
+   |        ^^^^^^^
+   |        value idnt1 is not a member of B.
+   |        An extension method was tried, but could not be fully constructed:
+   |
+   |            given_T1_T[T](given_PartialId_B).idnt1()

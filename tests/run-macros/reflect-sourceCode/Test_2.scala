@@ -1,15 +1,15 @@
-import api._
+import api.*
 
 object Test {
   def f(implicit x: Int): Int = x * x
   def main(args: Array[String]): Unit = {
     implicit val x: Int = 10
-    assert(args(0).reflect == "args(0)")
-    assert(args( 0 ).reflect == "args( 0 )")
-    assert(args( 0 /* ignore */).reflect == "args( 0 /* ignore */)")
-    assert(f.reflect == "f")
-    assert((f).reflect == "f")
-    assert( { f }.reflect == "{ f }")
-    assert( { f; f }.reflect == "{ f; f }")
+    println(args(0).reflect)
+    println(args( 0 ).reflect)
+    println(args( 0 /* ignore */).reflect)
+    println(f.reflect)
+    println((f).reflect)
+    println( { f }.reflect)
+    println( { f; f }.reflect)
   }
 }

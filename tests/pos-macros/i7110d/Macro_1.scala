@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def m(sym: Symantics) : Int = ${  mImpl('sym) }
 
-  def mImpl(using qctx: QuoteContext)(sym: Expr[Symantics]): Expr[Int] = '{
+  def mImpl(using Quotes)(sym: Expr[Symantics]): Expr[Int] = '{
     $sym.Meth(42)
   }
 }

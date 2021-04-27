@@ -32,76 +32,67 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
             if etag.tpe.isError then EmptyTree else etag.select(nme.wrap)
-          case tp if hasStableErasure(tp) && !defn.isBottomClass(tp.typeSymbol) =>
+          case tp if hasStableErasure(tp) && !defn.isBottomClassAfterErasure(tp.typeSymbol) =>
             val sym = tp.typeSymbol
             val classTag = ref(defn.ClassTagModule)
             val tag =
               if defn.SpecialClassTagClasses.contains(sym) then
                 classTag.select(sym.name.toTermName)
               else
-                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(erasure(tp)))
+                val clsOfType = erasure(tp) match
+                  case JavaArrayType(elemType) => defn.ArrayOf(elemType)
+                  case etp => etp
+                classTag.select(nme.apply).appliedToType(tp).appliedTo(clsOf(clsOfType))
             tag.withSpan(span)
           case tp => EmptyTree
       case _ => EmptyTree
   end synthesizedClassTag
 
-  val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
-    formal match
-      case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
-        def functionTypeEqual(baseFun: Type, actualArgs: List[Type],
-            actualRet: Type, expected: Type) =
-          expected =:= defn.FunctionOf(actualArgs, actualRet,
-            defn.isContextFunctionType(baseFun), defn.isErasedFunctionType(baseFun))
-        val arity: Int =
-          if defn.isErasedFunctionType(fun) || defn.isErasedFunctionType(fun) then -1 // TODO support?
-          else if defn.isFunctionType(fun) then
-            // TupledFunction[(...) => R, ?]
-            fun.dropDependentRefinement.dealias.argInfos match
-              case funArgs :+ funRet
-              if functionTypeEqual(fun, defn.tupleType(funArgs) :: Nil, funRet, tupled) =>
-                // TupledFunction[(...funArgs...) => funRet, ?]
-                funArgs.size
-              case _ => -1
-          else if defn.isFunctionType(tupled) then
-            // TupledFunction[?, (...) => R]
-            tupled.dropDependentRefinement.dealias.argInfos match
-              case tupledArgs :: funRet :: Nil =>
-                defn.tupleTypes(tupledArgs.dealias) match
-                  case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
-                    // TupledFunction[?, ((...funArgs...)) => funRet]
-                    funArgs.size
-                  case _ => -1
-              case _ => -1
-          else
-            // TupledFunction[?, ?]
-            -1
-        if arity == -1 then
+  val synthesizedTypeTest: SpecialHandler =
+    (formal, span) => formal.argInfos match {
+      case arg1 :: arg2 :: Nil if !defn.isBottomClass(arg2.typeSymbol) =>
+        val tp1 = fullyDefinedType(arg1, "TypeTest argument", span)
+        val tp2 = fullyDefinedType(arg2, "TypeTest argument", span)
+        val sym2 = tp2.typeSymbol
+        if tp1 <:< tp2 then
+          // optimization when we know the typetest will always succeed
+          ref(defn.TypeTestModule_identity).appliedToType(tp2).withSpan(span)
+        else if sym2 == defn.AnyValClass || sym2 == defn.AnyRefAlias || sym2 == defn.ObjectClass then
           EmptyTree
-        else if arity <= Definitions.MaxImplementedFunctionArity then
-          ref(defn.InternalTupleFunctionModule)
-            .select(s"tupledFunction$arity".toTermName)
-            .appliedToTypes(funArgs)
         else
-          ref(defn.InternalTupleFunctionModule)
-            .select("tupledFunctionXXL".toTermName)
-            .appliedToTypes(funArgs)
+          // Generate SAM: (s: <tp1>) => if s.isInstanceOf[<tp2>] then Some(s.asInstanceOf[s.type & <tp2>]) else None
+          def body(args: List[Tree]): Tree = {
+            val arg :: Nil = args
+            val t = arg.tpe & tp2
+            If(
+              arg.isInstance(tp2),
+              ref(defn.SomeClass.companionModule.termRef).select(nme.apply)
+                .appliedToType(t)
+                .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),
+              ref(defn.NoneModule))
+          }
+          val tpe = MethodType(List(nme.s))(_ => List(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
+          val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, tpe, coord = span)
+          val typeTestType = defn.TypeTestClass.typeRef.appliedTo(List(tp1, tp2))
+          Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span)
       case _ =>
         EmptyTree
-  end synthesizedTupleFunction
+    }
+  end synthesizedTypeTest
 
-  /** If `formal` is of the form Eql[T, U], try to synthesize an
-    *  `Eql.eqlAny[T, U]` as solution.
+  /** If `formal` is of the form CanEqual[T, U], try to synthesize an
+    *  `CanEqual.canEqualAny[T, U]` as solution.
     */
-  val synthesizedEql: SpecialHandler = (formal, span) =>
+  val synthesizedCanEqual: SpecialHandler = (formal, span) =>
 
-    /** Is there an `Eql[T, T]` instance, assuming -strictEquality? */
+    /** Is there an `CanEqual[T, T]` instance, assuming -strictEquality? */
     def hasEq(tp: Type)(using Context): Boolean =
-      val inst = typer.inferImplicitArg(defn.EqlClass.typeRef.appliedTo(tp, tp), span)
+      val inst = typer.inferImplicitArg(defn.CanEqualClass.typeRef.appliedTo(tp, tp), span)
       !inst.isEmpty && !inst.tpe.isError
 
-    /** Can we assume the eqlAny instance for `tp1`, `tp2`?
+    /** Can we assume the canEqualAny instance for `tp1`, `tp2`?
       *  This is the case if assumedCanEqual(tp1, tp2), or
-      *  one of `tp1`, `tp2` has a reflexive `Eql` instance.
+      *  one of `tp1`, `tp2` has a reflexive `CanEqual` instance.
       */
     def validEqAnyArgs(tp1: Type, tp2: Type)(using Context) =
       typer.assumedCanEqual(tp1, tp2)
@@ -109,7 +100,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             !hasEq(tp1) && !hasEq(tp2)
           }
 
-    /** Is an `Eql[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
+    /** Is an `CanEqual[cls1, cls2]` instance assumed for predefined classes `cls1`, cls2`? */
     def canComparePredefinedClasses(cls1: ClassSymbol, cls2: ClassSymbol): Boolean =
 
       def cmpWithBoxed(cls1: ClassSymbol, cls2: ClassSymbol) =
@@ -123,10 +114,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           cmpWithBoxed(cls1, cls2)
       else if cls2.isPrimitiveValueClass then
         cmpWithBoxed(cls2, cls1)
-      else if ctx.explicitNulls then
-        // If explicit nulls is enabled, we want to disallow comparison between Object and Null.
-        // If a nullable value has a non-nullable type, we can still cast it to nullable type
-        // then compare.
+      else if ctx.mode.is(Mode.SafeNulls) then
+        // If explicit nulls is enabled, and unsafeNulls is not enabled,
+        // we want to disallow comparison between Object and Null.
+        // If we have to check whether a variable with a non-nullable type has null value
+        // (for example, a NotNull java method returns null for some reasons),
+        // we can still cast it to a nullable type then compare its value.
         //
         // Example:
         // val x: String = null.asInstanceOf[String]
@@ -141,8 +134,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         false
     end canComparePredefinedClasses
 
-    /** Some simulated `Eql` instances for predefined types. It's more efficient
-      *  to do this directly instead of setting up a lot of `Eql` instances to
+    /** Some simulated `CanEqual` instances for predefined types. It's more efficient
+      *  to do this directly instead of setting up a lot of `CanEqual` instances to
       *  interpret.
       */
     def canComparePredefined(tp1: Type, tp2: Type) =
@@ -155,10 +148,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", span))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
-        then ref(defn.Eql_eqlAny).appliedToTypes(args).withSpan(span)
+        then ref(defn.CanEqual_canEqualAny).appliedToTypes(args).withSpan(span)
         else EmptyTree
       case _ => EmptyTree
-  end synthesizedEql
+  end synthesizedCanEqual
 
   /** Creates a tree that will produce a ValueOf instance for the requested type.
    * An EmptyTree is returned if materialization fails.
@@ -187,6 +180,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
   private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(using Context) =
+    if ctx.isAfterTyper then ctx.compilationUnit.needsMirrorSupport = true
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
     val newImpl = untpd.Template(
       constr = untpd.emptyConstructor,
@@ -278,8 +272,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   end productMirror
 
   private def sumMirror(mirroredType: Type, formal: Type, span: Span)(using Context): Tree =
-    if mirroredType.classSymbol.isGenericSum then
-      val cls = mirroredType.classSymbol
+    val cls = mirroredType.classSymbol
+    val useCompanion = cls.useCompanionAsMirror
+
+    if cls.isGenericSum(if useCompanion then cls.linkedClass else ctx.owner) then
       val elemLabels = cls.children.map(c => ConstantType(Constant(c.name.toString)))
 
       def solve(sym: Symbol): Type = sym match
@@ -330,8 +326,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
           .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
       val mirrorRef =
-        if cls.linkedClass.exists && !cls.is(Scala2x)
-        then companionPath(mirroredType, span)
+        if useCompanion then companionPath(mirroredType, span)
         else anonymousMirror(monoType, ExtendsSumMirror, span)
       mirrorRef.cast(mirrorType)
     else EmptyTree
@@ -374,8 +369,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val specialHandlers = List(
     defn.ClassTagClass        -> synthesizedClassTag,
-    defn.EqlClass             -> synthesizedEql,
-    defn.TupledFunctionClass  -> synthesizedTupleFunction,
+    defn.TypeTestClass        -> synthesizedTypeTest,
+    defn.CanEqualClass        -> synthesizedCanEqual,
     defn.ValueOfClass         -> synthesizedValueOf,
     defn.Mirror_ProductClass  -> synthesizedProductMirror,
     defn.Mirror_SumClass      -> synthesizedSumMirror,

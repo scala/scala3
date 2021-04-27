@@ -89,7 +89,7 @@
  *
  *   - lazy vals of primitive types are boxed
  */
-import sun.misc.Unsafe._
+import sun.misc.Unsafe.*
 
 class C {
   def init(name: String) = {
@@ -97,7 +97,7 @@ class C {
     println(s"initialize $name"); "result"
   }
 
-  @volatile private[this] var _x: AnyRef = _
+  @volatile private[this] var _x: AnyRef = compiletime.uninitialized
 
   // Expansion of:  lazy val x: String = init("x")
 
@@ -201,7 +201,7 @@ object Test {
     val rand = java.util.Random()
     val c = new C()
     val readers =
-      for i <- 0 until 1000 yield
+      for i <- 0 until 500 yield
         new Thread {
           override def run() = {
             Thread.sleep(rand.nextInt(50))

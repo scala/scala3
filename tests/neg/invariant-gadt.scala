@@ -1,6 +1,10 @@
 object `invariant-gadt` {
   case class Invariant[T](value: T)
 
+  def soundInPrinciple[T](i: Invariant[T]) : Int = i match {
+    case _: Invariant[Int] => i.value
+  }
+
   def unsound0[T](t: T): T = Invariant(t) match {
     case Invariant(_: Int) =>
       (0: Any) // error

@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
 
   inline def myMacro(): Unit = ${ aMacroImplementation }
 
-  def aMacroImplementation(using QuoteContext): Expr[Unit] = '{ println("Hello") }
+  def aMacroImplementation(using Quotes): Expr[Unit] = '{ println("Hello") }
 
 }

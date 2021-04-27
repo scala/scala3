@@ -10,6 +10,7 @@ import Flags._
 import config.Config
 import config.Printers.typr
 import reporting.trace
+import StdNames.tpnme
 
 /** Methods for adding constraints and solving them.
  *
@@ -159,7 +160,7 @@ trait ConstraintHandling {
     val bound = adjust(rawBound)
     bound.exists
     && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
-        .reporting(i"added $description = $result$location", constr)
+        .showing(i"added $description = $result$location", constr)
   end addBoundTransitively
 
   protected def addLess(p1: TypeParamRef, p2: TypeParamRef)(using Context): Boolean = {
@@ -243,61 +244,150 @@ trait ConstraintHandling {
    *  @return the instantiating type
    *  @pre `param` is in the constraint's domain.
    */
-  final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type = {
-    val replaceWildcards = new TypeMap {
+  final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
+
+    /** Substitute wildcards with fresh TypeParamRefs, to be compared with
+     *  other bound, so that they can be instantiated.
+     */
+    object substWildcards extends TypeMap:
       override def stopAtStatic = true
+
+      var trackedPolis: List[PolyType] = Nil
+      def apply(tp: Type) = tp match
+        case tp: WildcardType =>
+          val poly = PolyType(tpnme.EMPTY :: Nil)(pt => tp.bounds :: Nil, pt => defn.AnyType)
+          trackedPolis = poly :: trackedPolis
+          poly.paramRefs.head
+        case _ =>
+          mapOver(tp)
+    end substWildcards
+
+    /** Replace TypeParamRefs substituted for wildcards by `substWildCards`
+     *  and any remaining wildcards by a safe approximation
+     */
+    val replaceWildcards = new TypeMap:
+      override def stopAtStatic = true
+
+      /** Try to instantiate a wildcard or TypeParamRef representing a wildcard
+       *  to a type that is known to conform to it.
+       *  This means:
+       *  If fromBelow is true, we minimize the type overall
+       *  Hence, if variance < 0, pick the maximal safe type: bounds.lo
+       *  (i.e. the whole bounds range is over the type).
+       *  If variance > 0, pick the minimal safe type: bounds.hi
+       *  (i.e. the whole bounds range is under the type).
+       *  If variance == 0, pick bounds.lo anyway (this is arbitrary but in line with
+       *  the principle that we pick the smaller type when in doubt).
+       *  If fromBelow is false, we maximize the type overall and reverse the bounds
+       *  If variance != 0. For variance == 0, we still minimize.
+       *  In summary we pick the bound given by this table:
+       *
+       *  variance    | -1  0   1
+       *  ------------------------
+       *  from below  | lo  lo  hi
+       *  from above  | hi  lo  lo
+       */
+      def pickOneBound(bounds: TypeBounds) =
+        if variance == 0 || fromBelow == (variance < 0) then bounds.lo
+        else bounds.hi
+
       def apply(tp: Type) = mapOver {
-        tp match {
+        tp match
           case tp: WildcardType =>
-            val bounds = tp.optBounds.orElse(TypeBounds.empty).bounds
-            // Try to instantiate the wildcard to a type that is known to conform to it.
-            // This means:
-            //  If fromBelow is true, we minimize the type overall
-            //  Hence, if variance < 0, pick the maximal safe type: bounds.lo
-            //           (i.e. the whole bounds range is over the type)
-            //         if variance > 0, pick the minimal safe type: bounds.hi
-            //           (i.e. the whole bounds range is under the type)
-            //         if variance == 0, pick bounds.lo anyway (this is arbitrary but in line with
-            //           the principle that we pick the smaller type when in doubt).
-            //  If fromBelow is false, we maximize the type overall and reverse the bounds
-            //  if variance != 0. For variance == 0, we still minimize.
-            //  In summary we pick the bound given by this table:
-            //
-            //  variance    | -1  0   1
-            //  ------------------------
-            //  from below  | lo  lo  hi
-            //  from above  | hi  lo  lo
-            //
-            if (variance == 0 || fromBelow == (variance < 0)) bounds.lo else bounds.hi
+            pickOneBound(tp.bounds)
+          case tp: TypeParamRef if substWildcards.trackedPolis.contains(tp.binder) =>
+            pickOneBound(fullBounds(tp))
           case _ => tp
-        }
       }
-    }
-    constraint.entry(param) match {
+    end replaceWildcards
+
+    constraint.entry(param) match
       case entry: TypeBounds =>
         val useLowerBound = fromBelow || param.occursIn(entry.hi)
-        val bound = if (useLowerBound) fullLowerBound(param) else fullUpperBound(param)
-        val inst = replaceWildcards(bound)
+        val rawBound = if useLowerBound then fullLowerBound(param) else fullUpperBound(param)
+        val bound = substWildcards(rawBound)
+        val inst =
+          if bound eq rawBound then bound
+          else
+            // Get rid of wildcards by mapping them to fresh TypeParamRefs
+            // with constraints derived from comparing both bounds, and then
+            // instantiating. See pos/i10161.scala for a test where this matters.
+            val saved = constraint
+            try
+              for poly <- substWildcards.trackedPolis do addToConstraint(poly, Nil)
+              if useLowerBound then bound <:< fullUpperBound(param)
+              else fullLowerBound(param) <:< bound
+              replaceWildcards(bound)
+            finally constraint = saved
         typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
         inst
       case inst =>
         assert(inst.exists, i"param = $param\nconstraint = $constraint")
         inst
-    }
-  }
+  end approximation
+
+  /** If `tp` is an intersection such that some operands are transparent trait instances
+   *  and others are not, replace as many transparent trait instances as possible with Any
+   *  as long as the result is still a subtype of `bound`. But fall back to the
+   *  original type if the resulting widened type is a supertype of all dropped
+   *  types (since in this case the type was not a true intersection of transparent traits
+   *  and other types to start with).
+   */
+  def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
+    var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
+    var dropped: List[Type] = List() // the types dropped so far, last one on top
+
+    def dropOneTransparentTrait(tp: Type): Type =
+      val tpd = tp.dealias
+      if tpd.typeSymbol.isTransparentTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
+        dropped = tpd :: dropped
+        defn.AnyType
+      else tpd match
+        case AndType(tp1, tp2) =>
+          val tp1w = dropOneTransparentTrait(tp1)
+          if tp1w ne tp1 then tp1w & tp2
+          else
+            val tp2w = dropOneTransparentTrait(tp2)
+            if tp2w ne tp2 then tp1 & tp2w
+            else tpd
+        case _ =>
+          tp
+
+    def recur(tp: Type): Type =
+      val tpw = dropOneTransparentTrait(tp)
+      if tpw eq tp then tp
+      else if tpw <:< bound then recur(tpw)
+      else
+        kept += dropped.head
+        dropped = dropped.tail
+        recur(tp)
+
+    val tpw = recur(tp)
+    if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
+  end dropTransparentTraits
+
+  /** If `tp` is an applied match type alias which is also an unreducible application
+   *  of a higher-kinded type to a wildcard argument, widen to the match type's bound,
+   *  in order to avoid an unreducible application of higher-kinded type ... in inferred type"
+   *  error in PostTyper. Fixes #11246.
+   */
+  def widenIrreducible(tp: Type)(using Context): Type = tp match
+    case tp @ AppliedType(tycon, _) if tycon.isLambdaSub && tp.hasWildcardArg =>
+      tp.superType match
+        case MatchType(bound, _, _) => bound
+        case _ => tp
+    case _ =>
+      tp
 
   /** Widen inferred type `inst` with upper `bound`, according to the following rules:
    *   1. If `inst` is a singleton type, or a union containing some singleton types,
-   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`
+   *      widen (all) the singleton type(s), provided the result is a subtype of `bound`.
    *      (i.e. `inst.widenSingletons <:< bound` succeeds with satisfiable constraint)
    *   2. If `inst` is a union type, approximate the union type from above by an intersection
    *      of all common base types, provided the result is a subtype of `bound`.
-   *   3. If `inst` is an intersection such that some operands are super trait instances
-   *      and others are not, replace as many super trait instances as possible with Any
-   *      as long as the result is still a subtype of `bound`. But fall back to the
-   *      original type if the resulting widened type is a supertype of all dropped
-   *      types (since in this case the type was not a true intersection of super traits
-   *      and other types to start with).
+   *   3. Widen some irreducible applications of higher-kinded types to wildcard arguments
+   *      (see @widenIrreducible).
+   *   4. Drop transparent traits from intersections (see @dropTransparentTraits).
    *
    *  Don't do these widenings if `bound` is a subtype of `scala.Singleton`.
    *  Also, if the result of these widenings is a TypeRef to a module class,
@@ -308,40 +398,6 @@ trait ConstraintHandling {
    * as those could leak the annotation to users (see run/inferred-repeated-result).
    */
   def widenInferred(inst: Type, bound: Type)(using Context): Type =
-
-    def dropSuperTraits(tp: Type): Type =
-      var kept: Set[Type] = Set()      // types to keep since otherwise bound would not fit
-      var dropped: List[Type] = List() // the types dropped so far, last one on top
-
-      def dropOneSuperTrait(tp: Type): Type =
-        val tpd = tp.dealias
-        if tpd.typeSymbol.isSuperTrait && !tpd.isLambdaSub && !kept.contains(tpd) then
-          dropped = tpd :: dropped
-          defn.AnyType
-        else tpd match
-          case AndType(tp1, tp2) =>
-            val tp1w = dropOneSuperTrait(tp1)
-            if tp1w ne tp1 then tp1w & tp2
-            else
-              val tp2w = dropOneSuperTrait(tp2)
-              if tp2w ne tp2 then tp1 & tp2w
-              else tpd
-          case _ =>
-            tp
-
-      def recur(tp: Type): Type =
-        val tpw = dropOneSuperTrait(tp)
-        if tpw eq tp then tp
-        else if tpw <:< bound then recur(tpw)
-        else
-          kept += dropped.head
-          dropped = dropped.tail
-          recur(tp)
-
-      val tpw = recur(tp)
-      if (tpw eq tp) || dropped.forall(_ frozen_<:< tpw) then tp else tpw
-    end dropSuperTraits
-
     def widenOr(tp: Type) =
       val tpw = tp.widenUnion
       if (tpw ne tp) && (tpw <:< bound) then tpw else tp
@@ -356,7 +412,7 @@ trait ConstraintHandling {
 
     val wideInst =
       if isSingleton(bound) then inst
-      else dropSuperTraits(widenOr(widenSingle(inst)))
+      else dropTransparentTraits(widenIrreducible(widenOr(widenSingle(inst))), bound)
     wideInst match
       case wideInst: TypeRef if wideInst.symbol.is(Module) =>
         TermRef(wideInst.prefix, wideInst.symbol.sourceModule)
@@ -435,19 +491,23 @@ trait ConstraintHandling {
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>
+        val lower = constraint.lower(param)
+        val upper = constraint.upper(param)
         constraint.entry(param) match {
           case bounds: TypeBounds =>
-            val lower = constraint.lower(param)
-            val upper = constraint.upper(param)
             if lower.nonEmpty && !bounds.lo.isRef(defn.NothingClass)
                || upper.nonEmpty && !bounds.hi.isAny
             then constr.println(i"INIT*** $tl")
             lower.forall(addOneBound(_, bounds.hi, isUpper = true)) &&
               upper.forall(addOneBound(_, bounds.lo, isUpper = false))
-          case _ =>
+          case x =>
             // Happens if param was already solved while processing earlier params of the same TypeLambda.
             // See #4720.
-            true
+
+            // Should propagate bounds even when param has been solved.
+            // See #11682.
+            lower.forall(addOneBound(_, x, isUpper = true)) &&
+              upper.forall(addOneBound(_, x, isUpper = false))
         }
       }
     }

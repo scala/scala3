@@ -12,7 +12,7 @@ final case class Range(
   startCharacter: Int,
   endLine: Int,
   endCharacter: Int
-) extends SemanticdbMessage[Range] derives Eql {
+) extends SemanticdbMessage[Range] derives CanEqual {
   @sharable
   private var __serializedSizeCachedValue: Int = 0
   private def __computeSerializedValue(): Int = {

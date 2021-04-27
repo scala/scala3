@@ -1,6 +1,6 @@
 package p
 package q
-import java.lang._
+import java.lang.*
 import language.`3.0-migration`
 
 trait Txn[S <: Sys[S]] {

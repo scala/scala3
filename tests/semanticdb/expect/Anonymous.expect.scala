@@ -1,5 +1,5 @@
 package example
-import scala.language/*->scalaShadowing::language.*/.higherKinds/*->scalaShadowing::language.higherKinds.*/
+import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
 
 class Anonymous/*<-example::Anonymous#*/ {
   this: Anonymous/*->example::Anonymous#*/ =>

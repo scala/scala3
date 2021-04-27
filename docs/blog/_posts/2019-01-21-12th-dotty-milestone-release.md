@@ -92,7 +92,7 @@ We also connect the new lower-level reflection layer to the existing principled 
 - `unseal` that unseals an `Expr[T]` (non traversable code) into a `Term` and
 - `seal` that seals back a `Term` into an `Expr[T]`.
 
-Read the [relevant documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/tasty-reflect.html) to learn how to go from quotes and splices to TASTys Reflect trees and back .
+Read the [relevant documentation](https://dotty.epfl.ch/docs/reference/metaprogramming/reflection.html) to learn how to go from quotes and splices to TASTys Reflect trees and back .
 
 ### Alignments with the Scala Improvement Process
 

@@ -1,5 +1,5 @@
 package outer
-import nested._
+import nested.*
 
 object indent2 {
   val x2: Int = indent1.inner.x

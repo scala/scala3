@@ -9,5 +9,6 @@ object TestGADT {
   def f[A <: Seq[_], B, Foo >: A => B](v: Root[Foo], u: Root[Foo]) = (v, u) match {
     case (C3(), C3()) =>
   }
-  f(C3[Seq[_], Long](), C4[Seq[_], Long]())
+  // The following line no longer type checks
+  // f(C3[Seq[_], Long](), C4[Seq[_], Long]())
 }

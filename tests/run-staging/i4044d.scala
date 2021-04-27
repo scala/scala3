@@ -1,9 +1,9 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 class Foo {
   def foo: Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     run {
       val a: Expr[Int] = '{3}
       val q: Expr[Int] = '{

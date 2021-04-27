@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 object Test extends App {
 
   val e1: Even = 1234

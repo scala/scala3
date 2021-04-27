@@ -7,7 +7,7 @@ object O {
 }
 
 class Test {
-  import O._
+  import O.*
   implicit val a: A = new A {}
   implicitly[a.T]       // works
 
@@ -28,7 +28,7 @@ class ImplicitVsTypeAliasTezt {
     }
 
     def useMonad[m[_], a](m: m[a])(implicit i: Monad[m]) = {
-        import i._
+        import i.*
 
         // value map is not a member of type parameter m[a]
         for {

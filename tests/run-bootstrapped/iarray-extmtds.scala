@@ -38,7 +38,7 @@ object Test extends App {
   assertDifferent(arr1.flatMap(x => List(x, x)), arr1)
 
   val twoDArr = IArray(List(1, 2), List(3, 4))
-  assertDifferent(twoDArr.flatten[List[Int], Int], twoDArr)
+  assertDifferent(twoDArr.flatten[Int], twoDArr)
 
   println(arr1.fold(0)(_ + _))
 

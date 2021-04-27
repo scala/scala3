@@ -1,15 +1,15 @@
-import dotty.tools.dotc._
-import core._
+import dotty.tools.dotc.*
+import core.*
 import Contexts.Context
-import plugins._
+import plugins.*
 import Phases.Phase
 import ast.tpd
 import transform.MegaPhase.MiniPhase
-import Decorators._
+import Decorators.*
 import Symbols.{Symbol, requiredClass}
 import Constants.Constant
-import transform.{Pickler, ReifyQuotes}
-import StdNames._
+import transform.{Pickler, PickleQuotes}
+import StdNames.*
 
 class DivideZero extends PluginPhase with StandardPlugin {
   val name: String = "divideZero"
@@ -18,7 +18,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
   val phaseName = name
 
   override val runsAfter = Set(Pickler.name)
-  override val runsBefore = Set(ReifyQuotes.name)
+  override val runsBefore = Set(PickleQuotes.name)
 
   override def init(options: List[String]): List[PluginPhase] = this :: Nil
 

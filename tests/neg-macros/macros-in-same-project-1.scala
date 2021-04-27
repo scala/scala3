@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 object Bar {
 
@@ -7,6 +7,6 @@ object Bar {
 
   inline def myMacro(): Unit = ${ aMacroImplementation }
 
-  def aMacroImplementation(using QuoteContext): Expr[Unit] = '{}
+  def aMacroImplementation(using Quotes): Expr[Unit] = '{}
 
 }

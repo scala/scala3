@@ -1,14 +1,14 @@
 package playground
 
-import scala.quoted._
+import scala.quoted.*
 
 inline def mcr(x: => Any): Any = ${mcrImpl('x)}
 
-def mcrImpl(body: Expr[Any])(using ctx: QuoteContext): Expr[Any] =
+def mcrImpl(body: Expr[Any])(using ctx: Quotes): Expr[Any] =
   body match
-    case '{$x: $t} =>
+    case '{$x: t} =>
       '{
-        val tmp: $t = $x
+        val tmp: t = $x
         println(tmp)
         tmp
       }

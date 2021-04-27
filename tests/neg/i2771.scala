@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 trait A { type L[X] }
 trait B { type L }
 trait C { type M <: A }

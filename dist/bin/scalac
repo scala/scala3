@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+# Try to autodetect real location of the script
+if [ -z "${PROG_HOME-}" ] ; then
+  ## resolve links - $0 may be a link to PROG_HOME
+  PRG="$0"
+
+  # need this for relative symlinks
+  while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+      PRG="$link"
+    else
+      PRG="`dirname "$PRG"`/$link"
+    fi
+  done
+
+  saveddir=`pwd`
+
+  PROG_HOME=`dirname "$PRG"`/..
+
+  # make it fully qualified
+  PROG_HOME=`cd "$PROG_HOME" && pwd`
+
+  cd "$saveddir"
+fi
+
+source "$PROG_HOME/bin/common"
+
+[ -z "$PROG_NAME" ] && PROG_NAME=$CompilerMain
+
+withCompiler=true
+
+while [[ $# -gt 0 ]]; do
+case "$1" in
+           --) shift; for arg; do addResidual "$arg"; done; set -- ;;
+  -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
+       -debug) DEBUG="$DEBUG_STR" && shift ;;
+    -q|-quiet) quiet=true && shift ;;
+
+    # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
+    -Oshort) addJava "-XX:+TieredCompilation -XX:TieredStopAtLevel=1" && shift ;;
+        -repl) PROG_NAME="$ReplMain" && shift ;;
+      -script) PROG_NAME="$ScriptingMain" && target_script="$2" && shift && shift
+               while [[ $# -gt 0 ]]; do addScripting "$1" && shift ; done ;;
+     -compile) PROG_NAME="$CompilerMain" && shift ;;
+   -decompile) PROG_NAME="$DecompilerMain" && shift ;;
+ -print-tasty) PROG_NAME="$DecompilerMain" && addScala "-print-tasty" && shift ;;
+         -run) PROG_NAME="$ReplMain" && shift ;;
+      -colors) colors=true && shift ;;
+   -no-colors) unset colors && shift ;;
+  -with-compiler) jvm_cp_args="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE" && shift ;;
+
+          # break out -D and -J options and add them to java_args so
+          # they reach the JVM in time to do some good. The -D options
+          # will be available as system properties.
+          -D*) addJava "$1" && shift ;;
+          -J*) addJava "${1:2}" && shift ;;
+            *) addResidual "$1" && shift ;;
+  esac
+done
+
+classpathArgs
+
+if [ "$PROG_NAME" == "$ScriptingMain" ]; then
+  setScriptName="-Dscript.path=$target_script"
+  scripting_string="-script $target_script ${scripting_args[@]}"
+fi
+
+# exec here would prevent onExit from being called, leaving terminal in unusable state
+[ -n "$script_trace" ] && set -x
+eval "\"$JAVACMD\"" \
+   ${JAVA_OPTS:-$default_java_opts} \
+   "${DEBUG-}" \
+   "${java_args[@]}" \
+   "-classpath \"$jvm_cp_args\"" \
+   -Dscala.usejavacp=true \
+   "$setScriptName" \
+   "$PROG_NAME"  \
+   "${scala_args[@]}" \
+   "${residual_args[@]}" \
+   "${scripting_string-}"
+scala_exit_status=$?
+

@@ -13,7 +13,7 @@ object Empty extends Tuple
 final case class *: [H, T <: Tuple](hd: H, tl: T) extends Tuple
 
 object Tuple {
-  import typelevel._
+  import typelevel.*
   type Empty = Empty.type
 
   class TupleOps(val xs: Tuple) extends AnyVal {

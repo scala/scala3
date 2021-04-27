@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object O {
-  def foo(using QuoteContext) = {
+  def foo(using Quotes) = {
     type T
     implicit val _: scala.quoted.Type[T] = ???
-    '[List[T]]
+    Type.of[List[T]]
     ()
   }
 }

@@ -1,6 +1,6 @@
 Dotty
 =====
-[![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty%20CI/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amaster)
+[![Dotty CI](https://github.com/lampepfl/dotty/workflows/Dotty/badge.svg?branch=master)](https://github.com/lampepfl/dotty/actions?query=branch%3Amaster)
 [![Join the chat at https://gitter.im/lampepfl/dotty](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lampepfl/dotty?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 * [Homepage](http://dotty.epfl.ch)
@@ -9,6 +9,11 @@ Dotty
 Try it out
 ==========
 To try it in your project see also the [Getting Started User Guide](https://dotty.epfl.ch/#getting-started).
+
+Building a Local Distribution
+=============================
+1. `sbt dist/packArchive`
+2. Find the newly-built distributions in `dist/target/`
 
 Code of Conduct
 ===============

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   trait Quoted {
@@ -6,7 +6,7 @@ object Macros {
   }
   inline def quote: Quoted = ${ quoteImpl }
 
-  def quoteImpl(using qctx: QuoteContext): Expr[Quoted] = '{
+  def quoteImpl(using Quotes): Expr[Quoted] = '{
     new Quoted {
       def foo = ???
     }

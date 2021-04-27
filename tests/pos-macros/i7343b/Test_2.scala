@@ -1,1 +1,1 @@
-def h(using scala.quoted.QuoteContext) = g
+def h(using scala.quoted.Quotes) = g

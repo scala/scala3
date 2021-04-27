@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Test {
 
   trait Producer[A] { self =>
-    def step(k: (A => Expr[Unit]))(using QuoteContext): Expr[Unit]
+    def step(k: (A => Expr[Unit]))(using Quotes): Expr[Unit]
   }
 
   trait Foo[A]
@@ -13,7 +13,7 @@ object Test {
     stream match {
       case Bar(producer, nestedf) => {
         new Producer[Expr[A]] {
-          def step(k: Expr[A] => Expr[Unit])(using QuoteContext): Expr[Unit] = '{
+          def step(k: Expr[A] => Expr[Unit])(using Quotes): Expr[Unit] = '{
             val adv: Unit => Unit = { _ => ${producer.step((el) => nestedf(el))} }
           }
         }

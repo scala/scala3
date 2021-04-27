@@ -6,6 +6,11 @@ title: "Debug Macros"
 Complex macros may break invariants of the compiler, which leads to compiler crashes.
 Here we list common compiler crashes and how to deal with them.
 
+## Enable checks
+
+* Always enable `-Xcheck-macros`
+* May also enable `-Ycheck:all`
+
 ## position not set
 
 For this problem, here is the log that is usually shown:
@@ -37,7 +42,6 @@ Here is the usually stacktrace for unresolved symbols in pickling:
 
 ```
 [error] java.lang.AssertionError: assertion failed: unresolved symbols: value pos (line 5565) when pickling scalatest/scalatest-test.dotty/target/scala-0.17/src_managed/test/org/scalatest/AssertionsSpec.scala
-[error] 	at dotty.DottyPredef$.assertFail(DottyPredef.scala:16)
 [error] 	at dotty.tools.dotc.core.tasty.TreePickler.pickle(TreePickler.scala:699)
 [error] 	at dotty.tools.dotc.transform.Pickler.run$$anonfun$10$$anonfun$8(Pickler.scala:60)
 [error] 	at dotty.runtime.function.JProcedure1.apply(JProcedure1.java:15)

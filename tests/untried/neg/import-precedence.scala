@@ -14,13 +14,13 @@ package uniq1 {
 package p1 {
   import uniq1.X
   package p2 {
-    import uniq1.uniq2._
+    import uniq1.uniq2.*
     object Y { def f = X }
   }
 }
 
 package p2 {
-  import uniq1.uniq2._
+  import uniq1.uniq2.*
   package p2 {
     import uniq1.X
     object Y { def f = X }
@@ -29,12 +29,12 @@ package p2 {
 
 package p3 {
   import uniq1.X
-  import uniq1.uniq2._
+  import uniq1.uniq2.*
   object Y { def f = X }
 }
 
 package p4 {
-  import uniq1.uniq2._
+  import uniq1.uniq2.*
   import uniq1.X
   object Y { def f = X }
 }
@@ -48,16 +48,16 @@ package p5 {
 }
 
 package p6 {
-  import uniq1._
+  import uniq1.*
   package p5 {
-    import uniq1.uniq2._
+    import uniq1.uniq2.*
     object Y { def f = X }
   }
 }
 
 package p7 {
-  import uniq1._
-  import uniq1.uniq2._
+  import uniq1.*
+  import uniq1.uniq2.*
   object Y { def f = X }
 }
 

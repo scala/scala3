@@ -6,30 +6,29 @@ title: "Importing Givens"
 A special form of import wildcard selector is used to import given instances. Example:
 
 ```scala
-object A {
-  class TC
-  given tc as TC
-  def f(using TC) = ???
-}
+object A:
+   class TC
+   given tc: TC = ???
+   def f(using TC) = ???
 
-object B {
-  import A._
-  import A.{given _}
-}
+object B:
+   import A.*
+   import A.given
+   ...
 ```
 
-In the code above, the `import A._` clause of object `B` will import all members
-of `A` _except_ the given instance `tc`. Conversely, the second import `import A.{given _}` will import _only_ that given instance.
+In the code above, the `import A.*` clause in object `B` imports all members
+of `A` _except_ the given instance `tc`. Conversely, the second import `import A.given` will import _only_ that given instance.
 The two import clauses can also be merged into one:
 
 ```scala
-object B {
-  import A.{given _, _}
-}
+object B:
+   import A.{given, *}
+   ...
 ```
 
 Generally, a normal wildcard selector `_` brings all definitions other than givens or extensions into scope
-whereas a `given _` selector brings all givens (including those resulting from extensions) into scope.
+whereas a `given` selector brings all givens (including those resulting from extensions) into scope.
 
 There are two main benefits arising from these rules:
 
@@ -45,7 +44,7 @@ There are two main benefits arising from these rules:
 Since givens can be anonymous it is not always practical to import them by their name, and wildcard imports are typically used instead. By-type imports provide a more specific alternative to wildcard imports, which makes it clearer what is imported. Example:
 
 ```scala
-import A.{given TC}
+import A.given TC
 ```
 
 This imports any given in `A` that has a type which conforms to `TC`. Importing givens of several types `T1,...,Tn`
@@ -59,15 +58,14 @@ Importing all given instances of a parameterized type is expressed by wildcard a
 For instance, assuming the object
 
 ```scala
-object Instances {
-  given intOrd as Ordering[Int]
-  given listOrd[T: Ordering] as Ordering[List[T]]
-  given ec as ExecutionContext = ...
-  given im as Monoid[Int]
-}
+object Instances:
+   given intOrd: Ordering[Int] = ...
+   given listOrd[T: Ordering]: Ordering[List[T]] = ...
+   given ec: ExecutionContext = ...
+   given im: Monoid[Int] = ...
 ```
 
-the import
+the import clause
 
 ```scala
 import Instances.{given Ordering[?], given ExecutionContext}
@@ -83,20 +81,6 @@ import Instances.{im, given Ordering[?]}
 
 would import `im`, `intOrd`, and `listOrd` but leave out `ec`.
 
-<!--
-Bounded wildcard selectors also work for normal imports and exports. For instance, consider the following `enum` definition:
-```scala
-enum Color {
-  case Red, Green, Blue, Magenta
-
-  def isPrimary(c: Color): Boolean = ...
-}
-export Color.{_: Color}
-```
-The export clause makes all four `Color` values available as unqualified constants, but
-leaves the `isPrimary` method alone.
--->
-
 ### Migration
 
 The rules for imports stated above have the consequence that a library
@@ -106,13 +90,13 @@ normal imports to givens and given imports.
 The following modifications avoid this hurdle to migration.
 
  1. A `given` import selector also brings old style implicits into scope. So, in Scala 3.0
-    an old-style implicit definition can be brought into scope either by a `_` or a `given _` wildcard selector.
+    an old-style implicit definition can be brought into scope either by a `_` or a `given` wildcard selector.
 
  2. In Scala 3.1, old-style implicits accessed through a `_` wildcard import will give a deprecation warning.
 
  3. In some version after 3.1, old-style implicits accessed through a `_` wildcard import will give a compiler error.
 
-These rules mean that library users can use `given _` selectors to access old-style implicits in Scala 3.0,
+These rules mean that library users can use `given` selectors to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
 given instances once their user base has migrated.
 
@@ -120,13 +104,13 @@ given instances once their user base has migrated.
 
 ```
 Import            ::=  ‘import’ ImportExpr {‘,’ ImportExpr}
-ImportExpr        ::=  StableId ‘.’ ImportSpec
-ImportSpec        ::=  id
-                    |  ‘_’
-                    |  ‘{’ ImportSelectors) ‘}’
-ImportSelectors   ::=  id [‘=>’ id | ‘=>’ ‘_’] [‘,’ ImportSelectors]
-                    |  WildCardSelector {‘,’ WildCardSelector}
-WildCardSelector  ::=  ‘_'
-                    |  ‘given’ (‘_' | InfixType)
 Export            ::=  ‘export’ ImportExpr {‘,’ ImportExpr}
+ImportExpr        ::=  SimpleRef {‘.’ id} ‘.’ ImportSpec
+ImportSpec        ::=  NamedSelector
+                    |  WildcardSelector
+                    | ‘{’ ImportSelectors) ‘}’
+NamedSelector     ::=  id [‘as’ (id | ‘_’)]
+WildCardSelector  ::=  ‘*' | ‘given’ [InfixType]
+ImportSelectors   ::=  NamedSelector [‘,’ ImportSelectors]
+                    |  WildCardSelector {‘,’ WildCardSelector}
 ```

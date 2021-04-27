@@ -1,4 +1,6 @@
-import scala.compiletime._
+import language.experimental.namedTypeArguments
+import scala.compiletime.*
+import scala.compiletime.ops.int.*
 
 final case class Coproduct[+Set, +Value, Index <: Int](value: Value & Set, index: Index)
 
@@ -11,16 +13,16 @@ object Coproduct {
 
   object At {
 
-    given atHead[Head, Tail] as At[Head +: Tail, Head, 0] {
+    given atHead[Head, Tail]: At[Head +: Tail, Head, 0] with {
       def cast: Head <:< Head +: Tail = summon[Head <:< Head +: Tail]
     }
 
     given atTail[Head, Tail, Value, NextIndex <: Int]
           (using atNext: At[Tail, Value, NextIndex])
-          as At[Head +: Tail, Value, S[NextIndex]]:
+      : At[Head +: Tail, Value, S[NextIndex]] with
       val cast: Value <:< Head +: Tail = atNext.cast
 
-    given [A](using A) as (() => A)= { () => summon[A]}
+    given [A](using A): (() => A) = { () => summon[A]}
   }
 
   def upCast[A, B](a: A)(using erased evidence: (A <:< B) ): B = a.asInstanceOf[B]
@@ -32,8 +34,8 @@ object Coproduct {
 }
 
 object Test extends App {
-  import Coproduct._
+  import Coproduct.*
 
-  // Error: No singleton value available for scala.compiletime.S[scala.compiletime.S[(0 : Int)]].
+  // Error: No singleton value available for scala.compiletime.ops.int.S[scala.compiletime.ops.int.S[(0 : Int)]].
   val c = from[Set = Int +: String +: Seq[Double] +: Nothing](Nil)
 }

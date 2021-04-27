@@ -1,18 +1,18 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuotes {
     println(foo[Object].show)
     println(bar[Object].show)
   }
-  def foo[H : Type](using QuoteContext): Expr[H] = {
-    val t = '[H]
-    '{ null.asInstanceOf[$t] }
+  def foo[H : Type](using Quotes): Expr[H] = {
+    val t = Type.of[H]
+    '{ null.asInstanceOf[t.Underlying] }
   }
-  def bar[H : Type](using QuoteContext): Expr[List[H]] = {
-    val t = '[List[H]]
-    '{ null.asInstanceOf[$t] }
+  def bar[H : Type](using Quotes): Expr[List[H]] = {
+    val t = Type.of[List[H]]
+    '{ null.asInstanceOf[t.Underlying] }
   }
 }

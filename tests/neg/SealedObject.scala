@@ -1,1 +1,0 @@
-sealed object A {} // error

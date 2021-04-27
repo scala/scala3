@@ -3,11 +3,15 @@
    |                      ^^^^^^^^^^^^
    |                      Found:    Any
    |                      Required: String
+
+longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i8736.scala:30:29 -------------------------------------------------------------
 30 |  def res2: Int     = rec.get("v") // error: type mismatch
    |                      ^^^^^^^^^^^^
    |                      Found:    Any
    |                      Required: Int
+
+longer explanation available when compiling with `-explain`
 -- [E051] Reference Error: tests/neg/i8736.scala:31:26 -----------------------------------------------------------------
 31 |  def res3: Boolean = rec.get("z") // error: ambiguous
    |                      ^^^^^^^
@@ -17,7 +21,6 @@
    |                 (k: ("z" : String)): Boolean
    |                all match arguments (("z" : String))
    |
-   |                Note: this happens because two or more alternatives have the same erasure,
-   |                      so they cannot be distinguished by overloading resolution
+   |                Note: Overloaded definitions introduced by refinements cannot be resolved
 
 longer explanation available when compiling with `-explain`

@@ -7,7 +7,7 @@
 
   "search.exclude": {
     "**/*.class": true,
-    "**/*.hasTasty": true,
+    "**/*.tasty": true,
     "**/target/": true,
     "community-build/community-projects": true
   }

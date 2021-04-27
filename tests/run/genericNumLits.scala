@@ -1,3 +1,4 @@
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
 object Test extends App {
 
@@ -9,7 +10,7 @@ object Test extends App {
 
   case class Even(n: Int)
 
-  given FromDigits[Even] {
+  given FromDigits[Even] with {
     def fromDigits(digits: String): Even = {
       val intValue = digits.toInt
       if (intValue % 2 == 0) Even(intValue)

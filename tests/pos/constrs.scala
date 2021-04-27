@@ -2,7 +2,7 @@ class Foo(x: Int, var y: Int) {
 
   val z: Int = 0
 
-  var u: Int = _
+  var u: Int = compiletime.uninitialized
 
   def f = x
 

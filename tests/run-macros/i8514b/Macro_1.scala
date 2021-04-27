@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class A[+X[_], -Y]
 class P[T]
@@ -6,10 +6,10 @@ class B extends A[P, String]
 
 inline def test(): Unit = ${ testExpr }
 
-def testExpr(using QuoteContext): Expr[Unit] = {
-  import qctx.tasty._
+def testExpr(using Quotes): Expr[Unit] = {
+  import quotes.reflect.*
 
-  val t = '[B].unseal.tpe
+  val t = TypeRepr.of[B]
   val baseTypes = t.baseClasses.map(b => t.baseType(b))
 
   '{

@@ -1,22 +1,22 @@
-import scala.quoted._
-def test(using QuoteContext) = {
+import scala.quoted.*
+def test(using Quotes): Unit = {
   def f = {
     {
-      '[String]
-      '[String]
+      Type.of[String]
+      Type.of[String]
     }
 
-    '[String] match { case _ => }
-    try '[String] catch { case _ => }
+    Type.of[String] match { case _ => }
+    try Type.of[String] catch { case _ => }
 
-    '[String]
-    '[String]
+    Type.of[String]
+    Type.of[String]
   }
 
-  def bar[T](t: quoted.Type[T]) = ???
-  bar('[String])
+  def bar[T](t: Type[T]) = ???
+  bar(Type.of[String])
 
-  class Baz[T](t: quoted.Type[T])
-  new Baz('[String])
+  class Baz[T](t: Type[T])
+  new Baz(Type.of[String])
 
 }

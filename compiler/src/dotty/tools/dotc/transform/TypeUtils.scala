@@ -21,6 +21,9 @@ object TypeUtils {
     def isPrimitiveValueType(using Context): Boolean =
       self.classSymbol.isPrimitiveValueClass
 
+    def isErasedClass(using Context): Boolean =
+      self.underlyingClassRef(refinementOK = true).typeSymbol.is(Flags.Erased)
+
     def isByName: Boolean =
       self.isInstanceOf[ExprType]
 
@@ -41,8 +44,8 @@ object TypeUtils {
       case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         val arity = tl.tupleArity
         if (arity < 0) arity else arity + 1
-      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
-        0
+      case self: SingletonType =>
+        if self.termSymbol == defn.EmptyTupleModule then 0 else -1
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos.length
       case _ =>
@@ -53,7 +56,8 @@ object TypeUtils {
     def tupleElementTypes(using Context): List[Type] = self match {
       case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
         hd :: tl.tupleElementTypes
-      case self: TermRef if self.symbol == defn.EmptyTupleModule =>
+      case self: SingletonType =>
+        assert(self.termSymbol == defn.EmptyTupleModule, "not a tuple")
         Nil
       case self if defn.isTupleClass(self.classSymbol) =>
         self.dealias.argInfos
@@ -76,5 +80,10 @@ object TypeUtils {
       case self: TypeProxy =>
         self.underlying.companionRef
     }
+
+    /** Is this type a methodic type that takes implicit parameters (both old and new) at some point? */
+    def takesImplicitParams(using Context): Boolean = self.stripPoly match
+      case mt: MethodType => mt.isImplicitMethod || mt.resType.takesImplicitParams
+      case _ => false
   }
 }

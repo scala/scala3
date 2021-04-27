@@ -1,19 +1,11 @@
 
-import java.io.{File => JFile}
-import java.nio.file.{ Files => JFiles, Path => JPath, Paths => JPaths }
-import java.util.stream.{ Stream => JStream }
+import java.io.File as JFile
+import java.nio.file.{ Files as JFiles, Path as JPath, Paths as JPaths }
+import java.util.stream.Stream as JStream
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.*
 
 object IdempotencyCheck {
-  val blacklisted = Set(
-    // No fix needed. Bridges on collections in different order. Second one in scala2 order.
-    s"pos{JFile.separator}Map{JFile.separator}scala{JFile.separator}collection{JFile.separator}immutable/Map",
-    s"pos{JFile.separator}Map{JFile.separator}scala{JFile.separator}collection{JFile.separator}immutable{JFile.separator}AbstractMap",
-    s"pos{JFile.separator}t1203a/NodeSeq",
-    s"pos{JFile.separator}i2345{JFile.separator}Whatever"
-  )
-
   def checkIdempotency(dir1: String, dir2: String): Unit = {
     var failed = 0
     var total = 0
@@ -26,14 +18,14 @@ object IdempotencyCheck {
       val bytecodeFiles = {
         def bytecodeFiles(paths: JStream[JPath], dir: String): List[(String, JPath)] = {
           def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
-          def tupleWithName(f: JPath) = (f.toString.substring(dir.length + 1, f.toString.length - 6), f)
+          def tupleWithName(f: JPath) = (f.toString.substring(dir.length, f.toString.length - 6), f)
           paths.iterator.asScala.filter(path => isBytecode(path.toString)).map(tupleWithName).toList
         }
         bytecodeFiles(JFiles.walk(dir1Path), dir1String) ++ bytecodeFiles(JFiles.walk(dir2Path), dir2String)
       }
       val groups = bytecodeFiles.groupBy(_._1).mapValues(_.map(_._2))
 
-      groups.filterNot(x => blacklisted(x._1)).iterator.flatMap { g =>
+      groups.iterator.flatMap { g =>
         def pred(f: JPath, dir: String, isTasty: Boolean) =
           f.toString.contains(dir) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
         val class1 = g._2.find(f => pred(f, dir1String, isTasty = false))

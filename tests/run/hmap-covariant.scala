@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 trait Tuple
 case class TCons[+H, +T <: Tuple](h: H, t: T) extends Tuple
 case object TNil extends Tuple
@@ -68,7 +69,7 @@ object syntax {
 
 object Test {
   def main(args: Array[String]): Unit = {
-    import syntax.hmap._
+    import syntax.hmap.*
 
     val map1 =
       TCons(HEntry[K = "name"]("foo"),

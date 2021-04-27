@@ -11,7 +11,7 @@ cbt comes with built-in Dotty support. Follow the
 
 ```scala
 // build/build.scala
-import cbt._
+import cbt.*
 class Build(val context: Context) extends Dotty {
   ...
 }

@@ -1,18 +1,18 @@
 
 import java.nio.file.{Files, Paths}
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def expr(using QuoteContext) = '{
+    given Compiler = Compiler.make(getClass.getClassLoader)
+    def expr(using Quotes) = '{
       val a = 3
       println("foo")
       2 + a
     }
-    println(withQuoteContext(expr.show))
+    println(withQuotes(expr.show))
     println(run(expr))
     println()
 
@@ -22,8 +22,8 @@ object Test {
     Files.deleteIfExists(classFile)
 
     {
-      implicit val settings = Toolbox.Settings.make(outDir = Some(outDir.toString))
-      implicit val toolbox2: scala.quoted.staging.Toolbox = scala.quoted.staging.Toolbox.make(getClass.getClassLoader)
+      implicit val settings = Compiler.Settings.make(outDir = Some(outDir.toString))
+      implicit val toolbox2: scala.quoted.staging.Compiler = scala.quoted.staging.Compiler.make(getClass.getClassLoader)
       println(run(expr))
       assert(Files.exists(classFile))
     }

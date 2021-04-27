@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/i8988.scala:3:17 --------------------------------------------------------------
+3 |val zs: String = ys // error: (but type should not mention @uncheckedVariance)
+  |                 ^^
+  |                 Found:    (ys : List[Int])
+  |                 Required: String
+
+longer explanation available when compiling with `-explain`

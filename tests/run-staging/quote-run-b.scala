@@ -1,11 +1,11 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def lambdaExpr(using QuoteContext) = '{
+    given Compiler = Compiler.make(getClass.getClassLoader)
+    def lambdaExpr(using Quotes) = '{
       (x: Int) => println("lambda(" + x + ")")
     }
     println()

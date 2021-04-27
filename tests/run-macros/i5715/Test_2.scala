@@ -1,5 +1,5 @@
 object Test {
-  import scalatest._
+  import scalatest.*
 
   def main(args: Array[String]): Unit = {
     val l = List(3, 4)

@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/fatal-warnings/i6190b.scala:3:29 -------------------------------------------------------
+3 |def foo = List("1", "2").map(Rule)  // error
+  |                             ^^^^
+  |      The method `apply` is inserted. The auto insertion will be deprecated, please write `Rule.apply` explicitly.

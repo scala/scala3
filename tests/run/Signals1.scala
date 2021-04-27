@@ -1,5 +1,5 @@
 
-import annotation.unchecked._
+import annotation.unchecked.*
 package frp:
 
   trait Signal[+T]:
@@ -8,7 +8,7 @@ package frp:
   object Signal:
 
     abstract class AbstractSignal[+T] extends Signal[T]:
-      private var currentValue: T = _
+      private var currentValue: T = compiletime.uninitialized
       private var observers: Set[Caller] = Set()
 
       protected def eval: Caller => T
@@ -43,14 +43,14 @@ package frp:
     end Var
 
     opaque type Caller = AbstractSignal[?]
-    given noCaller as Caller = new AbstractSignal[Nothing]:
+    given noCaller: Caller = new AbstractSignal[Nothing]:
       override def eval = ???
       override def computeValue() = ()
 
   end Signal
 end frp
 
-import frp._
+import frp.*
 class BankAccount:
   def balance: Signal[Int] = myBalance
 
@@ -66,7 +66,7 @@ class BankAccount:
       val b = myBalance()
       myBalance() = b - amount
       myBalance()
-    else assertFail("insufficient funds")
+    else throw new AssertionError("insufficient funds")
 end BankAccount
 
 @main def Test() =

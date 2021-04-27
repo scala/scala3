@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 inline def foo = ${fooImpl}
 
-def fooImpl(using qctx: QuoteContext) = {
-  import qctx.tasty._
+def fooImpl(using Quotes) = {
+  import quotes.reflect.*
   val res = Expr.ofList(List('{"One"}))
   Expr(res.show)
 }

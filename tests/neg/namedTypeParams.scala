@@ -1,7 +1,12 @@
 class C[T]
 class D[type T] // error: identifier expected, but `type` found
 
+object Test0:
+  def f[X, Y](x: X, y: Y): Int = ???
+  f[X = Int, Y = Int](1, 2) // error: experimental // error: experimental
+
 object Test {
+  import language.experimental.namedTypeArguments
 
   val x: C[T = Int] = // error:  ']' expected, but `=` found // error
     new C[T = Int] // error:  ']' expected, but `=` found // error

@@ -1,13 +1,13 @@
-import quoted._
-import scala.quoted.staging._
+import quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuotes {
 
-    val q = '{(using qctx: QuoteContext) =>
+    val q = '{(q: Quotes) ?=>
       val a = '{4}
-      ${'{(using qctx2: QuoteContext) =>
+      ${'{(q2: Quotes) ?=>
         '{${a}}
       }}
 

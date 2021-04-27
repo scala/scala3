@@ -1,4 +1,4 @@
-import sys._
+import sys.*
 
 /** Basic sys.Prop test. */
 object Test {

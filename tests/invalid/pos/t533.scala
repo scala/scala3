@@ -1,4 +1,4 @@
-import scala.actors._
+import scala.actors.*
 
 object test extends Actor {
   def act(): Unit = {

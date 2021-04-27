@@ -12,7 +12,7 @@ object Test {
   }
 
   def testInterface(arithmetic: Arithmetic): Unit = {
-    import arithmetic._
+    import arithmetic.*
     val const1 = Constant(1)
     println("underlying rep: " + const1.getClass)
     println(const1.eval)

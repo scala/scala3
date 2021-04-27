@@ -1,4 +1,4 @@
-import collection.immutable._
+import collection.immutable.*
 
 // ticket #3508
 object Test {

@@ -223,7 +223,7 @@ object EtaExpansion extends LiftImpure {
    */
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
     import untpd._
-    assert(!ctx.isAfterTyper)
+    assert(!ctx.isAfterTyper || (ctx.phase eq ctx.base.inliningPhase), ctx.phase)
     val defs = new mutable.ListBuffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val isLastApplication = mt.resultType match {
@@ -241,9 +241,8 @@ object EtaExpansion extends LiftImpure {
     var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
-    val app = Apply(lifted, ids)
-    if (mt.isContextualMethod) app.setApplyKind(ApplyKind.Using)
-    val body = if (isLastApplication) app else PostfixOp(app, Ident(nme.WILDCARD))
+    val body = Apply(lifted, ids)
+    if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))

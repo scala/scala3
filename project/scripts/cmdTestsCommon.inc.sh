@@ -15,5 +15,5 @@ tmp=$(mktemp)
 clear_out()
 {
   local out="$1"
-  rm -rf "$out/*"
+  rm -rf "$out"/*
 }

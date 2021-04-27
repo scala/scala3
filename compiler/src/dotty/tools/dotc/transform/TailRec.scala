@@ -140,7 +140,7 @@ class TailRec extends MiniPhase {
       // than first one will collect info about which transformations and rewritings should be applied
       // and second one will actually apply,
       // now this speculatively transforms tree and throws away result in many cases
-      val transformer = new TailRecElimination(method, enclosingClass, tree.vparamss.head.map(_.symbol), mandatory)
+      val transformer = new TailRecElimination(method, enclosingClass, tree.termParamss.head.map(_.symbol), mandatory)
       val rhsSemiTransformed = transformer.transform(tree.rhs)
 
       if (transformer.rewrote) {
@@ -186,6 +186,7 @@ class TailRec extends MiniPhase {
           def tailArgOrPureExpr(stat: Tree): Boolean = stat match {
             case stat: ValDef if stat.name.is(TailTempName) || !stat.symbol.is(Mutable) => tailArgOrPureExpr(stat.rhs)
             case Assign(lhs: Ident, rhs) if lhs.symbol.name.is(TailLocalName) => tailArgOrPureExpr(rhs)
+            case Assign(lhs: Ident, rhs: Ident) => lhs.symbol == rhs.symbol
             case stat: Ident if stat.symbol.name.is(TailLocalName) => true
             case _ => tpd.isPureExpr(stat)
           }

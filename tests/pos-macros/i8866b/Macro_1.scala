@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Other {
   inline def apply = 5
@@ -6,15 +6,16 @@ object Other {
 
 object Macro {
 
-  def impl(using qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+  def impl(using Quotes): Expr[Int] = {
+    import quotes.reflect.*
 
-    let(
+    ValDef.let(
+      Symbol.spliceOwner,
       Select.unique(
-        '{ Other }.unseal,
+        '{ Other }.asTerm,
         "apply"
       )
-    )(identity).seal.cast[Int]
+    )(identity).asExprOf[Int]
 
   }
 

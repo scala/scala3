@@ -25,7 +25,7 @@ object Test extends App {
   //  qual.applyDynamic(“sel”)(arg1, …, argn)
   qual.sel()
   qual.sel(a)
-  // qual.sel(a, a2: _*) -- should not accept varargs?
+  // qual.sel(a, a2*) -- should not accept varargs?
   qual.sel(a)(a2)
   qual.sel[T](a)
   qual.sel[T](a)(a2)
@@ -38,8 +38,8 @@ object Test extends App {
   qual.sel(a, arg2 = "a2")
   // qual.sel(a)(a2, arg2 = "a2")
   // qual.sel[T](a)(a2, arg2 = "a2")
-  // qual.sel(arg = a, a2: _*)
-  // qual.sel(arg, arg2 = "a2", a2: _*)
+  // qual.sel(arg = a, a2*)
+  // qual.sel(arg, arg2 = "a2", a2*)
 
   // If qual.sel appears immediately on the left-hand side of an assigment
   // qual.updateDynamic(“sel”)(expr)

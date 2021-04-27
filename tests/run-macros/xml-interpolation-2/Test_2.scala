@@ -1,4 +1,4 @@
-import XmlQuote._
+import XmlQuote.*
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -22,6 +22,6 @@ object Test {
     assert(new SCOps(ctx2).xml(name) == Xml("Hello ??!", List(name)))
 
     val args = Seq(name)
-    assert(new SCOps(ctx2).xml(args: _*) == Xml("Hello ??!", List(name)))
+    assert(new SCOps(ctx2).xml(args*) == Xml("Hello ??!", List(name)))
   }
 }

@@ -25,7 +25,7 @@ object Test extends App {
   var i = 0
   def gensym(name: String) = { i += 1; TermName(name + i) }
 
-  def createTempValDef( value : Tree, tpe : Type ) : (Option[Tree],Tree) = {
+  def createTempValDef( value : Tree, tpe: TypeRepr ) : (Option[Tree],Tree) = {
     val local = gensym("temp")
     (
       Some(

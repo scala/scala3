@@ -1,5 +1,5 @@
 enum Option1[+T] extends Serializable {
-  case Some1(x: T)
+  case Some1[T](x: T) extends Option1[T]
   case None1
 
   def isDefined: Boolean = this match {
@@ -12,7 +12,7 @@ object Option1 {
 }
 
 object Test {
-  import Option1._
+  import Option1.*
   def main(args: Array[String]) = {
     assert(Some1(None1).isDefined)
     Option1("22") match { case Option1.Some1(x) => assert(x == "22") }

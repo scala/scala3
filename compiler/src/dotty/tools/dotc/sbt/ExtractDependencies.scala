@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.transform.SymUtils._
+import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
 import dotty.tools.io
 import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
@@ -112,34 +113,24 @@ class ExtractDependencies extends Phase {
     def binaryDependency(file: File, binaryClassName: String) =
       ctx.sbtCallback.binaryDependency(file, binaryClassName, fromClassName, sourceFile, dep.context)
 
-    def processExternalDependency(depFile: AbstractFile) = {
-      def binaryClassName(classSegments: List[String]) =
-        classSegments.mkString(".").stripSuffix(".class")
-
+    def processExternalDependency(depFile: AbstractFile, binaryClassName: String) = {
       depFile match {
         case ze: ZipArchive#Entry => // The dependency comes from a JAR
-          for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) {
-            val classSegments = io.File(ze.path).segments
-            binaryDependency(zipFile, binaryClassName(classSegments))
-          }
-
+          ze.underlyingSource match
+            case Some(zip) if zip.file != null =>
+              binaryDependency(zip.file, binaryClassName)
+            case _ =>
         case pf: PlainFile => // The dependency comes from a class file
-          val packages = dep.to.ownersIterator
-            .count(x => x.is(PackageClass) && !x.isEffectiveRoot)
-          // We can recover the fully qualified name of a classfile from
-          // its path
-          val classSegments = pf.givenPath.segments.takeRight(packages + 1)
           // FIXME: pf.file is null for classfiles coming from the modulepath
           // (handled by JrtClassPath) because they cannot be represented as
           // java.io.File, since the `binaryDependency` callback must take a
           // java.io.File, this means that we cannot record dependencies coming
           // from the modulepath. For now this isn't a big deal since we only
           // support having the standard Java library on the modulepath.
-          if (pf.file != null)
-            binaryDependency(pf.file, binaryClassName(classSegments))
-
+          if pf.file != null then
+            binaryDependency(pf.file, binaryClassName)
         case _ =>
-          report.warning(s"sbt-deps: Ignoring dependency $depFile of class ${depFile.getClass}}")
+          internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", dep.from.srcPos)
       }
     }
 
@@ -149,7 +140,34 @@ class ExtractDependencies extends Phase {
       def allowLocal = dep.context == DependencyByInheritance || dep.context == LocalDependencyByInheritance
       if (depFile.extension == "class") {
         // Dependency is external -- source is undefined
-        processExternalDependency(depFile)
+
+        // The fully qualified name on the JVM of the class corresponding to `dep.to`
+        val binaryClassName = {
+          val builder = new StringBuilder
+          val pkg = dep.to.enclosingPackageClass
+          if (!pkg.isEffectiveRoot) {
+            builder.append(pkg.fullName.mangledString)
+            builder.append(".")
+          }
+          val flatName = dep.to.flatName
+          // Some companion objects are fake (that is, they're a compiler fiction
+          // that doesn't correspond to a class that exists at runtime), this
+          // can happen in two cases:
+          // - If a Java class has static members.
+          // - If we create constructor proxies for a class (see NamerOps#addConstructorProxies).
+          //
+          // In both cases it's vital that we don't send the object name to
+          // zinc: when sbt is restarted, zinc will inspect the binary
+          // dependencies to see if they're still on the classpath, if it
+          // doesn't find them it will invalidate whatever referenced them, so
+          // any reference to a fake companion will lead to extra recompilations.
+          // Instead, use the class name since it's guaranteed to exist at runtime.
+          val clsFlatName = if (dep.to.isOneOf(JavaDefined | ConstructorProxy)) flatName.stripModuleClassSuffix else flatName
+          builder.append(clsFlatName.mangledString)
+          builder.toString
+        }
+
+        processExternalDependency(depFile, binaryClassName)
       } else if (allowLocal || depFile.file != sourceFile) {
         // We cannot ignore dependencies coming from the same source file because
         // the dependency info needs to propagate. See source-dependencies/trait-trait-211.
@@ -163,6 +181,10 @@ class ExtractDependencies extends Phase {
 object ExtractDependencies {
   def classNameAsString(sym: Symbol)(using Context): String =
     sym.fullName.stripModuleClassSuffix.toString
+
+  /** Report an internal error in incremental compilation. */
+  def internalError(msg: => String, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    report.error(s"Internal error in the incremental compiler while compiling ${ctx.compilationUnit.source}: $msg", pos)
 }
 
 private case class ClassDependency(from: Symbol, to: Symbol, context: DependencyContext)
@@ -315,14 +337,15 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
 
   private def addInheritanceDependencies(tree: Template)(using Context): Unit =
     if (tree.parents.nonEmpty) {
-      val depContext =
-        if (tree.symbol.owner.isLocal) LocalDependencyByInheritance
-        else DependencyByInheritance
+      val depContext = depContextOf(tree.symbol.owner)
       val from = resolveDependencySource
-      tree.parents.foreach { parent =>
+      for parent <- tree.parents do
         _dependencies += ClassDependency(from, parent.tpe.classSymbol, depContext)
-      }
     }
+
+  private def depContextOf(cls: Symbol)(using Context): DependencyContext =
+    if cls.isLocal then LocalDependencyByInheritance
+    else DependencyByInheritance
 
   private def ignoreDependency(sym: Symbol)(using Context) =
     !sym.exists ||
@@ -351,6 +374,20 @@ private class ExtractDependenciesCollector extends tpd.TreeTraverser { thisTreeT
           addImported(sel.name)
           if sel.rename != sel.name then
             addUsedName(sel.rename, UseScope.Default)
+      case exp @ Export(expr, selectors) =>
+        val dep = expr.tpe.classSymbol
+        if dep.exists && selectors.exists(_.isWildcard) then
+          // If an export is a wildcard, that means that the enclosing class
+          // has forwarders to all the applicable signatures in `dep`,
+          // those forwarders will cause member/type ref dependencies to be
+          // recorded. However, if `dep` adds more members with new names,
+          // there has been no record that the enclosing class needs to
+          // recompile to capture the new members. We add an
+          // inheritance dependency in the presence of wildcard exports
+          // to ensure all new members of `dep` are forwarded to.
+          val depContext = depContextOf(ctx.owner.lexicallyEnclosingClass)
+          val from = resolveDependencySource
+          _dependencies += ClassDependency(from, dep, depContext)
       case t: TypeTree =>
         addTypeDependency(t.tpe)
       case ref: RefTree =>

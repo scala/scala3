@@ -1,5 +1,5 @@
 object Test extends App {
-  import collection._
+  import collection.*
   val xs: View[(String, Int)] = List("x").view.zip(LazyList.from(0))
   println(xs)
 

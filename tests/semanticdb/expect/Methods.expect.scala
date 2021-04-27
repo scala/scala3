@@ -1,7 +1,7 @@
 package example
 
 import scala.math.Ordering/*->scala::math::Ordering.*//*->scala::math::Ordering#*/
-import scala.language/*->scalaShadowing::language.*/.existentials/*->scalaShadowing::language.existentials.*/
+import scala.language/*->scala::language.*/.existentials/*->scala::language.existentials.*/
 
 class Methods/*<-example::Methods#*/[T/*<-example::Methods#[T]*/] {
   class List/*<-example::Methods#List#*/[T/*<-example::Methods#List#[T]*/]

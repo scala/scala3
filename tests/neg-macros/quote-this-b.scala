@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 class Foo {
   inline def k(): Unit = ${ Foo.impl[Any](this) } // error
@@ -6,5 +6,5 @@ class Foo {
 }
 
 object Foo {
-  def impl[T](x: Any)(using QuoteContext): Expr[Unit] = '{}
+  def impl[T](x: Any)(using Quotes): Expr[Unit] = '{}
 }

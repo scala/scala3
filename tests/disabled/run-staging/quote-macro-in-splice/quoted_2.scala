@@ -3,8 +3,8 @@ import scala.quoted.staging._
 import Macros._
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuotes {
     val x = '{
       val y = 1
       ${

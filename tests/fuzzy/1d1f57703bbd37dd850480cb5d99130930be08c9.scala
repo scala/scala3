@@ -1,5 +1,5 @@
 object App {
-import i0.{ i1 => false }
+import i0.{ i1 as false }
 def Array(i0: Int => Boolean): Any = ???
 }
 object i2 {

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 import scala.language.implicitConversions
 
 object Macro {
@@ -9,10 +9,10 @@ object Macro {
 
 object FIntepolator {
 
-  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
-    error("there are no parts", strCtxExpr.unseal.underlyingArgument.pos)
-    '{ ($strCtxExpr).s($argsExpr: _*) }
+  def apply(strCtxExpr: Expr[StringContext], argsExpr: Expr[Seq[Any]])(using Quotes) : Expr[String] = {
+    import quotes.reflect.*
+    report.error("there are no parts", strCtxExpr.asTerm.underlyingArgument.pos)
+    '{ ($strCtxExpr).s($argsExpr*) }
   }
 
 }

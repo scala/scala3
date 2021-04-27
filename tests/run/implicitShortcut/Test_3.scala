@@ -1,4 +1,4 @@
-import implicitShortcut._
+import implicitShortcut.*
 object Test extends App {
 
   val d = new Derived

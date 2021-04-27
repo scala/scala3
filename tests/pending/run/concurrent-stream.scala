@@ -17,7 +17,7 @@ object Test  {
   }
 
   def testCons(cons: (Int, => Stream[Int]) => Stream[Int]): Unit = {
-    import scala.actors.Actor._
+    import scala.actors.Actor.*
 
     val stream = slowRange(0, 10, cons)
     val main = self

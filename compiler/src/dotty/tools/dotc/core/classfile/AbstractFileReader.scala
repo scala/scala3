@@ -5,6 +5,7 @@ package classfile
 
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
+import java.io.{ByteArrayInputStream, DataInputStream}
 
 import io.AbstractFile
 
@@ -14,15 +15,21 @@ import io.AbstractFile
  * @author Philippe Altherr
  * @version 1.0, 23/03/2004
  */
-class AbstractFileReader(val file: AbstractFile) {
-
-  /** the buffer containing the file
-   */
-  val buf: Array[Byte] = file.toByteArray
+final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
+  def this(file: AbstractFile) = this(file.toByteArray)
 
   /** the current input pointer
    */
   var bp: Int = 0
+
+  /** extract a byte at position bp from buf
+   */
+  def getByte(mybp: Int): Byte =
+    buf(mybp)
+
+  def getBytes(mybp: Int, bytes: Array[Byte]): Unit = {
+    System.arraycopy(buf, mybp, bytes, 0, bytes.length)
+  }
 
   /** return byte at offset 'pos'
    */
@@ -60,13 +67,13 @@ class AbstractFileReader(val file: AbstractFile) {
   /** extract a character at position bp from buf
    */
   def getChar(mybp: Int): Char =
-    (((buf(mybp) & 0xff) << 8) + (buf(mybp + 1) & 0xff)).toChar
+    (((getByte(mybp) & 0xff) << 8) + (getByte(mybp+1) & 0xff)).toChar
 
   /** extract an integer at position bp from buf
    */
   def getInt(mybp: Int): Int =
-    ((buf(mybp  ) & 0xff) << 24) + ((buf(mybp + 1) & 0xff) << 16) +
-    ((buf(mybp + 2) & 0xff) << 8) + (buf(mybp + 3) & 0xff)
+    ((getByte(mybp) & 0xff) << 24) + ((getByte(mybp + 1) & 0xff) << 16) +
+    ((getByte(mybp + 2) & 0xff) << 8) + (getByte(mybp + 3) & 0xff)
 
   /** extract a long integer at position bp from buf
    */
@@ -80,6 +87,9 @@ class AbstractFileReader(val file: AbstractFile) {
   /** extract a double at position bp from buf
    */
   def getDouble(mybp: Int): Double = longBitsToDouble(getLong(mybp))
+
+  def getUTF(mybp: Int, len: Int): String =
+    new DataInputStream(new ByteArrayInputStream(buf, mybp, len)).readUTF
 
   /** skip next 'n' bytes
    */

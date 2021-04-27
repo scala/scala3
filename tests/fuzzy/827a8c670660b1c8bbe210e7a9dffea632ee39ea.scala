@@ -19,7 +19,7 @@ def i16() = 55
 }
 object i11 extends i12 {
 override def i16: i1 = ???
-import i8._
+import i8.*
 i15.size = ???
 }
 }

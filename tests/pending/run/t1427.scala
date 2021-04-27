@@ -1,5 +1,5 @@
 
-import scala.language.{ higherKinds }
+import scala.language.higherKinds
 
 class Bob[K[_]] {
   def foo(other: Any) = other match {

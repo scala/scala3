@@ -42,7 +42,6 @@ class Compiler {
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
     List(new PostTyper) ::          // Additional checks and cleanups after type checking
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
-    List(new Staging) ::            // Check PCP, heal quoted types and expand macros
     List(new sbt.ExtractAPI) ::     // Sends a representation of the API of classes to sbt via callbacks
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
     Nil
@@ -50,7 +49,10 @@ class Compiler {
   /** Phases dealing with TASTY tree pickling and unpickling */
   protected def picklerPhases: List[List[Phase]] =
     List(new Pickler) ::            // Generate TASTY info
-    List(new ReifyQuotes) ::        // Turn quoted trees into explicit run-time data structures
+    List(new Inlining) ::           // Inline and execute macros
+    List(new PostInlining) ::       // Add mirror support for inlined code
+    List(new Staging) ::            // Check staging levels and heal staged types
+    List(new PickleQuotes) ::       // Turn quoted trees into explicit run-time data structures
     Nil
 
   /** Phases dealing with the transformation from pickled trees to backend trees */
@@ -61,14 +63,16 @@ class Compiler {
          new CookComments,           // Cook the comments: expand variables, doc, etc.
          new CheckStatic,            // Check restrictions that apply to @static members
          new BetaReduce,             // Reduce closure applications
+         new InlineVals,             // Check right hand-sides of an `inline val`s
+         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new init.Checker) ::        // Check initialization of objects
     List(new ElimRepeated,           // Rewrite vararg parameters and arguments
-         new ExpandSAMs,             // Expand single abstract method closures to anonymous classes
          new ProtectedAccessors,     // Add accessors for protected members
          new ExtensionMethods,       // Expand methods of value classes with extension methods
-         new CacheAliasImplicits,    // Cache RHS of parameterless alias implicits
+         new UncacheGivenAliases,    // Avoid caching RHS of simple parameterless given aliases
          new ByNameClosures,         // Expand arguments to by-name parameters to closures
          new HoistSuperArgs,         // Hoist complex arguments of supercalls to enclosing scope
+         new SpecializeApplyMethods, // Adds specialized methods to FunctionN
          new RefChecks) ::           // Various checks mostly related to abstract members and overriding
     List(new ElimOpaque,             // Turn opaque into normal aliases
          new TryCatchPatterns,       // Compile cases in try/catch
@@ -76,15 +80,16 @@ class Compiler {
          new sjs.ExplicitJSClasses,  // Make all JS classes explicit (Scala.js only)
          new ExplicitOuter,          // Add accessors to outer classes from nested ones.
          new ExplicitSelf,           // Make references to non-trivial self types explicit as casts
-         new StringInterpolatorOpt,  // Optimizes raw and s string interpolators by rewriting them to string concatentations
-         new CrossCastAnd) ::        // Normalize selections involving intersection types.
+         new ElimByName,             // Expand by-name parameter references
+         new StringInterpolatorOpt) :: // Optimizes raw and s string interpolators by rewriting them to string concatenations
     List(new PruneErasedDefs,        // Drop erased definitions from scopes and simplify erased expressions
+         new UninitializedDefs,      // Replaces `compiletime.uninitialized` by `_`
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
          new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
-         new ElimByName,             // Expand by-name parameter references
+         new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new LiftTry,                // Put try expressions that might execute on non-empty stacks into their own methods
          new CollectNullableFields,  // Collect fields that can be nulled out after use in lazy initialization
          new ElimOuterSelect,        // Expand outer selections
@@ -92,13 +97,14 @@ class Compiler {
          new FunctionXXLForwarders,  // Add forwarders for FunctionXXL apply method
          new ParamForwarding,        // Add forwarders for aliases of superclass parameters
          new TupleOptimizations,     // Optimize generic operations on tuples
-         new LetOverApply,            // Lift blocks from receivers of applications
+         new LetOverApply,           // Lift blocks from receivers of applications
          new ArrayConstructors) ::   // Intercept creation of (non-generic) arrays and intrinsify.
     List(new Erasure) ::             // Rewrite types to JVM model, erasing all type parameters, abstract types and refinements.
     List(new ElimErasedValueType,    // Expand erased value types to their underlying implmementation types
          new PureStats,              // Remove pure stats from blocks
          new VCElideAllocations,     // Peep-hole optimization to eliminate unnecessary value class allocations
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
+         new sjs.AddLocalJSFakeNews, // Adds fake new invocations to local JS classes in calls to `createLocalJSClass`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
          new TailRec,                // Rewrite tail recursion to loops
          new CompleteJavaEnums,      // Fill in constructors for Java enums
@@ -109,7 +115,6 @@ class Compiler {
          new CapturedVars) ::        // Represent vars captured by closures as heap objects
     List(new Constructors,           // Collect initialization code in primary constructors
                                         // Note: constructors changes decls in transformTemplate, no InfoTransformers should be added after it
-         new FunctionalInterfaces,   // Rewrites closures to implement @specialized types of Functions.
          new Instrumentation) ::     // Count calls and allocations under -Yinstrument
     List(new LambdaLift,             // Lifts out nested functions to class scope, storing free variables in environments
                                      // Note: in this mini-phase block scopes are incorrect. No phases that rely on scopes should be here
@@ -124,7 +129,8 @@ class Compiler {
          new RestoreScopes,          // Repair scopes rendered invalid by moving definitions in prior phases of the group
          new SelectStatic,           // get rid of selects that would be compiled into GetStatic
          new sjs.JUnitBootstrappers, // Generate JUnit-specific bootstrapper classes for Scala.js (not enabled by default)
-         new CollectSuperCalls) ::   // Find classes that are called with super
+         new CollectSuperCalls,      // Find classes that are called with super
+         new RepeatableAnnotations) :: // Aggregate repeatable annotations
     Nil
 
   /** Generate the output of the compilation */
@@ -146,7 +152,7 @@ class Compiler {
   def newRun(using Context): Run = {
     reset()
     val rctx =
-      if ctx.settings.Ysemanticdb.value then
+      if ctx.settings.Xsemanticdb.value then
         ctx.addMode(Mode.ReadPositions)
       else
         ctx

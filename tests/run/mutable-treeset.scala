@@ -124,7 +124,7 @@ object Test extends App {
       val it = set.iterator.toList
       assert(it == list, s"$it did not equal $list")
     }
-    val set = TreeSet(list: _*)
+    val set = TreeSet(list*)
     check(set, sorted)
     check(set.clone, sorted)
 

@@ -22,7 +22,7 @@ class main(progName: String, args: Array[String], docComment: String) extends Ma
 
   def this() = this("", Array(), "")
 
-  type ArgumentParser[T] = util.FromString[T]
+  type ArgumentParser[T] = util.CommandLineParser.FromString[T]
 
   /** A buffer of demanded argument names, plus
    *   "?"  if it has a default

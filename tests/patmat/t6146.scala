@@ -15,7 +15,7 @@ trait AxisCompanion {
 }
 object Axis extends AxisCompanion
 class Axis {
-   import Axis._
+   import Axis.*
    def test( f: Format ) = f match {
       case Format.Integer => "Int"
       // case Format.Time( hours, millis ) => "Time"
@@ -47,7 +47,7 @@ object O1 extends T1[Any] {
 case object Shorty extends O1.O2.Format
 
 class Test1 {
-   import O1.O2._
+   import O1.O2.*
    val FI: Format.Integer.type = Format.Integer
    def test( f: Format ) = {
      val ff: f.type = f

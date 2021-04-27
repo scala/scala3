@@ -1,10 +1,10 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuotes {
     assert('{1} matches '{1})
     assert('{println("foo")} matches '{println("foo")})
     assert('{println("foo")} matches '{println(${Expr("foo")})})

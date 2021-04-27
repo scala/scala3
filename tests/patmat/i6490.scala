@@ -6,5 +6,5 @@ object Foo {
 
 def foo(x: Foo): Unit =
   x match {
-    case Foo(x, _: _*) => assert(x == 3)
+    case Foo(x, _*) => assert(x == 3)
   }

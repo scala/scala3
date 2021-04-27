@@ -5,7 +5,7 @@ object TypeLevel {
   /** @param caseLabels The case and element labels of the described ADT as encoded strings.
   */
   class GenericClass(labelsStr: String) {
-    import GenericClass._
+    import GenericClass.*
 
     /** A mirror of case with ordinal number `ordinal` and elements as given by `Product` */
     def mirror(ordinal: Int, product: Product): Mirror =
@@ -26,8 +26,8 @@ object TypeLevel {
     val label: Array[Array[String]] =
       initLabels(0, 0, new mutable.ArrayBuffer[String], new mutable.ArrayBuffer[Array[String]])
 
-    private final val elemSeparator = '\000'
-    private final val caseSeparator = '\001'
+    private final val elemSeparator = '\u0000'
+    private final val caseSeparator = '\u0001'
 
     private def initLabels(start: Int, cur: Int,
                            elems: mutable.ArrayBuffer[String],
@@ -122,20 +122,20 @@ object TypeLevel {
 
 // An algebraic datatype
 enum Lst[+T] {
-  case Cons(hd: T, tl: Lst[T])
+  case Cons[T](hd: T, tl: Lst[T]) extends Lst[T]
   case Nil
 }
 
 object Lst {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Cases[(
     Shape.Case[Cons[T], (T, Lst[T])],
     Shape.Case[Nil.type, EmptyTuple]
   )]
 
-  val genericClass = new GenericClass("Cons\000hd\000tl\001Nil")
+  val genericClass = new GenericClass("Cons\u0000hd\u0000tl\u0001Nil")
   import genericClass.mirror
 
   val NilMirror = mirror(1)
@@ -161,11 +161,11 @@ case class Pair[T](x: T, y: T) // derives Eq, Pickler, Show
 
 object Pair {
   // common compiler-generated infrastructure
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[T] = Shape.Case[Pair[T], (T, T)]
 
-  val genericClass = new GenericClass("Pair\000x\000y")
+  val genericClass = new GenericClass("Pair\u0000x\u0000y")
   import genericClass.mirror
 
   implicit def pairShape[T]: Shaped[Pair[T], Shape[T]] = new {
@@ -182,14 +182,14 @@ case class Left[L](x: L) extends Either[L, Nothing]
 case class Right[R](x: R) extends Either[Nothing, R]
 
 object Either {
-  import TypeLevel._
+  import TypeLevel.*
 
   type Shape[L, R] = Shape.Cases[(
     Shape.Case[Left[L], L *: EmptyTuple],
     Shape.Case[Right[R], R *: EmptyTuple]
   )]
 
-  val genericClass = new GenericClass("Left\000x\001Right\000x")
+  val genericClass = new GenericClass("Left\u0000x\u0001Right\u0000x")
   import genericClass.mirror
 
   implicit def eitherShape[L, R]: Shaped[Either[L, R], Shape[L, R]] = new {
@@ -211,7 +211,7 @@ trait Show[T] {
 }
 object Show {
   import scala.compiletime.{erasedValue, error, summonInline}
-  import TypeLevel._
+  import TypeLevel.*
 
   inline def tryShow[T](x: T): String = summonInline[Show[T]].show(x)
 
@@ -263,7 +263,7 @@ object Show {
 
 // Tests
 object Test extends App {
-  import TypeLevel._
+  import TypeLevel.*
 
   def showPrintln[T: Show](x: T): Unit =
     println(implicitly[Show[T]].show(x))

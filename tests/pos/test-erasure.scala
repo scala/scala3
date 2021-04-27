@@ -5,7 +5,7 @@ object erasure {
     def this() = this(0)
   }
 
-  import java.lang._
+  import java.lang.*
 
   def const[T](x: T, y: T) = x
 

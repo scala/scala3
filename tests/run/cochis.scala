@@ -1,4 +1,4 @@
-import Predef.{$conforms => _, _}
+import Predef.{$conforms as _, *}
 
 trait A {
 

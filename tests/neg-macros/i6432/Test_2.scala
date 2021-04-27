@@ -1,5 +1,5 @@
 
 object TestA {
-  import Macro._
+  import Macro.*
   foo"abc${"123"}xyz${"456"}fgh" // error // error // error
 }

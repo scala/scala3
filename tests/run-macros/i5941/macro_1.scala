@@ -3,7 +3,7 @@ trait Lens[S, T] {
   def set(t: T, s: S) :S
 }
 
-import scala.quoted._
+import scala.quoted.*
 
 object Lens {
   def apply[S, T](_get: S => T)(_set: T => S => S): Lens[S, T] = new Lens {
@@ -11,9 +11,9 @@ object Lens {
     def set(t: T, s: S): S = _set(t)(s)
   }
 
-  def impl[S: Type, T: Type](getter: Expr[S => T])(using qctx: QuoteContext) : Expr[Lens[S, T]] = {
-    import qctx.tasty._
-    import util._
+  def impl[S: Type, T: Type](getter: Expr[S => T])(using Quotes) : Expr[Lens[S, T]] = {
+    import quotes.reflect.*
+    import util.*
 
     // obj.copy(a = obj.a.copy(b = a.b.copy(c = v)))
     def setterBody(obj: Term, value: Term, parts: List[String]): Term = {
@@ -45,11 +45,11 @@ object Lens {
       }
     }
 
-    // exception: getter.unseal.underlyingArgument
-    getter.unseal match {
+    // exception: getter.asTerm.underlyingArgument
+    getter.asTerm match {
       case Function(param :: Nil, Path(o, parts)) if o.symbol == param.symbol =>
         '{
-          val setter = (t: T) => (s: S) => ${ setterBody(('s).unseal, ('t).unseal, parts).seal.cast[S] }
+          val setter = (t: T) => (s: S) => ${ setterBody('s.asTerm, 't.asTerm, parts).asExprOf[S] }
           apply($getter)(setter)
         }
       case _ =>
@@ -84,12 +84,12 @@ object Iso {
     def to(s: S): A = _to(s)
   }
 
-  def impl[S: Type, A: Type](using qctx: QuoteContext) : Expr[Iso[S, A]] = {
-    import qctx.tasty._
-    import util._
+  def impl[S: Type, A: Type](using Quotes) : Expr[Iso[S, A]] = {
+    import quotes.reflect.*
+    import util.*
 
-    val tpS = Type.of[S]
-    val tpA = Type.of[A]
+    val tpS = TypeRepr.of[S]
+    val tpA = TypeRepr.of[A]
 
     // 1. S must be a case class
     // 2. A must be a tuple
@@ -116,21 +116,21 @@ object Iso {
       '{???}
     } else '{
       // (p: S) => p._1
-      val to = (p: S) =>  ${ Select.unique(('p).unseal, "_1").seal.cast[A] }
+      val to = (p: S) =>  ${ Select.unique('p.asTerm, "_1").asExprOf[A] }
       // (p: A) => S(p)
-      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, ('p).unseal :: Nil).seal.cast[S] }
+      val from = (p: A) =>  ${ Select.overloaded(Ident(companion), "apply", Nil, 'p.asTerm :: Nil).asExprOf[S] }
       apply(from)(to)
     }
   }
 
-  def implUnit[S: Type](using qctx: QuoteContext) : Expr[Iso[S, 1]] = {
-    import qctx.tasty._
-    import util._
+  def implUnit[S: Type](using Quotes) : Expr[Iso[S, 1]] = {
+    import quotes.reflect.*
+    import util.*
 
-    val tpS = Type.of[S]
+    val tpS = TypeRepr.of[S]
 
     if (tpS.isSingleton) {
-      val ident = Ident(tpS.asInstanceOf[TermRef]).seal.cast[S]
+      val ident = Ident(tpS.asInstanceOf[TermRef]).asExprOf[S]
       '{
         Iso[S, 1](Function.const($ident))(Function.const(1))
       }
@@ -147,7 +147,7 @@ object Iso {
         case TypeRef(prefix, name) => TermRef(prefix, name)
       }
 
-      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).seal.cast[S]
+      val obj = Select.overloaded(Ident(companion), "apply", Nil, Nil).asExprOf[S]
 
       '{
         Iso[S, 1](Function.const($obj))(Function.const(1))
@@ -160,7 +160,7 @@ object Iso {
   }
 
   // TODO: require whitebox macro
-  def implFields[S: Type](using qctx: QuoteContext) : Expr[Iso[S, Any]] = ???
+  def implFields[S: Type](using Quotes) : Expr[Iso[S, Any]] = ???
 }
 
 object GenIso {
@@ -195,9 +195,9 @@ object Prism {
     def apply(a: A): S = app(a)
   }
 
-  def impl[S: Type, A <: S : Type](using qctx: QuoteContext) : Expr[Prism[S, A]] = {
-    import qctx.tasty._
-    import util._
+  def impl[S: Type, A <: S : Type](using Quotes) : Expr[Prism[S, A]] = {
+    import quotes.reflect.*
+    import util.*
 
     '{
       val get = (p: S) =>  if (p.isInstanceOf[A]) Some(p.asInstanceOf[A]) else None

@@ -24,7 +24,7 @@ def i10(i2: i4): i3 = new i4(i5)
 object i10 {
 def main(i12: Array[String]): Unit = {
 val i10: Array[String] = null
-var i2 = _
+var i2 = compiletime.uninitialized
 def i3(i2: Int) = i2
 }
 object i0 {
@@ -45,7 +45,7 @@ private def i3 = 1000 * 60 * 24 * i2 = 5 + i4 + i2; case 5 => 0
 }
 }
 }
-import i0.{ toInt, i2 => this }
+import i0.{ toInt, i2 as this }
 val i7 = new i4
 val i5 = new i0
 val i6 = new i0

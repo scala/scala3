@@ -13,9 +13,8 @@ import SymUtils._
 /** Methods that apply to user-defined value classes */
 object ValueClasses {
 
-  def isDerivedValueClass(sym: Symbol)(using Context): Boolean = {
+  def isDerivedValueClass(sym: Symbol)(using Context): Boolean = sym.isClass && {
     val d = sym.denot
-    !ctx.settings.XnoValueClasses.value &&
     !d.isRefinementClass &&
     d.isValueClass &&
     (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
@@ -55,15 +54,4 @@ object ValueClasses {
   /** The unboxed type that underlies a derived value class */
   def underlyingOfValueClass(sym: ClassSymbol)(using Context): Type =
     valueClassUnbox(sym).info.resultType
-
-  /** Whether a value class wraps itself */
-  def isCyclic(cls: ClassSymbol)(using Context): Boolean = {
-    def recur(seen: Set[Symbol], clazz: ClassSymbol)(using Context): Boolean =
-      (seen contains clazz) || {
-        val unboxed = underlyingOfValueClass(clazz).typeSymbol
-        (isDerivedValueClass(unboxed)) && recur(seen + clazz, unboxed.asClass)
-      }
-
-    recur(Set[Symbol](), cls)
-  }
 }

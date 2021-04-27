@@ -1,3 +1,4 @@
+> recordPreviousIterations
 # Tests that classpath entries that are different than their canonical representation are
 #  handled properly.  In particular, a symlink from lib/a.jar to lib/../actual/a.jar.0 is 
 #  available on the classpath and read by scalac.  scalac 2.10.x does not interpret .jar.0

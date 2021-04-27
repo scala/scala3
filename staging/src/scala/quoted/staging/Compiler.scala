@@ -1,0 +1,65 @@
+package scala.quoted
+package staging
+
+import scala.annotation.implicitNotFound
+
+import scala.quoted.runtime.impl.ScopeException
+
+@implicitNotFound("Could not find implicit scala.quoted.staging.Compiler.\n\nDefault compiler can be instantiated with:\n  `import scala.quoted.staging.Compiler; given Compiler = Compiler.make(getClass.getClassLoader)`\n\n")
+trait Compiler:
+  def run[T](expr: Quotes => Expr[T]): T
+
+object Compiler:
+
+  /** Create a new instance of the compiler using the the classloader of the application.
+   *
+   * Usuage:
+   * ```
+   * import scala.quoted.staging._
+   * given Compiler = Compiler.make(getClass.getClassLoader)
+   * ```
+   *
+   * @param appClassloader classloader of the application that generated the quotes
+   * @param settings compiler settings
+   * @return A new instance of the compiler
+   */
+  def make(appClassloader: ClassLoader)(implicit settings: Settings): Compiler =
+    new Compiler:
+
+      private[this] val driver: QuoteDriver = new QuoteDriver(appClassloader)
+
+      private[this] var running = false
+
+      def run[T](exprBuilder: Quotes => Expr[T]): T = synchronized {
+        try
+          if (running) // detected nested run
+            throw new ScopeException("Cannot call `scala.quoted.staging.run(...)` within a another `run(...)`")
+          running = true
+          driver.run(exprBuilder, settings)
+        finally
+          running = false
+        end try
+      }
+
+    end new
+
+  /** Setting of the Compiler instance. */
+  case class Settings private (outDir: Option[String], compilerArgs: List[String])
+
+  object Settings:
+
+    implicit def default: Settings = make()
+
+    /** Make compiler settings
+     *  @param outDir Output directory for the compiled quote. If set to None the output will be in memory
+     *  @param compilerArgs Compiler arguments. Use only if you know what you are doing.
+     */
+    def make( // TODO avoid using default parameters (for binary compat)
+      outDir: Option[String] = None,
+      compilerArgs: List[String] = Nil
+    ): Settings =
+      new Settings(outDir, compilerArgs)
+
+  end Settings
+
+end Compiler

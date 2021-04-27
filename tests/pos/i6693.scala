@@ -1,6 +1,6 @@
 package towers.computes
 
-import quoted._
+import quoted.*
 
 sealed abstract class Computes[T]
 

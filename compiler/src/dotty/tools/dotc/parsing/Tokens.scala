@@ -95,7 +95,6 @@ abstract class TokensCommon {
   //final val THEN = 60;             enter(THEN, "then")
   //final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   //final val ENUM = 62;             enter(ENUM, "enum")
-  //final val ERASED = 63;           enter(ERASED, "erased")
 
   /** special symbols */
   final val COMMA = 70;            enter(COMMA, "','")
@@ -121,14 +120,14 @@ abstract class TokensCommon {
   def isKeyword(token: Token): Boolean = keywords contains token
 
   /** parentheses */
-  final val LPAREN = 90;           enter(LPAREN, "'('")
-  final val RPAREN = 91;           enter(RPAREN, "')'")
-  final val LBRACKET = 92;         enter(LBRACKET, "'['")
-  final val RBRACKET = 93;         enter(RBRACKET, "']'")
-  final val LBRACE = 94;           enter(LBRACE, "'{'")
-  final val RBRACE = 95;           enter(RBRACE, "'}'")
-  final val INDENT = 96;           enter(INDENT, "indent")
-  final val OUTDENT = 97;          enter(OUTDENT, "unindent")
+  final val LPAREN = 91;           enter(LPAREN, "'('")
+  final val RPAREN = 92;           enter(RPAREN, "')'")
+  final val LBRACKET = 93;         enter(LBRACKET, "'['")
+  final val RBRACKET = 94;         enter(RBRACKET, "']'")
+  final val LBRACE = 95;           enter(LBRACE, "'{'")
+  final val RBRACE = 96;           enter(RBRACE, "'}'")
+  final val INDENT = 97;           enter(INDENT, "indent")
+  final val OUTDENT = 98;          enter(OUTDENT, "unindent")
 
   final val firstParen = LPAREN
   final val lastParen = OUTDENT
@@ -181,11 +180,9 @@ object Tokens extends TokensCommon {
   final val THEN = 60;             enter(THEN, "then")
   final val FORSOME = 61;          enter(FORSOME, "forSome") // TODO: deprecate
   final val ENUM = 62;             enter(ENUM, "enum")
-  final val ERASED = 63;           enter(ERASED, "erased")
-  final val GIVEN = 64;            enter(GIVEN, "given")
-  final val EXPORT = 65;           enter(EXPORT, "export")
-  final val SUPERTRAIT = 66;       enter(SUPERTRAIT, "super trait")
-  final val MACRO = 67;            enter(MACRO, "macro") // TODO: remove
+  final val GIVEN = 63;            enter(GIVEN, "given")
+  final val EXPORT = 64;           enter(EXPORT, "export")
+  final val MACRO = 65;            enter(MACRO, "macro") // TODO: remove
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -205,9 +202,10 @@ object Tokens extends TokensCommon {
   final val QUOTE = 87;            enter(QUOTE, "'")
 
   final val COLONEOL = 88;         enter(COLONEOL, ":", ": at eol")
+  final val SELFARROW = 89;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
   /** XML mode */
-  final val XMLSTART = 98;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -234,14 +232,13 @@ object Tokens extends TokensCommon {
   final val canStartTypeTokens: TokenSet = literalTokens | identifierTokens | BitSet(
     THIS, SUPER, USCORE, LPAREN, AT)
 
-  final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT, SUPERTRAIT)
+  final val templateIntroTokens: TokenSet = BitSet(CLASS, TRAIT, OBJECT, ENUM, CASECLASS, CASEOBJECT)
 
   final val dclIntroTokens: TokenSet = BitSet(DEF, VAL, VAR, TYPE, GIVEN)
 
   final val defIntroTokens: TokenSet = templateIntroTokens | dclIntroTokens
 
-  final val localModifierTokens: TokenSet = BitSet(
-    ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY, ERASED)
+  final val localModifierTokens: TokenSet = BitSet(ABSTRACT, FINAL, SEALED, IMPLICIT, LAZY)
 
   final val accessModifierTokens: TokenSet = BitSet(
     PRIVATE, PROTECTED)
@@ -251,7 +248,7 @@ object Tokens extends TokensCommon {
 
   final val modifierTokensOrCase: TokenSet = modifierTokens | BitSet(CASE)
 
-  final val modifierFollowers = modifierTokens | defIntroTokens
+  final val modifierFollowers = modifierTokensOrCase | defIntroTokens
 
   /** Is token only legal as start of statement (eof also included)? */
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
@@ -261,7 +258,7 @@ object Tokens extends TokensCommon {
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE)
 
-  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, RPAREN, RBRACE, RBRACKET, OUTDENT)
+  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -276,17 +273,18 @@ object Tokens extends TokensCommon {
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
-    statCtdTokens | BitSet(COLONEOL, EQUALS, ARROW, LARROW, WHILE, TRY, FOR, IF)
-      // `if` is excluded because it often comes after `else` which makes for awkward indentation rules  TODO: try to do without the exception
+    statCtdTokens | BitSet(COLONEOL, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
 
   /** Faced with the choice between a type and a formal parameter, the following
    *  tokens determine it's a formal parameter.
    */
   final val startParamTokens: BitSet = modifierTokens | BitSet(VAL, VAR, AT)
 
-  final val scala3keywords = BitSet(ENUM, ERASED, GIVEN)
+  final val scala3keywords = BitSet(ENUM, GIVEN)
 
-  final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, GIVEN, VAL, THIS)
+  final val endMarkerTokens = identifierTokens | BitSet(IF, WHILE, FOR, MATCH, TRY, NEW, THROW, GIVEN, VAL, THIS)
 
-  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent)
+  final val skipStopTokens = BitSet(SEMI, NEWLINE, NEWLINES, RBRACE, RPAREN, RBRACKET, OUTDENT)
+
+  final val softModifierNames = Set(nme.inline, nme.opaque, nme.open, nme.transparent, nme.infix)
 }

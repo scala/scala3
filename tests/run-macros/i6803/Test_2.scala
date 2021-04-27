@@ -1,4 +1,4 @@
-import blah._
+import blah.*
 
 def testO(): Unit = {
   import AsObject.LineNo

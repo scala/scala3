@@ -1,4 +1,4 @@
-import pack._
+import pack.*
 
 object Test {
   val r = new R

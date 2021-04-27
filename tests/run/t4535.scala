@@ -1,4 +1,4 @@
-import collection._
+import collection.*
 
 // #4535
 object Test {

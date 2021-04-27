@@ -10,16 +10,15 @@ Used on types, the `&` operator creates an intersection type.
 The type `S & T` represents values that are of the type `S` and `T` at the same time.
 
 ```scala
-trait Resettable {
-  def reset(): Unit
-}
-trait Growable[T] {
-  def add(t: T): Unit
-}
-def f(x: Resettable & Growable[String]) = {
-  x.reset()
-  x.add("first")
-}
+trait Resettable:
+   def reset(): Unit
+
+trait Growable[T]:
+   def add(t: T): Unit
+
+def f(x: Resettable & Growable[String]) =
+   x.reset()
+   x.add("first")
 ```
 
 The parameter `x` is required to be _both_ a `Resettable` and a
@@ -35,12 +34,12 @@ If a member appears in both `A` and `B`, its type in `A & B` is the intersection
 of its type in `A` and its type in `B`. For instance, assume the definitions:
 
 ```scala
-trait A {
-  def children: List[A]
-}
-trait B {
-  def children: List[B]
-}
+trait A:
+   def children: List[A]
+
+trait B:
+   def children: List[B]
+
 val x: A & B = new C
 val ys: List[A & B] = x.children
 ```
@@ -60,9 +59,8 @@ So if one defines a class `C` that inherits `A` and `B`, one needs
 to give at that point a definition of a `children` method with the required type.
 
 ```scala
-class C extends A with B {
-  def children: List[A & B] = ???
-}
+class C extends A, B:
+   def children: List[A & B] = ???
 ```
 
 

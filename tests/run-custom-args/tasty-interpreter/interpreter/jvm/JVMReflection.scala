@@ -1,9 +1,10 @@
 package scala.tasty.interpreter.jvm
 
-import scala.tasty.Reflection
+import scala.quoted.*
 
-class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
-  import reflect.{_, given _}
+class JVMReflection[Q <: Quotes & Singleton](using val q: Q) {
+  import q.reflect.*
+
   import java.lang.reflect.{InvocationTargetException, Method}
   private val classLoader: ClassLoader = getClass.getClassLoader
 
@@ -55,22 +56,22 @@ class JVMReflection[R <: Reflection & Singleton](val reflect: R) {
     // TODO can we use interpretMethodCall instead?
     val inst = loadModule(moduleClass)
     val method = getMethod(inst.getClass, fn.name, paramsSig(fn))
-    method.invoke(inst, args: _*)
+    method.invoke(inst, args*)
   }
 
   def interpretMethodCall(inst: Object, fn: Symbol, args: List[Object]): Object = {
     val method = getMethod(inst.getClass, fn.name, paramsSig(fn))
-    method.invoke(inst, args: _*)
+    method.invoke(inst, args*)
   }
 
   def interpretNew(fn: Symbol, args: List[Object]): Object = {
     val clazz = getClassOf(fn.owner)
-    val constr = clazz.getConstructor(paramsSig(fn): _*)
-    constr.newInstance(args: _*).asInstanceOf[Object]
+    val constr = clazz.getConstructor(paramsSig(fn)*)
+    constr.newInstance(args*).asInstanceOf[Object]
   }
 
   def getMethod(clazz: Class[_], name: String, paramClasses: List[Class[_]]): Method = {
-    try clazz.getMethod(name, paramClasses: _*)
+    try clazz.getMethod(name, paramClasses*)
     catch {
       case _: NoSuchMethodException =>
         val msg = s"Could not find method ${clazz.getCanonicalName}.$name with parameters ($paramClasses%, %)$extraMsg"

@@ -6,8 +6,8 @@ SOURCE=$DIR/Gen.scala
 CLASS=./Gen.class
 
 if [ ! -e $CLASS ] || [ $SOURCE -nt $CLASS ]; then
-  ./bin/dotc $DIR/Gen.scala
+  ./bin/scalac $DIR/Gen.scala
 fi
 
-./bin/dotr Gen $@
+./bin/scala Gen $@
 

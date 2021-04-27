@@ -17,15 +17,15 @@ object Test {
     case _            => false
   }
   def f1seq(x: Any) = x match {
-    case Foo(x, ys : _*) => true
+    case Foo(x, ys *) => true
     case _               => false
   }
   def f2seq(x: Any) = x match {
-    case Foo(x, y, zs : _*) => true
+    case Foo(x, y, zs *) => true
     case _                  => false
   }
   def f3seq(x: Any) = x match {
-    case Foo(x, y, z, qs : _*) => true
+    case Foo(x, y, z, qs *) => true
     case _                     => false
   }
 

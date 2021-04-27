@@ -1,5 +1,5 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 enum Exp {
   case Num(n: Int)
@@ -9,10 +9,10 @@ enum Exp {
 }
 
 object Test {
-  import Exp._
+  import Exp.*
 
-  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(using QuoteContext): Expr[Int] = {
-    def compileImpl(e: Exp, env: Map[String, Expr[Int]]): Expr[Int] = e match {
+  def compile(e: Exp, env: Map[String, Expr[Int]], keepLets: Boolean)(using Quotes): Expr[Int] = {
+    def compileImpl(e: Exp, env: Map[String, Expr[Int]])(using Quotes): Expr[Int] = e match {
       case Num(n) => Expr(n)
       case Plus(e1, e2) => '{${compileImpl(e1, env)} + ${compileImpl(e2, env)}}
       case Var(x) => env(x)
@@ -27,14 +27,14 @@ object Test {
 
 
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
     val exp = Plus(Plus(Num(2), Var("x")), Num(4))
     val letExp = Let("x", Num(3), exp)
 
-    def res1(using QuoteContext) = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
+    def res1(using Quotes) = '{ (x: Int) => ${compile(exp, Map("x" -> 'x), false)} }
 
 
-    println(withQuoteContext(res1.show))
+    println(withQuotes(res1.show))
 
     val fn = run(res1)
     println(fn(0))
@@ -43,14 +43,14 @@ object Test {
 
     println("---")
 
-    def res2(using QuoteContext) = compile(letExp, Map(), false)
-    println(withQuoteContext(res2.show))
+    def res2(using Quotes) = compile(letExp, Map(), false)
+    println(withQuotes(res2.show))
     println(run(res2))
 
     println("---")
 
-    def res3(using QuoteContext) = compile(letExp, Map(), true)
-    println(withQuoteContext(res3.show))
+    def res3(using Quotes) = compile(letExp, Map(), true)
+    println(withQuotes(res3.show))
     println(run(res3))
   }
 }

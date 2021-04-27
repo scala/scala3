@@ -1,4 +1,5 @@
 // Adapted from github:mandubian/kind-polymorphic-semigroup.scala
+import language.experimental.namedTypeArguments
 sealed trait HList
 case class HCons[+HD, +TL](hd: HD, tl: TL) extends HList
 case object HNil extends HList

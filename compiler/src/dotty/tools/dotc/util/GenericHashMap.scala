@@ -111,9 +111,11 @@ abstract class GenericHashMap[Key, Value]
           k = keyAt(idx)
           k != null
         do
+          val eidx = index(hash(k))
           if isDense
-            || index(hole - index(hash(k))) < limit * 2
-               // hash(k) is then logically at or before hole; can be moved forward to fill hole
+            || index(eidx - (hole + 2)) > index(idx - (hole + 2))
+               // entry `e` at `idx` can move unless `index(hash(e))` is in
+               // the (ring-)interval [hole + 2 .. idx]
           then
             setKey(hole, k)
             setValue(hole, valueAt(idx))
@@ -156,7 +158,7 @@ abstract class GenericHashMap[Key, Value]
   protected def growTable(): Unit =
     val oldTable = table
     val newLength =
-      if oldTable.length == DenseLimit then DenseLimit * 2 * roundToPower(capacityMultiple)
+      if table.length == DenseLimit * 2 then table.length * roundToPower(capacityMultiple)
       else table.length
     allocate(newLength)
     copyFrom(oldTable)

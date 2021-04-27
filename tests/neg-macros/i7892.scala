@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 package x {
   class CExprResult1[T]
 }
 
-def run(using qctx: QuoteContext): Unit = {
+def run(using Quotes) = {
   val cpsLeft: x.CExprResult1[?] = ???
   run1(cpsLeft) // error
 }

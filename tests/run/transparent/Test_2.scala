@@ -1,6 +1,6 @@
 object Test {
 
-  import p.transparents._
+  import p.transparents.*
 
   def main(args: Array[String]): Unit = {
     println(f(10))

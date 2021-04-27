@@ -1,0 +1,5 @@
+Some(BYTE)
+Some(INT)
+Some(OPTION[INT])
+Some(OPTION[OPTION[INT]])
+Some(MAP[INT,INT])

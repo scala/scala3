@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 trait VecOp[Idx, Unt] {
   def iter: Vec[Idx, Unt] => Unt
@@ -12,7 +12,7 @@ class VecSta extends VecOp[Int, Unit] {
   override def toString(): String = s"StaticVec"
 }
 
-class VecDyn(using QuoteContext) extends VecOp[Expr[Int], Expr[Unit]] {
+class VecDyn(using Quotes) extends VecOp[Expr[Int], Expr[Unit]] {
   def iter: Vec[Expr[Int], Expr[Unit]] => Expr[Unit] = arr => '{
     var i = 0
     while (i < ${arr.size}) {

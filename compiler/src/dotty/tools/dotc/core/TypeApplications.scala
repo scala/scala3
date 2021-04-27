@@ -26,24 +26,46 @@ object TypeApplications {
 
   /** Extractor for
    *
-   *    [v1 X1: B1, ..., vn Xn: Bn] -> C[X1, ..., Xn]
+   *    [X1: B1, ..., Xn: Bn] -> C[X1, ..., Xn]
    *
-   *  where v1, ..., vn and B1, ..., Bn are the variances and bounds of the type parameters
-   *  of the class C.
+   *  where B1, ..., Bn are bounds of the type parameters of the class C.
    *
    *  @param tycon     C
    */
-  object EtaExpansion {
-    def apply(tycon: Type)(using Context): Type = {
+  object EtaExpansion:
+
+    def apply(tycon: Type)(using Context): Type =
       assert(tycon.typeParams.nonEmpty, tycon)
       tycon.EtaExpand(tycon.typeParamSymbols)
-    }
 
-    def unapply(tp: Type)(using Context): Option[TypeRef] = tp match {
-      case tp @ HKTypeLambda(tparams, AppliedType(fn: TypeRef, args)) if (args == tparams.map(_.paramRef)) => Some(fn)
+    /** Test that the parameter bounds in a hk type lambda `[X1,...,Xn] => C[X1, ..., Xn]`
+     *  contain the bounds of the type parameters of `C`. This is necessary to be able to
+     *  contract the hk lambda to `C`.
+     */
+    private def weakerBounds(tp: HKTypeLambda, tparams: List[ParamInfo])(using Context): Boolean =
+      val onlyEmptyBounds = tp.typeParams.forall(_.paramInfo == TypeBounds.empty)
+      onlyEmptyBounds
+        // Note: this pre-test helps efficiency. It is also necessary to workaround  #9965 since in some cases
+        // tparams is empty. This can happen when we change the owners of inlined local
+        // classes in mapSymbols. See pos/reference/delegates.scala for an example.
+        // In this case, we can still return true if we know that the hk lambda bounds
+        // are empty anyway.
+      || {
+        val paramRefs = tparams.map(_.paramRef)
+        tp.typeParams.corresponds(tparams) { (param1, param2) =>
+          param2.paramInfo <:< param1.paramInfo.substParams(tp, paramRefs)
+        }
+      }
+
+    def unapply(tp: Type)(using Context): Option[Type] = tp match
+      case tp @ HKTypeLambda(tparams, AppliedType(fn: Type, args))
+      if fn.typeSymbol.isClass
+         && tparams.hasSameLengthAs(args)
+         && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
+         && weakerBounds(tp, fn.typeParams) => Some(fn)
       case _ => None
-    }
-  }
+
+  end EtaExpansion
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
@@ -189,9 +211,13 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(using Context): List[TypeSymbol] = typeParams match {
-    case (_: Symbol) :: _ =>
-      assert(typeParams.forall(_.isInstanceOf[Symbol]))
-      typeParams.asInstanceOf[List[TypeSymbol]]
+    case tparams @ (_: Symbol) :: _ =>
+      assert(tparams.forall(_.isInstanceOf[Symbol]))
+      tparams.asInstanceOf[List[TypeSymbol]]
+        // Note: Two successive calls to typeParams can yield different results here because
+        // of different completion status. I.e. the first call might produce some symbols,
+        // whereas the second call gives some LambdaParams. This was observed
+        // for ticket0137.scala
     case _ => Nil
   }
 
@@ -337,7 +363,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case dealiased: TypeBounds =>
         dealiased.derivedTypeBounds(dealiased.lo.appliedTo(args), dealiased.hi.appliedTo(args))
       case dealiased: LazyRef =>
-        LazyRef(dealiased.ref.appliedTo(args))
+        LazyRef.of(dealiased.ref.appliedTo(args))
       case dealiased: WildcardType =>
         WildcardType(dealiased.optBounds.orElse(TypeBounds.empty).appliedTo(args).bounds)
       case dealiased: TypeRef if dealiased.symbol == defn.NothingClass =>
@@ -384,7 +410,11 @@ class TypeApplications(val self: Type) extends AnyVal {
     case _ =>
       if (self.derivesFrom(from)) {
         def elemType(tp: Type): Type = tp.widenDealias match
-          case tp: AndOrType => tp.derivedAndOrType(elemType(tp.tp1), elemType(tp.tp2))
+          case tp: OrType =>
+            if tp.tp1.isBottomType then elemType(tp.tp2)
+            else if tp.tp2.isBottomType then elemType(tp.tp1)
+            else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
+          case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
           case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
@@ -444,7 +474,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(using Context): List[Type] = self.stripTypeVar.stripAnnots match {
+  final def argInfos(using Context): List[Type] = self.stripped match {
     case AppliedType(tycon, args) => args
     case _ => Nil
   }
@@ -477,6 +507,8 @@ class TypeApplications(val self: Type) extends AnyVal {
   def elemType(using Context): Type = self.widenDealias match {
     case defn.ArrayOf(elemtp) => elemtp
     case JavaArrayType(elemtp) => elemtp
+    case tp: OrType if tp.tp1.isBottomType => tp.tp2.elemType
+    case tp: OrType if tp.tp2.isBottomType => tp.tp1.elemType
     case _ => self.baseType(defn.SeqClass).argInfos.headOption.getOrElse(NoType)
   }
 }

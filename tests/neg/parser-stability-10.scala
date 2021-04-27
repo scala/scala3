@@ -8,7 +8,7 @@ def unapply(i1: Int)(i6: List[Int]): Int = {
   }
 }  // error
 object i5 {
-  import collection.mutable._
+  import collection.mutable.*
   try { ??? mutable { case i1(i5, i3, i4) => i5 }}  // error
 }
 // error

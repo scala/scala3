@@ -9,6 +9,19 @@ import org.junit.Assert._
 
 class ScalaSettingsTests:
 
+  @Test def `A setting with aliases is accepted`: Unit =
+    class MySettings extends SettingGroup:
+      val classpath: Setting[String] = PathSetting("-classpath", "Specify where to find user class files.", ".", aliases = List("--class-path", "-cp"))
+    val settings = MySettings()
+    val args = tokenize("-cp path/to/classes1:other/path/to/classes2")
+    val summary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
+    val res  = settings.processArguments(summary, processAll = true, skipped = Nil)
+    val classpath = settings.classpath.valueIn(res.sstate)
+    assertEquals(2, args.length)
+    assertTrue(s"found warnings: ${res.warnings}", res.warnings.isEmpty)
+    assertTrue(s"found errors: ${res.errors}", res.errors.isEmpty)
+    assertTrue("wrong classpath", classpath == "path/to/classes1:other/path/to/classes2")
+
   @Test def `A multistring setting is multivalued`: Unit =
     class SUT extends SettingGroup:
       val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.")

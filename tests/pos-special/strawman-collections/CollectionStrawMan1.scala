@@ -1,6 +1,6 @@
 package strawman.collections
 
-import Predef.{augmentString => _, wrapString => _, _}
+import Predef.{augmentString as _, wrapString as _, *}
 import scala.reflect.ClassTag
 
 /** A strawman architecture for new collections. It contains some
@@ -28,7 +28,7 @@ object CollectionStrawMan1 {
   /** Base trait for companion objects of collections */
   trait IterableFactory[+C[X] <: Iterable[X]] extends FromIterator[C] {
     def empty[X]: C[X] = fromIterator(Iterator.empty)
-    def apply[A](xs: A*): C[A] = fromIterator(Iterator(xs: _*))
+    def apply[A](xs: A*): C[A] = fromIterator(Iterator(xs*))
   }
 
   /** Base trait for generic collections */

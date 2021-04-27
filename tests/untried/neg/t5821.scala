@@ -1,4 +1,4 @@
-import SthImportant._
+import SthImportant.*
 
 class Bar
 

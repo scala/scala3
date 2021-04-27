@@ -17,6 +17,15 @@ package scala
 *  Also note that in bootstrapped dotty, `Predef.<:<` should inherit from
 *  `Conversion`. This would cut the number of special cases in `discardForView`
 *  from two to one.
+*
+*  The `Conversion` class can also be used to convert explicitly, using
+*  the `convert` extension method.
 */
 @java.lang.FunctionalInterface
-abstract class Conversion[-T, +U] extends Function1[T, U]
+abstract class Conversion[-T, +U] extends Function1[T, U]:
+  /** Convert value `x` of type `T` to type `U` */
+  def apply(x: T): U
+
+  extension (x: T)
+    /** `x.convert` converts a value `x` of type `T` to type `U` */
+    def convert = this(x)

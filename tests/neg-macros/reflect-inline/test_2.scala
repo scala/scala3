@@ -1,4 +1,4 @@
-import api._
+import api.*
 
 class Test {
   val a: String = "5"

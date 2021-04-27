@@ -1,6 +1,6 @@
 class Test {
 
-  var field: Int = _
+  var field: Int = compiletime.uninitialized
 
   def foo() = {
 

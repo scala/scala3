@@ -1,0 +1,9 @@
+scala>  class C { protected val c = 42; override def toString() = s"C($c)" }
+// defined class C
+scala> val x = C()
+val x: C = C(42)
+scala> def foo = 3
+def foo: Int
+scala> foo
+val res0: Int = 3
+scala> import util.Try

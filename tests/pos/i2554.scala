@@ -11,7 +11,7 @@ object foo {
   }
 }
 object Test {
-  import foo._
+  import foo.*
   implicit val shape: Shape[_ <: FlatShapeLevel, Int, Int, _] = null
   def hint = Shape.tuple2Shape(shape, shape)
   val hint2: foo.Shape[foo.FlatShapeLevel, (Int, Int), (Int, Int), _] = hint

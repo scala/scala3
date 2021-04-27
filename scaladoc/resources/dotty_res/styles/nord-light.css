@@ -1,0 +1,44 @@
+/* Theme inspired by nordtheme. The colors have been darkened to work on light backgrounds. */
+pre, .hljs {
+  background: #F4F5FA;
+  color: #4C566A;
+}
+
+.hljs-comment {
+  color: #90A1C1;
+}
+.hljs-doctag {
+  color: #4B6B92;
+  font-weight: 500;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-bold {
+  font-weight: bold;
+}
+
+.hljs-meta {
+  color: #F9A600;
+  font-weight: 500;
+}
+.hljs-subst {
+  color: #F9A600;
+}
+.hljs-title {
+  color: #2B8FAC;
+  font-weight: 500;
+}
+.hljs-type {
+  color: #1E7C7A;
+}
+.hljs-keyword {
+  color: #2E6BB8;
+  font-weight: 500;
+}
+.hljs-string {
+  color: #6AA13B;
+}
+.hljs-built_in, .hljs-number, .hljs-literal {
+  color: #9D5490;
+}

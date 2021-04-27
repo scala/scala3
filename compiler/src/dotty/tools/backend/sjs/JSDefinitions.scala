@@ -46,24 +46,27 @@ final class JSDefinitions()(using Context) {
   def JSAnyClass(using Context) = JSAnyType.symbol.asClass
   @threadUnsafe lazy val JSObjectType: TypeRef = requiredClassRef("scala.scalajs.js.Object")
   def JSObjectClass(using Context) = JSObjectType.symbol.asClass
-  @threadUnsafe lazy val JSBaseThisFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.ThisFunction")
-  def JSBaseThisFunctionClass(using Context) = JSBaseThisFunctionType.symbol.asClass
+  @threadUnsafe lazy val JSFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.Function")
+  def JSFunctionClass(using Context) = JSFunctionType.symbol.asClass
+  @threadUnsafe lazy val JSThisFunctionType: TypeRef = requiredClassRef("scala.scalajs.js.ThisFunction")
+  def JSThisFunctionClass(using Context) = JSThisFunctionType.symbol.asClass
 
   @threadUnsafe lazy val PseudoUnionType: TypeRef = requiredClassRef("scala.scalajs.js.|")
   def PseudoUnionClass(using Context) = PseudoUnionType.symbol.asClass
 
   @threadUnsafe lazy val PseudoUnionModuleRef = requiredModuleRef("scala.scalajs.js.|")
   def PseudoUnionModule(using Context) = PseudoUnionModuleRef.symbol
+    @threadUnsafe lazy val PseudoUnion_fromR = PseudoUnionModule.requiredMethodRef("from")
+    def PseudoUnion_from(using Context) = PseudoUnion_fromR.symbol
     @threadUnsafe lazy val PseudoUnion_fromTypeConstructorR = PseudoUnionModule.requiredMethodRef("fromTypeConstructor")
     def PseudoUnion_fromTypeConstructor(using Context) = PseudoUnion_fromTypeConstructorR.symbol
 
+  @threadUnsafe lazy val UnionOpsModuleRef = requiredModuleRef("scala.scalajs.js.internal.UnitOps")
+
   @threadUnsafe lazy val JSArrayType: TypeRef = requiredClassRef("scala.scalajs.js.Array")
   def JSArrayClass(using Context) = JSArrayType.symbol.asClass
-
-  @threadUnsafe lazy val JSFunctionType = (0 to 22).map(n => requiredClassRef("scala.scalajs.js.Function" + n)).toArray
-  def JSFunctionClass(n: Int)(using Context) = JSFunctionType(n).symbol.asClass
-  @threadUnsafe lazy val JSThisFunctionType = (0 to 21).map(n => requiredClassRef("scala.scalajs.js.ThisFunction" + n)).toArray
-  def JSThisFunctionClass(n: Int)(using Context) = JSThisFunctionType(n).symbol.asClass
+  @threadUnsafe lazy val JSDynamicType: TypeRef = requiredClassRef("scala.scalajs.js.Dynamic")
+  def JSDynamicClass(using Context) = JSDynamicType.symbol.asClass
 
   @threadUnsafe lazy val RuntimeExceptionType: TypeRef = requiredClassRef("java.lang.RuntimeException")
   def RuntimeExceptionClass(using Context) = RuntimeExceptionType.symbol.asClass
@@ -149,10 +152,18 @@ final class JSDefinitions()(using Context) {
     def Runtime_toScalaVarArgs(using Context) = Runtime_toScalaVarArgsR.symbol
     @threadUnsafe lazy val Runtime_toJSVarArgsR = RuntimePackageClass.requiredMethodRef("toJSVarArgs")
     def Runtime_toJSVarArgs(using Context) = Runtime_toJSVarArgsR.symbol
+    @threadUnsafe lazy val Runtime_privateFieldsSymbolR = RuntimePackageClass.requiredMethodRef("privateFieldsSymbol")
+    def Runtime_privateFieldsSymbol(using Context) = Runtime_privateFieldsSymbolR.symbol
     @threadUnsafe lazy val Runtime_constructorOfR = RuntimePackageClass.requiredMethodRef("constructorOf")
     def Runtime_constructorOf(using Context) = Runtime_constructorOfR.symbol
     @threadUnsafe lazy val Runtime_newConstructorTagR = RuntimePackageClass.requiredMethodRef("newConstructorTag")
     def Runtime_newConstructorTag(using Context) = Runtime_newConstructorTagR.symbol
+    @threadUnsafe lazy val Runtime_createInnerJSClassR = RuntimePackageClass.requiredMethodRef("createInnerJSClass")
+    def Runtime_createInnerJSClass(using Context) = Runtime_createInnerJSClassR.symbol
+    @threadUnsafe lazy val Runtime_createLocalJSClassR = RuntimePackageClass.requiredMethodRef("createLocalJSClass")
+    def Runtime_createLocalJSClass(using Context) = Runtime_createLocalJSClassR.symbol
+    @threadUnsafe lazy val Runtime_withContextualJSClassValueR = RuntimePackageClass.requiredMethodRef("withContextualJSClassValue")
+    def Runtime_withContextualJSClassValue(using Context) = Runtime_withContextualJSClassValueR.symbol
     @threadUnsafe lazy val Runtime_linkingInfoR = RuntimePackageClass.requiredMethodRef("linkingInfo")
     def Runtime_linkingInfo(using Context) = Runtime_linkingInfoR.symbol
 
@@ -222,28 +233,7 @@ final class JSDefinitions()(using Context) {
     allRefClassesCache
   }
 
-  /** If `cls` is a class in the scala package, its name, otherwise EmptyTypeName */
-  private def scalajsClassName(cls: Symbol)(using Context): TypeName =
-    if (cls.isClass && cls.owner == ScalaJSJSPackageClass) cls.asClass.name
-    else EmptyTypeName
-
-  /** Is the given `cls` a class of the form `scala.scalajs.js.prefixN` where
-   *  `N` is a number.
-   *
-   *  This is similar to `isVarArityClass` in `Definitions.scala`.
-   */
-  private def isScalaJSVarArityClass(cls: Symbol, prefix: String): Boolean = {
-    val name = scalajsClassName(cls)
-    name.startsWith(prefix) && name.toString.drop(prefix.length).forall(_.isDigit)
-  }
-
-  def isJSFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, str.Function)
-
-  def isJSThisFunctionClass(cls: Symbol): Boolean =
-    isScalaJSVarArityClass(cls, "ThisFunction")
-
-  /** Definitions related to the treatment of JUnit boostrappers. */
+  /** Definitions related to the treatment of JUnit bootstrappers. */
   object junit {
     @threadUnsafe lazy val TestAnnotType: TypeRef = requiredClassRef("org.junit.Test")
     def TestAnnotClass(using Context): ClassSymbol = TestAnnotType.symbol.asClass

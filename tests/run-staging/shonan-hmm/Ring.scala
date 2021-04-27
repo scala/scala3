@@ -1,5 +1,5 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait Ring[T] {
   def zero: T
@@ -24,7 +24,7 @@ object RingInt extends Ring[Int] {
   override def toString(): String = "RingInt"
 }
 
-class RingIntExpr(using QuoteContext) extends Ring[Expr[Int]] {
+class RingIntExpr(using Quotes) extends Ring[Expr[Int]] {
   val zero = '{0}
   val one  = '{1}
   val add  = (x, y) => '{$x + $y}
@@ -34,7 +34,7 @@ class RingIntExpr(using QuoteContext) extends Ring[Expr[Int]] {
 }
 
 case class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
-  import u._
+  import u.*
   val zero = Complex(u.zero, u.zero)
   val one  = Complex(u.one, u.zero)
   val add = (x, y) => Complex(x.re + y.re, x.im + y.im)
@@ -43,12 +43,12 @@ case class RingComplex[U](u: Ring[U]) extends Ring[Complex[U]] {
   override def toString(): String = s"RingComplex($u)"
 }
 
-case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]])(using QuoteContext) extends Ring[PV[U]] {
+case class RingPV[U: ToExpr](staRing: Ring[U], dynRing: Ring[Expr[U]])(using Quotes) extends Ring[PV[U]] {
   type T = PV[U]
 
   val dyn = Dyns.dyn[U]
-  import staRing._
-  import dynRing._
+  import staRing.*
+  import dynRing.*
 
   val zero: T = Sta(staRing.zero)
   val one: T = Sta(staRing.one)
@@ -66,9 +66,9 @@ case class RingPV[U: Liftable](staRing: Ring[U], dynRing: Ring[Expr[U]])(using Q
   }
 }
 
-class RingIntPExpr(using QuoteContext) extends RingPV(RingInt, new RingIntExpr)
+class RingIntPExpr(using Quotes) extends RingPV(RingInt, new RingIntExpr)
 
-class RingIntOPExpr(using QuoteContext) extends RingIntPExpr {
+class RingIntOPExpr(using Quotes) extends RingIntPExpr {
   override def add = (x: PV[Int], y: PV[Int]) => (x, y) match {
     case (Sta(0), y) => y
     case (x, Sta(0)) => x

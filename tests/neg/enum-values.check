@@ -1,0 +1,73 @@
+-- [E008] Not Found Error: tests/neg/enum-values.scala:32:45 -----------------------------------------------------------
+32 |  val tags: Array[Tag[?]]              = Tag.values // error
+   |                                         ^^^^^^^^^^
+   |                                         value values is not a member of object example.Tag.
+   |                                         Although class Tag is an enum, it has non-singleton cases,
+   |                                         meaning a values array is not defined.
+   |                                         An extension method was tried, but could not be fully constructed:
+   |
+   |                                             example.Extensions.values(Tag)    failed with
+   |
+   |                                                 Found:    example.Tag.type
+   |                                                 Required: Nothing
+-- [E008] Not Found Error: tests/neg/enum-values.scala:33:50 -----------------------------------------------------------
+33 |  val listlikes: Array[ListLike[?]]    = ListLike.values // error
+   |                                         ^^^^^^^^^^^^^^^
+   |                                         value values is not a member of object example.ListLike.
+   |                                         Although class ListLike is an enum, it has non-singleton cases,
+   |                                         meaning a values array is not defined.
+   |                                         An extension method was tried, but could not be fully constructed:
+   |
+   |                                             example.Extensions.values(ListLike)    failed with
+   |
+   |                                                 Found:    Array[example.Tag[?]]
+   |                                                 Required: Array[example.ListLike[?]]
+-- [E008] Not Found Error: tests/neg/enum-values.scala:34:52 -----------------------------------------------------------
+34 |  val typeCtorsK: Array[TypeCtorsK[?]] = TypeCtorsK.values // error
+   |                                         ^^^^^^^^^^^^^^^^^
+   |                                         value values is not a member of object example.TypeCtorsK.
+   |                                         Although class TypeCtorsK is an enum, it has non-singleton cases,
+   |                                         meaning a values array is not defined.
+   |                                         An extension method was tried, but could not be fully constructed:
+   |
+   |                                             example.Extensions.values(TypeCtorsK)    failed with
+   |
+   |                                                 Found:    Array[example.Tag[?]]
+   |                                                 Required: Array[example.TypeCtorsK[?[_$1]]]
+-- [E008] Not Found Error: tests/neg/enum-values.scala:36:6 ------------------------------------------------------------
+36 |  Tag.valueOf("Int") // error
+   |  ^^^^^^^^^^^
+   |  value valueOf is not a member of object example.Tag.
+   |  Although class Tag is an enum, it has non-singleton cases,
+   |  meaning a valueOf lookup method is not defined
+-- [E008] Not Found Error: tests/neg/enum-values.scala:37:11 -----------------------------------------------------------
+37 |  ListLike.valueOf("EmptyListLike") // error
+   |  ^^^^^^^^^^^^^^^^
+   |  value valueOf is not a member of object example.ListLike - did you mean ListLike.valuef?
+   |  Although class ListLike is an enum, it has non-singleton cases,
+   |  meaning a valueOf lookup method is not defined
+-- [E008] Not Found Error: tests/neg/enum-values.scala:38:13 -----------------------------------------------------------
+38 |  TypeCtorsK.valueOf("Option") // error
+   |  ^^^^^^^^^^^^^^^^^^
+   |  value valueOf is not a member of object example.TypeCtorsK.
+   |  Although class TypeCtorsK is an enum, it has non-singleton cases,
+   |  meaning a valueOf lookup method is not defined, but could be made available as an extension method.
+   |
+   |  The following import might fix the problem:
+   |
+   |    import example.UnimportedExtensions.valueOf
+   |
+-- [E008] Not Found Error: tests/neg/enum-values.scala:40:12 -----------------------------------------------------------
+40 |  NotAnEnum.values // error
+   |  ^^^^^^^^^^^^^^^^
+   |  value values is not a member of object example.NotAnEnum.
+   |  An extension method was tried, but could not be fully constructed:
+   |
+   |      example.Extensions.values(NotAnEnum)    failed with
+   |
+   |          Found:    example.NotAnEnum.type
+   |          Required: Nothing
+-- [E008] Not Found Error: tests/neg/enum-values.scala:41:12 -----------------------------------------------------------
+41 |  NotAnEnum.valueOf("Foo") // error
+   |  ^^^^^^^^^^^^^^^^^
+   |  value valueOf is not a member of object example.NotAnEnum

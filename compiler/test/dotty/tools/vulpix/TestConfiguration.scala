@@ -9,7 +9,7 @@ object TestConfiguration {
   val noCheckOptions = Array(
     "-pagewidth", "120",
     "-color:never",
-    "-target", defaultTarget
+    "-Xtarget", defaultTarget
   )
 
   val checkOptions = Array(
@@ -17,7 +17,7 @@ object TestConfiguration {
     "-Yno-deep-subtypes",
     "-Yno-double-bindings",
     "-Yforce-sbt-phases",
-    "-Ysemanticdb",
+    "-Xsemanticdb",
     "-Xverify-signatures"
   )
 
@@ -89,6 +89,6 @@ object TestConfiguration {
   private def defaultTarget: String = {
     import scala.util.Properties.isJavaAtLeast
 
-    if isJavaAtLeast("9") then "jvm-9" else "jvm-1.8"
+    if isJavaAtLeast("9") then "9" else "8"
   }
 }

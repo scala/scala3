@@ -84,20 +84,20 @@ below in pseudocode:
 ```
 |S & T| = glb(|S|, |T|)
 
-glb(JArray(A), JArray(B)) =    JArray(glb(A, B))
-glb(JArray(T), _)         =    JArray(T)
-glb(_, JArray(T))         =    JArray(T)
-glb(A, B)                 =    A                     if A extends B
-glb(A, B)                 =    B                     if B extends A
-glb(A, _)                 =    A                     if A is not a trait
-glb(_, B)                 =    B                     if B is not a trait
-glb(A, _)                 =    A                     // use first
+glb(JArray(A), JArray(B)) = JArray(glb(A, B))
+glb(JArray(T), _)         = JArray(T)
+glb(_, JArray(T))         = JArray(T)
+glb(A, B)                 = A                     if A extends B
+glb(A, B)                 = B                     if B extends A
+glb(A, _)                 = A                     if A is not a trait
+glb(_, B)                 = B                     if B is not a trait
+glb(A, _)                 = A                     // use first
 ```
 
 In the above, `|T|` means the erased type of `T`, `JArray` refers to
 the type of Java Array.
 
-See also: `TypeErasure#erasedGlb`
+See also: [`TypeErasure#erasedGlb`](https://github.com/lampepfl/dotty/blob/master/compiler/src/dotty/tools/dotc/core/TypeErasure.scala#L289).
 
 ## Relationship with Compound Type (`with`)
 

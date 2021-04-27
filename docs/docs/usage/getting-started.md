@@ -10,16 +10,16 @@ title: Getting Started: Users
 This is an easy way to try Dotty without installing anything, directly in your browser.
 
 ### sbt
-The fastest way to create a new project compiled by Dotty is using [sbt (1.1.4+)](http://www.scala-sbt.org/)
+The fastest way to create a new project compiled by Dotty is using [sbt](http://www.scala-sbt.org/)
 
 Create a simple Dotty project:
 ```bash
-$ sbt new lampepfl/dotty.g8
+$ sbt new scala/scala3.g8
 ```
 
 Or a Dotty project that cross compiles with Scala 2:
 ```bash
-$ sbt new lampepfl/dotty-cross.g8
+$ sbt new scala/scala3-cross.g8
 ```
 
 You can then start a Dotty REPL directly from your sbt project:
@@ -29,7 +29,7 @@ $ sbt
 scala>
 ```
 
-For more information, see the [Dotty Example Project](https://github.com/lampepfl/dotty-example-project)
+For more information, see the [Dotty Example Project](https://github.com/scala/scala3-example-project)
 
 ### IDE support
 Start using the Dotty IDE in any Dotty project by following the
@@ -37,28 +37,28 @@ Start using the Dotty IDE in any Dotty project by following the
 
 ### Standalone installation
 Releases are available for download on the [Releases Section](https://github.com/lampepfl/dotty/releases)
-of the Dotty repository. Releases include three executables: `dotc` the Dotty compiler,
-`dotd` the [Dotty Documentation tool](./dottydoc.md) and `dotr` the Dotty REPL.
+of the Dotty repository. Releases include three executables: `scalac` the Dotty compiler,
+`scaladoc` the [Scaladoc](./scaladoc/index.md) and `scala` the Dotty REPL.
 
 ```
 .
 └── bin
-    ├── dotc
-    ├── dotd
-    └── dotr
+    ├── scalac
+    ├── scaladoc
+    └── scala
 ```
 
 Add these executables to your `PATH` and you will be able to run the corresponding commands directly
 from your console:
 ```bash
 # Compile code using Dotty
-$ dotc HelloWorld.scala
+$ scalac HelloWorld.scala
 
 # Run it with the proper classpath
-$ dotr HelloWorld
+$ scala HelloWorld
 
 # Start a Dotty REPL
-$ dotr
+$ scala
 Starting dotty REPL...
 scala>
 ```
@@ -74,3 +74,19 @@ In case you have already installed Dotty via brew, you should instead update it:
 ```bash
 brew upgrade dotty
 ```
+
+### Scala 3 for Scripting
+If you have followed the steps in "Standalone Installation" section and have the `scala` executable on your `PATH`, you can run `*.scala` files as scripts. Given a source named Test.scala:
+
+```scala
+@main def Test(name: String): Unit =
+  println(s"Hello ${name}!")
+```
+
+You can run: `scala Test.scala World` to get an output `Hello World!`.
+
+A "script" is an ordinary Scala file which contains a main method. The semantics of the `scala Script.scala` command is as follows:
+
+- Compile `Script.scala` with `scalac` into a temporary directory.
+- Detect the main method in the `*.class` files produced by the compilation.
+- Execute the main method.

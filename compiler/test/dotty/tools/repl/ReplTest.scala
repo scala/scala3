@@ -16,19 +16,8 @@ import dotty.tools.dotc.reporting.MessageRendering
 import org.junit.{After, Before}
 import org.junit.Assert._
 
-
-class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new ByteArrayOutputStream) extends ReplDriver(
-  Array(
-    "-classpath",
-    if (withStaging)
-      TestConfiguration.withStagingClasspath
-    else
-      TestConfiguration.basicClasspath,
-    "-color:never",
-    "-Yerased-terms",
-  ),
-  new PrintStream(out, true, StandardCharsets.UTF_8.name)
-) with MessageRendering {
+class ReplTest(options: Array[String] = ReplTest.defaultOptions, out: ByteArrayOutputStream = new ByteArrayOutputStream)
+extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.name)) with MessageRendering {
   /** Get the stored output from `out`, resetting the buffer */
   def storedOutput(): String = {
     val output = stripColor(out.toString(StandardCharsets.UTF_8.name))
@@ -47,14 +36,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
   def fromInitialState[A](op: State => A): A =
     op(initialState)
 
-  extension [A](state: State):
+  extension [A](state: State)
     def andThen(op: State => A): A = op(state)
-
-  def scripts(path: String): Array[JFile] = {
-    val dir = new JFile(getClass.getResource(path).getPath)
-    assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
-    dir.listFiles
-  }
 
   def testFile(f: JFile): Unit = {
     val prompt = "scala>"
@@ -77,12 +60,11 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
         case nonEmptyLine => nonEmptyLine :: Nil
       }
 
-    val expectedOutput =
-      Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines().flatMap(filterEmpties).toList).get
+    val expectedOutput = readLines(f).flatMap(filterEmpties)
     val actualOutput = {
       resetToInitial()
 
-      val lines = Using(Source.fromFile(f, StandardCharsets.UTF_8.name))(_.getLines.toList).get
+      val lines = readLines(f)
       assert(lines.head.startsWith(prompt),
         s"""Each file has to start with the prompt: "$prompt"""")
       val inputRes = lines.filter(_.startsWith(prompt))
@@ -110,3 +92,8 @@ class ReplTest(withStaging: Boolean = false, out: ByteArrayOutputStream = new By
     end if
   }
 }
+
+object ReplTest:
+  val commonOptions = Array("-color:never", "-language:experimental.erasedDefinitions", "-pagewidth", "80")
+  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.basicClasspath)
+  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.withStagingClasspath)

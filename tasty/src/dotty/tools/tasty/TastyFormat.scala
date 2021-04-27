@@ -19,10 +19,11 @@ Micro-syntax:
 
 Macro-format:
 
-  File          = Header majorVersion_Nat minorVersion_Nat UUID
+  File          = Header majorVersion_Nat minorVersion_Nat experimentalVersion_Nat VersionString UUID
                   nameTable_Length Name* Section*
   Header        = 0x5CA1AB1F
   UUID          = Byte*16                 -- random UUID
+  VersionString = Length UTF8-CodePoint*  -- string that represents the compiler that produced the TASTy
 
   Section       = NameRef Length Bytes
   Length        = Nat                     -- length of rest of entry in bytes
@@ -40,6 +41,7 @@ Macro-format:
                   OBJECTCLASS       Length underlying_NameRef                               -- A$  (name of the module class for module A)
 
                   SIGNED            Length original_NameRef resultSig_NameRef ParamSig*     -- name + signature
+                  TARGETSIGNED      Length original_NameRef target_NameRef resultSig_NameRef ParamSig*
 
   ParamSig      = Int // If negative, the absolute value represents the length of a type parameter section
                       // If positive, this is a NameRef for the fully qualified name of a term parameter.
@@ -48,6 +50,7 @@ Macro-format:
 
 Note: Unqualified names in the name table are strings. The context decides whether a name is
 a type-name or a term-name. The same string can represent both.
+
 
 Standard-Section: "ASTs" TopLevelStat*
 
@@ -58,18 +61,22 @@ Standard-Section: "ASTs" TopLevelStat*
                   ValOrDefDef
                   TYPEDEF        Length NameRef (type_Term | Template) Modifier*   -- modifiers type name (= type | bounds)  |  modifiers class name template
                   IMPORT         Length qual_Term Selector*                        -- import qual selectors
+                  EXPORT         Length qual_Term Selector*                        -- export qual selectors
   ValOrDefDef   = VALDEF         Length NameRef type_Term rhs_Term? Modifier*      -- modifiers val name : type (= rhs)?
-                  DEFDEF         Length NameRef TypeParam* Params* returnType_Term
-                                        rhs_Term? Modifier*                        -- modifiers def name [typeparams] paramss : returnType (= rhs)?
+                  DEFDEF         Length NameRef Param* returnType_Term rhs_Term?
+                                        Modifier*                                  -- modifiers def name [typeparams] paramss : returnType (= rhs)?
   Selector      = IMPORTED              name_NameRef                               -- name, "_" for normal wildcards, "" for given wildcards
                   RENAMED               to_NameRef                                 -- => name
                   BOUNDED               type_Term                                  -- type bound
 
   TypeParam     = TYPEPARAM      Length NameRef type_Term Modifier*                -- modifiers name bounds
-  Param         = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
-                  PARAMEND                                                         -- ends a parameter clause
-                                                																   -- needed if previous parameter clause is empty or another parameter clause follows
-  Template      = TEMPLATE       Length TypeParam* Param* parent_Term* Self? Stat* -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
+  TermParam     = PARAM          Length NameRef type_Term rhs_Term? Modifier*      -- modifiers name : type (= rhs_Term)?. `rhsTerm` is present in the case of an aliased class parameter
+                  EMPTYCLAUSE                                                      -- an empty parameter clause ()
+                  SPLITCLAUSE                                                      -- splits two non-empty parameter clauses of the same kind
+  Param         = TypeParam
+                  TermParam
+  Template      = TEMPLATE       Length TypeParam* TermParam* parent_Term* Self?
+                                        Stat*                                      -- [typeparams] paramss extends parents { self => stats }, where Stat* always starts with the primary constructor.
   Self          = SELFDEF               selfName_NameRef selfType_Term             -- selfName : selfType
 
   Term          = Path                                                             -- Paths represent both types and terms
@@ -141,7 +148,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   STRINGconst           NameRef                                    -- A string literal
                   NULLconst                                                        -- null
                   CLASSconst            Type                                       -- classOf[Type]
-                  ENUMconst             Path                                       -- An enum constant
 
   Type          = Path                                                             -- Paths represent both types and terms
                   TYPEREFdirect         sym_ASTRef                                 -- A reference to a local symbol (without a prefix). Reference is to definition node of symbol.
@@ -158,7 +164,8 @@ Standard-Section: "ASTs" TopLevelStat*
                   ANDtype        Length left_Type right_Type                       -- left & right
                   ORtype         Length left_Type right_Type                       -- lefgt | right
                   MATCHtype      Length bound_Type sel_Type case_Type*             -- sel match {cases} with optional upper `bound`
-                  BIND           Length boundName_NameRef bounds_Type              -- boundName @ bounds,  for type-variables defined in a type pattern
+                  MATCHCASEtype  Length pat_type rhs_Type                          -- match cases are MATCHCASEtypes or TYPELAMBDAtypes over MATCHCASEtypes
+                  BIND           Length boundName_NameRef bounds_Type Modifier*    -- boundName @ bounds,  for type-variables defined in a type pattern
                   BYNAMEtype            underlying_Type                            -- => underlying
                   PARAMtype      Length binder_ASTRef paramNum_Nat                 -- A reference to parameter # paramNum in lambda type `binder`
                   POLYtype       Length result_Type TypesNames                     -- A polymorphic method type `[TypesNames]result`, used in refinements
@@ -189,7 +196,6 @@ Standard-Section: "ASTs" TopLevelStat*
                   STATIC                                                           -- Mapped to static Java member
                   OBJECT                                                           -- An object or its class
                   TRAIT                                                            -- A trait
-                  SUPERTRAIT                                                       -- A super trait
                   ENUM                                                             -- A enum class or enum case
                   LOCAL                                                            -- private[this] or protected[this], used in conjunction with PRIVATE or PROTECTED
                   SYNTHETIC                                                        -- Generated by Scala compiler
@@ -206,6 +212,7 @@ Standard-Section: "ASTs" TopLevelStat*
                   PARAMalias                                                       -- Parameter is alias of a superclass parameter
                   EXPORTED                                                         -- An export forwarder
                   OPEN                                                             -- an open class
+                  INVISIBLE                                                        -- invisible during typechecking
                   Annotation
 
   Variance      = STABLE                                                           -- invariant
@@ -220,13 +227,16 @@ Note: The signature of a SELECTin or TERMREFin node is the signature of the sele
 
 Note: Tree tags are grouped into 5 categories that determine what follows, and thus allow to compute the size of the tagged tree in a generic way.
 
-  Category 1 (tags 1-49)   :  tag
-  Category 2 (tags 50-79)  :  tag Nat
-  Category 3 (tags 80-109) :  tag AST
+  Category 1 (tags 1-59)   :  tag
+  Category 2 (tags 60-89)  :  tag Nat
+  Category 3 (tags 90-109) :  tag AST
   Category 4 (tags 110-127):  tag Nat AST
   Category 5 (tags 128-255):  tag Length <payload>
 
-Standard Section: "Positions" Assoc*
+
+Standard-Section: "Positions" LinesSizes Assoc*
+
+  LinesSizes    = Nat Nat*                 // Number of lines followed by the size of each line not counting the trailing `\n`
 
   Assoc         = Header offset_Delta? offset_Delta? point_Delta?
                 | SOURCE nameref_Int
@@ -244,6 +254,7 @@ Standard Section: "Positions" Assoc*
 
 All elements of a position section are serialized as Ints
 
+
 Standard Section: "Comments" Comment*
 
   Comment       = Length Bytes LongInt      // Raw comment's bytes encoded as UTF-8, followed by the comment's coordinates.
@@ -253,11 +264,107 @@ Standard Section: "Comments" Comment*
 
 object TastyFormat {
 
+  /** The first four bytes of a TASTy file, followed by four values:
+    * - `MajorVersion: Int` - see definition in `TastyFormat`
+    * - `MinorVersion: Int` - see definition in `TastyFormat`
+    * - `ExperimentalVersion: Int` - see definition in `TastyFormat`
+    * - `ToolingVersion: String` - arbitrary length string representing the tool that produced the TASTy.
+    */
   final val header: Array[Int] = Array(0x5C, 0xA1, 0xAB, 0x1F)
-  val MajorVersion: Int = 23
-  val MinorVersion: Int = 0
 
-  /** Tags used to serialize names, should update [[nameTagToString]] if a new constant is added */
+  /**Natural number. Each increment of the `MajorVersion` begins a
+   * new series of backward compatible TASTy versions.
+   *
+   * A TASTy file in either the preceeding or succeeding series is
+   * incompatible with the current value.
+   */
+  final val MajorVersion: Int = 28
+
+  /**Natural number. Each increment of the `MinorVersion`, within
+   * a series declared by the `MajorVersion`, breaks forward
+   * compatibility, but remains backwards compatible, with all
+   * preceeding `MinorVersion`.
+   */
+  final val MinorVersion: Int = 0
+
+  /**Natural Number. The `ExperimentalVersion` allows for
+   * experimentation with changes to TASTy without committing
+   * to any guarantees of compatibility.
+   *
+   * A zero value indicates that the TASTy version is from a
+   * stable, final release.
+   *
+   * A strictly positive value indicates that the TASTy
+   * version is experimental. An experimental TASTy file
+   * can only be read by a tool with the same version.
+   * However, tooling with an experimental TASTy version
+   * is able to read final TASTy documents if the file's
+   * `MinorVersion` is strictly less than the current value.
+   */
+  final val ExperimentalVersion: Int = 3
+
+  /**This method implements a binary relation (`<:<`) between two TASTy versions.
+   * We label the lhs `file` and rhs `compiler`.
+   * if `file <:< compiler` then the TASTy file is valid to be read.
+   *
+   * TASTy versions have a partial order,
+   * for example `a <:< b` and `b <:< a` are both false if `a` and `b` have different major versions.
+   *
+   * We follow the given algorithm:
+   * ```
+   * if file.major != compiler.major then
+   *   return incompatible
+   * if compiler.experimental == 0 then
+   *   if file.experimental != 0 then
+   *     return incompatible
+   *   if file.minor > compiler.minor then
+   *     return incompatible
+   *   else
+   *     return compatible
+   * else invariant[compiler.experimental != 0]
+   *   if file.experimental == compiler.experimental then
+   *     if file.minor == compiler.minor then
+   *       return compatible (all fields equal)
+   *     else
+   *       return incompatible
+   *   else if file.experimental == 0,
+   *     if file.minor < compiler.minor then
+   *       return compatible (an experimental version can read a previous released version)
+   *     else
+   *       return incompatible (an experimental version cannot read its own minor version or any later version)
+   *   else invariant[file.experimental is non-0 and different than compiler.experimental]
+   *     return incompatible
+   * ```
+   * @syntax markdown
+   */
+  def isVersionCompatible(
+    fileMajor: Int,
+    fileMinor: Int,
+    fileExperimental: Int,
+    compilerMajor: Int,
+    compilerMinor: Int,
+    compilerExperimental: Int
+  ): Boolean = (
+    fileMajor == compilerMajor && (
+      if (fileExperimental == compilerExperimental) {
+        if (compilerExperimental == 0) {
+          fileMinor <= compilerMinor
+        }
+        else {
+          fileMinor == compilerMinor
+        }
+      }
+      else {
+        fileExperimental == 0 && fileMinor < compilerMinor
+      }
+    )
+  )
+
+  final val ASTsSection = "ASTs"
+  final val PositionsSection = "Positions"
+  final val CommentsSection = "Comments"
+
+  /** Tags used to serialize names, should update [[TastyFormat$.nameTagToString]] if a new constant is added */
   class NameTags {
     final val UTF8 = 1               // A simple name in UTF8 encoding.
 
@@ -286,6 +393,11 @@ object TastyFormat {
 
     final val SIGNED = 63            // A pair of a name and a signature, used to identify
                                      // possibly overloaded methods.
+
+    final val TARGETSIGNED = 62      // A triple of a name, a targetname and a signature, used to identify
+                                     // possibly overloaded methods that carry a @targetName annotation.
+
+    // TODO swap SIGNED and TARGETSIGNED codes on next major version bump
   }
   object NameTags extends NameTags
 
@@ -308,6 +420,7 @@ object TastyFormat {
       case BODYRETAINER => "BODYRETAINER"
       case OBJECTCLASS => "OBJECTCLASS"
       case SIGNED => "SIGNED"
+      case TARGETSIGNED => "TARGETSIGNED"
       case id => s"NotANameTag($id)"
     }
   }
@@ -358,46 +471,48 @@ object TastyFormat {
   final val PARAMsetter = 38
   final val EXPORTED = 39
   final val OPEN = 40
-  final val PARAMEND = 41
-  final val PARAMalias = 42
-  final val SUPERTRAIT = 43
+  final val PARAMalias = 41
+  final val TRANSPARENT = 42
+  final val INFIX = 43
+  final val INVISIBLE = 44
+  final val EMPTYCLAUSE = 45
+  final val SPLITCLAUSE = 46
 
   // Cat. 2:    tag Nat
 
-  final val SHAREDterm = 50
-  final val SHAREDtype = 51
-  final val TERMREFdirect = 52
-  final val TYPEREFdirect = 53
-  final val TERMREFpkg = 54
-  final val TYPEREFpkg = 55
-  final val RECthis = 56
-  final val BYTEconst = 57
-  final val SHORTconst = 58
-  final val CHARconst = 59
-  final val INTconst = 60
-  final val LONGconst = 61
-  final val FLOATconst = 62
-  final val DOUBLEconst = 63
-  final val STRINGconst = 64
-  final val IMPORTED = 65
-  final val RENAMED = 66
+  final val SHAREDterm = 60
+  final val SHAREDtype = 61
+  final val TERMREFdirect = 62
+  final val TYPEREFdirect = 63
+  final val TERMREFpkg = 64
+  final val TYPEREFpkg = 65
+  final val RECthis = 66
+  final val BYTEconst = 67
+  final val SHORTconst = 68
+  final val CHARconst = 69
+  final val INTconst = 70
+  final val LONGconst = 71
+  final val FLOATconst = 72
+  final val DOUBLEconst = 73
+  final val STRINGconst = 74
+  final val IMPORTED = 75
+  final val RENAMED = 76
 
   // Cat. 3:    tag AST
 
-  final val THIS = 80
-  final val QUALTHIS = 81
-  final val CLASSconst = 82
-  final val ENUMconst = 83
-  final val BYNAMEtype = 84
-  final val BYNAMEtpt = 85
-  final val NEW = 86
-  final val THROW = 87
-  final val IMPLICITarg = 88
-  final val PRIVATEqualified = 89
-  final val PROTECTEDqualified = 90
-  final val RECtype = 91
-  final val SINGLETONtpt = 92
-  final val BOUNDED = 93
+  final val THIS = 90
+  final val QUALTHIS = 91
+  final val CLASSconst = 92
+  final val BYNAMEtype = 93
+  final val BYNAMEtpt = 94
+  final val NEW = 95
+  final val THROW = 96
+  final val IMPLICITarg = 97
+  final val PRIVATEqualified = 98
+  final val PROTECTEDqualified = 99
+  final val RECtype = 100
+  final val SINGLETONtpt = 101
+  final val BOUNDED = 102
 
   // Cat. 4:    tag Nat AST
 
@@ -460,11 +575,13 @@ object TastyFormat {
   final val TERMREFin = 174
   final val TYPEREFin = 175
   final val SELECTin = 176
+  final val EXPORT = 177
 
   final val METHODtype = 180
 
   final val MATCHtype = 190
   final val MATCHtpt = 191
+  final val MATCHCASEtype = 192
 
   final val HOLE = 255
 
@@ -475,7 +592,7 @@ object TastyFormat {
 
   /** Useful for debugging */
   def isLegalTag(tag: Int): Boolean =
-    firstSimpleTreeTag <= tag && tag <= SUPERTRAIT ||
+    firstSimpleTreeTag <= tag && tag <= SPLITCLAUSE ||
     firstNatTreeTag <= tag && tag <= RENAMED ||
     firstASTTreeTag <= tag && tag <= BOUNDED ||
     firstNatASTTreeTag <= tag && tag <= NAMEDARG ||
@@ -504,7 +621,8 @@ object TastyFormat {
        | STATIC
        | OBJECT
        | TRAIT
-       | SUPERTRAIT
+       | TRANSPARENT
+       | INFIX
        | ENUM
        | LOCAL
        | SYNTHETIC
@@ -521,6 +639,7 @@ object TastyFormat {
        | PARAMalias
        | EXPORTED
        | OPEN
+       | INVISIBLE
        | ANNOTATION
        | PRIVATEqualified
        | PROTECTEDqualified => true
@@ -565,7 +684,8 @@ object TastyFormat {
     case STATIC => "STATIC"
     case OBJECT => "OBJECT"
     case TRAIT => "TRAIT"
-    case SUPERTRAIT => "SUPERTRAIT"
+    case TRANSPARENT => "TRANSPARENT"
+    case INFIX => "INFIX"
     case ENUM => "ENUM"
     case LOCAL => "LOCAL"
     case SYNTHETIC => "SYNTHETIC"
@@ -582,8 +702,10 @@ object TastyFormat {
     case PARAMsetter => "PARAMsetter"
     case EXPORTED => "EXPORTED"
     case OPEN => "OPEN"
-    case PARAMEND => "PARAMEND"
+    case INVISIBLE => "INVISIBLE"
     case PARAMalias => "PARAMalias"
+    case EMPTYCLAUSE => "EMPTYCLAUSE"
+    case SPLITCLAUSE => "SPLITCLAUSE"
 
     case SHAREDterm => "SHAREDterm"
     case SHAREDtype => "SHAREDtype"
@@ -616,6 +738,7 @@ object TastyFormat {
     case DEFDEF => "DEFDEF"
     case TYPEDEF => "TYPEDEF"
     case IMPORT => "IMPORT"
+    case EXPORT => "EXPORT"
     case TYPEPARAM => "TYPEPARAM"
     case PARAM => "PARAM"
     case IMPORTED => "IMPORTED"
@@ -651,7 +774,6 @@ object TastyFormat {
     case QUALTHIS => "QUALTHIS"
     case SUPER => "SUPER"
     case CLASSconst => "CLASSconst"
-    case ENUMconst => "ENUMconst"
     case SINGLETONtpt => "SINGLETONtpt"
     case SUPERtype => "SUPERtype"
     case TERMREFin => "TERMREFin"
@@ -673,6 +795,7 @@ object TastyFormat {
     case TYPELAMBDAtype => "TYPELAMBDAtype"
     case LAMBDAtpt => "LAMBDAtpt"
     case MATCHtype => "MATCHtype"
+    case MATCHCASEtype => "MATCHCASEtype"
     case MATCHtpt => "MATCHtpt"
     case PARAMtype => "PARAMtype"
     case ANNOTATION => "ANNOTATION"

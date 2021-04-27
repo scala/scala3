@@ -7,7 +7,7 @@ package org.scalajs.testsuite.compiler
 
 import scala.reflect.Selectable.reflectiveSelectable
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 object ReflectiveCallTestScala3 {
@@ -128,7 +128,7 @@ object ReflectiveCallTestScala3 {
 }
 
 class ReflectiveCallTestScala3 {
-  import ReflectiveCallTestScala3._
+  import ReflectiveCallTestScala3.*
 
   @Test def testBasic1(): Unit = basic(new Foo1)
   @Test def testCurrying1(): Unit = currying(new Foo1)
@@ -163,13 +163,11 @@ class ReflectiveCallTestScala3 {
     assertEquals("undefined any-string 5 Some(5) None",
         foo.foo((), "any-string", 5, Some[Int](5), None))
 
-    // The following calls do not compile in Dotty because
-    //   No ClassTag available for Null/Nothing
+    assertEquals("null", foo.nullMeth(null))
 
-    //assertEquals("null", foo.nullMeth(null))
-    //// Make sure that a call to nothingMeth can link
-    //if (Math.random() > 2) // always false
-    //  foo.nothingMeth(???)
+    // Make sure that a call to nothingMeth can link
+    if (Math.random() > 2) // always false
+      foo.nothingMeth(???)
   }
 
 }

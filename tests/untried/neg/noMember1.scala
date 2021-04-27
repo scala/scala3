@@ -1,3 +1,3 @@
-import scala.collection.mutable.MultiMap._
+import scala.collection.mutable.MultiMap.*
 
 class A

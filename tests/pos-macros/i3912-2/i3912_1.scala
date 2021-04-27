@@ -1,7 +1,7 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
   inline def foo2(): Unit = ${ impl() }
 
-  def impl()(using QuoteContext): Expr[Int] = '{1}
+  def impl()(using Quotes): Expr[Int] = '{1}
 }

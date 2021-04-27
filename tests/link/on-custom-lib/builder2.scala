@@ -1,5 +1,5 @@
 
-import strawman.collection.mutable._
+import strawman.collection.mutable.*
 
 object Test {
   def main(args: Array[String]): Unit = {

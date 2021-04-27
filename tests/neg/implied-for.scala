@@ -3,12 +3,12 @@ class B extends T
 class C extends T
 
 object A {
-  given b as B
-  given c as C
+  given b: B with {}
+  given c: C with {}
 }
 
 object Test extends App {
-  import A._
+  import A.*
   import A.{given B}
 
   val x: B = b // OK

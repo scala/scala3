@@ -1,5 +1,5 @@
-import scala.quoted._
+import scala.quoted.*
 object Macro {
   inline def ff(x: Int, inline y: Int): String = ${impl('x)}
-  def impl(x: Expr[Int])(using QuoteContext): Expr[String] = '{""}
+  def impl(x: Expr[Int])(using Quotes): Expr[String] = '{""}
 }

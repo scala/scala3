@@ -9,8 +9,8 @@ object Equality {
 
 
 object Test {
-  import scalatest._
-  import Equality._
+  import scalatest.*
+  import Equality.*
 
   def main(args: Array[String]): Unit = {
     val x = "String"

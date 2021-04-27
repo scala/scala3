@@ -17,7 +17,7 @@ object Bug {
 }
 
 object Test {
-  import Bug._
+  import Bug.*
   println("Compiles:")
   val a1 = FNil.chain("a").chain("a")
   val a2 = a1.chain("a")

@@ -12,8 +12,8 @@ enum Cat extends Animal {
 }
 
 object Test {
-  import Dog._
-  import Cat._
+  import Dog.*
+  import Cat.*
 
   def main(args: Array[String]): Unit = {
     val values = List(

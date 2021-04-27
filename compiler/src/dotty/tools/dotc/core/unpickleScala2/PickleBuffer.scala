@@ -241,10 +241,10 @@ object PickleBuffer {
     val termMap, typeMap = new Array[Long](64)
     for (idx <- 0 until ScalaFlagEnd)
       corr get (1L << idx) match {
-        case Some((termFlag: FlagSet, typeFlag: FlagSet)) =>
+        case Some((termFlag: FlagSet @unchecked, typeFlag: FlagSet @unchecked)) =>
           termMap(idx) |= termFlag.bits
           typeMap(idx) |= typeFlag.bits
-        case Some(commonFlag: FlagSet) =>
+        case Some(commonFlag: FlagSet @unchecked) =>
           termMap(idx) |= commonFlag.toTermFlags.bits
           typeMap(idx) |= commonFlag.toTypeFlags.bits
         case _ =>

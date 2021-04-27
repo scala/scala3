@@ -12,6 +12,7 @@ import ast.{tpd, untpd, Trees}
 import Trees._
 import scala.util.control.NonFatal
 import util.Spans.Span
+import Nullables._
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -53,13 +54,15 @@ class ReTyper extends Typer with ReChecking {
 
   override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree = {
     assertTyped(tree)
+
     val tpt1 = checkSimpleKinded(typedType(tree.tpt))
     val expr1 = tree.expr match {
       case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
         tree.expr.withType(tpt1.tpe)
       case _ => typed(tree.expr)
     }
-    untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    val result = untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+    if ctx.mode.isExpr then result.withNotNullInfo(expr1.notNullInfo) else result
   }
 
   override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
@@ -67,9 +70,6 @@ class ReTyper extends Typer with ReChecking {
 
   override def typedRefinedTypeTree(tree: untpd.RefinedTypeTree)(using Context): TypTree =
     promote(TypeTree(tree.tpe).withSpan(tree.span))
-
-  override def typedFunPart(fn: untpd.Tree, pt: Type)(using Context): Tree =
-    typedExpr(fn, pt)
 
   override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind = {
     assertTyped(tree)
@@ -101,14 +101,10 @@ class ReTyper extends Typer with ReChecking {
   override def tryInsertApplyOrImplicit(tree: Tree, pt: ProtoType, locked: TypeVars)(fallBack: => Tree)(using Context): Tree =
     fallBack
 
-  override def tryNew[T >: Untyped <: Type]
-    (treesInst: Instance[T])(tree: Trees.Tree[T], pt: Type, fallBack: TyperState => Tree)(using Context): Tree =
-      fallBack(ctx.typerState)
-
   override def completeAnnotations(mdef: untpd.MemberDef, sym: Symbol)(using Context): Unit = ()
 
-  override def ensureConstrCall(cls: ClassSymbol, parents: List[Tree])(using Context): List[Tree] =
-    parents
+  override def ensureConstrCall(cls: ClassSymbol, parent: Tree)(using Context): Tree =
+    parent
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>
@@ -122,7 +118,7 @@ class ReTyper extends Typer with ReChecking {
     try super.typedUnadapted(tree, pt, locked)
     catch {
       case NonFatal(ex) =>
-        if (ctx.isAfterTyper)
+        if ctx.phase != Phases.typerPhase && ctx.phase != Phases.inliningPhase then
           println(i"exception while typing $tree of class ${tree.getClass} # ${tree.uniqueId}")
         throw ex
     }
@@ -132,6 +128,9 @@ class ReTyper extends Typer with ReChecking {
   override def inferView(from: Tree, to: Type)(using Context): Implicits.SearchResult =
     Implicits.NoMatchingImplicitsFailure
   override def checkCanEqual(ltp: Type, rtp: Type, span: Span)(using Context): Unit = ()
+
+  override def widenEnumCase(tree: Tree, pt: Type)(using Context): Tree = tree
+
   override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true

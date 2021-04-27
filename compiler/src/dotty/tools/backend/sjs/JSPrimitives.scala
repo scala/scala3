@@ -42,7 +42,10 @@ object JSPrimitives {
 
   final val THROW = DEBUGGER + 1
 
-  final val REFLECT_SELECTABLE_SELECTDYN = THROW + 1                       // scala.reflect.Selectable.selectDynamic
+  final val UNION_FROM = THROW + 1                       // js.|.from
+  final val UNION_FROM_TYPE_CONSTRUCTOR = UNION_FROM + 1 // js.|.fromTypeConstructor
+
+  final val REFLECT_SELECTABLE_SELECTDYN = UNION_FROM_TYPE_CONSTRUCTOR + 1 // scala.reflect.Selectable.selectDynamic
   final val REFLECT_SELECTABLE_APPLYDYN = REFLECT_SELECTABLE_SELECTDYN + 1 // scala.reflect.Selectable.applyDynamic
 
   final val LastJSPrimitiveCode = REFLECT_SELECTABLE_APPLYDYN
@@ -104,9 +107,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(defn.BoxedUnit_UNIT, UNITVAL)
 
     addPrimitive(jsdefn.Runtime_constructorOf, CONSTRUCTOROF)
-    /*addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
+    addPrimitive(jsdefn.Runtime_createInnerJSClass, CREATE_INNER_JS_CLASS)
     addPrimitive(jsdefn.Runtime_createLocalJSClass, CREATE_LOCAL_JS_CLASS)
-    addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)*/
+    addPrimitive(jsdefn.Runtime_withContextualJSClassValue, WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(jsdefn.Runtime_linkingInfo, LINKING_INFO)
 
     addPrimitive(jsdefn.Special_strictEquals, STRICT_EQ)
@@ -117,6 +120,9 @@ class JSPrimitives(ictx: Context) extends DottyPrimitives(ictx) {
     addPrimitive(jsdefn.Special_debugger, DEBUGGER)
 
     addPrimitive(defn.throwMethod, THROW)
+
+    addPrimitive(jsdefn.PseudoUnion_from, UNION_FROM)
+    addPrimitive(jsdefn.PseudoUnion_fromTypeConstructor, UNION_FROM_TYPE_CONSTRUCTOR)
 
     addPrimitive(jsdefn.ReflectSelectable_selectDynamic, REFLECT_SELECTABLE_SELECTDYN)
     addPrimitive(jsdefn.ReflectSelectable_applyDynamic, REFLECT_SELECTABLE_APPLYDYN)

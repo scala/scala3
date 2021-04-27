@@ -71,7 +71,7 @@ import collection.mutable.ListBuffer
  */
 object Denotations {
 
-  implicit def eqDenotation: Eql[Denotation, Denotation] = Eql.derived
+  implicit def eqDenotation: CanEqual[Denotation, Denotation] = CanEqual.derived
 
   /** A PreDenotation represents a group of single denotations or a single multi-denotation
    *  It is used as an optimization to avoid forming MultiDenotations too eagerly.
@@ -129,7 +129,7 @@ object Denotations {
     type AsSeenFromResult <: PreDenotation
 
     /** The denotation with info(s) as seen from prefix type */
-    final def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
+    def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
         if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
           cachedAsSeenFrom = computeAsSeenFrom(pre)
@@ -222,7 +222,7 @@ object Denotations {
      *  when seen from prefix `site`.
      *  @param relaxed  When true, consider only parameter signatures for a match.
      */
-    def atSignature(sig: Signature, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
+    def atSignature(sig: Signature, targetName: Name, site: Type = NoPrefix, relaxed: Boolean = false)(using Context): Denotation
 
     /** The variant of this denotation that's current in the given context.
      *  If no such denotation exists, returns the denotation with each alternative
@@ -237,7 +237,7 @@ object Denotations {
     def mapInfo(f: Type => Type)(using Context): Denotation
 
     /** If this denotation does not exist, fallback to alternative */
-    final def orElse(that: => Denotation): Denotation = if (this.exists) this else that
+    inline def orElse(inline that: Denotation): Denotation = if (this.exists) this else that
 
     /** The set of alternative single-denotations making up this denotation */
     final def alternatives: List[SingleDenotation] = altsWith(alwaysTrue)
@@ -347,13 +347,15 @@ object Denotations {
     }
 
     /** The alternative of this denotation that has a type matching `targetType` when seen
-     *  as a member of type `site`, `NoDenotation` if none exists.
+     *  as a member of type `site` and that has a target name matching `targetName`, or
+     *  `NoDenotation` if none exists.
      */
-    def matchingDenotation(site: Type, targetType: Type)(using Context): SingleDenotation = {
-      def qualifies(sym: Symbol) = site.memberInfo(sym).matchesLoosely(targetType)
+    def matchingDenotation(site: Type, targetType: Type, targetName: Name)(using Context): SingleDenotation = {
+      def qualifies(sym: Symbol) =
+        site.memberInfo(sym).matchesLoosely(targetType) && sym.hasTargetName(targetName)
       if (isOverloaded)
-        atSignature(targetType.signature, site, relaxed = true) match {
-          case sd: SingleDenotation => sd.matchingDenotation(site, targetType)
+        atSignature(targetType.signature, targetName, site, relaxed = true) match {
+          case sd: SingleDenotation => sd.matchingDenotation(site, targetType, targetName)
           case md => md.suchThat(qualifies(_))
         }
       else if (exists && !qualifies(symbol)) NoDenotation
@@ -475,7 +477,7 @@ object Denotations {
             val jointInfo = infoMeet(info1, info2, safeIntersection)
             if jointInfo.exists then
               val sym = if symScore >= 0 then sym1 else sym2
-              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre)
+              JointRefDenotation(sym, jointInfo, denot1.validFor & denot2.validFor, pre, denot1.isRefinedMethod || denot2.isRefinedMethod)
             else if symScore == 2 then denot1
             else if symScore == -2 then denot2
             else
@@ -567,36 +569,63 @@ object Denotations {
 
   /** A non-overloaded denotation */
   abstract class SingleDenotation(symbol: Symbol, initInfo: Type) extends Denotation(symbol, initInfo) {
-    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type): SingleDenotation
+    protected def newLikeThis(symbol: Symbol, info: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation
 
     final def name(using Context): Name = symbol.name
 
-    /** If this is not a SymDenotation: The prefix under which the denotation was constructed.
-     *  NoPrefix for SymDenotations.
+    /** For SymDenotation, this is NoPrefix. For other denotations this is the prefix
+     *  under which the denotation was constructed.
+     *
+     *  Note that `asSeenFrom` might return a `SymDenotation` and therefore in
+     *  general one cannot rely on `prefix` being set, see
+     *  `Config.reuseSymDenotations` for details.
      */
     def prefix: Type = NoPrefix
 
+    /** True if the info of this denotation comes from a refinement. */
+    def isRefinedMethod: Boolean = false
+
+    /** For SymDenotations, the language-specific signature of the info, depending on
+     *  where the symbol is defined. For non-SymDenotations, the Scala 3
+     *  signature.
+     *
+     *  Invariants:
+     *  - Before erasure, the signature of a denotation is always equal to the
+     *    signature of its corresponding initial denotation.
+     *  - Two distinct overloads will have SymDenotations with distinct
+     *    signatures (the SELECTin tag in Tasty relies on this to refer to an
+     *    overload unambiguously). Note that this only applies to
+     *    SymDenotations, in general we cannot assume that distinct
+     *    SingleDenotations will have distinct signatures (cf #9050).
+     */
     final def signature(using Context): Signature =
-      if (isType) Signature.NotAMethod // don't force info if this is a type SymDenotation
+      signature(sourceLanguage = if isType || !this.isInstanceOf[SymDenotation] then SourceLanguage.Scala3 else SourceLanguage(symbol))
+
+    /** Overload of `signature` which lets the caller pick the language used
+     *  to compute the signature of the info. Useful to match denotations defined in
+     *  different classes (see `matchesLoosely`).
+     */
+    def signature(sourceLanguage: SourceLanguage)(using Context): Signature =
+      if (isType) Signature.NotAMethod // don't force info if this is a type denotation
       else info match {
-        case info: MethodicType =>
-          try info.signature
+        case info: MethodOrPoly =>
+          try info.signature(sourceLanguage)
           catch { // !!! DEBUG
             case scala.util.control.NonFatal(ex) =>
-              report.echo(s"cannot take signature of ${info.show}")
+              report.echo(s"cannot take signature of $info")
               throw ex
           }
         case _ => Signature.NotAMethod
       }
 
-    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix)(using Context): SingleDenotation =
-      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix)) this
-      else newLikeThis(symbol, info, pre)
+    def derivedSingleDenotation(symbol: Symbol, info: Type, pre: Type = this.prefix, isRefinedMethod: Boolean = this.isRefinedMethod)(using Context): SingleDenotation =
+      if ((symbol eq this.symbol) && (info eq this.info) && (pre eq this.prefix) && (isRefinedMethod == this.isRefinedMethod)) this
+      else newLikeThis(symbol, info, pre, isRefinedMethod)
 
     def mapInfo(f: Type => Type)(using Context): SingleDenotation =
       derivedSingleDenotation(symbol, f(info))
 
-    def orElse(that: => SingleDenotation): SingleDenotation = if (this.exists) this else that
+    inline def orElse(inline that: SingleDenotation): SingleDenotation = if (this.exists) this else that
 
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
       if (exists && p(symbol)) this :: Nil else Nil
@@ -610,9 +639,9 @@ object Denotations {
     def accessibleFrom(pre: Type, superAccess: Boolean)(using Context): Denotation =
       if (!symbol.exists || symbol.isAccessibleFrom(pre, superAccess)) this else NoDenotation
 
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): SingleDenotation =
       val situated = if site == NoPrefix then this else asSeenFrom(site)
-      val matches = sig.matchDegree(situated.signature) match
+      val sigMatches = sig.matchDegree(situated.signature) match
         case FullMatch =>
           true
         case MethodNotAMethodMatch =>
@@ -622,7 +651,7 @@ object Denotations {
           relaxed
         case noMatch =>
           false
-      if matches then this else NoDenotation
+      if sigMatches && symbol.hasTargetName(targetName) then this else NoDenotation
 
     def matchesImportBound(bound: Type)(using Context): Boolean =
       if bound.isRef(defn.NothingClass) then false
@@ -983,34 +1012,48 @@ object Denotations {
     final def last: SingleDenotation = this
 
     def matches(other: SingleDenotation)(using Context): Boolean =
-      val d = signature.matchDegree(other.signature)
+      symbol.hasTargetName(other.symbol.targetName)
+      && matchesLoosely(other)
 
-      d match
-        case FullMatch =>
-          true
-        case MethodNotAMethodMatch =>
-          !ctx.erasedTypes && {
-            val isJava = symbol.is(JavaDefined)
-            val otherIsJava = other.symbol.is(JavaDefined)
-            // A Scala zero-parameter method and a Scala non-method always match.
-            if !isJava && !otherIsJava then
-              true
-            // Java allows defining both a field and a zero-parameter method with the same name,
-            // so they must not match.
-            else if isJava && otherIsJava then
-              false
-            // A Java field never matches a Scala method.
-            else if isJava then
-              symbol.is(Method)
-            else // otherIsJava
-              other.symbol.is(Method)
-          }
-        case ParamMatch =>
-           // The signatures do not tell us enough to be sure about matching
-          !ctx.erasedTypes && info.matches(other.info)
-        case noMatch =>
-          false
-    end matches
+    /** `matches` without a target name check.
+     *
+     *  For definitions coming from different languages, we pick a common
+     *  language to compute their signatures. This allows us for example to
+     *  override some Java definitions from Scala even if they have a different
+     *  erasure (see i8615b, i9109b), Erasure takes care of adding any necessary
+     *  bridge to make this work at runtime.
+     */
+    def matchesLoosely(other: SingleDenotation)(using Context): Boolean =
+      if isType then true
+      else
+        val thisLanguage = SourceLanguage(symbol)
+        val otherLanguage = SourceLanguage(other.symbol)
+        val commonLanguage = SourceLanguage.commonLanguage(thisLanguage, otherLanguage)
+        val sig = signature(commonLanguage)
+        val otherSig = other.signature(commonLanguage)
+        sig.matchDegree(otherSig) match
+          case FullMatch =>
+            true
+          case MethodNotAMethodMatch =>
+            !ctx.erasedTypes && {
+              // A Scala zero-parameter method and a Scala non-method always match.
+              if !thisLanguage.isJava && !otherLanguage.isJava then
+                true
+              // Java allows defining both a field and a zero-parameter method with the same name,
+              // so they must not match.
+              else if thisLanguage.isJava && otherLanguage.isJava then
+                false
+              // A Java field never matches a Scala method.
+              else if thisLanguage.isJava then
+                symbol.is(Method)
+              else // otherLanguage.isJava
+                other.symbol.is(Method)
+            }
+          case ParamMatch =>
+            // The signatures do not tell us enough to be sure about matching
+            !ctx.erasedTypes && info.matches(other.info)
+          case noMatch =>
+            false
 
     def mapInherited(ownDenots: PreDenotation, prevDenots: PreDenotation, pre: Type)(using Context): SingleDenotation =
       if hasUniqueSym && prevDenots.containsSym(symbol) then NoDenotation
@@ -1022,11 +1065,12 @@ object Denotations {
     def filterDisjoint(denots: PreDenotation)(using Context): SingleDenotation =
       if (denots.exists && denots.matches(this)) NoDenotation else this
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): SingleDenotation =
+      val realExcluded = if ctx.isAfterTyper then excluded else excluded | Invisible
       def symd: SymDenotation = this match
         case symd: SymDenotation => symd
         case _ => symbol.denot
       if !required.isEmpty && !symd.isAllOf(required)
-         || !excluded.isEmpty && symd.isOneOf(excluded) then NoDenotation
+         || symd.isOneOf(realExcluded) then NoDenotation
       else this
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T = f(this)
 
@@ -1039,26 +1083,40 @@ object Denotations {
       }
 
       /** The derived denotation with the given `info` transformed with `asSeenFrom`.
-       *  The prefix of the derived denotation is the new prefix `pre` if the type is
-       *  opaque, or if the current prefix is already different from `NoPrefix`.
-       *  That leaves SymDenotations (which have NoPrefix as the prefix), which are left
-       *  as SymDenotations unless the type is opaque. The treatment of opaque types
-       *  is needed, without it i7159.scala fails in from-tasty. Without the treatment,
-       *  opaque type denotations in subclasses are kept as SymDenotations, which means
-       *  that the transform in `ElimOpaque` will return the symbol's opaque alias without
-       *  adding the needed asSeenFrom.
        *
-       *  Logically, the right thing to do would be to extend the same treatment to all denotations
-       *  Currently this fails the bootstrap. There's also a concern that this generalization
-       *  would create more denotation objects, at a price in performance.
+       *  As a performance hack, we might reuse an existing SymDenotation,
+       *  instead of creating a new denotation with a given `prefix`,
+       *  see `Config.reuseSymDenotations`.
        */
       def derived(info: Type) =
-        derivedSingleDenotation(
-          symbol,
-          info.asSeenFrom(pre, owner),
-          if (symbol.is(Opaque) || this.prefix != NoPrefix) pre else this.prefix)
+        /** Do we need to return a denotation with a prefix set? */
+        def needsPrefix =
+          // For opaque types, the prefix is used in `ElimOpaques#transform`,
+          // without this i7159.scala would fail when compiled from tasty.
+          symbol.is(Opaque)
 
-      if (!owner.membersNeedAsSeenFrom(pre) || symbol.is(NonMember)) this
+        val derivedInfo = info.asSeenFrom(pre, owner)
+        if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
+           && (derivedInfo eq info) && !needsPrefix then
+          this
+        else
+          derivedSingleDenotation(symbol, derivedInfo, pre)
+      end derived
+
+      // Tt could happen that we see the symbol with prefix `this` as a member a different class
+      // through a self type and that it then has a different info. In this case we have to go
+      // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
+      def hasOriginalInfo: Boolean = this match
+        case sd: SymDenotation => true
+        case _ => info eq symbol.info
+
+      def ownerIsPrefix = pre match
+        case pre: ThisType => pre.sameThis(owner.thisType)
+        case _ => false
+
+      if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
+         || symbol.is(NonMember)
+      then this
       else derived(symbol.info)
     }
   }
@@ -1075,26 +1133,30 @@ object Denotations {
     prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = true
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new UniqueRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      if isRefinedMethod then
+        new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
+      else
+        new UniqueRefDenotation(s, i, validFor, pre)
   }
 
   class JointRefDenotation(
     symbol: Symbol,
     initInfo: Type,
     initValidFor: Period,
-    prefix: Type) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
+    prefix: Type,
+    override val isRefinedMethod: Boolean) extends NonSymSingleDenotation(symbol, initInfo, prefix) {
     validFor = initValidFor
     override def hasUniqueSym: Boolean = false
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
-      new JointRefDenotation(s, i, validFor, pre)
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
+      new JointRefDenotation(s, i, validFor, pre, isRefinedMethod)
   }
 
   class ErrorDenotation(using Context) extends NonSymSingleDenotation(NoSymbol, NoType, NoType) {
     override def exists: Boolean = false
     override def hasUniqueSym: Boolean = false
     validFor = Period.allInRun(ctx.runId)
-    protected def newLikeThis(s: Symbol, i: Type, pre: Type): SingleDenotation =
+    protected def newLikeThis(s: Symbol, i: Type, pre: Type, isRefinedMethod: Boolean): SingleDenotation =
       this
   }
 
@@ -1164,9 +1226,11 @@ object Denotations {
     final def hasUniqueSym: Boolean = false
     final def name(using Context): Name = denot1.name
     final def signature(using Context): Signature = Signature.OverloadedSignature
-    def atSignature(sig: Signature, site: Type, relaxed: Boolean)(using Context): Denotation =
+    def atSignature(sig: Signature, targetName: Name, site: Type, relaxed: Boolean)(using Context): Denotation =
       if (sig eq Signature.OverloadedSignature) this
-      else derivedUnionDenotation(denot1.atSignature(sig, site, relaxed), denot2.atSignature(sig, site, relaxed))
+      else derivedUnionDenotation(
+            denot1.atSignature(sig, targetName, site, relaxed),
+            denot2.atSignature(sig, targetName, site, relaxed))
     def current(using Context): Denotation =
       derivedUnionDenotation(denot1.current, denot2.current)
     def altsWith(p: Symbol => Boolean): List[SingleDenotation] =
@@ -1219,11 +1283,8 @@ object Denotations {
     def select(prefix: Denotation, selector: Name): Denotation = {
       val owner = prefix.disambiguate(_.info.isParameterless)
       def isPackageFromCoreLibMissing: Boolean =
-        owner.symbol == defn.RootClass &&
-        (
-          selector == nme.scala || // if the scala package is missing, the stdlib must be missing
-          selector == nme.scalaShadowing // if the scalaShadowing package is missing, the dotty library must be missing
-        )
+        // if the scala package is missing, the stdlib must be missing
+        owner.symbol == defn.RootClass && selector == nme.scala
       if (owner.exists) {
         val result = if (isPackage) owner.info.decl(selector) else owner.info.member(selector)
         if (result.exists) result
@@ -1262,7 +1323,6 @@ object Denotations {
     if ctx.run == null then recur(path)
     else ctx.run.staticRefs.getOrElseUpdate(path, recur(path))
   }
-
 
   /** If we are looking for a non-existing term name in a package,
     *  assume it is a package for which we do not have a directory and

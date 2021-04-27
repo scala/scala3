@@ -1,10 +1,10 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Lib {
 
   inline def foo[T](inline arg: T): T = ${ impl('arg) }
 
-  private def impl[T: Type](arg: Expr[T])(using QuoteContext): Expr[T] = {
+  private def impl[T: Type](arg: Expr[T])(using Quotes): Expr[T] = {
     arg match {
       case e @ '{ $x: Boolean } => '{ println("Boolean: " + $e); $e }
       case e @ '{ $x: Int } => '{ println("Int: " + $x); $x }

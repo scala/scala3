@@ -6,6 +6,7 @@ package xsbt;
 import xsbti.Logger;
 import xsbti.Severity;
 
+
 import java.lang.reflect.Method;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
@@ -16,6 +17,8 @@ import java.util.ArrayList;
 import dotty.tools.dotc.core.Contexts.Context;
 import dotty.tools.dotc.core.Contexts.ContextBase;
 import dotty.tools.dotc.reporting.Reporter;
+import dotty.tools.xsbt.InterfaceCompileFailed;
+import dotty.tools.xsbt.DelegatingReporter;
 
 public class DottydocRunner {
   private final String[] args0;
@@ -40,37 +43,14 @@ public class DottydocRunner {
       return msg.toString();
     });
 
-    // When running with `-from-tasty`, remove the source files from arg list.
     String[] args;
-    boolean fromTasty = false;
+
+    ArrayList<String> retained = new ArrayList<>(args0.length);
     for (String arg : args0) {
-      if ("-from-tasty".equals(arg)) {
-        fromTasty = true;
-        break;
-      }
+      if (!((arg.endsWith(".scala") || arg.endsWith(".java")) && Files.exists(Paths.get(arg))))
+        retained.add(arg);
     }
-    if (fromTasty) {
-      ArrayList<String> excluded = new ArrayList<>(args0.length);
-      ArrayList<String> retained = new ArrayList<>(args0.length);
-      for (String arg : args0) {
-        if ((arg.endsWith(".scala") || arg.endsWith(".java")) && Files.exists(Paths.get(arg)))
-          excluded.add(arg);
-        else
-          retained.add(arg);
-      }
-      log.debug(() -> {
-        StringBuilder msg =
-          new StringBuilder("Running `-from-tasty`, excluding source files:");
-        for (String arg : excluded) {
-          msg.append("\n\t");
-          msg.append(arg);
-        }
-        return msg.toString();
-      });
-      args = retained.toArray(new String[retained.size()]);
-    } else {
-      args = args0;
-    }
+    args = retained.toArray(new String[retained.size()]);
 
     Context ctx = new ContextBase().initialCtx().fresh()
       .setReporter(new DelegatingReporter(delegate));
@@ -80,7 +60,7 @@ public class DottydocRunner {
       Method processMethod = dottydocMainClass.getMethod("process", args.getClass(), Context.class); // args.getClass() is String[]
       Reporter reporter = (Reporter) processMethod.invoke(null, args, ctx);
       if (reporter.hasErrors())
-        throw new InterfaceCompileFailed(args, new xsbti.Problem[0]);
+        throw new InterfaceCompileFailed(args, new xsbti.Problem[0], "DottyDoc Compilation Failed");
     } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
       throw new RuntimeException(e);
     }

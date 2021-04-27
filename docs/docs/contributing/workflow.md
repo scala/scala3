@@ -6,19 +6,19 @@ title: Workflow
 Check [Getting Started](getting-started.md) for instructions on how to obtain the source code of dotty.
 This document details common workflow patterns when working with Dotty.
 
-## Compiling files with dotc ##
+## Compiling files with scalac ##
 
 As we have seen you can compile a test file either from sbt:
 
 ```bash
 $ sbt
-> dotc <OPTIONS> <FILE>
+> scalac <OPTIONS> <FILE>
 ```
 
 or from terminal:
 
 ```bash
-$ dotc <OPTIONS> <FILE>
+$ scalac <OPTIONS> <FILE>
 ```
 
 Here are some useful debugging `<OPTIONS>`:
@@ -45,7 +45,7 @@ type stealer:
 ```bash
 $ sbt
 > repl
-scala> import dotty.tools.DottyTypeStealer._; import dotty.tools.dotc.core._; import Contexts._,Types._
+scala> import dotty.tools.DottyTypeStealer.*; import dotty.tools.dotc.core.*; import Contexts.*,Types.*
 ```
 
 Now, you can define types and access their representation. For example:
@@ -60,7 +60,7 @@ u: dotty.tools.dotc.core.Types.Type = TypeBounds(TypeRef(ThisType(TypeRef(NoPref
 ```
 
 ## Pretty-printing ##
-Many objects in the dotc compiler implement a `Showable` trait (e.g. `Tree`,
+Many objects in the scalac compiler implement a `Showable` trait (e.g. `Tree`,
 `Symbol`, `Type`). These objects may be prettyprinted using the `.show`
 method
 
@@ -70,8 +70,8 @@ The basics of working with Dotty codebase are documented [here](https://dotty.ep
 
 |                        Command                       |                                                          Description                                                          |
 |------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| `dotc ../issues/Playground.scala`                    | Compile the given file – path relative to the Dotty directory. Output the compiled class files to the Dotty directory itself. |
-| `dotr Playground`                                    | Run the compiled class `Playground`. Dotty directory is on classpath by default.                                              |
+| `scalac ../issues/Playground.scala`                  | Compile the given file – path relative to the Dotty directory. Output the compiled class files to the Dotty directory itself. |
+| `scala Playground`                                   | Run the compiled class `Playground`. Dotty directory is on classpath by default.                                              |
 | `repl`                                               | Start REPL                                                                                                                    |
 | `testOnly dotty.tools.dotc.CompilationTests -- *pos` | Run test (method) `pos` from `CompilationTests` suite.                                                                        |
 | `testCompilation sample`                             | In all test suites, run test files containing the word `sample` in their title.                                               |

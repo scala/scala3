@@ -1,8 +1,7 @@
-import scala.compiletime.ops._
-import scala.annotation.infix
+import scala.compiletime.ops.*
 
 object Test {
-  @infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
+  infix type +[X <: Int | String, Y <: Int | String] = (X, Y) match {
     case (Int, Int) => int.+[X, Y]
     case (String, String) => string.+[X, Y]
     case (String, Int) => string.+[X, int.ToString[Y]]

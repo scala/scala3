@@ -378,7 +378,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val tpe = x.tpe.widen.resultType.widen
     val claz = x.symbol.owner.asClass
     val thizClass = Literal(Constant(claz.info))
-    val helperModule = requiredModule("dotty.runtime.LazyVals")
+    val helperModule = requiredModule("scala.runtime.LazyVals")
     val getOffset = Select(ref(helperModule), lazyNme.RLazyVals.getOffset)
     var offsetSymbol: TermSymbol = null
     var flag: Tree = EmptyTree
@@ -389,7 +389,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     // compute or create appropriate offsetSymbol, bitmap and bits used by current ValDef
     appendOffsetDefs.get(claz) match {
       case Some(info) =>
-        val flagsPerLong = (64 / dotty.runtime.LazyVals.BITS_PER_LAZY_VAL).toInt
+        val flagsPerLong = (64 / scala.runtime.LazyVals.BITS_PER_LAZY_VAL).toInt
         info.ord += 1
         ord = info.ord % flagsPerLong
         val id = info.ord / flagsPerLong
@@ -443,7 +443,7 @@ object LazyVals {
   object lazyNme {
     import Names.TermName
     object RLazyVals {
-      import dotty.runtime.LazyVals.{Names => N}
+      import scala.runtime.LazyVals.{Names => N}
       val get: TermName               = N.get.toTermName
       val setFlag: TermName           = N.setFlag.toTermName
       val wait4Notification: TermName = N.wait4Notification.toTermName

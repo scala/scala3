@@ -1,6 +1,6 @@
 package hello
 
-import lib._
+import lib.*
 
 case class Student(name: String)
 

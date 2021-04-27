@@ -1,0 +1,14 @@
+-- [E008] Not Found Error: tests/neg/i11994.scala:1:28 -----------------------------------------------------------------
+1 |implicit def foo[T <: Tuple.meow]: Unit = ??? // error
+  |                      ^^^^^^^^^^
+  |                      type meow is not a member of object Tuple.
+  |                      Extension methods were tried, but the search failed with:
+  |
+  |                          Cyclic reference involving method foo
+-- [E008] Not Found Error: tests/neg/i11994.scala:2:18 -----------------------------------------------------------------
+2 |given [T <: Tuple.meow]: Unit = ??? // error
+  |            ^^^^^^^^^^
+  |            type meow is not a member of object Tuple.
+  |            Extension methods were tried, but the search failed with:
+  |
+  |                Cyclic reference involving method given_Unit

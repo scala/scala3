@@ -35,4 +35,6 @@ object ScopedVar {
     try body
     finally stack.reverse.foreach(_.pop())
   }
+
+  final class VarBox[A](var value: A)
 }

@@ -33,13 +33,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
   // import global._
   // import definitions._
   import tpd._
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface.symExtensions
   import bTypes._
   import coreBTypes._
   import BCodeBodyBuilder._
 
-  private val primitives = new DottyPrimitives(ctx)
+  protected val primitives: DottyPrimitives
 
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
@@ -82,7 +82,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           genLoad(rhs, symInfoTK(lhs.symbol))
           lineNumber(tree)
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          val receiverClass = qual.tpe.widenDealias.typeSymbol
+          val receiverClass = qual.tpe.typeSymbol
           fieldStore(lhs.symbol, receiverClass)
 
         case Assign(lhs, rhs) =>
@@ -318,20 +318,10 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           abort(s"Unexpected New(${tpt.tpe.showSummary()}/$tpt) reached GenBCode.\n" +
                 "  Call was genLoad" + ((tree, expectedType)))
 
-        case app: Closure =>
-          val env: List[Tree] = app.env
-          val call: Tree = app.meth
-          val functionalInterface: Symbol = {
-            val t = app.tpt.tpe.typeSymbol
-            if (t.exists) t
-            else {
-              val arity = app.meth.tpe.widenDealias.firstParamTypes.size - env.size
-              val returnsUnit = app.meth.tpe.widenDealias.resultType.classSymbol == defn.UnitClass
-              if (returnsUnit) requiredClass(("dotty.runtime.function.JProcedure" + arity))
-              else if (arity <= 2) requiredClass(("dotty.runtime.function.JFunction" + arity))
-              else requiredClass(("scala.Function" + arity))
-            }
-          }
+        case t @ Closure(env, call, tpt) =>
+          val functionalInterface: Symbol =
+            if !tpt.isEmpty then tpt.tpe.classSymbol
+            else t.tpe.classSymbol
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
             case t @ DesugaredSelect(_, _) => (t, Nil) // TODO: use Select
@@ -385,7 +375,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
           def genLoadQualUnlessElidable(): Unit = { if (!qualSafeToElide) { genLoadQualifier(tree) } }
 
           // receiverClass is used in the bytecode to access the field. using sym.owner may lead to IllegalAccessError
-          def receiverClass = qualifier.tpe.widenDealias.typeSymbol
+          def receiverClass = qualifier.tpe.typeSymbol
           if (sym.is(Module)) {
             genLoadQualUnlessElidable()
             genLoadModule(tree)
@@ -488,7 +478,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     // ---------------- emitting constant values ----------------
 
     /*
-     * For const.tag in {ClazzTag, EnumTag}
+     * For ClazzTag:
      *   must-single-thread
      * Otherwise it's safe to call from multiple threads.
      */
@@ -526,22 +516,6 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             )
           else
             mnode.visitLdcInsn(tp.toASMType)
-
-        case EnumTag   =>
-          val sym       = const.symbolValue
-          val ownerName = internalName(sym.owner)
-          val fieldName = sym.javaSimpleName
-          val underlying = sym.info match { // TODO: Is this actually necessary? Could it be replaced by a call to widen?
-            case t: TypeProxy => t.underlying
-            case t => t
-          }
-          val fieldDesc = toTypeKind(underlying).descriptor
-          mnode.visitFieldInsn(
-            asm.Opcodes.GETSTATIC,
-            ownerName,
-            fieldName,
-            fieldDesc
-          )
 
         case _ => abort(s"Unknown constant value: $const")
       }
@@ -806,7 +780,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
               val receiverClass = if (!invokeStyle.isVirtual) null else {
                 // receiverClass is used in the bytecode to as the method receiver. using sym.owner
                 // may lead to IllegalAccessErrors, see 9954eaf / aladdin bug 455.
-                val qualSym = qual.tpe.widenDealias.typeSymbol
+                val qualSym = qual.tpe.typeSymbol
                 if (qualSym == defn.ArrayClass) {
                   // For invocations like `Array(1).hashCode` or `.wait()`, use Object as receiver
                   // in the bytecode. Using the array descriptor (like we do for clone above) seems
@@ -1021,9 +995,15 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit = {
-      (args zip btpes) foreach { case (arg, btpe) => genLoad(arg, btpe) }
-    }
+    def genLoadArguments(args: List[Tree], btpes: List[BType]): Unit =
+      args match
+        case arg :: args1 =>
+          btpes match
+            case btpe :: btpes1 =>
+              genLoad(arg, btpe)
+              genLoadArguments(args1, btpes1)
+            case _ =>
+        case _ =>
 
     def genLoadModule(tree: Tree): BType = {
       val module = (
@@ -1303,7 +1283,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       lineNumber(tree)
       tree match {
 
-        case tree @ Apply(fun, args) if isPrimitive(fun) =>
+        case tree @ Apply(fun, args) if primitives.isPrimitive(fun.symbol) =>
           import ScalaPrimitivesOps.{ ZNOT, ZAND, ZOR, EQ }
 
           // lhs and rhs of test
@@ -1321,7 +1301,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             genCond(rhs, success, failure, targetIfNoJump)
           }
 
-          primitives.getPrimitive(tree, lhs.tpe) match {
+          primitives.getPrimitive(fun.symbol) match {
             case ZNOT   => genCond(lhs, failure, success, targetIfNoJump)
             case ZAND   => genZandOrZor(and = true)
             case ZOR    => genZandOrZor(and = false)
@@ -1367,7 +1347,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
             (sym derivesFrom defn.BoxedCharClass) ||
             (sym derivesFrom defn.BoxedBooleanClass)
         }
-        !areSameFinals && isMaybeBoxed(l.tpe.widenDealias.typeSymbol) && isMaybeBoxed(r.tpe.widenDealias.typeSymbol)
+        !areSameFinals && isMaybeBoxed(l.tpe.typeSymbol) && isMaybeBoxed(r.tpe.typeSymbol)
       }
       def isNull(t: Tree): Boolean = t match {
         case Literal(Constant(null)) => true
@@ -1434,7 +1414,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
     def genLoadTry(tree: Try): BType
 
     def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol): BType = {
-      import java.lang.invoke.LambdaMetafactory.FLAG_SERIALIZABLE
+      import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
       report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = classBTypeFromSymbol(functionalInterface)
@@ -1461,13 +1441,13 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
-      val returnUnit = lambdaTarget.info.resultType.widenDealias.typeSymbol == defn.UnitClass
+      val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(tpe => toTypeKind(tpe)).mkString(("("), "", ")") + functionalInterfaceDesc
       // TODO specialization
-      val constrainedType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
+      val instantiatedMethodType = new MethodBType(lambdaParamTypes.map(p => toTypeKind(p)), toTypeKind(lambdaTarget.info.resultType)).toASMType
 
-      val abstractMethod = atPhase(erasurePhase) {
+      val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
         samMethods match {
           case x :: Nil => x.symbol
@@ -1477,21 +1457,40 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
         }
       }
 
-      val methodName = abstractMethod.javaSimpleName
-      val applyN = {
-        val mt = asmMethodType(abstractMethod)
-        mt.toASMType
+      val methodName = samMethod.javaSimpleName
+      val samMethodType = asmMethodType(samMethod).toASMType
+      // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
+      // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
+      val needsGenericBridge = samMethodType != instantiatedMethodType
+      val bridgeMethods = atPhase(erasurePhase){
+        samMethod.allOverriddenSymbols.toList
       }
-      val bsmArgs0 = Seq(applyN, targetHandle, constrainedType)
-      val bsmArgs =
-        if (isSerializable)
-          bsmArgs0 :+ Int.box(FLAG_SERIALIZABLE)
+      val overriddenMethodTypes = bridgeMethods.map(b => asmMethodType(b).toASMType)
+
+      // any methods which `samMethod` overrides need bridges made for them
+      // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
+      // so we have to compute them at this relatively late point.
+      val bridgeTypes = (
+        if (needsGenericBridge)
+          instantiatedMethodType +: overriddenMethodTypes
         else
-          bsmArgs0
+          overriddenMethodTypes
+      ).distinct.filterNot(_ == samMethodType)
+
+      val needsBridges = bridgeTypes.nonEmpty
+
+      def flagIf(b: Boolean, flag: Int): Int = if (b) flag else 0
+      val flags = flagIf(isSerializable, FLAG_SERIALIZABLE) | flagIf(needsBridges, FLAG_BRIDGES)
+
+      val bsmArgs0 = Seq(samMethodType, targetHandle, instantiatedMethodType)
+      val bsmArgs1 = if (flags != 0) Seq(Int.box(flags)) else Seq.empty
+      val bsmArgs2 = if needsBridges then bridgeTypes.length +: bridgeTypes else Seq.empty
+
+      val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
       val metafactory =
-        if (isSerializable)
-          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory needed to be able to pass the SERIALIZABLE flag
+        if (flags != 0)
+          lambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
         else
           lambdaMetaFactoryMetafactoryHandle
 

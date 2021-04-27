@@ -1,6 +1,6 @@
 package x
 
-import scala.quoted._
+import scala.quoted.*
 
 object FastPath {
 
@@ -22,22 +22,22 @@ object X {
     transformImpl[A]('x)
  }
 
- def transformImpl[A:Type](x:Expr[A])(using qctx: QuoteContext):Expr[A] = {
-    import qctx.tasty._
-    val slowPath = '{ SlowPath }.unseal
-    val fastPath = '{ FastPath }.unseal
+ def transformImpl[A:Type](x:Expr[A])(using Quotes):Expr[A] = {
+    import quotes.reflect.*
+    val slowPath = '{ SlowPath }.asTerm
+    val fastPath = '{ FastPath }.asTerm
     val transformer = new TreeMap() {
-      override def transformTerm(term:Term)(using ctx:Context):Term = {
+      override def transformTerm(term:Term)(owner: Symbol):Term = {
         term match
           case Apply(sel@Select(o,m),args) =>
                 if ( o.tpe =:= slowPath.tpe && m=="sum" )
                    Apply(Select.unique(fastPath,"sum"), args)
                 else
-                   super.transformTerm(term)
-          case _ => super.transformTerm(term)
+                   super.transformTerm(term)(owner)
+          case _ => super.transformTerm(term)(owner)
       }
     }
-    val r = transformer.transformTerm(x.unseal).seal.cast[A]
+    val r = transformer.transformTerm(x.asTerm)(Symbol.spliceOwner).asExprOf[A]
     s"result: ${r.show}"
     r
  }

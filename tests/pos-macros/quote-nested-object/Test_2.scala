@@ -1,5 +1,5 @@
 object PowerInlined1 {
-  import Macro.Implementation._
+  import Macro.Implementation.*
 
   plus(0, 2)
   plus(1, 3)

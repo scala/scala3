@@ -1,0 +1,16 @@
+visited exports with ExprMap
+visited exports with TreeMap
+extracted with TreeAccumulator: '{export Messages.{logMessage => log}}, '{export Messages.{count}}
+reflection show:
+{
+  lazy val Observer: Observer = new Observer()
+  object Observer {
+    export Messages.{count}
+    final def count: scala.Int = Messages.count
+  }
+  ()
+}
+reflection show extractors:
+Inlined(None, Nil, Block(List(ValDef("Observer", TypeIdent("Observer$"), Some(Apply(Select(New(TypeIdent("Observer$")), "<init>"), Nil))), ClassDef("Observer$", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Apply(Select(New(Inferred()), "<init>"), Nil)), Some(ValDef("_", Singleton(Ident("Observer")), None)), List(Export(Ident("Messages"), List(SimpleSelector(count))), DefDef("count", Nil, Inferred(), Some(Select(Ident("Messages"), "count")))))), Literal(UnitConstant())))
+visited exports with splice
+visited exports with splice inverted

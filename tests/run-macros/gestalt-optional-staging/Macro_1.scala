@@ -1,7 +1,7 @@
 // Port of https://github.com/liufengyun/gestalt/blob/master/macros/src/main/scala/gestalt/macros/Optional.scala
 // using staging macros (only quotes and splices)
 
-import scala.quoted._
+import scala.quoted.*
 
 final class Optional[+A >: Null](val value: A) extends AnyVal {
   def get: A = value
@@ -17,12 +17,12 @@ final class Optional[+A >: Null](val value: A) extends AnyVal {
 object Optional {
 
   // FIXME fix issue #5097 and enable private
-  /*private*/ def getOrElseImpl[T >: Null : Type](opt: Expr[Optional[T]], alt: Expr[T])(using QuoteContext): Expr[T] = '{
+  /*private*/ def getOrElseImpl[T >: Null : Type](opt: Expr[Optional[T]], alt: Expr[T])(using Quotes): Expr[T] = '{
     if ($opt.isEmpty) $alt else $opt.value
   }
 
   // FIXME fix issue #5097 and enable private
-  /*private*/ def mapImpl[A >: Null : Type, B >: Null : Type](opt: Expr[Optional[A]], f: Expr[A => B])(using QuoteContext): Expr[Optional[B]] = '{
+  /*private*/ def mapImpl[A >: Null : Type, B >: Null : Type](opt: Expr[Optional[A]], f: Expr[A => B])(using Quotes): Expr[Optional[B]] = '{
     if ($opt.isEmpty) new Optional(null)
     else new Optional(${Expr.betaReduce('{$f($opt.value)})})
   }

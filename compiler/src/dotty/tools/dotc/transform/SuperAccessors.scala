@@ -8,6 +8,8 @@ import ValueClasses.isMethodWithExtension
 import core._
 import Contexts._, Flags._, Symbols._, Names._, StdNames._, NameOps._, Trees._
 import TypeUtils._, SymUtils._
+import Constants.Constant
+import Annotations.Annotation
 import DenotTransformers.DenotTransformer
 import Symbols._
 import util.Spans._
@@ -34,7 +36,6 @@ class SuperAccessors(thisPhase: DenotTransformer) {
 
   import tpd._
 
-
   /** Some parts of trees will get a new owner in subsequent phases.
     *  These are value class methods, which will become extension methods.
     *  (By-name arguments used to be included also, but these
@@ -49,9 +50,9 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     */
   private var invalidEnclClass: Symbol = NoSymbol
 
-  private def withInvalidCurrentClass[A](trans: => A)(using Context): A = {
+  def withInvalidCurrentClass[A](trans: => A)(using Context): A = {
     val saved = invalidEnclClass
-    invalidEnclClass = ctx.owner
+    invalidEnclClass = ctx.owner.enclosingClass
     try trans
     finally invalidEnclClass = saved
   }
@@ -67,11 +68,15 @@ class SuperAccessors(thisPhase: DenotTransformer) {
     val Select(qual, name) = sel
     val sym = sel.symbol
     val clazz = qual.symbol.asClass
-    val preName = if (mixName.isEmpty) name.toTermName else ExpandPrefixName(name.toTermName, mixName.toTermName)
-    var superName = SuperAccessorName(preName)
-    if (clazz.is(Trait)) superName = superName.expandedName(clazz)
-    val superInfo = sel.tpe.widenSingleton.ensureMethodic
 
+    def superAccessorName(original: Name) =
+      val unexpanded = SuperAccessorName(
+        if mixName.isEmpty then original.toTermName
+        else ExpandPrefixName(original.toTermName, mixName.toTermName))
+      if clazz.is(Trait) then unexpanded.expandedName(clazz) else unexpanded
+
+    val superName = superAccessorName(name)
+    val superInfo = sel.tpe.widenSingleton.ensureMethodic
     val accRange = sel.span.focus
     val superAcc = clazz.info.decl(superName)
       .suchThat(_.signature == superInfo.signature).symbol
@@ -81,6 +86,7 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         val acc = newSymbol(
             clazz, superName, Artifact | Method | maybeDeferred,
             superInfo, coord = accRange).enteredAfter(thisPhase)
+        acc.deriveTargetNameAnnotation(sym, superAccessorName)
         // Diagnostic for SI-7091
         if (!accDefs.contains(clazz))
           report.error(
@@ -149,12 +155,8 @@ class SuperAccessors(thisPhase: DenotTransformer) {
         }
     }
 
-    val needAccessor = name.isTermName && {
-      mix.name.isEmpty && (clazz.is(Trait) || clazz != currentClass || !validCurrentClass) ||
-      // SI-8803. If we access super[A] from an inner class (!= currentClass) or closure (validCurrentClass),
-      // where A is the superclass we need an accessor.
-      !mix.name.isEmpty && (clazz != currentClass || !validCurrentClass)
-    }
+    val needAccessor = name.isTermName && (
+      clazz != currentClass || !validCurrentClass || mix.name.isEmpty && clazz.is(Trait))
 
     if (needAccessor) atPhase(thisPhase.next)(superAccessorCall(sel, mix.name))
     else sel

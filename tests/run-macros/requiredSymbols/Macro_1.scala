@@ -1,9 +1,9 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
   inline def foo: String = ${ fooImpl }
-  def fooImpl(using qctx: QuoteContext) : Expr[String] = {
-    import qctx.tasty._
+  def fooImpl(using Quotes) : Expr[String] = {
+    import quotes.reflect.*
     val list = List(
       Symbol.requiredPackage("java"),
       Symbol.requiredPackage("java.lang"),

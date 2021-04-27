@@ -4,7 +4,7 @@ object Test {
 
   (xs: Any) match {
     case Seq(x, y) => println(s"$x, $y")
-    case Seq(x: _*) => println(s"other sequence")
+    case Seq(x*) => println(s"other sequence")
     case _ => println("None")
   }
 

@@ -1,6 +1,6 @@
 object Test {
   def test: Unit = {
-    val e: java.lang.Enum[_] = java.util.concurrent.TimeUnit.SECONDS
+    val e: Enum[_] = java.util.concurrent.TimeUnit.SECONDS
     e match { case x => println(x) }
 
 

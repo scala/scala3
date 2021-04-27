@@ -1,0 +1,16 @@
+-- [E160] Type Error: tests/neg/extend-java-enum-migration.scala:9:12 --------------------------------------------------
+9 |final class C extends jl.Enum[C] // error
+  |            ^
+  |            not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[C]
+-- [E160] Type Error: tests/neg/extend-java-enum-migration.scala:11:7 --------------------------------------------------
+11 |object O extends jl.Enum[O.type] // error
+   |       ^
+   |       not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[O.type]
+-- [E160] Type Error: tests/neg/extend-java-enum-migration.scala:14:6 --------------------------------------------------
+14 |class Sub extends T // error
+   |      ^
+   |      not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[T]
+-- [E160] Type Error: tests/neg/extend-java-enum-migration.scala:17:10 -------------------------------------------------
+17 |val foo = new java.lang.Enum[Color] {} // error
+   |          ^
+   |          not enough arguments for constructor Enum: (name: String, ordinal: Int): Enum[Color]

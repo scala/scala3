@@ -15,7 +15,7 @@ final case class TextDocument(
   md5: String,
   symbols: Seq[SymbolInformation],
   occurrences: Seq[SymbolOccurrence]
-) extends SemanticdbMessage[TextDocument] derives Eql {
+) extends SemanticdbMessage[TextDocument] derives CanEqual {
   @sharable
   private var __serializedSizeCachedValue: Int = 0
   private def __computeSerializedValue(): Int = {

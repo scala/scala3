@@ -1,8 +1,8 @@
-import quoted._
+import quoted.*
 
 class Foo {
   class Bar
-  def foo()(using QuoteContext) = {
-    '[Bar] // error
+  def foo()(using Quotes) = {
+    Type[Bar] // error
   }
 }

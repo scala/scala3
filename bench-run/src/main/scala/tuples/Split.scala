@@ -23,7 +23,7 @@ class Split {
 
   @Benchmark
   def tupleSplit(): (Tuple, Tuple) = {
-    runtime.Tuple.splitAt(tuple, half)
+    runtime.Tuples.splitAt(tuple, half)
   }
 
   @Benchmark

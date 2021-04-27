@@ -1,5 +1,5 @@
 scalaVersion := sys.props("plugin.scalaVersion")
 
-libraryDependencies += "ch.epfl.lamp" %% "dotty-staging" % scalaVersion.value
+libraryDependencies += "org.scala-lang" %% "scala3-staging" % scalaVersion.value
 
 fork := true

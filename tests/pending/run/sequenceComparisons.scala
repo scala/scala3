@@ -9,25 +9,25 @@ object Test {
   // the commented out ones in seqMakers
 
   val seqMakers = List[List[Int] => Seq[Int]](
-    // scala.Array(_: _*),
-    mutable.ArrayBuffer(_: _*),
-    // mutable.ArrayStack(_: _*),
-    mutable.Buffer(_: _*),
-    mutable.LinearSeq(_: _*),
+    // scala.Array(_*),
+    mutable.ArrayBuffer(_*),
+    // mutable.ArrayStack(_*),
+    mutable.Buffer(_*),
+    mutable.LinearSeq(_*),
     // null on Nil
-    // mutable.LinkedList(_: _*),
-    mutable.ListBuffer(_: _*),
-    // mutable.PriorityQueue(_: _*),
-    // immutable.Queue(_: _*),
-    // mutable.Queue(_: _*),
-    immutable.Seq(_: _*),
-    mutable.Seq(_: _*),
-    immutable.Stack(_: _*),
-    // mutable.Stack(_: _*),
-    immutable.IndexedSeq(_: _*), // was Vector
-    //mutable.Vector(_: _*),
-    immutable.List(_: _*),
-    immutable.Stream(_: _*)
+    // mutable.LinkedList(_*),
+    mutable.ListBuffer(_*),
+    // mutable.PriorityQueue(_*),
+    // immutable.Queue(_*),
+    // mutable.Queue(_*),
+    immutable.Seq(_*),
+    mutable.Seq(_*),
+    immutable.Stack(_*),
+    // mutable.Stack(_*),
+    immutable.IndexedSeq(_*), // was Vector
+    //mutable.Vector(_*),
+    immutable.List(_*),
+    immutable.Stream(_*)
   )
 
   abstract class Data[T] {
@@ -100,7 +100,7 @@ object Test {
 
   def runSeqs() = {
     for (s1f <- seqMakers ; s2f <- seqMakers ; testData <- List(test1)) {
-      import testData._
+      import testData.*
       val scrut = s1f(seq)
 
       for (Method(f, (trueList, falseList), descr) <- methodList) {

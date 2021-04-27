@@ -3,7 +3,7 @@ package foo {
   case class B(y: Int) extends A(y)
   case object Bippy extends A(55)
 }
-import foo._
+import foo.*
 
 package bar {
   class Blameless(x: Int)

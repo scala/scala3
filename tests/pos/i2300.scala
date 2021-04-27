@@ -18,7 +18,7 @@ object hlists {
 }
 
 object Test {
-  import hlists._
+  import hlists.*
 
   val merged: HCons[Int,HCons[String,HNil]] = {
     HCons(42, HNil) merge HCons("foo", HNil)

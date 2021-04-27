@@ -13,19 +13,14 @@ import scala.concurrent.duration._
 import vulpix._
 
 
-class IdempotencyTests extends ParallelTesting {
+class IdempotencyTests {
   import TestConfiguration._
   import IdempotencyTests._
   import CompilationTest.aggregateTests
 
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+  // Flaky test on Windows
+  // https://github.com/lampepfl/dotty/issues/11885
+  val filter = FileFilter.exclude("i6507b.scala")
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {
@@ -33,8 +28,8 @@ class IdempotencyTests extends ParallelTesting {
     val opt = defaultOptions
 
     val posIdempotency = aggregateTests(
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency1")),
-      compileFilesInDir("tests/pos", opt)(TestGroup("idempotency/posIdempotency2")),
+      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency1")),
+      compileFilesInDir("tests/pos", opt, filter)(TestGroup("idempotency/posIdempotency2")),
     )
 
     val orderIdempotency = {
@@ -71,7 +66,19 @@ class IdempotencyTests extends ParallelTesting {
 
 }
 
-object IdempotencyTests {
+object IdempotencyTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 30.seconds
+  def numberOfSlaves = 5
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

@@ -1,9 +1,10 @@
+> recordPreviousIterations
 > compile
 
 $ copy-file changes/A1.scala provider/A.scala
 > compile
-> check-number-of-compiler-iterations 1
+> checkIterations 1
 
 $ copy-file changes/A2.scala provider/A.scala
 > compile
-> check-number-of-compiler-iterations 1
+> checkIterations 1

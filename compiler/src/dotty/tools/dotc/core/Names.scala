@@ -7,7 +7,7 @@ import util.NameTransformer
 import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
-import scala.internal.Chars.isIdentifierStart
+import util.Chars.isIdentifierStart
 import collection.immutable
 import config.Config
 import util.{LinearMap, HashSet}
@@ -32,7 +32,7 @@ object Names {
    *  in a name table. A derived term name adds a tag, and possibly a number
    *  or a further simple name to some other name.
    */
-  abstract class Name extends Designator, Showable derives Eql {
+  abstract class Name extends Designator, Showable derives CanEqual {
 
     /** A type for names of the same kind as this name */
     type ThisName <: Name

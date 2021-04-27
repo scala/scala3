@@ -3,14 +3,14 @@ layout: doc-page
 title: "Dotc's concept of time"
 ---
 
-Conceptually, the `dotc` compiler's job is to maintain views of various
+Conceptually, the `scalac` compiler's job is to maintain views of various
 artifacts associated with source code at all points in time.  But what is
-*time* for `dotc`? In fact, it is a combination of compiler runs and compiler
+*time* for `scalac`? In fact, it is a combination of compiler runs and compiler
 phases.
 
 The *hours* of the compiler's clocks are measured in compiler [runs]. Every run
 creates a new hour, which follows all the compiler runs (hours) that happened
-before. `dotc` is designed to be used as an incremental compiler that can
+before. `scalac` is designed to be used as an incremental compiler that can
 support incremental builds, as well as interactions in an IDE and a REPL. This
 means that new runs can occur quite frequently.  At the extreme, every
 keystroke in an editor or REPL can potentially launch a new compiler run, so
@@ -32,7 +32,7 @@ lower-level JVM view. There are different ways to deal with this. Many
 compilers change the type of a symbol destructively according to the "current
 phase". Another, more functional approach might be to have different symbols
 representing the same definition at different phases, which each symbol
-carrying a different immutable type. `dotc` employs yet another scheme, which
+carrying a different immutable type. `scalac` employs yet another scheme, which
 is inspired by functional reactive programming (FRP): Symbols carry not a
 single type, but a function from compiler phase to type. So the type of a
 symbol is a time-indexed function, where time ranges over compiler phases.

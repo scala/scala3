@@ -7,9 +7,9 @@ trait ArgumentExprs2 { validMethod(23, "bar")(Ev0, Ev1, ) } // error // error
 trait ArgumentExprs3 { new ValidClass(23, "bar", )(Ev0, Ev1) } // error // error
 trait ArgumentExprs4 { new ValidClass(23, "bar")(Ev0, Ev1, ) } // error // error
 
-trait Params1 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error // error
+trait Params1 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error
 
-trait Params2 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error // error
+trait Params2 { def f(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1, ) = 1 } // error // error
 
 trait ClassParams1 { final class C(foo: Int, bar: String, )(implicit ev0: Ev0, ev1: Ev1) } // error
 trait ClassParams2 { final class C(foo: Int, bar: String)(implicit ev0: Ev0, ev1: Ev1, ) } // error

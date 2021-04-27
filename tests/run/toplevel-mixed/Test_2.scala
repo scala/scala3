@@ -1,7 +1,7 @@
 object Test extends App {
   assert(x == 10)
   assert(x("abc") == 3)
-  assert((new x("abc")).s == "abc")
+  assert((new x("abc"){}).s == "abc")
 
   assert(y("abc") == 3)
   assert(yy.foo == 3)

@@ -11,7 +11,7 @@ import dotc.core.Denotations.Denotation
 import dotc.core.Flags
 import dotc.core.Flags._
 import dotc.core.Symbols.{Symbol, defn}
-import dotc.core.StdNames.str
+import dotc.core.StdNames.{nme, str}
 import dotc.core.NameOps._
 import dotc.printing.ReplPrinter
 import dotc.reporting.{MessageRendering, Message, Diagnostic}
@@ -47,7 +47,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     else {
       val parent = parentClassLoader.getOrElse {
         val compilerClasspath = ctx.platform.classPath(using ctx).asURLs
-        new java.net.URLClassLoader(compilerClasspath.toArray, null)
+        // We can't use the system classloader as a parent because it would
+        // pollute the user classpath with everything passed to the JVM
+        // `-classpath`. We can't use `null` as a parent either because on Java
+        // 9+ that's the bootstrap classloader which doesn't contain modules
+        // like `java.sql`, so we use the parent of the system classloader,
+        // which should correspond to the platform classloader on Java 9+.
+        val baseClassLoader = ClassLoader.getSystemClassLoader.getParent
+        new java.net.URLClassLoader(compilerClasspath.toArray, baseClassLoader)
       }
 
       myClassLoader = new AbstractFileClassLoader(ctx.settings.outputDir.value, parent)
@@ -64,11 +71,24 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       myClassLoader
     }
 
+  /** Used to elide long output in replStringOf.
+   *
+   * TODO: Perhaps implement setting scala.repl.maxprintstring as in Scala 2, but
+   * then this bug will surface, so perhaps better not?
+   * https://github.com/scala/bug/issues/12337
+   */
+  private[repl] def truncate(str: String): String = {
+    val showTruncated = " ... large output truncated, print value to show all"
+    val ncp = str.codePointCount(0, str.length) // to not cut inside code point
+    if ncp <= MaxStringElements then str
+    else str.substring(0, str.offsetByCodePoints(0, MaxStringElements - 1)) + showTruncated
+  }
+
   /** Return a String representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    myReplStringOf(value)
+    truncate(myReplStringOf(value))
   }
 
   /** Load the value of the symbol using reflection.
@@ -113,27 +133,35 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
     infoDiagnostic(d.symbol.showUser, d)
 
   /** Render value definition result */
-  def renderVal(d: Denotation)(using Context): Option[Diagnostic] = {
+  def renderVal(d: Denotation)(using Context): Option[Diagnostic] =
     val dcl = d.symbol.showUser
+    def msg(s: String) = infoDiagnostic(s, d)
+    try
+      if (d.symbol.is(Flags.Lazy)) Some(msg(dcl))
+      else valueOf(d.symbol).map(value => msg(s"$dcl = $value"))
+    catch case e: InvocationTargetException => Some(msg(renderError(e, d)))
+  end renderVal
 
-    try {
-      if (d.symbol.is(Flags.Lazy)) Some(infoDiagnostic(dcl, d))
-      else valueOf(d.symbol).map(value => infoDiagnostic(s"$dcl = $value", d))
-    }
-    catch { case ex: InvocationTargetException => Some(infoDiagnostic(renderError(ex), d)) }
-  }
+  /** Force module initialization in the absence of members. */
+  def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
+    def load() =
+      val objectName = sym.fullName.encode.toString
+      Class.forName(objectName, true, classLoader())
+      Nil
+    try load() catch case e: ExceptionInInitializerError => List(infoDiagnostic(renderError(e, sym.denot), sym.denot))
 
-  /** Render the stack trace of the underlying exception */
-  private def renderError(ex: InvocationTargetException): String = {
-    val cause = ex.getCause match {
-      case ex: ExceptionInInitializerError => ex.getCause
-      case ex => ex
-    }
-    val sw = new StringWriter()
-    val pw = new PrintWriter(sw)
-    cause.printStackTrace(pw)
-    sw.toString
-  }
+  /** Render the stack trace of the underlying exception. */
+  private def renderError(ite: InvocationTargetException | ExceptionInInitializerError, d: Denotation)(using Context): String =
+    import dotty.tools.dotc.util.StackTraceOps._
+    val cause = ite.getCause match
+      case e: ExceptionInInitializerError => e.getCause
+      case e => e
+    def isWrapperCode(ste: StackTraceElement) =
+      ste.getClassName == d.symbol.owner.name.show
+      && (ste.getMethodName == nme.STATIC_CONSTRUCTOR.show || ste.getMethodName == nme.CONSTRUCTOR.show)
+
+    cause.formatStackTracePrefix(!isWrapperCode(_))
+  end renderError
 
   private def infoDiagnostic(msg: String, d: Denotation)(using Context): Diagnostic =
     new Diagnostic.Info(msg, d.symbol.sourcePos)
@@ -142,7 +170,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
 
 object Rendering {
 
-  extension (s: Symbol):
+  extension (s: Symbol)
     def showUser(using Context): String = {
       val printer = new ReplPrinter(ctx)
       val text = printer.dclText(s)

@@ -10,7 +10,7 @@ object Test {
 
 // From https://github.com/scala/scala/pull/5278
 object SerDes {
-  import java.io._
+  import java.io.*
 
   def assertNotSerializable(a: AnyRef): Unit = {
     try {

@@ -1,4 +1,4 @@
-import java.{lang => jl}
+import java.{lang as jl}
 
 final class ConfigSyntax private (name: String, ordinal: Int)
   extends jl.Enum[ConfigSyntax](name, ordinal)

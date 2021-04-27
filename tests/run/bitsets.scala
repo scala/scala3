@@ -42,7 +42,7 @@ object TestMutable {
 
   val N = 257
   val gen = 3
-  val bs = BitSet((1 until N): _*)
+  val bs = BitSet((1 until N)*)
   (1 until N).foldLeft(gen) {
     case (acc, i) =>
       assert(bs.size == N-i, s"Bad size for $bs, expected ${N-i} actual ${bs.size}")
@@ -62,14 +62,14 @@ object TestMutable2 {
   val l1 = (190 to 255 toList) reverse
   val l2 = (0 to 256 toList)
   val l3 = (1 to 200 by 2 toList) reverse
-  val t0 = TreeSet(l0: _*)
-  val t1 = TreeSet(l1: _*)
-  val t2 = TreeSet(l2: _*)
-  val t3 = TreeSet(l3: _*)
-  val b0 = BitSet(l0: _*)
-  val b1 = BitSet(l1: _*)
-  val b2 = BitSet(l2: _*)
-  val b3 = BitSet(l3: _*)
+  val t0 = TreeSet(l0*)
+  val t1 = TreeSet(l1*)
+  val t2 = TreeSet(l2*)
+  val t3 = TreeSet(l3*)
+  val b0 = BitSet(l0*)
+  val b1 = BitSet(l1*)
+  val b2 = BitSet(l2*)
+  val b3 = BitSet(l3*)
 
   println("m2_m0 = " + b0.toBitMask.toList.map(_.toBinaryString))
   println("m2_m2 = " + b2.toBitMask.toList.map(_.toHexString))
@@ -172,14 +172,14 @@ object TestImmutable2 {
   val l1 = (190 to 255 toList) reverse
   val l2 = (0 to 256 toList)
   val l3 = (1 to 200 by 2 toList) reverse
-  val t0 = TreeSet(l0: _*)
-  val t1 = TreeSet(l1: _*)
-  val t2 = TreeSet(l2: _*)
-  val t3 = TreeSet(l3: _*)
-  val b0 = BitSet(l0: _*)
-  val b1 = BitSet(l1: _*)
-  val b2 = BitSet(l2: _*)
-  val b3 = BitSet(l3: _*)
+  val t0 = TreeSet(l0*)
+  val t1 = TreeSet(l1*)
+  val t2 = TreeSet(l2*)
+  val t3 = TreeSet(l3*)
+  val b0 = BitSet(l0*)
+  val b1 = BitSet(l1*)
+  val b2 = BitSet(l2*)
+  val b3 = BitSet(l3*)
 
   println("i2_m0 = " + b0.toBitMask.toList.map(_.toBinaryString))
   println("i2_m2 = " + b2.toBitMask.toList.map(_.toHexString))

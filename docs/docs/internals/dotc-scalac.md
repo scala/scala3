@@ -44,14 +44,14 @@ only be applied if an implicit `Context` is in scope.
 
 ### Symbol ###
 * `Symbol` instances have a `SymDenotation`
-* Most symbol properties in scalac are now in the denotation (in dotc)
+* Most symbol properties in the Scala 2 compiler are now in the denotation (in the Scala 3 compiler).
 
 Most of the `isFooBar` properties in scalac don't exist anymore in dotc. Use
 flag tests instead, for example:
 
 ```scala
-if (sym.isPackageClass)         // scalac
-if (sym is Flags.PackageClass)  // dotc (*)
+if (sym.isPackageClass)         // Scala 2
+if (sym is Flags.PackageClass)  // Scala 3 (*)
 ```
 
 `(*)` Symbols are implicitly converted to their denotation, see above. Each

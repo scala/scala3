@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 object Test extends App {
   // Types
   type F0 = [T] => List[T] => Option[T]

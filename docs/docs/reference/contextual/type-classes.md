@@ -17,47 +17,47 @@ Here's the `Monoid` type class definition:
 
 ```scala
 trait SemiGroup[T]:
-  extension (x: T) def combine (y: T): T
+   extension (x: T) def combine (y: T): T
 
 trait Monoid[T] extends SemiGroup[T]:
-  def unit: T
+   def unit: T
 ```
 
 An implementation of this `Monoid` type class for the type `String` can be the following:
 
 ```scala
-given Monoid[String]:
-  extension (x: String) def combine (y: String): String = x.concat(y)
-  def unit: String = ""
+given Monoid[String] with
+   extension (x: String) def combine (y: String): String = x.concat(y)
+   def unit: String = ""
 ```
 
 Whereas for the type `Int` one could write the following:
 
 ```scala
-given Monoid[Int]:
-  extension (x: Int) def combine (y: Int): Int = x + y
-  def unit: Int = 0
+given Monoid[Int] with
+   extension (x: Int) def combine (y: Int): Int = x + y
+   def unit: Int = 0
 ```
 
 This monoid can now be used as _context bound_ in the following `combineAll` method:
 
 ```scala
 def combineAll[T: Monoid](xs: List[T]): T =
-    xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
+   xs.foldLeft(summon[Monoid[T]].unit)(_.combine(_))
 ```
 
 To get rid of the `summon[...]` we can define a `Monoid` object as follows:
 
 ```scala
 object Monoid:
-  def apply[T](using m: Monoid[T]) = m
+   def apply[T](using m: Monoid[T]) = m
 ```
 
 Which would allow to re-write the `combineAll` method this way:
 
 ```scala
 def combineAll[T: Monoid](xs: List[T]): T =
-  xs.foldLeft(Monoid[T].unit)(_.combine(_))
+   xs.foldLeft(Monoid[T].unit)(_.combine(_))
 ```
 
 ### Functors
@@ -69,16 +69,16 @@ The definition of a generic `Functor` would thus be written as:
 
 ```scala
 trait Functor[F[_]]:
-  def map[A, B](x: F[A], f: A => B): F[B]
+   def map[A, B](x: F[A], f: A => B): F[B]
 ```
 
 Which could read as follows: "A `Functor` for the type constructor `F[_]` represents the ability to transform `F[A]` to `F[B]` through the application of function `f` with type `A => B`". We call the `Functor` definition here a _type class_.
 This way, we could define an instance of `Functor` for the `List` type:
 
 ```scala
-given Functor[List]:
-  def map[A, B](x: List[A], f: A => B): List[B] =
-    x.map(f) // List already has a `map` method
+given Functor[List] with
+   def map[A, B](x: List[A], f: A => B): List[B] =
+      x.map(f) // List already has a `map` method
 ```
 
 With this `given` instance in scope, everywhere a `Functor` is expected, the compiler will accept a `List` to be used.
@@ -87,7 +87,7 @@ For instance, we may write such a testing method:
 
 ```scala
 def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
-  assert(expected == summon[Functor[F]].map(original, mapping))
+   assert(expected == summon[Functor[F]].map(original, mapping))
 ```
 
 And use it this way, for example:
@@ -97,21 +97,21 @@ assertTransformation(List("a1", "b1"), List("a", "b"), elt => s"${elt}1")
 ```
 
 That's a first step, but in practice we probably would like the `map` function to be a method directly accessible on the type `F`. So that we can call `map` directly on instances of `F`, and get rid of the `summon[Functor[F]]` part.
-As in the previous example of Monoids, [`extension` methods](extension-methods.html) help achieving that. Let's re-define the `Functor` type class with extension methods.
+As in the previous example of Monoids, [`extension` methods](extension-methods.md) help achieving that. Let's re-define the `Functor` type class with extension methods.
 
 ```scala
 trait Functor[F[_]]:
-  extension [A, B](x: F[A])
-    def map(f: A => B): F[B]
+   extension [A](x: F[A])
+      def map[B](f: A => B): F[B]
 ```
 
 The instance of `Functor` for `List` now becomes:
 
 ```scala
-given Functor[List]:
-  extension [A, B](xs: List[A])
-    def map(f: A => B): List[B] =
-      xs.map(f) // List already has a `map` method
+given Functor[List] with
+   extension [A](xs: List[A])
+      def map[B](f: A => B): List[B] =
+         xs.map(f) // List already has a `map` method
 
 ```
 
@@ -119,7 +119,7 @@ It simplifies the `assertTransformation` method:
 
 ```scala
 def assertTransformation[F[_]: Functor, A, B](expected: F[B], original: F[A], mapping: A => B): Unit =
-  assert(expected == original.map(mapping))
+   assert(expected == original.map(mapping))
 ```
 
 The `map` method is now directly used on `original`. It is available as an extension method
@@ -140,15 +140,15 @@ Here is the translation of this definition in Scala 3:
 ```scala
 trait Monad[F[_]] extends Functor[F]:
 
-  /** The unit value for a monad */
-  def pure[A](x: A): F[A]
+   /** The unit value for a monad */
+   def pure[A](x: A): F[A]
 
-  extension [A, B](x: F[A])
-    /** The fundamental composition operation */
-    def flatMap(f: A => F[B]): F[B]
+   extension [A](x: F[A])
+      /** The fundamental composition operation */
+      def flatMap[B](f: A => F[B]): F[B]
 
-    /** The `map` operation can now be defined in terms of `flatMap` */
-    def map(f: A => B) = x.flatMap(f.andThen(pure))
+      /** The `map` operation can now be defined in terms of `flatMap` */
+      def map[B](f: A => B) = x.flatMap(f.andThen(pure))
 
 end Monad
 ```
@@ -158,12 +158,12 @@ end Monad
 A `List` can be turned into a monad via this `given` instance:
 
 ```scala
-given listMonad as Monad[List]:
-  def pure[A](x: A): List[A] =
-    List(x)
-  extension [A, B](xs: List[A])
-    def flatMap(f: A => List[B]): List[B] =
-      xs.flatMap(f) // rely on the existing `flatMap` method of `List`
+given listMonad: Monad[List] with
+   def pure[A](x: A): List[A] =
+      List(x)
+   extension [A](xs: List[A])
+      def flatMap[B](f: A => List[B]): List[B] =
+         xs.flatMap(f) // rely on the existing `flatMap` method of `List`
 ```
 
 Since `Monad` is a subtype of `Functor`, `List` is also a functor. The Functor's `map`
@@ -175,13 +175,13 @@ it explicitly.
 `Option` is an other type having the same kind of behaviour:
 
 ```scala
-given optionMonad as Monad[Option]:
-  def pure[A](x: A): Option[A] =
-    Option(x)
-  extension [A, B](xo: Option[A])
-    def flatMap(f: A => Option[B]): Option[B] = xo match
-      case Some(x) => f(x)
-      case None => None
+given optionMonad: Monad[Option] with
+   def pure[A](x: A): Option[A] =
+      Option(x)
+   extension [A](xo: Option[A])
+      def flatMap[B](f: A => Option[B]): Option[B] = xo match
+         case Some(x) => f(x)
+         case None => None
 ```
 
 #### Reader
@@ -222,19 +222,19 @@ type ConfigDependent[Result] = Config => Result
 The monad instance will look like this:
 
 ```scala
-given configDependentMonad as Monad[ConfigDependent]:
+given configDependentMonad: Monad[ConfigDependent] with
 
-  def pure[A](x: A): ConfigDependent[A] =
-    config => x
+   def pure[A](x: A): ConfigDependent[A] =
+      config => x
 
-  extension [A, B](x: ConfigDependent[A])
-    def flatMap(f: A => ConfigDependent[B]): ConfigDependent[B] =
-      config => f(x(config))(config)
+   extension [A](x: ConfigDependent[A])
+      def flatMap[B](f: A => ConfigDependent[B]): ConfigDependent[B] =
+         config => f(x(config))(config)
 
 end configDependentMonad
 ```
 
-The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.html):
+The type `ConfigDependent` can be written using [type lambdas](../new-types/type-lambdas.md):
 
 ```scala
 type ConfigDependent = [Result] =>> Config => Result
@@ -243,14 +243,14 @@ type ConfigDependent = [Result] =>> Config => Result
 Using this syntax would turn the previous `configDependentMonad` into:
 
 ```scala
-given configDependentMonad as Monad[[Result] =>> Config => Result]
+given configDependentMonad: Monad[[Result] =>> Config => Result] with
 
-  def pure[A](x: A): Config => A =
-    config => x
+   def pure[A](x: A): Config => A =
+      config => x
 
-  extension [A, B](x: Config => A)
-    def flatMap(f: A => Config => B): Config => B =
-      config => f(x(config))(config)
+   extension [A](x: Config => A)
+      def flatMap[B](f: A => Config => B): Config => B =
+         config => f(x(config))(config)
 
 end configDependentMonad
 ```
@@ -258,14 +258,14 @@ end configDependentMonad
 It is likely that we would like to use this pattern with other kinds of environments than our `Config` trait. The Reader monad allows us to abstract away `Config` as a type _parameter_, named `Ctx` in the following definition:
 
 ```scala
-given readerMonad[Ctx] as Monad[[X] =>> Ctx => X]:
+given readerMonad[Ctx]: Monad[[X] =>> Ctx => X] with
 
-  def pure[A](x: A): Ctx => A =
-    ctx => x
+   def pure[A](x: A): Ctx => A =
+      ctx => x
 
-  extension [A, B](x: Ctx => A)
-    def flatMap(f: A => Ctx => B): Ctx => B =
-      ctx => f(x(ctx))(ctx)
+   extension [A](x: Ctx => A)
+      def flatMap[B](f: A => Ctx => B): Ctx => B =
+         ctx => f(x(ctx))(ctx)
 
 end readerMonad
 ```

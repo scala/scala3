@@ -1,5 +1,5 @@
 package lampion.scala;
-import _root_.scala.collection._
+import _root_.scala.collection.*
 
 class Foo extends mutable.HashMap
 

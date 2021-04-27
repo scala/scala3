@@ -1,22 +1,22 @@
-import scala.quoted._
+import scala.quoted.*
 
 object scalatest {
 
   inline def assert(condition: => Boolean): Unit = ${ assertImpl('condition) }
 
-  def assertImpl(cond: Expr[Boolean])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    import util._
+  def assertImpl(cond: Expr[Boolean])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect.*
+    import util.*
 
-    cond.unseal.underlyingArgument match {
+    cond.asTerm.underlyingArgument match {
       case t @ Apply(TypeApply(Select(lhs, op), targs), rhs) =>
-        let(lhs) { left =>
-          lets(rhs) { rs =>
+        ValDef.let(Symbol.spliceOwner, lhs) { left =>
+          ValDef.let(Symbol.spliceOwner, rhs) { rs =>
             val app = Select.overloaded(left, op, targs.map(_.tpe), rs)
-            val b = app.seal.cast[Boolean]
-            '{ scala.Predef.assert($b) }.unseal
+            val b = app.asExprOf[Boolean]
+            '{ scala.Predef.assert($b) }.asTerm
           }
-        }.seal.cast[Unit]
+        }.asExprOf[Unit]
     }
   }
 }

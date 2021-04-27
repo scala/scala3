@@ -29,6 +29,8 @@ object NameTags extends TastyFormat.NameTags {
 
   final val PARAMACC = 33       // Used for a private parameter alias
 
+  final val SETTER = 34         // A synthesized += suffix.
+
   def nameTagToString(tag: Int): String = tag match {
     case UTF8 => "UTF8"
     case QUALIFIED => "QUALIFIED"
@@ -52,5 +54,6 @@ object NameTags extends TastyFormat.NameTags {
     case OBJECTCLASS => "OBJECTCLASS"
 
     case SIGNED => "SIGNED"
+    case TARGETSIGNED => "TARGETSIGNED"
   }
 }

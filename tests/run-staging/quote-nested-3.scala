@@ -1,10 +1,10 @@
-import quoted._
-import scala.quoted.staging._
+import quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
-  def main(args: Array[String]): Unit = withQuoteContext {
+  def main(args: Array[String]): Unit = withQuotes {
     val q = '{
       type T = String
       val x = "foo"

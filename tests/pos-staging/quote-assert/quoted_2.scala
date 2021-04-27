@@ -1,8 +1,8 @@
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
-import Macros._
+import Macros.*
 
 object Test {
 
@@ -10,13 +10,13 @@ object Test {
     ${ assertImpl('expr) }
 
 
-  def program(using QuoteContext) = '{
+  def program(using Quotes) = '{
     val x = 1
     assert(x != 0)
 
     ${ assertImpl('{x != 0}) }
   }
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   run(program)
 }

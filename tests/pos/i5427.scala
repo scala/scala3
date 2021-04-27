@@ -27,11 +27,14 @@ object Test2 {
 
 object Test3 {
   def fooInt: Foo[Int] { type Out = String } = ???
-  implicit def str: String = ???
+  implicit def istr: String = ???
+  implicit def iint: Int = ???
 
   def test5[A](implicit f1: Foo[A] = fooInt, f2: f1.Out) = f2
 
   val t5 = test5
+    // used to succeed with just one local implicit `istr`
+    // but failed if a competing implicit `iint` was added.
   t5: String
 }
 

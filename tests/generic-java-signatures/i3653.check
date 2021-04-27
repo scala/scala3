@@ -1,2 +1,2 @@
-public <T> scala.FunctionXXL Foo.bar()
+public <T> scala.runtime.FunctionXXL Foo.bar()
 public scala.Function1<scala.Function1<java.lang.String, scala.runtime.BoxedUnit>, scala.runtime.BoxedUnit> Foo.baz()

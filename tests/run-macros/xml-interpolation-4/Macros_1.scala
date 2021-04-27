@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 import scala.language.implicitConversions
 
@@ -9,8 +9,8 @@ object XmlQuote {
       ${XmlQuote.impl('ctx, 'args, '{implicitly[Scope]})}
   }
 
-  private def impl(receiver: Expr[StringContext], args: Expr[Seq[Scope ?=> Any]], scope: Expr[Scope])(using QuoteContext): Expr[String] = '{
-    $receiver.s($args.map(_(using $scope.inner)): _*)
+  private def impl(receiver: Expr[StringContext], args: Expr[Seq[Scope ?=> Any]], scope: Expr[Scope])(using Quotes): Expr[String] = '{
+    $receiver.s($args.map(_(using $scope.inner))*)
   }
 }
 

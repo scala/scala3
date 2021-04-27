@@ -1,16 +1,17 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macros {
 
   inline def inspect[T](x: T): Unit = ${ impl('x) }
 
-  def impl[T](x: Expr[T])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
-    val tree = x.unseal
+  def impl[T](x: Expr[T])(using q: Quotes) : Expr[Unit] = {
+    import q.reflect.*
+    val tree = x.asTerm
+    given Printer[Tree] = Printer.TreeStructure
     '{
       println()
-      println("tree: " + ${Expr(tree.showExtractors)})
-      println("tree deref. vals: " + ${Expr(tree.underlying.showExtractors)})
+      println("tree: " + ${Expr(tree.show)})
+      println("tree deref. vals: " + ${Expr(tree.underlying.show)})
     }
   }
 }

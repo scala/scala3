@@ -6,10 +6,10 @@ class i4785 {
   def bar(xs: String*) = xs.length
 
   def test(xs: Seq[String], ys: Array[String]) = {
-    Paths.get("Hello", xs: _*)
-    Paths.get("Hello", ys: _*)
+    Paths.get("Hello", xs*)
+    Paths.get("Hello", ys*)
 
-    bar(xs: _*)
-    bar(ys: _*)
+    bar(xs*)
+    bar(ys*)
   }
 }

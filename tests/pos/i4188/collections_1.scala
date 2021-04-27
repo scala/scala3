@@ -4,7 +4,7 @@ object collections {
   type AnyConstr[X] = Any
 }
 
-import collections._
+import collections.*
 
 trait Iterable[+A] extends IterableOps[A, Iterable, Iterable[A]]
 

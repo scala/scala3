@@ -12,7 +12,7 @@ object TestMain2 {
   }
 
   def testExtensionProperty(): Unit = {
-    //import fooExt._
+    //import fooExt.*
     val foo = Foo("initVal")
     assert(foo.fooExt == "initVal")
     foo.fooExt = "updatedVal"

@@ -1,16 +1,16 @@
 package blah
 
 import scala.language.implicitConversions
-import scala.quoted._
+import scala.quoted.*
 
 object AsObject {
   final class LineNo(val lineNo: Int)
   object LineNo {
     def unsafe(i: Int): LineNo = new LineNo(i)
     inline given LineNo = ${impl}
-    private def impl(using qctx: QuoteContext): Expr[LineNo] = {
-      import qctx.tasty._
-      '{unsafe(${Expr(rootPosition.startLine)})}
+    private def impl(using Quotes): Expr[LineNo] = {
+      import quotes.reflect.*
+      '{unsafe(${Expr(Position.ofMacroExpansion.startLine)})}
     }
   }
 }
@@ -20,9 +20,9 @@ package AsPackage {
   object LineNo {
     def unsafe(i: Int): LineNo = new LineNo(i)
     inline given LineNo = ${impl}
-    private def impl(using qctx: QuoteContext): Expr[LineNo] = {
-      import qctx.tasty._
-      '{unsafe(${Expr(rootPosition.startLine)})}
+    private def impl(using Quotes): Expr[LineNo] = {
+      import quotes.reflect.*
+      '{unsafe(${Expr(Position.ofMacroExpansion.startLine)})}
     }
   }
 }

@@ -9,7 +9,7 @@ class Reflect(val internal: CompilerInterface) {
 
 object App {
   val refl: Reflect = ???
-  import refl._
+  import refl.*
 
   show(??? : Tree22)
 }

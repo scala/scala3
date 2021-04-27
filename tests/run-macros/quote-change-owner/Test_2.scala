@@ -1,4 +1,4 @@
-import Macros._
+import Macros.*
 object Test {
   def main(args: Array[String]): Unit = {
     assert2 {

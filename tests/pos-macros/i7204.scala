@@ -1,8 +1,8 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Foo {
-  def impl(using qctx: QuoteContext) : Unit = {
-    import qctx.tasty._
+  def impl(using Quotes) : Unit = {
+    import quotes.reflect.*
     val Select(_, _) = (??? : Term)
   }
 }

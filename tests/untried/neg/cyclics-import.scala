@@ -1,4 +1,4 @@
-import User.UserStatus._
+import User.UserStatus.*
 
 class User {
   var id: Int = 0

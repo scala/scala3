@@ -44,9 +44,8 @@ class ReadTasty extends Phase {
                 Some(unit)
               }
             case tree: Tree[?] =>
+              // TODO handle correctly this case correctly to get the tree or avoid it completely.
               cls.denot.infoOrCompleter match {
-                case _: NoLoader => Some(Scala2CompilationUnit(cls.fullName.toString))
-                case _ if cls.flags.is(Flags.JavaDefined) => Some(JavaCompilationUnit(cls.fullName.toString))
                 case _ => Some(AlreadyLoadedCompilationUnit(cls.denot.fullName.toString))
               }
             case _ =>
@@ -70,7 +69,12 @@ class ReadTasty extends Phase {
           def moduleClass = clsd.owner.info.member(className.moduleClassName).symbol
           compilationUnit(clsd.classSymbol).orElse(compilationUnit(moduleClass))
         case _ =>
-          cannotUnpickle(s"no class file was found")
+          staticRef(className.moduleClassName) match {
+            case clsd: ClassDenotation =>
+              compilationUnit(clsd.classSymbol)
+            case denot =>
+              cannotUnpickle(s"no class file was found for denot: $denot")
+          }
       }
     case unit =>
      Some(unit)

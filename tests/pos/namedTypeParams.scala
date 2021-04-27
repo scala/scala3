@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 object Test {
 
   def f[X, Y](x: X, y: Y): Int = ???

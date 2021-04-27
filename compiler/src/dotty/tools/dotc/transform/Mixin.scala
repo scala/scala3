@@ -10,6 +10,7 @@ import SymUtils._
 import Symbols._
 import SymDenotations._
 import Types._
+import Periods._
 import Decorators._
 import DenotTransformers._
 import StdNames._
@@ -25,7 +26,7 @@ object Mixin {
   def traitSetterName(getter: TermSymbol)(using Context): TermName =
     getter.ensureNotPrivate.name
       .expandedName(getter.owner, TraitSetterName)
-      .asTermName.setterName
+      .asTermName.syntheticSetterName
 }
 
 /** This phase performs the following transformations:
@@ -126,7 +127,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
 
     if (sym.is(Accessor, butNot = Deferred) && ownerIsTrait) {
       val sym1 =
-        if (sym.is(Lazy)) sym
+        if (sym.is(Lazy) || sym.symbol.isConstExprFinalVal) sym
         else sym.copySymDenotation(initFlags = sym.flags &~ (ParamAccessor | Inline) | Deferred)
       sym1.ensureNotPrivate
     }
@@ -146,6 +147,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // !decl.isClass avoids forcing nested traits, preventing cycles
         if !decl.isClass && needsTraitSetter(decl) then
           val setter = makeTraitSetter(decl.asTerm)
+          setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
           modified = true
       if modified then
@@ -166,7 +168,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
   private def needsTraitSetter(sym: Symbol)(using Context): Boolean =
     sym.isGetter && !wasOneOf(sym, DeferredOrLazy | ParamAccessor)
       && atPhase(thisPhase) { !sym.setter.exists }
-      && !sym.info.resultType.isInstanceOf[ConstantType]
+      && !sym.isConstExprFinalVal
 
   private def makeTraitSetter(getter: TermSymbol)(using Context): Symbol =
     getter.copy(
@@ -216,7 +218,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree
         val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
-        (superRef(tree.symbol, tree.span).appliedToArgs(callArgs), Nil, initArgs)
+        (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }
 
     val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
@@ -251,8 +253,14 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               cls.srcPos)
           EmptyTree
 
-      for (getter <- mixin.info.decls.toList if getter.isGetter && !wasOneOf(getter, Deferred)) yield {
-        if (isCurrent(getter) || getter.name.is(ExpandedName)) {
+      for
+        getter <- mixin.info.decls.toList
+        if getter.isGetter
+           && !getter.isEffectivelyErased
+           && !wasOneOf(getter, Deferred)
+           && !getter.isConstExprFinalVal
+      yield
+        if (isInImplementingClass(getter) || getter.name.is(ExpandedName)) {
           val rhs =
             if (wasOneOf(getter, ParamAccessor))
               nextArgument()
@@ -265,8 +273,10 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           // transformFollowing call is needed to make memoize & lazy vals run
           transformFollowing(DefDef(mkForwarderSym(getter.asTerm), rhs))
         }
+        else if wasOneOf(getter, ParamAccessor) then
+          // mixin parameter field is defined by an override; evaluate the argument and throw it away
+          nextArgument()
         else EmptyTree
-      }
     }
 
     def setters(mixin: ClassSymbol): List[Tree] =
@@ -280,12 +290,12 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       for (meth <- mixin.info.decls.toList if needsMixinForwarder(meth))
       yield {
         util.Stats.record("mixin forwarders")
-        transformFollowing(polyDefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
+        transformFollowing(DefDef(mkForwarderSym(meth.asTerm, Bridge), forwarderRhsFn(meth)))
       }
 
     cpy.Template(impl)(
       constr =
-        if (cls.is(Trait)) cpy.DefDef(impl.constr)(vparamss = Nil :: Nil)
+        if (cls.is(Trait)) cpy.DefDef(impl.constr)(paramss = Nil :: Nil)
         else impl.constr,
       parents = impl.parents.map(p => TypeTree(p.tpe).withSpan(p.span)),
       body =

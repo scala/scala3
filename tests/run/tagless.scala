@@ -12,7 +12,7 @@ object Test extends App {
   }
 
   val fe: IExp = {
-    import IExp._
+    import IExp.*
     Add(Lit(8), Neg(Add(Lit(1), Lit(2))))
   }
 
@@ -40,17 +40,15 @@ object Test extends App {
     add(lit(8), neg(add(lit(1), lit(2))))
 
   // Base operations as type classes
-  given Exp[Int] {
+  given Exp[Int] with
     def lit(i: Int): Int = i
     def neg(t: Int): Int = -t
     def add(l: Int, r: Int): Int = l + r
-  }
 
-  given Exp[String] {
+  given Exp[String] with
     def lit(i: Int): String = i.toString
     def neg(t: String): String = s"(-$t)"
     def add(l: String, r: String): String = s"($l + $r)"
-  }
 
   println(tf1[Int])
   println(tf1[String])
@@ -62,18 +60,16 @@ object Test extends App {
   object MultSyntax {
     def mul[T](l: T, r: T)(using e: Mult[T]): T = e.mul(l, r)
   }
-  import MultSyntax._
+  import MultSyntax.*
 
   def tfm1[T: Exp : Mult] = add(lit(7), neg(mul(lit(1), lit(2))))
   def tfm2[T: Exp : Mult] = mul(lit(7), tf1)
 
-  given Mult[Int] {
+  given Mult[Int] with
     def mul(l: Int, r: Int): Int = l * r
-  }
 
-  given Mult[String] {
+  given Mult[String] with
     def mul(l: String, r: String): String = s"$l * $r"
-  }
 
   println(tfm1[Int])
   println(tfm1[String])
@@ -85,14 +81,13 @@ object Test extends App {
     case Leaf(s: String)
     case Node(s: String, ts: Tree*)
   }
-  import Tree._
+  import Tree.*
 
-  given Exp[Tree], Mult[Tree] {
+  given Exp[Tree] with Mult[Tree] with
     def lit(i: Int): Tree = Node("Lit", Leaf(i.toString))
     def neg(t: Tree): Tree = Node("Neg", t)
     def add(l: Tree, r: Tree): Tree = Node("Add", l , r)
     def mul(l: Tree, r: Tree): Tree = Node("Mult", l , r)
-  }
 
   val tf1Tree = tf1[Tree]
   val tfm1Tree = tfm1[Tree]
@@ -108,14 +103,14 @@ object Test extends App {
     private class Exc(msg: String) extends Exception(msg)
     def _throw(msg: String)(using CanThrow): Nothing = throw new Exc(msg)
     def _try[T](op: Maybe[T])(handler: String => T): T = {
-      given CanThrow
+      given CanThrow()
       try op
       catch {
         case ex: Exception => handler(ex.getMessage)
       }
     }
   }
-  import CanThrow._
+  import CanThrow.*
 
   type Maybe[T] = CanThrow ?=> T
 
@@ -153,7 +148,7 @@ object Test extends App {
     def value[T](using Exp[T]): T
   }
 
-  given Exp[Wrapped] {
+  given Exp[Wrapped] with
     def lit(i: Int) = new Wrapped {
       def value[T](using e: Exp[T]): T = e.lit(i)
     }
@@ -163,7 +158,6 @@ object Test extends App {
     def add(l: Wrapped, r: Wrapped) = new Wrapped {
       def value[T](using e: Exp[T]): T = e.add(l.value, r.value)
     }
-  }
 
   show {
     val t = fromTree[Wrapped](tf1Tree)
@@ -196,8 +190,8 @@ object Test extends App {
   // Added operation: negation pushdown
   enum NCtx { case Pos, Neg }
 
-  given [T](using e: Exp[T]) as Exp[NCtx => T] {
-    import NCtx._
+  given [T](using e: Exp[T]): Exp[NCtx => T] with
+    import NCtx.*
     def lit(i: Int) = {
       case Pos => e.lit(i)
       case Neg => e.neg(e.lit(i))
@@ -208,7 +202,6 @@ object Test extends App {
     }
     def add(l: NCtx => T, r: NCtx => T): NCtx => T =
       c => e.add(l(c), r(c))
-  }
 
   println(tf1[NCtx => String](NCtx.Pos))
 
@@ -216,25 +209,23 @@ object Test extends App {
   println(pushNeg(tf1[NCtx => String]))
   println(pushNeg(pushNeg(pushNeg(tf1))): String)
 
-  given [T](using e: Mult[T]) as Mult[NCtx => T] {
-    import NCtx._
+  given [T](using e: Mult[T]): Mult[NCtx => T] with
+    import NCtx.*
     def mul(l: NCtx => T, r: NCtx => T): NCtx => T = {
       case Pos => e.mul(l(Pos), r(Pos))
       case Neg => e.mul(l(Pos), r(Neg))
     }
-  }
 
   println(pushNeg(tfm1[NCtx => String]))
   println(pushNeg(tfm2[NCtx => String]))
 
-  import IExp._
+  import IExp.*
 
   // Going from type class encoding to ADT encoding
-  given initialize as Exp[IExp] {
+  given initialize: Exp[IExp] with
     def lit(i: Int): IExp = Lit(i)
     def neg(t: IExp): IExp = Neg(t)
     def add(l: IExp, r: IExp): IExp = Add(l, r)
-  }
 
   // Going from ADT encoding to type class encoding
   def finalize[T](i: IExp)(using e: Exp[T]): T = i match {

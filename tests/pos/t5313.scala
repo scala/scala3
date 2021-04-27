@@ -16,12 +16,12 @@ object DepBug {
   }
 
   def useDep(d : Dep): Unit = {
-    import d._
+    import d.*
     a.m(b)         // OK
   }
 
   {
-    import dep._
+    import dep.*
     a.m(b)           // OK with 2.9.1.final, error on trunk
   }
 

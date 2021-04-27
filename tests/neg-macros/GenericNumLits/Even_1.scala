@@ -1,5 +1,6 @@
+import language.experimental.genericNumberLiterals
 import scala.util.FromDigits
-import scala.quoted._
+import scala.quoted.*
 
 
 case class Even(n: Int)
@@ -15,8 +16,8 @@ object Even {
     def fromDigits(digits: String) = evenFromDigits(digits)
   }
 
-  given EvenFromDigits {
-    override inline def fromDigits(digits: String) = ${
+  given EvenFromDigits with {
+    override transparent inline def fromDigits(digits: String) = ${
       EvenFromDigitsImpl('digits)
     }
   }

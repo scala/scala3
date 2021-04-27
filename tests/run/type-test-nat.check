@@ -1,0 +1,6 @@
+Some((SuccClass(SuccClass(ZeroObject)),SuccClass(ZeroObject)))
+Some((ZeroObject,SuccClass(SuccClass(ZeroObject))))
+None
+Some((2,1))
+Some((0,2))
+None

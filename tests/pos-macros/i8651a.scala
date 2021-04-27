@@ -1,5 +1,5 @@
-import scala.quoted._
-def coroutineImpl(using QuoteContext): Expr[Any] =
+import scala.quoted.*
+def coroutineImpl(using Quotes): Expr[Any] =
   '{
     new {
       def state: Int = 0

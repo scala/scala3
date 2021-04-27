@@ -1,3 +1,4 @@
+import language.experimental.namedTypeArguments
 object i3666 {
   sealed trait Exp[T]
   case class Num(n: Int) extends Exp[Int]

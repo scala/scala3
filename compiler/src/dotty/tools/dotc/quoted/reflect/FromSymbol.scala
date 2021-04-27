@@ -8,21 +8,20 @@ import dotty.tools.dotc.core.Flags._
 import dotty.tools.dotc.core.StdNames._
 import dotty.tools.dotc.core.Symbols._
 import dotty.tools.dotc.core.Types._
+import dotty.tools.dotc.core.Decorators._
 
 object FromSymbol {
 
   def definitionFromSym(sym: Symbol)(using Context): tpd.Tree = {
-    assert(sym.exists)
-    if (sym.is(Package)) packageDefFromSym(sym)
-    else if (sym.isClass) classDef(sym.asClass)
+    assert(sym.exists, "Cannot get tree of no symbol")
+    assert(!sym.is(Package), "Cannot get tree of package symbol")
+    if (sym.isClass) classDef(sym.asClass)
     else if (sym.isType && sym.is(Case)) typeBindFromSym(sym.asType)
     else if (sym.isType) typeDefFromSym(sym.asType)
     else if (sym.is(Method)) defDefFromSym(sym.asTerm)
-    else if (sym.is(Case)) bindFromSym(sym.asTerm)
+    else if (sym.is(Case, butNot = ModuleVal | EnumVal)) bindFromSym(sym.asTerm)
     else valDefFromSym(sym.asTerm)
   }
-
-  def packageDefFromSym(sym: Symbol)(using Context): PackageDefinition = PackageDefinitionImpl(sym)
 
   def classDef(cls: ClassSymbol)(using Context): tpd.TypeDef = cls.defTree match {
     case tree: tpd.TypeDef => tree
@@ -32,7 +31,7 @@ object FromSymbol {
         newSymbol(cls, nme.CONSTRUCTOR, EmptyFlags, NoType)
       )
       val constr = tpd.DefDef(constrSym.asTerm)
-      val parents = cls.classParents.map(tpd.TypeTree(_))
+      val parents = cls.info.parents.map(tpd.TypeTree(_))
       val body = cls.unforcedDecls.filter(!_.isPrimaryConstructor).map(s => definitionFromSym(s))
       tpd.ClassDefWithParents(cls, constr, parents, body)
   }

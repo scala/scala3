@@ -1,11 +1,11 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
-  def main(args: Array[String]): Unit = withQuoteContext {
+  given Compiler = Compiler.make(getClass.getClassLoader)
+  def main(args: Array[String]): Unit = withQuotes {
     def f[T](x: Expr[T])(implicit t: Type[T]) = '{
-      val z: $t = $x
+      val z: t.Underlying = $x
     }
-    println(f('{2})('[Int]).show)
+    println(f('{2})(Type.of[Int]).show)
   }
 }

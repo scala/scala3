@@ -37,23 +37,24 @@ abstract class AccessProxies {
    */
   private def accessorDefs(cls: Symbol)(using Context): Iterator[DefDef] =
     for (accessor <- cls.info.decls.iterator; accessed <- accessedBy.remove(accessor).toOption) yield
-      polyDefDef(accessor.asTerm, tps => argss => {
+      DefDef(accessor.asTerm, prefss => {
         def numTypeParams = accessed.info match {
           case info: PolyType => info.paramNames.length
           case _ => 0
         }
-        val (accessRef, forwardedTypes, forwardedArgss) =
+        val (targs, argss) = splitArgs(prefss)
+        val (accessRef, forwardedTpts, forwardedArgss) =
           if (passReceiverAsArg(accessor.name))
-            (argss.head.head.select(accessed), tps.takeRight(numTypeParams), argss.tail)
+            (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)
           else
             (if (accessed.isStatic) ref(accessed) else ref(TermRef(cls.thisType, accessed)),
-             tps, argss)
+             targs, argss)
         val rhs =
           if (accessor.name.isSetterName &&
               forwardedArgss.nonEmpty && forwardedArgss.head.nonEmpty) // defensive conditions
             accessRef.becomes(forwardedArgss.head.head)
           else
-            accessRef.appliedToTypes(forwardedTypes).appliedToArgss(forwardedArgss)
+            accessRef.appliedToTypeTrees(forwardedTpts).appliedToArgss(forwardedArgss)
         rhs.withSpan(accessed.span)
       })
 
@@ -67,7 +68,8 @@ abstract class AccessProxies {
   trait Insert {
     import ast.tpd._
 
-    def accessorNameKind: ClassifiedNameKind
+    /** The name of the accessor for definition with given `name` in given `site` */
+    def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
     def needsAccessor(sym: Symbol)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
@@ -133,7 +135,7 @@ abstract class AccessProxies {
       if (accessorClass.exists) {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
-        val accessorName = accessorNameKind(accessed.name)
+        val accessorName = accessorNameOf(accessed.name, accessorClass)
         val accessorInfo =
           accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)

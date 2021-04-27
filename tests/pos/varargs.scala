@@ -6,8 +6,8 @@ object varargs {
   def foo[T](x: T, y: T): T = x
   foo(1, 2)
   val xs = 1 :: 2 :: Nil
-  g(xs: _*)
-  g(Nil: _*)
+  g(xs*)
+  g(Nil*)
   g(1)
   g()
 

@@ -26,13 +26,13 @@ object Array3 {
 object Test {
   def test(xs: Array[Int]): Int = xs match {
     case Array2(x, y)         => 1 // error
-    case Array2(x, y, xs: _*) => 2 // error
-    case Array2(xs: _*)       => 3 // error
+    case Array2(x, y, xs*) => 2 // error
+    case Array2(xs*)       => 3 // error
   }
 
   def test2(xs: Array[Int]): Int = xs match {
     case Array3(x, y)         => 1 // error
-    case Array3(x, y, xs: _*) => 2 // error
-    case Array3(xs: _*)       => 3 // error
+    case Array3(x, y, xs*) => 2 // error
+    case Array3(xs*)       => 3 // error
   }
 }

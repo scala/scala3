@@ -13,7 +13,7 @@ def i4(i5: Any) = ()
 object i6 {
 def i7(i8: String): Int = i11
 val i11 = new i1 {
-import i2.{ i7 => } class i10 {
+import i2.{ i7 as } class i10 {
 val i10 = new Array(10)
 val i11: i0 = i13 case i10 => i13.i10
 case _ => case _ => case _ => throw new i17

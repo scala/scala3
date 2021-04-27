@@ -19,7 +19,7 @@ import org.junit.experimental.categories.Category
 
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
-import dotty.tools.dotc.semanticdb.Scala3.{given _}
+import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
@@ -76,7 +76,7 @@ class SemanticdbTests:
       |inspect with:
       |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
       |Or else update all expect files with
-      |  sbt 'dotty-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
+      |  sbt 'scala3-compiler-bootstrapped/test:runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
     if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
@@ -107,7 +107,7 @@ class SemanticdbTests:
     val exitJava = javac.run(null, null, null, javaArgs:_*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
-      "-Ysemanticdb",
+      "-Xsemanticdb",
       "-d", target.toString,
       "-feature",
       "-deprecation",

@@ -1,4 +1,5 @@
--- [E105] Syntax Error: tests/neg/i7359.scala:3:6 ----------------------------------------------------------------------
+-- [E164] Declaration Error: tests/neg/i7359.scala:3:6 -----------------------------------------------------------------
 3 |  def notify(): Unit // error
   |      ^
-  |      Traits cannot redefine final method notify from class AnyRef.
+  |      error overriding method notify in class Object of type (): Unit;
+  |        method notify of type (): Unit cannot override final member method notify in class Object

@@ -94,14 +94,15 @@ object PatternMatcher {
      */
     private val initializer = MutableSymbolMap[Tree]()
 
-    private def newVar(rhs: Tree, flags: FlagSet): TermSymbol =
+    private def newVar(rhs: Tree, flags: FlagSet, tpe: Type): TermSymbol =
       newSymbol(ctx.owner, PatMatStdBinderName.fresh(), Synthetic | Case | flags,
-        sanitize(rhs.tpe), coord = rhs.span)
+        sanitize(tpe), coord = rhs.span)
         // TODO: Drop Case once we use everywhere else `isPatmatGenerated`.
 
     /** The plan `let x = rhs in body(x)` where `x` is a fresh variable */
-    private def letAbstract(rhs: Tree)(body: Symbol => Plan): Plan = {
-      val vble = newVar(rhs, EmptyFlags)
+    private def letAbstract(rhs: Tree, tpe: Type = NoType)(body: Symbol => Plan): Plan = {
+      val declTpe = if tpe.exists then tpe else rhs.tpe
+      val vble = newVar(rhs, EmptyFlags, declTpe)
       initializer(vble) = rhs
       LetPlan(vble, body(vble))
     }
@@ -194,7 +195,7 @@ object PatternMatcher {
         case Typed(_, tpt) if tpt.tpe.isRepeatedParam => true
         case Bind(nme.WILDCARD, WildcardPattern()) => true // don't skip when binding an interesting symbol!
         case t if isWildcardArg(t)                 => true
-        case x: Ident                              => x.name.isVariableName && !isBackquoted(x)
+        case x: Ident                              => x.name.isVarPattern && !isBackquoted(x)
         case Alternative(ps)                       => ps.forall(unapply)
         case EmptyTree                             => true
         case _                                     => false
@@ -223,6 +224,13 @@ object PatternMatcher {
     /** Plan for matching `scrutinee` symbol against `tree` pattern */
     private def patternPlan(scrutinee: Symbol, tree: Tree, onSuccess: Plan): Plan = {
 
+      extension (tree: Tree) def avoidPatBoundType(): Type =
+        tree.tpe.widen match
+        case tref: TypeRef if tref.symbol.isPatternBound =>
+          defn.AnyType
+        case _ =>
+          tree.tpe
+
       /** Plan for matching `selectors` against argument patterns `args` */
       def matchArgsPlan(selectors: List[Tree], args: List[Tree], onSuccess: Plan): Plan = {
         /* For a case with arguments that have some test on them such as
@@ -243,7 +251,7 @@ object PatternMatcher {
          */
         def matchArgsSelectorsPlan(selectors: List[Tree], syms: List[Symbol]): Plan =
           selectors match {
-            case selector :: selectors1 => letAbstract(selector)(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
+            case selector :: selectors1 => letAbstract(selector, selector.avoidPatBoundType())(sym => matchArgsSelectorsPlan(selectors1, sym :: syms))
             case Nil => matchArgsPatternPlan(args, syms.reverse)
           }
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
@@ -373,7 +381,7 @@ object PatternMatcher {
               patternPlan(casted, pat, onSuccess)
             })
         case UnApply(extractor, implicits, args) =>
-          val unappPlan = if (defn.isBottomType(scrutinee.info))
+          val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))
@@ -382,7 +390,7 @@ object PatternMatcher {
               case mt: MethodType =>
                 assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
-                applyImplicits(acc.appliedToArgs(args), rest, mt.resultType)
+                applyImplicits(acc.appliedToTermArgs(args), rest, mt.resultType)
               case _ =>
                 assert(implicits.isEmpty)
                 acc
@@ -684,9 +692,10 @@ object PatternMatcher {
       val scrutinee = plan.scrutinee
       (plan.test: @unchecked) match {
         case NonEmptyTest =>
-          scrutinee
-            .select(nme.isEmpty, _.info.isParameterless)
-            .select(nme.UNARY_!, _.info.isParameterless)
+          constToLiteral(
+            scrutinee
+              .select(nme.isEmpty, _.info.isParameterless)
+              .select(nme.UNARY_!, _.info.isParameterless))
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>
@@ -968,30 +977,32 @@ object PatternMatcher {
     /** If match is switch annotated, check that it translates to a switch
      *  with at least as many cases as the original match.
      */
-    private def checkSwitch(original: Match, result: Tree) = original.selector match {
+    private def checkSwitch(original: Match, result: Tree) = original.selector match
       case Typed(_, tpt) if tpt.tpe.hasAnnotation(defn.SwitchAnnot) =>
-        val resultCases = result match {
+        val resultCases = result match
           case Match(_, cases) => cases
           case Block(_, Match(_, cases)) => cases
+          case Block((_: ValDef) :: Block(_, Match(_, cases)) :: Nil, _) => cases
           case _ => Nil
-        }
-        def typesInPattern(pat: Tree): List[Type] = pat match {
+        val caseThreshold =
+          if ValueClasses.isDerivedValueClass(tpt.tpe.typeSymbol) then 1
+          else MinSwitchCases
+        def typesInPattern(pat: Tree): List[Type] = pat match
           case Alternative(pats) => pats.flatMap(typesInPattern)
           case _ => pat.tpe :: Nil
-        }
         def typesInCases(cdefs: List[CaseDef]): List[Type] =
           cdefs.flatMap(cdef => typesInPattern(cdef.pat))
         def numTypes(cdefs: List[CaseDef]): Int =
           typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
-        if (numTypes(resultCases) < numTypes(original.cases)) {
+        val numTypesInOriginal = numTypes(original.cases)
+        if numTypesInOriginal >= caseThreshold && numTypes(resultCases) < numTypesInOriginal then
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")
           patmatch.println(i"original types: ${typesInCases(original.cases)}%, %")
           patmatch.println(i"switch types  : ${typesInCases(resultCases)}%, %")
           patmatch.println(i"tree = $result")
-          report.warning(UnableToEmitSwitch(numTypes(original.cases) < MinSwitchCases), original.srcPos)
-        }
+          report.warning(UnableToEmitSwitch(), original.srcPos)
       case _ =>
-    }
+    end checkSwitch
 
     val optimizations: List[(String, Plan => Plan)] = List(
       "mergeTests" -> mergeTests,

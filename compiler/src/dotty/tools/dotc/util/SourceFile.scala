@@ -7,7 +7,7 @@ import Spans._
 import core.Contexts._
 
 import scala.io.Codec
-import scala.internal.Chars._
+import Chars._
 import scala.annotation.internal.sharable
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -22,19 +22,34 @@ object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
 
+  /** Return true if has a script header */
+  def hasScriptHeader(content: Array[Char]): Boolean =
+    headerStarts.exists(content.startsWith(_))
+
   def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
     /** Length of the script header from the given content, if there is one.
-     *  The header begins with "#!" or "::#!" and ends with a line starting
-     *  with "!#" or "::!#".
+     *  The header begins with "#!" or "::#!" and is either a single line,
+     *  or it ends with a line starting with "!#" or "::!#", if present.
      */
     val headerLength =
       if (headerStarts exists (content startsWith _)) {
         val matcher = headerPattern matcher content.mkString
         if (matcher.find) matcher.end
-        else throw new IOException("script file does not close its header with !# or ::!#")
+        else content.indexOf('\n') // end of first line
       }
       else 0
-    new SourceFile(file, content drop headerLength) {
+
+    // overwrite hash-bang lines with all spaces to preserve line numbers
+    val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
+    if hashBangLines.nonEmpty then
+      for i <- 0 until headerLength do
+        content(i) match {
+          case '\r' | '\n' =>
+          case _ =>
+            content(i) = ' '
+        }
+
+    new SourceFile(file, content) {
       override val underlying = new SourceFile(this.file, this.content)
     }
   }
@@ -82,7 +97,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
 
   def apply(idx: Int): Char = content().apply(idx)
 
-  def length: Int = content().length
+  def length: Int =
+    if lineIndicesCache ne null then lineIndicesCache.last
+    else content().length
 
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
@@ -105,7 +122,8 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   def positionInUltimateSource(position: SourcePosition): SourcePosition =
     SourcePosition(underlying, position.span shift start)
 
-  private def calculateLineIndices(cs: Array[Char]) = {
+  private def calculateLineIndicesFromContents() = {
+    val cs = content()
     val buf = new ArrayBuffer[Int]
     buf += 0
     var i = 0
@@ -120,7 +138,22 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     buf += cs.length // sentinel, so that findLine below works smoother
     buf.toArray
   }
-  private lazy val lineIndices: Array[Int] = calculateLineIndices(content())
+
+  private var lineIndicesCache: Array[Int] = _
+  private def lineIndices: Array[Int] =
+    if lineIndicesCache eq null then
+      lineIndicesCache = calculateLineIndicesFromContents()
+    lineIndicesCache
+  def setLineIndicesFromLineSizes(sizes: Array[Int]): Unit =
+    val lines = sizes.length
+    val indices = new Array[Int](lines + 1)
+    var i = 0
+    val penultimate = lines - 1
+    while i < penultimate do
+      indices(i + 1) = indices(i) + sizes(i) + 1 // `+1` for the '\n' at the end of the line
+      i += 1
+    indices(lines) = indices(penultimate) + sizes(penultimate) // last line does not end with '\n'
+    lineIndicesCache = indices
 
   /** Map line to offset of first character in line */
   def lineToOffset(index: Int): Int = lineIndices(index)
@@ -163,7 +196,7 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     var idx = startOfLine(offset)
     var col = 0
     while (idx != offset) {
-      col += (if (idx < length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
+      col += (if (idx < content().length && content()(idx) == '\t') (tabInc - col) % tabInc else 1)
       idx += 1
     }
     col
@@ -181,53 +214,74 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   }
 
   override def toString: String = file.toString
-
-  // Positioned ids
-
-  private val ctr = new AtomicInteger
-
-  def nextId: Int = {
-    val id = ctr.get
-    if (id % ChunkSize == 0) newChunk
-    else if (ctr.compareAndSet(id, id + 1)) id
-    else nextId
-  }
-
-  private def newChunk: Int = sourceOfChunk.synchronized {
-    val id = chunks << ChunkSizeLog
-    if (chunks == sourceOfChunk.length) {
-      val a = new Array[SourceFile](chunks * 2)
-      System.arraycopy(sourceOfChunk, 0, a, 0, chunks)
-      sourceOfChunk = a
-    }
-    sourceOfChunk(chunks) = this
-    chunks += 1
-    ctr.set(id + 1)
-    id
-  }
 }
 object SourceFile {
-  implicit def eqSource: Eql[SourceFile, SourceFile] = Eql.derived
+  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
 
   implicit def fromContext(using Context): SourceFile = ctx.source
-
-  def fromId(id: Int): SourceFile = sourceOfChunk(id >> ChunkSizeLog)
 
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
     val src = new SourceFile(new VirtualFile(name, content.getBytes(StandardCharsets.UTF_8)), scala.io.Codec.UTF8)
     src._maybeInComplete = maybeIncomplete
     src
 
-  private final val ChunkSizeLog = 10
-  private final val ChunkSize = 1 << ChunkSizeLog
+  /** Returns the relative path of `source` within the `reference` path
+   *
+   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   */
+  def relativePath(source: SourceFile, reference: String): String = {
+    val file = source.file
+    val jpath = file.jpath
+    if jpath eq null then
+      file.path // repl and other custom tests use abstract files with no path
+    else
+      val sourcePath = jpath.toAbsolutePath.normalize
+      val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
 
-  // These two vars are sharable because they're only used in the synchronized block in newChunk
-  @sharable private var chunks: Int = 0
-  @sharable private var sourceOfChunk: Array[SourceFile] = new Array[SourceFile](2000)
+      if sourcePath.startsWith(refPath) then
+        // On Windows we can only relativize paths if root component matches
+        // (see implementation of sun.nio.fs.WindowsPath#relativize)
+        //
+        //     try refPath.relativize(sourcePath).toString
+        //     catch case _: IllegalArgumentException => sourcePath.toString
+        //
+        // As we already check that the prefix matches, the special handling for
+        // Windows is not needed.
+
+        // We also consistently use forward slashes as path element separators
+        // for relative paths. If we didn't do that, it'd be impossible to parse
+        // them back, as one would need to know whether they were created on Windows
+        // and use both slashes as separators, or on other OS and use forward slash
+        // as separator, backslash as file name character.
+
+        import scala.jdk.CollectionConverters._
+        val path = refPath.relativize(sourcePath)
+        path.iterator.asScala.mkString("/")
+      else
+        sourcePath.toString
+  }
+
+  /** Return true if file is a script:
+   *  if filename extension is not .scala and has a script header.
+   */
+  def isScript(file: AbstractFile, content: Array[Char]): Boolean =
+    ScriptSourceFile.hasScriptHeader(content)
+
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
+    // see note above re: Files.exists is remarkably slow
+    val chars =
+    try
+      new String(file.toByteArray, codec.charSet).toCharArray
+    catch
+      case _: java.nio.file.NoSuchFileException => Array[Char]()
+
+    if isScript(file, chars) then
+      ScriptSourceFile(file, chars)
+    else
+      new SourceFile(file, chars)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }
-

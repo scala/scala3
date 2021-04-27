@@ -2,10 +2,7 @@ package dotty.tools.dotc
 package transform
 
 import core._
-import Contexts._
-import Types._
-import MegaPhase._
-import ast.Trees._
+import Contexts._, Types._, MegaPhase._, ast.Trees._, Symbols._, Decorators._, Flags._
 
 /** Transform references of the form
  *
@@ -26,18 +23,28 @@ class ExplicitSelf extends MiniPhase {
 
   override def phaseName: String = "explicitSelf"
 
+  private def needsCast(tree: RefTree, cls: ClassSymbol)(using Context) =
+    !cls.is(Package) && cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner)
+
+  private def castQualifier(tree: RefTree, cls: ClassSymbol, thiz: Tree)(using Context) =
+    cpy.Select(tree)(thiz.cast(AndType(cls.classInfo.selfType, thiz.tpe)), tree.name)
+
   override def transformIdent(tree: Ident)(using Context): Tree = tree.tpe match {
     case tp: ThisType =>
       report.debuglog(s"owner = ${ctx.owner}, context = ${ctx}")
       This(tp.cls).withSpan(tree.span)
-    case _ => tree
+    case TermRef(thisTp: ThisType, _) =>
+      val cls = thisTp.cls
+      if needsCast(tree, cls) then castQualifier(tree, cls, This(cls))
+      else tree
+    case _ =>
+      tree
   }
 
   override def transformSelect(tree: Select)(using Context): Tree = tree match {
     case Select(thiz: This, name) if name.isTermName =>
       val cls = thiz.symbol.asClass
-      if (cls.givenSelfType.exists && !cls.derivesFrom(tree.symbol.owner))
-        cpy.Select(tree)(thiz.cast(AndType(cls.classInfo.selfType, thiz.tpe)), name)
+      if needsCast(tree, cls) then castQualifier(tree, cls, thiz)
       else tree
     case _ => tree
   }

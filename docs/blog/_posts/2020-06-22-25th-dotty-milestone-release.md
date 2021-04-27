@@ -24,7 +24,7 @@ Product -- Tuple -+- EmptyTuple
                   +- NonEmptyTuple -- *:[Head, Tail <: Tuple]
 ```
 
-This change impacts existing typeclass derivation codebases in that they now should use `EmptyTuple` instead of `Unit` in the tuple context.
+This change impacts existing type class derivation codebases in that they now should use `EmptyTuple` instead of `Unit` in the tuple context.
 
 # Avoid excessive slowdowns when suggesting missing imports in error messages
 Dotty brings to the user an enhanced error reporting when it comes to programming with givens. This better error reporting, however, proved to be a trade-off. Sometimes it takes an unreasonable amount of time and space to compute a quality suggestion to the end user.

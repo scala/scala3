@@ -38,6 +38,14 @@ object Inferencing {
     result
   }
 
+  /** Try to fully define `tp`. Return whether constraint has changed.
+   *  Any changed constraint is kept.
+   */
+  def canDefineFurther(tp: Type)(using Context): Boolean =
+    val prevConstraint = ctx.typerState.constraint
+    isFullyDefined(tp, force = ForceDegree.all)
+    && (ctx.typerState.constraint ne prevConstraint)
+
   /** The fully defined type, where all type variables are forced.
    *  Throws an error if type contains wildcards.
    */
@@ -61,16 +69,15 @@ object Inferencing {
       ).process(tp)
 
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
-   *  one of the parameters in `tparams` or `vparamss`.
+   *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, tparams: List[Symbol], vparamss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
-      @threadUnsafe lazy val params = (tparams :: vparamss).flatten
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
         if !tp.isInstantiated &&
             TypeComparer.bounds(tp.origin)
-              .namedPartsWith(ref => params.contains(ref.symbol))
+              .namedPartsWith(ref => paramss.exists(_.contains(ref.symbol)))
               .nonEmpty =>
           tvars + tp
         case _ =>
@@ -80,6 +87,44 @@ object Inferencing {
     val depVars = dependentVars(Set(), tp)
     if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
   }
+
+  /** If `tp` is top-level type variable with a lower bound in the current constraint,
+   *  instantiate it from below. We also look for TypeVars whereever their instantiation
+   *  could uncover new type members.
+   */
+  def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
+    case tvar: TypeVar
+    if !tvar.isInstantiated
+       && ctx.typerState.constraint.contains(tvar)
+       && tvar.hasLowerBound =>
+      tvar.instantiate(fromBelow = true)
+      true
+    case AppliedType(tycon, args) =>
+      // The argument in `args` that may potentially appear directly as result
+      // and thereby influence the members of this type
+      def argsInResult: List[Type] = tycon.stripTypeVar match
+        case tycon: TypeRef =>
+          tycon.info match
+            case MatchAlias(_) => args
+            case TypeBounds(_, upper: TypeLambda) =>
+              upper.resultType match
+                case ref: TypeParamRef if ref.binder == upper =>
+                  args.lazyZip(upper.paramRefs).collect {
+                    case (arg, pref) if pref eq ref => arg
+                  }.toList
+                case _ => Nil
+            case _ => Nil
+        case _ => Nil
+      couldInstantiateTypeVar(tycon)
+      || argsInResult.exists(couldInstantiateTypeVar)
+    case RefinedType(parent, _, _) =>
+      couldInstantiateTypeVar(parent)
+    case tp: AndOrType =>
+      couldInstantiateTypeVar(tp.tp1) || couldInstantiateTypeVar(tp.tp2)
+    case AnnotatedType(tp, _) =>
+      couldInstantiateTypeVar(tp)
+    case _ =>
+      false
 
   /** The accumulator which forces type variables using the policy encoded in `force`
    *  and returns whether the type is fully defined. The direction in which
@@ -206,8 +251,7 @@ object Inferencing {
       *     approx, see gadt-approximation-interaction.scala).
       */
     def apply(tp: Type): Type = tp.dealias match {
-      case tp @ TypeRef(qual, nme) if (qual eq NoPrefix)
-                                   && variance != 0
+      case tp @ TypeRef(qual, nme) if variance != 0
                                    && ctx.gadt.contains(tp.symbol)
                                    =>
         val sym = tp.symbol
@@ -350,7 +394,7 @@ object Inferencing {
   def maximizeType(tp: Type, span: Span, fromScala2x: Boolean)(using Context): List[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBound = new mutable.ListBuffer[Symbol]
+    val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     vs foreachBinding { (tvar, v) =>
       if (v == 1) tvar.instantiate(fromBelow = false)
       else if (v == -1) tvar.instantiate(fromBelow = true)
@@ -363,11 +407,17 @@ object Inferencing {
           // Instead, we simultaneously add them later on.
           val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
           tvar.instantiateWith(wildCard.typeRef)
-          patternBound += wildCard
+          patternBindings += ((wildCard, tvar.origin))
         }
       }
     }
-    val res = patternBound.toList
+    val res = patternBindings.toList.map { (boundSym, _) =>
+      // substitute bounds of pattern bound variables to deal with possible F-bounds
+      for (wildCard, param) <- patternBindings do
+        boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
+      boundSym
+    }
+
     // We add the created symbols to GADT constraint here.
     if (res.nonEmpty) ctx.gadt.addToConstraint(res)
     res
@@ -377,7 +427,7 @@ object Inferencing {
 
   /** All occurrences of type vars in this type that satisfy predicate
    *  `include` mapped to their variances (-1/0/1) in this type, where
-   *  -1 means: only covariant occurrences
+   *  -1 means: only contravariant occurrences
    *  +1 means: only covariant occurrences
    *  0 means: mixed or non-variant occurrences
    *
@@ -439,6 +489,36 @@ object Inferencing {
     }
 
     propagate(accu(SimpleIdentityMap.empty, tp))
+  }
+
+  /** Replace every top-level occurrence of a wildcard type argument by
+    *  a fresh skolem type. The skolem types are of the form $i.CAP, where
+    *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
+    */
+  def captureWildcards(tp: Type)(using Context): Type = tp match {
+    case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
+      tycon.typeParams match {
+        case tparams @ ((_: Symbol) :: _) =>
+          val boundss = tparams.map(_.paramInfo.substApprox(tparams.asInstanceOf[List[TypeSymbol]], args))
+          val args1 = args.zipWithConserve(boundss) { (arg, bounds) =>
+            arg match {
+              case TypeBounds(lo, hi) =>
+                val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
+                TypeRef(skolem, defn.TypeBox_CAP)
+              case arg => arg
+            }
+          }
+          tp.derivedAppliedType(tycon, args1)
+        case _ =>
+          tp
+      }
+    case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
+    case tp: RefinedType => tp.derivedRefinedType(captureWildcards(tp.parent), tp.refinedName, tp.refinedInfo)
+    case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
+    case tp: LazyRef => captureWildcards(tp.ref)
+    case tp: AnnotatedType => tp.derivedAnnotatedType(captureWildcards(tp.parent), tp.annot)
+    case _ => tp
   }
 }
 
@@ -508,7 +588,8 @@ trait Inferencing { this: Typer =>
         //     found   : Int(1)
         //     required: String
         //     val y: List[List[String]] = List(List(1))
-        val hasUnreportedErrors = state.reporter.hasUnreportedErrors
+        if state.reporter.hasUnreportedErrors then return tree
+
         def constraint = state.constraint
         type InstantiateQueue = mutable.ListBuffer[(TypeVar, Boolean)]
         val toInstantiate = new InstantiateQueue
@@ -521,7 +602,7 @@ trait Inferencing { this: Typer =>
               typr.println(i"interpolate non-occurring $tvar in $state in $tree: $tp, fromBelow = ${tvar.hasLowerBound}, $constraint")
               toInstantiate += ((tvar, tvar.hasLowerBound))
             }
-            else if (!hasUnreportedErrors)
+            else
               if (v.intValue != 0) {
                 typr.println(i"interpolate $tvar in $state in $tree: $tp, fromBelow = ${v.intValue == 1}, $constraint")
                 toInstantiate += ((tvar, v.intValue == 1))

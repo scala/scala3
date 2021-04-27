@@ -1,2 +1,2 @@
-15: Pattern Match Exhaustivity: List(_, _: _*)
-21: Pattern Match Exhaustivity: _: Expr
+15: Pattern Match Exhaustivity: List(_, _*)
+21: Pattern Match Exhaustivity: _: IntExpr, _: BooleanExpr

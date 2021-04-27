@@ -1,5 +1,5 @@
 
-import Positioned._
+import Positioned.*
 
 object Test {
   def main(args: Array[String]): Unit = {

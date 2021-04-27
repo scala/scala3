@@ -7,7 +7,7 @@ trait A {
 object B {
   def f(x : { val y : A }): Unit = { x.y.v = x.y.v }
 
-  var a : A = _
+  var a : A = compiletime.uninitialized
   var b : Boolean = false
   def y : A = {
     if (b) {

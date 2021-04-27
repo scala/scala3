@@ -21,5 +21,5 @@ trait Test {
     def flatMap[S]
             (f: T => List[S], foo: Int): List[S]  = sys.error("foo")
   }
-  val l: MList[String] = moo.flatMap[String, List, Any, MList]((x: Int) => new MList("String"))
+  val l: MList[String] = moo.flatMap[String, List, Any, MList]((x: Int) => new MList("String")) // error: no alternative matches
 }

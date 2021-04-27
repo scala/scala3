@@ -33,7 +33,7 @@ import dotty.tools.dotc.transform.Erasure
  */
 class CoreBTypes[BTFS <: BTypesFromSymbols[_ <: DottyBackendInterface]](val bTypes: BTFS) {
   import bTypes._
-  import int.{_, given _}
+  import int.{_, given}
   import DottyBackendInterface._
 
   //import global._

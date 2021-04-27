@@ -1,8 +1,8 @@
 // Compile with -strict -Xfatal-warnings -deprecation
-import scala.annotation.alpha
+import scala.annotation.targetName
 class & {   // error
 
-  @alpha("op") def *(x: Int): Int = ???  // OK
+  @targetName("op") def *(x: Int): Int = ???  // OK
   def / (x: Int): Int       // error
   val frozen_& : Int = ???  // error
   object some_???           // error

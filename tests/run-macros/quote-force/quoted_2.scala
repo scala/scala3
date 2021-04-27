@@ -1,4 +1,4 @@
-import Location._
+import Location.*
 
 object Test {
   val loc1 = location

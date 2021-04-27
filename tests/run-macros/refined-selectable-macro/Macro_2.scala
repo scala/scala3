@@ -1,6 +1,6 @@
 
-import scala.quoted._
-import Macro._
+import scala.quoted.*
+import Macro.*
 
 object Macro2 {
   // TODO should elems of `new Record` and `Record.fromUntypedTuple` be IArray[Object]
@@ -12,14 +12,15 @@ object Macro2 {
   }
 
   object Record extends SelectableRecordCompanion[Record] {
-    import scala.quoted._
+    import scala.quoted.*
 
-    inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl('elems, '[R]) }
+    inline def apply[R <: Record](elems: (String, Any)*) : R = ${ applyImpl[R]('elems) }
 
-    def applyImpl[R <: Record: Type](elems: Expr[Seq[(String, Any)]], ev: Type[R])(using qctx: QuoteContext) = {
-      '{ new Record($elems:_*).asInstanceOf[$ev] }
+    def applyImpl[R <: Record: Type](elems: Expr[Seq[(String, Any)]])(using Quotes) = {
+      '{ new Record($elems:_*).asInstanceOf[R] }
     }
 
-    def fromUntypedTuple(elems: (String, Any)*): Record = Record(elems: _*)
+    def fromUntypedTuple(elems: (String, Any)*): Record = new Record(elems*)
+      // `new` is needed since resolving the two `apply`s is ambiguous; this was hidden by old scheme for creator applications
   }
 }

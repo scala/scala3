@@ -1,6 +1,6 @@
 ---
 layout: doc-page
-title: Dropped: Weak Conformance
+title: "Dropped: Weak Conformance"
 ---
 
 In some situations, Scala used a _weak conformance_ relation when
@@ -39,7 +39,7 @@ have an explicit type annotation embedded in their syntax (`f`, `d`,
 `.`, `L` or `'` for `Char`s) which ensures that their author really
 meant them to have that specific type).
 
-Therefore, Dotty drops the general notion of weak conformance, and
+Therefore, Scala 3 drops the general notion of weak conformance, and
 instead keeps one rule: `Int` literals are adapted to other numeric
 types if necessary.
 

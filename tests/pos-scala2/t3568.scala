@@ -1,6 +1,6 @@
-import scala.annotation._
-import scala.annotation.unchecked._
-import scala.collection._
+import scala.annotation.*
+import scala.annotation.unchecked.*
+import scala.collection.*
 
 
 package object buffer {

@@ -1,6 +1,6 @@
 // from https://github.com/rickynils/scalacheck/issues/290
-import scala.concurrent._
-import scala.concurrent.duration._
+import scala.concurrent.*
+import scala.concurrent.duration.*
 import java.util.concurrent.Executors
 
 object Test {

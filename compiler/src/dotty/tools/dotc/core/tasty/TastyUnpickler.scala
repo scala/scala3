@@ -50,6 +50,14 @@ class TastyUnpickler(reader: TastyReader) {
     val length = readNat()
     val start = currentAddr
     val end = start + length
+    def readSignedRest(original: TermName, target: TermName): TermName =
+      val result = readName().toTypeName
+      // DOTTY: we shouldn't have to give an explicit type to paramsSig,
+      // see https://github.com/lampepfl/dotty/issues/4867
+      val paramsSig: List[Signature.ParamSig] = until(end)(readParamSig())
+      val sig = Signature(paramsSig, result)
+      SignedName(original, sig, target)
+
     val result = tag match {
       case UTF8 =>
         goto(end)
@@ -66,12 +74,11 @@ class TastyUnpickler(reader: TastyReader) {
         numberedNameKindOfTag(tag)(readName(), readNat())
       case SIGNED =>
         val original = readName()
-        val result = readName().toTypeName
-        // DOTTY: we shouldn't have to give an explicit type to paramsSig,
-        // see https://github.com/lampepfl/dotty/issues/4867
-        val paramsSig: List[Signature.ParamSig] = until(end)(readParamSig())
-        val sig = Signature(paramsSig, result)
-        SignedName(original, sig)
+        readSignedRest(original, original)
+      case TARGETSIGNED =>
+        val original = readName()
+        val target = readName()
+        readSignedRest(original, target)
       case _ =>
         simpleNameKindOfTag(tag)(readName())
     }

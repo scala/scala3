@@ -5,7 +5,7 @@ object Foo {
   println(summon)  // error
 }
 
-import scala.deriving._
+import scala.deriving.*
 import scala.compiletime.erasedValue
 
 inline def summon[T](using t:T): T = t match {
@@ -22,7 +22,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] {
+  given Eq[Int] with {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -47,7 +47,7 @@ object Eq {
         }
     }
 
-  inline given derived[T](using m: Mirror.Of[T]) as Eq[T] = {
+  inline given derived[T](using m: Mirror.Of[T]): Eq[T] = {
     val elemInstances = summonAll[m.MirroredElemTypes]
     inline m match {
       case s: Mirror.SumOf[T]     => eqSum(s, elemInstances)
@@ -58,6 +58,6 @@ object Eq {
 
 
 enum Opt[+T] derives Eq {
-  case Sm(t: T)
+  case Sm[T](t: T) extends Opt[T]
   case Nn
 }

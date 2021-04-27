@@ -34,8 +34,7 @@ class ReplCompiler extends Compiler {
   override protected def frontendPhases: List[List[Phase]] = List(
     List(new REPLFrontEnd),
     List(new CollectTopLevelImports),
-    List(new Staging),
-    List(new PostTyper)
+    List(new PostTyper),
   )
 
   def newRun(initCtx: Context, state: State): Run = new Run(this, initCtx) {
@@ -280,7 +279,7 @@ class ReplCompiler extends Compiler {
         if (errorsAllowed || !ctx.reporter.hasErrors)
           unwrapped(unit.tpdTree, src)
         else
-          ctx.reporter.removeBufferedMessages.errors[tpd.ValDef] // Workaround #4988
+          ctx.reporter.removeBufferedMessages.errors
       }
     }
   }

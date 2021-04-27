@@ -1,26 +1,26 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
 
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
+    given Compiler = Compiler.make(getClass.getClassLoader)
 
-    withQuoteContext('[List])
-    def list(using QuoteContext) = bound('{List(1, 2, 3)})
-    println(withQuoteContext(list.show))
+    withQuotes(Type.of[List])
+    def list(using Quotes) = bound('{List(1, 2, 3)})
+    println(withQuotes(list.show))
     println(run(list))
 
-    def opt(using QuoteContext) = bound('{Option(4)})
-    println(withQuoteContext(opt.show))
+    def opt(using Quotes) = bound('{Option(4)})
+    println(withQuotes(opt.show))
     println(run(opt))
 
-    def map(using QuoteContext) = bound('{Map(4 -> 1)})
-    println(withQuoteContext(map.show))
+    def map(using Quotes) = bound('{Map(4 -> 1)})
+    println(withQuotes(map.show))
     println(run(map))
   }
 
-  def bound[T: Type, S[_]: Type](x: Expr[S[T]])(using QuoteContext): Expr[S[T]] = '{
+  def bound[T: Type, S[_]: Type](x: Expr[S[T]])(using Quotes): Expr[S[T]] = '{
     val y = $x
     y
   }

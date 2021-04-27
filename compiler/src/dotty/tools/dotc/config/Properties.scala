@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
   protected def propCategory: String = "compiler"
-  protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
+  protected def pickJarBasedOn: Class[PropertiesTrait] = classOf[PropertiesTrait]
 
   /** Scala manifest attributes.
    */
@@ -64,17 +64,23 @@ trait PropertiesTrait {
    */
   def versionNumberString: String = scalaPropOrEmpty("version.number")
 
-  /** The version number of the jar this was loaded from plus "version " prefix,
-   *  or "version (unknown)" if it cannot be determined.
+  /** The version number of the jar this was loaded from,
+   *  or `"(unknown)"` if it cannot be determined.
    */
-  val versionString: String = {
+  val simpleVersionString: String = {
     val v = scalaPropOrElse("version.number", "(unknown)")
-    "version " + scalaPropOrElse("version.number", "(unknown)") + {
+    v + (
       if (v.contains("SNAPSHOT") || v.contains("NIGHTLY"))
         "-git-" + scalaPropOrElse("git.hash", "(unknown)")
-      else ""
-    }
+      else
+        ""
+    )
   }
+
+  /** The version number of the jar this was loaded from plus `"version "` prefix,
+   *  or `"version (unknown)"` if it cannot be determined.
+   */
+  val versionString: String = "version " + simpleVersionString
 
   /** Whether the current version of compiler is experimental
    *
@@ -129,6 +135,6 @@ trait PropertiesTrait {
   def jdkHome: String               = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
   def versionMsg: String            = "Scala %s %s -- %s".format(propCategory, versionString, copyrightString)
-  def scalaCmd: String              = if (isWin) "dotr.bat" else "dotr"
-  def scalacCmd: String             = if (isWin) "dotc.bat" else "dotc"
+  def scalaCmd: String              = if (isWin) "scala.bat" else "scala"
+  def scalacCmd: String             = if (isWin) "scalac.bat" else "scalac"
 }

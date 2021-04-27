@@ -36,11 +36,11 @@ class C1 {
 
 class C2
     extends Serializable /* Needed because of #5866 */ {
-  val impfun: Int ?=> Int = (using x1) => x1
+  val impfun: Int ?=> Int = x1 ?=> x1
 
-  val impdepfun: (x1: Int) ?=> List[x1.type] = (using x1) => List(x1)
+  val impdepfun: (x1: Int) ?=> List[x1.type] = x1 ?=> List(x1)
 
-  val erasedimpfun: (erased Int) ?=> Int = (using erased x1) => 0
+  val erasedimpfun: (erased Int) ?=> Int = (erased x1) ?=> 0
 }
 
 object Test {

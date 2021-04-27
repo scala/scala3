@@ -1,4 +1,4 @@
-import scala.compiletime._
+import scala.compiletime.*
 
 object Test {
 
@@ -6,6 +6,6 @@ object Test {
     fail(println("foo")) // error
   }
 
-  inline def fail(inline p1: Any) = error(code"failed: $p1 ...")
+  inline def fail(inline p1: Any) = error("failed: " + codeOf(p1) + " ...")
 
 }

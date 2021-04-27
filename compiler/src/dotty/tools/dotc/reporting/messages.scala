@@ -7,6 +7,7 @@ import Contexts._
 import Decorators._, Symbols._, Names._, NameOps._, Types._, Flags._, Phases._
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
+import NameKinds.WildcardParamName
 import util.SourcePosition
 import parsing.Scanners.Token
 import parsing.Tokens
@@ -15,7 +16,7 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.err
+import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
@@ -23,6 +24,7 @@ import printing.Formatting.hl
 import ast.Trees._
 import ast.untpd
 import ast.tpd
+import transform.SymUtils._
 
 /**  Messages
   *  ========
@@ -43,8 +45,14 @@ import ast.tpd
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(errorId: ErrorMessageID) extends Message(errorId):
+  trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
+    override def msgSuffix: String = matchReductionAddendum(tps*)
+
+  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+  extends Message(errorId), ShowMatchTrace(found, expected):
     def kind = "Type Mismatch"
+    def explain = err.whyNoMatchStr(found, expected)
+    override def canExplain = true
 
   abstract class NamingMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Naming"
@@ -148,10 +156,10 @@ import ast.tpd
   extends TypeMsg(AnonymousFunctionMissingParamTypeID) {
     def msg = {
       val ofFun =
-        if (MethodType.syntheticParamNames(args.length + 1) contains param.name)
-          i" of expanded function:\n$tree"
-        else
-          ""
+        if param.name.is(WildcardParamName)
+           || (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+        then i" of expanded function:\n$tree"
+        else ""
 
       val inferred =
         if (pt == WildcardType) ""
@@ -235,7 +243,7 @@ import ast.tpd
   }
 
   class TypeMismatch(found: Type, expected: Type, addenda: => String*)(using Context)
-    extends TypeMismatchMsg(TypeMismatchID):
+    extends TypeMismatchMsg(found, expected)(TypeMismatchID):
 
     // replace constrained TypeParamRefs and their typevars by their bounds where possible
     // the idea is that if the bounds are also not-subtypes of each other to report
@@ -265,10 +273,7 @@ import ast.tpd
       val postScript = addenda.find(!_.isEmpty) match
         case Some(p) => p
         case None =>
-          if expected.isAny
-             || expected.isAnyRef
-             || expected.isRef(defn.AnyValClass)
-             || defn.isBottomType(found)
+          if expected.isTopType || found.isBottomType
           then ""
           else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
       val (where, printCtx) = Formatting.disambiguateTypes(found2, expected2)
@@ -276,14 +281,12 @@ import ast.tpd
       val (foundStr, expectedStr) = Formatting.typeDiff(found2, expected2)(using printCtx)
       s"""|Found:    $foundStr
           |Required: $expectedStr""".stripMargin
-        + whereSuffix + err.whyNoMatchStr(found, expected) + postScript
-
-    def explain = ""
+        + whereSuffix + postScript
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
-  extends NotFoundMsg(NotAMemberID) {
-    //println(i"site = $site, decls = ${site.decls}, source = ${site.widen.typeSymbol.sourceFile}") //DEBUG
+  extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
+    //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
     def msg = {
       import core.Flags._
@@ -323,16 +326,29 @@ import ast.tpd
         .filter((d, n) => d <= maxDist && d < missing.length && d < n.length)
         .sorted  // sort by distance first, alphabetically second
 
+      val enumClause =
+        if ((name eq nme.values) || (name eq nme.valueOf)) && site.classSymbol.companionClass.isEnumClass then
+          val kind = if name eq nme.values then i"${nme.values} array" else i"${nme.valueOf} lookup method"
+          // an assumption is made here that the values and valueOf methods were not generated
+          // because the enum defines non-singleton cases
+          i"""
+              |Although ${site.classSymbol.companionClass} is an enum, it has non-singleton cases,
+              |meaning a $kind is not defined"""
+        else
+          ""
+
+      def prefixEnumClause(addendum: String) =
+        if enumClause.nonEmpty then s".$enumClause$addendum" else addendum
+
       val finalAddendum =
-        if addendum.nonEmpty then addendum
-        else closest match {
+        if addendum.nonEmpty then prefixEnumClause(addendum)
+        else closest match
           case (d, n) :: _ =>
             val siteName = site match
               case site: NamedType => site.name.show
               case site => i"$site"
-            s" - did you mean $siteName.$n?"
-          case Nil => ""
-        }
+            s" - did you mean $siteName.$n?$enumClause"
+          case Nil => prefixEnumClause("")
 
       ex"$selected $name is not a member of ${site.widen}$finalAddendum"
     }
@@ -392,8 +408,8 @@ import ast.tpd
     def explain = {
       val TypeDef(name, impl @ Template(constr0, parents, self, _)) = cdef
       val exampleArgs =
-        if(constr0.vparamss.isEmpty) "..."
-        else constr0.vparamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
+        if(constr0.termParamss.isEmpty) "..."
+        else constr0.termParamss(0).map(_.withMods(untpd.Modifiers()).show).mkString(", ")
       def defHasBody[T] = impl.body.exists(!_.isEmpty)
       val exampleBody = if (defHasBody) "{\n ...\n }" else ""
       em"""|There may not be any method, member or object in scope with the same name as
@@ -768,32 +784,6 @@ import ast.tpd
            |"""
   }
 
-  class IncorrectRepeatedParameterSyntax()(using Context)
-  extends SyntaxMsg(IncorrectRepeatedParameterSyntaxID) {
-    def msg = "'*' expected"
-    def explain =
-      em"""|Expected * in ${hl("_*")} operator.
-           |
-           |The ${hl("_*")} operator can be used to supply a sequence-based argument
-           |to a method with a variable-length or repeated parameter. It is used
-           |to expand the sequence to a variable number of arguments, such that:
-           |${hl("func(args: _*)")} would expand to ${hl("func(arg1, arg2 ... argN)")}.
-           |
-           |Below is an example of how a method with a variable-length
-           |parameter can be declared and used.
-           |
-           |Squares the arguments of a variable-length parameter:
-           |${hl("def square(args: Int*) = args.map(a => a * a)")}
-           |
-           |Usage:
-           |${hl("square(1, 2, 3) // res0: List[Int] = List(1, 4, 9)")}
-           |
-           |Secondary Usage with ${hl("_*")}:
-           |${hl("val ints = List(2, 3, 4)  // ints: List[Int] = List(2, 3, 4)")}
-           |${hl("square(ints: _*)          // res1: List[Int] = List(4, 9, 16)")}
-           |""".stripMargin
-  }
-
   class IllegalLiteral()(using Context)
   extends SyntaxMsg(IllegalLiteralID) {
     def msg = "Illegal literal"
@@ -808,14 +798,16 @@ import ast.tpd
            |"""
   }
 
-  class PatternMatchExhaustivity(uncoveredFn: => String)(using Context)
+  class PatternMatchExhaustivity(uncoveredFn: => String, hasMore: Boolean)(using Context)
   extends Message(PatternMatchExhaustivityID) {
     def kind = "Pattern Match Exhaustivity"
     lazy val uncovered = uncoveredFn
     def msg =
+      val addendum = if hasMore then "(More unmatched cases are elided)" else ""
       em"""|${hl("match")} may not be exhaustive.
            |
-           |It would fail on pattern case: $uncovered"""
+           |It would fail on pattern case: $uncovered
+           |$addendum"""
 
 
     def explain =
@@ -850,13 +842,39 @@ import ast.tpd
     def explain = ""
   }
 
+  class MatchableWarning(tp: Type, pattern: Boolean)(using Context)
+  extends TypeMsg(MatchableWarningID) {
+    def msg =
+      val kind = if pattern then "pattern selector" else "value"
+      em"""${kind} should be an instance of Matchable,,
+          |but it has unmatchable type $tp instead"""
+
+    def explain =
+      if pattern then
+        em"""A value of type $tp cannot be the selector of a match expression
+            |since it is not constrained to be `Matchable`. Matching on unconstrained
+            |values is disallowed since it can uncover implementation details that
+            |were intended to be hidden and thereby can violate paramtetricity laws
+            |for reasoning about programs.
+            |
+            |The restriction can be overridden by appending `.asMatchable` to
+            |the selector value. `asMatchable` needs to be imported from
+            |scala.compiletime. Example:
+            |
+            |    import compiletime.asMatchable
+            |    def f[X](x: X) = x.asMatchable match { ... }"""
+      else
+        em"""The value can be converted to a `Matchable` by appending `.asMatchable`.
+            |`asMatchable` needs to be imported from scala.compiletime."""
+  }
+
   class SeqWildcardPatternPos()(using Context)
   extends SyntaxMsg(SeqWildcardPatternPosID) {
-    def msg = em"""${hl("_*")} can be used only for last argument"""
+    def msg = em"""${hl("*")} can be used only for last argument"""
     def explain = {
       val code =
         """def sumOfTheFirstTwo(list: List[Int]): Int = list match {
-          |  case List(first, second, x:_*) => first + second
+          |  case List(first, second, x*) => first + second
           |  case _ => 0
           |}"""
       em"""|Sequence wildcard pattern is expected at the end of an argument list.
@@ -1068,7 +1086,12 @@ import ast.tpd
 
   class OverridesNothingButNameExists(member: Symbol, existing: List[Denotations.SingleDenotation])(using Context)
   extends DeclarationMsg(OverridesNothingButNameExistsID) {
-    def msg = em"""${member} has a different signature than the overridden declaration"""
+    def msg =
+      val what =
+        if !existing.exists(_.symbol.hasTargetName(member.targetName))
+        then "target name"
+        else "signature"
+      em"""${member} has a different $what than the overridden declaration"""
     def explain =
       val existingDecl: String = existing.map(_.showDcl).mkString("  \n")
       em"""|There must be a non-final field or method with the name ${member.name} and the
@@ -1081,6 +1104,14 @@ import ast.tpd
            |  ${existingDecl}
            |"""
   }
+
+  class OverrideError(override val msg: String) extends DeclarationMsg(OverrideErrorID):
+    def explain = ""
+
+  class OverrideTypeMismatchError(override val msg: String, memberTp: Type, otherTp: Type)(using Context)
+  extends DeclarationMsg(OverrideTypeMismatchErrorID):
+    def explain = err.whyNoMatchStr(memberTp, otherTp)
+    override def canExplain = true
 
   class ForwardReferenceExtendsOverDefinition(value: Symbol, definition: Symbol)(using Context)
   extends ReferenceMsg(ForwardReferenceExtendsOverDefinitionID) {
@@ -1223,6 +1254,25 @@ import ast.tpd
            |""".stripMargin
   }
 
+  class SkolemInInferred(tree: tpd.Tree, pt: Type, argument: tpd.Tree)(using Context)
+  extends TypeMsg(SkolemInInferredID):
+    private def argStr =
+      if argument.isEmpty then ""
+      else i" from argument of type ${argument.tpe.widen}"
+    def msg =
+      em"""Failure to generate given instance for type $pt$argStr)
+          |
+          |I found: $tree
+          |But the part corresponding to `<skolem>` is not a reference that can be generated.
+          |This might be because resolution yielded as given instance a function that is not
+          |known to be total and side-effect free."""
+    def explain =
+      em"""The part of given resolution that corresponds to `<skolem>` produced a term that
+          |is not a stable reference. Therefore a given instance could not be generated.
+          |
+          |To trouble-shoot the problem, try to supply an explicit expression instead of
+          |relying on implicit search at this point."""
+
   class SuperQualMustBeParent(qual: untpd.Ident, cls: ClassSymbol)(using Context)
   extends ReferenceMsg(SuperQualMustBeParentID) {
     def msg = em"""|$qual does not name a parent of $cls"""
@@ -1237,7 +1287,7 @@ import ast.tpd
   }
 
   class VarArgsParamMustComeLast()(using Context)
-  extends SyntaxMsg(IncorrectRepeatedParameterSyntaxID) {
+  extends SyntaxMsg(VarArgsParamMustComeLastID) {
     def msg = em"""${hl("varargs")} parameter must come last"""
     def explain =
       em"""|The ${hl("varargs")} field must be the last field in the method signature.
@@ -1313,7 +1363,7 @@ import ast.tpd
         if (isNullary) "\nNullary methods may not be called with parenthesis"
         else ""
 
-      "You have specified more parameter lists as defined in the method definition(s)." + addendum
+      "You have specified more parameter lists than defined in the method definition(s)." + addendum
     }
 
   }
@@ -1349,7 +1399,11 @@ import ast.tpd
 
   class TypeDoesNotTakeParameters(tpe: Type, params: List[Trees.Tree[Trees.Untyped]])(using Context)
     extends TypeMsg(TypeDoesNotTakeParametersID) {
-    def msg = em"$tpe does not take type parameters"
+    private def fboundsAddendum =
+      if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
+        "\n(Note that F-bounds of type parameters may not be type lambdas)"
+      else ""
+    def msg = em"$tpe does not take type parameters$fboundsAddendum"
     def explain =
       val ps =
         if (params.size == 1) s"a type parameter ${params.head}"
@@ -1399,37 +1453,31 @@ import ast.tpd
   }
 
   class DoesNotConformToBound(tpe: Type, which: String, bound: Type)(using Context)
-    extends TypeMismatchMsg(DoesNotConformToBoundID) {
-    def msg = em"Type argument ${tpe} does not conform to $which bound $bound${err.whyNoMatchStr(tpe, bound)}"
-    def explain = ""
+    extends TypeMismatchMsg(tpe, bound)(DoesNotConformToBoundID) {
+    def msg = em"Type argument ${tpe} does not conform to $which bound $bound"
   }
 
   class DoesNotConformToSelfType(category: String, selfType: Type, cls: Symbol,
-                                      otherSelf: Type, relation: String, other: Symbol)(
+                                 otherSelf: Type, relation: String, other: Symbol)(
     implicit ctx: Context)
-    extends TypeMismatchMsg(DoesNotConformToSelfTypeID) {
+    extends TypeMismatchMsg(selfType, otherSelf)(DoesNotConformToSelfTypeID) {
     def msg = em"""$category: self type $selfType of $cls does not conform to self type $otherSelf
                   |of $relation $other"""
-    def explain =
-      em"""You mixed in $other which requires self type $otherSelf, but $cls has self type
-          |$selfType and does not inherit from $otherSelf.
-          |
-          |Note: Self types are indicated with the notation
-          |  ${s"class "}$other ${hl("{ this: ")}$otherSelf${hl(" => ")}
-        """
   }
 
   class DoesNotConformToSelfTypeCantBeInstantiated(tp: Type, selfType: Type)(
     implicit ctx: Context)
-    extends TypeMismatchMsg(DoesNotConformToSelfTypeCantBeInstantiatedID) {
+    extends TypeMismatchMsg(tp, selfType)(DoesNotConformToSelfTypeCantBeInstantiatedID) {
     def msg = em"""$tp does not conform to its self type $selfType; cannot be instantiated"""
-    def explain =
-      em"""To create an instance of $tp it needs to inherit $selfType in some way.
-          |
-          |Note: Self types are indicated with the notation
-          |  ${s"class "}$tp ${hl("{ this: ")}$selfType${hl(" => ")}
-          |"""
   }
+
+  class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using Context)
+    extends TypeMismatchMsg(found, expected)(IllegalParameterInitID):
+    def msg =
+      em"""illegal parameter initialization of $param.
+          |
+          |  The argument passed for $param has type: $found
+          |  but $cls expects $param to have type: $expected"""
 
   class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
@@ -1514,6 +1562,18 @@ import ast.tpd
       def explain = ""
     }
 
+  class CannotExtendContextFunction(sym: Symbol)(using Context)
+    extends SyntaxMsg(CannotExtendFunctionID) {
+      def msg = em"""$sym cannot extend a context function class"""
+      def explain = ""
+    }
+
+  class JavaEnumParentArgs(parent: Type)(using Context)
+    extends TypeMsg(JavaEnumParentArgsID) {
+      def msg = em"""not enough arguments for constructor Enum: ${hl("(name: String, ordinal: Int)")}: ${hl(parent.show)}"""
+      def explain = ""
+    }
+
   class CannotHaveSameNameAs(sym: Symbol, cls: Symbol, reason: CannotHaveSameNameAs.Reason)(using Context)
     extends SyntaxMsg(CannotHaveSameNameAsID) {
     import CannotHaveSameNameAs._
@@ -1571,9 +1631,9 @@ import ast.tpd
     def explain = ""
   }
 
-  class ValueClassesMayNotWrapItself(valueClass: Symbol)(using Context)
-    extends SyntaxMsg(ValueClassesMayNotWrapItselfID) {
-    def msg = """A value class may not wrap itself"""
+  class ValueClassesMayNotWrapAnotherValueClass(valueClass: Symbol)(using Context)
+    extends SyntaxMsg(ValueClassesMayNotWrapAnotherValueClassID) {
+    def msg = """A value class may not wrap another user-defined value class"""
     def explain = ""
   }
 
@@ -1735,7 +1795,7 @@ import ast.tpd
           |To convert to a function value, you need to explicitly write ${hl("() => x")}"""
   }
 
-  class MissingEmptyArgumentList(method: Symbol)(using Context)
+  class MissingEmptyArgumentList(method: String)(using Context)
     extends SyntaxMsg(MissingEmptyArgumentListID) {
     def msg = em"$method must be called with ${hl("()")} argument"
     def explain = {
@@ -1803,6 +1863,19 @@ import ast.tpd
     def msg = em"Traits cannot redefine final $method from ${hl("class AnyRef")}."
     def explain = ""
   }
+
+  class AlreadyDefined(name: Name, owner: Symbol, conflicting: Symbol)(using Context) extends NamingMsg(AlreadyDefinedID):
+    private def where: String =
+      if conflicting.effectiveOwner.is(Package) && conflicting.associatedFile != null then
+        i" in ${conflicting.associatedFile}"
+      else if conflicting.owner == owner then ""
+      else i" in ${conflicting.owner}"
+    def msg =
+      if conflicting.isTerm != name.isTermName then
+        em"$name clashes with $conflicting$where; the two must be defined together"
+      else
+        em"$name is already defined as $conflicting$where"
+    def explain = ""
 
   class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(PackageNameAlreadyDefinedID) {
     lazy val (where, or) =
@@ -1883,7 +1956,7 @@ import ast.tpd
   }
 
   class StaticFieldsOnlyAllowedInObjects(member: Symbol)(using Context) extends SyntaxMsg(StaticFieldsOnlyAllowedInObjectsID) {
-    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside an ${hl("object")}."
+    def msg = em"${hl("@static")} $member in ${member.owner} must be defined inside a static ${hl("object")}."
     def explain =
       em"${hl("@static")} members are only allowed inside objects."
   }
@@ -1969,10 +2042,9 @@ import ast.tpd
           |whose behavior may have changed since version change."""
   }
 
-  class UnableToEmitSwitch(tooFewCases: Boolean)(using Context)
+  class UnableToEmitSwitch()(using Context)
   extends SyntaxMsg(UnableToEmitSwitchID) {
-    def tooFewStr: String = if (tooFewCases) " since there are not enough cases" else ""
-    def msg = em"Could not emit switch for ${hl("@switch")} annotated match$tooFewStr"
+    def msg = em"Could not emit switch for ${hl("@switch")} annotated match"
     def explain = {
       val codeExample =
         """val ConstantB = 'B'
@@ -2052,7 +2124,16 @@ import ast.tpd
             case MethodNotAMethodMatch =>
               "neither has parameters."
             case FullMatch =>
-              i"have the same$nameAnd type after erasure."
+              val hint =
+                if !decl.hasAnnotation(defn.TargetNameAnnot)
+                   && !previousDecl.hasAnnotation(defn.TargetNameAnnot)
+                then
+                  i"""
+                     |
+                     |Consider adding a @targetName annotation to one of the conflicting definitions
+                     |for disambiguation."""
+                else ""
+              i"have the same$nameAnd type after erasure.$hint"
           }
         }
         else ""
@@ -2089,7 +2170,7 @@ import ast.tpd
       val addendum =
         if (scrutTp != testTp) s" is a subtype of ${testTp.show}"
         else " is the same as the tested type"
-      s"The highlighted type test will always succeed since the scrutinee type ($scrutTp.show)" + addendum
+      s"The highlighted type test will always succeed since the scrutinee type ${scrutTp.show}" + addendum
     }
     def explain = ""
   }
@@ -2164,7 +2245,7 @@ import ast.tpd
   }
 
   class NoMatchingOverload(val alternatives: List[SingleDenotation], pt: Type)(using Context)
-    extends TypeMismatchMsg(NoMatchingOverloadID) {
+    extends TypeMsg(NoMatchingOverloadID) {
     def msg =
       em"""None of the ${err.overloadedAltsStr(alternatives)}
           |match ${err.expectedTypeStr(pt)}"""
@@ -2177,7 +2258,7 @@ import ast.tpd
     def explain = ""
   }
 
-  class IllegalSuperAccessor(base: Symbol, memberName: Name,
+  class IllegalSuperAccessor(base: Symbol, memberName: Name, targetName: Name,
       acc: Symbol, accTp: Type,
       other: Symbol, otherTp: Type)(using Context) extends DeclarationMsg(IllegalSuperAccessorID) {
     def msg = {
@@ -2193,7 +2274,8 @@ import ast.tpd
       // does in classes, i.e. followed the linearization of the trait itself.
       val staticSuperCall = {
         val staticSuper = accMixin.asClass.info.parents.reverse
-          .find(_.nonPrivateMember(memberName).matchingDenotation(accMixin.thisType, acc.info).exists)
+          .find(_.nonPrivateMember(memberName)
+            .matchingDenotation(accMixin.thisType, acc.info, targetName).exists)
         val staticSuperName = staticSuper match {
           case Some(parent) =>
             parent.classSymbol.name.show
@@ -2300,32 +2382,6 @@ import ast.tpd
            |""".stripMargin
   }
 
-  class AbstractCannotBeUsedForObjects(mdef: untpd.ModuleDef)(using Context)
-    extends SyntaxMsg(AbstractCannotBeUsedForObjectsID) {
-    def msg = em"${hl("abstract")} modifier cannot be used for objects"
-
-    def explain =
-      em"""|Objects are final and cannot be extended, thus cannot have the ${hl("abstract")} modifier
-           |
-           |You may want to define an abstract class:
-           | ${hl("abstract")} ${hl("class")} Abstract${mdef.name} { }
-           |
-           |And extend it in an object:
-           | ${hl("object")} ${mdef.name} ${hl("extends")} Abstract${mdef.name} { }
-           |""".stripMargin
-  }
-
-  class ModifierRedundantForObjects(mdef: untpd.ModuleDef, modifier: String)(using Context)
-    extends SyntaxMsg(ModifierRedundantForObjectsID) {
-    def msg = em"${hl(modifier)} modifier is redundant for objects"
-
-    def explain =
-      em"""|Objects cannot be extended making the ${hl(modifier)} modifier redundant.
-           |You may want to define the object without it:
-           | ${hl("object")} ${mdef.name} { }
-           |""".stripMargin
-  }
-
   class TypedCaseDoesNotExplicitlyExtendTypedEnum(enumDef: Symbol, caseDef: untpd.TypeDef)(using Context)
     extends SyntaxMsg(TypedCaseDoesNotExplicitlyExtendTypedEnumID) {
     def msg = i"explicit extends clause needed because both enum case and enum class have type parameters"
@@ -2366,7 +2422,7 @@ import ast.tpd
     def explain =
       em"""|Extension method:
            |  `${mdef}`
-           |has type parameters `[${mdef.tparams.map(_.show).mkString(",")}]`, while the extension clause has
+           |has type parameters `[${mdef.leadingTypeParams.map(_.show).mkString(",")}]`, while the extension clause has
            |it's own type parameters. Please consider moving these to the extension clause's type parameter list.
            |""".stripMargin
   }
@@ -2419,14 +2475,31 @@ import ast.tpd
 
   class ModifierNotAllowedForDefinition(flag: Flag)(using Context)
     extends SyntaxMsg(ModifierNotAllowedForDefinitionID) {
-    def msg = s"Modifier `${flag.flagsString}` is not allowed for this definition"
+    def msg = em"Modifier ${hl(flag.flagsString)} is not allowed for this definition"
+    def explain = ""
+  }
+
+  class RedundantModifier(flag: Flag)(using Context)
+    extends SyntaxMsg(RedundantModifierID) {
+    def msg = em"Modifier ${hl(flag.flagsString)} is redundant for this definition"
     def explain = ""
   }
 
   class InvalidReferenceInImplicitNotFoundAnnotation(typeVar: String, owner: String)(using Context)
     extends ReferenceMsg(InvalidReferenceInImplicitNotFoundAnnotationID) {
-    def msg = em"""|Invalid reference to a type variable "${hl(typeVar)}" found in the annotation argument.
-                   |The variable does not occur in the signature of ${hl(owner)}.
+    def msg = em"""|Invalid reference to a type variable ${hl(typeVar)} found in the annotation argument.
+                   |The variable does not occur as a parameter in the scope of ${hl(owner)}.
                    |""".stripMargin
     def explain = ""
+  }
+
+  class CaseClassInInlinedCode(tree: tpd.Tree)(using Context)
+    extends SyntaxMsg(CaseClassInInlinedCodeID) {
+
+    def defKind = if tree.symbol.is(Module) then "object" else "class"
+    def msg = s"Case $defKind definitions are not allowed in inline methods or quoted code. Use a normal $defKind instead."
+    def explain =
+      em"""Case class/object definitions generate a considerable fooprint in code size.
+          |Inlining such definition would multiply this footprint for each call site.
+          |""".stripMargin
   }

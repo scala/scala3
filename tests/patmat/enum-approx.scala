@@ -8,7 +8,7 @@ enum Fun[-T, +U >: Null] {
 
   case Identity[T, U >: Null](g: T => U) extends Fun[T, U]
   case ConstNull
-  case ConstNullClass(x: T)
+  case ConstNullClass[T](x: T) extends Fun[T, Null]
   case ConstNullSimple
 }
 
@@ -19,7 +19,7 @@ object Test {
     assert(Fun.ConstNullSimple.f == null)
   }
 
-  import Fun._
+  import Fun.*
 
   def f[T, U >: Null](f: Fun[T, U]): T => U = f match {
     case Identity(g) => g
@@ -28,4 +28,3 @@ object Test {
     case ConstNullSimple => null
   }
 }
-

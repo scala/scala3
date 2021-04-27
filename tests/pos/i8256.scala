@@ -7,4 +7,4 @@ val a = 1
 
   val fetch = implicitly[Test[1]]
 
-@main def main() : Unit = {}
+@main def tester() : Unit = {}

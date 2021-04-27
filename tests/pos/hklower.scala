@@ -34,7 +34,7 @@ class Test2 {
 
   f[V](t)
 
-  var x: V[Int] = _
+  var x: V[Int] = compiletime.uninitialized
   x = t
 
 

@@ -1,4 +1,4 @@
-import scala.quoted._
+import scala.quoted.*
 
 object Macro {
 
@@ -7,5 +7,5 @@ object Macro {
     else ${ bar(false) }
   }
 
-  def bar(b: Boolean)(using QuoteContext): Expr[Int] = if (b) '{1} else '{0}
+  def bar(b: Boolean)(using Quotes): Expr[Int] = if (b) '{1} else '{0}
 }

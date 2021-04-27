@@ -42,7 +42,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   /** Is `sym` a member of implementing class `cls`?
    *  The test is performed at phase `thisPhase`.
    */
-  def isCurrent(sym: Symbol): Boolean =
+  def isInImplementingClass(sym: Symbol): Boolean =
     atPhase(thisPhase) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
@@ -57,31 +57,37 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
     def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
+
+    // JUnit 4 won't recognize annotated default methods, so always generate a forwarder for them.
+    def generateJUnitForwarder: Boolean =
+      meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
+        ctx.settings.mixinForwarderChoices.isAtLeastJunit
+
+    // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
+    def generateSerializationForwarder: Boolean =
+       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
+
     !meth.isConstructor &&
     meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition || needsJUnit4Fix(meth)) &&
-    isCurrent(meth)
+    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
+     generateJUnitForwarder || generateSerializationForwarder) &&
+    isInImplementingClass(meth)
   }
-
-  private def needsJUnit4Fix(meth: Symbol): Boolean =
-    meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
-      ctx.settings.mixinForwarderChoices.isAtLeastJunit
 
   final val PrivateOrAccessor: FlagSet = Private | Accessor
   final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[Type] => List[List[Tree]] => Tree = {
-    targs => vrefss =>
-      val tapp = superRef(target).appliedToTypes(targs)
-      vrefss match {
+  def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
+    prefss =>
+      val (targs, vargss) = splitArgs(prefss)
+      val tapp = superRef(target).appliedToTypeTrees(targs)
+      vargss match
         case Nil | List(Nil) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied
         case _ =>
-          tapp.appliedToArgss(vrefss)
-      }
-  }
+          tapp.appliedToArgss(vargss)
 
   private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
     cls.baseClasses.iterator

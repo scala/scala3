@@ -9,7 +9,7 @@ object O {
 }
 
 object Test {
-  import O._
+  import O.*
   val a: B = ???
   val b: a.T[X] = ???
   b.ensuring(x => true) // trigger an implicit search

@@ -1,6 +1,6 @@
-import scala.quoted._
+import scala.quoted.*
 class Test {
-  def foo(str: Expr[String])(using QuoteContext) = '{
+  def foo(str: Expr[String])(using Quotes) = '{
     @deprecated($str, "")
     def bar = ???
   }

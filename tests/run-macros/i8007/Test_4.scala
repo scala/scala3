@@ -1,6 +1,6 @@
-import Macro1._
-import Macro2._
-import Macro3._
+import Macro1.*
+import Macro2.*
+import Macro3.*
 import Macro3.eqGen
 
 case class Person(name: String, age: Int)
@@ -10,9 +10,14 @@ enum Opt[+T] {
   case Nn
 }
 
+enum OptInv[+T] {
+  case Sm[T](t: T) extends OptInv[T]
+  case Nn
+}
+
 @main def Test() = {
-  import Opt._
-  import Eq.{given _, _}
+  import Opt.*
+  import Eq.{given, *}
 
   val t1 = test1(Person("Test", 23))
   println(t1)
@@ -32,6 +37,10 @@ enum Opt[+T] {
 
   val t5 = Sm(23) === Sm(23)
   println(t5) // true
+  println
+
+  val t5_2 = OptInv.Sm(23) === OptInv.Sm(23)
+  println(t5_2) // true
   println
 
   val t6 = Sm(Person("Test", 23)) === Sm(Person("Test", 23))

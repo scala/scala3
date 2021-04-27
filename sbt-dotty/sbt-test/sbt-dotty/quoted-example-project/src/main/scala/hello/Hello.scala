@@ -2,11 +2,11 @@ package hello
 
 // Import `Expr` and some extension methods
 import scala.quoted._
-import scala.quoted.staging.{run, Toolbox}
+import scala.quoted.staging.{run, Compiler}
 
 object Main {
 
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
 
   def main(args: Array[String]): Unit = {
 
@@ -41,7 +41,7 @@ object Main {
     code
   }
 
-  def powerCode(n: Int, x: Expr[Double])(using QuoteContext): Expr[Double] =
+  def powerCode(n: Int, x: Expr[Double])(using Quotes): Expr[Double] =
     if (n == 0) '{1.0}
     else if (n == 1) x
     else if (n < 0) throw new Exception("Negative powers not implemented. Left as a small exercise. Dont be shy, try it out.")

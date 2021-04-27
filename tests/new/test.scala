@@ -1,3 +1,3 @@
-trait T {
-  object O
-}
+object Test:
+
+  def test = ???

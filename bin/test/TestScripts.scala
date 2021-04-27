@@ -45,53 +45,53 @@ class TestScripts {
   @Before def buildUp  = deletePackages
   @After  def tearDown = deletePackages
 
-  /** bin/dotc script should be able to build hello world and successfully
-   *  execute it using dotr
+  /** bin/scalac script should be able to build hello world and successfully
+   *  execute it using scala
    */
   @Test def buildAndRunHelloWorld = doUnlessWindows {
-    val (retDotc, dotcOutput) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    val (retDotc, dotcOutput) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
 
-    // Check correct output of building and running dotc
+    // Check correct output of building and running scalac
     assert(
       retDotc == 0,
-      s"bin/dotc script did not run properly. Output:$lineSep$dotcOutput"
+      s"bin/scalac script did not run properly. Output:$lineSep$dotcOutput"
     )
 
-    val (retDotr, dotrOutput) = executeScript("./bin/dotr HelloWorld")
+    val (retDotr, dotrOutput) = executeScript("./bin/scala HelloWorld")
     assert(
       retDotr == 0 && dotrOutput == "hello world\n",
       s"Running hello world exited with status: $retDotr and output: $dotrOutput"
     )
   }
 
-  /** bin/dotc script should be able to detect changes in dotty sources and
+  /** bin/scalac script should be able to detect changes in dotty sources and
    *  rebuild dotty if needed
    */
   @Test def rebuildIfNecessary = doUnlessWindows {
-    val (retFirstBuild, out1) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
-    assert(retFirstBuild == 0, s"building dotc failed: $out1")
+    val (retFirstBuild, out1) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
+    assert(retFirstBuild == 0, s"building scalac failed: $out1")
 
     // Create a new file to force rebuild
     new JFile("./compiler/src/dotty/tools/dotc/Dummy.scala").createNewFile()
 
-    val (retSecondBuild, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    val (retSecondBuild, output) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
     assert(
       retSecondBuild == 0 && output.contains("rebuilding"),
       s"Rebuilding the tool should result in jar files being rebuilt. Status: $retSecondBuild, output:$lineSep$output")
   }
 
-  /** if no changes to dotty, dotc script should be fast */
+  /** if no changes to dotty, scalac script should be fast */
   @Test def beFastOnNoChanges = doUnlessWindows {
-    val (retFirstBuild, _) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
-    assert(retFirstBuild == 0, "building dotc failed")
+    val (retFirstBuild, _) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
+    assert(retFirstBuild == 0, "building scalac failed")
 
-    val (ret, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    val (ret, output) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
     assert(
       ret == 0 && !output.contains("rebuilding"),
       s"Project recompiled when it didn't need to be. Status $ret, output:$lineSep$output")
   }
 
-  /** dotc script should work after corrupting .packages */
+  /** scalac script should work after corrupting .packages */
   @Test def reCreatesPackagesIfNecessary = doUnlessWindows {
     import java.nio.file.{Paths, Files}
     import java.nio.charset.StandardCharsets
@@ -104,8 +104,8 @@ class TestScripts {
 
     Files.write(Paths.get("./.packages"), contents.getBytes(StandardCharsets.UTF_8))
 
-    val (retFirstBuild, output) = executeScript("./bin/dotc ./tests/pos/HelloWorld.scala")
+    val (retFirstBuild, output) = executeScript("./bin/scalac ./tests/pos/HelloWorld.scala")
     assert(output.contains(".packages file corrupted"))
-    assert(retFirstBuild == 0, "building dotc failed")
+    assert(retFirstBuild == 0, "building scalac failed")
   }
 }

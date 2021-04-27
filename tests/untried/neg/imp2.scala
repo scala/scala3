@@ -13,7 +13,7 @@ object B extends C {
 object Test {
   val a: C = A;
   val b: C = B;
-  import a._
-  import b._
+  import a.*
+  import b.*
   val x = f
 }

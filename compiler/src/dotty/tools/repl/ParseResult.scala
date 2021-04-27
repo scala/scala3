@@ -90,6 +90,7 @@ case object Reset extends Command {
 /** `:quit` exits the repl */
 case object Quit extends Command {
   val command: String = ":quit"
+  val alias: String = ":exit"
 }
 
 /** `:help` shows the different commands implemented by the Dotty repl */
@@ -102,7 +103,7 @@ case object Help extends Command {
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
-      |:doc <expression>        print the documentation for the given expresssion
+      |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
       |:reset                   reset the repl to its initial state, forgetting all session entries
     """.stripMargin
@@ -121,6 +122,7 @@ object ParseResult {
 
   private val commands: List[(String, String => ParseResult)] = List(
     Quit.command -> (_ => Quit),
+    Quit.alias -> (_ => Quit),
     Help.command -> (_  => Help),
     Reset.command -> (_  => Reset),
     Imports.command -> (_  => Imports),

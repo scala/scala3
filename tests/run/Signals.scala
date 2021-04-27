@@ -1,10 +1,11 @@
 
-import annotation.unchecked._
+import annotation.unchecked.*
+import compiletime.uninitialized
 package frp:
 
   sealed class Signal[+T](expr: Signal.Caller ?=> T):
-    private var myExpr: Signal.Caller => T = _
-    private var myValue: T = _
+    private var myExpr: Signal.Caller => T = uninitialized
+    private var myValue: T = uninitialized
     private var observers: Set[Signal.Caller] = Set()
     changeTo(expr)
 
@@ -28,7 +29,7 @@ package frp:
 
   object Signal:
     type Caller = Signal[?]
-    given noCaller as Caller(???):
+    given noCaller: Caller(???) with
       override def computeValue() = ()
   end Signal
 
@@ -37,7 +38,7 @@ package frp:
   end Var
 end frp
 
-import frp._
+import frp.*
 class BankAccount:
   def balance: Signal[Int] = myBalance
 
@@ -53,7 +54,7 @@ class BankAccount:
       val b = myBalance()
       myBalance() = b - amount
       myBalance()
-    else assertFail("insufficient funds")
+    else throw new AssertionError("insufficient funds")
 end BankAccount
 
 @main def Test() =

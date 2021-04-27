@@ -1,7 +1,7 @@
 object Test {
 
   class Encoder { def apply(x: Int): Int = x }
-  given Encoder
+  given Encoder()
 
   summon[Encoder](2)
 

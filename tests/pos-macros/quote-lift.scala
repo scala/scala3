@@ -1,13 +1,13 @@
-import scala.quoted._
+import scala.quoted.*
 
-class Test(using QuoteContext) {
+class Test(using Quotes) {
 
-  '{ ${implicitly[Liftable[Int]].toExpr(1)} }
+  '{ ${implicitly[ToExpr[Int]].apply(1)} }
 
   {
-    import Liftable._
+    import ToExpr.*
 
-    '{ ${summon[Liftable[Int]].toExpr(1)} }
+    '{ ${summon[ToExpr[Int]].apply(1)} }
 
     '{ ${Expr(1)} }
 

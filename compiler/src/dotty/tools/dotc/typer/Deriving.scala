@@ -54,8 +54,9 @@ trait Deriving {
         // If we set the Synthetic flag here widenGiven will widen too far and the
         // derived instance will have too low a priority to be selected over a freshly
         // derived instance at the summoning site.
+        val flags = if info.isInstanceOf[MethodOrPoly] then Given | Method else Given | Lazy
         synthetics +=
-          newSymbol(ctx.owner, instanceName, Given | Method, info, coord = pos.span)
+          newSymbol(ctx.owner, instanceName, flags, info, coord = pos.span)
             .entered
     }
 
@@ -67,9 +68,9 @@ trait Deriving {
      *          the deriving ADT
      *      (b) a single parameter type class with a parameter of kind * and an ADT with
      *          one or more type parameter of kind *
-     *      (c) the Eql type class
+     *      (c) the CanEqual type class
      *
-     *      See detailed descriptions in deriveSingleParameter and deriveEql below.
+     *      See detailed descriptions in deriveSingleParameter and deriveCanEqual below.
      *
      *  If it passes the checks, enter a type class instance for it in the current scope.
      *
@@ -95,10 +96,12 @@ trait Deriving {
 
       def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
-        val methodOrExpr =
-          if (evidenceParamInfos.isEmpty) ExprType(resultType)
+        val monoInfo =
+          if evidenceParamInfos.isEmpty then resultType
           else ImplicitMethodType(evidenceParamInfos.map(typeClassType.appliedTo), resultType)
-        val derivedInfo = if (derivedParams.isEmpty) methodOrExpr else PolyType.fromParams(derivedParams, methodOrExpr)
+        val derivedInfo =
+          if derivedParams.isEmpty then monoInfo
+          else PolyType.fromParams(derivedParams, monoInfo)
         addDerivedInstance(originalTypeClassType.typeSymbol.name, derivedInfo, derived.srcPos)
       }
 
@@ -122,11 +125,11 @@ trait Deriving {
         //
         //     ADT: C[A, B]               (A, B have same kinds at T, U)
         //
-        //          given derived$TC      as TC[              C         ]  // a "natural" instance
+        //          given derived$TC      : TC[              C         ]  // a "natural" instance
         //
         //     ADT: C[A]                  (A has same kind as U)
         //
-        //          given derived$TC      as TC[[t, u] =>>    C[      u]]
+        //          given derived$TC      : TC[[t, u] =>>    C[      u]]
         //
         // (b) The type class and all ADT type parameters are of kind *
         //
@@ -145,7 +148,7 @@ trait Deriving {
         //
         //          given derived$TC[a, b, c] given TC[a], TC[b], TC[c]: TC[a, b, c]
         //
-        //     This, like the derivation for Eql, is a special case of the
+        //     This, like the derivation for CanEqual, is a special case of the
         //     earlier more general multi-parameter type class model for which
         //     the heuristic is typically a good one.
 
@@ -185,8 +188,8 @@ trait Deriving {
           cannotBeUnified
       }
 
-      def deriveEql: Unit = {
-        // Specific derives rules for the Eql type class ... (c) above
+      def deriveCanEqual: Unit = {
+        // Specific derives rules for the CanEqual type class ... (c) above
         //
         // This has been extracted from the earlier more general multi-parameter
         // type class model. Modulo the assumptions below, the implied semantics
@@ -196,13 +199,13 @@ trait Deriving {
         // 1. Type params of the deriving class correspond to all and only
         // elements of the deriving class which are relevant to equality (but:
         // type params could be phantom, or the deriving class might have an
-        // element of a non-Eql type non-parametrically).
+        // element of a non-CanEqual type non-parametrically).
         //
         // 2. Type params of kinds other than * can be assumed to be irrelevant to
         // the derivation (but: eg. Foo[F[_]](fi: F[Int])).
         //
         // Are they reasonable? They cover some important cases (eg. Tuples of all
-        // arities). derives Eql is opt-in, so if the semantics don't match those
+        // arities). derives CanEqual is opt-in, so if the semantics don't match those
         // appropriate for the deriving class the author of that class can provide
         // their own instance in the normal way. That being so, the question turns
         // on whether there are enough types which fit these semantics for the
@@ -210,12 +213,12 @@ trait Deriving {
 
         // Procedure:
         // We construct a two column matrix of the deriving class type parameters
-        // and the Eql type class parameters.
+        // and the CanEqual type class parameters.
         //
         // Rows: parameters of the deriving class
-        // Columns: parameters of the Eql type class (L/R)
+        // Columns: parameters of the CanEqual type class (L/R)
         //
-        // Running example: type class: class Eql[L, R], deriving class: class A[T, U, V]
+        // Running example: type class: class CanEqual[L, R], deriving class: class A[T, U, V]
         // clsParamss =
         //     T_L  T_R
         //     U_L  U_R
@@ -225,7 +228,7 @@ trait Deriving {
             tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
               .asInstanceOf[TypeSymbol])
         }
-        // Retain only rows with L/R params of kind * which Eql can be applied to.
+        // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
         val firstKindedParamss = clsParamss.filter {
           case param :: _ => !param.info.isLambdaSub
@@ -233,7 +236,7 @@ trait Deriving {
         }
 
         // The types of the required evidence parameters. In the running example:
-        // Eql[T_L, T_R], Eql[U_L, U_R], Eql[V_L, V_R]
+        // CanEqual[T_L, T_R], CanEqual[U_L, U_R], CanEqual[V_L, V_R]
         val evidenceParamInfos =
           for (row <- firstKindedParamss)
           yield row.map(_.typeRef)
@@ -244,12 +247,12 @@ trait Deriving {
           for (n <- List.range(0, typeClassArity))
           yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
 
-        // Eql[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
+        // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
         addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)
       }
 
       if (typeClassArity == 1) deriveSingleParameter
-      else if (typeClass == defn.EqlClass) deriveEql
+      else if (typeClass == defn.CanEqualClass) deriveCanEqual
       else if (typeClassArity == 0)
         report.error(i"type ${typeClass.name} in derives clause of ${cls.name} has no type parameters", derived.srcPos)
       else
@@ -268,15 +271,17 @@ trait Deriving {
       import tpd._
 
       /** The type class instance definition with symbol `sym` */
-      def typeclassInstance(sym: Symbol)(using Context): List[Type] => (List[List[tpd.Tree]] => tpd.Tree) = {
-        (tparamRefs: List[Type]) => (paramRefss: List[List[tpd.Tree]]) =>
-          val tparams = tparamRefs.map(_.typeSymbol.asType)
-          val params = if (paramRefss.isEmpty) Nil else paramRefss.head.map(_.symbol.asTerm)
+      def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =
+        (paramRefss: List[List[tpd.Tree]]) =>
+          val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
+          val tparamTypes = tparamRefs.tpes
+          val tparams = tparamTypes.map(_.typeSymbol.asType)
+          val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
-          params.foreach(ctx.enter(_))
+          vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
-            case info: PolyType => instantiated(info.instantiate(tparamRefs))
-            case info: MethodType => info.instantiate(params.map(_.termRef))
+            case info: PolyType => instantiated(info.instantiate(tparamTypes))
+            case info: MethodType => info.instantiate(vparams.map(_.termRef))
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {
@@ -286,13 +291,16 @@ trait Deriving {
               companionRef(tp.underlying)
           }
           val resultType = instantiated(sym.info)
-          val module = untpd.ref(companionRef(resultType)).withSpan(sym.span)
+          val companion = companionRef(resultType)
+          val module = untpd.ref(companion).withSpan(sym.span)
           val rhs = untpd.Select(module, nme.derived)
-          typed(rhs, resultType)
-      }
+          if companion.termSymbol.exists then typed(rhs, resultType)
+          else errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
+      end typeclassInstance
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
-        tpd.polyDefDef(sym.asTerm, typeclassInstance(sym))
+        if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))
+        else tpd.ValDef(sym.asTerm, typeclassInstance(sym)(Nil))
       }
 
       synthetics.map(syntheticDef).toList

@@ -22,7 +22,7 @@ if one of the following applies:
 
 object E {
   val e = new E
-  import e._
+  import e.*
   def n(a: A, b: B, c: C) = {
     b.protE    // 1c
     c.protE    // 1c
@@ -53,7 +53,7 @@ class E {
       A.this.protT
     }
 
-    import A._
+    import A.*
     // 0a
     protO
     // 3
@@ -115,7 +115,7 @@ class E {
 
 class Other {
   val e = new E
-  import e._
+  import e.*
   def n(a: A, b: B, c: C) = {
     b.prot    // not allowed
     c.prot    // not allowed

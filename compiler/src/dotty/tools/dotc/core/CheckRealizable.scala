@@ -6,7 +6,7 @@ import Contexts._, Types._, Symbols._, Names._, Flags._
 import Denotations.SingleDenotation
 import Decorators._
 import collection.mutable
-import config.SourceVersion.`3.1`
+import config.SourceVersion.future
 import config.Feature.sourceVersion
 
 /** Realizability status */
@@ -118,6 +118,7 @@ class CheckRealizable(using Context) {
     case tp =>
       def isConcrete(tp: Type): Boolean = tp.dealias match {
         case tp: TypeRef => tp.symbol.isClass
+        case tp: TypeParamRef => false
         case tp: TypeProxy => isConcrete(tp.underlying)
         case tp: AndType => isConcrete(tp.tp1) && isConcrete(tp.tp2)
         case tp: OrType  => isConcrete(tp.tp1) && isConcrete(tp.tp2)
@@ -202,8 +203,8 @@ class CheckRealizable(using Context) {
           realizability(fld.info).mapError(r => new HasProblemField(fld, r))
         }
       }
-    if sourceVersion.isAtLeast(`3.1`) then
-      // check fields only from version 3.1.
+    if sourceVersion.isAtLeast(future) then
+      // check fields only from version 3.x.
       // Reason: An embedded field could well be nullable, which means it
       // should not be part of a path and need not be checked; but we cannot recognize
       // this situation until we have a typesystem that tracks nullability.

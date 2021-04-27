@@ -1,5 +1,5 @@
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
+import scala.scalajs.js.annotation.*
 
 abstract class A1 extends js.Object {
   val a1: js.UndefOr[Int] = 5

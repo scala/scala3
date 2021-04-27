@@ -1,14 +1,14 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def expr(i: Int)(using QuoteContext) = '{
+    given Compiler = Compiler.make(getClass.getClassLoader)
+    def expr(i: Int)(using Quotes) = '{
       val a = 3 + ${Expr(i)}
       2 + a
     }
-    for (i <- 0 to 100)
+    for (i <- 0 to 50)
       run(expr(i))
   }
 }

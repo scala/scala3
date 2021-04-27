@@ -1,7 +1,7 @@
 -- Error: tests/neg/missing-implicit2.scala:10:18 ----------------------------------------------------------------------
 10 |    f(using xFromY) // error
    |                  ^
-   |                  no implicit argument of type Y was found for parameter y of method xFromY
+   |                  no implicit argument of type Y was found for parameter y of given instance xFromY
    |
    |                  The following import might fix the problem:
    |

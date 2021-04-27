@@ -1,10 +1,10 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 trait App[F[_],CT]:
   this: Base[F,CT] =>
 
-  import qctx.tasty._
+  import quotes.reflect.*
 
   trait AA
 
@@ -37,7 +37,7 @@ class FC[F[_]]()
 
 trait Base[F[_]:Type,CT:Type]  // Both :Type context bounds are necessary for failure
 extends Cps with Root[F, CT] with App[F, CT]:
-  implicit val qctx: QuoteContext
+  implicit val qctx: Quotes
 
 trait Root[F[_], CT]:
   this: Base[F, CT] =>

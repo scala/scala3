@@ -1,5 +1,2 @@
-# Closure type miss match
-eff-dependent.scala
-
-# We get: class Foo needs to be abstract, since implicit val x$1: TC is not defined
-i2567.scala
+# CI only: cannot reduce summonFrom with
+sip23-valueof.scala

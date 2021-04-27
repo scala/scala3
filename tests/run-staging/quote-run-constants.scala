@@ -1,12 +1,12 @@
 
 
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
   def main(args: Array[String]): Unit = {
-    given Toolbox = Toolbox.make(getClass.getClassLoader)
-    def runAndPrint[T](expr: QuoteContext ?=> Expr[T]): Unit = println(run(expr))
+    given Compiler = Compiler.make(getClass.getClassLoader)
+    def runAndPrint[T](expr: Quotes ?=> Expr[T]): Unit = println(run(expr))
 
     runAndPrint(Expr(true))
     runAndPrint(Expr('a'))
@@ -23,7 +23,7 @@ object Test {
 
     println("======")
 
-    withQuoteContext {
+    withQuotes {
       def show[T](expr: Expr[T]): Unit = println(expr.show)
 
       show(Expr(true))

@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="72px"
+   height="72px"
+   viewBox="0 0 72 72"
+   version="1.1"
+   id="svg66"
+   sodipodi:docname="given.svg"
+   inkscape:version="1.0.1 (0767f8302a, 2020-10-17)">
+  <metadata
+     id="metadata70">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1848"
+     inkscape:window-height="1016"
+     id="namedview68"
+     showgrid="false"
+     inkscape:zoom="5.9861111"
+     inkscape:cx="35.68296"
+     inkscape:cy="41.46843"
+     inkscape:window-x="72"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer3"
+     inkscape:document-rotation="0" />
+  <defs
+     id="defs50">
+    <filter
+       x="-50%"
+       y="-50%"
+       width="200%"
+       height="200%"
+       filterUnits="objectBoundingBox"
+       id="filter-1">
+      <feOffset
+         dx="0"
+         dy="4"
+         in="SourceAlpha"
+         result="shadowOffsetOuter1"
+         id="feOffset2" />
+      <feGaussianBlur
+         stdDeviation="2"
+         in="shadowOffsetOuter1"
+         result="shadowBlurOuter1"
+         id="feGaussianBlur4" />
+      <feColorMatrix
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.14 0"
+         in="shadowBlurOuter1"
+         type="matrix"
+         result="shadowMatrixOuter1"
+         id="feColorMatrix6" />
+      <feMerge
+         id="feMerge12">
+        <feMergeNode
+           in="shadowMatrixOuter1"
+           id="feMergeNode8" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode10" />
+      </feMerge>
+    </filter>
+    <circle
+       id="path-2"
+       cx="32"
+       cy="32"
+       r="32" />
+    <filter
+       x="-50%"
+       y="-50%"
+       width="200%"
+       height="200%"
+       filterUnits="objectBoundingBox"
+       id="filter-4">
+      <feOffset
+         dx="0"
+         dy="4"
+         in="SourceAlpha"
+         result="shadowOffsetOuter1"
+         id="feOffset16" />
+      <feGaussianBlur
+         stdDeviation="2"
+         in="shadowOffsetOuter1"
+         result="shadowBlurOuter1"
+         id="feGaussianBlur18" />
+      <feColorMatrix
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.14 0"
+         in="shadowBlurOuter1"
+         type="matrix"
+         result="shadowMatrixOuter1"
+         id="feColorMatrix20" />
+      <feOffset
+         dx="0"
+         dy="1"
+         in="SourceAlpha"
+         result="shadowOffsetInner1"
+         id="feOffset22" />
+      <feGaussianBlur
+         stdDeviation="0"
+         in="shadowOffsetInner1"
+         result="shadowBlurInner1"
+         id="feGaussianBlur24" />
+      <feComposite
+         in="shadowBlurInner1"
+         in2="SourceAlpha"
+         operator="arithmetic"
+         k2="-1"
+         k3="1"
+         result="shadowInnerInner1"
+         id="feComposite26" />
+      <feColorMatrix
+         values="0 0 0 0 1   0 0 0 0 1   0 0 0 0 1  0 0 0 0.14 0"
+         in="shadowInnerInner1"
+         type="matrix"
+         result="shadowMatrixInner1"
+         id="feColorMatrix28" />
+      <feOffset
+         dx="0"
+         dy="-1"
+         in="SourceAlpha"
+         result="shadowOffsetInner2"
+         id="feOffset30" />
+      <feGaussianBlur
+         stdDeviation="0"
+         in="shadowOffsetInner2"
+         result="shadowBlurInner2"
+         id="feGaussianBlur32" />
+      <feComposite
+         in="shadowBlurInner2"
+         in2="SourceAlpha"
+         operator="arithmetic"
+         k2="-1"
+         k3="1"
+         result="shadowInnerInner2"
+         id="feComposite34" />
+      <feColorMatrix
+         values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.14 0"
+         in="shadowInnerInner2"
+         type="matrix"
+         result="shadowMatrixInner2"
+         id="feColorMatrix36" />
+      <feMerge
+         id="feMerge46">
+        <feMergeNode
+           in="shadowMatrixOuter1"
+           id="feMergeNode38" />
+        <feMergeNode
+           in="SourceGraphic"
+           id="feMergeNode40" />
+        <feMergeNode
+           in="shadowMatrixInner1"
+           id="feMergeNode42" />
+        <feMergeNode
+           in="shadowMatrixInner2"
+           id="feMergeNode44" />
+      </feMerge>
+    </filter>
+    <path
+       id="path-5"
+       d="M32 61C49.673112 61 64 48.0162577 64 32 64 15.9837423 49.673112 3 32 3 14.326888 3 0 15.9837423 0 32 0 48.0162577 14.326888 61 32 61Z" />
+  </defs>
+  <g
+     id="Artboard-1"
+     transform="translate(-298,-87)"
+     style="fill:#b66722;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1">
+    <g
+       id="BG"
+       transform="translate(302,91)"
+       style="fill:#b66722;fill-opacity:1">
+      <g
+         id="Icon"
+         style="fill:#b66722;fill-opacity:1">
+        <mask
+           id="mask-3"
+           fill="#ffffff">
+          <use
+             xlink:href="#path-2"
+             id="use52"
+             x="0"
+             y="0"
+             width="100%"
+             height="100%" />
+        </mask>
+        <use
+           id="Mask"
+           fill="#7521bf"
+           filter="url(#filter-1)"
+           xlink:href="#path-2"
+           x="0"
+           y="0"
+           width="100%"
+           height="100%"
+           style="fill:#7d2fc2;fill-opacity:1" />
+        <mask
+           id="mask-6"
+           fill="#ffffff">
+          <use
+             xlink:href="#path-5"
+             id="use56"
+             x="0"
+             y="0"
+             width="100%"
+             height="100%" />
+        </mask>
+      </g>
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="E">
+    <text
+       id="C"
+       mask="url(#mask-6)"
+       font-family="'Open Sans', 'Helvetica Neueu', Sans-serif"
+       font-size="40px"
+       font-weight="normal"
+       fill="#ffffff"
+       transform="translate(7.0175781,-3.9589844)"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1"><tspan
+         x="17"
+         y="47"
+         id="tspan59"
+         style="fill:#ffffff;fill-opacity:1">g</tspan></text>
+  </g>
+</svg>

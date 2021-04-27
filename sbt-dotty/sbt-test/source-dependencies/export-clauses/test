@@ -1,0 +1,29 @@
+> recordPreviousIterations
+> compile
+$ copy-file changes/B1.scala B.scala
+> compile
+# This should be 3 because of:
+# 1. the first `compile` call
+# 2. the recompilation of B.scala
+# 3. this recompilation triggering a recompilation of A.scala
+#    because B has a new member and A does a wildcard export
+#    from a value of type B.
+> checkIterations 3
+$ copy-file changes/C1.scala C.scala
+> compile
+# This should be 5 because of:
+# 1. the three prior compilations
+# 2. the recompilation of C.scala
+# 3. this recompilation triggering a recompilation of A.scala
+#    because C has a new member and A.Inner does a wildcard export
+#    from a value of type C.
+> checkIterations 5
+$ copy-file changes/D1.scala D.scala
+> compile
+# This should be 7 because of:
+# 1. the 5 prior compilations
+# 2. the recompilation of D.scala
+# 3. this recompilation triggering a recompilation of A.scala
+#    because D has a new member and A.local().Local does a wildcard export
+#    from a value of type D.
+> checkIterations 7

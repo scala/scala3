@@ -22,7 +22,7 @@ object Foo {
 }
 
 object Bar {
-  import compiletime.S
+  import compiletime.ops.int.S
 
   type Plus[A <: Int, B <: Int] <: Int =
     A match {
@@ -51,7 +51,7 @@ object Main {
     case Even[N <: BinNat](n: N)
   }
 
-  import BinNat._
+  import BinNat.*
 
   type Inc[N <: BinNat] <: BinNat =
     N match {

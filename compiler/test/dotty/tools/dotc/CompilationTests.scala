@@ -16,20 +16,11 @@ import scala.concurrent.duration._
 import TestSources.sources
 import vulpix._
 
-class CompilationTests extends ParallelTesting {
+class CompilationTests {
   import ParallelTesting._
   import TestConfiguration._
   import CompilationTests._
   import CompilationTest.aggregateTests
-
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 45.seconds
-  def numberOfSlaves = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
 
   // Positive tests ------------------------------------------------------------
 
@@ -41,25 +32,26 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos-special/utf16encoded.scala", explicitUTF16),
       compileFilesInDir("tests/pos-special/sourcepath/outer", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
       compileFile("tests/pos-special/sourcepath/outer/nested/Test4.scala", defaultOptions.and("-sourcepath", "tests/pos-special/sourcepath")),
-      compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-feature")),
+      compileFilesInDir("tests/pos-special/fatal-warnings", defaultOptions.and("-Xfatal-warnings", "-deprecation", "-feature")),
+      compileFile("tests/pos-special/avoid-warn-deprecation.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFilesInDir("tests/pos-special/spec-t5545", defaultOptions),
       compileFilesInDir("tests/pos-special/strawman-collections", allowDeepSubtypes),
       compileFilesInDir("tests/pos-special/isInstanceOf", allowDeepSubtypes.and("-Xfatal-warnings")),
       compileFilesInDir("tests/new", defaultOptions),
       compileFilesInDir("tests/pos-scala2", scala2CompatMode),
-      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-Yerased-terms")),
-      compileFilesInDir("tests/pos", defaultOptions),
+      compileFilesInDir("tests/pos-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
+      compileFilesInDir("tests/pos", defaultOptions.and("-Ysafe-init")),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
+      compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
       compileFile(
         // succeeds despite -Xfatal-warnings because of -nowarn
         "tests/neg-custom-args/fatal-warnings/xfatalWarnings.scala",
         defaultOptions.and("-nowarn", "-Xfatal-warnings")
       ),
       compileFile("tests/pos-special/typeclass-scaling.scala", defaultOptions.and("-Xmax-inlines", "40")),
-      compileFile("tests/pos-special/indent-colons.scala", defaultOptions.and("-Yindent-colons")),
-      compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/pos-special/i7296.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFile("tests/pos-special/notNull.scala", defaultOptions.and("-Yexplicit-nulls")),
-      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "3.1", "-feature", "-Xfatal-warnings")),
+      compileDir("tests/pos-special/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/pos-special/i7575.scala", defaultOptions.andLanguageFeature("dynamics")),
       compileFile("tests/pos-special/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
       compileFile("tests/run/i5606.scala", defaultOptions.and("-Yretain-trees")),
@@ -75,7 +67,10 @@ class CompilationTests extends ParallelTesting {
 
     aggregateTests(
       compileFile("tests/rewrites/rewrites.scala", scala2CompatMode.and("-rewrite", "-indent")),
-      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite"))
+      compileFile("tests/rewrites/rewrites3x.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/i8982.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i9632.scala", defaultOptions.and("-indent", "-rewrite")),
+      compileFile("tests/rewrites/i11895.scala", defaultOptions.and("-indent", "-rewrite"))
     ).checkRewrites()
   }
 
@@ -115,7 +110,8 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/pos/i0239.scala", defaultOptions),
       compileFile("tests/pos/anonClassSubtyping.scala", defaultOptions),
       compileFile("tests/pos/extmethods.scala", defaultOptions),
-      compileFile("tests/pos/companions.scala", defaultOptions)
+      compileFile("tests/pos/companions.scala", defaultOptions),
+      compileFile("tests/pos/main.scala", defaultOptions)
     ).times(2).checkCompile()
   }
 
@@ -126,14 +122,15 @@ class CompilationTests extends ParallelTesting {
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions),
       compileFilesInDir("tests/neg-tailcall", defaultOptions),
-      compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "3.1")),
+      compileFilesInDir("tests/neg-strict", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
       compileFilesInDir("tests/neg-no-kind-polymorphism", defaultOptions and "-Yno-kind-polymorphism"),
       compileFilesInDir("tests/neg-custom-args/deprecation", defaultOptions.and("-Xfatal-warnings", "-deprecation")),
       compileFilesInDir("tests/neg-custom-args/fatal-warnings", defaultOptions.and("-Xfatal-warnings")),
-      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFilesInDir("tests/neg-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/neg-custom-args/allow-double-bindings", allowDoubleBindings),
       compileFilesInDir("tests/neg-custom-args/allow-deep-subtypes", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/explicit-nulls", defaultOptions.and("-Yexplicit-nulls")),
+      compileFilesInDir("tests/neg-custom-args/no-experimental", defaultOptions.and("-Yno-experimental")),
       compileDir("tests/neg-custom-args/impl-conv", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
       compileFile("tests/neg-custom-args/implicit-conversions-old.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
@@ -150,6 +147,7 @@ class CompilationTests extends ParallelTesting {
       compileFile("tests/neg-custom-args/i4372.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i1754.scala", allowDeepSubtypes),
       compileFile("tests/neg-custom-args/i9517.scala", defaultOptions.and("-Xprint-types")),
+      compileFile("tests/neg-custom-args/i11637.scala", defaultOptions.and("-explain")),
       compileFile("tests/neg-custom-args/interop-polytypes.scala", allowDeepSubtypes.and("-Yexplicit-nulls")),
       compileFile("tests/neg-custom-args/conditionalWarnings.scala", allowDeepSubtypes.and("-deprecation").and("-Xfatal-warnings")),
       compileFilesInDir("tests/neg-custom-args/isInstanceOf", allowDeepSubtypes and "-Xfatal-warnings"),
@@ -161,16 +159,19 @@ class CompilationTests extends ParallelTesting {
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
       compileFile("tests/neg-custom-args/i6300.scala", allowDeepSubtypes),
-      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-source", "3.1", "-deprecation", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-noindent", "-Xfatal-warnings")),
-      compileFile("tests/neg-custom-args/extmethods-tparams.scala", defaultOptions.and("-deprecation", "-Xfatal-warnings")),
-      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-source", "3.1", "-feature", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/infix.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/missing-alpha.scala", defaultOptions.and("-Yrequire-targetName", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/wildcards.scala", defaultOptions.and("-source", "future", "-deprecation", "-Xfatal-warnings")),
+      compileFile("tests/neg-custom-args/indentRight.scala", defaultOptions.and("-no-indent", "-Xfatal-warnings")),
+      compileDir("tests/neg-custom-args/adhoc-extension", defaultOptions.and("-source", "future", "-feature", "-Xfatal-warnings")),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures.and("-language:_")),
       compileFile("tests/neg-custom-args/kind-projector.scala", defaultOptions.and("-Ykind-projector")),
-      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-Yerased-terms")),
+      compileFile("tests/neg-custom-args/typeclass-derivation2.scala", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFile("tests/neg-custom-args/i5498-postfixOps.scala", defaultOptions withoutLanguageFeature "postfixOps"),
+      compileFile("tests/neg-custom-args/deptypes.scala", defaultOptions.and("-language:experimental.dependent")),
+      compileFile("tests/neg-custom-args/matchable.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
+      compileFile("tests/neg-custom-args/i7314.scala", defaultOptions.and("-Xfatal-warnings", "-source", "future")),
+      compileFile("tests/neg-custom-args/feature-shadowing.scala", defaultOptions.and("-Xfatal-warnings", "-feature")),
     ).checkExpectedErrors()
   }
 
@@ -186,11 +187,12 @@ class CompilationTests extends ParallelTesting {
     aggregateTests(
       compileFile("tests/run-custom-args/tuple-cons.scala", allowDeepSubtypes),
       compileFile("tests/run-custom-args/i5256.scala", allowDeepSubtypes),
-      compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "3.1")),
+      compileFile("tests/run-custom-args/fors.scala", defaultOptions.and("-source", "future")),
       compileFile("tests/run-custom-args/no-useless-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
-      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-Yerased-terms")),
+      compileFile("tests/run-custom-args/defaults-serizaliable-no-forwarders.scala", defaultOptions and "-Xmixin-force-forwarders:false"),
+      compileFilesInDir("tests/run-custom-args/erased", defaultOptions.and("-language:experimental.erasedDefinitions")),
       compileFilesInDir("tests/run-deep-subtype", allowDeepSubtypes),
-      compileFilesInDir("tests/run", defaultOptions)
+      compileFilesInDir("tests/run", defaultOptions.and("-Ysafe-init"))
     ).checkRuns()
   }
 
@@ -238,7 +240,7 @@ class CompilationTests extends ParallelTesting {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-Yemit-tasty-in-class", "-language:postfixOps", "-Ysemanticdb")
+      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb", "-Yno-experimental")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
@@ -247,14 +249,14 @@ class CompilationTests extends ParallelTesting {
     val lib =
       compileList("lib", librarySources,
         defaultOptions.and("-Ycheck-reentrant",
-          "-Yerased-terms", // support declaration of scala.compiletime.erasedValue
-          //  "-source", "3.1",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
-          "-priorityclasspath", defaultOutputDir))(libGroup)
+          "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
+          //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
+          ))(libGroup)
 
     val tastyCoreSources = sources(Paths.get("tasty/src"))
     val tastyCore = compileList("tastyCore", tastyCoreSources, opt)(tastyCoreGroup)
 
-    val compilerSources = sources(Paths.get("compiler/src"))
+    val compilerSources = sources(Paths.get("compiler/src")) ++ sources(Paths.get("compiler/src-bootstrapped"))
     val compilerManagedSources = sources(Properties.dottyCompilerManagedSources)
 
     val dotty1 = compileList("dotty1", compilerSources ++ compilerManagedSources, opt)(dotty1Group)
@@ -295,7 +297,8 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsNeg")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/neg", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings")
+      compileFilesInDir("tests/explicit-nulls/neg-patmat", explicitNullsOptions and "-Xfatal-warnings"),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions),
     )
   }.checkExpectedErrors()
 
@@ -303,7 +306,8 @@ class CompilationTests extends ParallelTesting {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsPos")
     aggregateTests(
       compileFilesInDir("tests/explicit-nulls/pos", explicitNullsOptions),
-      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions)
+      compileFilesInDir("tests/explicit-nulls/pos-separate", explicitNullsOptions),
+      compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions and "-language:unsafeNulls"),
     )
   }.checkCompile()
 
@@ -313,27 +317,28 @@ class CompilationTests extends ParallelTesting {
   }.checkRuns()
 
   // initialization tests
-  @Test def checkInitNeg: Unit = {
+  @Test def checkInit: Unit = {
     implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/neg/", options)
-  }.checkExpectedErrors()
-
-  @Test def checkInitCrash: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init")
-    compileFilesInDir("tests/init/crash", options)
-  }.checkCompile()
-
-  @Test def checkInitPos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("checkInit")
-    val options = defaultOptions.and("-Ycheck-init", "-Xfatal-warnings")
-    compileFilesInDir("tests/init/pos", options)
-  }.checkCompile()
-
+    val options = defaultOptions.and("-Ysafe-init", "-Xfatal-warnings")
+    compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
+    compileFilesInDir("tests/init/pos", options).checkCompile()
+    compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
+  }
 }
 
-object CompilationTests {
+object CompilationTests extends ParallelTesting {
+  // Test suite configuration --------------------------------------------------
+
+  def maxDuration = 45.seconds
+  def numberOfSlaves = Runtime.getRuntime().availableProcessors()
+  def safeMode = Properties.testsSafeMode
+  def isInteractive = SummaryReport.isInteractive
+  def testFilter = Properties.testsFilter
+  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
+
   implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def cleanup(): Unit = summaryReport.echoSummary()
+  @AfterClass def tearDown(): Unit = {
+    super.cleanup()
+    summaryReport.echoSummary()
+  }
 }

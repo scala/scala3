@@ -1,4 +1,6 @@
-import MIPS._
+import MIPS.*
+
+import deriving.Mirror.SumOf
 
 object MIPS {
   type Labels     = Label | ControlLabel
@@ -77,14 +79,14 @@ enum PseudoUnary {
 case class Comment(msg: String)
 
 object printMips {
-  import MIPS._
-  import Misc._
-  import PseudoZero._
-  import PseudoUnary._
-  import ZeroAddr._
-  import OneAddr._
-  import TwoAddr._
-  import ThreeAddr._
+  import MIPS.*
+  import Misc.*
+  import PseudoZero.*
+  import PseudoUnary.*
+  import ZeroAddr.*
+  import OneAddr.*
+  import TwoAddr.*
+  import ThreeAddr.*
 
   private val endl = System.lineSeparator
 
@@ -233,8 +235,8 @@ object printMips {
     def getScopedLabel(s: Scoped): String =
       "L" + getScopedId(s)
 
-    def printEnum[E](e: String => Enum, t: E, code: String) = {
-      val num = e(t.toString).ordinal
+    def printEnum[E: SumOf](e: String => E, t: E, code: String) = {
+      val num = summon[SumOf[E]].ordinal(e(t.toString))
         s"$code$num"
     }
   }

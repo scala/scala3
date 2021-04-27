@@ -1,4 +1,4 @@
-import scala.collection._
+import scala.collection.*
 
 object EmptyHashMap extends mutable.HashMap[Nothing, Nothing]
 object T {

@@ -1,5 +1,5 @@
-import collection._
-import collection.generic._
+import collection.*
+import collection.generic.*
 
 object Test {
   def collectIDA[A, B, Repr, That](_this: TraversableLike[A, Repr])(pf: PartialFunction[A, B])(implicit bf: CanBuildFrom[Repr, B, That]): That = {

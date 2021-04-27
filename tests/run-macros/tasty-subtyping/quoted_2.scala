@@ -1,5 +1,5 @@
 
-import Macros._
+import Macros.*
 
 object Test {
   type A

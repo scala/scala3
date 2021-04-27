@@ -3,7 +3,7 @@ object Test {
     case A extends Hoge[List]
     case B extends Hoge[[X] =>> String]
   }
-  import Hoge._
+  import Hoge.*
 
   A == A
   A == (B: Hoge[_])

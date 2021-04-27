@@ -1,16 +1,16 @@
 
-import scala.quoted._
+import scala.quoted.*
 
 
 object Macro {
   extension (inline sc: StringContext) inline def foo(args: String*): Unit = ${ impl('sc) }
 
-  def impl(sc: Expr[StringContext])(using qctx: QuoteContext) : Expr[Unit] = {
-    import qctx.tasty._
+  def impl(sc: Expr[StringContext])(using Quotes) : Expr[Unit] = {
+    import quotes.reflect.*
     sc match {
-      case '{ StringContext(${Varargs(parts)}: _*) } =>
-        for (part @ Const(s) <- parts)
-          error(s, part.unseal.pos)
+      case '{ StringContext(${Varargs(parts)}*) } =>
+        for (part @ Expr(s) <- parts)
+          report.error(s, part.asTerm.pos)
     }
     '{}
   }

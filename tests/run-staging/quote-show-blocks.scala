@@ -1,8 +1,8 @@
-import scala.quoted._
-import scala.quoted.staging._
+import scala.quoted.*
+import scala.quoted.staging.*
 
 object Test {
-  given Toolbox = Toolbox.make(getClass.getClassLoader)
+  given Compiler = Compiler.make(getClass.getClassLoader)
   def main(args: Array[String]): Unit = run {
     def a(n: Int, x: Expr[Unit]): Expr[Unit] =
       if (n == 0) x

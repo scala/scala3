@@ -41,7 +41,7 @@ object Test extends App {
 
   // Test with imported extension methods
   object test2 {
-    import test1._
+    import test1.*
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -61,7 +61,7 @@ object Test extends App {
       extension [T](xs: List[T]) def +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
       extension [T](xs: List[T]) def +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
-    given Bar as Foo
+    given Bar: Foo()
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)
@@ -97,12 +97,12 @@ object Test extends App {
     extension (x: Int) def yy(y: Int) = x + y
   }
 
-  given AnyRef:
+  given AnyRef with
     extension (x: Int) {
       def yy (y: Int) = x - y
     }
 
-  import D._
+  import D.*
   assert((1 yy 2) == 3)  // imported extension method takes precedence
 
   trait Rectangle {

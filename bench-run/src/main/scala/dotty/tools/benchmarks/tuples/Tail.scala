@@ -21,7 +21,7 @@ class Tail {
 
   @Benchmark
   def tupleTail(): Tuple = {
-    runtime.Tuple.tail(tuple)
+    runtime.Tuples.tail(tuple)
   }
 
   @Benchmark

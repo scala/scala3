@@ -44,7 +44,7 @@ object addAll:
           $split$wrapper.adapt { (args: Array[String]) =>
           val cll = $main$wrapper.call(args)
           val arg1 = cll.finalArgsGetter[Int]("nums", summon[$main.ArgumentParser[Int]])
-          cll.run(myProgram.addAll(arg1(): _*))
+          cll.run(myProgram.addAll(arg1()*))
           } (args)
         } (args)
       } (args)

@@ -1,6 +1,6 @@
 
 object Test {
-  import TypeToolbox._
+  import TypeToolbox.*
 
   type Age = Int
 
@@ -163,11 +163,13 @@ object Test {
       class A
       object A
       class B
+      abstract class B2
       object C
-      assert(companion[A, A.type])
-      assert(companionName[A] == "Test$._$A")
-      assert(companionName[A.type] == "Test$._$A")
-      assert(companionName[B] == "", companionName[B])
+      assert(companion[A, A.type], "FAIL")
+      assert(companionName[A] == "Test$._$A", "FAIL")
+      assert(companionName[A.type] == "Test$._$A", "FAIL")
+      assert(companionName[B] == "Test$._$B", companionName[B]) // Creator proxy companion was synthesized for B ...
+      assert(companionName[B2] == "", companionName[B])         // but not for B2
       assert(companionName[C.type] == "", companionName[C.type])
     }
   }

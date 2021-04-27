@@ -20,9 +20,10 @@ final class JLineTerminal extends java.io.Closeable {
 
   private val terminal =
     TerminalBuilder.builder()
-    .dumb(false) // fail early if not able to create a terminal
+    .dumb(dumbTerminal) // fail early if not able to create a terminal
     .build()
   private val history = new DefaultHistory
+  def dumbTerminal = Option(System.getenv("TERM")) == Some("dumb")
 
   private def blue(str: String)(using Context) =
     if (ctx.settings.color.value != "never") Console.BLUE + str + Console.RESET

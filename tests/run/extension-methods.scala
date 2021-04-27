@@ -2,7 +2,7 @@ object Test extends App {
 
   extension (x: Int) def em: Boolean = x > 0
 
-  assert(1.em == extension_em(1))
+  assert(1.em == em(1))
 
   case class Circle(x: Double, y: Double, radius: Double)
 
@@ -10,7 +10,7 @@ object Test extends App {
 
   val circle = new Circle(1, 1, 2.0)
 
-  assert(circle.circumference == extension_circumference(circle))
+  assert(circle.circumference == this.circumference(circle))
 
   extension (xs: Seq[String]) def longestStrings: Seq[String] = {
     val maxLength = xs.map(_.length).max
@@ -62,8 +62,8 @@ object Test extends App {
   }
 
   class ListOrd[T: Ord] extends Ord[List[T]] {
-    def (xs: List[T])
-        compareTo (ys: List[T]): Int = (xs, ys) match {
+    extension (xs: List[T])
+      def compareTo (ys: List[T]): Int = (xs, ys) match {
       case (Nil, Nil) => 0
       case (Nil, _) => -1
       case (_, Nil) => +1
@@ -85,28 +85,26 @@ object Test extends App {
   println(max(List(1, 2, 3), List(2)))
 
   trait Functor[F[_]] {
-    extension [A, B](x: F[A]) def map (f: A => B): F[B]
+    extension [A](x: F[A]) def map[B](f: A => B): F[B]
   }
 
   trait Monad[F[_]] extends Functor[F] {
-    def [A, B](x: F[A])
-        flatMap (f: A => F[B]): F[B]
-
-    def [A, B](x: F[A])
-        map (f: A => B) = x.flatMap(f `andThen` pure)
+    extension [A](x: F[A])
+      def flatMap[B](f: A => F[B]): F[B]
+      def map[B](f: A => B) = x.flatMap(f `andThen` pure)
 
     def pure[A](x: A): F[A]
   }
 
   implicit object ListMonad extends Monad[List] {
-    extension [A, B](xs: List[A]) def flatMap (f: A => List[B]): List[B] =
+    extension [A](xs: List[A]) def flatMap[B](f: A => List[B]): List[B] =
       xs.flatMap(f)
     def pure[A](x: A): List[A] =
       List(x)
   }
 
   class ReaderMonad[Ctx] extends Monad[[X] =>> Ctx => X] {
-    extension [A, B](r: Ctx => A) def flatMap (f: A => Ctx => B): Ctx => B =
+    extension [A](r: Ctx => A) def flatMap[B](f: A => Ctx => B): Ctx => B =
       ctx => f(r(ctx))(ctx)
     def pure[A](x: A): Ctx => A =
       ctx => x
@@ -115,8 +113,8 @@ object Test extends App {
 
   def mappAll[F[_]: Monad, T](x: T, fs: List[T => T]): F[T] =
     fs.foldLeft(implicitly[Monad[F]].pure(x))((x: F[T], f: T => T) =>
-      if (true) implicitly[Monad[F]].extension_map(x)(f)
+      if (true) implicitly[Monad[F]].map(x)(f)
       else if (true) x.map(f)
-      else x.map[T, T](f)
+      else x.map[T](f)
     )
 }

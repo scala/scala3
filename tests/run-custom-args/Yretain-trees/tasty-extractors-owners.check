@@ -2,10 +2,10 @@ foo
 ValDef("macro", Inferred(), None)
 
 bar
-DefDef("foo", Nil, Nil, Inferred(), None)
+DefDef("foo", Nil, Inferred(), None)
 
 bar2
-DefDef("foo", Nil, Nil, Inferred(), None)
+DefDef("foo", Nil, Inferred(), None)
 
 foo2
 ValDef("macro", Inferred(), None)
@@ -17,11 +17,11 @@ baz2
 ValDef("foo2", Inferred(), None)
 
 <init>
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
 
 b
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
 
 b2
-ClassDef("A", DefDef("<init>", Nil, List(Nil), Inferred(), None), List(Inferred()), Nil, None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
+ClassDef("A", DefDef("<init>", List(TermParamClause(Nil)), Inferred(), None), List(Inferred()), None, List(TypeDef("B", TypeBoundsTree(Inferred(), Inferred())), DefDef("b", Nil, Inferred(), None), ValDef("b2", Inferred(), None)))
 

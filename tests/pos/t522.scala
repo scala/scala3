@@ -1,12 +1,12 @@
 package imptwice
 
-class foo(s: String);
+abstract class foo(s: String);
 
 object Util {
-  def foo(s: String) = new foo(s)
+  def foo(s: String) = new foo(s) {}
 }
 
-import imptwice.Util._
+import imptwice.Util.*
 
 
 object User {

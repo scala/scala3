@@ -5,7 +5,7 @@ object Test {
 
   def main(args: Array[String]): Unit = {
     def r = 1 to 10
-    checkIdentity(immutable.Vector(r: _*))
+    checkIdentity(immutable.Vector(r*))
     checkIdentity(r.toIndexedSeq)
   }
 }
