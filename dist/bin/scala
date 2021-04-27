@@ -99,7 +99,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     -d|-debug)
-      DEBUG="$DEBUG_STR"
+      DEBUG="${DEBUG_STR-}"
       shift ;;
     -version)
       # defer to scalac, then exit
@@ -155,13 +155,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 #[ -n "${dump_args}" ] && dumpArgs ; exit 2
-
 if [ -z "${execute_mode-}" ]; then
   # no script was specified, set run or repl mode
-  if [[ $options_indicator -ne 0 || ${#residual_args[@]} -ne 0 ]]; then
-    setExecuteMode 'run'
-  else
+  if [[ $options_indicator -eq 0 && "${residual_args[@]-}" == "" ]]; then
     setExecuteMode 'repl'
+  else
+    setExecuteMode 'run'
   fi
 fi
 
@@ -224,7 +223,7 @@ run)
     repl_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "$DEBUG"  "-classpath \"$repl_cparg\"" "${java_args[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "${DEBUG-}"  "-classpath \"$repl_cparg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
   ;;
 

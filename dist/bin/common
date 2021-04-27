@@ -201,6 +201,8 @@ DecompilerMain=dotty.tools.dotc.decompiler.Main
 ReplMain=dotty.tools.repl.Main
 ScriptingMain=dotty.tools.scripting.Main
 
+declare -a java_args
+declare -a scala_args
 declare -a residual_args
 declare -a script_args
 
