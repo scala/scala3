@@ -1376,7 +1376,11 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       super.typedValDef(vdef1, sym)
 
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
-      val res = constToLiteral(betaReduce(super.typedApply(tree, pt))) match {
+      def cancelQuotes(tree: Tree): Tree =
+        tree match
+          case Quoted(Spliced(inner)) => inner
+          case _ => tree
+      val res = cancelQuotes(constToLiteral(betaReduce(super.typedApply(tree, pt)))) match {
         case res: Apply if res.symbol == defn.QuotedRuntime_exprSplice
                         && level == 0
                         && !hasInliningErrors =>
