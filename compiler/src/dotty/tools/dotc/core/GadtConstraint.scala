@@ -267,6 +267,9 @@ final class ProperGadtConstraint private(
   private def createTypeVars(widenPath: Type, tpMems: List[(Name, TypeBounds)])(using Context): SimpleIdentityMap[Name, TypeVar] = {
     import NameKinds.DepParamName
 
+    if tpMems.isEmpty then
+      return null
+
     val names = tpMems map (_._1)
 
     var res: SimpleIdentityMap[Name, TypeVar] = SimpleIdentityMap.empty
