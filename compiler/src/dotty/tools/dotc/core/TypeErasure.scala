@@ -821,10 +821,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case _: ErrorType | WildcardType | NoType =>
-        tpnme.WILDCARD
       case tp: WildcardType =>
-        sigName(tp.optBounds)
+        tpnme.Uninstantiated
+      case _: ErrorType | NoType =>
+        tpnme.ERROR
       case _ =>
         val erasedTp = this(tp)
         assert(erasedTp ne tp, tp)
