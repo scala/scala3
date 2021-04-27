@@ -19,3 +19,14 @@ class BB[T]
 
 def test3: (a: AA) => (b: BB[a.type]) => BB[?] =
   (a: AA) => (b: BB[a.type]) => b
+
+@annotation.experimental // TODO: Remove once WithoutPreciseParameterTypes is no longer experimental
+trait RelaxedSelectable extends Selectable.WithoutPreciseParameterTypes:
+  def applyDynamic(name: String, paramTypes: Class[_]*)(args: Any*): Any = ???
+@annotation.experimental // TODO: Remove once WithoutPreciseParameterTypes is no longer experimental
+class Sink[A] extends RelaxedSelectable {
+  def put(x: A): Unit = {}
+}
+val a = new Sink[String]
+val b: RelaxedSelectable { def put(x: String): Unit } = a
+val _ = b.put("")

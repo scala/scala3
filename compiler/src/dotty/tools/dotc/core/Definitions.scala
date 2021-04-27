@@ -762,6 +762,7 @@ class Definitions {
   @tu lazy val LanguageDeprecatedModule: Symbol = requiredModule("scala.language.deprecated")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
+  @tu lazy val WithoutPreciseParameterTypesClass: Symbol = requiredClass("scala.Selectable.WithoutPreciseParameterTypes")
 
   @tu lazy val ReflectPackageClass: Symbol = requiredPackage("scala.reflect.package").moduleClass
   @tu lazy val ClassTagClass: ClassSymbol = requiredClass("scala.reflect.ClassTag")

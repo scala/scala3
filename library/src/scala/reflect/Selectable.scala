@@ -49,3 +49,4 @@ object Selectable:
 
   @inline // important for Scala.js
   private final class DefaultSelectable(override protected val selectedValue: Any) extends Selectable
+end Selectable
