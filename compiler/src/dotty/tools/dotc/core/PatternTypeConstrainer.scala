@@ -260,10 +260,24 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         tp
     }
 
+    def internalizeAppliedParams(tp: Type): Unit = tp match {
+      case AppliedType(_, params) =>
+        params foreach {
+          case TypeRef(p: TermRef, d: Designator) =>
+            ctx.gadt.internalizeTypeMember(p, d)
+          case _ =>
+        }
+      case _ =>
+    }
+
+    internalizeAppliedParams(scrutineeTp)
+    internalizeAppliedParams(patternTp)
+
     val widePt =
       if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
       else widenVariantParams(scrutineeTp)
     val narrowTp = SkolemType(patternTp)
+
     trace(i"constraining simple pattern type $narrowTp <:< $widePt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       isSubType(narrowTp, widePt)
     }
