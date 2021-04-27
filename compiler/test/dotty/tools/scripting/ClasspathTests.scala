@@ -18,6 +18,7 @@ class ClasspathTests:
   val packBinDir = "dist/target/pack/bin"
   val scalaCopy = makeTestableScriptCopy("scala")
   val scalacCopy = makeTestableScriptCopy("scalac")
+  val commonCopy = makeTestableScriptCopy("common")
 
   // only interested in classpath test scripts
   def testFiles = scripts("/scripting").filter { _.getName.matches("classpath.*[.]sc") }
@@ -38,7 +39,8 @@ class ClasspathTests:
     if Files.exists(scriptPath) then
       val lines = Files.readAllLines(scriptPath).asScala.map {
         _.replaceAll("/scalac", "/scalac-copy").
-        replaceFirst("^eval(.*JAVACMD.*)", "echo $1")
+        replaceAll("/common", "/common-copy").
+        replaceFirst("^ *eval(.*JAVACMD.*)", "echo $1")
       }
       val bytes = (lines.mkString("\n")+"\n").getBytes
       Files.write(scriptCopy, bytes)
