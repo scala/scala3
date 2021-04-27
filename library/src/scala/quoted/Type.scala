@@ -21,7 +21,9 @@ object Type:
   given of[T <: AnyKind](using Quotes): Type[T] = ???
 
 
-  /** Extracts the value of singleton constant type, None otherwise.
+  /** Extracts the value of a singleton constant type.
+   *  Returns Some of the value of the type if it is a singleton constant type.
+   *  Returns None if the type is not a singleton constant type.
    *
    *  Example usage:
    *  ```scala
