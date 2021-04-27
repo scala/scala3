@@ -939,7 +939,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end NamedArgMethods
 
-    /** Tree an application of arguments. It represents a single list of arguments, multiple argument lists will have nested `Apply`s  */
+    /** Tree representing an application of arguments.
+     *  It represents a single list of arguments, multiple argument lists will have nested `Apply`s
+     */
     type Apply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is an `Apply` */
@@ -968,7 +970,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: Apply)
         /** The `fun` part of an (implicit) application like `fun(args)`
          *
-         *  It maybe a partially applied method:
+         *  It may be a partially applied method:
          *  ```scala
          *  def f(x1: Int)(x2: Int) = ...
          *  f(1)(2)
@@ -980,7 +982,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def fun: Term
         /** The arguments (implicitly) passed to the method
          *
-         *  The `Apply` maybe a partially applied method:
+         *  The `Apply` may be a partially applied method:
          *  ```scala
          *  def f(x1: Int)(x2: Int) = ...
          *  f(1)(2)
@@ -993,7 +995,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end ApplyMethods
 
-    /** Tree an application of type arguments */
+    /** Tree representing an application of type arguments */
     type TypeApply <: Term
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `TypeApply` */
@@ -1022,7 +1024,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       extension (self: TypeApply)
         /** The `fun` part of an (inferred) type application like `fun[Args]`
          *
-         *  It maybe a partially applied method:
+         *  It may be a partially applied method:
          *  ```scala
          *  extension (x: Int) def f[T](y: T) = ...
          *  // represented as
@@ -1038,7 +1040,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def fun: Term
         /** The (inferred) type arguments passed to the method
          *
-         *  The `TypeApply` maybe a partially applied method:
+         *  The `TypeApply` may be a partially applied method:
          *  ```scala
          *  extension (x: Int) def f[T](y: T) = ...
          *  // represented as
@@ -1934,9 +1936,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Type tree representing wildcard type bounds written in the source.
     *  The wildcard type `_` (for example in in `List[_]`) will be a type tree that
-    *  represents a type but has `TypeBound`a inside.
+    *  represents a type but has `TypeBounds` inside.
     */
-    type WildcardTypeTree  <: Tree
+    type WildcardTypeTree <: Tree
 
     /** `TypeTest` that allows testing at runtime in a pattern match if a `Tree` is a `WildcardTypeTree` */
     given WildcardTypeTreeTypeTest: TypeTest[Tree, WildcardTypeTree]
@@ -4097,7 +4099,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     // REPORTING //
     ///////////////
 
-    /** Module containing error and waring reporting. */
+    /** Module containing error and warning reporting. */
     val report: reportModule
 
     /** Methods of the module object `val report` */
