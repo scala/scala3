@@ -184,7 +184,13 @@ object PickledQuotes {
     QuotesCache.getTree(pickled) match
       case Some(tree) =>
         quotePickling.println(s"**** Using cached quote for TASTY\n$tree")
-        tree
+        treeOwner(tree) match
+          case Some(owner) =>
+            // Copy the cached tree to make sure the all definitions are unique.
+            TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+          case _ =>
+            tree
+
       case _ =>
         val bytes = pickled match
           case pickled: String => TastyString.unpickle(pickled)
@@ -197,25 +203,14 @@ object PickledQuotes {
         unpickler.enter(Set.empty)
 
         val tree = unpickler.tree
-
-        var cacheable = true // TODO: can we remove this?
+        QuotesCache(pickled) = tree
 
         // Make sure trees and positions are fully loaded
         new TreeTraverser {
-          def traverse(tree: Tree)(using Context): Unit =
-            tree match
-              case _: DefTree =>
-                if !tree.symbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot)
-                && !tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
-                then
-                  cacheable = false
-              case _ =>
-            traverseChildren(tree)
+          def traverse(tree: Tree)(using Context): Unit = traverseChildren(tree)
         }.traverse(tree)
 
         quotePickling.println(i"**** unpickled quote\n$tree")
-        if cacheable then
-          QuotesCache(pickled) = tree
 
         tree
   }
