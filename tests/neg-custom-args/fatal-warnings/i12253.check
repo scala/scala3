@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/fatal-warnings/i12253.scala:11:10 ------------------------------------------------------
+11 |     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // error // error
+   |          ^
+   |          the type test for extractors.q2.reflect.Term cannot be checked at runtime
+-- Error: tests/neg-custom-args/fatal-warnings/i12253.scala:11:38 ------------------------------------------------------
+11 |     case extractors.InlinedLambda(_, Select(_, name)) => Expr(name) // error // error
+   |                                      ^
+   |                                      the type test for q1.reflect.Select cannot be checked at runtime
