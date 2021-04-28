@@ -6,3 +6,4 @@
   |                  Parameters may only be:
   |                   * Quoted parameters or fields
   |                   * Literal values of primitive types
+  |                   * References to `inline val`s

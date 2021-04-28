@@ -161,7 +161,7 @@ object Splicer {
         case SeqLiteral(elems, _) =>
           elems.foreach(checkIfValidArgument)
 
-        case tree: Ident if summon[Env].contains(tree.symbol) =>
+        case tree: Ident if summon[Env].contains(tree.symbol) || tree.symbol.is(Inline, butNot = Method) =>
           // OK
 
         case _ =>
@@ -172,6 +172,7 @@ object Splicer {
               |Parameters may only be:
               | * Quoted parameters or fields
               | * Literal values of primitive types
+              | * References to `inline val`s
               |""".stripMargin, tree.srcPos)
       }
 
@@ -241,6 +242,11 @@ object Splicer {
 
       case Literal(Constant(value)) =>
         interpretLiteral(value)
+
+      case tree: Ident if tree.symbol.is(Inline, butNot = Method) =>
+        tree.tpe.widenTermRefExpr match
+          case ConstantType(c) => c.value.asInstanceOf[Object]
+          case _ => throw new StopInterpretation(em"${tree.symbol} could not be inlined", tree.srcPos)
 
       // TODO disallow interpreted method calls as arguments
       case Call(fn, args) =>
