@@ -4361,7 +4361,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
           case New(tpt) =>
             New.copy(tree)(transformTypeTree(tpt)(owner))
           case Typed(expr, tpt) =>
-            Typed.copy(tree)(transformTerm(expr)(owner), transformTypeTree(tpt)(owner))
+            Typed.copy(tree)(/*FIXME #12222: transformTerm(expr)(owner)*/transformTree(expr)(owner).asInstanceOf[Term], transformTypeTree(tpt)(owner))
           case tree: NamedArg =>
             NamedArg.copy(tree)(tree.name, transformTerm(tree.value)(owner))
           case Assign(lhs, rhs) =>
