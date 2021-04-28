@@ -1,4 +1,3 @@
-> assertUsingScaladoc
 > checkScaladocOptions
 > doc
 > checkHtmlFiles

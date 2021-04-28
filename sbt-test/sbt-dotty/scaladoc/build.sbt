@@ -1,9 +1,5 @@
 scalaVersion := sys.props("plugin.scalaVersion")
 
-TaskKey[Unit]("assertUsingScaladoc") := {
-  assert(useScaladoc.value)
-}
-
 TaskKey[Unit]("checkScaladocOptions") := {
   val options = (Compile / doc / scalacOptions).value
   assert(options.count(_ == "-project") == 1)
