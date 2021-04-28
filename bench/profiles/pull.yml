@@ -1,0 +1,8 @@
+includes:
+    - projects.yml
+    - quotes.yml
+    - misc.yml
+    - empty.yml
+
+config:
+    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
