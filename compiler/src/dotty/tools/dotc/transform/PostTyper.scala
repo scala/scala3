@@ -257,6 +257,13 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
+        case CaseDef(pat, _, _) =>
+          val gadtCtx =
+           pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+             case Some(gadt) => ctx.fresh.setGadt(gadt)
+             case None =>
+               ctx
+          super.transform(tree)(using gadtCtx)
         case tree: Ident if !tree.isType =>
           if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
             ctx.compilationUnit.needsInlining = true
