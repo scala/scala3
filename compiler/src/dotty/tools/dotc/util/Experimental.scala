@@ -33,13 +33,8 @@ object Experimental:
       checker.traverse(tree.tpe)
 
   def annotateExperimental(sym: Symbol)(using Context): Unit =
-    if sym.isClass && !sym.hasAnnotation(defn.ExperimentalAnnot) then
-      // Add @experimental annotation to all classes nested in an experimental definition
-      if !sym.owner.is(Package) && sym.isNestedInExperimental then
-        sym.addAnnotation(defn.ExperimentalAnnot)
-
+    if sym.is(Enum) && sym.hasAnnotation(defn.ExperimentalAnnot) then
       // Add @experimental annotation to enum class definitions
-      val compSym = sym.companionClass
-      if compSym.is(Enum) && compSym.hasAnnotation(defn.ExperimentalAnnot) then
-        sym.addAnnotation(defn.ExperimentalAnnot)
-        sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
+      val compMod = sym.companionModule.moduleClass
+      compMod.addAnnotation(defn.ExperimentalAnnot)
+      compMod.companionModule.addAnnotation(defn.ExperimentalAnnot)

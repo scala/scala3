@@ -266,9 +266,6 @@ object SymUtils:
       || self.hasAnnotation(defn.ExperimentalAnnot)
       || (self.maybeOwner.isClass && self.owner.hasAnnotation(defn.ExperimentalAnnot))
 
-    def isNestedInExperimental(using Context): Boolean =
-      self.ownersIterator.drop(1).exists(_.hasAnnotation(defn.ExperimentalAnnot))
-
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
     */

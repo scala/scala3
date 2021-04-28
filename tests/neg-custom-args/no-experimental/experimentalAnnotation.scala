@@ -59,9 +59,9 @@ trait ExpSAM {
 def bar(f: ExpSAM): Unit = {} // error
 
 @experimental // error
-enum E:
+enum E: // error
   case A
-  case B
+  case B // error
 
 def test(
   p1: A, // error
