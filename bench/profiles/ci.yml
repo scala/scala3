@@ -7,7 +7,7 @@ scripts:
         - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicit_cache.scala
 
     implicit-cache-from-tasty:
-        - source $PROG_HOME/tests/scripts/implicit-cache-from-tasty
+        - source $PROG_HOME/dotty/bench/scripts/implicit-cache-from-tasty
 
     implicit-scope-loop:
         - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicit-scope-loop.scala
@@ -46,16 +46,16 @@ scripts:
         - measure 1 1 1 $PROG_HOME/dotty/tests/bench/implicitNums.scala
 
     implicitNums-from-tasty:
-        - source $PROG_HOME/tests/scripts/implicitNums-from-tasty
+        - source $PROG_HOME/dotty/bench/scripts/implicitNums-from-tasty
 
     inductive-implicits:
         - measure 1 1 1 $PROG_HOME/dotty/tests/bench/inductive-implicits.scala
 
     scalap:
-        - source $PROG_HOME/tests/scripts/scalap
+        - source $PROG_HOME/dotty/bench/scripts/scalap
 
     power-macro-power-inlined-1:
-        - source $PROG_HOME/tests/scripts/power-macro-1
+        - source $PROG_HOME/dotty/bench/scripts/power-macro-1
 
     power-macro-power-inlined-1k:
-        - source $PROG_HOME/tests/scripts/power-macro-1k
+        - source $PROG_HOME/dotty/bench/scripts/power-macro-1k

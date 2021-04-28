@@ -20,13 +20,13 @@ charts:
 scripts:
 
     power-macro-power-inlined-1:
-        - source $PROG_HOME/tests/scripts/power-macro-1
+        - source $PROG_HOME/dotty/bench/scripts/power-macro-1
 
     power-macro-power-inlined-1k:
-        - source $PROG_HOME/tests/scripts/power-macro-1k
+        - source $PROG_HOME/dotty/bench/scripts/power-macro-1k
 
     quote-string-interpolation-matching:
-        - source $PROG_HOME/tests/scripts/quote-string-interpolation-matching
+        - source $PROG_HOME/dotty/bench/scripts/quote-string-interpolation-matching
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"

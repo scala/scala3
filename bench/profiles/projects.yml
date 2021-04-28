@@ -32,13 +32,13 @@ scripts:
         - measure $(find $PROG_HOME/tests/re2s/src -name *.scala)
 
     # scalapb:
-    #    - source $PROG_HOME/tests/scripts/scalapb
+    #    - source $PROG_HOME/dotty/bench/scripts/scalapb
 
     scalap:
-       - source $PROG_HOME/tests/scripts/scalap
+       - source $PROG_HOME/dotty/bench/scripts/scalap
 
     stdlib213:
-        - source $PROG_HOME/tests/scripts/stdlib213
+        - source $PROG_HOME/dotty/bench/scripts/stdlib213
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"
