@@ -791,8 +791,6 @@ object Denotations {
       val currentPeriod = ctx.period
       val valid = myValidFor
 
-      def signalError() = println(s"error while transforming $this")
-
       def assertNotPackage(d: SingleDenotation, transformer: DenotTransformer) = d match
         case d: ClassDenotation =>
           assert(!d.is(Package), s"illegal transformation of package denotation by transformer $transformer")
@@ -836,7 +834,7 @@ object Denotations {
                 // To work correctly, we need to demand that the context with the new phase
                 // is not retained in the result.
             catch case ex: CyclicReference =>
-              signalError()
+              // println(s"error while transforming $this")
               throw ex
             finally
               mutCtx.setPeriod(savedPeriod)
