@@ -134,7 +134,7 @@ fi
 
 find_lib () {
   for lib in "$PROG_HOME"/lib/$1 ; do
-    if [[ -e "$lib" ]]; then
+    if [[ -f "$lib" ]]; then
       if [ -n "$CYGPATHCMD" ]; then
         "$CYGPATHCMD" -am "$lib"
       elif [[ $mingw ||  $msys ]]; then
