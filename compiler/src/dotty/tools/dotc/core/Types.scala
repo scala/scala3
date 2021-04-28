@@ -4525,7 +4525,12 @@ object Types {
     private var myReduced: Type = null
     private var reductionContext: util.MutableMap[Type, Type] = null
 
-    override def tryNormalize(using Context): Type = reduced.normalized
+    override def tryNormalize(using Context): Type =
+      try
+        reduced.normalized
+      catch
+        case ex: Throwable =>
+          handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
     def reduced(using Context): Type = {
 
