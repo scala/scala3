@@ -962,7 +962,9 @@ trait Checking {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
-          if (decl is Synthetic) doubleDefError(other, decl)
+          if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
+            () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
+          else if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if decl.hasDefaultParams && other.hasDefaultParams then
