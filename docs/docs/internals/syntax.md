@@ -205,8 +205,10 @@ Types             ::=  Type {‘,’ Type}
 ### Expressions
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr                            Function(args, expr), Function(ValDef([implicit], id, TypeTree(), EmptyTree), expr)
+                    |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
+                    |  HkTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -220,7 +222,6 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘throw’ Expr                                             Throw(expr)
                     |  ‘return’ [Expr]                                          Return(expr?)
                     |  ForExpr
-                    |  HkTypeParamClause ‘=>’ Expr                              PolyFunction(ts, expr)
                     |  [SimpleExpr ‘.’] id ‘=’ Expr                             Assign(expr, expr)
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr                       Assign(expr, expr)
                     |  PostfixExpr [Ascription]
