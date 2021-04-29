@@ -255,8 +255,6 @@ trait SpaceLogic {
            Empty
         else if (canDecompose(tp2))
           tryDecompose2(tp2)
-        else if (isSubType(tp2, tp1) &&covers(fun, tp2))
-          minus(a, Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))))
         else
           a
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
