@@ -360,6 +360,8 @@ object Build {
       val compilerJars = Array(tastyCore, scala3Interfaces, scala3Compiler) ++ (externalCompilerDeps -- externalLibraryDeps)
       val docJars = Array(scaladoc) ++ (externalScaladocDeps -- externalCompilerDeps)
 
+      // should be replaced by sbt.Defaults.makeScalaInstance when released
+      // See https://github.com/sbt/sbt/pull/6480
       Bootstrap.makeScalaInstance(
         state.value,
         scalaVersion.value,
