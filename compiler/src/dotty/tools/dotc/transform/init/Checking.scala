@@ -340,7 +340,7 @@ object Checking {
     }
 
     for (eff <- buffer.toList) {
-      val err = check(eff)
+      val errs = check(eff)
       if !errs.isEmpty then
         return UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
     }
