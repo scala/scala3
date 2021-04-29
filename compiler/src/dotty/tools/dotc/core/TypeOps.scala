@@ -343,7 +343,11 @@ object TypeOps:
 
     tp match {
       case tp: OrType =>
-        approximateOr(tp.tp1, tp.tp2)
+        (tp.tp1.dealias, tp.tp2.dealias) match
+          case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2)) if tycon1 eq tycon2 =>
+            mergeRefinedOrApplied(tp1, tp2)
+          case (tp1, tp2) =>
+            approximateOr(tp1, tp2)
       case _ =>
         tp
     }
