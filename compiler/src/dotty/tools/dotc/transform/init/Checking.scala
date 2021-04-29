@@ -339,11 +339,12 @@ object Checking {
         buffer += Promote(potInner)(source)
     }
 
-    val errs = buffer.toList.flatMap(eff => check(eff))
-    if errs.isEmpty then
-      Errors.empty
-    else
-      UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
+    for (eff <- buffer.toList) {
+      val err = check(eff)
+      if !errs.isEmpty then
+        return UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
+    }
+    Errors.empty
 
   private def checkPromote(eff: Promote)(using state: State): Errors =
     if (state.safePromoted.contains(eff.potential)) Errors.empty
