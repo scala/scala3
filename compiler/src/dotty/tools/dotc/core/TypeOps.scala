@@ -164,7 +164,7 @@ object TypeOps:
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
       case AnnotatedType(parent, annot)
-      if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+      if annot.symbol == defn.UncheckedVarianceAnnot && !ctx.mode.is(Mode.Type) && !theMap.isInstanceOf[SimplifyKeepUnchecked] =>
         simplify(parent, theMap)
       case _: MatchType =>
         val normed = tp.tryNormalize
@@ -179,6 +179,8 @@ object TypeOps:
   class SimplifyMap(using Context) extends TypeMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
+
+  class SimplifyKeepUnchecked(using Context) extends SimplifyMap
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn

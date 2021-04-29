@@ -1550,10 +1550,12 @@ class Namer { typer: Typer =>
           // For justification on the use of `@uncheckedVariance`, see
           // `default-getter-variance.scala`.
           AnnotatedType(defaultTp, Annotation(defn.UncheckedVarianceAnnot))
-        else tp.widenTermRefExpr.simplified match
-          case ctp: ConstantType if isInlineVal => ctp
-          case tp =>
-            TypeComparer.widenInferred(tp, pt)
+        else
+          // don't strip @uncheckedVariance annot for default getters
+          TypeOps.simplify(tp.widenTermRefExpr,
+              if defaultTp.exists then TypeOps.SimplifyKeepUnchecked() else null) match
+            case ctp: ConstantType if isInlineVal => ctp
+            case tp => TypeComparer.widenInferred(tp, pt)
 
       // Replace aliases to Unit by Unit itself. If we leave the alias in
       // it would be erased to BoxedUnit.
