@@ -35,6 +35,12 @@ charts:
         - key: exhaustivity-mips
           label: bootstrapped
 
+    - name: "exhaustivity i12241"
+      url: https://github.com/lampepfl/dotty/blob/master/tests/patmat/i12241.scala
+      lines:
+        - key: exhaustivity-i12241
+          label: bootstrapped
+
 scripts:
 
     patmatexhaust:
@@ -54,6 +60,9 @@ scripts:
 
     exhaustivity-mips:
         - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i7186.scala
+
+    exhaustivity-i12241:
+        - measure 20 40 3 $PROG_HOME/dotty/tests/patmat/i12241.scala
 
 config:
     pr_base_url: "https://github.com/lampepfl/dotty/pull/"
