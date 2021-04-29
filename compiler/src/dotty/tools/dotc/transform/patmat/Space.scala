@@ -132,12 +132,10 @@ trait SpaceLogic {
 
   /** Remove a space if it's a subspace of remaining spaces
    *
-   *  Note: `dedup` will return the same result if the sequence > 10
+   *  Note: `dedup` will return the same result if the sequence >= 10
    */
-  def dedup(spaces: Seq[Space])(using Context): Seq[Space] = {
-    val total = spaces.take(10)
-
-    if (total.size < 1 || total.size >= 10) total
+  def dedup(spaces: Seq[Space])(using Context): Seq[Space] =
+    if (spaces.lengthCompare(1) <= 0 || spaces.lengthCompare(10) >= 0) spaces
     else {
       val res = spaces.map(sp => (sp, spaces.filter(_ ne sp))).find {
         case (sp, sps) => isSubspace(sp, Or(LazyList(sps: _*)))
@@ -145,7 +143,6 @@ trait SpaceLogic {
       if (res.isEmpty) spaces
       else res.get._2
     }
-  }
 
   /** Flatten space to get rid of `Or` for pretty print */
   def flatten(space: Space)(using Context): Seq[Space] = space match {
