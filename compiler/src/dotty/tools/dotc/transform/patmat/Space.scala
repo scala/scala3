@@ -904,12 +904,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
         // If explicit nulls are enabled, this check isn't needed because most of the cases
         // that would trigger it would also trigger unreachability warnings.
         if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
-          dedup(flatten(simplify(minus(covered, prevs)))).toList match {
+          val spaces = flatten(simplify(minus(covered, prevs)))
+          if spaces.lengthCompare(10) < 0 then
+            dedup(spaces).toList match
             case Typ(`constantNullType`, _) :: Nil =>
               report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
             case s =>
               debug.println("`_` matches = " + s)
-          }
         }
       }
     }
