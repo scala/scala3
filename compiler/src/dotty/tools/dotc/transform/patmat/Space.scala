@@ -72,7 +72,7 @@ case class Typ(tp: Type, decomposed: Boolean = true) extends Space
 case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
 
 /** Union of spaces */
-case class Or(spaces: List[Space]) extends Space
+case class Or(spaces: Seq[Space]) extends Space
 
 /** abstract space logic */
 trait SpaceLogic {
@@ -113,44 +113,39 @@ trait SpaceLogic {
   /** Display space in string format */
   def show(sp: Space): String
 
-  /** Simplify space using the laws, there's no nested union after simplify
-   *
-   *  @param aggressive if true and OR space has less than 5 components, `simplify` will
-   *                    collapse `sp1 | sp2` to `sp1` if `sp2` is a subspace of `sp1`.
-   *
-   *                    This reduces noise in counterexamples.
-   */
-  def simplify(space: Space, aggressive: Boolean = false)(using Context): Space = trace(s"simplify ${show(space)}, aggressive = $aggressive --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
+  /** Simplify space using the laws, there's no nested union after simplify */
+  def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
     case Prod(tp, fun, spaces) =>
       val sp = Prod(tp, fun, spaces.map(simplify(_)))
       if (sp.params.contains(Empty)) Empty
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else sp
     case Or(spaces) =>
-      val buf = new mutable.ListBuffer[Space]
-      def include(s: Space) = if s != Empty then buf += s
-      for space <- spaces do
-        simplify(space) match
-          case Or(ss) => ss.foreach(include)
-          case s => include(s)
-      val set = buf.toList
-
-      if (set.isEmpty) Empty
-      else if (set.size == 1) set.toList(0)
-      else if (aggressive && spaces.size < 5) {
-        val res = set.map(sp => (sp, set.filter(_ ne sp))).find {
-          case (sp, sps) =>
-            isSubspace(sp, Or(sps))
-        }
-        if (res.isEmpty) Or(set)
-        else simplify(Or(res.get._2), aggressive)
-      }
-      else Or(set)
+      val spaces2 = spaces.map(simplify(_)).filter(_ != Empty)
+      if spaces2.isEmpty then Empty
+      else Or(spaces2)
     case Typ(tp, _) =>
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
       else space
     case _ => space
   })
+
+  /** Remove a space if it's a subspace of remaining spaces
+   *
+   *  Note: `dedup` will return the same result if the sequence > 10
+   */
+  def dedup(spaces: Seq[Space])(using Context): Seq[Space] = {
+    val total = spaces.take(10)
+
+    if (total.size < 1 || total.size >= 10) total
+    else {
+      val res = spaces.map(sp => (sp, spaces.filter(_ ne sp))).find {
+        case (sp, sps) => isSubspace(sp, Or(LazyList(sps: _*)))
+      }
+      if (res.isEmpty) spaces
+      else res.get._2
+    }
+  }
 
   /** Flatten space to get rid of `Or` for pretty print */
   def flatten(space: Space)(using Context): Seq[Space] = space match {
@@ -205,8 +200,8 @@ trait SpaceLogic {
 
     (a, b) match {
       case (Empty, _) | (_, Empty) => Empty
-      case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filterConserve(_ ne Empty))
-      case (Or(ss), _) => Or(ss.map(intersect(_, b)).filterConserve(_ ne Empty))
+      case (_, Or(ss)) => Or(ss.map(intersect(a, _)).filter(_ ne Empty))
+      case (Or(ss), _) => Or(ss.map(intersect(_, b)).filter(_ ne Empty))
       case (Typ(tp1, _), Typ(tp2, _)) =>
         if (isSubType(tp1, tp2)) a
         else if (isSubType(tp2, tp1)) b
@@ -282,7 +277,7 @@ trait SpaceLogic {
         else if cache.forall(sub => isSubspace(sub, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
-          Or(range.map { i => Prod(tp1, fun1, ss1.updated(i, sub(i))) })
+          Or(LazyList(range: _*).map { i => Prod(tp1, fun1, ss1.updated(i, sub(i))) })
     }
   }
 }
@@ -601,7 +596,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
     tp.dealias match {
       case AndType(tp1, tp2) =>
         intersect(Typ(tp1, false), Typ(tp2, false)) match {
-          case Or(spaces) => spaces
+          case Or(spaces) => spaces.toList
           case Empty => Nil
           case space => List(space)
         }
@@ -842,14 +837,15 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val checkGADTSAT = shouldCheckExamples(selTyp)
 
     val uncovered =
-      flatten(simplify(minus(project(selTyp), patternSpace), aggressive = true)).filter { s =>
+      flatten(simplify(minus(project(selTyp), patternSpace))).filter({ s =>
         s != Empty && (!checkGADTSAT || satisfiable(s))
-      }
+      })
 
 
     if uncovered.nonEmpty then
       val hasMore = uncovered.lengthCompare(6) > 0
-      report.warning(PatternMatchExhaustivity(show(uncovered.take(6)), hasMore), sel.srcPos)
+      val deduped = dedup(uncovered.take(6))
+      report.warning(PatternMatchExhaustivity(show(deduped), hasMore), sel.srcPos)
   }
 
   private def redundancyCheckable(sel: Tree): Boolean =
@@ -908,10 +904,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
         // If explicit nulls are enabled, this check isn't needed because most of the cases
         // that would trigger it would also trigger unreachability warnings.
         if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
-          simplify(minus(covered, prevs)) match {
-            case Typ(`constantNullType`, _) =>
+          dedup(flatten(simplify(minus(covered, prevs)))).toList match {
+            case Typ(`constantNullType`, _) :: Nil =>
               report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-            case _ =>
+            case s =>
+              debug.println("`_` matches = " + s)
           }
         }
       }
