@@ -1602,6 +1602,11 @@ class Typer extends Namer
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
       if ctx.gadt.nonEmpty then
+        // Store GADT constraint to later retrieve it (in PostTyper, for now).
+        // GADT constraints are necessary to correctly check bounds of type app,
+        // see tests/pos/i12226 and issue #12226. It might be possible that this
+        // will end up taking too much memory. If it does, we should just limit
+        // how much GADT constraints we infer - it's always sound to infer less.
         pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
