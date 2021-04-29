@@ -1838,6 +1838,7 @@ object Parsers {
       t
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
+     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -1845,6 +1846,7 @@ object Parsers {
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
      *  BlockResult       ::=  [‘implicit’] FunParams (‘=>’ | ‘?=>’) Block
+     *                      |  HkTypeParamClause ‘=>’ Block
      *                      |  Expr1
      *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
@@ -1855,7 +1857,6 @@ object Parsers {
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
      *                      |  ForExpr
-     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
@@ -1876,28 +1877,41 @@ object Parsers {
     def expr(location: Location): Tree = {
       val start = in.offset
       def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
-      if in.token == IMPLICIT then
-        closure(start, location, modifiers(BitSet(IMPLICIT)))
-      else if in.token == LPAREN && isSpecialClosureStart then
-        closure(start, location, Modifiers())
-      else {
-        val saved = placeholderParams
-        placeholderParams = Nil
+      in.token match
+        case IMPLICIT =>
+          closure(start, location, modifiers(BitSet(IMPLICIT)))
+        case LPAREN if isSpecialClosureStart =>
+          closure(start, location, Modifiers())
+        case LBRACKET =>
+          val start = in.offset
+          val tparams = typeParamClause(ParamOwner.TypeParam)
+          val arrowOffset = accept(ARROW)
+          val body = expr(location)
+          atSpan(start, arrowOffset) {
+            if (isFunction(body))
+              PolyFunction(tparams, body)
+            else {
+              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+              errorTermTree
+            }
+          }
+        case _ =>
+          val saved = placeholderParams
+          placeholderParams = Nil
 
-        def wrapPlaceholders(t: Tree) = try
-          if (placeholderParams.isEmpty) t
-          else new WildcardFunction(placeholderParams.reverse, t)
-        finally placeholderParams = saved
+          def wrapPlaceholders(t: Tree) = try
+            if (placeholderParams.isEmpty) t
+            else new WildcardFunction(placeholderParams.reverse, t)
+          finally placeholderParams = saved
 
-        val t = expr1(location)
-        if in.isArrow then
-          placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
-        else if isWildcard(t) then
-          placeholderParams = placeholderParams ::: saved
-          t
-        else wrapPlaceholders(t)
-      }
+          val t = expr1(location)
+          if in.isArrow then
+            placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
+            wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+          else if isWildcard(t) then
+            placeholderParams = placeholderParams ::: saved
+            t
+          else wrapPlaceholders(t)
     }
 
     def expr1(location: Location = Location.ElseWhere): Tree = in.token match
@@ -1981,19 +1995,6 @@ object Parsers {
         }
       case FOR =>
         forExpr()
-      case LBRACKET =>
-        val start = in.offset
-        val tparams = typeParamClause(ParamOwner.TypeParam)
-        val arrowOffset = accept(ARROW)
-        val body = expr()
-        atSpan(start, arrowOffset) {
-          if (isFunction(body))
-            PolyFunction(tparams, body)
-          else {
-            syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-            errorTermTree
-          }
-        }
       case _ =>
         if isIdent(nme.inline)
            && !in.inModifierPosition()
