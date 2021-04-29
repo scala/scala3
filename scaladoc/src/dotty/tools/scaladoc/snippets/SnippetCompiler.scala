@@ -18,6 +18,8 @@ import dotty.tools.repl.AbstractFileClassLoader
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.interfaces.Diagnostic._
 
+import scala.util.{ Try, Success, Failure }
+
 class SnippetCompiler(
   classpath: String,
   val scalacOptions: String = "",
@@ -54,7 +56,11 @@ class SnippetCompiler(
         val pos = Some(
           Position(diagPos.line + line - innerLineOffset, diagPos.column + column - innerColumnOffset, diagPos.lineContent, if arg.debug then diagPos.line else diagPos.line - innerLineOffset)
         )
-        val msg = nullableMessage(diagnostic.message)
+        val dmsg = Try(diagnostic.message) match {
+          case Success(msg) => msg
+          case Failure(ex) => ex.getMessage
+        }
+        val msg = nullableMessage(dmsg)
         val level = MessageLevel.fromOrdinal(diagnostic.level)
         SnippetCompilerMessage(pos, msg, level)
       case d =>
