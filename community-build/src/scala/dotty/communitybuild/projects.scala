@@ -426,7 +426,6 @@ object projects:
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit),
-    requiresExperimental = true,
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -435,7 +434,6 @@ object projects:
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits),
-    requiresExperimental = true,
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
@@ -520,7 +518,7 @@ object projects:
 
   lazy val disciplineMunit = SbtCommunityProject(
     project = "discipline-munit",
-    sbtTestCommand = "test",
+    sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline, munit)
   )
