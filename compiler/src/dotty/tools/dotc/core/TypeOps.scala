@@ -427,7 +427,7 @@ object TypeOps:
           sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
         case _ => true
 
-      def apply(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp match
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
@@ -466,7 +466,7 @@ object TypeOps:
           mapOver(tl)
         case _ =>
           mapOver(tp)
-      }
+      end apply
 
       /** Three deviations from standard derivedSelect:
        *   1. We first try a widening conversion to the type's info with

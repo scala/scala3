@@ -423,6 +423,10 @@ object Types {
     def isMatch(using Context): Boolean = stripped match {
       case _: MatchType => true
       case tp: HKTypeLambda => tp.resType.isMatch
+      case tp: AppliedType =>
+        tp.tycon match
+          case tycon: TypeRef => tycon.info.isInstanceOf[MatchAlias]
+          case _ => false
       case _ => false
     }
 
