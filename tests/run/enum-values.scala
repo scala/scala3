@@ -50,7 +50,7 @@ enum ClassOnly: // this should still generate the `ordinal` and `fromOrdinal` co
         s"$c does not `eq` companion.fromOrdinal(${c.ordinal}), got ${companion.fromOrdinal(c.ordinal)}")
 
   def notFromOrdinal[T <: AnyRef & reflect.Enum](companion: FromOrdinal[T], compare: T): Unit =
-    cantFind(companion, compare.ordinal)
+    cantFind(companion.asInstanceOf[FromOrdinal[Any]], compare.ordinal)
 
   def cantFind[T](companion: FromOrdinal[T], ordinal: Int): Unit =
     try

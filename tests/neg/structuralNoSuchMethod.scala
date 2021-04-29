@@ -11,10 +11,10 @@ object Test {
     def f(x: X, y: String): String = "f1"
   }
 
-  val x: T = new C[String]
+  val x: T = new C[String] // error
 
   def main(args: Array[String]) =
-    try println(x.f("", ""))  // throws NoSuchMethodException
+    try println(x.f("", ""))  // used to throw NoSuchMethodException
     catch {
       case ex: NoSuchMethodException =>
         println("no such method")
