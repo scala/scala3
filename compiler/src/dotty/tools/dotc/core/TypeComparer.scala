@@ -1754,7 +1754,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => isSubType(info1, info2)
             case _ => isSubType(info1, info2)
 
-        isSubInfo(m.info.widenExpr, tp2.refinedInfo.widenExpr, m.symbol.info)
+        val info1 = m.info.widenExpr
+        isSubInfo(info1, tp2.refinedInfo.widenExpr, m.symbol.info.orElse(info1))
         || matchAbstractTypeMember(m.info)
       end qualifies
 
