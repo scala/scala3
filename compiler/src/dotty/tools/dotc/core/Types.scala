@@ -2816,6 +2816,8 @@ object Types {
     private var myRef: Type = null
     private var computed = false
 
+    override def tryNormalize(using Context): Type = ref.tryNormalize
+
     def ref(using Context): Type =
       if computed then
         if myRef == null then
