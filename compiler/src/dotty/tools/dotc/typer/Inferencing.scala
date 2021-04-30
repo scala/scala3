@@ -173,12 +173,14 @@ object Inferencing {
         && ctx.typerState.constraint.contains(tvar)
         && {
           val direction = instDirection(tvar.origin)
-          if direction != 0 then
+          if minimizeSelected then
+            if direction <= 0 && tvar.hasNonWildcardLowerBound then
+              instantiate(tvar, fromBelow = true)
+            else if direction >= 0 && tvar.hasNonWildcardUpperBound then
+              instantiate(tvar, fromBelow = false)
+            // else hold off instantiating unbounded unconstrained variable
+          else if direction != 0 then
             instantiate(tvar, fromBelow = direction < 0)
-          else if minimizeSelected then
-            if tvar.hasLowerBound then instantiate(tvar, fromBelow = true)
-            else if tvar.hasUpperBound then instantiate(tvar, fromBelow = false)
-            else () // hold off instantiating unbounded unconstrained variables
           else if variance >= 0 && (force.ifBottom == IfBottom.ok || tvar.hasLowerBound) then
             instantiate(tvar, fromBelow = true)
           else if variance >= 0 && force.ifBottom == IfBottom.fail then
