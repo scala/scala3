@@ -34,7 +34,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.termParamss.map(pList => ParametersList(pList.params.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList.params) then "using " else ""))
+        _.termParamss.map(pList => ParametersList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -344,7 +344,7 @@ trait ClassLikeSupport:
     val basicKind: Kind.Def = Kind.Def(
       genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
       paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList.params) then "using " else "")
+        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), paramListModifier(pList.params))
       }
     )
 
@@ -474,5 +474,9 @@ trait ClassLikeSupport:
 
     recursivelyCalculateMemberInfo(MemberInfo(Map.empty, List.empty, baseTypeRepr))
 
-  private def isUsingModifier(parameters: Seq[ValDef]): Boolean =
-    parameters.size > 0 && parameters(0).symbol.flags.is(Flags.Given)
+  private def paramListModifier(parameters: Seq[ValDef]): String =
+    if parameters.size > 0 then
+      if parameters(0).symbol.flags.is(Flags.Given) then "using "
+      else if parameters(0).symbol.flags.is(Flags.Implicit) then "implicit "
+      else ""
+    else ""
