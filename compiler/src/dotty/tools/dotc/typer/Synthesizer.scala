@@ -219,6 +219,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       case _ => true
     loop(formal)
 
+  private def checkRefinement(formal: Type, name: TypeName, expected: Type, span: Span)(using Context): Unit =
+    val actual = formal.lookupRefined(name)
+    if actual.exists && !(expected =:= actual)
+    then report.error(
+      em"$name missmatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
+
   private def mkMirroredMonoType(mirroredType: HKTypeLambda)(using Context): Type =
     val monoMap = new TypeMap:
       def apply(t: Type) = t match
@@ -260,10 +266,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             case _ =>
               val elems = TypeOps.nestedPairs(accessors.map(mirroredType.memberInfo(_).widenExpr))
               (mirroredType, elems)
+          val elemsLabels = TypeOps.nestedPairs(elemLabels)
+          checkRefinement(formal, tpnme.MirroredElemTypes, elemsType, span)
+          checkRefinement(formal, tpnme.MirroredElemLabels, elemsLabels, span)
           val mirrorType =
             mirrorCore(defn.Mirror_ProductClass, monoType, mirroredType, cls.name, formal)
               .refinedWith(tpnme.MirroredElemTypes, TypeAlias(elemsType))
-              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(TypeOps.nestedPairs(elemLabels)))
+              .refinedWith(tpnme.MirroredElemLabels, TypeAlias(elemsLabels))
           val mirrorRef =
             if (cls.is(Scala2x)) anonymousMirror(monoType, ExtendsProductMirror, span)
             else companionPath(mirroredType, span)
