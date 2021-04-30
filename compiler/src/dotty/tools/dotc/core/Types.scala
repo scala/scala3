@@ -433,6 +433,10 @@ object Types {
     /** Is this a higher-kinded type lambda with given parameter variances? */
     def isDeclaredVarianceLambda: Boolean = false
 
+    /** Does this type contain wildcard types? */
+    final def containsWildcardTypes(using Context) =
+      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true)
+
 // ----- Higher-order combinators -----------------------------------
 
     /** Returns true if there is a part of this type that satisfies predicate `p`.
@@ -4465,13 +4469,30 @@ object Types {
     def instantiate(fromBelow: Boolean)(using Context): Type =
       instantiateWith(avoidCaptures(TypeComparer.instanceType(origin, fromBelow)))
 
+    /** For uninstantiated type variables: the entry in the constraint (either bounds or
+     *  provisional instance value)
+     */
+    private def currentEntry(using Context): Type = ctx.typerState.constraint.entry(origin)
+
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
-    def hasLowerBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).loBound.isExactlyNothing
+    def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).hiBound.isRef(defn.AnyClass)
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isRef(defn.AnyClass)
+
+    /** For uninstantiated type variables: Is the lower bound different from Nothing and
+     *  does it not contain wildcard types?
+     */
+    def hasNonWildcardLowerBound(using Context): Boolean =
+      val lo = currentEntry.loBound
+      !lo.isExactlyNothing && !lo.containsWildcardTypes
+
+    /** For uninstantiated type variables: Is the upper bound different from Any and
+     *  does it not contain wildcard types?
+     */
+    def hasNonWildcardUpperBound(using Context): Boolean =
+      val hi = currentEntry.hiBound
+      !hi.isRef(defn.AnyClass) && !hi.containsWildcardTypes
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
