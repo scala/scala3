@@ -4019,7 +4019,14 @@ object Types {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
-        tryNormalize.orElse(superType)
+        val x = tryNormalize
+        if x.exists then
+          record("try norm OK")
+          record(i"try norm OK $x")
+          x
+        else
+          record("try norm KO")
+          superType
     }
 
     inline def map(inline op: Type => Type)(using Context) =
@@ -4038,6 +4045,9 @@ object Types {
       case tycon: TypeRef =>
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
+            record(i"try match alias")
+            record(i"try match alias $this in ${ctx.owner.ownersIterator.toList}%, %")
+            //new Error().printStackTrace()
             trace(i"normalize $this", typr, show = true) {
               MatchTypeTrace.recurseWith(this) {
                 alias.applyIfParameterized(args).tryNormalize
