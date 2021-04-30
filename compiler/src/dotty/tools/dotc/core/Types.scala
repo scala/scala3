@@ -4432,7 +4432,7 @@ object Types {
         typr.println(msg)
         val bound = TypeComparer.fullUpperBound(origin)
         if !(atp <:< bound) then
-          throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
+          throw new TypeError(i"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
       // AVOIDANCE TODO: This really works well only if variables are instantiated from below
       // If we hit a problematic symbol while instantiating from above, then avoidance
