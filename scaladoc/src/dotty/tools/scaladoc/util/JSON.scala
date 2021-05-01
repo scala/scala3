@@ -5,6 +5,8 @@ import scala.annotation.tailrec
 
 opaque type JSON = String
 
+def rawJSON(s: String): JSON = s
+
 def jsonList(elems: Seq[JSON]): JSON = elems.mkString("[", ",\n", "]")
 
 def jsonObject(fields: (String, JSON)*): JSON =

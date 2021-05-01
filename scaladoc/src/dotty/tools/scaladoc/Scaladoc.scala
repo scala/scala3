@@ -2,6 +2,7 @@ package dotty.tools.scaladoc
 
 import java.util.ServiceLoader
 import java.io.File
+import java.io.FileWriter
 import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
@@ -12,6 +13,9 @@ import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
+
+import dotty.tools.scaladoc.Inkuire
+import dotty.tools.scaladoc.Inkuire._
 
 object Scaladoc:
   enum CommentSyntax:
@@ -79,8 +83,20 @@ object Scaladoc:
       else report.error("Failure")
 
     }
+
+    println(s"Types: ${Inkuire.db.types.size}")
+    println(s"Functions: ${Inkuire.db.functions.size}")
+    dumpDB(Inkuire.db)
+
     ctx.reporter
 
+  def dumpDB(db: InkuireDb) = {
+    val file = new File("/home/kkorban/Inkuire/data/db.json")
+    file.createNewFile()
+    val myWriter = new FileWriter("/home/kkorban/Inkuire/data/db.json", false)
+    myWriter.write(s"${EngineModelSerializers.serialize(db)}")
+    myWriter.close()
+  }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =
     val newContext = rootCtx.fresh
