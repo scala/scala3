@@ -3,9 +3,6 @@
   "hello"
 #+end_src
 
-#+RESULTS[9cba8df315d6438fc077ee36aa5df982584c7a6a]: ino
-: hello
-
 * Test
 
   #+begin_src elisp :var ino=ino :results silent
@@ -13,16 +10,23 @@
   #+end_src
 
   #+begin_src elisp :var ino=ino :results silent
-    (write-file (concat "i" ino "-description.org"))
+    (write-file (concat ino "-description.org"))
   #+end_src
 
   #+begin_src elisp :var ino=ino :results silent
-    (find-file (concat "i" ino ".scala"))
+    (find-file (concat ino ".scala"))
+  #+end_src
+
+  #+begin_src elisp :var ino=ino :results silent
+    (save-excursion
+      (beginning-of-buffer)
+      (while (re-search-forward (rx "$" "ISSUE$") nil t)
+        (replace-match ino t t)))
   #+end_src
 
 * $ISSUE$
 
 #+begin_src elisp
-  (sbt/run-until-output "scala3-compiler-bootstrapped/compile")
+  (sbt/run-until-output "scala3-compiler/compile")
   (sbt/compile-file-for-output "issue/$ISSUE$.scala")
 #+end_src
