@@ -135,14 +135,16 @@ object Scanners {
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Clear buffer and set name and token */
-    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
+    /** Clear buffer and set name and token
+     *  If `target` is different from `this`, don't treat identifiers as end tokens
+     */
+    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit =
       target.name = termName(litBuf.chars, 0, litBuf.length)
       litBuf.clear()
       target.token = idtoken
-      if (idtoken == IDENTIFIER)
-        target.token = toToken(target.name)
-    }
+      if idtoken == IDENTIFIER then
+        val converted = toToken(target.name)
+        if converted != END || (target eq this) then target.token = converted
 
     /** The token for given `name`. Either IDENTIFIER or a keyword. */
     def toToken(name: SimpleName): Token
@@ -656,6 +658,8 @@ object Scanners {
                 () /* skip the trailing comma */
               else
                 reset()
+        case END =>
+          if !isEndMarker then token = IDENTIFIER
         case COLON =>
           if fewerBracesEnabled then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
@@ -665,6 +669,21 @@ object Scanners {
         case _ =>
       }
     }
+
+    protected def isEndMarker: Boolean =
+      if isAfterLineEnd then
+        val endLine = source.offsetToLine(offset)
+        val lookahead = new LookaheadScanner():
+          override def isEndMarker = false
+        lookahead.nextToken()
+        if endMarkerTokens.contains(lookahead.token)
+          && source.offsetToLine(lookahead.offset) == endLine
+        then
+          lookahead.nextToken()
+          if lookahead.token == EOF
+          || source.offsetToLine(lookahead.offset) > endLine
+          then return true
+      false
 
     /** Is there a blank line between the current token and the last one?
      *  A blank line consists only of characters <= ' '.

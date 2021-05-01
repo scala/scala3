@@ -167,6 +167,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
+    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -1242,7 +1243,7 @@ object Parsers {
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
       if in.token == COLONEOL then
-        if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
+        if in.lookahead.token == END then in.token = NEWLINE
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
@@ -1272,25 +1273,12 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
-      if isIdent(nme.end) then
-        val start = in.offset
-        val isEndMarker =
-          val endLine = source.offsetToLine(start)
-          val lookahead = in.LookaheadScanner()
-          lookahead.nextToken()
-          source.offsetToLine(lookahead.offset) == endLine
-          && endMarkerTokens.contains(in.token)
-          && {
-            lookahead.nextToken()
-            lookahead.token == EOF
-            || source.offsetToLine(lookahead.offset) > endLine
-          }
-        if isEndMarker then
-          in.nextToken()
-          if stats.isEmpty || !matches(stats.last) then
-            syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
-          in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
-          in.nextToken()
+      if in.token == END then
+        val start = in.skipToken()
+        if stats.isEmpty || !matches(stats.last) then
+          syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+        in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
+        in.nextToken()
     end checkEndMarker
 
 /* ------------- TYPES ------------------------------------------------------ */

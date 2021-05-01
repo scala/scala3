@@ -183,6 +183,7 @@ object Tokens extends TokensCommon {
   final val GIVEN = 63;            enter(GIVEN, "given")
   final val EXPORT = 64;           enter(EXPORT, "export")
   final val MACRO = 65;            enter(MACRO, "macro") // TODO: remove
+  final val END = 66;              enter(END, "end")
 
   /** special symbols */
   final val NEWLINE = 78;          enter(NEWLINE, "end of statement", "new line")
@@ -207,7 +208,7 @@ object Tokens extends TokensCommon {
   /** XML mode */
   final val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
-  final val alphaKeywords: TokenSet = tokenRange(IF, MACRO)
+  final val alphaKeywords: TokenSet = tokenRange(IF, END)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
   final val keywords: TokenSet = alphaKeywords | symbolicKeywords
 
@@ -256,7 +257,7 @@ object Tokens extends TokensCommon {
   final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
     AT, CASE)
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
-    AT, CASE)
+    AT, CASE, END)
 
   final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
 
