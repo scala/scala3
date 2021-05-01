@@ -742,7 +742,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // Note that we can't simply freeze GADTs at this point. PatternTypeConstrainer
       // passes a Skolem here and we _need_ to calculate its base type. Only intersection
       // types are a problem.
-      if !(ctx.mode.is(Mode.GadtConstraintInference) && tp1.isInstanceOf[AndType]) then
+      if !((ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither)
+           && tp1.isInstanceOf[AndType]) then
         val base = nonExprBaseType(tp1, cls2)
         if (base.exists && (base `ne` tp1))
           isSubType(base, tp2, if (tp1.isRef(cls2)) approx else approx.addLow) ||
