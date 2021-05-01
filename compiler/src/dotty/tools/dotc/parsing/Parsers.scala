@@ -312,7 +312,13 @@ object Parsers {
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
     /** Parse statement separators and end markers. Ensure that there is at least
-     *  one statement separator unless the next token terminates a statement sequence.
+     *  one statement separator unless the next token terminates a statement´sequence.
+     *  @param   stats      the statements parsed to far
+     *  @param   noPrevStat true if there was no immediately preceding statement parsed
+     *  @param   what       a string indicating what kin of statement is parsed
+     *  @param   altEnd     a token that is also considered as a terminator of the statement
+     *                      sequence (the default `EOF` already assumes to terminate a statement
+     *                      sequence).
      *  @return  true if the statement sequence continues, false if it terminates.
      */
     def statSepOrEnd[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean = false, what: String = "statement", altEnd: Token = EOF): Boolean =
