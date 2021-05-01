@@ -1826,7 +1826,7 @@ import transform.SymUtils._
 
   class IllegalStartOfStatement(isModifier: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
     def msg = {
-      val addendum = if (isModifier) ": no modifiers allowed here" else ""
+      val addendum = if (isModifier) ": this modifier is not allowed here" else ""
       "Illegal start of statement" + addendum
     }
     def explain = "A statement is either an import, a definition or an expression."

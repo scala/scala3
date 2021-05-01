@@ -254,6 +254,7 @@ object Parsers {
         || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
       while !atStop do
         in.nextToken()
+      lastErrorOffset = in.offset
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
       report.warning(msg, sourcePos)
@@ -273,11 +274,9 @@ object Parsers {
      */
     def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
       if (in.token == EOF) incompleteInputError(msg)
-      else {
+      else
         syntaxError(msg, offset)
         skip()
-        lastErrorOffset = in.offset
-      }
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -311,6 +310,35 @@ object Parsers {
      */
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
+
+    def exitStats[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF, noPrevStat: Boolean): Boolean =
+      def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
+        if isStatSep then
+          in.nextToken()
+          recur(true, endSeen)
+        else if in.token == END then
+          if endSeen then syntaxError("duplicate end marker")
+          checkEndMarker(stats)
+          recur(sepSeen, true)
+        else if isStatSeqEnd || in.token == altEnd then
+          true
+        else if sepSeen || endSeen then
+          false
+        else
+          val found = in.token
+          syntaxError(
+            if noPrevStat then IllegalStartOfStatement(isModifier)
+            else i"end of statement expected but ${showToken(found)} found")
+          if mustStartStatTokens.contains(found) then
+            true // it's a statement that might be legal in an outer context
+          else
+            in.nextToken() // needed to ensure progress; otherwise we might cycle forever
+            skip()
+            false
+
+      in.observeOutdented()
+      recur(false, false)
+    end exitStats
 
     def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
       def skipEmptyStats(): Unit =
@@ -3891,8 +3919,8 @@ object Parsers {
      */
     def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
-      var exitOnError = false
-      while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
+      while
+        var empty = false
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (isExprIntro)
@@ -3903,12 +3931,10 @@ object Parsers {
           stats += extension()
         else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)
-        else if (!isStatSep && (in.token != CASE)) {
-          exitOnError = mustStartStat
-          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
-        }
-        acceptStatSepUnlessAtEnd(stats, CASE)
-      }
+        else
+          empty = true
+        !exitStats(stats, CASE, empty)
+      do ()
       stats.toList
     }
 
