@@ -35,7 +35,7 @@ val sjsSandbox = Build.sjsSandbox
 val sjsJUnitTests = Build.sjsJUnitTests
 val sjsCompilerTests = Build.sjsCompilerTests
 
-val `sbt-dotty` = Build.`sbt-dotty`
+val `sbt-test` = Build.`sbt-test`
 val `vscode-dotty` = Build.`vscode-dotty`
 
 inThisBuild(Build.thisBuildSettings)
