@@ -233,15 +233,6 @@ object Parsers {
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
-    /** The offset of the last time when a statement on a new line was definitely
-     *  encountered in the current scope or an outer scope.
-     */
-    private var lastStatOffset = -1
-
-    def setLastStatOffset(): Unit =
-      if (mustStartStat && in.isAfterLineEnd)
-        lastStatOffset = in.offset
-
     /** Is offset1 less or equally indented than offset2?
      *  This is the case if the characters between the preceding end-of-line and offset1
      *  are a prefix of the characters between the preceding end-of-line and offset2.
@@ -533,11 +524,8 @@ object Parsers {
         if (in.rewriteToIndent) bracesToIndented(body, rewriteWithColon)
         else inBraces(body)
 
-    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T = {
-      val saved = lastStatOffset
-      try inBracesOrIndented(body, rewriteWithColon)
-      finally lastStatOffset = saved
-    }
+    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
+      inBracesOrIndented(body, rewriteWithColon)
 
     /** part { `separator` part }
      */
@@ -1538,10 +1526,7 @@ object Parsers {
       else t
 
     /** The block in a quote or splice */
-    def stagedBlock() =
-      val saved = lastStatOffset
-      try inBraces(block(simplify = true))
-      finally lastStatOffset = saved
+    def stagedBlock() = inBraces(block(simplify = true))
 
     /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
      *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
@@ -3642,7 +3627,6 @@ object Parsers {
       val meths = new ListBuffer[DefDef]
       val exitOnError = false
       while !isStatSeqEnd && !exitOnError do
-        setLastStatOffset()
         meths += extMethod(numLeadParams)
         acceptStatSepUnlessAtEnd(meths)
       if meths.isEmpty then syntaxError("`def` expected")
@@ -3781,7 +3765,6 @@ object Parsers {
     def topStatSeq(outermost: Boolean = false): List[Tree] = {
       val stats = new ListBuffer[Tree]
       while (!isStatSeqEnd) {
-        setLastStatOffset()
         if (in.token == PACKAGE) {
           val start = in.skipToken()
           if (in.token == OBJECT) {
@@ -3843,7 +3826,6 @@ object Parsers {
       }
       var exitOnError = false
       while (!isStatSeqEnd && !exitOnError) {
-        setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
@@ -3923,7 +3905,6 @@ object Parsers {
       val stats = new ListBuffer[Tree]
       var exitOnError = false
       while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
-        setLastStatOffset()
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (isExprIntro)
