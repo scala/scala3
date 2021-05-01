@@ -23,12 +23,8 @@
   | Previous indent : 2 tabs
   | Latest indent   : 1 space
 -- Error: tests/neg/spaces-vs-tabs.scala:14:2 --------------------------------------------------------------------------
-14 |	  else 2 // error // error
+14 |	  else 2 // error
    |	  ^
    |	  The start of this line does not match any of the previous indentation widths.
    |	  Indentation width of current line : 1 tab, 2 spaces
    |	  This falls between previous widths: 1 tab and 1 tab, 4 spaces
--- [E040] Syntax Error: tests/neg/spaces-vs-tabs.scala:14:7 ------------------------------------------------------------
-14 |	  else 2 // error // error
-   |	       ^
-   |	       ';' expected, but integer literal found

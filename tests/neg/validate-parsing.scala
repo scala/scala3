@@ -10,4 +10,3 @@ class C () {
 }
 class D override() // error: ';' expected but 'override' found.
 
-case class ByName(x: => Int) // error: `val' parameters may not be call-by-name

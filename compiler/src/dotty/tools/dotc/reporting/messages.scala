@@ -1656,18 +1656,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class OnlyCaseClassOrCaseObjectAllowed()(using Context)
-    extends SyntaxMsg(OnlyCaseClassOrCaseObjectAllowedID) {
-    def msg = em"""Only ${hl("case class")} or ${hl("case object")} allowed"""
-    def explain = ""
-  }
-
-  class ExpectedToplevelDef()(using Context)
-    extends SyntaxMsg(ExpectedTopLevelDefID) {
-    def msg = "Expected a toplevel definition"
-    def explain = ""
-  }
-
   class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
     extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
     def msg = em"Super call not allowed in inlineable $symbol"

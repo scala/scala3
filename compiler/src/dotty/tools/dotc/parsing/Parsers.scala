@@ -311,7 +311,11 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def exitStats[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean, altEnd: Token = EOF, what: String = "statement"): Boolean =
+    /** Parse statement separators and end markers. Ensure that there is at least
+     *  one statement separator unless the next token terminates a statement sequence.
+     *  @return  true if the statement sequence continues, false if it terminates.
+     */
+    def statSepOrEnd[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean = false, what: String = "statement", altEnd: Token = EOF): Boolean =
       def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
         if isStatSep then
           in.nextToken()
@@ -321,9 +325,9 @@ object Parsers {
           checkEndMarker(stats)
           recur(sepSeen, true)
         else if isStatSeqEnd || in.token == altEnd then
-          true
-        else if sepSeen || endSeen then
           false
+        else if sepSeen || endSeen then
+          true
         else
           val found = in.token
           val statFollows = mustStartStatTokens.contains(found)
@@ -331,32 +335,15 @@ object Parsers {
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
             else i"end of $what expected but ${showToken(found)} found")
           if mustStartStatTokens.contains(found) then
-            true // it's a statement that might be legal in an outer context
+            false // it's a statement that might be legal in an outer context
           else
             in.nextToken() // needed to ensure progress; otherwise we might cycle forever
             skip()
-            false
+            true
 
       in.observeOutdented()
       recur(false, false)
-    end exitStats
-
-    def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
-      def skipEmptyStats(): Unit =
-        while (in.token == SEMI || in.token == NEWLINE || in.token == NEWLINES) do in.nextToken()
-
-      in.observeOutdented()
-      in.token match
-        case SEMI | NEWLINE | NEWLINES =>
-          skipEmptyStats()
-          checkEndMarker(stats)
-          skipEmptyStats()
-        case `altEnd` =>
-        case _ =>
-          if !isStatSeqEnd then
-            syntaxError(i"end of statement expected but ${showToken(in.token)} found")
-            in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            accept(SEMI)
+    end statSepOrEnd
 
     def rewriteNotice(version: String = "3.0", additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -3642,10 +3629,10 @@ object Parsers {
      */
     def extMethods(numLeadParams: Int): List[DefDef] = checkNoEscapingPlaceholders {
       val meths = new ListBuffer[DefDef]
-      val exitOnError = false
-      while !isStatSeqEnd && !exitOnError do
+      while
         meths += extMethod(numLeadParams)
-        acceptStatSepUnlessAtEnd(meths)
+        statSepOrEnd(meths, what = "extension method")
+      do ()
       if meths.isEmpty then syntaxError("`def` expected")
       meths.toList
     }
@@ -3781,7 +3768,8 @@ object Parsers {
      */
     def topStatSeq(outermost: Boolean = false): List[Tree] = {
       val stats = new ListBuffer[Tree]
-      while (!isStatSeqEnd) {
+      while
+        var empty = false
         if (in.token == PACKAGE) {
           val start = in.skipToken()
           if (in.token == OBJECT) {
@@ -3798,13 +3786,10 @@ object Parsers {
           stats += extension()
         else if isDefIntro(modifierTokens) then
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
-        else if !isStatSep then
-          if (in.token == CASE)
-            syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
-          else
-            syntaxErrorOrIncomplete(ExpectedToplevelDef())
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        else
+          empty = true
+        statSepOrEnd(stats, empty, "toplevel definition")
+      do ()
       stats.toList
     }
 
@@ -3836,13 +3821,12 @@ object Parsers {
           in.token = SELFARROW // suppresses INDENT insertion after `=>`
           in.nextToken()
         }
-        else {
+        else
           stats += first
-          acceptStatSepUnlessAtEnd(stats)
-        }
+          statSepOrEnd(stats)
       }
-      var exitOnError = false
-      while (!isStatSeqEnd && !exitOnError) {
+      while
+        var empty = false
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
@@ -3853,12 +3837,10 @@ object Parsers {
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (isExprIntro)
           stats += expr1()
-        else if (!isStatSep) {
-          exitOnError = mustStartStat
-          syntaxErrorOrIncomplete("illegal start of definition")
-        }
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        else
+          empty = true
+        statSepOrEnd(stats, empty)
+      do ()
       (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
@@ -3887,16 +3869,14 @@ object Parsers {
         if problem.isEmpty then tree :: Nil
         else { syntaxError(problem, tree.span); Nil }
 
-      while (!isStatSeqEnd) {
-        if (isDclIntro)
+      while
+        val dclFound = isDclIntro
+        if dclFound then
           stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
-        else if (!isStatSep)
-          syntaxErrorOrIncomplete(
-            "illegal start of declaration" +
-            (if (inFunReturnType) " (possible cause: missing `=` in front of current method body)"
-             else ""))
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        var what = "declaration"
+        if inFunReturnType then what += " (possible cause: missing `=` in front of current method body)"
+        statSepOrEnd(stats, !dclFound, what)
+      do ()
       stats.toList
     }
 
@@ -3934,7 +3914,7 @@ object Parsers {
           stats +++= localDef(in.offset)
         else
           empty = true
-        !exitStats(stats, empty, CASE)
+        statSepOrEnd(stats, empty, altEnd = CASE)
       do ()
       stats.toList
     }
@@ -3952,7 +3932,7 @@ object Parsers {
             in.nextToken()
             ts += objectDef(start, Modifiers(Package))
             if (in.token != EOF) {
-              acceptStatSepUnlessAtEnd(ts)
+              statSepOrEnd(ts, what = "toplevel definition")
               ts ++= topStatSeq()
             }
           }
@@ -3969,7 +3949,7 @@ object Parsers {
               acceptStatSep()
               ts += makePackaging(start, pkg, topstats())
             if continue then
-              acceptStatSepUnlessAtEnd(ts)
+              statSepOrEnd(ts, what = "toplevel definition")
               ts ++= topStatSeq()
         }
         else
