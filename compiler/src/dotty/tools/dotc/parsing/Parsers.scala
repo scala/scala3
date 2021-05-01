@@ -311,7 +311,7 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def exitStats[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF, noPrevStat: Boolean): Boolean =
+    def exitStats[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean, altEnd: Token = EOF, what: String = "statement"): Boolean =
       def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
         if isStatSep then
           in.nextToken()
@@ -326,9 +326,10 @@ object Parsers {
           false
         else
           val found = in.token
+          val statFollows = mustStartStatTokens.contains(found)
           syntaxError(
-            if noPrevStat then IllegalStartOfStatement(isModifier)
-            else i"end of statement expected but ${showToken(found)} found")
+            if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
+            else i"end of $what expected but ${showToken(found)} found")
           if mustStartStatTokens.contains(found) then
             true // it's a statement that might be legal in an outer context
           else
@@ -3933,7 +3934,7 @@ object Parsers {
           stats +++= localDef(in.offset)
         else
           empty = true
-        !exitStats(stats, CASE, empty)
+        !exitStats(stats, empty, CASE)
       do ()
       stats.toList
     }
