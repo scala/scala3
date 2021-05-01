@@ -739,11 +739,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareTypeParamRef(tp2)
       case _ =>
         // thirdTryOrdinary
-        if ctx.mode.is(Mode.GadtConstraintInference) then tp1 match {
-          case tp1: TypeRef if gadtBounds(tp1.symbol) ne null =>
-            fourthTry
-          case _ => thirdTryOrdinary
-        } else thirdTryOrdinary
+        if ctx.mode.is(Mode.GadtConstraintInference) then
+          // If we can GADT-constrain tp1 AND we can't normal-constrain tp2,
+          // jump to fourthTry (where we constrain tp1). We can't do that in
+          // secondTry, since there we _need_ to handle tp1:NamedType before
+          // handling tp2:TypeParamRef.
+          tp1 match
+            case tp1: TypeRef if gadtBounds(tp1.symbol) ne null =>
+              return fourthTry
+            case _ =>
+        end if
+        if ctx.mode.is(Mode.GadtConstraintInference) || useNecessaryEither then
+          tp1 match
+            case tp2: AndType =>
+              return fourthTry
+            case _ =>
+        end if
+        thirdTryOrdinary
     }
 
     def tryBaseType(cls2: Symbol) = {
