@@ -446,8 +446,7 @@ class TreeChecker extends Phase with SymTransformer {
       val decls   = cls.classInfo.decls.toList.toSet.filter(isNonMagicalMember)
       val defined = impl.body.map(_.symbol)
 
-      def isAllowed(sym: Symbol): Boolean =
-        sym.is(ConstructorProxy) && !ctx.phase.erasedTypes
+      def isAllowed(sym: Symbol): Boolean = sym.is(ConstructorProxy)
 
       val symbolsNotDefined = (decls -- defined - constr.symbol).filterNot(isAllowed)
 
