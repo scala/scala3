@@ -255,7 +255,7 @@ object Tokens extends TokensCommon {
   final val mustStartStatTokens: TokenSet = defIntroTokens | modifierTokens | BitSet(IMPORT, EXPORT, PACKAGE)
 
   final val canStartStatTokens2: TokenSet = canStartExprTokens2 | mustStartStatTokens | BitSet(
-    AT, CASE)
+    AT, CASE, END) // END is included since it might be tested before being converted back to IDENTIFIER
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE, END)
 

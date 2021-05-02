@@ -671,7 +671,7 @@ object Scanners {
     }
 
     protected def isEndMarker: Boolean =
-      if isAfterLineEnd then
+      if indentSyntax && isAfterLineEnd then
         val endLine = source.offsetToLine(offset)
         val lookahead = new LookaheadScanner():
           override def isEndMarker = false
