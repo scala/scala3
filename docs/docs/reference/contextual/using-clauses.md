@@ -47,6 +47,33 @@ inferred argument to `max`. The name of the parameter is left out.
 
 Generally, context parameters may be defined either as a full parameter list `(p_1: T_1, ..., p_n: T_n)` or just as a sequence of types `T_1, ..., T_n`. Vararg parameters are not supported in `using` clauses.
 
+## Class Context Parameters
+
+If a class context parameter is made a member by adding a `val` or `var` modifier,
+then that member is available as a given instance.
+
+Compare the following examples, where the attempt to supply an explicit `given` member induces an ambiguity:
+
+```scala
+class GivenIntBox(using val givenInt: Int):
+  def n = summon[Int]
+
+class GivenIntBox2(using givenInt: Int):
+  given Int = givenInt
+  //def n = summon[Int]     // ambiguous
+```
+
+The `given` member is importable as explained in the section on [importing `given`s](./given-imports.md):
+
+```scala
+val b = GivenIntBox(using 23)
+import b.given
+summon[Int]  // 23
+
+import b.*
+//givenInt   // Not found
+```
+
 ## Inferring Complex Arguments
 
 Here are two other methods that have a context parameter of type `Ord[T]`:
