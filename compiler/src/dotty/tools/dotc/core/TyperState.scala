@@ -159,5 +159,18 @@ class TyperState() {
     s"TS[${ids(this).mkString(", ")}]"
   }
 
+  /** Execute the operation with an empty constraint and make sure no leak
+   *  of constraints.
+   *
+   *  Side effect: the method will reset the constraint associated with the context.
+   */
+  def ensureClosedConstraint[T](op: => T)(using Context): T =
+    this.constraint = OrderingConstraint.empty
+    val res = op
+    // force instantiate tvars
+    // see tests/pos/t2619b.scala
+    ctx.typerState.gc()
+    res
+
   def stateChainStr: String = s"$this${if (previous == null) "" else previous.stateChainStr}"
 }
