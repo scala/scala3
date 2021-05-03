@@ -1301,12 +1301,12 @@ class RefChecks extends MiniPhase { thisPhase =>
   }
 
   override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
-    checkUndesiredProperties(tree.symbol, tree.srcPos)
+    checkExperimental(tree.symbol, tree.srcPos)
     tree
   }
 
   override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
-    checkUndesiredProperties(tree.symbol, tree.srcPos)
+    checkExperimental(tree.symbol, tree.srcPos)
     checkExperimentalAnnots(tree.symbol)
     tree
   }
