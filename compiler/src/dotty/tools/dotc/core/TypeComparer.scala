@@ -1969,43 +1969,40 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if (!tp2.exists) tp1
     else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
     else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
-    else tp2 match {  // normalize to disjunctive normal form if possible.
+    else tp2 match
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
-      case OrType(tp21, tp22) =>
-        tp1 & tp21 | tp1 & tp22
       case _ =>
-        tp1 match {
+        tp1 match
           case tp1: LazyRef =>
             glb(tp1.ref, tp2)
-          case OrType(tp11, tp12) =>
-            tp11 & tp2 | tp12 & tp2
           case _ =>
             val tp1a = dropIfSuper(tp1, tp2)
-            if (tp1a ne tp1) glb(tp1a, tp2)
-            else {
+            if tp1a ne tp1 then glb(tp1a, tp2)
+            else
               val tp2a = dropIfSuper(tp2, tp1)
-              if (tp2a ne tp2) glb(tp1, tp2a)
-              else tp1 match {
-                case tp1: ConstantType =>
-                  tp2 match {
-                    case tp2: ConstantType =>
-                      // Make use of the fact that the intersection of two constant types
-                      // types which are not subtypes of each other is known to be empty.
-                      // Note: The same does not apply to singleton types in general.
-                      // E.g. we could have a pattern match against `x.type & y.type`
-                      // which might succeed if `x` and `y` happen to be the same ref
-                      // at run time. It would not work to replace that with `Nothing`.
-                      // However, maybe we can still apply the replacement to
-                      // types which are not explicitly written.
-                      NothingType
+              if tp2a ne tp2 then glb(tp1, tp2a)
+              else tp2 match // normalize to disjunctive normal form if possible.
+                case OrType(tp21, tp22) =>
+                  tp1 & tp21 | tp1 & tp22
+                case _ =>
+                  tp1 match
+                    case OrType(tp11, tp12) =>
+                      tp11 & tp2 | tp12 & tp2
+                    case tp1: ConstantType =>
+                      tp2 match
+                        case tp2: ConstantType =>
+                          // Make use of the fact that the intersection of two constant types
+                          // types which are not subtypes of each other is known to be empty.
+                          // Note: The same does not apply to singleton types in general.
+                          // E.g. we could have a pattern match against `x.type & y.type`
+                          // which might succeed if `x` and `y` happen to be the same ref
+                          // at run time. It would not work to replace that with `Nothing`.
+                          // However, maybe we can still apply the replacement to
+                          // types which are not explicitly written.
+                          NothingType
+                        case _ => andType(tp1, tp2)
                     case _ => andType(tp1, tp2)
-                  }
-                case _ => andType(tp1, tp2)
-              }
-            }
-        }
-    }
   }
 
   def widenInUnions(using Context): Boolean =
