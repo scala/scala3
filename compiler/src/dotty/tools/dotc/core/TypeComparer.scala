@@ -823,7 +823,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
         val tp1norm = simplifyAndTypeWithFallback(tp11, tp12, tp1)
         if (tp1 ne tp1norm) recur(tp1norm, tp2)
-        else either(recur(tp11, tp2), recur(tp12, tp2))
+        else
+          if useNecessaryEither && !frozenConstraint then
+            if tp11 frozen_<:< tp12 then recur(tp11, tp2)
+            else if tp12 frozen_<:< tp11 then recur(tp12, tp2)
+            else false
+          else
+            val saved = constraint
+            either(recur(tp11, tp2), recur(tp12, tp2))
+              .showing(i"constraining andtype $tp11 & $tp12 <: $tp2 in $saved ----> $constraint", subtyping)
       case tp1: MatchType =>
         def compareMatch = tp2 match {
           case tp2: MatchType =>
