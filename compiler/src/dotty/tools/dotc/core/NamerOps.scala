@@ -77,10 +77,15 @@ object NamerOps:
   val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
 
   /** Does symbol `cls` need constructor proxies to be generated? */
-  def needsConstructorProxies(cls: Symbol)(using Context): Boolean =
-    cls.isClass
-    && !cls.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
-    && !cls.isAnonymousClass
+  def needsConstructorProxies(sym: Symbol)(using Context): Boolean =
+    sym.isClass
+    && !sym.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
+    && !sym.isAnonymousClass
+    ||
+    sym.isType && sym.is(Exported)
+    && sym.info.loBound.underlyingClassRef(refinementOK = false).match
+      case tref: TypeRef => tref.prefix.isStable
+      case _ => false
 
   /** The completer of a constructor proxy apply method */
   class ApplyProxyCompleter(constr: Symbol)(using Context) extends LazyType:
@@ -114,7 +119,7 @@ object NamerOps:
     }.withSourceModule(modul)
 
   /** A new symbol that is the constructor companion for class `cls` */
-  def constructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
+  def classConstructorCompanion(cls: ClassSymbol)(using Context): TermSymbol =
     val companion = newModuleSymbol(
         cls.owner, cls.name.toTermName,
         ConstructorCompanionFlags, ConstructorCompanionFlags,
@@ -124,6 +129,10 @@ object NamerOps:
     companion.moduleClass.registerCompanion(cls)
     cls.registerCompanion(companion.moduleClass)
     companion
+
+  def typeConstructorCompanion(tsym: Symbol, prefix: Type, proxy: Symbol)(using Context): TermSymbol =
+    newSymbol(tsym.owner, tsym.name.toTermName,
+        ConstructorCompanionFlags | StableRealizable | Method, ExprType(prefix.select(proxy)), coord = tsym.coord)
 
   /** Add all necesssary constructor proxy symbols for members of class `cls`. This means:
    *
@@ -137,12 +146,21 @@ object NamerOps:
 
     def memberExists(cls: ClassSymbol, name: TermName): Boolean =
       cls.baseClasses.exists(_.info.decls.lookupEntry(name) != null)
+
     for mbr <- cls.info.decls do
-      if needsConstructorProxies(mbr)
-         && !mbr.asClass.unforcedRegisteredCompanion.exists
-         && !memberExists(cls, mbr.name.toTermName)
-      then
-        constructorCompanion(mbr.asClass).entered
+      if needsConstructorProxies(mbr) then
+        mbr match
+          case mbr: ClassSymbol =>
+            if !mbr.unforcedRegisteredCompanion.exists
+              && !memberExists(cls, mbr.name.toTermName)
+            then
+              classConstructorCompanion(mbr).entered
+          case _ =>
+            mbr.info.loBound.underlyingClassRef(refinementOK = false) match
+              case ref: TypeRef =>
+                val proxy = ref.symbol.registeredCompanion
+                if proxy.is(ConstructorProxy) && !memberExists(cls, mbr.name.toTermName) then
+                  typeConstructorCompanion(mbr, ref.prefix, proxy).entered
 
     if cls.is(Module)
        && needsConstructorProxies(cls.linkedClass)

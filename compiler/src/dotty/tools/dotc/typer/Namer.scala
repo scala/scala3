@@ -617,7 +617,7 @@ class Namer { typer: Typer =>
           val classSym = ctx.effectiveScope.lookup(className)
           val moduleName = className.toTermName
           if needsConstructorProxies(classSym) && ctx.effectiveScope.lookupEntry(moduleName) == null then
-            enterSymbol(constructorCompanion(classSym.asClass))
+            enterSymbol(classConstructorCompanion(classSym.asClass))
       else if ctx.owner.is(PackageClass) then
         for case cdef @ TypeDef(moduleName, _) <- moduleDef.values do
           val moduleSym = ctx.effectiveScope.lookup(moduleName)
@@ -634,12 +634,12 @@ class Namer { typer: Typer =>
             val moduleName = className.toTermName
             val companionVals = ctx.effectiveScope.lookupAll(moduleName.encode)
             if companionVals.isEmpty && needsConstructorProxies(classSym) then
-              enterSymbol(constructorCompanion(classSym.asClass))
+              enterSymbol(classConstructorCompanion(classSym.asClass))
             else
               for moduleSym <- companionVals do
                 if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
-                    if needsConstructorProxies(classSym) then constructorCompanion(classSym.asClass)
+                    if needsConstructorProxies(classSym) then classConstructorCompanion(classSym.asClass)
                     else newModuleSymbol(
                       ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
                   enterSymbol(companion)
