@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package reporting
-
+import scala.annotation.threadUnsafe
 import util.SourcePosition
 
 object Message {
@@ -85,10 +85,10 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   def rawMessage = message
 
   /** The message to report. <nonsensical> tags are filtered out */
-  lazy val message: String = dropNonSensical(msg + msgSuffix)
+  @threadUnsafe lazy val message: String = dropNonSensical(msg + msgSuffix)
 
   /** The explanation to report. <nonsensical> tags are filtered out */
-  lazy val explanation: String = dropNonSensical(explain)
+  @threadUnsafe lazy val explanation: String = dropNonSensical(explain)
 
   /** A message is non-sensical if it contains references to <nonsensical>
    *  tags.  Such tags are inserted by the error diagnostic framework if a
