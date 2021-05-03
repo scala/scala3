@@ -202,7 +202,16 @@ class Run(comp: Compiler, ictx: Context) extends ImplicitRunInfo with Constraint
           Stats.trackTime(s"$phase ms ") {
             val start = System.currentTimeMillis
             val profileBefore = profiler.beforePhase(phase)
+
+            // invariant: constraint should not cross phase boundary
+            ctx.typerState.constraint = OrderingConstraint.empty
+
             units = phase.runOn(units)
+
+            // force instantiate tvars
+            // see tests/pos/t2619b.scala
+            ctx.typerState.gc()
+
             profiler.afterPhase(phase, profileBefore)
             if (ctx.settings.Xprint.value.containsPhase(phase))
               for (unit <- units)

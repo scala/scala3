@@ -1,0 +1,15 @@
+charts:
+
+    - name: "scala stdlib-2.13"
+      url: https://github.com/dotty-staging/scala/commits/stdLib213-dotty-community-build
+      lines:
+        - key: stdlib213
+          label: bootstrapped
+
+scripts:
+
+    stdlib213:
+        - source $PROG_HOME/dotty/bench/scripts/stdlib213
+
+config:
+    pr_base_url: "https://github.com/lampepfl/dotty/pull/"
