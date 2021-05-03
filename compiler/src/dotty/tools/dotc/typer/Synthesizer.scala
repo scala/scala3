@@ -223,7 +223,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     val actual = formal.lookupRefined(name)
     if actual.exists && !(expected =:= actual)
     then report.error(
-      em"$name missmatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
+      em"$name mismatch, expected: $expected, found: $actual.", ctx.source.atSpan(span))
 
   private def mkMirroredMonoType(mirroredType: HKTypeLambda)(using Context): Type =
     val monoMap = new TypeMap:
