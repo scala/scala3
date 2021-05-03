@@ -14,7 +14,6 @@ import Symbols._, SymUtils._, NameOps._
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting._
-import util.Experimental
 
 
 object PostTyper {
@@ -356,7 +355,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
-            Experimental.annotateExperimental(sym)
+            annotateExperimental(sym)
             // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package)
                && ctx.compilationUnit.source.exists
@@ -447,5 +446,12 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def annotateExperimental(sym: Symbol)(using Context): Unit =
+      if sym.is(Enum) && sym.hasAnnotation(defn.ExperimentalAnnot) then
+        // Add @experimental annotation to enum class definitions
+        val compMod = sym.companionModule.moduleClass
+        compMod.addAnnotation(defn.ExperimentalAnnot)
+        compMod.companionModule.addAnnotation(defn.ExperimentalAnnot)
   }
 }
