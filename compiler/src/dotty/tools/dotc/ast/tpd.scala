@@ -41,15 +41,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Super(qual: Tree, mixName: TypeName, mixinClass: Symbol = NoSymbol)(using Context): Super =
     Super(qual, if (mixName.isEmpty) untpd.EmptyTypeIdent else untpd.Ident(mixName), mixinClass)
 
-  def Apply(fn: Tree, args: List[Tree])(using Context): Apply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply] || fn.isInstanceOf[Inlined] || fn.isInstanceOf[tasty.TreePickler.Hole])
-    ta.assignType(untpd.Apply(fn, args), fn, args)
-  }
+  def Apply(fn: Tree, args: List[Tree])(using Context): Apply = fn match
+    case Block(Nil, expr) =>
+      Apply(expr, args)
+    case _: RefTree | _: GenericApply | _: Inlined | _: tasty.TreePickler.Hole =>
+      ta.assignType(untpd.Apply(fn, args), fn, args)
 
-  def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = {
-    assert(fn.isInstanceOf[RefTree] || fn.isInstanceOf[GenericApply])
-    ta.assignType(untpd.TypeApply(fn, args), fn, args)
-  }
+  def TypeApply(fn: Tree, args: List[Tree])(using Context): TypeApply = fn match
+    case Block(Nil, expr) =>
+      TypeApply(expr, args)
+    case _: RefTree | _: GenericApply =>
+      ta.assignType(untpd.TypeApply(fn, args), fn, args)
 
   def Literal(const: Constant)(using Context): Literal =
     ta.assignType(untpd.Literal(const))
