@@ -1,19 +1,19 @@
 import scala.annotation.experimental
 
-@experimental // FIXME ERROR
+@experimental // error
 class A
 
-@experimental // FIXME ERROR
+@experimental // error
 class B extends A
 
-@experimental // FIXME ERROR
-type X
+@experimental
+type X // error
 
-@experimental // FIXME ERROR
-type Y = Int
+@experimental
+type Y = Int // error
 
-@experimental // FIXME ERROR
-opaque type Z = Int
+@experimental
+opaque type Z = Int // error
 
 def test(
   p1: A, // error

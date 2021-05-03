@@ -1,9 +1,10 @@
+// nopos-error // nopos-error // nopos-error // FIXME redundant due to enum
 import scala.annotation.experimental
 
-@experimental // FIXME ERROR
-enum E: // error
+@experimental // error
+enum E:
   case A
-  case B // error
+  case B
 
 def test: Unit =
   E.A // error

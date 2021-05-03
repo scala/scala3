@@ -1,2 +1,4 @@
+import scala.annotation.experimental
+
 class MyExperimentalAnnot // error
-extends scala.annotation.experimental // error
+  extends experimental // error

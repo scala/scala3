@@ -978,15 +978,9 @@ object RefChecks {
     then
       Feature.checkExperimentalDef(sym, pos)
 
-  private def checkExperimentalTypes(tpe: Type, pos: SrcPos)(using Context): Unit =
-    val checker = new TypeTraverser:
-      def traverse(tp: Type): Unit =
-        if tp.typeSymbol.isExperimental then
-          Feature.checkExperimentalDef(tp.typeSymbol, pos)
-        else
-          traverseChildren(tp)
-    if !pos.span.isSynthetic then // avoid double errors
-      checker.traverse(tpe)
+  private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
+    for annot <- sym.annotations if annot.symbol.isExperimental do
+      Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -1225,6 +1219,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformValDef(tree: ValDef)(using Context): ValDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
+    checkExperimentalAnnots(tree.symbol)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1245,6 +1240,7 @@ class RefChecks extends MiniPhase { thisPhase =>
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
+    checkExperimentalAnnots(tree.symbol)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     tree
   }
@@ -1258,6 +1254,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
     checkExperimentalInheritance(cls)
+    checkExperimentalAnnots(cls)
     tree
   }
   catch {
@@ -1305,6 +1302,12 @@ class RefChecks extends MiniPhase { thisPhase =>
 
   override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
     checkUndesiredProperties(tree.symbol, tree.srcPos)
+    tree
+  }
+
+  override def transformTypeDef(tree: TypeDef)(using Context): TypeDef = {
+    checkUndesiredProperties(tree.symbol, tree.srcPos)
+    checkExperimentalAnnots(tree.symbol)
     tree
   }
 }

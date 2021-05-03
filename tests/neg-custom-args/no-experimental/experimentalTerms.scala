@@ -1,12 +1,12 @@
 import scala.annotation.experimental
 
-@experimental // FIXME ERROR
+@experimental // error
 val x = ()
 
-@experimental // FIXME ERROR
+@experimental // error
 def f() = ()
 
-@experimental // FIXME ERROR
+@experimental // error
 object X:
   def fx() = 1
 

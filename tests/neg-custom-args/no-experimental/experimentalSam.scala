@@ -1,6 +1,6 @@
 import scala.annotation.experimental
 
-@experimental // FIXME ERROR
+@experimental // error
 trait ExpSAM {
   def foo(x: Int): Int
 }

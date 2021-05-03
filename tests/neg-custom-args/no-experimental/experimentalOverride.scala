@@ -1,22 +1,22 @@
 import scala.annotation.experimental
 
-@experimental // FIXME ERROR
+@experimental // error
 class A:
   def f() = 1
 
-@experimental // FIXME ERROR
+@experimental // error
 class B extends A:
   override def f() = 2
 
 class C:
-  @experimental // FIXME ERROR
+  @experimental // error
   def f() = 1
 
 class D extends C:
   override def f() = 2
 
 trait A2:
-  @experimental // FIXME ERROR
+  @experimental // error
   def f(): Int
 
 trait B2:
