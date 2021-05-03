@@ -1,7 +1,8 @@
 class Record(elems: Map[String, Any]) extends Selectable:
   val fields = elems.toMap
   def selectDynamic(name: String): Any = fields(name)
-
+object Record:
+  def apply(elems: Map[String, Any]): Record = new Record(elems)
 extension [A <: Record] (a:A) {
   def join[B <: Record] (b:B): A & B = {
     Record(a.fields ++ b.fields).asInstanceOf[A & B]
