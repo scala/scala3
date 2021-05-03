@@ -570,10 +570,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           if ((skipped2 eq tp2) || !Config.fastPathForRefinedSubtype)
             tp1 match {
               case tp1: AndType =>
-                // Delay calling `compareRefinedSlow` because looking up a member
-                // of an `AndType` can lead to a cascade of subtyping checks
-                // This twist is needed to make collection/generic/ParFactory.scala compile
-                fourthTry || compareRefinedSlow
+                // TODO: this should really be an in depth analysis whether LHS contains
+                // an AndType, or has an AndType as bound. What matters is to predict
+                // whether we will be forced into an either later on.
+                tp2.parent match
+                  case _: RefinedType | _: AndType =>
+                    // maximally decompose RHS to limit the bad effects of the `either` that is necessary
+                    // since LHS is an AndType
+                    recur(tp1, decomposeRefinements(tp2, Nil))
+                  case _ =>
+                    // Delay calling `compareRefinedSlow` because looking up a member
+                    // of an `AndType` can lead to a cascade of subtyping checks
+                    // This twist is needed to make collection/generic/ParFactory.scala compile
+                    fourthTry || compareRefinedSlow
               case tp1: HKTypeLambda =>
                 // HKTypeLambdas do not have members.
                 fourthTry
@@ -1690,6 +1699,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       true
     else op2
   end necessaryEither
+
+  /** Decompose into conjunction of types each of which has only a single refinement */
+  def decomposeRefinements(tp: Type, refines: List[(Name, Type)]): Type = tp match
+    case RefinedType(parent, rname, rinfo) =>
+      decomposeRefinements(parent, (rname, rinfo) :: refines)
+    case AndType(tp1, tp2) =>
+      AndType(decomposeRefinements(tp1, refines), decomposeRefinements(tp2, refines))
+    case _ =>
+      refines.map(RefinedType(tp, _, _): Type).reduce(AndType(_, _))
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
    *  the normalized type of the refinement `tp2`?
