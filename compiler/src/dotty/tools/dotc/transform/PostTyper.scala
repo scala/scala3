@@ -266,7 +266,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
                ctx
           super.transform(tree)(using gadtCtx)
         case tree: Ident if !tree.isType =>
-          Experimental.checkExperimental(tree)
           if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
             ctx.compilationUnit.needsInlining = true
           checkNoConstructorProxy(tree)
@@ -275,7 +274,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
             case _ => tree
           }
         case tree @ Select(qual, name) =>
-          Experimental.checkExperimental(tree)
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           if (name.isTypeName) {
@@ -394,7 +392,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           Checking.checkRealizable(ref.tpe, ref.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          Experimental.checkExperimental(tree)
           tree.withType(
             tree.tpe match {
               case AnnotatedType(tpe, annot) => AnnotatedType(tpe, transformAnnot(annot))

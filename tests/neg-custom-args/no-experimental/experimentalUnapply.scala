@@ -1,13 +1,13 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental // FIXME ERROR
 class A
 
 object Extractor1:
-  def unapply(s: Any): Option[A] = ??? // error
+  def unapply(s: Any): Option[A] = ??? // FIXME ERROR
 
 object Extractor2:
-  @experimental // error
+  @experimental // FIXME ERROR
   def unapply(s: Any): Option[Int] = ???
 
 def test: Unit =

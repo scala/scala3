@@ -1,6 +1,6 @@
 import scala.annotation.experimental
 
-@experimental // error
+@experimental // FIXME ERROR
 inline def g() = ()
 
 def test: Unit =

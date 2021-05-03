@@ -1,1 +1,2 @@
-class MyExperimentalAnnot extends scala.annotation.experimental // error
+class MyExperimentalAnnot // error
+extends scala.annotation.experimental // error

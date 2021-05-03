@@ -13,25 +13,6 @@ import dotty.tools.dotc.transform.SymUtils._
 object Experimental:
   import tpd._
 
-  def checkExperimental(tree: Tree)(using Context): Unit =
-    if tree.symbol.isExperimental
-      && !tree.symbol.isConstructor // already reported on the class
-      && !ctx.owner.isExperimental // already reported on the @experimental of the owner
-      && !tree.symbol.is(ModuleClass) // already reported on the module
-      && (tree.span.exists || tree.symbol != defn.ExperimentalAnnot) // already reported on inferred annotations
-    then
-      Feature.checkExperimentalDef(tree.symbol, tree)
-
-  def checkExperimentalTypes(tree: Tree)(using Context): Unit =
-    val checker = new TypeTraverser:
-      def traverse(tp: Type): Unit =
-        if tp.typeSymbol.isExperimental then
-          Feature.checkExperimentalDef(tp.typeSymbol, tree)
-        else
-          traverseChildren(tp)
-    if !tree.span.isSynthetic then // avoid double errors
-      checker.traverse(tree.tpe)
-
   def annotateExperimental(sym: Symbol)(using Context): Unit =
     if sym.is(Enum) && sym.hasAnnotation(defn.ExperimentalAnnot) then
       // Add @experimental annotation to enum class definitions

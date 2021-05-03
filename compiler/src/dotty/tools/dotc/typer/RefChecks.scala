@@ -24,6 +24,7 @@ import reporting._
 import scala.util.matching.Regex._
 import Constants.Constant
 import NullOpsDecorator._
+import dotty.tools.dotc.config.Feature
 
 object RefChecks {
   import tpd._
@@ -927,6 +928,7 @@ object RefChecks {
   // arbitrarily choose one as more important than the other.
   private def checkUndesiredProperties(sym: Symbol, pos: SrcPos)(using Context): Unit =
     checkDeprecated(sym, pos)
+    checkExperimental(sym, pos)
 
     val xMigrationValue = ctx.settings.Xmigration.value
     if xMigrationValue != NoScalaVersion then
@@ -966,6 +968,25 @@ object RefChecks {
         val msg = annot.argumentConstant(0).map(": " + _.stringValue).getOrElse("")
         val since = annot.argumentConstant(1).map(" since " + _.stringValue).getOrElse("")
         report.deprecationWarning(s"${sym.showLocated} is deprecated${since}${msg}", pos)
+
+  private def checkExperimental(sym: Symbol, pos: SrcPos)(using Context): Unit =
+    if sym.isExperimental
+    && !sym.isConstructor // already reported on the class
+    && !ctx.owner.isExperimental // already reported on the @experimental of the owner
+    && !sym.is(ModuleClass) // already reported on the module
+    && (sym.span.exists || sym != defn.ExperimentalAnnot) // already reported on inferred annotations
+    then
+      Feature.checkExperimentalDef(sym, pos)
+
+  private def checkExperimentalTypes(tpe: Type, pos: SrcPos)(using Context): Unit =
+    val checker = new TypeTraverser:
+      def traverse(tp: Type): Unit =
+        if tp.typeSymbol.isExperimental then
+          Feature.checkExperimentalDef(tp.typeSymbol, pos)
+        else
+          traverseChildren(tp)
+    if !pos.span.isSynthetic then // avoid double errors
+      checker.traverse(tpe)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),
    *  emit a warning.
@@ -1279,6 +1300,11 @@ class RefChecks extends MiniPhase { thisPhase =>
       case TermRef(_, s: Symbol) => currentLevel.enterReference(s, tree.span)
       case _ =>
     }
+    tree
+  }
+
+  override def transformTypeTree(tree: TypeTree)(using Context): TypeTree = {
+    checkUndesiredProperties(tree.symbol, tree.srcPos)
     tree
   }
 }
