@@ -257,6 +257,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
+        // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
            pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
