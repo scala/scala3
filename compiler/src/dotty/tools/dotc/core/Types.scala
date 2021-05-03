@@ -1046,17 +1046,15 @@ object Types {
       TypeComparer.isSameTypeWhenFrozen(this, that)
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
-    def isValueSubType(that: Type)(using Context): Boolean = widen match {
+    def isValueSubType(that: Type)(using Context): Boolean = widenDealias match
       case self: TypeRef if self.symbol.isPrimitiveValueClass =>
-        that.widenExpr match {
+        that.widenExpr.dealias match
           case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false
-        }
       case _ =>
         false
-    }
 
     def relaxed_<:<(that: Type)(using Context): Boolean =
       (this <:< that) || (this isValueSubType that)
