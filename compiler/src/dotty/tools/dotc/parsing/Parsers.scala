@@ -315,7 +315,7 @@ object Parsers {
      *  one statement separator unless the next token terminates a statement´sequence.
      *  @param   stats      the statements parsed to far
      *  @param   noPrevStat true if there was no immediately preceding statement parsed
-     *  @param   what       a string indicating what kin of statement is parsed
+     *  @param   what       a string indicating what kind of statement is parsed
      *  @param   altEnd     a token that is also considered as a terminator of the statement
      *                      sequence (the default `EOF` already assumes to terminate a statement
      *                      sequence).
