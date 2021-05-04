@@ -6,8 +6,9 @@ import dotty.tools.scaladoc.util.Escape._
 import scala.collection.mutable.{ Map => MMap }
 import dotty.tools.io.AbstractFile
 import Scaladoc2AnchorCreator.getScaladoc2Type
+import JavadocAnchorCreator.getJavadocType
 
-class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
+class SymOps[Q <: Quotes](val q: Q):
   import q.reflect._
 
   given q.type = q
@@ -129,7 +130,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
         val javadocAnchor = if anchor.isDefined then {
           val paramSigs = sym.paramSymss.flatten.map(_.tree).collect {
             case v: ValDef => v.tpt.tpe
-          }.map(getJavadocType)
+          }.map(getJavadocType(using q))
           "#" + sym.name + paramSigs.mkString("-","-","-")
         } else ""
         docURL + l + extension + javadocAnchor
