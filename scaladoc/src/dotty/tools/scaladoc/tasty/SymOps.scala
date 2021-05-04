@@ -10,7 +10,7 @@ import JavadocAnchorCreator.getJavadocType
 
 object SymOps:
 
-  extension (using Quotes)(sym: quotes.reflect.Symbol)
+  extension (using Quotes)(sym: reflect.Symbol)
 
     def packageName: String =
       if (sym.isPackageDef) sym.fullName
@@ -20,7 +20,7 @@ object SymOps:
       sym.packageName.split('.').toList
 
     def className: Option[String] =
-      import quotes.reflect._
+      import reflect._
       if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
         Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
       ).filterNot(_.contains("package$"))
@@ -42,7 +42,7 @@ object SymOps:
 
 
     def getVisibility(): Visibility =
-      import quotes.reflect._
+      import reflect._
       import VisibilityScope._
 
       def explicitScope(ownerType: TypeRepr): VisibilityScope =
@@ -70,7 +70,7 @@ object SymOps:
 
     // Order here determines order in documenation
     def getExtraModifiers(): Seq[Modifier] =
-      import quotes.reflect._
+      import reflect._
       Seq(
         Flags.Final -> Modifier.Final,
         Flags.Sealed -> Modifier.Sealed,
@@ -94,42 +94,42 @@ object SymOps:
         case _ => false
 
     def shouldDocumentClasslike(using dctx: DocContext): Boolean =
-      import quotes.reflect._
+      import reflect._
       !sym.isHiddenByVisibility
       && !sym.flags.is(Flags.Synthetic)
       && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
       && !(sym.companionModule.flags.is(Flags.Given))
 
-    def getCompanionSymbol: Option[quotes.reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
+    def getCompanionSymbol: Option[reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
 
     def isCompanionObject: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.Module) && sym.companionClass.exists
 
     def isGiven: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.Given)
 
     def isExported: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.Exported)
 
     def isOverridden: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.Override)
 
     def isExtensionMethod: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.ExtensionMethod)
 
     def isArtifact: Boolean =
-      import quotes.reflect._
+      import reflect._
       sym.flags.is(Flags.Artifact)
 
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
 
-    def extendedSymbol: Option[quotes.reflect.ValDef] =
-      import quotes.reflect.*
+    def extendedSymbol: Option[reflect.ValDef] =
+      import reflect.*
       Option.when(sym.isExtensionMethod){
         val termParamss = sym.tree.asInstanceOf[DefDef].termParamss
         if sym.isLeftAssoc || termParamss.size == 1 then termParamss(0).params(0)
@@ -146,10 +146,10 @@ class SymOpsWithLinkCache:
 
   private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
 
-  extension (using Quotes)(sym: quotes.reflect.Symbol)
+  extension (using Quotes)(sym: reflect.Symbol)
 
     private def constructPath(location: Seq[String], anchor: Option[String], link: ExternalDocLink): String =
-      import quotes.reflect.*
+      import reflect.*
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
@@ -183,7 +183,7 @@ class SymOpsWithLinkCache:
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
-      import quotes.reflect.*
+      import reflect.*
       if sym == Symbol.noSymbol then topLevelDri
       else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
@@ -200,7 +200,7 @@ class SymOpsWithLinkCache:
         val location = sym.packageNameSplitted ++ className
 
         val externalLink = {
-            import quotes.reflect._
+            import reflect._
             import dotty.tools.dotc
             given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
@@ -223,7 +223,7 @@ class SymOpsWithLinkCache:
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
 
-    def driInContextOfInheritingParent(par: quotes.reflect.Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
+    def driInContextOfInheritingParent(par: reflect.Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
       location = par.dri.location,
       externalLink = None
     )

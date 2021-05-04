@@ -7,8 +7,8 @@ import scala.util.matching.Regex
 
 object Scaladoc2AnchorCreator:
 
-  def getScaladoc2Type(using Quotes)(t: quotes.reflect.Tree) =
-    import quotes.reflect.*
+  def getScaladoc2Type(using Quotes)(t: reflect.Tree) =
+    import reflect.*
     val regex = t match
       case d: DefDef =>  "def"
       case t: TypeDef => "type"

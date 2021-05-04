@@ -15,8 +15,8 @@ trait BasicSupport:
   export SymOpsWithLinkCache._
 
 
-  def parseAnnotation(using Quotes)(annotTerm: quotes.reflect.Term): Annotation =
-    import quotes.reflect._
+  def parseAnnotation(using Quotes)(annotTerm: reflect.Term): Annotation =
+    import reflect._
     import dotty.tools.dotc.ast.Trees.{SeqLiteral}
     val dri = annotTerm.tpe.typeSymbol.dri
     def inner(t: Term): List[Annotation.AnnotationParameter] = t match {
@@ -36,7 +36,7 @@ trait BasicSupport:
 
     Annotation(dri, params)
 
-  extension (using Quotes)(sym: quotes.reflect.Symbol)
+  extension (using Quotes)(sym: reflect.Symbol)
     def documentation = sym.docstring.map(parseComment(_, sym.tree))
 
     def source =

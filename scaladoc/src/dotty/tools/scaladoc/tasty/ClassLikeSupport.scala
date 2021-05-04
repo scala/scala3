@@ -16,8 +16,8 @@ trait ClassLikeSupport:
 
   private given qctx.type = qctx
 
-  private def bareClasslikeKind(using Quotes)(symbol: quotes.reflect.Symbol): Kind =
-    import quotes.reflect._
+  private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
+    import reflect._
     if symbol.flags.is(Flags.Module) then Kind.Object
     else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
     else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
@@ -217,7 +217,7 @@ trait ClassLikeSupport:
       }
     ).map(_.copy(inheritedFrom = inheritance))
 
-  extension (using Quotes)(c: quotes.reflect.ClassDef)
+  extension (using Quotes)(c: reflect.ClassDef)
 
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
