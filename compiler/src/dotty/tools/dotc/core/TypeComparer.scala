@@ -169,9 +169,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
-  extension (tp: TypeRef)
+  extension (sym: Symbol)
     private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
-      val bounds = gadtBounds(tp.symbol)
+      val bounds = gadtBounds(sym)
       bounds != null && op(bounds)
 
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
@@ -490,11 +490,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def thirdTryNamed(tp2: NamedType): Boolean = tp2.info match {
       case info2: TypeBounds =>
-        def compareGADT: Boolean = {
-          val gbounds2 = gadtBounds(tp2.symbol)
-          (gbounds2 != null) &&
-            (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
-              (tp1 match {
+        def compareGADT: Boolean =
+          tp2.symbol.onGadtBounds(gbounds2 =>
+            isSubTypeWhenFrozen(tp1, gbounds2.lo)
+            || tp1.match
                 case tp1: NamedType if ctx.gadt.contains(tp1.symbol) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
                   // we need to manually handle the case when we're comparing two constrained types,
@@ -503,10 +502,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   // comparing two constrained types, and that case will be handled here first.
                   ctx.gadt.isLess(tp1.symbol, tp2.symbol) && GADTusage(tp1.symbol) && GADTusage(tp2.symbol)
                 case _ => false
-              }) ||
-              narrowGADTBounds(tp2, tp1, approx, isUpper = false)) &&
-            { isBottom(tp1) || GADTusage(tp2.symbol) }
-        }
+            || narrowGADTBounds(tp2, tp1, approx, isUpper = false))
+          && (isBottom(tp1) || GADTusage(tp2.symbol))
+
         isSubApproxHi(tp1, info2.lo) || compareGADT || tryLiftedToThis2 || fourthTry
 
       case _ =>
@@ -756,13 +754,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1: TypeRef =>
         tp1.info match {
           case TypeBounds(_, hi1) =>
-            def compareGADT = {
-              val gbounds1 = gadtBounds(tp1.symbol)
-              (gbounds1 != null) &&
-                (isSubTypeWhenFrozen(gbounds1.hi, tp2) ||
-                narrowGADTBounds(tp1, tp2, approx, isUpper = true)) &&
-                { tp2.isAny || GADTusage(tp1.symbol) }
-            }
+            def compareGADT =
+              tp1.symbol.onGadtBounds(gbounds1 =>
+                isSubTypeWhenFrozen(gbounds1.hi, tp2)
+                || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
+              && (tp2.isAny || GADTusage(tp1.symbol))
+
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
             def isNullable(tp: Type): Boolean = tp.widenDealias match {
@@ -1038,17 +1035,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
                   var touchedGADTs = false
                   var gadtIsInstantiated = false
-                  def byGadtBounds(sym: Symbol, tp: Type, fromAbove: Boolean): Boolean = {
-                    touchedGADTs = true
-                    val b = gadtBounds(sym)
-                    def boundsDescr = if b == null then "null" else b.show
-                    b != null && inFrozenGadt {
-                      if fromAbove then isSubType(b.hi, tp) else isSubType(tp, b.lo)
-                    } && {
-                      gadtIsInstantiated = b.isInstanceOf[TypeAlias]
-                      true
-                    }
-                  }
+
+                  extension (sym: Symbol)
+                    inline def byGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+                      touchedGADTs = true
+                      sym.onGadtBounds(
+                        b => op(b) && { gadtIsInstantiated = b.isInstanceOf[TypeAlias]; true })
 
                   def byGadtOrdering: Boolean =
                     ctx.gadt.contains(tycon1sym)
@@ -1057,8 +1049,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
                   val res = (
                     tycon1sym == tycon2sym && isSubPrefix(tycon1.prefix, tycon2.prefix)
-                    || byGadtBounds(tycon1sym, tycon2, fromAbove = true)
-                    || byGadtBounds(tycon2sym, tycon1, fromAbove = false)
+                    || tycon1sym.byGadtBounds(b => isSubTypeWhenFrozen(b.hi, tycon2))
+                    || tycon2sym.byGadtBounds(b => isSubTypeWhenFrozen(tycon1, b.lo))
                     || byGadtOrdering
                   ) && {
                     // There are two cases in which we can assume injectivity.
@@ -1712,7 +1704,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp: AndType => true
     case OrType(tp1, tp2) => containsAnd(tp1) || containsAnd(tp2)
     case tp: TypeParamRef => containsAnd(bounds(tp).hi)
-    case tp: TypeRef => containsAnd(tp.info.hiBound) || tp.onGadtBounds(gbounds => containsAnd(gbounds.hi))
+    case tp: TypeRef => containsAnd(tp.info.hiBound) || tp.symbol.onGadtBounds(gbounds => containsAnd(gbounds.hi))
     case tp: TypeProxy => containsAnd(tp.superType)
     case _ => false
 
