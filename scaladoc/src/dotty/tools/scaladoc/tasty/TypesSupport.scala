@@ -4,6 +4,7 @@ package tasty
 import collection.JavaConverters._
 
 import NameNormalizer._
+import SyntheticsSupport._
 
 trait TypesSupport:
   self: TastyParser =>
