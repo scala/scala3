@@ -169,6 +169,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   private inline def inFrozenGadtAndConstraint[T](inline op: T): T =
     inFrozenGadtIf(true)(inFrozenConstraint(op))
 
+  extension (tp: TypeRef)
+    private inline def onGadtBounds(inline op: TypeBounds => Boolean): Boolean =
+      val bounds = gadtBounds(tp.symbol)
+      bounds != null && op(bounds)
+
   protected def isSubType(tp1: Type, tp2: Type, a: ApproxState): Boolean = {
     val savedApprox = approx
     val savedLeftRoot = leftRoot
@@ -465,19 +470,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case AndType(tp21, tp22) => constrainRHSVars(tp21) && constrainRHSVars(tp22)
           case _ => true
 
-        // An & on the left side loses information. We compensate by also trying the join.
-        // This is less ad-hoc than it looks since we produce joins in type inference,
-        // and then need to check that they are indeed supertypes of the original types
-        // under -Ycheck. Test case is i7965.scala.
-        def containsAnd(tp: Type): Boolean = tp.dealiasKeepRefiningAnnots match
-          case tp: AndType => true
-          case OrType(tp1, tp2) => containsAnd(tp1) || containsAnd(tp2)
-          case _ => false
-
         widenOK
         || joinOK
         || (tp1.isSoft || constrainRHSVars(tp2)) && recur(tp11, tp2) && recur(tp12, tp2)
         || containsAnd(tp1) && inFrozenGadt(recur(tp1.join, tp2))
+            // An & on the left side loses information. We compensate by also trying the join.
+            // This is less ad-hoc than it looks since we produce joins in type inference,
+            // and then need to check that they are indeed supertypes of the original types
+            // under -Ycheck. Test case is i7965.scala.
+
      case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
@@ -559,40 +560,35 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: TypeParamRef =>
         compareTypeParamRef(tp2)
       case tp2: RefinedType =>
-        def compareRefinedSlow: Boolean = {
+        def compareRefinedSlow: Boolean =
           val name2 = tp2.refinedName
-          recur(tp1, tp2.parent) &&
-            (name2 == nme.WILDCARD || hasMatchingMember(name2, tp1, tp2))
-        }
-        def compareRefined: Boolean = {
+          recur(tp1, tp2.parent)
+          && (name2 == nme.WILDCARD || hasMatchingMember(name2, tp1, tp2))
+
+        def compareRefined: Boolean =
           val tp1w = tp1.widen
           val skipped2 = skipMatching(tp1w, tp2)
-          if ((skipped2 eq tp2) || !Config.fastPathForRefinedSubtype)
-            tp1 match {
-              case tp1: AndType =>
-                // TODO: this should really be an in depth analysis whether LHS contains
-                // an AndType, or has an AndType as bound. What matters is to predict
-                // whether we will be forced into an either later on.
-                tp2.parent match
-                  case _: RefinedType | _: AndType =>
-                    // maximally decompose RHS to limit the bad effects of the `either` that is necessary
-                    // since LHS is an AndType
-                    recur(tp1, decomposeRefinements(tp2, Nil))
-                  case _ =>
-                    // Delay calling `compareRefinedSlow` because looking up a member
-                    // of an `AndType` can lead to a cascade of subtyping checks
-                    // This twist is needed to make collection/generic/ParFactory.scala compile
-                    fourthTry || compareRefinedSlow
-              case tp1: HKTypeLambda =>
-                // HKTypeLambdas do not have members.
-                fourthTry
-              case _ =>
-                compareRefinedSlow || fourthTry
-            }
+          if (skipped2 eq tp2) || !Config.fastPathForRefinedSubtype then
+            if containsAnd(tp1) then
+              tp2.parent match
+                case _: RefinedType | _: AndType =>
+                  // maximally decompose RHS to limit the bad effects of the `either` that is necessary
+                  // since LHS contains an AndType
+                  recur(tp1, decomposeRefinements(tp2, Nil))
+                case _ =>
+                  // Delay calling `compareRefinedSlow` because looking up a member
+                  // of an `AndType` can lead to a cascade of subtyping checks
+                  // This twist is needed to make collection/generic/ParFactory.scala compile
+                  fourthTry || compareRefinedSlow
+            else if tp1.isInstanceOf[HKTypeLambda] then
+              // HKTypeLambdas do not have members.
+              fourthTry
+            else
+              compareRefinedSlow || fourthTry
           else // fast path, in particular for refinements resulting from parameterization.
             isSubRefinements(tp1w.asInstanceOf[RefinedType], tp2, skipped2) &&
             recur(tp1, skipped2)
-        }
+
         compareRefined
       case tp2: RecType =>
         def compareRec = tp1.safeDealias match {
@@ -1708,6 +1704,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       AndType(decomposeRefinements(tp1, refines), decomposeRefinements(tp2, refines))
     case _ =>
       refines.map(RefinedType(tp, _, _): Type).reduce(AndType(_, _))
+
+  /** Can comparing this type on the left lead to an either? This is the case if
+   *  the type is and AndType or contains embedded occurrences of AndTypes
+   */
+  def containsAnd(tp: Type): Boolean = tp match
+    case tp: AndType => true
+    case OrType(tp1, tp2) => containsAnd(tp1) || containsAnd(tp2)
+    case tp: TypeParamRef => containsAnd(bounds(tp).hi)
+    case tp: TypeRef => containsAnd(tp.info.hiBound) || tp.onGadtBounds(gbounds => containsAnd(gbounds.hi))
+    case tp: TypeProxy => containsAnd(tp.superType)
+    case _ => false
 
   /** Does type `tp1` have a member with name `name` whose normalized type is a subtype of
    *  the normalized type of the refinement `tp2`?
