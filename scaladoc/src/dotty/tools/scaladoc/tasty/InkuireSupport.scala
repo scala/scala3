@@ -48,7 +48,7 @@ trait InkuireSupport:
       name = Inkuire.TypeName(normalizedName),
       itid = argument.symbol.itid,
       isVariable = vars.contains(normalizedName) || isVariable,
-      params = Seq.empty //TODO not there
+      params = Seq.empty //TODO in future arities of params will be needed
     )
     if argument.symbol.flags.is(Flags.Covariant) then Inkuire.Covariance(t)
     else if argument.symbol.flags.is(Flags.Contravariant) then Inkuire.Contravariance(t)
@@ -69,23 +69,23 @@ trait InkuireSupport:
       case _ => false
 
   private def inner(tp: TypeRepr, vars: Set[String]): Inkuire.Type = tp match
-    case OrType(left, right) => inner(left, vars) //TODO future
-    case AndType(left, right) => inner(left, vars) //TODO future
+    case OrType(left, right) => inner(left, vars) //TODO for future
+    case AndType(left, right) => inner(left, vars) //TODO for future
     case ByNameType(tpe) => inner(tpe, vars)
     case ConstantType(constant) =>
-      ??? //TODO
+      ??? //TODO for future, kinda
     case ThisType(tpe) => inner(tpe, vars)
     case AnnotatedType(AppliedType(_, Seq(tpe)), annotation) if isRepeatedAnnotation(annotation) =>
-      inner(tpe, vars) //TODO future
+      inner(tpe, vars) //TODO for future
     case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
-      inner(tpe, vars) //TODO future
+      inner(tpe, vars) //TODO for future
     case AnnotatedType(tpe, _) =>
       inner(tpe, vars)
     case tl @ TypeLambda(params, paramBounds, resType) =>
       if resType.typeSymbol.name == "Seq" then println(resType)
-      inner(resType, vars) //TODO future
+      inner(resType, vars) //TODO for future
     case r: Refinement =>
-      inner(r.info, vars) //TODO future
+      inner(r.info, vars) //TODO for future
     case t @ AppliedType(tpe, typeList) =>
       import dotty.tools.dotc.util.Chars._
       if !t.typeSymbol.name.forall(isIdentifierPart) && typeList.size == 2 then
@@ -93,8 +93,7 @@ trait InkuireSupport:
       else if t.isFunctionType then
         typeList match
           case Nil =>
-            //Not possible right?
-            ???
+            ??? //Not possible right?
           case args =>
             val name = s"Function${args.size-1}"
             Inkuire.Type(
@@ -105,8 +104,7 @@ trait InkuireSupport:
       else if t.isTupleType then
         typeList match
           case Nil =>
-            //TODO Not possible right?
-            ???
+            ??? //TODO Not possible right?
           case args =>
             val name = s"Tuple${args.size}"
             Inkuire.Type(
@@ -117,8 +115,7 @@ trait InkuireSupport:
       else
         inner(tpe, vars).copy(
           params = typeList.map(p => Inkuire.Invariance(inner(p, vars)))
-        ) //TODO ?????
-        // inner(tpe, vars)
+        ) //TODO check if it's ok (Having resolver should mean that variance here isn't meaningful)
     case tp: TypeRef =>
       Inkuire.Type(
         name = Inkuire.TypeName(tp.name),
@@ -129,7 +126,7 @@ trait InkuireSupport:
     case tr @ TermRef(qual, typeName) =>
       inner(qual, vars)
     case TypeBounds(low, hi) =>
-      inner(low, vars) //TODO
+      inner(low, vars) //TODO for future
     case NoPrefix() =>
       ??? //TODO not possible right?
     case MatchType(bond, sc, cases) =>
@@ -137,10 +134,10 @@ trait InkuireSupport:
     case ParamRef(TypeLambda(names, _, resType), i) =>
       Inkuire.Type(
         name = Inkuire.TypeName(names(i)),
-        itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)), //TODO try doing actual UUID generation?
+        itid = Some(Inkuire.ITID(s"external-itid-${names(i)}", isParsed = false)), //TODO check if it's possible to get the actual ITID(DRI)
         isVariable = true
       )
     case ParamRef(m: MethodType, i) =>
-      inner(m.paramTypes(i), vars) //TODO
+      inner(m.paramTypes(i), vars)
     case RecursiveType(tp) =>
       inner(tp, vars)

@@ -94,143 +94,54 @@ trait ClassLikeSupport:
       deprecated = classDef.symbol.isDeprecated()
     )
 
-    //
+    if summon[DocContext].generateInkuire then {
 
-    /**
-     * Stuff the doesn't work yet:
-     * - Type parameters work in types but don't work in parents and in types that are arguments or results of functions
-     * - Extension functions
-     * - Inheritance of special types (Any, AnyVal, AnyRef, Nothing, ...)
-     * - SYNTAX!!! <- that's in Inkuire e.g. tuples, different arrows, different parentheses with type params, different constraint syntax
-     * - Type param constraints
-     */
+      /**
+       * Stuff the doesn't work yet:
+       * - Type parameters work in types but don't work in parents and in types that are arguments or results of functions
+       * - Extension functions
+       * - Inheritance of special types (Any, AnyVal, AnyRef, Nothing, ...)
+       * - SYNTAX!!! <- that's in Inkuire e.g. tuples, different arrows, different parentheses with type params, different constraint syntax
+       * - Type param constraints
+       */
 
-    //
+      val classType = classDef.asInkuire(Set.empty, true)
+      val variableNames = classType.params.map(_.typ.name.name).toSet
 
-    val classType = classDef.asInkuire(Set.empty, true)
-    val variableNames = classType.params.map(_.typ.name.name).toSet //TODO pass further
+      val parents = classDef.parents.map(_.asInkuire(variableNames, false))
 
-    val parents = classDef.parents.map(_.asInkuire(variableNames, false))
+      val isModule = classDef.symbol.flags.is(Flags.Module)
 
-    val isModule = classDef.symbol.flags.is(Flags.Module)
+      if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
 
-    if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(classType.itid.get, (classType, parents)))
+      val methods = classDef.symbol.declaredMethods.collect {
+        case methodSymbol: Symbol =>
+          val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+          val methodVars = defdef.paramss.flatMap(_.params).collect {
+            case TypeDef(name, _) => name
+          }
+          val vars = variableNames ++ methodVars
+          Inkuire.ExternalSignature(
+            signature = Inkuire.Signature(
+              receiver = Some(classType).filter(_ => !isModule),
+              arguments = defdef.paramss.flatMap(_.params).collect {
+                case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
+              },
+              result = defdef.returnTpt.asInkuire(vars, false),
+              context = Inkuire.SignatureContext(
+                vars = vars.toSet,
+                constraints = Map.empty //TODO for future
+              )
+            ),
+            name = methodSymbol.name,
+            packageName = methodSymbol.dri.location,
+            uri = methodSymbol.dri.externalLink.getOrElse("")
+          )
+      }
 
-    val methods = classDef.symbol.declaredMethods.collect {
-      case methodSymbol: Symbol =>
-        val defdef = methodSymbol.tree.asInstanceOf[DefDef]
-        val methodVars = defdef.paramss.flatMap(_.params).collect {
-          case TypeDef(name, _) => name
-        }
-        val vars = variableNames ++ methodVars
-        Inkuire.ExternalSignature(
-          signature = Inkuire.Signature(
-            receiver = Some(classType).filter(_ => !isModule),
-            arguments = defdef.paramss.flatMap(_.params).collect {
-              case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
-            },
-            result = defdef.returnTpt.asInkuire(vars, false),
-            context = Inkuire.SignatureContext(
-              vars = vars.toSet,
-              constraints = Map.empty //TODO for the future
-            )
-          ),
-          name = methodSymbol.name,
-          packageName = methodSymbol.dri.location,
-          uri = methodSymbol.dri.externalLink.getOrElse("")
-        )
+      Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ methods)
+
     }
-
-    Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ methods)
-
-    //
-
-    // def typeParamsToInkuire(typeParams: Seq[TypeParameter], vars: Seq[String], isVariable: Boolean): Seq[Inkuire.Variance] = {
-    //   typeParams.map { p =>
-    //       val t = Inkuire.Type(
-    //         name = Inkuire.TypeName(p.name),
-    //         itid = Some(Inkuire.ITID(p.dri.symbolUUID, isParsed = false)),
-    //         isVariable = vars.contains(p.name) || isVariable,
-    //         params = Seq.empty //TODO not there
-    //       )
-    //       p.variance match {
-    //         case "" => Inkuire.Invariance(t)
-    //         case "+" => Inkuire.Covariance(t)
-    //         case "-" => Inkuire.Contravariance(t)
-    //       }
-    //     }
-    // }
-
-    // def paramsFromKind(kind: Kind, vars: Seq[String], isVariable: Boolean): Seq[Inkuire.Variance] = kind match {
-    //   case Kind.Class(typeParams, _) => typeParamsToInkuire(typeParams, vars, isVariable)
-    //   case Kind.Trait(typeParams, _) => typeParamsToInkuire(typeParams, vars, isVariable)
-    //   case Kind.Enum(typeParams, _) => typeParamsToInkuire(typeParams, vars, isVariable)
-    //   case _ => Seq.empty
-    // }
-
-    // val typeITID = Inkuire.ITID(classDef.symbol.dri.symbolUUID, isParsed = false)
-    // val params = paramsFromKind(baseMember.kind, Seq.empty, true)
-    // val variablesNames = params.map(_.typ.name.name)
-    // val baseType = Inkuire.Type(
-    //   name = Inkuire.TypeName(classDef.symbol.name),
-    //   itid = Some(typeITID),
-    //   params = params
-    // )
-    // val parents = classDef.getParentsAsLinkToTypes.map {
-    //   case l: LinkToType if l.signature.exists(_.isInstanceOf[Link]) =>
-    //     val link = l.signature.filter(_.isInstanceOf[Link]).head.asInstanceOf[Link]
-    //     if baseType.name.name == "Seq" then {
-    //       println(link.name)
-    //       println(l.kind)
-    //     }
-    //     Inkuire.Type(
-    //       name = Inkuire.TypeName(link.name),
-    //       itid = Some(Inkuire.ITID(link.dri.symbolUUID, isParsed = false)),
-    //       params = paramsFromKind(l.kind, variablesNames, false)
-    //     )
-    // }
-    // val isModule = baseMember.kind match {
-    //   case Kind.Object | Kind.Package | Kind.RootPackage => true
-    //   case _ => false
-    // }
-    // if !isModule then Inkuire.db = Inkuire.db.copy(types = Inkuire.db.types.updated(typeITID, (baseType, parents)))
-    // val methods: Seq[Inkuire.ExternalSignature] = classDef.membersToDocument.flatMap(parseMember(classDef)).collect {
-    //   case m: Member if m.kind.isInstanceOf[Kind.Def] && m.signature.exists(_.isInstanceOf[Link]) =>
-    //     val kind: Kind.Def = m.kind.asInstanceOf[Kind.Def]
-    //     val resultLink = m.signature.filter(_.isInstanceOf[Link]).head.asInstanceOf[Link]
-    //     val typeParamNames = variablesNames ++ kind.typeParams.map(p => p.name)
-    //     val function = Inkuire.ExternalSignature(
-    //       signature = Inkuire.Signature(
-    //         receiver = Some(baseType).filter(_ => !isModule),
-    //         arguments = kind.argsLists.flatMap(_.parameters).flatMap(_.signature).collect { 
-    //           case l: Link =>
-    //             Inkuire.Type(
-    //               name = Inkuire.TypeName(l.name),
-    //               itid = Some(Inkuire.ITID(l.dri.symbolUUID, isParsed = false)),
-    //               isVariable = typeParamNames.contains(l.name),
-    //               params = Seq.empty //TODO not there
-    //             )
-    //         },
-    //         result = Inkuire.Type(
-    //           name = Inkuire.TypeName(resultLink.name),
-    //           itid = Some(Inkuire.ITID(resultLink.dri.symbolUUID, isParsed = false)),
-    //           isVariable = typeParamNames.contains(resultLink.name),
-    //           params = Seq.empty //TODO not there
-    //         ),
-    //         context = Inkuire.SignatureContext(
-    //           vars = typeParamNames.toSet,
-    //           constraints = Map.empty //TODO for the future
-    //         )
-    //       ),
-    //       name = m.name,
-    //       packageName = classDef.symbol.dri.location,
-    //       uri = m.dri.externalLink.getOrElse("")
-    //     )
-    //     function
-    // }
-    // Inkuire.db = Inkuire.db.copy(functions = Inkuire.db.functions ++ methods)
-
-    //
 
     if signatureOnly then baseMember else baseMember.copy(
         members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),

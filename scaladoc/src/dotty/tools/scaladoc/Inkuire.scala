@@ -4,7 +4,7 @@ import dotty.tools.scaladoc.util._
 
 object Inkuire {
 
-  var db = InkuireDb(Seq.empty, Map.empty)
+  var db = InkuireDb(Seq.empty, Map.empty) //TODO forgive me :(
 
   case class InkuireDb(
     functions: Seq[ExternalSignature],

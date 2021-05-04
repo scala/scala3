@@ -119,3 +119,9 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
 
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)
+
+  val inkuire: Setting[Boolean] =
+    BooleanSetting("-inkuire", "Allows searching the scaladoc with Hoogle like queries", false)
+
+  val generateInkuire: Settings[Boolean] =
+    BooleanSetting("-genarate-inkuire", "Generates InkuireDB", false)

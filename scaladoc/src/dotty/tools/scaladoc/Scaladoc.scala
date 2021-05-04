@@ -84,17 +84,17 @@ object Scaladoc:
 
     }
 
-    println(s"Types: ${Inkuire.db.types.size}")
-    println(s"Functions: ${Inkuire.db.functions.size}")
-    dumpDB(Inkuire.db)
+    if summon[DocContext].generateInkuire then dumpInkuireDB()
 
     ctx.reporter
 
-  def dumpDB(db: InkuireDb) = {
-    val file = new File("/home/kkorban/Inkuire/data/db.json")
+  def dumpInkuireDB() = {
+    println(s"Types: ${Inkuire.db.types.size}")
+    println(s"Functions: ${Inkuire.db.functions.size}")
+    val file = new File("./inkuire-db.json")
     file.createNewFile()
-    val myWriter = new FileWriter("/home/kkorban/Inkuire/data/db.json", false)
-    myWriter.write(s"${EngineModelSerializers.serialize(db)}")
+    val myWriter = new FileWriter("./inkuire-db.json", false)
+    myWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
     myWriter.close()
   }
 
