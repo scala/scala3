@@ -177,7 +177,7 @@ case class TastyParser(
   isSkipped: qctx.reflect.Symbol => Boolean
 )(
   using val ctx: DocContext
-) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
+) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
   import qctx.reflect._
 
   private given qctx.type = qctx

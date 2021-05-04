@@ -3,6 +3,8 @@ package tasty
 
 import collection.JavaConverters._
 
+import NameNormalizer._
+
 trait TypesSupport:
   self: TastyParser =>
   import qctx.reflect._

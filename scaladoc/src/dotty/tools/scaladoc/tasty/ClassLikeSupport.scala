@@ -5,6 +5,7 @@ import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
 import SymOps._
+import NameNormalizer._
 
 trait ClassLikeSupport:
   self: TastyParser =>
