@@ -10,13 +10,13 @@ import ScaladocSupport._
 
 trait BasicSupport:
   self: TastyParser =>
-  import qctx.reflect._
+
   object SymOpsWithLinkCache extends SymOpsWithLinkCache
   export SymOpsWithLinkCache._
 
-  private given qctx.type = qctx
 
-  def parseAnnotation(annotTerm: Term): Annotation =
+  def parseAnnotation(using Quotes)(annotTerm: quotes.reflect.Term): Annotation =
+    import quotes.reflect._
     import dotty.tools.dotc.ast.Trees.{SeqLiteral}
     val dri = annotTerm.tpe.typeSymbol.dri
     def inner(t: Term): List[Annotation.AnnotationParameter] = t match {
@@ -29,7 +29,6 @@ trait BasicSupport:
         case other => List(Annotation.UnresolvedParameter(None, other.show))
       }
 
-
     val params = annotTerm match
       case Apply(target, appliedWith) => {
         appliedWith.flatMap(inner)
@@ -37,10 +36,10 @@ trait BasicSupport:
 
     Annotation(dri, params)
 
-  extension (sym: Symbol)
+  extension (using Quotes)(sym: quotes.reflect.Symbol)
     def documentation = sym.docstring.map(parseComment(_, sym.tree))
 
-    def source(using Quotes) =
+    def source =
       val path = sym.pos.map(_.sourceFile.jpath).filter(_ != null).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
 
@@ -54,5 +53,4 @@ trait BasicSupport:
       }.map(parseAnnotation)
 
     def isLeftAssoc: Boolean = !sym.name.endsWith(":")
-
-
+  end extension
