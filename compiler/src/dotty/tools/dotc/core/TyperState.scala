@@ -164,7 +164,7 @@ class TyperState() {
    *
    *  Side effect: the method will reset the constraint associated with the context.
    */
-  def ensureClosedConstraint[T](op: => T)(using Context): T =
+  def ensureSegregated[T](op: => T)(using Context): T =
     this.constraint = OrderingConstraint.empty
     val res = op
     // force instantiate tvars
