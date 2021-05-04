@@ -18,6 +18,7 @@ import java.nio.file.Paths
 import java.nio.file.Files
 
 import SymOps._
+import ScaladocSupport._
 
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
@@ -112,7 +113,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
           import parser.qctx.reflect._
           def root(s: Symbol): Symbol = if s.owner.isNoSymbol then s else root(s.owner)
           val topLevelPck = root(tree.symbol)
-          rootDoc = Some(parser.parseCommentString(content, topLevelPck, None))
+          rootDoc = Some(parseCommentString(using parser.qctx, summon[DocContext])(content, topLevelPck, None))
         }
 
     hackForeachTree { root =>
@@ -177,7 +178,7 @@ case class TastyParser(
   isSkipped: qctx.reflect.Symbol => Boolean
 )(
   using val ctx: DocContext
-) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
+) extends BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport:
   import qctx.reflect._
 
   private given qctx.type = qctx

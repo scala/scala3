@@ -6,6 +6,7 @@ import dotty.tools.scaladoc._
 import scala.quoted._
 
 import SymOps._
+import ScaladocSupport._
 
 trait BasicSupport:
   self: TastyParser =>
