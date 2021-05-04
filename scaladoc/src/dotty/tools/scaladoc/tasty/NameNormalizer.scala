@@ -4,8 +4,13 @@ import dotty.tools.scaladoc._
 import dotty.tools.dotc.core.StdNames.nme.keywords
 import dotty.tools.dotc.core.Names.termName
 
+import SymOps._
+
 trait NameNormalizer { self: TastyParser =>
   import qctx.reflect._
+
+  private given qctx.type = qctx
+
   extension (s: Symbol) def normalizedName: String = {
     val withoutGivenPrefix = if s.isGiven then s.name.stripPrefix("given_") else s.name
     val withoutObjectSuffix = if s.flags.is(Flags.Module) then withoutGivenPrefix.stripSuffix("$") else withoutGivenPrefix

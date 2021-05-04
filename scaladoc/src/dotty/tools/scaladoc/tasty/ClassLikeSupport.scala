@@ -4,9 +4,13 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
+import SymOps._
+
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
+
+  private given qctx.type = qctx
 
   private def bareClasslikeKind(symbol: Symbol): Kind =
      if symbol.flags.is(Flags.Module) then Kind.Object

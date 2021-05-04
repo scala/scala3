@@ -6,6 +6,7 @@ import collection.JavaConverters._
 trait TypesSupport:
   self: TastyParser =>
   import qctx.reflect._
+  private given qctx.type = qctx
 
   type DocSignaturePart = String | Link
   type DocSignature = List[DocSignaturePart]

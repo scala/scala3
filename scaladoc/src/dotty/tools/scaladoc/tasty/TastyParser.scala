@@ -17,6 +17,8 @@ import dotty.tools.scaladoc.tasty.comments.Comment
 import java.nio.file.Paths
 import java.nio.file.Files
 
+import SymOps._
+
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.tools.scaladoc.tasty.TastyParser]].
@@ -78,7 +80,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
 
     val parser = new TastyParser(q, this)(isSkipped)
     def driFor(link: String): Option[DRI] =
-      val symOps = new SymOps[q.type](q)
+      val symOps = new SymOpsWithLinkCache
       import symOps._
       Try(QueryParser(link).readQuery()).toOption.flatMap(query =>
         MemberLookup.lookupOpt(query, None).map {
@@ -177,6 +179,8 @@ case class TastyParser(
   using val ctx: DocContext
 ) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
   import qctx.reflect._
+
+  private given qctx.type = qctx
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
     case e: Exception  =>

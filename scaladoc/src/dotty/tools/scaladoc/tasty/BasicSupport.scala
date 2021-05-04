@@ -5,11 +5,15 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import scala.quoted._
 
+import SymOps._
+
 trait BasicSupport:
   self: TastyParser =>
   import qctx.reflect._
-  object SymOps extends SymOps[qctx.type](qctx)
-  export SymOps._
+  object SymOpsWithLinkCache extends SymOpsWithLinkCache
+  export SymOpsWithLinkCache._
+
+  private given qctx.type = qctx
 
   def parseAnnotation(annotTerm: Term): Annotation =
     import dotty.tools.dotc.ast.Trees.{SeqLiteral}
