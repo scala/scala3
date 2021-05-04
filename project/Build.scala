@@ -1612,12 +1612,20 @@ object Build {
           val distLocation = (dist / pack).value
           val projectVersion = version.value
           IO.createDirectory(file(outDir))
-          val scala3version = stdlibVersion(Bootstrapped)
+          val stdLibVersion = stdlibVersion(Bootstrapped)
           // TODO add versions etc.
-          val srcManaged = s"out/bootstrap/stdlib-bootstrapped/scala-$baseVersion/src_managed/main/scala-library-src"
-          val sourceLinks = s"-source-links:$srcManaged=github://scala/scala/v${stdlibVersion(Bootstrapped)}#src/library"
+          def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
+          def scalaSrcLink(v: String, s: String) = s"-source-links:$s=github://scala/scala/v$v#src/library"
+          def dottySrcLink(v: String, s: String) = s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
           val revision = Seq("-revision", ref, "-project-version", projectVersion)
-          val cmd = Seq("-d", outDir, "-project", name, sourceLinks) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
+          val cmd = Seq(
+            "-d",
+            outDir,
+            "-project",
+            name,
+            scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala")),
+            dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty"))
+          ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
           import _root_.scala.sys.process._
           Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
         }
