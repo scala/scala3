@@ -5,11 +5,12 @@ import scala.quoted._
 import dotty.tools.scaladoc.util.Escape._
 import scala.collection.mutable.{ Map => MMap }
 import dotty.tools.io.AbstractFile
+import Scaladoc2AnchorCreator.getScaladoc2Type
 
-class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2AnchorCreator:
+class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator:
   import q.reflect._
 
-  given Q = q
+  given q.type = q
 
   private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
 
