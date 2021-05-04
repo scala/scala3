@@ -497,6 +497,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val DefDef` */
     trait DefDefModule { this: DefDef.type =>
+      /** Create a method definition `def f[..](...)` with the signature defined in the symbol.
+       *
+       *  The `rhsFn` is a function that receives references to its parameters and should return
+       *  `Some` containing the implementation of the method. Returns `None` the method has no implementation.
+       *  Any definition directly inside the implementation should have `symbol` as owner.
+       *
+       *  See also: `Tree.changeOwner`
+       */
       def apply(symbol: Symbol, rhsFn: List[List[Tree]] => Option[Term]): DefDef
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term])
@@ -558,6 +566,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     /** Methods of the module object `val ValDef` */
     trait ValDefModule { this: ValDef.type =>
+      /** Create a value definition `val x`, `var x` or `lazy val x` with the signature defined in the symbol.
+       *
+       *  The `rhs` should return be `Some` containing the implementation of the method.
+       *  Returns `None` the method has no implementation.
+       *  Any definition directly inside the implementation should have `symbol` as owner.
+       *
+       *  See also: `Tree.changeOwner`
+       */
       def apply(symbol: Symbol, rhs: Option[Term]): ValDef
       def copy(original: Tree)(name: String, tpt: TypeTree, rhs: Option[Term]): ValDef
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
