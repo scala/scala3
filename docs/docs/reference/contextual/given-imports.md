@@ -27,7 +27,7 @@ object B:
    ...
 ```
 
-Generally, a normal wildcard selector `_` brings all definitions other than givens or extensions into scope
+Generally, a normal wildcard selector `*` brings all definitions other than givens or extensions into scope
 whereas a `given` selector brings all givens (including those resulting from extensions) into scope.
 
 There are two main benefits arising from these rules:
@@ -90,11 +90,11 @@ normal imports to givens and given imports.
 The following modifications avoid this hurdle to migration.
 
  1. A `given` import selector also brings old style implicits into scope. So, in Scala 3.0
-    an old-style implicit definition can be brought into scope either by a `_` or a `given` wildcard selector.
+    an old-style implicit definition can be brought into scope either by a `*` or a `given` wildcard selector.
 
- 2. In Scala 3.1, old-style implicits accessed through a `_` wildcard import will give a deprecation warning.
+ 2. In Scala 3.1, old-style implicits accessed through a `*` wildcard import will give a deprecation warning.
 
- 3. In some version after 3.1, old-style implicits accessed through a `_` wildcard import will give a compiler error.
+ 3. In some version after 3.1, old-style implicits accessed through a `*` wildcard import will give a compiler error.
 
 These rules mean that library users can use `given` selectors to access old-style implicits in Scala 3.0,
 and will be gently nudged and then forced to do so in later versions. Libraries can then switch to
