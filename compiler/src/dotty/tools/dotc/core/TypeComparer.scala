@@ -2879,7 +2879,9 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       if (provablyEmpty(scrut))
         NoType
       else
-        recur(cases)
+        val savedConstraint = constraint
+        try recur(cases)
+        finally constraint = savedConstraint // caseLambda additions are dropped
     }
   }
 }

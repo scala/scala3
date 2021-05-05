@@ -1,0 +1,14 @@
+-- [E057] Type Mismatch Error: tests/neg/6697.scala:6:35 ---------------------------------------------------------------
+6 |  type Copy[O <: Off] = Of[Sup[O], Sub[O]]  // error
+  |                                   ^
+  |                                   Type argument Test.Sub[O] does not conform to upper bound Test.Sup[O]
+  |
+  |                                   Note: a match type could not be fully reduced:
+  |
+  |                                     trying to reduce  Test.Sub[O]
+  |                                     failed since selector  O
+  |                                     matches none of the cases
+  |
+  |                                       case Test.Of[sup, sub] => sub
+
+longer explanation available when compiling with `-explain`
