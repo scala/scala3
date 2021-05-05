@@ -1447,8 +1447,15 @@ object Parsers {
       }
     }
 
-    private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
-      TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
+    private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
+      val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
+      // We remove the variance marker from the name without passing along the specified variance at all
+      // The real variance will be inferred at a later stage but may contradict the variance specified,
+      // This is ok, because `-Ykind-projector` is for cross-compiling existing Scala 2 code, not for writing new code,
+      // we may assume that variance annotations have already been checked by the Scala 2 compiler.
+      val unannotatedName = if (isVarianceAnnotated) name.mapLast(_.drop(1)) else name
+      TypeDef(unannotatedName, WildcardTypeBoundsTree()).withFlags(Param)
+    }
 
     /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
      *  returning the new argument list and the synthetic type definitions.
@@ -1457,7 +1464,7 @@ object Parsers {
       val tparams = new ListBuffer[TypeDef]
 
       val newParams = params.mapConserve {
-        case param @ Ident(tpnme.raw.STAR) =>
+        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) =>
           val name = WildcardParamName.fresh().toTypeName
           tparams += makeKindProjectorTypeDef(name)
           Ident(name)
