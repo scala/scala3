@@ -130,7 +130,28 @@ class TyperState() {
     isCommitted = true
   }
 
+  /** Ensure that this constraint does not associate different TypeVars for the
+   *  same type lambda than the `other` constraint. Do this by renaming type lambdas
+   *  in this constraint and its predecessors where necessary.
+   */
+  def ensureNotConflicting(other: Constraint)(using Context): Unit =
+    def hasConflictingTypeVarsFor(tl: TypeLambda) =
+      constraint.typeVarOfParam(tl.paramRefs(0)) ne other.typeVarOfParam(tl.paramRefs(0))
+        // Note: Since TypeVars are allocated in bulk for each type lambda, we only
+        // have to check the first one to find out if some of them are different.
+    val conflicting = constraint.domainLambdas.find(tl =>
+      other.contains(tl) && hasConflictingTypeVarsFor(tl))
+    for tl <- conflicting do
+      val tl1 = constraint.ensureFresh(tl)
+      for case (tvar: TypeVar, pref1) <- tl.paramRefs.map(constraint.typeVarOfParam).lazyZip(tl1.paramRefs) do
+        tvar.setOrigin(pref1)
+      var ts = this
+      while ts.constraint.domainLambdas.contains(tl) do
+        ts.constraint = ts.constraint.subst(tl, tl1)
+        ts = ts.previous
+
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
+    that.ensureNotConflicting(constraint)
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
     for tvar <- constraint.uninstVars do
       if !isOwnedAnywhere(this, tvar) then ownedVars += tvar

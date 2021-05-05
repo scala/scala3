@@ -485,24 +485,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
             throw new AssertionError(i"cannot merge $this with $other, mergeEntries($e1, $e2) failed")
       }
 
-    /** Ensure that constraint `c` does not associate different TypeVars for the
-     *  same type lambda than this constraint. Do this by renaming type lambdas
-     *  in `c` where necessary.
-     */
-    def ensureNotConflicting(c: OrderingConstraint): OrderingConstraint = {
-      def hasConflictingTypeVarsFor(tl: TypeLambda) =
-        this.typeVarOfParam(tl.paramRefs(0)) ne c.typeVarOfParam(tl.paramRefs(0))
-          // Note: Since TypeVars are allocated in bulk for each type lambda, we only
-          // have to check the first one to find out if some of them are different.
-      val conflicting = c.domainLambdas.find(tl =>
-        this.contains(tl) && hasConflictingTypeVarsFor(tl))
-      conflicting match {
-        case Some(tl) => ensureNotConflicting(c.rename(tl))
-        case None => c
-      }
-    }
-
-    val that = ensureNotConflicting(other.asInstanceOf[OrderingConstraint])
+    val that = other.asInstanceOf[OrderingConstraint]
 
     new OrderingConstraint(
         merge(this.boundsMap, that.boundsMap, mergeEntries),
@@ -510,24 +493,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         merge(this.upperMap, that.upperMap, mergeParams))
   }.showing(i"constraint merge $this with $other = $result", constr)
 
-  def rename(tl: TypeLambda)(using Context): OrderingConstraint = {
-    assert(contains(tl))
-    val tl1 = ensureFresh(tl)
-    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(tl).updated(tl1, m(tl))
+  def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
+    def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from))
     var current = newConstraint(swapKey(boundsMap), swapKey(lowerMap), swapKey(upperMap))
-    def subst[T <: Type](x: T): T = x.subst(tl, tl1).asInstanceOf[T]
+    def subst[T <: Type](x: T): T = x.subst(from, to).asInstanceOf[T]
     current.foreachParam {(p, i) =>
       current = boundsLens.map(this, current, p, i, subst)
       current = lowerLens.map(this, current, p, i, _.map(subst))
       current = upperLens.map(this, current, p, i, _.map(subst))
     }
-    current.foreachTypeVar { tvar =>
-      val TypeParamRef(binder, n) = tvar.origin
-      if (binder eq tl) tvar.setOrigin(tl1.paramRefs(n))
-    }
     constr.println(i"renamed $this to $current")
     current.checkNonCyclic()
-  }
 
   def instType(tvar: TypeVar): Type = entry(tvar.origin) match
     case _: TypeBounds => NoType
