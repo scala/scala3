@@ -174,6 +174,11 @@ abstract class Constraint extends Showable {
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit
 
+  /** Check that every typevar om this constraint has as origin a type parameter
+   *  of athe type lambda that is associated with the typevar itself.
+   */
+  def checkConsistentVars()(using Context): Unit
+
   /** A string describing the constraint's contents without a header or trailer */
   def contentsToString(using Context): String
 }

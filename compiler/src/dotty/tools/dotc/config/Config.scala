@@ -34,6 +34,12 @@ object Config {
    */
   inline val checkConstraintsPropagated = false
 
+  /** If a constraint is over a type lambda `tl` and `tvar` is one of
+   *  the type variables associated with `tl` in the constraint, check
+   *  that the origin of `tvar` is a parameter of `tl`.
+   */
+  inline val checkConsistentVars = false
+
   /** Check that constraints of globally committable typer states are closed.
    *  NOTE: When enabled, the check can cause CyclicReference errors because
    *  it traverses all elements of a type. Such failures were observed when

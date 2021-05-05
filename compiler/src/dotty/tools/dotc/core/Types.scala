@@ -4396,7 +4396,7 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def inst_=(tp: Type): Unit =
+    private[core] def setInst(tp: Type): Unit =
       myInst = tp
       if tp.exists && owningState != null then
         val owningState1 = owningState.get
@@ -4454,7 +4454,7 @@ object Types {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       if ((ctx.typerState eq owningState.get) && !TypeComparer.subtypeCheckInProgress)
-        inst = tp
+        setInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }

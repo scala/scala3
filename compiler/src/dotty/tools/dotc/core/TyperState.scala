@@ -44,6 +44,8 @@ class TyperState() {
   def constraint_=(c: Constraint)(using Context): Unit = {
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
+    if Config.checkConsistentVars && !ctx.reporter.errorsReported then
+      c.checkConsistentVars()
   }
 
   private var previousConstraint: Constraint = _
@@ -177,11 +179,11 @@ class TyperState() {
         if !tvar.inst.exists then
           val inst = constraint.instType(tvar)
           if inst.exists then
-            tvar.inst = inst
-            val lam = tvar.origin.binder
-            if constraint.isRemovable(lam) then toCollect += lam
-      for poly <- toCollect do
-        constraint = constraint.remove(poly)
+            tvar.setInst(inst)
+            val tl = tvar.origin.binder
+            if constraint.isRemovable(tl) then toCollect += tl
+      for tl <- toCollect do
+        constraint = constraint.remove(tl)
 
   override def toString: String = {
     def ids(state: TyperState): List[String] =

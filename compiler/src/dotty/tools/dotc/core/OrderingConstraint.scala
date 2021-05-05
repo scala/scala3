@@ -523,6 +523,13 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     }
     else tl
 
+  def checkConsistentVars()(using Context): Unit =
+    for param <- domainParams do
+      typeVarOfParam(param) match
+        case tvar: TypeVar =>
+          assert(tvar.origin == param, i"mismatch $tvar, $param")
+        case _ =>
+
 // ---------- Exploration --------------------------------------------------------
 
   def domainLambdas: List[TypeLambda] = boundsMap.keys
