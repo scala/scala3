@@ -4396,13 +4396,13 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def inst_=(tp: Type): Unit = {
+    private[core] def inst_=(tp: Type): Unit =
       myInst = tp
-      if (tp.exists && (owningState ne null)) {
-        owningState.get.ownedVars -= this
-        owningState = null // no longer needed; null out to avoid a memory leak
-      }
-    }
+      if tp.exists && owningState != null then
+        val owningState1 = owningState.get
+        if owningState1 != null then
+          owningState1.ownedVars -= this
+          owningState = null // no longer needed; null out to avoid a memory leak
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
