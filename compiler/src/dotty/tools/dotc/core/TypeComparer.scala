@@ -551,13 +551,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       }
 
-    def thirdTry: Boolean = tp2 match {
+    def thirdTryOrdinary: Boolean = tp2 match {
       case tp2 @ AppliedType(tycon2, args2) =>
         compareAppliedType2(tp2, tycon2, args2)
-      case tp2: NamedType =>
-        thirdTryNamed(tp2)
-      case tp2: TypeParamRef =>
-        compareTypeParamRef(tp2)
       case tp2: RefinedType =>
         def compareRefinedSlow: Boolean = {
           val name2 = tp2.refinedName
@@ -734,6 +730,26 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         compareClassInfo
       case _ =>
         fourthTry
+    }
+
+    def thirdTry: Boolean = tp2 match {
+      case tp2: NamedType =>
+        thirdTryNamed(tp2)
+      case tp2: TypeParamRef =>
+        compareTypeParamRef(tp2)
+      case _ =>
+        // thirdTryOrdinary
+        if ctx.mode.is(Mode.GadtConstraintInference) then
+          // If we can GADT-constrain tp1 AND we can't normal-constrain tp2,
+          // jump to fourthTry (where we constrain tp1). We can't do that in
+          // secondTry, since there we _need_ to handle tp1:NamedType before
+          // handling tp2:TypeParamRef.
+          tp1 match
+            case tp1: TypeRef if gadtBounds(tp1.symbol) ne null =>
+              return fourthTry
+            case _ =>
+        end if
+        thirdTryOrdinary
     }
 
     def tryBaseType(cls2: Symbol) = {
