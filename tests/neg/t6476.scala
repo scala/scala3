@@ -6,4 +6,4 @@ class C {
   s"\ "
   s"\\"
   s"\" // error
-}      // error (should not be one)
+}

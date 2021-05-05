@@ -1656,18 +1656,6 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class OnlyCaseClassOrCaseObjectAllowed()(using Context)
-    extends SyntaxMsg(OnlyCaseClassOrCaseObjectAllowedID) {
-    def msg = em"""Only ${hl("case class")} or ${hl("case object")} allowed"""
-    def explain = ""
-  }
-
-  class ExpectedToplevelDef()(using Context)
-    extends SyntaxMsg(ExpectedTopLevelDefID) {
-    def msg = "Expected a toplevel definition"
-    def explain = ""
-  }
-
   class SuperCallsNotAllowedInlineable(symbol: Symbol)(using Context)
     extends SyntaxMsg(SuperCallsNotAllowedInlineableID) {
     def msg = em"Super call not allowed in inlineable $symbol"
@@ -1824,12 +1812,16 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class IllegalStartOfStatement(isModifier: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
-    def msg = {
-      val addendum = if (isModifier) ": no modifiers allowed here" else ""
-      "Illegal start of statement" + addendum
-    }
-    def explain = "A statement is either an import, a definition or an expression."
+  class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
+    def msg =
+      if isStat then
+        "this kind of statement is not allowed here"
+      else
+        val addendum = if isModifier then ": this modifier is not allowed here" else ""
+        s"Illegal start of $what$addendum"
+    def explain =
+      i"""A statement is an import or export, a definition or an expression.
+         |Some statements are only allowed in certain contexts"""
   }
 
   class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsExpectedID) {

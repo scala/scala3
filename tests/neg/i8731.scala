@@ -11,9 +11,9 @@ object test:
   end if
   else     // error: illegal start of definition
     ()
-  end if   // error: misaligned end marker
+  end if
 
   class Test {
     val test = 3
-  end Test // error: misaligned end marker
-  }  // error: eof expected, but unindent found
+  end Test
+  }

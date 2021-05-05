@@ -2,9 +2,6 @@ scala> xml"
 1 | xml"
   |    ^
   |    unclosed string literal
-1 | xml"
-  |     ^
-  |     ';' expected, but eof found
 scala> xml""
 1 | xml""
   | ^^^^^
@@ -20,6 +17,3 @@ scala> s"
 1 | s"
   |  ^
   |  unclosed string literal
-1 | s"
-  |   ^
-  |   ';' expected, but eof found
