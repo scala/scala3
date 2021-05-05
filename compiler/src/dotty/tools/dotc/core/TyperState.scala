@@ -120,12 +120,11 @@ class TyperState() {
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
-      if targetState.constraint eq previousConstraint then targetState.constraint = constraint
-      else targetState.mergeConstraintWith(this)
-    if !ownedVars.isEmpty then
-      for tvar <- ownedVars do
-        tvar.owningState = new WeakReference(targetState)
-      targetState.ownedVars ++= ownedVars
+      if targetState.constraint eq previousConstraint then
+        targetState.constraint = constraint
+        if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
+      else
+        targetState.mergeConstraintWith(this)
     targetState.gc()
     reporter.flush()
     isCommitted = true
@@ -133,6 +132,17 @@ class TyperState() {
 
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
+    for tvar <- constraint.uninstVars do
+      if !isOwnedAnywhere(this, tvar) then ownedVars += tvar
+    for tl <- constraint.domainLambdas do
+      if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
+
+  private def includeVar(tvar: TypeVar)(using Context): Unit =
+    tvar.owningState = new WeakReference(this)
+    ownedVars += tvar
+
+  private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
+    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous, tvar)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
