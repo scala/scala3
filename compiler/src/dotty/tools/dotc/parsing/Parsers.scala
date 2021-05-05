@@ -1312,6 +1312,7 @@ object Parsers {
 
     private def isFunction(tree: Tree): Boolean = tree match {
       case Parens(tree1) => isFunction(tree1)
+      case Block(Nil, tree1) => isFunction(tree1)
       case _: Function => true
       case _ => false
     }

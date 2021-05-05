@@ -1611,6 +1611,8 @@ object desugar {
     def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
       case Parens(body1) =>
         makePolyFunction(targs, body1)
+      case Block(Nil, body1) =>
+        makePolyFunction(targs, body1)
       case Function(vargs, res) =>
         assert(targs.nonEmpty)
         // TODO: Figure out if we need a `PolyFunctionWithMods` instead.
