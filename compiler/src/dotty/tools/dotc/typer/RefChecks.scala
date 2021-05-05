@@ -989,7 +989,7 @@ object RefChecks {
       checker.traverse(tpe)
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
-    for annot <- sym.annotations if annot.symbol.isExperimental do
+    for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
       Feature.checkExperimentalDef(annot.symbol, annot.tree)
 
   /** If @migration is present (indicating that the symbol has changed semantics between versions),

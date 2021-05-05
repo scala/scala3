@@ -1,4 +1,3 @@
-// nopos-error // nopos-error // nopos-error // FIXME redundant due to enum
 import scala.annotation.experimental
 
 @experimental // error
