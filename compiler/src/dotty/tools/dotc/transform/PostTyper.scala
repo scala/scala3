@@ -15,7 +15,6 @@ import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import reporting._
 
-
 object PostTyper {
   val name: String = "posttyper"
 }

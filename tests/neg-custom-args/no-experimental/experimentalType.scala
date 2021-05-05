@@ -15,9 +15,11 @@ type Y = Int // error
 @experimental
 opaque type Z = Int // error
 
+type W = Z // error
+
 def test(
   p1: A, // error
-  p2: List[A], // FIXME ERROR
+  p2: List[A], // error
   p3: X, // error
   p4: Y, // error
   p5: Z, // error

@@ -4,7 +4,7 @@ import scala.annotation.experimental
 class A
 
 object Extractor1:
-  def unapply(s: Any): Option[A] = ??? // FIXME ERROR
+  def unapply(s: Any): Option[A] = ??? // error
 
 object Extractor2:
   @experimental // error
