@@ -21,3 +21,6 @@ def test1d(using q: Quotes) = C(using q)()
 def test2d(using q: Quotes) = C(using q)(1)
 def test3d(using q: Quotes) = C(using q)(1, q.reflect.Flags.Lazy)
 def test4d(using q: Quotes) = C(using q)(f = q.reflect.Flags.Lazy)
+
+def test1e(using q: Quotes) = new C()()
+def test2e(using q: Quotes) = C()()
