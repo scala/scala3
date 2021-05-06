@@ -123,5 +123,5 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val inkuire: Setting[Boolean] =
     BooleanSetting("-inkuire", "Allows searching the scaladoc with Hoogle like queries", false)
 
-  val generateInkuire: Settings[Boolean] =
-    BooleanSetting("-genarate-inkuire", "Generates InkuireDB", false)
+  val generateInkuire: Setting[Boolean] =
+    BooleanSetting("-generate-inkuire", "Generates InkuireDB", false)

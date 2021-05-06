@@ -94,7 +94,7 @@ trait ClassLikeSupport:
       deprecated = classDef.symbol.isDeprecated()
     )
 
-    if summon[DocContext].generateInkuire then {
+    if summon[DocContext].args.generateInkuire then {
 
       /**
        * Stuff the doesn't work yet:

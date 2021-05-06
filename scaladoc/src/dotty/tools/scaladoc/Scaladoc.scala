@@ -57,7 +57,9 @@ object Scaladoc:
     snippetCompiler: List[String] = Nil,
     snippetCompilerDebug: Boolean = false,
     noLinkWarnings: Boolean = false,
-    versionsDictionaryUrl: Option[String] = None
+    versionsDictionaryUrl: Option[String] = None,
+    inkuire: Boolean = false,
+    generateInkuire : Boolean = false
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -82,9 +84,8 @@ object Scaladoc:
         report.inform("Done")
       else report.error("Failure")
 
+      if parsedArgs.generateInkuire then dumpInkuireDB()
     }
-
-    if summon[DocContext].generateInkuire then dumpInkuireDB()
 
     ctx.reporter
 
@@ -215,7 +216,9 @@ object Scaladoc:
         snippetCompiler.get,
         noLinkWarnings.get,
         snippetCompilerDebug.get,
-        versionsDictionaryUrl.nonDefault
+        versionsDictionaryUrl.nonDefault,
+        inkuire.get,
+        generateInkuire.get
       )
       (Some(docArgs), newContext)
     }

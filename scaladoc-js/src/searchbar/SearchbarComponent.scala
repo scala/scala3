@@ -3,7 +3,7 @@ package dotty.tools.scaladoc
 import org.scalajs.dom._
 import org.scalajs.dom.html.Input
 
-class SearchbarComponent(val callback: (String) => List[PageEntry]):
+class SearchbarComponent(val callback: (String) => (PageEntry => Node) => Unit):
   val resultsChunkSize = 100
   extension (p: PageEntry)
     def toHTML =
@@ -33,24 +33,12 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       wrapper
 
   def handleNewQuery(query: String) =
-    val result = callback(query).map(_.toHTML)
     resultsDiv.scrollTop = 0
     while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
     val fragment = document.createDocumentFragment()
-    result.take(resultsChunkSize).foreach(fragment.appendChild)
-    resultsDiv.appendChild(fragment)
-    def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
-      resultsDiv.onscroll = (event: Event) => {
-          if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
-          {
-              val fragment = document.createDocumentFragment()
-              result.take(resultsChunkSize).foreach(fragment.appendChild)
-              resultsDiv.appendChild(fragment)
-              loadMoreResults(result.drop(resultsChunkSize))
-          }
-      }
+    callback(query) { (p: PageEntry) =>
+      resultsDiv.appendChild(p.toHTML)
     }
-    loadMoreResults(result.drop(resultsChunkSize))
 
   private val searchIcon: html.Div =
     val span = document.createElement("span").asInstanceOf[html.Span]
