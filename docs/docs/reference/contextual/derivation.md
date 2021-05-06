@@ -29,7 +29,7 @@ We say that `Tree` is the _deriving type_ and that the `Eq`, `Ordering` and `Sho
 
 All data types can have a `derives` clause. This document focuses primarily on data types which also have a given instance
 of the `Mirror` type class available. Instances of the `Mirror` type class are generated automatically by the compiler
-for,
+for:
 
 + enums and enum cases
 + case classes and case objects
@@ -38,6 +38,8 @@ for,
 `Mirror` type class instances provide information at the type level about the components and labelling of the type.
 They also provide minimal term level infrastructure to allow higher level libraries to provide comprehensive
 derivation support.
+
+*Note*: Mirror instances are not generated for classes in a local context (i.e. classes that are not members of packages or other classes).
 
 ```scala
 sealed trait Mirror:

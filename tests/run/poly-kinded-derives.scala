@@ -1,7 +1,7 @@
 import scala.deriving.*
 
 object Test extends App {
-  {
+  object test1 {
     trait Show[T]
     object Show {
       given Show[Int]()
@@ -19,7 +19,7 @@ object Test extends App {
     case class Poly3[A, B, C](a: A, b: B, c: C) derives Show
   }
 
-  {
+  object test2 {
     trait Functor[F[_]]
     object Functor {
       given [C]: Functor[[T] =>> C]()
@@ -37,7 +37,7 @@ object Test extends App {
     case class Poly3[A, B, C](a: A, b: B, c: C) derives Functor
   }
 
-  {
+  object test3 {
     trait FunctorK[F[_[_]]]
     object FunctorK {
       given [C]: FunctorK[[F[_]] =>> C]()
@@ -53,7 +53,7 @@ object Test extends App {
     //case class Poly3[A, B, C](a: A, b: B, c: C) derives FunctorK
   }
 
-  {
+  object test4 {
     trait Bifunctor[F[_, _]]
     object Bifunctor {
       given [C]: Bifunctor[[T, U] =>> C]()

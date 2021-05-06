@@ -346,7 +346,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
       (using Context): Tree =
     if checkFormal(formal) then
       formal.member(tpnme.MirroredType).info match
-        case TypeBounds(mirroredType, _) => synth(mirroredType.stripTypeVar, formal, span)
+        case TypeBounds(mirroredType, _)
+        if mirroredType.classSymbol.maybeOwner.isType =>
+          // local classes do not support mirrors, see neg/12328.scala for a test case.
+          synth(mirroredType.stripTypeVar, formal, span)
         case other => EmptyTree
     else EmptyTree
 
