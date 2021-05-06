@@ -3247,7 +3247,7 @@ class Typer extends Namer
         replaceSingletons(tp)
       }
       wtp.paramInfos.foreach(instantiate)
-      val constr = ctx.typerState.constraint
+      val saved = ctx.typerState.snapshot()
 
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
@@ -3347,8 +3347,9 @@ class Typer extends Namer
         if (propFail.exists) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint needs to be reset.
-          ctx.typerState.constraint = constr
+          // might fail. In that case the constraint and instantiated variables
+          // need to be reset.
+          ctx.typerState.resetTo(saved)
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.

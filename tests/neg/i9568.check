@@ -7,6 +7,6 @@
    |          .
    |          I found:
    |
-   |              Test.blaMonad[Nothing, S](Test.blaMonad[F, S])
+   |              Test.blaMonad[F, S](Test.blaMonad[F, S])
    |
-   |          But method blaMonad in object Test does not match type => Monad[Nothing].
+   |          But method blaMonad in object Test does not match type => Monad[F].

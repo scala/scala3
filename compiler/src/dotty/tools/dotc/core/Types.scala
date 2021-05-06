@@ -4396,13 +4396,17 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def inst_=(tp: Type): Unit = {
+    private[core] def setInst(tp: Type): Unit =
       myInst = tp
-      if (tp.exists && (owningState ne null)) {
-        owningState.get.ownedVars -= this
-        owningState = null // no longer needed; null out to avoid a memory leak
-      }
-    }
+      if tp.exists && owningState != null then
+        val owningState1 = owningState.get
+        if owningState1 != null then
+          owningState1.ownedVars -= this
+          owningState = null // no longer needed; null out to avoid a memory leak
+
+    private[core] def resetInst(ts: TyperState): Unit =
+      myInst = NoType
+      owningState = new WeakReference(ts)
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
@@ -4454,7 +4458,7 @@ object Types {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       if ((ctx.typerState eq owningState.get) && !TypeComparer.subtypeCheckInProgress)
-        inst = tp
+        setInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
@@ -4593,10 +4597,16 @@ object Types {
         myReduced =
           trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
+              val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases)
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally updateReductionContext(cmp.footprint)
+              finally
+                updateReductionContext(cmp.footprint)
+                ctx.typerState.resetTo(saved)
+                  // this drops caseLambdas in constraint and undoes any typevar
+                  // instantiations during matchtype reduction
+
             TypeComparer.tracked(matchCases)
           }
       myReduced

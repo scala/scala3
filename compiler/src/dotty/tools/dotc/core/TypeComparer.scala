@@ -2876,12 +2876,8 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
       // obviously sound, but quite restrictive. With the current formulation,
       // we need to be careful that `provablyEmpty` covers all the conditions
       // used to conclude disjointness in `provablyDisjoint`.
-      if (provablyEmpty(scrut))
-        NoType
-      else
-        val savedConstraint = constraint
-        try recur(cases)
-        finally constraint = savedConstraint // caseLambda additions are dropped
+      if (provablyEmpty(scrut)) NoType
+      else recur(cases)
     }
   }
 }

@@ -128,6 +128,8 @@ class TreeChecker extends Phase with SymTransformer {
     report.echo(s"checking ${ctx.compilationUnit} after phase ${fusedPhase}")(using ctx)
 
     inContext(ctx) {
+      assert(ctx.typerState.constraint.domainLambdas.isEmpty,
+        i"non-empty constraint at end of $fusedPhase: ${ctx.typerState.constraint}, ownedVars = ${ctx.typerState.ownedVars.toList}%, %")
       assertSelectWrapsNew(ctx.compilationUnit.tpdTree)
     }
 
