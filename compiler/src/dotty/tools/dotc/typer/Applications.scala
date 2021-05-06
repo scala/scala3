@@ -264,15 +264,15 @@ object Applications {
       // Constructors always have one leading non-implicit parameter list.
       // Empty list is inserted for constructors where the first parameter list is implicit.
       //
-      // Therefore, we need to ignore the first empty parameter block.
+      // Therefore, we need to ignore the first empty argument list.
       // This is needed for the test tests/neg/i12344.scala
       //
       // see NamerOps.normalizeIfConstructor
       //
       if args == Nil
-         && fn.symbol.isConstructor
          && !fn.isInstanceOf[Apply]
          && app.tpe.isImplicitMethod
+         && fn.symbol.isConstructor
       then meth
       else spliceMeth(meth, fn).appliedToArgs(args)
     case TypeApply(fn, targs) =>
