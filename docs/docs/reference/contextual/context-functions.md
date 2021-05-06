@@ -113,7 +113,7 @@ With that setup, the table construction code above compiles and expands to:
 ```
 ### Example: Postconditions
 
-As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a zero-overhead abstraction.
+As a larger example, here is a way to define constructs for checking arbitrary postconditions using an extension method `ensuring` so that the checked result can be referred to simply by `result`. The example combines opaque type aliases, context function types, and extension methods to provide a low-cost abstraction.
 
 ```scala
 object PostConditions:
@@ -137,7 +137,7 @@ scope to pass along to the `result` method. `WrappedResult` is a fresh type, to 
 that we do not get unwanted givens in scope (this is good practice in all cases
 where context parameters are involved). Since `WrappedResult` is an opaque type alias, its
 values need not be boxed, and since `ensuring` is added as an extension method, its argument
-does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient
+does not need boxing either. Hence, the implementation of `ensuring` is about as efficient
 as the best possible code one could write by hand:
 
 ```scala
@@ -146,6 +146,9 @@ val s =
    assert(result == 6)
    result
 ```
+
+The only additional cost if creation of the function at runtime. However, we
+expect JVM to optimize that away.
 ### Reference
 
 For more information, see the [blog article](https://www.scala-lang.org/blog/2016/12/07/implicit-function-types.html),
