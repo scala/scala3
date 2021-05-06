@@ -196,3 +196,12 @@
 [submodule "community-build/community-projects/scalatestplus-testng"]
 	path = community-build/community-projects/scalatestplus-testng
 	url = https://github.com/dotty-staging/scalatestplus-testng.git
+[submodule "community-build/community-projects/munit-cats-effect"]
+	path = community-build/community-projects/munit-cats-effect
+	url = https://github.com/dotty-staging/munit-cats-effect.git
+[submodule "community-build/community-projects/scalacheck-effect"]
+	path = community-build/community-projects/scalacheck-effect
+	url = https://github.com/dotty-staging/scalacheck-effect.git
+[submodule "community-build/community-projects/fs2"]
+	path = community-build/community-projects/fs2
+	url = https://github.com/dotty-staging/fs2.git

@@ -485,6 +485,7 @@ object projects:
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
     sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
@@ -676,6 +677,27 @@ object projects:
     dependencies = List(scalatest, scalatestplusScalacheck),
   )
 
+  lazy val munitCatsEffect = SbtCommunityProject(
+    project = "munit-cats-effect",
+    sbtTestCommand = "ce3JVM/test; ce3JS/test",
+    sbtPublishCommand = "ce3JVM/publishLocal; ce3JS/publishLocal",
+    dependencies = List(munit, catsEffect3)
+  )
+
+  lazy val scalacheckEffect = SbtCommunityProject(
+    project = "scalacheck-effect",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(cats, catsEffect3, munit, scalacheck)
+  )
+
+  lazy val fs2 = SbtCommunityProject(
+    project = "fs2",
+    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
+    sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
+    dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
+  )
+
 end projects
 
 def allProjects = List(
@@ -748,6 +770,9 @@ def allProjects = List(
   projects.onnxScala,
   projects.playJson,
   projects.scalatestplusTestNG,
+  projects.munitCatsEffect,
+  projects.scalacheckEffect,
+  projects.fs2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
