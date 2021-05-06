@@ -475,13 +475,6 @@ object projects:
     sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
   )
 
-  lazy val catsEffect2 = SbtCommunityProject(
-    project        = "cats-effect-2",
-    sbtTestCommand = "test",
-    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
-    dependencies   = List(cats, disciplineMunit)
-  )
-
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
     sbtTestCommand = "test",
@@ -741,7 +734,6 @@ def allProjects = List(
   projects.dottyCpsAsync,
   projects.scalaz,
   projects.endpoints4s,
-  projects.catsEffect2,
   projects.catsEffect3,
   projects.scalaParallelCollections,
   projects.scalaCollectionCompat,

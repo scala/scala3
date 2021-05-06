@@ -100,10 +100,6 @@
 [submodule "community-build/community-projects/requests-scala"]
 	path = community-build/community-projects/requests-scala
 	url = https://github.com/dotty-staging/requests-scala.git
-[submodule "community-build/community-projects/cats-effect-2"]
-	path = community-build/community-projects/cats-effect-2
-	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/2.x
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git

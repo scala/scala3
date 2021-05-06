@@ -114,7 +114,6 @@ end CommunityBuildTestA
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestB extends CommunityBuildTest:
   @Test def cats = projects.cats.run()
-  @Test def catsEffect2 = projects.catsEffect2.run()
   @Test def catsEffect3 = projects.catsEffect3.run()
   @Test def catsMtl = projects.catsMtl.run()
   @Test def coop = projects.coop.run()
