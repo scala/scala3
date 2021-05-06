@@ -16,9 +16,21 @@ import org.junit.Test
 
 class RemoteLinksTest:
 
+  Random.setSeed(123L)
+  val mtslAll = membersToSourceLinks(using testDocContext())
+
+  @Test
+  def scala213XSourceLink =
+    assertTrue(mtslAll.find((k, _) => k == "AbstractMap").isDefined) // source link to Scala2.13.X stdlib class
+
+  @Test
+  def scala3SourceLink =
+    assertTrue(mtslAll.find((k, _) => k == "FromDigits").isDefined) // source link to Scala3 stdlib class
+
   @Test
   def runTest =
-    val mtsl = Random.shuffle(membersToSourceLinks(using testDocContext())).take(20) // take 20 random entries. The test is flaky, because of TASTY bug. We should fix it some time.
+    assertTrue(mtslAll.nonEmpty)
+    val mtsl = Random.shuffle(mtslAll).take(20) // take 20 random entries
     val pageToMtsl: Map[String, List[(String, String)]] = mtsl.groupMap(_._2.split("#L").head)(v => (v._1, v._2.split("#L").last))
     pageToMtsl.foreach { case (link, members) =>
       try
