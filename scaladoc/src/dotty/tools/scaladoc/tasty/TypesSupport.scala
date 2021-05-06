@@ -3,14 +3,21 @@ package tasty
 
 import collection.JavaConverters._
 
+import scala.quoted._
+
+import NameNormalizer._
+import SyntheticsSupport._
+
 trait TypesSupport:
   self: TastyParser =>
-  import qctx.reflect._
 
   type DocSignaturePart = String | Link
   type DocSignature = List[DocSignaturePart]
 
-  def getGivenInstance(method: DefDef): Option[DocSignature] =
+  def getGivenInstance(method: qctx.reflect.DefDef): Option[DocSignature] =
+    import qctx.reflect._
+    given qctx.type = qctx
+
     def extractTypeSymbol(t: Tree): Option[Symbol] = t match
       case tpeTree: TypeTree =>
         inner(tpeTree.tpe)
@@ -37,15 +44,16 @@ trait TypesSupport:
     }.flatten.map(_.asSignature)
 
   given TreeSyntax: AnyRef with
-    extension (tpeTree: Tree)
+    extension (using Quotes)(tpeTree: reflect.Tree)
       def asSignature: DocSignature =
+        import reflect._
         tpeTree match
           case TypeBoundsTree(low, high) => typeBoundsTreeOfHigherKindedType(low.tpe, high.tpe)
           case tpeTree: TypeTree => inner(tpeTree.tpe)
           case term:  Term => inner(term.tpe)
 
   given TypeSyntax: AnyRef with
-    extension (tpe: TypeRepr)
+    extension (using Quotes)(tpe: reflect.TypeRepr)
       def asSignature: DocSignature = inner(tpe)
 
 
@@ -53,7 +61,7 @@ trait TypesSupport:
 
   private def texts(str: String): DocSignature = List(text(str))
 
-  private def link(symbol: Symbol): DocSignature =
+  private def link(using Quotes)(symbol: reflect.Symbol): DocSignature =
     val suffix = if symbol.isValDef then texts(".type") else Nil
     Link(symbol.normalizedName, symbol.dri) :: suffix
 
@@ -61,14 +69,16 @@ trait TypesSupport:
     case List(single) => single
     case other => other.reduce((r, e) => r ++ texts(", ") ++ e)
 
-  private def isRepeatedAnnotation(term: Term) =
+  private def isRepeatedAnnotation(using Quotes)(term: reflect.Term) =
+    import reflect._
     term.tpe match
       case t: TypeRef => t.name == "Repeated" && t.qualifier.match
         case ThisType(tref: TypeRef) if tref.name == "internal" => true
         case _ => false
       case _ => false
 
-  private def isRepeated(typeRepr: TypeRepr) =
+  private def isRepeated(using Quotes)(typeRepr: reflect.TypeRepr) =
+    import reflect._
     typeRepr match
       case t: TypeRef => t.name == "<repeated>" && t.qualifier.match
         case ThisType(tref: TypeRef) if tref.name == "scala" => true
@@ -76,7 +86,8 @@ trait TypesSupport:
       case _ => false
 
   // TODO #23 add support for all types signatures that makes sense
-  private def inner(tp: TypeRepr): DocSignature =
+  private def inner(using Quotes)(tp: reflect.TypeRepr): DocSignature =
+    import reflect._
     def noSupported(name: String): DocSignature =
       println(s"WARN: Unsupported type: $name: ${tp.show}")
       List(text(s"Unsupported[$name]"))
@@ -261,8 +272,9 @@ trait TypesSupport:
 
       case RecursiveType(tp) => inner(tp)
 
-  private def typeBound(t: TypeRepr, low: Boolean) =
-    val ignore = if(low) t.typeSymbol == defn.NothingClass  else t.typeSymbol == defn.AnyClass
+  private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
+    import reflect._
+    val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
     val prefix = text(if low then " >: " else " <: ")
     t match {
       case l: TypeLambda => prefix :: texts("(") ++ inner(l) ++ texts(")")
@@ -271,7 +283,8 @@ trait TypesSupport:
       case _ => Nil
     }
 
-  private def typeBoundsTreeOfHigherKindedType(low: TypeRepr, high: TypeRepr) =
+  private def typeBoundsTreeOfHigherKindedType(using Quotes)(low: reflect.TypeRepr, high: reflect.TypeRepr) =
+    import reflect._
     def regularTypeBounds(low: TypeRepr, high: TypeRepr) =
       typeBound(low, low = true) ++ typeBound(high, low = false)
     high.match

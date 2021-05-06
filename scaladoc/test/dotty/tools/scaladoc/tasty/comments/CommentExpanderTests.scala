@@ -1,5 +1,6 @@
 package dotty.tools.scaladoc
-package tasty.comments
+package tasty
+package comments
 
 import scala.quoted._
 
@@ -9,25 +10,25 @@ import dotty.tools.scaladoc.tasty.util._
 import dotty.tools.scaladoc.tasty.TastyParser
 
 class CommentExpanderTests {
-  def check(using quoted.Quotes)(): Unit =
+  def check(using Quotes)(): Unit =
     assertCommentEquals(
-      qr.Symbol.requiredClass("tests.B").memberMethod("otherMethod").head,
+      reflect.Symbol.requiredClass("tests.B").memberMethod("otherMethod").head,
       "/** This is my foo: Bar, actually. */",
     )
     assertCommentEquals(
-      qr.Symbol.requiredClass("tests.C"),
+      reflect.Symbol.requiredClass("tests.C"),
       "/** This is foo: Foo expanded. */",
     )
     assertCommentEquals(
-      qr.Symbol.requiredModule("tests.O").memberMethod("method").head,
+      reflect.Symbol.requiredModule("tests.O").memberMethod("method").head,
       "/** This is foo: O's foo. */",
     )
 
 
   def assertCommentEquals(
-    using quoted.Quotes
+    using Quotes
   )(
-    rsym: quotes.reflect.Symbol,
+    rsym: reflect.Symbol,
     str: String
   ): Unit =
     import dotty.tools.dotc
@@ -41,13 +42,12 @@ class CommentExpanderTests {
     import scala.tasty.inspector.OldTastyInspector
     class Inspector extends OldTastyInspector:
 
-      def processCompilationUnit(using quoted.Quotes)(root: quotes.reflect.Tree): Unit = ()
+      def processCompilationUnit(using Quotes)(root: reflect.Tree): Unit = ()
 
-      override def postProcess(using quoted.Quotes): Unit =
+      override def postProcess(using Quotes): Unit =
         check()
 
     Inspector().inspectTastyFiles(TestUtils.listOurClasses())
   }
 
-  private def qr(using quoted.Quotes): quotes.reflect.type = quotes.reflect
 }

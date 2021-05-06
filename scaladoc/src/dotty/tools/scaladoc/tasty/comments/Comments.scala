@@ -12,7 +12,8 @@ import com.vladsch.flexmark.util.options.MutableDataSet
 import scala.quoted._
 import dotty.tools.scaladoc.tasty.comments.wiki.Paragraph
 import dotty.tools.scaladoc.DocPart
-import dotty.tools.scaladoc.tasty.SymOps
+import dotty.tools.scaladoc.tasty.SymOpsWithLinkCache
+import collection.JavaConverters._
 import collection.JavaConverters._
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
@@ -80,10 +81,11 @@ abstract class MarkupConversion[T](val repr: Repr)(using DocContext) {
   val qctx: repr.qctx.type = if repr == null then null else repr.qctx // TODO why we do need null?
   val owner: qctx.reflect.Symbol =
     if repr == null then null.asInstanceOf[qctx.reflect.Symbol] else repr.sym
+  private given qctx.type = qctx
 
-  object SymOps extends SymOps[qctx.type](qctx)
-  export SymOps.dri
-  export SymOps.driInContextOfInheritingParent
+  object SymOpsWithLinkCache extends SymOpsWithLinkCache
+  export SymOpsWithLinkCache.dri
+  export SymOpsWithLinkCache.driInContextOfInheritingParent
 
   def resolveLink(queryStr: String): DocLink =
     if SchemeUri.matches(queryStr) then DocLink.ToURL(queryStr)
