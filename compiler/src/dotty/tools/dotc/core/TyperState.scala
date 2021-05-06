@@ -23,14 +23,19 @@ object TyperState {
       .setReporter(new ConsoleReporter())
       .setCommittable(true)
 
-  opaque type Snapshot = (Constraint, TypeVars)
+  opaque type Snapshot = (Constraint, TypeVars, TypeVars)
 
   extension (ts: TyperState)
-    def snapshot(): Snapshot = (ts.constraint, ts.ownedVars)
+    def snapshot()(using Context): Snapshot =
+      var previouslyInstantiated: TypeVars = SimpleIdentitySet.empty
+      for tv <- ts.ownedVars do if tv.inst.exists then previouslyInstantiated += tv
+      (ts.constraint, ts.ownedVars, previouslyInstantiated)
 
     def resetTo(state: Snapshot)(using Context): Unit =
-      val (c, tvs) = state
-      for tv <- tvs do if tv.isInstantiated then tv.resetInst(ts)
+      val (c, tvs, previouslyInstantiated) = state
+      for tv <- tvs do
+        if tv.inst.exists && !previouslyInstantiated.contains(tv) then
+          tv.resetInst(ts)
       ts.ownedVars = tvs
       ts.constraint = c
 }
@@ -74,7 +79,11 @@ class TyperState() {
 
   private var isCommitted: Boolean = _
 
-  /** The set of uninstantiated type variables which have this state as their owning state */
+  /** The set of uninstantiated type variables which have this state as their owning state
+   *  NOTE: It could be that a variable in `ownedVars` is already instantiated. This is because
+   *  the link between ownedVars and variable instantiation in TypeVar#setInst is made up
+   *  from a weak reference and weak references can have spurious nulls.
+   */
   private var myOwnedVars: TypeVars = _
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
@@ -187,7 +196,7 @@ class TyperState() {
       Stats.record("typerState.gc")
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
-        if !tvar.inst.exists then
+        if !tvar.inst.exists then // See comment of `ownedVars` for why this test is necessary
           val inst = constraint.instType(tvar)
           if inst.exists then
             tvar.setInst(inst)
