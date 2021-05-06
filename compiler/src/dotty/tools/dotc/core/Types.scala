@@ -4597,10 +4597,16 @@ object Types {
         myReduced =
           trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
+              val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases)
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally updateReductionContext(cmp.footprint)
+              finally
+                updateReductionContext(cmp.footprint)
+                ctx.typerState.resetTo(saved)
+                  // this drops caseLambdas in constraint and undoes any typevar
+                  // instantiations during matchtype reduction
+
             TypeComparer.tracked(matchCases)
           }
       myReduced
