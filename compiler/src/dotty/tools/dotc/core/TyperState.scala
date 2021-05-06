@@ -22,6 +22,17 @@ object TyperState {
       .init(null, OrderingConstraint.empty)
       .setReporter(new ConsoleReporter())
       .setCommittable(true)
+
+  opaque type Snapshot = (Constraint, TypeVars)
+
+  extension (ts: TyperState)
+    def snapshot(): Snapshot = (ts.constraint, ts.ownedVars)
+
+    def resetTo(state: Snapshot)(using Context): Unit =
+      val (c, tvs) = state
+      for tv <- tvs do if tv.isInstantiated then tv.resetInst(ts)
+      ts.ownedVars = tvs
+      ts.constraint = c
 }
 
 class TyperState() {

@@ -4404,6 +4404,10 @@ object Types {
           owningState1.ownedVars -= this
           owningState = null // no longer needed; null out to avoid a memory leak
 
+    private[core] def resetInst(ts: TyperState): Unit =
+      myInst = NoType
+      owningState = new WeakReference(ts)
+
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
      */
