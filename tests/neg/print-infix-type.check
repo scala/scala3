@@ -1,0 +1,7 @@
+-- [E007] Type Mismatch Error: tests/neg/print-infix-type.scala:8:29 ---------------------------------------------------
+8 |  val x: over[String, Int] = f // error
+  |                             ^
+  |                             Found:    Int over String
+  |                             Required: String over Int
+
+longer explanation available when compiling with `-explain`
