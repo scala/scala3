@@ -58,7 +58,6 @@ object Scaladoc:
     snippetCompilerDebug: Boolean = false,
     noLinkWarnings: Boolean = false,
     versionsDictionaryUrl: Option[String] = None,
-    inkuire: Boolean = false,
     generateInkuire : Boolean = false
   )
 
@@ -217,7 +216,6 @@ object Scaladoc:
         noLinkWarnings.get,
         snippetCompilerDebug.get,
         versionsDictionaryUrl.nonDefault,
-        inkuire.get,
         generateInkuire.get
       )
       (Some(docArgs), newContext)
