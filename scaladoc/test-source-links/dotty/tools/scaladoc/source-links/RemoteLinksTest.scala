@@ -16,7 +16,9 @@ import org.junit.Test
 
 class RemoteLinksTest:
 
-  Random.setSeed(123L)
+  class TimeoutException extends Exception
+
+  val randomGenerator = new Random(125L)
   val mtslAll = membersToSourceLinks(using testDocContext())
 
   @Test
@@ -25,12 +27,12 @@ class RemoteLinksTest:
 
   @Test
   def scala3SourceLink =
-    assertTrue(mtslAll.find((k, _) => k == "FromDigits").isDefined) // source link to Scala3 stdlib class
+    assertTrue(mtslAll.find((k, _) => k == "PolyFunction").isDefined) // source link to Scala3 stdlib class
 
   @Test
   def runTest =
     assertTrue(mtslAll.nonEmpty)
-    val mtsl = Random.shuffle(mtslAll).take(20) // take 20 random entries
+    val mtsl = randomGenerator.shuffle(mtslAll).take(20) // take 20 random entries
     val pageToMtsl: Map[String, List[(String, String)]] = mtsl.groupMap(_._2.split("#L").head)(v => (v._1, v._2.split("#L").last))
     pageToMtsl.foreach { case (link, members) =>
       try
@@ -44,20 +46,23 @@ class RemoteLinksTest:
       catch
         case e: java.lang.IllegalArgumentException =>
           report.error(s"Could not open link for $link - invalid URL")(using testContext)
+        case e: TimeoutException =>
+          report.error(s"Tried to open link $link 16 times but with no avail")(using testContext)
         case e: org.jsoup.HttpStatusException => e.getStatusCode match
           case 404 => throw AssertionError(s"Page $link does not exists")
           case n   => report.warning(s"Could not open link for $link, return code $n")(using testContext)
     }
     assertNoErrors(testContext.reportedDiagnostics)
 
-  private def getDocumentFromUrl(link: String): Document =
+  private def getDocumentFromUrl(link: String, retries: Int = 16): Document =
     try
+      if retries == 0 then throw TimeoutException()
       Jsoup.connect(link).get
     catch
       case e: org.jsoup.HttpStatusException => e.getStatusCode match
           case 429 =>
             Thread.sleep(10)
-            getDocumentFromUrl(link)
+            getDocumentFromUrl(link, retries - 1)
           case n =>
             throw e
 

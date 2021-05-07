@@ -21,9 +21,9 @@ object NameNormalizer {
   private val ignoredKeywords: Set[String] = Set("this")
 
   private def escapedName(name: String) =
-    val simpleIdentifierRegex = "([([{}]) ]|[^A-Za-z0-9$]_)".r
+    val complexIdentifierRegex = """([([{}]) ]|[^A-Za-z0-9$]_)""".r
     name match
       case n if ignoredKeywords(n) => n
-      case n if keywords(termName(n)) || simpleIdentifierRegex.findFirstIn(n).isDefined => s"`$n`"
+      case n if keywords(termName(n)) || complexIdentifierRegex.findFirstIn(n).isDefined => s"`$n`"
       case _ => name
 }
