@@ -1,4 +1,5 @@
-package dotty.tools.dotc
+package dotty.tools
+package dotc
 package printing
 
 import core._
@@ -166,13 +167,17 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       ~ " "
       ~ toText(appType.resultType)
 
-    def isInfixType(tp: Type): Boolean = tp match {
+    def isInfixType(tp: Type): Boolean = tp match
       case AppliedType(tycon, args) =>
-        args.length == 2 &&
-        tycon.typeSymbol.getAnnotation(defn.ShowAsInfixAnnot).map(_.argumentConstant(0).forall(_.booleanValue))
-          .getOrElse(!Character.isUnicodeIdentifierStart(tycon.typeSymbol.name.toString.head))
+        args.length == 2
+        && {
+          val sym = tycon.typeSymbol
+          sym.is(Infix)
+          || sym.getAnnotation(defn.ShowAsInfixAnnot)
+              .exists(_.argumentConstant(0).forall(_.booleanValue))
+          || !Character.isUnicodeIdentifierStart(tycon.typeSymbol.name.toString.head)
+        }
       case _ => false
-    }
 
     def tyconName(tp: Type): Name = tp.typeSymbol.name
     def checkAssocMismatch(tp: Type, isRightAssoc: Boolean) = tp match {
