@@ -791,16 +791,18 @@ class SpaceEngine(using Context) extends SpaceLogic {
     def isCheckable(tp: Type): Boolean =
       !tp.hasAnnotation(defn.UncheckedAnnot) && {
         val tpw = tp.widen.dealias
+        val classSym = tpw.classSymbol
         ctx.settings.YcheckAllPatmat.value ||
-        tpw.typeSymbol.is(Sealed) ||
+        classSym.is(Sealed) ||
         tpw.isInstanceOf[OrType] ||
         (tpw.isInstanceOf[AndType] && {
           val and = tpw.asInstanceOf[AndType]
           isCheckable(and.tp1) || isCheckable(and.tp2)
         }) ||
         tpw.isRef(defn.BooleanClass) ||
-        tpw.typeSymbol.isAllOf(JavaEnumTrait) ||
-        (defn.isTupleType(tpw) && tpw.argInfos.exists(isCheckable(_)))
+        classSym.isAllOf(JavaEnumTrait) ||
+        (defn.isProductSubType(tpw) && classSym.is(Case)
+           && productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_)))
       }
 
     val res = isCheckable(sel.tpe)
