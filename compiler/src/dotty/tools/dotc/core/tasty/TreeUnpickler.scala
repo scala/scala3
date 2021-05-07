@@ -884,8 +884,8 @@ class TreeUnpickler(reader: TastyReader,
       if (!sym.isType) // Only terms might have leaky aliases, see the documentation of `checkNoPrivateLeaks`
         sym.info = ta.avoidPrivateLeaks(sym)
 
-      if (ctx.mode.is(Mode.ReadComments)) {
-        assert(ctx.docCtx.isDefined, "Mode is `ReadComments`, but no `docCtx` is set.")
+      if (ctx.settings.YreadComments.value) {
+        assert(ctx.docCtx.isDefined, "`-Yread-comments` enabled, but no `docCtx` is set.")
         commentUnpicklerOpt.foreach { commentUnpickler =>
           val comment = commentUnpickler.commentAt(start)
           ctx.docCtx.get.addDocstring(tree.symbol, comment)
