@@ -66,6 +66,9 @@ extension (r: report.type)
   def warn(m: String, e: Throwable)(using CompilerContext): Unit =
     r.warning(s"$m: ${throwableToString(e)}")
 
+  def echo(m: String)(using CompilerContext): Unit =
+    r.echo(m)
+
 case class NavigationNode(name: String, dri: DRI, nested: Seq[NavigationNode])
 
 case class DocContext(args: Scaladoc.Args, compilerContext: CompilerContext):
