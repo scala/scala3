@@ -27,7 +27,6 @@ case class OutputFormat(
   matches: List[Match]
 )
 
-//TODO CORS problems
 class InkuireDelegateSearchEngine {
 
   given ec: ExecutionContext = global
@@ -50,41 +49,6 @@ class InkuireDelegateSearchEngine {
     getURLContent(ec2 + "/forSignature?signature=" + signature).map(JSON.parse(_)).foreach { (d: Dynamic) =>
       d.matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry).foreach(callback)
     }
-  }
-
-}
-
-class InkuireJSSearchEngine {
-
-  val scriptPath = Globals.pathToRoot + "scripts/"
-  val worker     = new Worker(s"${scriptPath}inkuire-worker.js")
-
-  def dynamicToPageEntry(d: Dynamic): PageEntry = {
-    PageEntry(
-      d.functionName.asInstanceOf[String],
-      d.prettifiedSignature.asInstanceOf[String],
-      d.pageLocation.asInstanceOf[String],
-      d.functionName.asInstanceOf[String],
-      List.empty
-    )
-  }
-
-  def query(s: String)(callback: PageEntry => Node): List[PageEntry] = {
-    worker.onmessage = _ => ()
-    val res = ListBuffer[PageEntry]()
-    val func = (msg: MessageEvent) => {
-      msg.data.asInstanceOf[String] match {
-        case "engine_ready" =>
-        case "new_query" =>
-        case q =>
-          val matches = JSON.parse(q).matches
-          val actualMatches = matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry)
-          actualMatches.foreach(callback)
-      }
-    }
-    worker.onmessage = func
-    worker.postMessage(s)
-    res.toList
   }
 
 }

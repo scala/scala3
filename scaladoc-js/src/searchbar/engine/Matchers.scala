@@ -1,5 +1,9 @@
 package dotty.tools.scaladoc
 
+sealed trait EngineQuery
+case class EngineMatchersQuery(matchers: List[Matchers]) extends EngineQuery
+case class BySignature(signature: String) extends EngineQuery
+
 sealed trait Matchers extends Function1[PageEntry, Int]
 
 case class ByName(query: String) extends Matchers:
