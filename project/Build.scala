@@ -15,6 +15,8 @@ import xerial.sbt.pack.PackPlugin
 import xerial.sbt.pack.PackPlugin.autoImport._
 import xerial.sbt.Sonatype.autoImport._
 
+import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
+
 import dotty.tools.sbtplugin.DottyIDEPlugin.{ installCodeExtension, prepareCommand, runProcess }
 import dotty.tools.sbtplugin.DottyIDEPlugin.autoImport._
 
@@ -71,6 +73,29 @@ object Build {
   // instead of hardcoding them ?
   val publishedDottyVersion = referenceVersion
   val sbtDottyVersion = "0.5.5"
+
+  /** Version against which we check binary compatibility.
+   *
+   *  This must be the latest published release in the same versioning line.
+   *  For example, if the next version is going to be 3.1.4, then this must be
+   *  set to 3.1.3. If it is going to be 3.1.0, it must be set to the latest
+   *  3.0.x release.
+   */
+  val previousDottyVersion = "3.0.0-RC3"
+  val previousDottyBinaryVersion = "3.0.0-RC3"
+
+  object CompatMode {
+    final val BinaryCompatible = 0
+    final val SourceAndBinaryCompatible = 1
+  }
+
+  val compatMode = {
+    val VersionRE = """^\d+\.(\d+).(\d+).*""".r
+    baseVersion match {
+      case VersionRE(_, "0")   => CompatMode.BinaryCompatible
+      case _                   => CompatMode.SourceAndBinaryCompatible
+    }
+  }
 
   /** scala-library version required to compile Dotty.
    *
@@ -392,6 +417,22 @@ object Build {
     javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((`scala3-library-bootstrapped` / Compile / fullClasspath).value).mkString("", File.pathSeparator, "")
   )
 
+  lazy val commonMiMaSettings = Def.settings(
+    mimaPreviousArtifacts += {
+      val thisProjectID = projectID.value
+      val crossedName = thisProjectID.crossVersion match {
+        case cv: Disabled => thisProjectID.name
+        case cv: Binary => s"${thisProjectID.name}_${cv.prefix}$previousDottyBinaryVersion${cv.suffix}"
+      }
+      (thisProjectID.organization % crossedName % previousDottyVersion)
+    },
+
+    mimaCheckDirection := (compatMode match {
+      case CompatMode.BinaryCompatible          => "backward"
+      case CompatMode.SourceAndBinaryCompatible => "both"
+    }),
+  )
+
   /** Projects -------------------------------------------------------------- */
 
   val dottyCompilerBootstrappedRef = LocalProject("scala3-compiler-bootstrapped")
@@ -411,7 +452,8 @@ object Build {
   lazy val `scala3-bootstrapped` = project.asDottyRoot(Bootstrapped)
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
-    settings(commonJavaSettings)
+    settings(commonJavaSettings).
+    settings(commonMiMaSettings)
 
   /** Find an artifact with the given `name` in `classpath` */
   def findArtifact(classpath: Def.Classpath, name: String): File = classpath
@@ -1636,15 +1678,17 @@ object Build {
           ).
           settings(dottyLibrarySettings)
       if (mode == Bootstrapped) {
-        base.settings(Seq(
+        base.settings(
           (Compile/doc) := {
             // Workaround for
             // [error]    |object IArray cannot have the same name as object IArray in package scala
             // -- cannot define object member with the same name as a object member in self reference _.
             val doWork = (Compile/doc).result.value
             (Compile/doc/target).value
-          }
-        ))
+          },
+          commonMiMaSettings,
+          mimaBinaryIssueFilters ++= MiMaFilters.Library,
+        )
       } else base
     }
 
