@@ -1,7 +1,7 @@
 package dotty.tools
 package dotc
 package reporting
-
+import scala.annotation.threadUnsafe
 import util.SourcePosition
 
 object Message {
@@ -58,6 +58,9 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
     */
   protected def explain: String
 
+  /** A message suffix that can be added for certain subclasses */
+  protected def msgSuffix: String = ""
+
   /** Does this message have an explanation?
    *  This is normally the same as `explain.nonEmpty` but can be overridden
    *  if we need a way to return `true` without actually calling the
@@ -82,10 +85,10 @@ abstract class Message(val errorId: ErrorMessageID) { self =>
   def rawMessage = message
 
   /** The message to report. <nonsensical> tags are filtered out */
-  lazy val message: String = dropNonSensical(msg)
+  @threadUnsafe lazy val message: String = dropNonSensical(msg + msgSuffix)
 
   /** The explanation to report. <nonsensical> tags are filtered out */
-  lazy val explanation: String = dropNonSensical(explain)
+  @threadUnsafe lazy val explanation: String = dropNonSensical(explain)
 
   /** A message is non-sensical if it contains references to <nonsensical>
    *  tags.  Such tags are inserted by the error diagnostic framework if a

@@ -36,6 +36,8 @@ i11236.scala
 i11247.scala
 i11250
 i9999.scala
+i12127.scala
+8649.scala
 
 # Opaque type
 i5720.scala
@@ -64,3 +66,7 @@ i8182.scala
 
 # local lifted value in annotation argument has different position after pickling
 i2797a
+
+# GADT cast applied to singleton type difference
+i4176-gadt.scala
+

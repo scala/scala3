@@ -16,7 +16,7 @@ import printing.Formatting
 import ErrorMessageID._
 import ast.Trees
 import config.{Feature, ScalaVersion}
-import typer.ErrorReporting.err
+import typer.ErrorReporting.{err, matchReductionAddendum}
 import typer.ProtoTypes.ViewProto
 import scala.util.control.NonFatal
 import StdNames.nme
@@ -45,7 +45,11 @@ import transform.SymUtils._
   abstract class TypeMsg(errorId: ErrorMessageID) extends Message(errorId):
     def kind = "Type"
 
-  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context) extends Message(errorId):
+  trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
+    override def msgSuffix: String = matchReductionAddendum(tps*)
+
+  abstract class TypeMismatchMsg(found: Type, expected: Type)(errorId: ErrorMessageID)(using Context)
+  extends Message(errorId), ShowMatchTrace(found, expected):
     def kind = "Type Mismatch"
     def explain = err.whyNoMatchStr(found, expected)
     override def canExplain = true
@@ -281,7 +285,7 @@ import transform.SymUtils._
   end TypeMismatch
 
   class NotAMember(site: Type, val name: Name, selected: String, addendum: => String = "")(using Context)
-  extends NotFoundMsg(NotAMemberID) {
+  extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
     //println(i"site = $site, decls = ${site.decls}, source = ${site.typeSymbol.sourceFile}") //DEBUG
 
     def msg = {
@@ -1467,6 +1471,14 @@ import transform.SymUtils._
     def msg = em"""$tp does not conform to its self type $selfType; cannot be instantiated"""
   }
 
+  class IllegalParameterInit(found: Type, expected: Type, param: Symbol, cls: Symbol)(using Context)
+    extends TypeMismatchMsg(found, expected)(IllegalParameterInitID):
+    def msg =
+      em"""illegal parameter initialization of $param.
+          |
+          |  The argument passed for $param has type: $found
+          |  but $cls expects $param to have type: $expected"""
+
   class AbstractMemberMayNotHaveModifier(sym: Symbol, flag: FlagSet)(
     implicit ctx: Context)
     extends SyntaxMsg(AbstractMemberMayNotHaveModifierID) {
@@ -1547,6 +1559,12 @@ import transform.SymUtils._
   class CannotExtendJavaEnum(sym: Symbol)(using Context)
     extends SyntaxMsg(CannotExtendJavaEnumID) {
       def msg = em"""$sym cannot extend ${hl("java.lang.Enum")}: only enums defined with the ${hl("enum")} syntax can"""
+      def explain = ""
+    }
+
+  class CannotExtendContextFunction(sym: Symbol)(using Context)
+    extends SyntaxMsg(CannotExtendFunctionID) {
+      def msg = em"""$sym cannot extend a context function class"""
       def explain = ""
     }
 
@@ -1635,18 +1653,6 @@ import transform.SymUtils._
   class ValueClassParameterMayNotBeCallByName(valueClass: Symbol, param: Symbol)(using Context)
     extends SyntaxMsg(ValueClassParameterMayNotBeCallByNameID) {
     def msg = s"Value class parameter `${param.name}` may not be call-by-name"
-    def explain = ""
-  }
-
-  class OnlyCaseClassOrCaseObjectAllowed()(using Context)
-    extends SyntaxMsg(OnlyCaseClassOrCaseObjectAllowedID) {
-    def msg = em"""Only ${hl("case class")} or ${hl("case object")} allowed"""
-    def explain = ""
-  }
-
-  class ExpectedToplevelDef()(using Context)
-    extends SyntaxMsg(ExpectedTopLevelDefID) {
-    def msg = "Expected a toplevel definition"
     def explain = ""
   }
 
@@ -1806,12 +1812,16 @@ import transform.SymUtils._
     def explain = ""
   }
 
-  class IllegalStartOfStatement(isModifier: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
-    def msg = {
-      val addendum = if (isModifier) ": no modifiers allowed here" else ""
-      "Illegal start of statement" + addendum
-    }
-    def explain = "A statement is either an import, a definition or an expression."
+  class IllegalStartOfStatement(what: String, isModifier: Boolean, isStat: Boolean)(using Context) extends SyntaxMsg(IllegalStartOfStatementID) {
+    def msg =
+      if isStat then
+        "this kind of statement is not allowed here"
+      else
+        val addendum = if isModifier then ": this modifier is not allowed here" else ""
+        s"Illegal start of $what$addendum"
+    def explain =
+      i"""A statement is an import or export, a definition or an expression.
+         |Some statements are only allowed in certain contexts"""
   }
 
   class TraitIsExpected(symbol: Symbol)(using Context) extends SyntaxMsg(TraitIsExpectedID) {

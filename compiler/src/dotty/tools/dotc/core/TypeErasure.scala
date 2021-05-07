@@ -726,7 +726,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       //   erased like `Array[A]` as seen from its definition site, no matter
       //   the `X` (same if `A` is bounded).
       //
-      // The binary compatibility is checked by sbt-dotty/sbt-test/scala2-compat/i8001
+      // The binary compatibility is checked by sbt-test/scala2-compat/i8001
       val erasedValueClass =
         if erasedUnderlying.isPrimitiveValueType && !genericUnderlying.isPrimitiveValueType then
           defn.boxedType(erasedUnderlying)
@@ -821,10 +821,10 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         sigName(this(tp))
       case tp: TypeProxy =>
         sigName(tp.underlying)
-      case _: ErrorType | WildcardType | NoType =>
-        tpnme.WILDCARD
       case tp: WildcardType =>
-        sigName(tp.optBounds)
+        tpnme.Uninstantiated
+      case _: ErrorType | NoType =>
+        tpnme.ERROR
       case _ =>
         val erasedTp = this(tp)
         assert(erasedTp ne tp, tp)

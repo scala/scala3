@@ -170,7 +170,7 @@ object Extractors {
       case Unapply(fun, implicits, patterns) =>
         this += "Unapply(" += fun += ", " ++= implicits += ", " ++= patterns += ")"
       case Alternatives(patterns) =>
-        this += "Alternative(" ++= patterns += ")"
+        this += "Alternatives(" ++= patterns += ")"
     }
 
     def visitConstant(x: Constant): this.type = x match {

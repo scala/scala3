@@ -133,8 +133,7 @@ class Definitions {
           ClassInfo(ScalaPackageClass.thisType, cls, ObjectType :: Nil, decls)
       }
     }
-    val flags0 = Trait | NoInits
-    val flags = if (name.isContextFunction) flags0 | Final else flags0
+    val flags = Trait | NoInits
     newPermanentClassSymbol(ScalaPackageClass, name, flags, completer)
   }
 
@@ -768,6 +767,7 @@ class Definitions {
     @tu lazy val ClassTagModule_apply: Symbol = ClassTagModule.requiredMethod(nme.apply)
 
   @tu lazy val TypeTestClass: ClassSymbol = requiredClass("scala.reflect.TypeTest")
+    @tu lazy val TypeTest_unapply: Symbol = TypeTestClass.requiredMethod(nme.unapply)
   @tu lazy val TypeTestModule_identity: Symbol = TypeTestClass.companionModule.requiredMethod(nme.identity)
 
   @tu lazy val QuotedExprClass: ClassSymbol = requiredClass("scala.quoted.Expr")
@@ -889,6 +889,7 @@ class Definitions {
   @tu lazy val ImplicitAmbiguousAnnot: ClassSymbol = requiredClass("scala.annotation.implicitAmbiguous")
   @tu lazy val ImplicitNotFoundAnnot: ClassSymbol = requiredClass("scala.annotation.implicitNotFound")
   @tu lazy val InlineParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InlineParam")
+  @tu lazy val ErasedParamAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ErasedParam")
   @tu lazy val InvariantBetweenAnnot: ClassSymbol = requiredClass("scala.annotation.internal.InvariantBetween")
   @tu lazy val MainAnnot: ClassSymbol = requiredClass("scala.main")
   @tu lazy val MigrationAnnot: ClassSymbol = requiredClass("scala.annotation.migration")
@@ -919,6 +920,7 @@ class Definitions {
   @tu lazy val ParamMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.param")
   @tu lazy val SetterMetaAnnot: ClassSymbol = requiredClass("scala.annotation.meta.setter")
   @tu lazy val ShowAsInfixAnnot: ClassSymbol = requiredClass("scala.annotation.showAsInfix")
+  @tu lazy val StableAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Stable")
   @tu lazy val FunctionalInterfaceAnnot: ClassSymbol = requiredClass("java.lang.FunctionalInterface")
   @tu lazy val TargetNameAnnot: ClassSymbol = requiredClass("scala.annotation.targetName")
   @tu lazy val VarargsAnnot: ClassSymbol = requiredClass("scala.annotation.varargs")
@@ -1029,13 +1031,13 @@ class Definitions {
 
   /** An extractor for multi-dimensional arrays.
    *  Note that this will also extract the high bound if an
-   *  element type is a wildcard. E.g.
+   *  element type is a wildcard upper-bounded by an array. E.g.
    *
    *     Array[? <: Array[? <: Number]]
    *
    *  would match
    *
-   *     MultiArrayOf(<Number>, 2)
+   *     MultiArrayOf(<? <: Number>, 2)
    */
   object MultiArrayOf {
     def apply(elem: Type, ndims: Int)(using Context): Type =
@@ -1043,7 +1045,8 @@ class Definitions {
     def unapply(tp: Type)(using Context): Option[(Type, Int)] = tp match {
       case ArrayOf(elemtp) =>
         def recur(elemtp: Type): Option[(Type, Int)] = elemtp.dealias match {
-          case TypeBounds(lo, hi) => recur(hi)
+          case tp @ TypeBounds(lo, hi @ MultiArrayOf(finalElemTp, n)) =>
+            Some(finalElemTp, n)
           case MultiArrayOf(finalElemTp, n) => Some(finalElemTp, n + 1)
           case _ => Some(elemtp, 1)
         }

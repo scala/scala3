@@ -29,7 +29,7 @@ object Scala2Erasure:
    *  these issues because they get flattened into a single RefinedType with
    *  three parents, cf `flattenedParents`.
    *
-   *  See sbt-dotty/sbt-test/scala2-compat/erasure/changes/Main.scala for examples.
+   *  See sbt-test/scala2-compat/erasure/changes/Main.scala for examples.
    *
    *  @throws TypeError if this type is unsupported.
    */
@@ -215,7 +215,7 @@ object Scala2Erasure:
    *  is only specified for class symbols. Therefore, the accuracy of this
    *  method cannot be guaranteed, the best we can do is make sure it works on
    *  as many test cases as possible which can be run from sbt using:
-   *  > sbt-dotty/scripted scala2-compat/erasure
+   *  > sbt-test/scripted scala2-compat/erasure
    *
    *  The body of this method is made to look as much as the Scala 2 version as
    *  possible to make them easier to compare, cf:

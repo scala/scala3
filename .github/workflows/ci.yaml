@@ -35,10 +35,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
+         || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
@@ -82,10 +79,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
+         || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
@@ -117,7 +111,7 @@ jobs:
 
       - name: Cmd Tests
         run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
   test_windows_fast:
@@ -125,7 +119,6 @@ jobs:
     if: "(
            github.event_name == 'push'
            && github.ref != 'refs/heads/master'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
          )
          || (
            github.event_name == 'pull_request'
@@ -168,10 +161,7 @@ jobs:
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
+         || github.event_name == 'push'
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
@@ -361,7 +351,7 @@ jobs:
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       - name: Test sbt
-        run: ./project/scripts/sbt "sbt-dotty/scripted; sbt-community-build/scripted"
+        run: ./project/scripts/sbt "sbt-test/scripted; sbt-community-build/scripted"
 
   test_java8:
     runs-on: [self-hosted, Linux]
@@ -377,7 +367,6 @@ jobs:
          || (
            github.event_name == 'push'
            && startsWith(github.event.ref, 'refs/tags/')
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
          )
          || (
            github.event_name == 'pull_request'
@@ -410,7 +399,7 @@ jobs:
 
       - name: Test
         run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
   publish_nightly:
@@ -447,7 +436,20 @@ jobs:
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
+      - name: Get version string for this build
+        run: |
+          ver=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
+          echo "This build version: $ver"
+          echo "THISBUILD_VERSION=$ver" >> $GITHUB_ENV
+
+      - name: Check whether not yet published
+        id: not_yet_published
+        continue-on-error: true
+        run: |
+          ! ./project/scripts/is-version-published.sh "$THISBUILD_VERSION"
+
       - name: Publish Nightly
+        if: "steps.not_yet_published.outcome == 'success'"
         run: |
           ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
@@ -507,8 +509,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [test_non_bootstrapped, test, community_build_a, community_build_b, community_build_c, test_sbt, test_java8]
     if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/')
-         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
+         && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
       RELEASEBUILD: yes
@@ -593,8 +594,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/general:/root/.cache
     needs: [publish_release]
     if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/')
-         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
+         && startsWith(github.event.ref, 'refs/tags/')"
 
     env:
       RELEASEBUILD: yes
@@ -629,46 +629,6 @@ jobs:
           publish_dir: docs/_site
           external_repository: lampepfl/dotty-website
           publish_branch: gh-pages
-
-  publish_sbt_release:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [community_build_a, community_build_b, community_build_c, test_sbt]
-    if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
-
-    env:
-      RELEASEBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
-
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v2
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Publish Dotty SBT Plugin Release
-        run: |
-          ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
 
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]

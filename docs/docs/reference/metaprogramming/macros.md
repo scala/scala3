@@ -186,22 +186,24 @@ Expr.betaReduce(_): Expr[(T1, ..., Tn) => R] => ((Expr[T1], ..., Expr[Tn]) => Ex
 Types are not directly affected by the phase consistency principle.
 It is possible to use types defined at any level in any other level.
 But, if a type is used in a subsequent stage it will need to be lifted to a `Type`.
-The resulting value of `Type` will be subject to PCP.
 Indeed, the definition of `to` above uses `T` in the next stage, there is a
 quote but no splice between the parameter binding of `T` and its
-usage. But the code can be rewritten by adding a binding of a `Type[T]` tag:
+usage. But the code can be rewritten by adding an explicit binding of a `Type[T]`:
 
 ```scala
-def to[T, R](f: Expr[T] => Expr[R])(using Type[T], Type[R], Quotes): Expr[T => R] =
-   '{ (x: T) => ${ f('x) } }
+def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T])(using Type[R], Quotes): Expr[T => R] =
+   '{ (x: t.Underlying) => ${ f('x) } }
 ```
 
 In this version of `to`, the type of `x` is now the result of
-splicing the `Type` value `t`. This operation _is_ splice correct -- there
-is one quote and one splice between the use of `t` and its definition.
+inserting the type `Type[T]` and selecting its `Underlying`.
 
-To avoid clutter, the Scala implementation tries to convert any type
-reference to a type `T` in subsequent phases to a type-splice, by rewriting `T` to `summon[Type[T]].Underlying`.
+To avoid clutter, the compiler converts any type reference to
+a type `T` in subsequent phases to `summon[Type[T]].Underlying`.
+
+And to avoid duplication it does it once per type, and creates
+an alias for that type at the start of the quote.
+
 For instance, the user-level definition of `to`:
 
 ```scala
@@ -213,7 +215,10 @@ would be rewritten to
 
 ```scala
 def to[T, R](f: Expr[T] => Expr[R])(using t: Type[T], r: Type[R])(using Quotes): Expr[T => R] =
-   '{ (x: t.Underlying) => ${ f('x) } }
+   '{ 
+      type T = t.Underlying
+      (x: T) => ${ f('x) } 
+   }
 ```
 
 The `summon` query succeeds because there is a given instance of

@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 
 import scala.util.{Try, Success, Failure}
 import scala.tasty.inspector.DocTastyInspector
-import scala.quoted.Quotes
+import scala.quoted._
 
 import dotty.tools.dotc
 
@@ -17,6 +17,9 @@ import dotty.tools.scaladoc.tasty.comments.Comment
 import java.nio.file.Paths
 import java.nio.file.Files
 
+import SymOps._
+import ScaladocSupport._
+
 /** Responsible for collectively inspecting all the Tasty files we're interested in.
   *
   * Delegates most of the work to [[TastyParser]] [[dotty.tools.scaladoc.tasty.TastyParser]].
@@ -26,22 +29,22 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
   private val topLevels = Seq.newBuilder[(String, Member)]
   private var rootDoc: Option[Comment] = None
 
-  def processCompilationUnit(using quotes: Quotes)(root: quotes.reflect.Tree): Unit = ()
+  def processCompilationUnit(using Quotes)(root: reflect.Tree): Unit = ()
 
-  override def postProcess(using q: Quotes): Unit =
+  override def postProcess(using Quotes): Unit =
     // hack into the compiler to get a list of all top-level trees
     // in principle, to do this, one would collect trees in processCompilationUnit
     // however, path-dependent types disallow doing so w/o using casts
-    inline def hackForeachTree(thunk: q.reflect.Tree => Unit): Unit =
-      given dctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+    inline def hackForeachTree(thunk: reflect.Tree => Unit): Unit =
+      given dctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
       dctx.run.units.foreach { compilationUnit =>
         // mirrors code from TastyInspector
-        thunk(compilationUnit.tpdTree.asInstanceOf[q.reflect.Tree])
+        thunk(compilationUnit.tpdTree.asInstanceOf[reflect.Tree])
       }
 
-    val symbolsToSkip: Set[q.reflect.Symbol] =
+    val symbolsToSkip: Set[reflect.Symbol] =
       ctx.args.identifiersToSkip.flatMap { ref =>
-        val qrSymbol = q.reflect.Symbol
+        val qrSymbol = reflect.Symbol
         Try(qrSymbol.requiredPackage(ref)).orElse(Try(qrSymbol.requiredClass(ref))) match {
           case Success(sym) => Some(sym)
           case Failure(err) =>
@@ -65,20 +68,20 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
             None
       }
 
-    def isSkipped(sym: q.reflect.Symbol): Boolean =
-      def isSkippedById(sym: q.reflect.Symbol): Boolean =
+    def isSkipped(sym: reflect.Symbol): Boolean =
+      def isSkippedById(sym: reflect.Symbol): Boolean =
         if !sym.exists then false else
           symbolsToSkip.contains(sym) || isSkipped(sym.owner)
 
-      def isSkippedByRx(sym: q.reflect.Symbol): Boolean =
+      def isSkippedByRx(sym: reflect.Symbol): Boolean =
         val symStr = sym.fullName
         patternsToSkip.exists(p => p.matcher(symStr).matches())
 
       isSkippedById(sym) || isSkippedByRx(sym)
 
-    val parser = new TastyParser(q, this)(isSkipped)
+    val parser = new TastyParser(quotes, this)(isSkipped)
     def driFor(link: String): Option[DRI] =
-      val symOps = new SymOps[q.type](q)
+      val symOps = new SymOpsWithLinkCache
       import symOps._
       Try(QueryParser(link).readQuery()).toOption.flatMap(query =>
         MemberLookup.lookupOpt(query, None).map {
@@ -110,7 +113,7 @@ case class ScaladocTastyInspector()(using ctx: DocContext) extends DocTastyInspe
           import parser.qctx.reflect._
           def root(s: Symbol): Symbol = if s.owner.isNoSymbol then s else root(s.owner)
           val topLevelPck = root(tree.symbol)
-          rootDoc = Some(parser.parseCommentString(content, topLevelPck, None))
+          rootDoc = Some(parseCommentString(using parser.qctx, summon[DocContext])(content, topLevelPck, None))
         }
 
     hackForeachTree { root =>
@@ -175,8 +178,10 @@ case class TastyParser(
   isSkipped: qctx.reflect.Symbol => Boolean
 )(
   using val ctx: DocContext
-) extends ScaladocSupport with BasicSupport with TypesSupport with ClassLikeSupport with SyntheticsSupport with PackageSupport with NameNormalizer:
+) extends BasicSupport with TypesSupport with ClassLikeSupport with PackageSupport:
   import qctx.reflect._
+
+  private given qctx.type = qctx
 
   def processTree[T](tree: Tree)(op: => T): Option[T] = try Option(op) catch
     case e: Exception  =>

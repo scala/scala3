@@ -164,7 +164,7 @@ object TypeOps:
         // corrective steps, so no widening is wanted.
         simplify(l, theMap) | simplify(r, theMap)
       case AnnotatedType(parent, annot)
-      if !ctx.mode.is(Mode.Type) && annot.symbol == defn.UncheckedVarianceAnnot =>
+      if annot.symbol == defn.UncheckedVarianceAnnot && !ctx.mode.is(Mode.Type) && !theMap.isInstanceOf[SimplifyKeepUnchecked] =>
         simplify(parent, theMap)
       case _: MatchType =>
         val normed = tp.tryNormalize
@@ -179,6 +179,8 @@ object TypeOps:
   class SimplifyMap(using Context) extends TypeMap {
     def apply(tp: Type): Type = simplify(tp, this)
   }
+
+  class SimplifyKeepUnchecked(using Context) extends SimplifyMap
 
   /** Approximate union type by intersection of its dominators.
    *  That is, replace a union type Tn | ... | Tn
@@ -343,7 +345,12 @@ object TypeOps:
 
     tp match {
       case tp: OrType =>
-        approximateOr(tp.tp1, tp.tp2)
+        (tp.tp1.dealias, tp.tp2.dealias) match
+          case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
+          if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
+            mergeRefinedOrApplied(tp1, tp2)
+          case (tp1, tp2) =>
+            approximateOr(tp1, tp2)
       case _ =>
         tp
     }
@@ -420,7 +427,7 @@ object TypeOps:
           sym.is(Package) || sym.isStatic && isStaticPrefix(pre.prefix)
         case _ => true
 
-      def apply(tp: Type): Type = tp match {
+      def apply(tp: Type): Type = tp match
         case tp: TermRef
         if toAvoid(tp.symbol) || partsToAvoid(Nil, tp.info).nonEmpty =>
           tp.info.widenExpr.dealias match {
@@ -459,7 +466,7 @@ object TypeOps:
           mapOver(tl)
         case _ =>
           mapOver(tp)
-      }
+      end apply
 
       /** Three deviations from standard derivedSelect:
        *   1. We first try a widening conversion to the type's info with

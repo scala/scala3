@@ -167,6 +167,7 @@ object Parsers {
   class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
 
     val in: Scanner = new Scanner(source)
+    // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
      *  Overridden by ScriptParser
@@ -233,15 +234,6 @@ object Parsers {
 
 /* ------------- ERROR HANDLING ------------------------------------------- */
 
-    /** The offset of the last time when a statement on a new line was definitely
-     *  encountered in the current scope or an outer scope.
-     */
-    private var lastStatOffset = -1
-
-    def setLastStatOffset(): Unit =
-      if (mustStartStat && in.isAfterLineEnd)
-        lastStatOffset = in.offset
-
     /** Is offset1 less or equally indented than offset2?
      *  This is the case if the characters between the preceding end-of-line and offset1
      *  are a prefix of the characters between the preceding end-of-line and offset2.
@@ -262,6 +254,7 @@ object Parsers {
         || skipStopTokens.contains(in.token) && (in.currentRegion eq lastRegion)
       while !atStop do
         in.nextToken()
+      lastErrorOffset = in.offset
 
     def warning(msg: Message, sourcePos: SourcePosition): Unit =
       report.warning(msg, sourcePos)
@@ -281,11 +274,9 @@ object Parsers {
      */
     def syntaxErrorOrIncomplete(msg: Message, offset: Int = in.offset): Unit =
       if (in.token == EOF) incompleteInputError(msg)
-      else {
+      else
         syntaxError(msg, offset)
         skip()
-        lastErrorOffset = in.offset
-      }
 
     /** Consume one token of the specified type, or
       * signal an error if it is not there.
@@ -320,22 +311,45 @@ object Parsers {
     def acceptStatSep(): Unit =
       if in.isNewLine then in.nextToken() else accept(SEMI)
 
-    def acceptStatSepUnlessAtEnd[T <: Tree](stats: ListBuffer[T], altEnd: Token = EOF): Unit =
-      def skipEmptyStats(): Unit =
-        while (in.token == SEMI || in.token == NEWLINE || in.token == NEWLINES) do in.nextToken()
+    /** Parse statement separators and end markers. Ensure that there is at least
+     *  one statement separator unless the next token terminates a statement´sequence.
+     *  @param   stats      the statements parsed to far
+     *  @param   noPrevStat true if there was no immediately preceding statement parsed
+     *  @param   what       a string indicating what kind of statement is parsed
+     *  @param   altEnd     a token that is also considered as a terminator of the statement
+     *                      sequence (the default `EOF` already assumes to terminate a statement
+     *                      sequence).
+     *  @return  true if the statement sequence continues, false if it terminates.
+     */
+    def statSepOrEnd[T <: Tree](stats: ListBuffer[T], noPrevStat: Boolean = false, what: String = "statement", altEnd: Token = EOF): Boolean =
+      def recur(sepSeen: Boolean, endSeen: Boolean): Boolean =
+        if isStatSep then
+          in.nextToken()
+          recur(true, endSeen)
+        else if in.token == END then
+          if endSeen then syntaxError("duplicate end marker")
+          checkEndMarker(stats)
+          recur(sepSeen, true)
+        else if isStatSeqEnd || in.token == altEnd then
+          false
+        else if sepSeen || endSeen then
+          true
+        else
+          val found = in.token
+          val statFollows = mustStartStatTokens.contains(found)
+          syntaxError(
+            if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
+            else i"end of $what expected but ${showToken(found)} found")
+          if mustStartStatTokens.contains(found) then
+            false // it's a statement that might be legal in an outer context
+          else
+            in.nextToken() // needed to ensure progress; otherwise we might cycle forever
+            skip()
+            true
 
       in.observeOutdented()
-      in.token match
-        case SEMI | NEWLINE | NEWLINES =>
-          skipEmptyStats()
-          checkEndMarker(stats)
-          skipEmptyStats()
-        case `altEnd` =>
-        case _ =>
-          if !isStatSeqEnd then
-            syntaxError(i"end of statement expected but ${showToken(in.token)} found")
-            in.nextToken() // needed to ensure progress; otherwise we might cycle forever
-            accept(SEMI)
+      recur(false, false)
+    end statSepOrEnd
 
     def rewriteNotice(version: String = "3.0", additionalOption: String = "") = {
       val optionStr = if (additionalOption.isEmpty) "" else " " ++ additionalOption
@@ -533,11 +547,8 @@ object Parsers {
         if (in.rewriteToIndent) bracesToIndented(body, rewriteWithColon)
         else inBraces(body)
 
-    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T = {
-      val saved = lastStatOffset
-      try inBracesOrIndented(body, rewriteWithColon)
-      finally lastStatOffset = saved
-    }
+    def inDefScopeBraces[T](body: => T, rewriteWithColon: Boolean = false): T =
+      inBracesOrIndented(body, rewriteWithColon)
 
     /** part { `separator` part }
      */
@@ -1254,7 +1265,7 @@ object Parsers {
     def possibleTemplateStart(isNew: Boolean = false): Unit =
       in.observeColonEOL()
       if in.token == COLONEOL then
-        if in.lookahead.isIdent(nme.end) then in.token = NEWLINE
+        if in.lookahead.token == END then in.token = NEWLINE
         else
           in.nextToken()
           if in.token != INDENT && in.token != LBRACE then
@@ -1284,25 +1295,12 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
-      if isIdent(nme.end) then
-        val start = in.offset
-        val isEndMarker =
-          val endLine = source.offsetToLine(start)
-          val lookahead = in.LookaheadScanner()
-          lookahead.nextToken()
-          source.offsetToLine(lookahead.offset) == endLine
-          && endMarkerTokens.contains(in.token)
-          && {
-            lookahead.nextToken()
-            lookahead.token == EOF
-            || source.offsetToLine(lookahead.offset) > endLine
-          }
-        if isEndMarker then
-          in.nextToken()
-          if stats.isEmpty || !matches(stats.last) then
-            syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
-          in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
-          in.nextToken()
+      if in.token == END then
+        val start = in.skipToken()
+        if stats.isEmpty || !matches(stats.last) then
+          syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
+        in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
+        in.nextToken()
     end checkEndMarker
 
 /* ------------- TYPES ------------------------------------------------------ */
@@ -1314,6 +1312,7 @@ object Parsers {
 
     private def isFunction(tree: Tree): Boolean = tree match {
       case Parens(tree1) => isFunction(tree1)
+      case Block(Nil, tree1) => isFunction(tree1)
       case _: Function => true
       case _ => false
     }
@@ -1448,8 +1447,15 @@ object Parsers {
       }
     }
 
-    private def makeKindProjectorTypeDef(name: TypeName): TypeDef =
-      TypeDef(name, WildcardTypeBoundsTree()).withFlags(Param)
+    private def makeKindProjectorTypeDef(name: TypeName): TypeDef = {
+      val isVarianceAnnotated = name.startsWith("+") || name.startsWith("-")
+      // We remove the variance marker from the name without passing along the specified variance at all
+      // The real variance will be inferred at a later stage but may contradict the variance specified,
+      // This is ok, because `-Ykind-projector` is for cross-compiling existing Scala 2 code, not for writing new code,
+      // we may assume that variance annotations have already been checked by the Scala 2 compiler.
+      val unannotatedName = if (isVarianceAnnotated) name.mapLast(_.drop(1)) else name
+      TypeDef(unannotatedName, WildcardTypeBoundsTree()).withFlags(Param)
+    }
 
     /** Replaces kind-projector's `*` in a list of types arguments with synthetic names,
      *  returning the new argument list and the synthetic type definitions.
@@ -1458,7 +1464,7 @@ object Parsers {
       val tparams = new ListBuffer[TypeDef]
 
       val newParams = params.mapConserve {
-        case param @ Ident(tpnme.raw.STAR) =>
+        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) =>
           val name = WildcardParamName.fresh().toTypeName
           tparams += makeKindProjectorTypeDef(name)
           Ident(name)
@@ -1538,10 +1544,7 @@ object Parsers {
       else t
 
     /** The block in a quote or splice */
-    def stagedBlock() =
-      val saved = lastStatOffset
-      try inBraces(block(simplify = true))
-      finally lastStatOffset = saved
+    def stagedBlock() = inBraces(block(simplify = true))
 
     /** SimpleEpxr  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
      *  SimpleType  ::=  spliceId | ‘$’ ‘{’ Block ‘}’)
@@ -1838,6 +1841,7 @@ object Parsers {
       t
 
     /** Expr              ::=  [`implicit'] FunParams (‘=>’ | ‘?=>’) Expr
+     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  Expr1
      *  FunParams         ::=  Bindings
      *                      |  id
@@ -1845,6 +1849,7 @@ object Parsers {
      *  ExprInParens      ::=  PostfixExpr `:' Type
      *                      |  Expr
      *  BlockResult       ::=  [‘implicit’] FunParams (‘=>’ | ‘?=>’) Block
+     *                      |  HkTypeParamClause ‘=>’ Block
      *                      |  Expr1
      *  Expr1             ::=  [‘inline’] `if' `(' Expr `)' {nl} Expr [[semi] else Expr]
      *                      |  [‘inline’] `if' Expr `then' Expr [[semi] else Expr]
@@ -1855,7 +1860,6 @@ object Parsers {
      *                      |  `throw' Expr
      *                      |  `return' [Expr]
      *                      |  ForExpr
-     *                      |  HkTypeParamClause ‘=>’ Expr
      *                      |  [SimpleExpr `.'] id `=' Expr
      *                      |  SimpleExpr1 ArgumentExprs `=' Expr
      *                      |  PostfixExpr [Ascription]
@@ -1876,28 +1880,41 @@ object Parsers {
     def expr(location: Location): Tree = {
       val start = in.offset
       def isSpecialClosureStart = in.lookahead.isIdent(nme.erased) && in.erasedEnabled
-      if in.token == IMPLICIT then
-        closure(start, location, modifiers(BitSet(IMPLICIT)))
-      else if in.token == LPAREN && isSpecialClosureStart then
-        closure(start, location, Modifiers())
-      else {
-        val saved = placeholderParams
-        placeholderParams = Nil
+      in.token match
+        case IMPLICIT =>
+          closure(start, location, modifiers(BitSet(IMPLICIT)))
+        case LPAREN if isSpecialClosureStart =>
+          closure(start, location, Modifiers())
+        case LBRACKET =>
+          val start = in.offset
+          val tparams = typeParamClause(ParamOwner.TypeParam)
+          val arrowOffset = accept(ARROW)
+          val body = expr(location)
+          atSpan(start, arrowOffset) {
+            if (isFunction(body))
+              PolyFunction(tparams, body)
+            else {
+              syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
+              errorTermTree
+            }
+          }
+        case _ =>
+          val saved = placeholderParams
+          placeholderParams = Nil
 
-        def wrapPlaceholders(t: Tree) = try
-          if (placeholderParams.isEmpty) t
-          else new WildcardFunction(placeholderParams.reverse, t)
-        finally placeholderParams = saved
+          def wrapPlaceholders(t: Tree) = try
+            if (placeholderParams.isEmpty) t
+            else new WildcardFunction(placeholderParams.reverse, t)
+          finally placeholderParams = saved
 
-        val t = expr1(location)
-        if in.isArrow then
-          placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
-          wrapPlaceholders(closureRest(start, location, convertToParams(t)))
-        else if isWildcard(t) then
-          placeholderParams = placeholderParams ::: saved
-          t
-        else wrapPlaceholders(t)
-      }
+          val t = expr1(location)
+          if in.isArrow then
+            placeholderParams = Nil // don't interpret `_' to the left of `=>` as placeholder
+            wrapPlaceholders(closureRest(start, location, convertToParams(t)))
+          else if isWildcard(t) then
+            placeholderParams = placeholderParams ::: saved
+            t
+          else wrapPlaceholders(t)
     }
 
     def expr1(location: Location = Location.ElseWhere): Tree = in.token match
@@ -1981,19 +1998,6 @@ object Parsers {
         }
       case FOR =>
         forExpr()
-      case LBRACKET =>
-        val start = in.offset
-        val tparams = typeParamClause(ParamOwner.TypeParam)
-        val arrowOffset = accept(ARROW)
-        val body = expr()
-        atSpan(start, arrowOffset) {
-          if (isFunction(body))
-            PolyFunction(tparams, body)
-          else {
-            syntaxError("Implementation restriction: polymorphic function literals must have a value parameter", arrowOffset)
-            errorTermTree
-          }
-        }
       case _ =>
         if isIdent(nme.inline)
            && !in.inModifierPosition()
@@ -3577,7 +3581,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
-        else if in.token != WITH && parentsIsType then
+        else if (isStatSep || isStatSeqEnd) && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
@@ -3585,7 +3589,10 @@ object Parsers {
           val tparams1 = tparams.map(tparam => tparam.withMods(tparam.mods | PrivateLocal))
           val vparamss1 = vparamss.map(_.map(vparam =>
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
-          val templ = withTemplate(makeConstructor(tparams1, vparamss1), parents)
+          val constr = makeConstructor(tparams1, vparamss1)
+          val templ =
+            if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
+            else withTemplate(constr, parents)
           if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
@@ -3637,11 +3644,10 @@ object Parsers {
      */
     def extMethods(numLeadParams: Int): List[DefDef] = checkNoEscapingPlaceholders {
       val meths = new ListBuffer[DefDef]
-      val exitOnError = false
-      while !isStatSeqEnd && !exitOnError do
-        setLastStatOffset()
+      while
         meths += extMethod(numLeadParams)
-        acceptStatSepUnlessAtEnd(meths)
+        statSepOrEnd(meths, what = "extension method")
+      do ()
       if meths.isEmpty then syntaxError("`def` expected")
       meths.toList
     }
@@ -3777,8 +3783,8 @@ object Parsers {
      */
     def topStatSeq(outermost: Boolean = false): List[Tree] = {
       val stats = new ListBuffer[Tree]
-      while (!isStatSeqEnd) {
-        setLastStatOffset()
+      while
+        var empty = false
         if (in.token == PACKAGE) {
           val start = in.skipToken()
           if (in.token == OBJECT) {
@@ -3795,13 +3801,10 @@ object Parsers {
           stats += extension()
         else if isDefIntro(modifierTokens) then
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
-        else if !isStatSep then
-          if (in.token == CASE)
-            syntaxErrorOrIncomplete(OnlyCaseClassOrCaseObjectAllowed())
-          else
-            syntaxErrorOrIncomplete(ExpectedToplevelDef())
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        else
+          empty = true
+        statSepOrEnd(stats, empty, "toplevel definition")
+      do ()
       stats.toList
     }
 
@@ -3833,14 +3836,12 @@ object Parsers {
           in.token = SELFARROW // suppresses INDENT insertion after `=>`
           in.nextToken()
         }
-        else {
+        else
           stats += first
-          acceptStatSepUnlessAtEnd(stats)
-        }
+          statSepOrEnd(stats)
       }
-      var exitOnError = false
-      while (!isStatSeqEnd && !exitOnError) {
-        setLastStatOffset()
+      while
+        var empty = false
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (in.token == EXPORT)
@@ -3851,12 +3852,10 @@ object Parsers {
           stats +++= defOrDcl(in.offset, defAnnotsMods(modifierTokens))
         else if (isExprIntro)
           stats += expr1()
-        else if (!isStatSep) {
-          exitOnError = mustStartStat
-          syntaxErrorOrIncomplete("illegal start of definition")
-        }
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        else
+          empty = true
+        statSepOrEnd(stats, empty)
+      do ()
       (self, if (stats.isEmpty) List(EmptyTree) else stats.toList)
     }
 
@@ -3885,16 +3884,14 @@ object Parsers {
         if problem.isEmpty then tree :: Nil
         else { syntaxError(problem, tree.span); Nil }
 
-      while (!isStatSeqEnd) {
-        if (isDclIntro)
+      while
+        val dclFound = isDclIntro
+        if dclFound then
           stats ++= checkLegal(defOrDcl(in.offset, Modifiers()))
-        else if (!isStatSep)
-          syntaxErrorOrIncomplete(
-            "illegal start of declaration" +
-            (if (inFunReturnType) " (possible cause: missing `=` in front of current method body)"
-             else ""))
-        acceptStatSepUnlessAtEnd(stats)
-      }
+        var what = "declaration"
+        if inFunReturnType then what += " (possible cause: missing `=` in front of current method body)"
+        statSepOrEnd(stats, !dclFound, what)
+      do ()
       stats.toList
     }
 
@@ -3918,9 +3915,8 @@ object Parsers {
      */
     def blockStatSeq(): List[Tree] = checkNoEscapingPlaceholders {
       val stats = new ListBuffer[Tree]
-      var exitOnError = false
-      while (!isStatSeqEnd && in.token != CASE && !exitOnError) {
-        setLastStatOffset()
+      while
+        var empty = false
         if (in.token == IMPORT)
           stats ++= importClause(IMPORT, mkImport())
         else if (isExprIntro)
@@ -3931,12 +3927,10 @@ object Parsers {
           stats += extension()
         else if isDefIntro(localModifierTokens, excludedSoftModifiers = Set(nme.`opaque`)) then
           stats +++= localDef(in.offset)
-        else if (!isStatSep && (in.token != CASE)) {
-          exitOnError = mustStartStat
-          syntaxErrorOrIncomplete(IllegalStartOfStatement(isModifier))
-        }
-        acceptStatSepUnlessAtEnd(stats, CASE)
-      }
+        else
+          empty = true
+        statSepOrEnd(stats, empty, altEnd = CASE)
+      do ()
       stats.toList
     }
 
@@ -3953,7 +3947,7 @@ object Parsers {
             in.nextToken()
             ts += objectDef(start, Modifiers(Package))
             if (in.token != EOF) {
-              acceptStatSepUnlessAtEnd(ts)
+              statSepOrEnd(ts, what = "toplevel definition")
               ts ++= topStatSeq()
             }
           }
@@ -3970,7 +3964,7 @@ object Parsers {
               acceptStatSep()
               ts += makePackaging(start, pkg, topstats())
             if continue then
-              acceptStatSepUnlessAtEnd(ts)
+              statSepOrEnd(ts, what = "toplevel definition")
               ts ++= topStatSeq()
         }
         else

@@ -42,8 +42,8 @@ class CompletionTest {
 
   @Test def completionFromSyntheticPackageObject: Unit = {
     code"class Foo { val foo: IArr${m1} }".withSource
-      .completion(m1, Set(("IArray", Field, "scala.IArray"),
-                          ("IArray", Module, "scala.IArray$package.IArray$")))
+      .completion(m1, Set(("IArray", Module, "IArray$"),
+                          ("IArray", Field, "scala.IArray")))
   }
 
   @Test def completionFromJavaDefaults: Unit = {

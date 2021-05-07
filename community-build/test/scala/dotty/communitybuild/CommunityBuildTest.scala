@@ -27,6 +27,7 @@ abstract class CommunityBuildTest:
       )
       return
     self.dependencies.foreach(_.publish())
+    self.testOnlyDependencies().foreach(_.publish())
     suite.test(self)
 
   /** Build the given project with the published local compiler and sbt plugin.
@@ -96,6 +97,7 @@ class CommunityBuildTestA extends CommunityBuildTest:
   @Test def izumiReflect = projects.izumiReflect.run()
   @Test def scalaSTM = projects.scalaSTM.run()
   @Test def scalatest = projects.scalatest.run()
+  @Test def scalatestplusTestNG = projects.scalatestplusTestNG.run()
   // 'Sciss/Lucre' dependencies:
   // @Test def scissEqual      = projects.scissEqual     .run()
   // @Test def scissFingerTree = projects.scissFingerTree.run()
@@ -144,6 +146,7 @@ class CommunityBuildTestC extends CommunityBuildTest:
   @Test def onnxScala = projects.onnxScala.run()
   @Test def oslib = projects.oslib.run()
   // @Test def oslibWatch = projects.oslibWatch.run()
+  @Test def playJson = projects.playJson.run()
   @Test def pprint = projects.pprint.run()
   @Test def protoquill = projects.protoquill.run()
   @Test def requests = projects.requests.run()
@@ -156,7 +159,7 @@ class CommunityBuildTestC extends CommunityBuildTest:
   @Test def scalatestplusScalacheck = projects.scalatestplusScalacheck.run()
   @Test def scalaXml = projects.scalaXml.run()
   @Test def scalaz = projects.scalaz.run()
-  @Test def scas = if compilerSupportExperimental then projects.scas.run()
+  @Test def scas = projects.scas.run()
   @Test def sconfig = projects.sconfig.run()
   @Test def scopt = projects.scopt.run()
   @Test def shapeless = projects.shapeless.run()

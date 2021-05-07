@@ -202,8 +202,10 @@ Types             ::=  Type {‘,’ Type}
 ### Expressions
 ```ebnf
 Expr              ::=  FunParams (‘=>’ | ‘?=>’) Expr
+                    |  HkTypeParamClause ‘=>’ Expr
                     |  Expr1
 BlockResult       ::=  FunParams (‘=>’ | ‘?=>’) Block
+                    |  HkTypeParamClause ‘=>’ Block
                     |  Expr1
 FunParams         ::=  Bindings
                     |  id
@@ -217,7 +219,6 @@ Expr1             ::=  [‘inline’] ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[
                     |  ‘throw’ Expr
                     |  ‘return’ [Expr]
                     |  ForExpr
-                    |  HkTypeParamClause ‘=>’ Expr
                     |  [SimpleExpr ‘.’] id ‘=’ Expr
                     |  SimpleExpr1 ArgumentExprs ‘=’ Expr
                     |  PostfixExpr [Ascription]
@@ -396,7 +397,7 @@ ObjectDef         ::=  id [Template]
 EnumDef           ::=  id ClassConstr InheritClauses EnumBody
 GivenDef          ::=  [GivenSig] (AnnotType [‘=’ Expr] | StructuralInstance)
 GivenSig          ::=  [id] [DefTypeParamClause] {UsingParamClause} ‘:’         -- one of `id`, `DefParamClause`, `UsingParamClause` must be present
-StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} ‘with’ TemplateBody
+StructuralInstance ::=  ConstrApp {‘with’ ConstrApp} [‘with’ TemplateBody]
 Extension         ::=  ‘extension’ [DefTypeParamClause] ‘(’ DefParam ‘)’
                        {UsingParamClause} ExtMethods
 ExtMethods        ::=  ExtMethod | [nl] <<< ExtMethod {semi ExtMethod} >>>

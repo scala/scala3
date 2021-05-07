@@ -14,6 +14,6 @@ class A {
 
 class B extends A {
   println((new O.B).f)
-  O.C(4)                // error
-  override val n = 50   // error
+  O.C(4)
+  override val n = 50   // error because line 16
 }

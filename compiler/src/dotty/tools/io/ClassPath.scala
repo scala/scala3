@@ -132,7 +132,8 @@ object ClassPath {
       dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toList
 
     if (pattern == "*") lsDir(Directory("."))
-    else if (pattern.endsWith(wildSuffix)) lsDir(Directory(pattern dropRight 2))
+    // On Windows the JDK supports forward slash or backslash in classpath entries
+    else if (pattern.endsWith(wildSuffix) || pattern.endsWith("/*")) lsDir(Directory(pattern dropRight 2))
     else if (pattern.contains('*')) {
       try {
         val regexp = ("^" + pattern.replace("""\*""", """.*""") + "$").r

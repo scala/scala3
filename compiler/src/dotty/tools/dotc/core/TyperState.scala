@@ -22,6 +22,22 @@ object TyperState {
       .init(null, OrderingConstraint.empty)
       .setReporter(new ConsoleReporter())
       .setCommittable(true)
+
+  opaque type Snapshot = (Constraint, TypeVars, TypeVars)
+
+  extension (ts: TyperState)
+    def snapshot()(using Context): Snapshot =
+      var previouslyInstantiated: TypeVars = SimpleIdentitySet.empty
+      for tv <- ts.ownedVars do if tv.inst.exists then previouslyInstantiated += tv
+      (ts.constraint, ts.ownedVars, previouslyInstantiated)
+
+    def resetTo(state: Snapshot)(using Context): Unit =
+      val (c, tvs, previouslyInstantiated) = state
+      for tv <- tvs do
+        if tv.inst.exists && !previouslyInstantiated.contains(tv) then
+          tv.resetInst(ts)
+      ts.ownedVars = tvs
+      ts.constraint = c
 }
 
 class TyperState() {
@@ -44,6 +60,8 @@ class TyperState() {
   def constraint_=(c: Constraint)(using Context): Unit = {
     if (Config.debugCheckConstraintsClosed && isGlobalCommittable) c.checkClosed()
     myConstraint = c
+    if Config.checkConsistentVars && !ctx.reporter.errorsReported then
+      c.checkConsistentVars()
   }
 
   private var previousConstraint: Constraint = _
@@ -61,7 +79,11 @@ class TyperState() {
 
   private var isCommitted: Boolean = _
 
-  /** The set of uninstantiated type variables which have this state as their owning state */
+  /** The set of uninstantiated type variables which have this state as their owning state
+   *  NOTE: It could be that a variable in `ownedVars` is already instantiated. This is because
+   *  the link between ownedVars and variable instantiation in TypeVar#setInst is made up
+   *  from a weak reference and weak references can have spurious nulls.
+   */
   private var myOwnedVars: TypeVars = _
   def ownedVars: TypeVars = myOwnedVars
   def ownedVars_=(vs: TypeVars): Unit = myOwnedVars = vs
@@ -120,19 +142,50 @@ class TyperState() {
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
       constr.println(i"committing $this to $targetState, fromConstr = $constraint, toConstr = ${targetState.constraint}")
-      if targetState.constraint eq previousConstraint then targetState.constraint = constraint
-      else targetState.mergeConstraintWith(this)
-    if !ownedVars.isEmpty then
-      for tvar <- ownedVars do
-        tvar.owningState = new WeakReference(targetState)
-      targetState.ownedVars ++= ownedVars
+      if targetState.constraint eq previousConstraint then
+        targetState.constraint = constraint
+        if !ownedVars.isEmpty then ownedVars.foreach(targetState.includeVar)
+      else
+        targetState.mergeConstraintWith(this)
     targetState.gc()
     reporter.flush()
     isCommitted = true
   }
 
+  /** Ensure that this constraint does not associate different TypeVars for the
+   *  same type lambda than the `other` constraint. Do this by renaming type lambdas
+   *  in this constraint and its predecessors where necessary.
+   */
+  def ensureNotConflicting(other: Constraint)(using Context): Unit =
+    def hasConflictingTypeVarsFor(tl: TypeLambda) =
+      constraint.typeVarOfParam(tl.paramRefs(0)) ne other.typeVarOfParam(tl.paramRefs(0))
+        // Note: Since TypeVars are allocated in bulk for each type lambda, we only
+        // have to check the first one to find out if some of them are different.
+    val conflicting = constraint.domainLambdas.find(tl =>
+      other.contains(tl) && hasConflictingTypeVarsFor(tl))
+    for tl <- conflicting do
+      val tl1 = constraint.ensureFresh(tl)
+      for case (tvar: TypeVar, pref1) <- tl.paramRefs.map(constraint.typeVarOfParam).lazyZip(tl1.paramRefs) do
+        tvar.setOrigin(pref1)
+      var ts = this
+      while ts.constraint.domainLambdas.contains(tl) do
+        ts.constraint = ts.constraint.subst(tl, tl1)
+        ts = ts.previous
+
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
+    that.ensureNotConflicting(constraint)
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
+    for tvar <- constraint.uninstVars do
+      if !isOwnedAnywhere(this, tvar) then ownedVars += tvar
+    for tl <- constraint.domainLambdas do
+      if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
+
+  private def includeVar(tvar: TypeVar)(using Context): Unit =
+    tvar.owningState = new WeakReference(this)
+    ownedVars += tvar
+
+  private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
+    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous, tvar)
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -143,14 +196,14 @@ class TyperState() {
       Stats.record("typerState.gc")
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
-        if !tvar.inst.exists then
+        if !tvar.inst.exists then // See comment of `ownedVars` for why this test is necessary
           val inst = constraint.instType(tvar)
           if inst.exists then
-            tvar.inst = inst
-            val lam = tvar.origin.binder
-            if constraint.isRemovable(lam) then toCollect += lam
-      for poly <- toCollect do
-        constraint = constraint.remove(poly)
+            tvar.setInst(inst)
+            val tl = tvar.origin.binder
+            if constraint.isRemovable(tl) then toCollect += tl
+      for tl <- toCollect do
+        constraint = constraint.remove(tl)
 
   override def toString: String = {
     def ids(state: TyperState): List[String] =

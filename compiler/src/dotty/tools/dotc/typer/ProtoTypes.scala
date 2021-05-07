@@ -424,6 +424,10 @@ object ProtoTypes {
       if (t == null) NoType else t.tpe
     }
 
+    /** Cache the typed argument */
+    def cacheArg(arg: untpd.Tree, targ: Tree) =
+      state.typedArg = state.typedArg.updated(arg, targ)
+
     /** The same proto-type but with all arguments combined in a single tuple */
     def tupledDual: FunProto = state.tupledDual match {
       case pt: FunProto =>

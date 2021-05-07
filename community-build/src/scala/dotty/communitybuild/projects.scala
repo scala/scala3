@@ -21,10 +21,12 @@ lazy val sbtPluginFilePath: String =
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
 
 /** Executes shell command, returns false in case of error. */
-def exec(projectDir: Path, binary: String, arguments: String*): Int =
+def exec(projectDir: Path, binary: String, arguments: Seq[String], environment: Map[String, String]): Int =
+  import collection.JavaConverters._
   val command = binary +: arguments
   log(command.mkString(" "))
   val builder = new ProcessBuilder(command: _*).directory(projectDir.toFile).inheritIO()
+  builder.environment.putAll(environment.asJava)
   val process = builder.start()
   val exitCode = process.waitFor()
   exitCode
@@ -38,9 +40,11 @@ sealed trait CommunityProject:
   val publishCommand: String
   val docCommand: String
   val dependencies: List[CommunityProject]
+  val testOnlyDependencies: () => List[CommunityProject]
   val binaryName: String
   val runCommandsArgs: List[String] = Nil
   val requiresExperimental: Boolean
+  val environment: Map[String, String] = Map.empty
 
   final val projectDir = communitybuildDir.resolve("community-projects").resolve(project)
 
@@ -55,7 +59,7 @@ sealed trait CommunityProject:
       log(s"Publishing $project")
       if publishCommand eq null then
         throw RuntimeException(s"Publish command is not specified for $project. Project details:\n$this")
-      val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ publishCommand): _*)
+      val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ publishCommand), environment)
       if exitCode != 0 then
         throw RuntimeException(s"Publish command exited with code $exitCode for project $project. Project details:\n$this")
       published = true
@@ -70,11 +74,11 @@ sealed trait CommunityProject:
     log(s"Documenting $project")
     if docCommand eq null then
       throw RuntimeException(s"Doc command is not specified for $project. Project details:\n$this")
-    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand): _*)
+    val exitCode = exec(projectDir, binaryName, (runCommandsArgs :+ docCommand), environment)
     if exitCode != 0 then
       throw RuntimeException(s"Doc command exited with code $exitCode for project $project. Project details:\n$this")
 
-  final def build(): Int = exec(projectDir, binaryName, buildCommands: _*)
+  final def build(): Int = exec(projectDir, binaryName, buildCommands, environment)
 
   final def buildCommands = runCommandsArgs :+ testCommand
 
@@ -84,6 +88,7 @@ final case class MillCommunityProject(
     project: String,
     baseCommand: String,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     ignoreDocs: Boolean = false,
     requiresExperimental: Boolean = false,
     ) extends CommunityProject:
@@ -94,12 +99,14 @@ final case class MillCommunityProject(
     // uncomment once mill is released
     // if ignoreDocs then null else s"$baseCommand.docJar"
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
+  override val environment = Map("MILL_VERSION" -> "0.9.6-16-a5da34")
 
 final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
     extraSbtArgs: List[String] = Nil,
     dependencies: List[CommunityProject] = Nil,
+    testOnlyDependencies: () => List[CommunityProject] = () => Nil,
     sbtPublishCommand: String = null,
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
@@ -269,15 +276,17 @@ object projects:
     sbtDocCommand = forceDoc("jvm")
   )
 
-  lazy val scalatest = SbtCommunityProject(
+  lazy val scalatest: SbtCommunityProject = SbtCommunityProject(
     project       = "scalatest",
-    sbtTestCommand   = "scalacticDotty/clean;scalacticTestDotty/test; scalatestTestDotty/test",
-    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal",
-    sbtDocCommand = ";scalacticDotty/doc" // fails with missing type ;scalatestDotty/doc"
+    sbtTestCommand   = "scalacticDotty/clean; scalacticDottyJS/clean; scalacticTestDotty/test; scalatestTestDotty/test; scalacticDottyJS/compile; scalatestDottyJS/compile",
+    sbtPublishCommand = "scalacticDotty/publishLocal; scalatestDotty/publishLocal; scalacticDottyJS/publishLocal; scalatestDottyJS/publishLocal",
+    sbtDocCommand = ";scalacticDotty/doc", // fails with missing type ;scalatestDotty/doc"
     // cannot take signature of (test: org.scalatest.concurrent.ConductorFixture#OneArgTest):
     // org.scalatest.Outcome
     // Problem parsing scalatest.dotty/target/scala-3.0.0-M2/src_managed/main/org/scalatest/concurrent/ConductorFixture.scala:[602..624..3843], documentation may not be generated.
     // dotty.tools.dotc.core.MissingType:
+    dependencies = List(scalaXml),
+    testOnlyDependencies = () => List(scalatestplusJunit, scalatestplusTestNG)
   )
 
   lazy val scalatestplusScalacheck = SbtCommunityProject(
@@ -295,9 +304,17 @@ object projects:
     dependencies      = List(scalatest)
   )
 
+  lazy val scalatestplusTestNG = SbtCommunityProject(
+    project = "scalatestplus-testng",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest)
+  )
+
   lazy val scalaXml = SbtCommunityProject(
     project       = "scala-xml",
-    sbtTestCommand   = "xml/test",
+    sbtTestCommand = "xml/test",
+    sbtPublishCommand = "xml/publishLocal",
     sbtDocCommand = "xml/doc"
   )
 
@@ -663,6 +680,13 @@ object projects:
     dependencies = List(scalatest)
   )
 
+  lazy val playJson = SbtCommunityProject(
+    project = "play-json",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(scalatest, scalatestplusScalacheck),
+  )
+
 end projects
 
 def allProjects = List(
@@ -734,6 +758,8 @@ def allProjects = List(
   projects.akka,
   projects.protoquill,
   projects.onnxScala,
+  projects.playJson,
+  projects.scalatestplusTestNG,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

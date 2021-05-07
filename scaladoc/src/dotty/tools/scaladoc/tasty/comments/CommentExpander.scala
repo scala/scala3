@@ -259,8 +259,9 @@ class CommentExpander {
             case vname  =>
               lookupVariable(vname, site) match {
                 case Some(replacement) => replaceWith(replacement)
-                case None              => ;
-                  println(s"Variable $vname undefined in comment for $sym in $site")
+                case None              =>
+                  // TODO add a CLI setting for enabling this message
+                  // println(s"Variable $vname undefined in comment for $sym in $site")
               }
           }
         }

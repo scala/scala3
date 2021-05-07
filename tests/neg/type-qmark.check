@@ -27,7 +27,7 @@
    |       ^
    |       `?` is not a valid type name
 -- Error: tests/neg/type-qmark.scala:31:8 ------------------------------------------------------------------------------
-31 |  given ?[T]: Foo[T] with {} // error
+31 |  given ?[T]: Foo[T]() // error
    |        ^
    |        `?` is not a valid type name
 -- Error: tests/neg/type-qmark.scala:3:8 -------------------------------------------------------------------------------

@@ -11,18 +11,18 @@ class Arg[T]  // An argument that we use as a given for some given instances bel
  * Traditional scheme: prioritize with location in class hierarchy
  */
 class LowPriorityImplicits {
-  given t1[T]: E[T]("low") with {}
+  given t1[T]: E[T]("low")
 }
 
 object NormalImplicits extends LowPriorityImplicits {
-  given t2[T](using Arg[T]): E[T]("norm") with {}
+  given t2[T](using Arg[T]): E[T]("norm")
 }
 
 def test1 = {
   import NormalImplicits.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
-  { given Arg[String] with {}
+  { given Arg[String]()
     assert(summon[E[String]].str == "norm")  // Arg available, t2 takes priority
   }
 }
@@ -31,22 +31,22 @@ def test1 = {
  */
 object Priority {
   class Low
-  object Low { given Low with {} }
+  object Low { given Low() }
 
   class High extends Low
-  object High { given High with {} }
+  object High { given High() }
 }
 
 object Impl2 {
-  given t1[T](using Priority.Low): E[T]("low") with {}
-  given t2[T](using Priority.High)(using Arg[T]): E[T]("norm") with {}
+  given t1[T](using Priority.Low): E[T]("low")
+  given t2[T](using Priority.High)(using Arg[T]): E[T]("norm")
 }
 
 def test2 = {
   import Impl2.given
   assert(summon[E[String]].str == "low") // No Arg available, so only t1 applies
 
-  { given Arg[String] with {}
+  { given Arg[String]()
     assert(summon[E[String]].str == "norm") // Arg available, t2 takes priority
   }
 }
@@ -60,14 +60,14 @@ def test2 = {
  * an alternative without implicit arguments would override all of them.
  */
 object Impl2a {
-  given t3[T]: E[T]("hi") with {}
+  given t3[T]: E[T]("hi")
 }
 
 def test2a = {
   import Impl2.given
   import Impl2a.given
 
-  given Arg[String] with {}
+  given Arg[String]()
   assert(summon[E[String]].str == "hi")
 }
 
@@ -75,13 +75,13 @@ def test2a = {
  * result type of the given instance, e.g. like this:
  */
 object Impl3 {
-  given t1[T]: E[T]("low") with {}
+  given t1[T]: E[T]("low")
 }
 
 object Override {
   trait HighestPriority  // A marker trait to indicate a higher priority
 
-  given over[T]: E[T]("hi") with HighestPriority with {}
+  given over[T]: E[T]("hi") with HighestPriority()
 }
 
 def test3 = {
@@ -101,9 +101,9 @@ def test3 = {
  * with a default argument.
  */
 object Impl4 {
-  given t1: E[String]("string") with {}
+  given t1: E[String]("string")
 
-  given t2[T](using Arg[T]): E[T]("generic") with {}
+  given t2[T](using Arg[T]): E[T]("generic")
 }
 
 object fallback4 {
@@ -116,7 +116,7 @@ def test4 = {
   assert(withFallback[String].str == "string")  // t1 is applicable
   assert(withFallback[Int].str == "fallback")   // No applicable instances, pick the default
 
-  { given Arg[Int] with {}
+  { given Arg[Int]()
     assert(withFallback[Int].str == "generic")  // t2 is applicable
   }
 }
@@ -146,7 +146,7 @@ def test5 = {
   assert(summon[E[String]].str == "string")  // t1 is applicable
   assert(summon[E[Int]].str == "fallback")   // No applicable instances, pick the default
 
-  { given Arg[Int] with {}
+  { given Arg[Int]()
     assert(summon[E[Int]].str == "generic")  // t2 is applicable
   }
 }

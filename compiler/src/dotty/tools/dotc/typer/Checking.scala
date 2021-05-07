@@ -33,7 +33,7 @@ import NameKinds.DefaultGetterName
 import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
-import transform.patmat.SpaceEngine.isIrrefutableUnapply
+import transform.patmat.SpaceEngine.isIrrefutable
 import config.Feature._
 import config.SourceVersion._
 
@@ -425,6 +425,7 @@ object Checking {
   /** Check that symbol's definition is well-formed. */
   def checkWellFormed(sym: Symbol)(using Context): Unit = {
     def fail(msg: Message) = report.error(msg, sym.srcPos)
+    def warn(msg: Message) = report.warning(msg, sym.srcPos)
 
     def checkWithDeferred(flag: FlagSet) =
       if (sym.isOneOf(flag))
@@ -464,11 +465,21 @@ object Checking {
       fail(em"only classes can be ${(sym.flags & ClassOnlyFlags).flagsString}")
     if (sym.is(AbsOverride) && !sym.owner.is(Trait))
       fail(AbstractOverrideOnlyInTraits(sym))
-    if (sym.is(Trait) && sym.is(Final))
-      fail(TraitsMayNotBeFinal(sym))
+    if sym.is(Trait) then
+      if sym.is(Final) then
+        fail(TraitsMayNotBeFinal(sym))
+      else if sym.is(Open) then
+        warn(RedundantModifier(Open))
+    if sym.isAllOf(Abstract | Open) then
+      warn(RedundantModifier(Open))
+    if sym.is(Open) && sym.isLocal then
+      warn(RedundantModifier(Open))
     // Skip ModuleVal since the annotation will also be on the ModuleClass
-    if (sym.hasAnnotation(defn.TailrecAnnot) && !sym.isOneOf(Method | ModuleVal))
-      fail(TailrecNotApplicable(sym))
+    if sym.hasAnnotation(defn.TailrecAnnot) then
+      if !sym.isOneOf(Method | ModuleVal) then
+        fail(TailrecNotApplicable(sym))
+      else if sym.is(Inline) then
+        fail("Inline methods cannot be @tailrec")
     if (sym.hasAnnotation(defn.NativeAnnot)) {
       if (!sym.is(Deferred))
         fail(NativeMembersMayNotHaveImplementation(sym))
@@ -739,7 +750,7 @@ trait Checking {
             recur(pat1, pt)
           case UnApply(fn, _, pats) =>
             check(pat, pt) &&
-            (isIrrefutableUnapply(fn, pats.length) || fail(pat, pt)) && {
+            (isIrrefutable(fn) || fail(pat, pt)) && {
               val argPts = unapplyArgs(fn.tpe.widen.finalResultType, fn, pats, pat.srcPos)
               pats.corresponds(argPts)(recur)
             }
@@ -951,7 +962,9 @@ trait Checking {
           def doubleDefError(decl: Symbol, other: Symbol): Unit =
             if (!decl.info.isErroneous && !other.info.isErroneous)
               report.error(DoubleDefinition(decl, other, cls), decl.srcPos)
-          if (decl is Synthetic) doubleDefError(other, decl)
+          if decl.name.is(DefaultGetterName) && ctx.reporter.errorsReported then
+            () // do nothing; we already have reported an error that overloaded variants cannot have default arguments
+          else if (decl is Synthetic) doubleDefError(other, decl)
           else doubleDefError(decl, other)
         }
         if decl.hasDefaultParams && other.hasDefaultParams then

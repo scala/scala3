@@ -434,11 +434,15 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     var name = at(nameref, () => readName()(using ctx))
     val owner = readSymbolRef()
 
-    if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name) then
+    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
+
+    if (name eq nme.getClass_) && defn.hasProblematicGetClass(owner.name)
+       // Scala 2 sometimes pickle the same type parameter symbol multiple times
+       // (see i11173 for an example), but we should only unpickle it once.
+       || tag == TYPEsym && flags.is(TypeParam) && symScope(owner).lookup(name.asTypeName).exists
+    then
       // skip this member
       return NoSymbol
-
-    var flags = unpickleScalaFlags(readLongNat(), name.isTypeName)
 
     name = name.adjustIfModuleClass(flags)
     if (flags.is(Method))
@@ -1007,9 +1011,9 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def deferredAnnot(end: Int)(using Context): Annotation = {
     val start = readIndex
-    val atp = readTypeRef()
     val phase = ctx.phase
-    Annotation.deferred(atp.typeSymbol)(
+    Annotation.deferredSymAndTree(
+        atReadPos(start, () => atPhase(phase)(readTypeRef().typeSymbol)))(
         atReadPos(start, () => atPhase(phase)(readAnnotationContents(end))))
   }
 

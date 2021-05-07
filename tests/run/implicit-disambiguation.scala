@@ -14,7 +14,7 @@ object M {
   }
 }
 object Test extends App {
-  given b: B with {}
-  given c: C with {}
+  given b: B()
+  given c: C()
   println(M.f)
 }

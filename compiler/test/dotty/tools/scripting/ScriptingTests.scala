@@ -3,6 +3,7 @@ package tools
 package scripting
 
 import java.io.File
+import java.nio.file.Path
 
 import org.junit.Test
 
@@ -15,16 +16,17 @@ class ScriptingTests:
     str.reverse.dropWhile(_ != '.').drop(1).reverse
 
   extension(f: File) def absPath =
-    f.getAbsolutePath.replace('\\','/')
+    f.getAbsolutePath.replace('\\', '/')
 
-  def testFiles = scripts("/scripting")
+  // classpath tests managed by scripting.ClasspathTests.scala
+  def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
 
   def script2jar(scriptFile: File) = 
     val jarName = s"${scriptFile.getName.dropExtension}.jar"
-    File(scriptFile.getParent,jarName)
+    File(scriptFile.getParent, jarName)
 
   def showScriptUnderTest(scriptFile: File): Unit =
-    printf("===> test script name [%s]\n",scriptFile.getName)
+    printf("===> test script name [%s]\n", scriptFile.getName)
 
   val argss: Map[String, Array[String]] = (
     for
@@ -40,11 +42,11 @@ class ScriptingTests:
       if scriptFile.getName.endsWith(extension)
       name = scriptFile.getName.dropExtension
       scriptArgs = argss.getOrElse(name, Array.empty[String])
-    yield scriptFile -> scriptArgs).toList.sortBy { (file,args) => file.getName }
+    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.getName }
 
-  def callExecutableJar(script: File,jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
+  def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
     import scala.sys.process._
-    val cmd = Array("java",s"-Dscript.path=${script.getName}","-jar",jar.absPath)
+    val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }
   }
@@ -53,7 +55,7 @@ class ScriptingTests:
    * Call .scala scripts without -save option, verify no jar created
    */
   @Test def scriptingDriverTests =
-    for (scriptFile,scriptArgs) <- scalaFilesWithArgs(".scala") do
+    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".scala") do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete
@@ -65,8 +67,8 @@ class ScriptingTests:
         ),
         scriptFile = scriptFile,
         scriptArgs = scriptArgs
-      ).compileAndRun { (path:java.nio.file.Path,classpath:String, mainClass:String) =>
-        printf("mainClass from ScriptingDriver: %s\n",mainClass)
+      ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+        printf("mainClass from ScriptingDriver: %s\n", mainClass)
         true // call compiled script main method
       }
       assert(! unexpectedJar.exists, s"not expecting jar file: ${unexpectedJar.absPath}")
@@ -75,7 +77,7 @@ class ScriptingTests:
    * Call .sc scripts without -save option, verify no jar created
    */
   @Test def scriptingMainTests =
-    for (scriptFile,scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete
@@ -93,7 +95,7 @@ class ScriptingTests:
    * Call .sc scripts with -save option, verify jar is created.
    */
   @Test def scriptingJarTest =
-    for (scriptFile,scriptArgs) <- scalaFilesWithArgs(".sc") do
+    for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
       showScriptUnderTest(scriptFile)
       val expectedJar = script2jar(scriptFile)
       expectedJar.delete
@@ -107,7 +109,7 @@ class ScriptingTests:
 
       Main.main(mainArgs)
 
-      printf("===> test script jar name [%s]\n",expectedJar.getName)
+      printf("===> test script jar name [%s]\n", expectedJar.getName)
       assert(expectedJar.exists)
 
       callExecutableJar(scriptFile, expectedJar, scriptArgs)
@@ -128,8 +130,8 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path,classpath:String, mainClass:String) =>
-      printf("success: no call to main method in mainClass: %s\n",mainClass)
+    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+      printf("success: no call to main method in mainClass: %s\n", mainClass)
       false // no call to compiled script main method
     }
     touchedFile.delete
@@ -141,14 +143,14 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path,classpath:String, mainClass:String) =>
-      printf("call main method in mainClass: %s\n",mainClass)
+    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+      printf("call main method in mainClass: %s\n", mainClass)
       true // call compiled script main method, create touchedFile
     }
 
     if touchedFile.exists then
-      printf("success: script created file %s\n",touchedFile)
-    if touchedFile.exists then printf("success: created file %s\n",touchedFile)
+      printf("success: script created file %s\n", touchedFile)
+    if touchedFile.exists then printf("success: created file %s\n", touchedFile)
     assert( touchedFile.exists, s"expected to find file ${touchedFile}" )
    
   /*
@@ -168,15 +170,15 @@ class ScriptingTests:
 
     expectedJar.delete
     Main.main(mainArgs) // create executable jar
-    printf("===> test script jar name [%s]\n",expectedJar.getName)
-    assert(expectedJar.exists,s"unable to create executable jar [$expectedJar]")
+    printf("===> test script jar name [%s]\n", expectedJar.getName)
+    assert(expectedJar.exists, s"unable to create executable jar [$expectedJar]")
 
     touchedFile.delete
-    assert(!touchedFile.exists,s"unable to delete ${touchedFile}")
-    printf("calling executable jar %s\n",expectedJar)
+    assert(!touchedFile.exists, s"unable to delete ${touchedFile}")
+    printf("calling executable jar %s\n", expectedJar)
     callExecutableJar(scriptFile, expectedJar)
     if touchedFile.exists then
-      printf("success: executable jar created file %s\n",touchedFile)
+      printf("success: executable jar created file %s\n", touchedFile)
     assert( touchedFile.exists, s"expected to find file ${touchedFile}" )
 
   def touchFileScript = testFiles.find(_.getName == "touchFile.sc").get

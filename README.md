@@ -10,6 +10,11 @@ Try it out
 ==========
 To try it in your project see also the [Getting Started User Guide](https://dotty.epfl.ch/#getting-started).
 
+Building a Local Distribution
+=============================
+1. `sbt dist/packArchive`
+2. Find the newly-built distributions in `dist/target/`
+
 Code of Conduct
 ===============
 Dotty uses the [Scala Code of Conduct](https://www.scala-lang.org/conduct.html)

@@ -97,7 +97,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             new ExprImpl(self, SpliceScope.getCurrent)
           else self match
             case TermTypeTest(self) => throw new Exception("Expected an expression. This is a partially applied Term. Try eta-expanding the term first.")
-            case _ => throw new Exception("Expected a Term but was: " + self)
+            case _ => throw new Exception("Expected a Term but was: " + Printer.TreeStructure.show(self))
       end extension
 
       extension (self: Tree)
@@ -186,10 +186,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object StatementTypeTest extends TypeTest[Tree, Statement]:
       def unapply(x: Tree): Option[Statement & x.type] = x match
-        case _: tpd.PatternTree => None
-        case _ =>
-          if x.isTerm then TermTypeTest.unapply(x)
-          else DefinitionTypeTest.unapply(x)
+        case TermTypeTest(x: x.type) => Some(x)
+        case DefinitionTypeTest(x: x.type) => Some(x)
+        case ImportTypeTest(x: x.type) => Some(x)
+        case ExportTypeTest(x: x.type) => Some(x)
+        case _ => None
     end StatementTypeTest
 
     type Definition = tpd.MemberDef
@@ -332,13 +333,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TermTypeTest extends TypeTest[Tree, Term]:
       def unapply(x: Tree): Option[Term & x.type] = x match
-        case _ if UnapplyTypeTest.unapply(x).isDefined => None
-        case _: tpd.PatternTree => None
-        case x: (tpd.Tree & x.type) if x.isTerm => Some(x)
+        case x: tpd.PatternTree => None
         case x: (tpd.SeqLiteral & x.type) => Some(x)
         case x: (tpd.Inlined & x.type) => Some(x)
         case x: (tpd.NamedArg & x.type) => Some(x)
-        case _ => None
+        case _ => if x.isTerm then Some(x) else None
     end TermTypeTest
 
     object Term extends TermModule:
@@ -1021,7 +1020,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeIdentTypeTest extends TypeTest[Tree, TypeIdent]:
       def unapply(x: Tree): Option[TypeIdent & x.type] = x match
-        case tpt: (tpd.Ident & x.type) if tpt.isType => Some(tpt)
+        case tpt: (tpd.Ident & x.type) if tpt.isType && tpt.name != nme.WILDCARD => Some(tpt)
         case _ => None
     end TypeIdentTypeTest
 
@@ -1335,7 +1334,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object WildcardTypeTreeTypeTest extends TypeTest[Tree, WildcardTypeTree]:
       def unapply(x: Tree): Option[WildcardTypeTree & x.type] = x match
-        case x: (tpd.Ident & x.type) if x.name == nme.WILDCARD => Some(x)
+        case x: (tpd.Ident & x.type) if x.isType && x.name == nme.WILDCARD => Some(x)
         case _ => None
     end WildcardTypeTreeTypeTest
 
@@ -1423,14 +1422,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end BindMethods
 
-    type Unapply = tpd.UnApply | tpd.Typed // tpd.Typed containing a tpd.UnApply as expression
+    type Unapply = tpd.UnApply
 
     object UnapplyTypeTest extends TypeTest[Tree, Unapply]:
-      def unapply(x: Tree): Option[Unapply & x.type] =
-        x match // keep in sync with UnapplyMethodsImpl.selfUnApply
-          case x: (tpd.UnApply & x.type) => Some(x)
-          case x: (tpd.Typed & x.type) if x.expr.isInstanceOf[tpd.UnApply] => Some(x)
-          case _ => None
+      def unapply(x: Tree): Option[Unapply & x.type] = x match
+        case x: (tpd.UnApply & x.type) => Some(x)
+        case _ => None
     end UnapplyTypeTest
 
     object Unapply extends UnapplyModule:
@@ -1442,14 +1439,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given UnapplyMethods: UnapplyMethods with
       extension (self: Unapply)
-        def fun: Term = selfUnApply(self).fun
-        def implicits: List[Term] = selfUnApply(self).implicits
-        def patterns: List[Tree] = effectivePatterns(selfUnApply(self).patterns)
+        def fun: Term = self.fun
+        def implicits: List[Term] = self.implicits
+        def patterns: List[Tree] = effectivePatterns(self.patterns)
       end extension
-      private def selfUnApply(self: Unapply): tpd.UnApply =
-        self match // keep in sync with UnapplyTypeTest
-          case self: tpd.UnApply => self
-          case self: tpd.Typed => self.expr.asInstanceOf[tpd.UnApply]
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
           case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
@@ -1512,6 +1505,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
         def isGiven: Boolean =
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Given)
+        def isErased: Boolean =
+          self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Erased)
     end TermParamClauseMethods
 
     type TypeParamClause = List[tpd.TypeDef]

@@ -1,3 +1,2 @@
-scala> val d: java.sql.Date = new java.sql.Date(100L)
-val d: java.sql.Date = 1970-01-01
-
+scala> val d: Long = (new java.sql.Date(100L)).getTime
+val d: Long = 100

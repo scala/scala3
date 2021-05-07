@@ -1199,8 +1199,8 @@ class TreeUnpickler(reader: TastyReader,
                *  or an override has been removed.
                *
                *  This is tested in
-               *  - sbt-dotty/sbt-test/tasty-compat/remove-override
-               *  - sbt-dotty/sbt-test/tasty-compat/move-method
+               *  - sbt-test/tasty-compat/remove-override
+               *  - sbt-test/tasty-compat/move-method
                */
               def lookupInSuper =
                 val cls = ownerTpe.classSymbol

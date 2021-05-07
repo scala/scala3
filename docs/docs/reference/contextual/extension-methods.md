@@ -209,7 +209,7 @@ trait SafeDiv:
 By the second rule, an extension method can be made available by defining a given instance containing it, like this:
 
 ```scala
-given ops1: IntOps with {}  // brings safeMod into scope
+given ops1: IntOps()  // brings safeMod into scope
 
 1.safeMod(2)
 ```

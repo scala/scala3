@@ -1,58 +1,58 @@
 class Low
 object Low {
-  given low: Low with {}
+  given low: Low()
 }
 class Medium extends Low
 object Medium {
-  given medium: Medium with {}
+  given medium: Medium()
 }
 class High extends Medium
 object High {
-  given high: High with {}
+  given high: High()
 }
 
 class Foo[T](val i: Int)
 object Foo {
   def apply[T](using fooT: Foo[T]): Int = fooT.i
 
-  given foo[T](using Low): Foo[T](0) with {}
-  given foobar[T](using Low): Foo[Bar[T]](1) with {}
-  given foobarbaz(using Low): Foo[Bar[Baz]](2) with {}
+  given foo[T](using Low): Foo[T](0)
+  given foobar[T](using Low): Foo[Bar[T]](1)
+  given foobarbaz(using Low): Foo[Bar[Baz]](2)
 }
 class Bar[T]
 object Bar {
-  given foobar[T](using Medium): Foo[Bar[T]](3) with {}
-  given foobarbaz(using Medium): Foo[Bar[Baz]](4) with {}
+  given foobar[T](using Medium): Foo[Bar[T]](3)
+  given foobarbaz(using Medium): Foo[Bar[Baz]](4)
 }
 class Baz
 object Baz {
-  given baz(using High): Foo[Bar[Baz]](5) with {}
+  given baz(using High): Foo[Bar[Baz]](5)
 }
 
 class Arg
 
-given Arg with {}
+given Arg()
 
 class Bam(val str: String)
 
-given lo(using Low): Bam("lo") with {}
+given lo(using Low): Bam("lo")
 
-given hi(using High)(using Arg): Bam("hi") with {}
+given hi(using High)(using Arg): Bam("hi")
 
 class Bam2(val str: String)
 
-given lo2(using Low): Bam2("lo") with {}
+given lo2(using Low): Bam2("lo")
 
-given mid2(using High)(using Arg): Bam2("mid") with {}
+given mid2(using High)(using Arg): Bam2("mid")
 
-given hi2: Bam2("hi") with {}
+given hi2: Bam2("hi")
 
 class Arg2
 class Red(val str: String)
 
-given normal(using Arg2): Red("normal") with {}
+given normal(using Arg2): Red("normal")
 
-given reduced(using ev: Arg2 | Low): Red("reduced") with {}
+given reduced(using ev: Arg2 | Low): Red("reduced")
 
 object Test extends App {
   assert(Foo[Int] == 0)
@@ -62,7 +62,7 @@ object Test extends App {
   assert(summon[Bam2].str == "hi")
   assert(summon[Red].str == "reduced")
 
-  { given Arg2 with {}
+  { given Arg2()
     assert(summon[Red].str == "normal")
   }
 }

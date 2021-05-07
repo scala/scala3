@@ -5,24 +5,22 @@ import scala.quoted._
 import dotty.tools.scaladoc.util.Escape._
 import scala.collection.mutable.{ Map => MMap }
 import dotty.tools.io.AbstractFile
+import Scaladoc2AnchorCreator.getScaladoc2Type
+import JavadocAnchorCreator.getJavadocType
 
-class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2AnchorCreator:
-  import q.reflect._
+object SymOps:
 
-  given Q = q
+  extension (using Quotes)(sym: reflect.Symbol)
 
-  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
-
-  extension (sym: Symbol)
-    def packageName: String = (
+    def packageName: String =
       if (sym.isPackageDef) sym.fullName
       else sym.maybeOwner.packageName
-    )
 
     def packageNameSplitted: Seq[String] =
       sym.packageName.split('.').toList
 
     def className: Option[String] =
+      import reflect._
       if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
         Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
       ).filterNot(_.contains("package$"))
@@ -42,7 +40,9 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
       else None
     //TODO: Retrieve string that will match scaladoc anchors
 
+
     def getVisibility(): Visibility =
+      import reflect._
       import VisibilityScope._
 
       def explicitScope(ownerType: TypeRepr): VisibilityScope =
@@ -69,7 +69,9 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
 
     // Order here determines order in documenation
-    def getExtraModifiers(): Seq[Modifier] = Seq(
+    def getExtraModifiers(): Seq[Modifier] =
+      import reflect._
+      Seq(
         Flags.Final -> Modifier.Final,
         Flags.Sealed -> Modifier.Sealed,
         Flags.Erased -> Modifier.Erased,
@@ -81,46 +83,73 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
         Flags.Open -> Modifier.Open,
         Flags.Override -> Modifier.Override,
         Flags.Case -> Modifier.Case,
-        ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
+      ).collect { case (flag, mod) if sym.flags.is(flag) => mod }
 
     def isHiddenByVisibility(using dctx: DocContext): Boolean =
       import VisibilityScope._
 
-      !summon[DocContext].args.includePrivateAPI && getVisibility().match
+      !summon[DocContext].args.includePrivateAPI && sym.getVisibility().match
         case Visibility.Private(_) => true
         case Visibility.Protected(ThisScope | ImplicitModuleScope | _: ExplicitModuleScope) => true
         case _ => false
 
-    def shouldDocumentClasslike(using dctx: DocContext): Boolean = !isHiddenByVisibility
-        && !sym.flags.is(Flags.Synthetic)
-        && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
-        && !(sym.companionModule.flags.is(Flags.Given))
+    def shouldDocumentClasslike(using dctx: DocContext): Boolean =
+      import reflect._
+      !sym.isHiddenByVisibility
+      && !sym.flags.is(Flags.Synthetic)
+      && (!sym.flags.is(Flags.Case) || !sym.flags.is(Flags.Enum))
+      && !(sym.companionModule.flags.is(Flags.Given))
 
+    def getCompanionSymbol: Option[reflect.Symbol] = Some(sym.companionClass).filter(_.exists)
 
-    def getCompanionSymbol: Option[Symbol] = Some(sym.companionClass).filter(_.exists)
+    def isCompanionObject: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Module) && sym.companionClass.exists
 
-    def isCompanionObject: Boolean = sym.flags.is(Flags.Module) && sym.companionClass.exists
+    def isGiven: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Given)
 
-    def isGiven: Boolean = sym.flags.is(Flags.Given)
+    def isExported: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Exported)
 
-    def isExported: Boolean = sym.flags.is(Flags.Exported)
+    def isOverridden: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Override)
 
-    def isOverriden: Boolean = sym.flags.is(Flags.Override)
+    def isExtensionMethod: Boolean =
+      import reflect._
+      sym.flags.is(Flags.ExtensionMethod)
 
-    def isExtensionMethod: Boolean = sym.flags.is(Flags.ExtensionMethod)
+    def isArtifact: Boolean =
+      import reflect._
+      sym.flags.is(Flags.Artifact)
 
-    def isArtifact: Boolean = sym.flags.is(Flags.Artifact)
+    def isLeftAssoc: Boolean = !sym.name.endsWith(":")
 
-    def isLeftAssoc(d: Symbol): Boolean = !d.name.endsWith(":")
-
-    def extendedSymbol: Option[ValDef] =
+    def extendedSymbol: Option[reflect.ValDef] =
+      import reflect.*
       Option.when(sym.isExtensionMethod){
         val termParamss = sym.tree.asInstanceOf[DefDef].termParamss
-        if isLeftAssoc(sym) || termParamss.size == 1 then termParamss(0).params(0)
+        if sym.isLeftAssoc || termParamss.size == 1 then termParamss(0).params(0)
         else termParamss(1).params(0)
       }
 
+  end extension
+
+end SymOps
+
+// TODO find a better way to handle this cache and move the methods to SymOps
+class SymOpsWithLinkCache:
+  import SymOps.*
+
+  private val externalLinkCache: scala.collection.mutable.Map[AbstractFile, Option[ExternalDocLink]] = MMap()
+
+  extension (using Quotes)(sym: reflect.Symbol)
+
     private def constructPath(location: Seq[String], anchor: Option[String], link: ExternalDocLink): String =
+      import reflect.*
       val extension = ".html"
       val docURL = link.documentationUrl.toString
       def constructPathForJavadoc: String =
@@ -154,6 +183,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
 
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
+      import reflect.*
       if sym == Symbol.noSymbol then topLevelDri
       else if sym.isValDef && sym.moduleClass.exists then sym.moduleClass.dri
       else
@@ -170,9 +200,9 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
         val location = sym.packageNameSplitted ++ className
 
         val externalLink = {
-            import q.reflect._
+            import reflect._
             import dotty.tools.dotc
-            given ctx: dotc.core.Contexts.Context = q.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+            given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
             val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
             val extLink = if externalLinkCache.contains(csym.associatedFile) then externalLinkCache(csym.associatedFile)
             else {
@@ -181,7 +211,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
               externalLinkCache += (csym.associatedFile -> calculatedLink)
               calculatedLink
             }
-            extLink.map(link => constructPath(location, anchor, link))
+            extLink.map(link => sym.constructPath(location, anchor, link))
         }
 
         DRI(
@@ -193,7 +223,7 @@ class SymOps[Q <: Quotes](val q: Q) extends JavadocAnchorCreator with Scaladoc2A
           s"${sym.name}${sym.fullName}/${sym.signature.resultSig}/[${sym.signature.paramSigs.mkString("/")}]"
         )
 
-    def driInContextOfInheritingParent(par: Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
+    def driInContextOfInheritingParent(par: reflect.Symbol)(using dctx: DocContext): DRI = sym.dri.copy(
       location = par.dri.location,
       externalLink = None
     )

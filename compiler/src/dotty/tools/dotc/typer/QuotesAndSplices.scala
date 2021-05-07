@@ -159,7 +159,7 @@ trait QuotesAndSplices {
 
     if ctx.mode.is(Mode.QuotedPattern) && level == 1 then
       report.error(
-            """`$` for quote pattern varable is not supported anymore.
+            """`$` for quote pattern variable is not supported anymore.
                |Use lower cased variable name without the `$` instead.""".stripMargin,
             tree.srcPos)
       ref(defn.NothingType)

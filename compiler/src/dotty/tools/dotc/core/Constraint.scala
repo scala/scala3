@@ -118,8 +118,11 @@ abstract class Constraint extends Showable {
   /** A new constraint with all entries coming from `tl` removed. */
   def remove(tl: TypeLambda)(using Context): This
 
-  /** A new constraint with entry `tl` renamed to a fresh type lambda */
-  def rename(tl: TypeLambda)(using Context): This
+  /** A new constraint with entry `from` replaced with `to`
+   *  Rerences to `from` from within other constraint bounds are updated to `to`.
+   *  Type variables are left alone.
+   */
+  def subst(from: TypeLambda, to: TypeLambda)(using Context): This
 
   /** Gives for each instantiated type var that does not yet have its `inst` field
    *  set, the instance value stored in the constraint. Storing instances in constraints
@@ -150,6 +153,8 @@ abstract class Constraint extends Showable {
   def uninstVars: collection.Seq[TypeVar]
 
   /** The weakest constraint that subsumes both this constraint and `other`.
+   *  The constraints should be _compatible_, meaning that a type lambda
+   *  occurring in both constraints is associated with the same typevars in each.
    *
    *  @param otherHasErrors    If true, handle incompatible constraints by
    *                           returning an approximate constraint, instead of
@@ -168,6 +173,11 @@ abstract class Constraint extends Showable {
 
   /** Check that constraint only refers to TypeParamRefs bound by itself */
   def checkClosed()(using Context): Unit
+
+  /** Check that every typevar om this constraint has as origin a type parameter
+   *  of athe type lambda that is associated with the typevar itself.
+   */
+  def checkConsistentVars()(using Context): Unit
 
   /** A string describing the constraint's contents without a header or trailer */
   def contentsToString(using Context): String

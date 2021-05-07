@@ -660,6 +660,9 @@ object StdNames {
       final val STAR : N  = "*"
       final val TILDE: N  = "~"
 
+      final val MINUS_STAR: N = "-*"
+      final val PLUS_STAR : N = "+*"
+
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
     }
 

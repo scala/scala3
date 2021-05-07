@@ -118,7 +118,7 @@ object Applications {
   }
 
   def tupleComponentTypes(tp: Type)(using Context): List[Type] =
-    tp.widenExpr.dealias match
+    tp.widenExpr.dealias.normalized match
     case tp: AppliedType =>
       if defn.isTupleClass(tp.tycon.typeSymbol) then
         tp.args
@@ -614,7 +614,6 @@ trait Applications extends Compatibility {
 
   /** The degree to which an argument has to match a formal parameter */
   enum ArgMatch:
-    case SubType       // argument is a relaxed subtype of formal
     case Compatible    // argument is compatible with formal
     case CompatibleCAP // capture-converted argument is compatible with formal
 
@@ -635,21 +634,38 @@ trait Applications extends Compatibility {
         // matches expected type
         false
       case argtpe =>
-        def SAMargOK = formal match {
-          case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
-          case _ => false
-        }
-        if argMatch == ArgMatch.SubType then
-          argtpe relaxed_<:< formal.widenExpr
-        else
-          isCompatible(argtpe, formal)
-          || ctx.mode.is(Mode.ImplicitsEnabled) && SAMargOK
-          || argMatch == ArgMatch.CompatibleCAP
-              && {
-                val argtpe1 = argtpe.widen
-                val captured = captureWildcards(argtpe1)
-                (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
-              }
+        val argtpe1 = argtpe.widen
+
+        def SAMargOK =
+          defn.isFunctionType(argtpe1) && formal.match
+            case SAMType(sam) => argtpe <:< sam.toFunctionType(isJava = formal.classSymbol.is(JavaDefined))
+            case _ => false
+
+        isCompatible(argtpe, formal)
+        // Only allow SAM-conversion to PartialFunction if implicit conversions
+        // are enabled. This is necessary to avoid ambiguity between an overload
+        // taking a PartialFunction and one taking a Function1 because
+        // PartialFunction extends Function1 but Function1 is SAM-convertible to
+        // PartialFunction. Concretely, given:
+        //
+        //   def foo(a: Int => Int): Unit = println("1")
+        //   def foo(a: PartialFunction[Int, Int]): Unit = println("2")
+        //
+        // - `foo(x => x)` will print 1, because the PartialFunction overload
+        //   won't be seen as applicable in the first call to
+        //   `resolveOverloaded`, this behavior happens to match what Java does
+        //   since PartialFunction is not a SAM type according to Java
+        //   (`isDefined` is abstract).
+        // - `foo { case x if x % 2 == 0 => x }` will print 2, because both
+        //    overloads are applicable, but PartialFunction is a subtype of
+        //    Function1 so it's more specific.
+        || (!formal.isRef(defn.PartialFunctionClass) || ctx.mode.is(Mode.ImplicitsEnabled)) && SAMargOK
+        || argMatch == ArgMatch.CompatibleCAP
+            && {
+              val argtpe1 = argtpe.widen
+              val captured = captureWildcards(argtpe1)
+              (captured ne argtpe1) && isCompatible(captured, formal.widenExpr)
+            }
 
     /** The type of the given argument */
     protected def argType(arg: Arg, formal: Type): Type
@@ -851,15 +867,12 @@ trait Applications extends Compatibility {
       record("typedApply")
       val fun1 = typedExpr(tree.fun, originalProto)
 
-      // Warning: The following lines are dirty and fragile.
-      // We record that auto-tupling or untupling was demanded as a side effect in adapt.
-      // If it was, we assume the tupled-dual proto-type in the rest of the application,
-      // until, possibly, we have to fall back to insert an implicit on the qualifier.
-      // This crucially relies on he fact that `proto` is used only in a single call of `adapt`,
-      // otherwise we would get possible cross-talk between different `adapt` calls using the same
-      // prototype. A cleaner alternative would be to return a modified prototype from `adapt` together with
-      // a modified tree but this would be more convoluted and less efficient.
-      val proto = if (originalProto.hasTupledDual) originalProto.tupledDual else originalProto
+      // If adaptation created a tupled dual of `originalProto`, pick the right version
+      // (tupled or not) of originalProto to proceed.
+      val proto =
+        if originalProto.hasTupledDual && needsTupledDual(fun1.tpe, originalProto)
+        then originalProto.tupledDual
+        else originalProto
 
       // If some of the application's arguments are function literals without explicitly declared
       // parameter types, relate the normalized result type of the application with the
@@ -1096,6 +1109,40 @@ trait Applications extends Compatibility {
     case _ =>
       tree
   }
+
+  /** Is `tp` a unary function type or an overloaded type with with only unary function
+   *  types as alternatives?
+   */
+  def isUnary(tp: Type)(using Context): Boolean = tp match {
+    case tp: MethodicType =>
+      tp.firstParamTypes match {
+        case ptype :: Nil => !ptype.isRepeatedParam
+        case _ => false
+      }
+    case tp: TermRef =>
+      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+    case _ =>
+      false
+  }
+
+  /** Should we tuple or untuple the argument before application?
+    *  If auto-tupling is enabled then
+    *
+    *   - we tuple n-ary arguments where n > 0 if the function consists
+    *     only of unary alternatives
+    *   - we untuple tuple arguments of infix operations if the function
+    *     does not consist only of unary alternatives.
+    */
+  def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    pt.args match
+      case untpd.Tuple(elems) :: Nil =>
+        elems.length > 1
+        && pt.applyKind == ApplyKind.InfixTuple
+        && !isUnary(funType)
+      case args =>
+        args.lengthCompare(1) > 0
+        && isUnary(funType)
+        && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`
    *  or `copy` method of an enum case, widen its type to the underlying
@@ -1863,17 +1910,10 @@ trait Applications extends Compatibility {
           else
             alts
 
-        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] = {
-          val alts2 = alts.filterConserve(alt =>
-            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.SubType)
+        def narrowByTrees(alts: List[TermRef], args: List[Tree], resultType: Type): List[TermRef] =
+          alts.filterConserve(alt =>
+            isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
           )
-          if (alts2.isEmpty && !ctx.isAfterTyper)
-            alts.filterConserve(alt =>
-              isApplicableMethodRef(alt, args, resultType, keepConstraint = false, ArgMatch.CompatibleCAP)
-            )
-          else
-            alts2
-        }
 
         record("resolveOverloaded.FunProto", alts.length)
         val alts1 = narrowBySize(alts)
@@ -2061,7 +2101,11 @@ trait Applications extends Compatibility {
             else defn.FunctionOf(commonParamTypes, WildcardType)
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
-            withMode(Mode.ImplicitsEnabled)(pt.typedArg(arg, commonFormal))
+            withMode(Mode.ImplicitsEnabled) {
+              // We can cache the adapted argument here because the expected type
+              // is a common type shared by all overloading candidates.
+              pt.cacheArg(arg, pt.typedArg(arg, commonFormal))
+            }
         }
         recur(altFormals.map(_.tail), args1)
       case _ =>

@@ -66,6 +66,9 @@ object Typer {
     if (!tree.isEmpty && !tree.isInstanceOf[untpd.TypedSplice] && ctx.typerState.isGlobalCommittable)
       assert(tree.span.exists, i"position not set for $tree # ${tree.uniqueId} of ${tree.getClass} in ${tree.source}")
 
+  /** An attachment for GADT constraints that were inferred for a pattern. */
+  val InferredGadtConstraints = new Property.StickyKey[core.GadtConstraint]
+
   /** A context property that indicates the owner of any expressions to be typed in the context
    *  if that owner is different from the context's owner. Typically, a context with a class
    *  as owner would have a local dummy as ExprOwner value.
@@ -1399,10 +1402,6 @@ class Typer extends Namer
                   else
                     report.error(ex"result type of lambda is an underspecified SAM type $pt", tree.srcPos)
                     pt
-                if (pt.classSymbol.isOneOf(FinalOrSealed)) {
-                  val offendingFlag = pt.classSymbol.flags & FinalOrSealed
-                  report.error(ex"lambda cannot implement $offendingFlag ${pt.classSymbol}", tree.srcPos)
-                }
                 TypeTree(targetTpe)
               case _ =>
                 if (mt.isParamDependent)
@@ -1564,9 +1563,9 @@ class Typer extends Namer
       super.transform(trt.withType(stripTypeVars(trt.tpe))) match {
         case b: Bind =>
           val sym = b.symbol
-          if (sym.name != tpnme.WILDCARD)
-            if (ctx.scope.lookup(b.name) == NoSymbol) ctx.enter(sym)
-            else report.error(new DuplicateBind(b, cdef), b.srcPos)
+          assert(sym.name != tpnme.WILDCARD)
+          if ctx.scope.lookup(b.name) == NoSymbol then ctx.enter(sym)
+          else report.error(new DuplicateBind(b, cdef), b.srcPos)
           if (!ctx.isAfterTyper) {
             val bounds = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
@@ -1602,6 +1601,13 @@ class Typer extends Namer
       val pat1 = indexPattern(tree).transform(pat)
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(typedExpr(tree.body, pt1), pt1, ctx.scope.toList)
+      if ctx.gadt.nonEmpty then
+        // Store GADT constraint to later retrieve it (in PostTyper, for now).
+        // GADT constraints are necessary to correctly check bounds of type app,
+        // see tests/pos/i12226 and issue #12226. It might be possible that this
+        // will end up taking too much memory. If it does, we should just limit
+        // how much GADT constraints we infer - it's always sound to infer less.
+        pat1.putAttachment(InferredGadtConstraints, ctx.gadt)
       if (pt1.isValueType) // insert a cast if body does not conform to expected type if we disregard gadt bounds
         body1 = body1.ensureConforms(pt1)(using originalCtx)
       assignType(cpy.CaseDef(tree)(pat1, guard1, body1), pat1, body1)
@@ -1973,8 +1979,9 @@ class Typer extends Namer
       //val ptt = if (lo.isEmpty && hi.isEmpty) pt else
       if (ctx.isAfterTyper) tree1
       else {
-        val wildcardSym = newPatternBoundSymbol(tpnme.WILDCARD, tree1.tpe & pt, tree.span)
-        untpd.Bind(tpnme.WILDCARD, tree1).withType(wildcardSym.typeRef)
+        val boundName = WildcardParamName.fresh().toTypeName
+        val wildcardSym = newPatternBoundSymbol(boundName, tree1.tpe & pt, tree.span)
+        untpd.Bind(boundName, tree1).withType(wildcardSym.typeRef)
       }
     else tree1
   }
@@ -2290,7 +2297,7 @@ class Typer extends Namer
             var added: Tree = TypeTree(parent).withSpan(cdef.nameSpan.focus)
             if psym.is(Trait) && psym.primaryConstructor.info.takesImplicitParams then
               // classes get a constructor separately using a different context
-              added = ensureConstrCall(cls, added)
+              added = ensureConstrCall(cls, added)(using superCtx)
             added :: parentTrees(parents1, ptrees)
       case _ =>
         ptrees
@@ -3202,37 +3209,6 @@ class Typer extends Namer
       }
     }
 
-    def isUnary(tp: Type): Boolean = tp match {
-      case tp: MethodicType =>
-        tp.firstParamTypes match {
-          case ptype :: Nil => !ptype.isRepeatedParam
-          case _ => false
-        }
-      case tp: TermRef =>
-        tp.denot.alternatives.forall(alt => isUnary(alt.info))
-      case _ =>
-        false
-    }
-
-    /** Should we tuple or untuple the argument before application?
-     *  If auto-tupling is enabled then
-     *
-     *   - we tuple n-ary arguments where n > 0 if the function consists
-     *     only of unary alternatives
-     *   - we untuple tuple arguments of infix operations if the function
-     *     does not consist only of unary alternatives.
-     */
-    def needsTupledDual(funType: Type, pt: FunProto): Boolean =
-      pt.args match
-        case untpd.Tuple(elems) :: Nil =>
-          elems.length > 1
-          && pt.applyKind == ApplyKind.InfixTuple
-          && !isUnary(funType)
-        case args =>
-          args.lengthCompare(1) > 0
-          && isUnary(funType)
-          && autoTuplingEnabled
-
     def adaptToArgs(wtp: Type, pt: FunProto): Tree = wtp match {
       case wtp: MethodOrPoly =>
         def methodStr = methPart(tree).symbol.showLocated
@@ -3271,7 +3247,7 @@ class Typer extends Namer
         replaceSingletons(tp)
       }
       wtp.paramInfos.foreach(instantiate)
-      val constr = ctx.typerState.constraint
+      val saved = ctx.typerState.snapshot()
 
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
@@ -3371,8 +3347,9 @@ class Typer extends Namer
         if (propFail.exists) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint needs to be reset.
-          ctx.typerState.constraint = constr
+          // might fail. In that case the constraint and instantiated variables
+          // need to be reset.
+          ctx.typerState.resetTo(saved)
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
@@ -3536,12 +3513,31 @@ class Typer extends Namer
                 typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
                 //typr.println(TypeComparer.explained(tree.tpe <:< pt))
                 adaptToSubType(wtp)
-          case CompareResult.OKwithGADTUsed if pt.isValueType =>
+          case CompareResult.OKwithGADTUsed
+          if pt.isValueType
+             && !inContext(ctx.fresh.setGadt(EmptyGadtConstraint)) {
+               val res = (tree.tpe.widenExpr frozen_<:< pt)
+               if res then
+                 // we overshot; a cast is not needed, after all.
+                 gadts.println(i"unnecessary GADTused for $tree: ${tree.tpe.widenExpr} vs $pt in ${ctx.source}")
+               res
+              } =>
             // Insert an explicit cast, so that -Ycheck in later phases succeeds.
             // I suspect, but am not 100% sure that this might affect inferred types,
             // if the expected type is a supertype of the GADT bound. It would be good to come
             // up with a test case for this.
-            tree.cast(pt)
+            val target =
+              if tree.tpe.isSingleton then
+                val conj = AndType(tree.tpe, pt)
+                if tree.tpe.isStable && !conj.isStable then
+                  // this is needed for -Ycheck. Without the annotation Ycheck will
+                  // skolemize the result type which will lead to different types before
+                  // and after checking. See i11955.scala.
+                  AnnotatedType(conj, Annotation(defn.StableAnnot))
+                else conj
+              else pt
+            gadts.println(i"insert GADT cast from $tree to $target")
+            tree.cast(target)
           case _ =>
             tree
     }
@@ -3859,7 +3855,7 @@ class Typer extends Namer
         }
 
         if isDefiniteNotSubtype then
-          // We could check whether `equals` is overriden.
+          // We could check whether `equals` is overridden.
           // Reasons for not doing so:
           // - it complicates the protocol
           // - such code patterns usually implies hidden errors in the code

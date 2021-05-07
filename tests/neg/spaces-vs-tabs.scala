@@ -11,5 +11,5 @@ object Test:
 
 	    if true then
 	      1
-	  else 2 // error // error
+	  else 2 // error
 

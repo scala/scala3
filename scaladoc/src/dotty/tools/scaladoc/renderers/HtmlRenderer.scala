@@ -102,16 +102,19 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
     def siteRoot = staticSite.get.root.toPath
     def pathToResource(p: String) = Resource.File(p, siteRoot.resolve(p))
 
-    val siteImages = staticSite.toSeq.flatMap { _ =>
-      val siteImgPath = siteRoot.resolve("images")
+    def harvestResources(path: String) =
+      val siteImgPath = siteRoot.resolve(path)
       if !Files.exists(siteImgPath) then Nil
       else
         val allPaths = Files.walk(siteImgPath, FileVisitOption.FOLLOW_LINKS)
         val files = allPaths.filter(Files.isRegularFile(_)).iterator().asScala
         files.map(p => siteRoot.relativize(p).toString).toList
+
+    val staticResources = staticSite.toSeq.flatMap { _ =>
+      harvestResources("images") ++ harvestResources("resources")
     }
 
-    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ siteImages
+    val siteResourcesPaths = allPages.toSet.flatMap(specificResources) ++ staticResources
 
     val resources = siteResourcesPaths.toSeq.map(pathToResource) ++ allResources(allPages)
     resources.flatMap(renderResource)

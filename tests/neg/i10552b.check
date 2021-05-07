@@ -1,0 +1,24 @@
+-- Error: tests/neg/i10552b.scala:10:17 --------------------------------------------------------------------------------
+10 |    println(foo1["hi"]) // error
+   |                 ^^^^
+   |                 ("hi" : String) does not conform to bound <: Int
+-- Error: tests/neg/i10552b.scala:11:17 --------------------------------------------------------------------------------
+11 |    println(foo1[String]) // error
+   |                 ^^^^^^
+   |                 String does not conform to bound <: Int
+-- Error: tests/neg/i10552b.scala:12:17 --------------------------------------------------------------------------------
+12 |    println(foo1[Any]) // error
+   |                 ^^^
+   |                 Any does not conform to bound <: Int
+-- Error: tests/neg/i10552b.scala:13:17 --------------------------------------------------------------------------------
+13 |    println(foo1[AnyKind]) // error
+   |                 ^^^^^^^
+   |                 AnyKind does not conform to bound <: Int
+-- Error: tests/neg/i10552b.scala:15:17 --------------------------------------------------------------------------------
+15 |    println(foo2["hi"]) // error
+   |                 ^^^^
+   |                 ("hi" : String) does not conform to bound >: Int <: Int
+-- Error: tests/neg/i10552b.scala:17:17 --------------------------------------------------------------------------------
+17 |    println(foo3[X]) // error
+   |                 ^
+   |                 Foo.this.X does not conform to bound <: Any. Note that this type is higher-kinded.

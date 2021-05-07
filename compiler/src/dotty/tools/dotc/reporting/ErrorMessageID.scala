@@ -87,8 +87,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ValueClassesMayNotWrapAnotherValueClassID,
     ValueClassParameterMayNotBeAVarID,
     ValueClassNeedsExactlyOneValParamID,
-    OnlyCaseClassOrCaseObjectAllowedID,
-    ExpectedTopLevelDefID,
+    UNUSED1,
+    UNUSED2,
     AnonymousFunctionMissingParamTypeID,
     SuperCallsNotAllowedInlineableID,
     NotAPathID,
@@ -154,7 +154,7 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     ErasedTypesCanOnlyBeFunctionTypesID,
     CaseClassMissingNonImplicitParamListID,
     EnumerationsShouldNotBeEmptyID,
-    UNUSED_1,
+    IllegalParameterInitID,
     RedundantModifierID,
     TypedCaseDoesNotExplicitlyExtendTypedEnumID,
     IllegalRedefinitionOfStandardKindID,
@@ -173,7 +173,8 @@ enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     CaseClassInInlinedCodeID,
     OverrideTypeMismatchErrorID,
     OverrideErrorID,
-    MatchableWarningID
+    MatchableWarningID,
+    CannotExtendFunctionID
 
   def errorNumber = ordinal - 2
 }

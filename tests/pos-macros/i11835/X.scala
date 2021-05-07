@@ -6,7 +6,6 @@ object X:
 
   private def _blah(b: Expr[Boolean])(using Quotes): Expr[Unit] =
     import quotes.reflect.*
-    println("="*120)
-    println(b.asTerm)
-    println(b.valueOrError)
+    b.asTerm
+    b.valueOrError
     '{()}

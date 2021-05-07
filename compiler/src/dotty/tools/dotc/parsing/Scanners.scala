@@ -135,14 +135,16 @@ object Scanners {
       */
     protected def putChar(c: Char): Unit = litBuf.append(c)
 
-    /** Clear buffer and set name and token */
-    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit = {
+    /** Clear buffer and set name and token
+     *  If `target` is different from `this`, don't treat identifiers as end tokens
+     */
+    def finishNamed(idtoken: Token = IDENTIFIER, target: TokenData = this): Unit =
       target.name = termName(litBuf.chars, 0, litBuf.length)
       litBuf.clear()
       target.token = idtoken
-      if (idtoken == IDENTIFIER)
-        target.token = toToken(target.name)
-    }
+      if idtoken == IDENTIFIER then
+        val converted = toToken(target.name)
+        if converted != END || (target eq this) then target.token = converted
 
     /** The token for given `name`. Either IDENTIFIER or a keyword. */
     def toToken(name: SimpleName): Token
@@ -377,8 +379,8 @@ object Scanners {
       && {
         // Is current lexeme  assumed to start an expression?
         // This is the case if the lexime is one of the tokens that
-        // starts an expression. Furthermore, if the previous token is
-        // in backticks, the lexeme may not be a binary operator.
+        // starts an expression or it is a COLONEOL. Furthermore, if
+        // the previous token is in backticks, the lexeme may not be a binary operator.
         // I.e. in
         //
         //   a
@@ -388,7 +390,7 @@ object Scanners {
         // in backticks and is a binary operator. Hence, `x` is not classified as a
         // leading infix operator.
         def assumeStartsExpr(lexeme: TokenData) =
-          canStartExprTokens.contains(lexeme.token)
+          (canStartExprTokens.contains(lexeme.token) || lexeme.token == COLONEOL)
           && (!lexeme.isOperator || nme.raw.isUnary(lexeme.name))
         val lookahead = LookaheadScanner()
         lookahead.allowLeadingInfixOperators = false
@@ -656,6 +658,8 @@ object Scanners {
                 () /* skip the trailing comma */
               else
                 reset()
+        case END =>
+          if !isEndMarker then token = IDENTIFIER
         case COLON =>
           if fewerBracesEnabled then observeColonEOL()
         case RBRACE | RPAREN | RBRACKET =>
@@ -665,6 +669,21 @@ object Scanners {
         case _ =>
       }
     }
+
+    protected def isEndMarker: Boolean =
+      if indentSyntax && isAfterLineEnd then
+        val endLine = source.offsetToLine(offset)
+        val lookahead = new LookaheadScanner():
+          override def isEndMarker = false
+        lookahead.nextToken()
+        if endMarkerTokens.contains(lookahead.token)
+          && source.offsetToLine(lookahead.offset) == endLine
+        then
+          lookahead.nextToken()
+          if lookahead.token == EOF
+          || source.offsetToLine(lookahead.offset) > endLine
+          then return true
+      false
 
     /** Is there a blank line between the current token and the last one?
      *  A blank line consists only of characters <= ' '.

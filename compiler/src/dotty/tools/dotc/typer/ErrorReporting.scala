@@ -51,6 +51,16 @@ object ErrorReporting {
       case _ =>
         report.error(em"missing arguments for $meth", tree.srcPos)
 
+  def matchReductionAddendum(tps: Type*)(using Context): String =
+    val collectMatchTrace = new TypeAccumulator[String]:
+      def apply(s: String, tp: Type): String =
+        if s.nonEmpty then s
+        else tp match
+          case tp: AppliedType if tp.isMatchAlias => MatchTypeTrace.record(tp.tryNormalize)
+          case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
+          case _ => foldOver(s, tp)
+    tps.foldLeft("")(collectMatchTrace)
+
   class Errors(using Context) {
 
     /** An explanatory note to be added to error messages
@@ -253,7 +263,9 @@ class ImplicitSearchError(
       val shortMessage = userDefinedImplicitNotFoundParamMessage
         .orElse(userDefinedImplicitNotFoundTypeMessage)
         .getOrElse(defaultImplicitNotFoundMessage)
-      formatMsg(shortMessage)() ++ hiddenImplicitsAddendum
+      formatMsg(shortMessage)()
+      ++ hiddenImplicitsAddendum
+      ++ ErrorReporting.matchReductionAddendum(pt)
   }
 
   private def formatMsg(shortForm: String)(headline: String = shortForm) = arg match {
@@ -303,7 +315,7 @@ class ImplicitSearchError(
   }
 
   private def defaultImplicitNotFoundMessage = {
-    em"no implicit argument of type $pt was found${location("for")}"
+    ex"no implicit argument of type $pt was found${location("for")}"
   }
 
   /** Construct a custom error message given an ambiguous implicit
@@ -402,7 +414,7 @@ class ImplicitSearchError(
 
   private def hiddenImplicitsAddendum: String =
     def hiddenImplicitNote(s: SearchSuccess) =
-      em"\n\nNote: given instance ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
+      em"\n\nNote: ${s.ref.symbol.showLocated} was not considered because it was not imported with `import given`."
 
     val normalImports = ignoredInstanceNormalImport.map(hiddenImplicitNote)
 

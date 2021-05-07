@@ -61,7 +61,7 @@ object Test extends App {
       extension [T](xs: List[T]) def +++ (ys: List[T]): List[T] = xs ++ ys ++ ys
       extension [T](xs: List[T]) def +++ (ys: Iterator[T]): List[T] = xs ++ ys ++ ys
     }
-    given Bar: Foo with {}
+    given Bar: Foo()
 
     assert((1 |+| 2) == 3)
     assert((1 |+| "2") == 2)

@@ -6,7 +6,7 @@ object Num {
   class IntNum extends Num[Int] {
     inline def plus(x: Int, y: Int): Int = x + y
   }
-  given IntNum with {}
+  given IntNum()
 
   extension [T](inline x: T)(using inline num: Num[T]) {
     inline def +(inline y: T): T = num.plus(x, y)

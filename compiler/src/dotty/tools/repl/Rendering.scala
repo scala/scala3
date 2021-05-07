@@ -62,11 +62,21 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
         // We need to use the ScalaRunTime class coming from the scala-library
         // on the user classpath, and not the one available in the current
         // classloader, so we use reflection instead of simply calling
-        // `ScalaRunTime.replStringOf`.
+        // `ScalaRunTime.replStringOf`. Probe for new API without extraneous newlines.
+        // For old API, try to clean up extraneous newlines by stripping suffix and maybe prefix newline.
         val scalaRuntime = Class.forName("scala.runtime.ScalaRunTime", true, myClassLoader)
-        val meth = scalaRuntime.getMethod("replStringOf", classOf[Object], classOf[Int])
+        val renderer = "stringOf"  // was: replStringOf
+        try {
+          val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int], classOf[Boolean])
+          val truly = java.lang.Boolean.TRUE
 
-        (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+          (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements), truly).asInstanceOf[String]
+        } catch {
+          case _: NoSuchMethodException =>
+            val meth = scalaRuntime.getMethod(renderer, classOf[Object], classOf[Int])
+
+            (value: Object) => meth.invoke(null, value, Integer.valueOf(MaxStringElements)).asInstanceOf[String]
+        }
       }
       myClassLoader
     }
@@ -88,7 +98,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
   private[repl] def replStringOf(value: Object)(using Context): String = {
     assert(myReplStringOf != null,
       "replStringOf should only be called on values creating using `classLoader()`, but `classLoader()` has not been called so far")
-    truncate(myReplStringOf(value))
+    val res = myReplStringOf(value)
+    if res == null then "null // non-null reference has null-valued toString" else truncate(res)
   }
 
   /** Load the value of the symbol using reflection.
@@ -102,7 +113,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None) {
       resObj
         .getDeclaredMethods.find(_.getName == sym.name.encode.toString)
         .map(_.invoke(null))
-    val string = value.map(replStringOf(_).trim)
+    val string = value.map(replStringOf(_))
     if (!sym.is(Flags.Method) && sym.info == defn.UnitType)
       None
     else

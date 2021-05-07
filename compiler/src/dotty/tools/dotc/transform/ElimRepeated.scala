@@ -288,7 +288,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         val src =
           if hasAnnotation then "@varargs"
           else if isBridge then "overriding a java varargs method"
-          else "@varargs (on overriden method)"
+          else "@varargs (on overridden method)"
         report.error(s"$src produces a forwarder method that conflicts with ${conflict.showDcl}", original.srcPos)
       case Nil =>
         forwarder.enteredAfter(thisPhase)

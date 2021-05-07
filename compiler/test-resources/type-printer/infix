@@ -40,7 +40,7 @@ def foo: Int Mappy Boolean && String
 scala> @scala.annotation.showAsInfix(false) class ||[T,U]
 // defined class ||
 scala> def foo: Int || Boolean = ???
-def foo: ||[Int, Boolean]
+def foo: Int || Boolean
 scala> def foo: Int && Boolean & String = ???
 def foo: Int && Boolean & String
 scala> def foo: (Int && Boolean) & String = ???

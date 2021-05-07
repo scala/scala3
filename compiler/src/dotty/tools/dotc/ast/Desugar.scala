@@ -946,7 +946,7 @@ object desugar {
       tree.withMods(mods)
     else if tree.name.startsWith("$") && !tree.isBackquoted then
       report.error(
-        """Quoted pattern variable names starting with $ are not suported anymore.
+        """Quoted pattern variable names starting with $ are not supported anymore.
           |Use lower cases type pattern name instead.
           |""".stripMargin,
         tree.srcPos)
@@ -1554,14 +1554,21 @@ object desugar {
         }
       }
 
+      /** Is `pat` of the form `x`, `x T`, or `given T`? when used as the lhs of a generator,
+       *  these are all considered irrefutable.
+       */
+      def isVarBinding(pat: Tree): Boolean = pat match
+        case pat @ Bind(_, pat1) if pat.mods.is(Given) => isVarBinding(pat1)
+        case IdPattern(_) => true
+        case _ => false
+
       def needsNoFilter(gen: GenFrom): Boolean =
         if (gen.checkMode == GenCheckMode.FilterAlways) // pattern was prefixed by `case`
           false
-        else (
-          gen.checkMode != GenCheckMode.FilterNow ||
-          IdPattern.unapply(gen.pat).isDefined ||
-          isIrrefutable(gen.pat, gen.expr)
-        )
+        else
+          gen.checkMode != GenCheckMode.FilterNow
+          || isVarBinding(gen.pat)
+          || isIrrefutable(gen.pat, gen.expr)
 
       /** rhs.name with a pattern filter on rhs unless `pat` is irrefutable when
        *  matched against `rhs`.
@@ -1603,6 +1610,8 @@ object desugar {
 
     def makePolyFunction(targs: List[Tree], body: Tree): Tree = body match {
       case Parens(body1) =>
+        makePolyFunction(targs, body1)
+      case Block(Nil, body1) =>
         makePolyFunction(targs, body1)
       case Function(vargs, res) =>
         assert(targs.nonEmpty)

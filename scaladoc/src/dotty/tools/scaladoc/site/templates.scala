@@ -76,7 +76,6 @@ case class TemplateFile(
     val code = if (isHtml || layoutTemplate.exists(!_.isHtml)) rendered else
       val parser: Parser = Parser.builder(defaultMarkdownOptions).build()
       HtmlRenderer.builder(defaultMarkdownOptions).build().render(parser.parse(rendered))
-
     layoutTemplate match
       case None => ResolvedPage(code, resources ++ ctx.resources)
       case Some(layoutTemplate) =>

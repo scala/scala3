@@ -4,16 +4,25 @@ import collection.JavaConverters._
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
+import scala.quoted._
+
+import SymOps._
+import NameNormalizer._
+import SyntheticsSupport._
+
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
 
-  private def bareClasslikeKind(symbol: Symbol): Kind =
-     if symbol.flags.is(Flags.Module) then Kind.Object
-        else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
-        else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
-        else if symbol.flags.is(Flags.Enum) && symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Object)
-        else Kind.Class(Nil, Nil)
+  private given qctx.type = qctx
+
+  private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
+    import reflect._
+    if symbol.flags.is(Flags.Module) then Kind.Object
+    else if symbol.flags.is(Flags.Trait) then  Kind.Trait(Nil, Nil)
+    else if symbol.flags.is(Flags.Enum) then Kind.Enum(Nil, Nil)
+    else if symbol.flags.is(Flags.Enum) && symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Object)
+    else Kind.Class(Nil, Nil)
 
   private def kindForClasslike(classDef: ClassDef): Kind =
     def typeArgs = classDef.getTypeParams.map(mkTypeArgument(_))
@@ -34,7 +43,7 @@ trait ClassLikeSupport:
           .filter(s => s.exists && !s.isHiddenByVisibility)
           .map( _.tree.asInstanceOf[DefDef])
       constr.fold(Nil)(
-        _.termParamss.map(pList => ParametersList(pList.params.map(mkParameter(_, parameterModifier)), if isUsingModifier(pList.params) then "using " else ""))
+        _.termParamss.map(pList => ParametersList(pList.params.map(p => mkParameter(p, parameterModifier)), paramListModifier(pList.params)))
         )
 
     if classDef.symbol.flags.is(Flags.Module) then Kind.Object
@@ -208,7 +217,8 @@ trait ClassLikeSupport:
       }
     ).map(_.copy(inheritedFrom = inheritance))
 
-  extension (c: ClassDef)
+  extension (using Quotes)(c: reflect.ClassDef)
+
     def membersToDocument = c.body.filterNot(_.symbol.isHiddenByVisibility)
 
     def getNonTrivialInheritedMemberTrees =
@@ -216,6 +226,7 @@ trait ClassLikeSupport:
         .filter(s => s.maybeOwner != defn.ObjectClass && s.maybeOwner != defn.AnyClass)
         .map(_.tree)
 
+  extension (c: ClassDef)
     def extractMembers: Seq[Member] = {
       val inherited = c.getNonTrivialInheritedMemberTrees.collect {
         case dd: DefDef if !dd.symbol.isClassConstructor && !(dd.symbol.isSuperBridgeMethod || dd.symbol.isDefaultHelperMethod) => dd
@@ -265,7 +276,7 @@ trait ClassLikeSupport:
         if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass
       yield (parentTree, parentSymbol)
 
-    def getConstructors: List[Symbol] = membersToDocument.collect {
+    def getConstructors: List[Symbol] = c.membersToDocument.collect {
       case d: DefDef if d.symbol.isClassConstructor && c.constructor.symbol != d.symbol => d.symbol
     }.toList
 
@@ -344,7 +355,7 @@ trait ClassLikeSupport:
     val basicKind: Kind.Def = Kind.Def(
       genericTypes.map(mkTypeArgument(_, memberInfo.genericTypes)),
       paramLists.zipWithIndex.map { (pList, index) =>
-        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), if isUsingModifier(pList.params) then "using " else "")
+        ParametersList(pList.params.map(mkParameter(_, paramPrefix, memberInfo = memberInfo.paramLists(index))), paramListModifier(pList.params))
       }
     )
 
@@ -364,9 +375,9 @@ trait ClassLikeSupport:
           Kind.Implicit(basicKind, None)
       else specificKind(basicKind)
 
-    val origin = if !methodSymbol.isOverriden then Origin.RegularlyDefined else
-      val overridenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
-      Origin.Overrides(overridenSyms.map(s => Overriden(s.name, s.dri)).toSeq)
+    val origin = if !methodSymbol.isOverridden then Origin.RegularlyDefined else
+      val overriddenSyms = methodSymbol.allOverriddenSymbols.map(_.owner)
+      Origin.Overrides(overriddenSyms.map(s => Overridden(s.name, s.dri)).toSeq)
 
     mkMember(methodSymbol, methodKind, memberInfo.res.asSignature)(origin = origin, deprecated = methodSymbol.isDeprecated())
 
@@ -444,7 +455,7 @@ trait ClassLikeSupport:
       modifiers = modifiers,
       annotations = symbol.getAnnotations(),
       signature = signature,
-      sources = symbol.source(using qctx),
+      sources = symbol.source,
       origin = origin,
       inheritedFrom = inheritedFrom,
       graph = graph,
@@ -474,5 +485,9 @@ trait ClassLikeSupport:
 
     recursivelyCalculateMemberInfo(MemberInfo(Map.empty, List.empty, baseTypeRepr))
 
-  private def isUsingModifier(parameters: Seq[ValDef]): Boolean =
-    parameters.size > 0 && parameters(0).symbol.flags.is(Flags.Given)
+  private def paramListModifier(parameters: Seq[ValDef]): String =
+    if parameters.size > 0 then
+      if parameters(0).symbol.flags.is(Flags.Given) then "using "
+      else if parameters(0).symbol.flags.is(Flags.Implicit) then "implicit "
+      else ""
+    else ""

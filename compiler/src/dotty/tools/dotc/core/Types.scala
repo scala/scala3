@@ -168,7 +168,7 @@ object Types {
       case _: SingletonType | NoPrefix => true
       case tp: RefinedOrRecType => tp.parent.isStable
       case tp: ExprType => tp.resultType.isStable
-      case tp: AnnotatedType => tp.parent.isStable
+      case tp: AnnotatedType => tp.annot.symbol == defn.StableAnnot || tp.parent.isStable
       case tp: AndType =>
         // TODO: fix And type check when tp contains type parames for explicit-nulls flow-typing
         // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
@@ -237,7 +237,7 @@ object Types {
     }
 
     def isBottomType(using Context): Boolean =
-      if ctx.explicitNulls && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
+      if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes then hasClassSymbol(defn.NothingClass)
       else isBottomTypeAfterErasure
 
     def isBottomTypeAfterErasure(using Context): Boolean =
@@ -423,11 +423,19 @@ object Types {
     def isMatch(using Context): Boolean = stripped match {
       case _: MatchType => true
       case tp: HKTypeLambda => tp.resType.isMatch
+      case tp: AppliedType =>
+        tp.tycon match
+          case tycon: TypeRef => tycon.info.isInstanceOf[MatchAlias]
+          case _ => false
       case _ => false
     }
 
     /** Is this a higher-kinded type lambda with given parameter variances? */
     def isDeclaredVarianceLambda: Boolean = false
+
+    /** Does this type contain wildcard types? */
+    final def containsWildcardTypes(using Context) =
+      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true)
 
 // ----- Higher-order combinators -----------------------------------
 
@@ -1038,17 +1046,15 @@ object Types {
       TypeComparer.isSameTypeWhenFrozen(this, that)
 
     /** Is this type a primitive value type which can be widened to the primitive value type `that`? */
-    def isValueSubType(that: Type)(using Context): Boolean = widen match {
+    def isValueSubType(that: Type)(using Context): Boolean = widenDealias match
       case self: TypeRef if self.symbol.isPrimitiveValueClass =>
-        that.widenExpr match {
+        that.widenExpr.dealias match
           case that: TypeRef if that.symbol.isPrimitiveValueClass =>
             defn.isValueSubClass(self.symbol, that.symbol)
           case _ =>
             false
-        }
       case _ =>
         false
-    }
 
     def relaxed_<:<(that: Type)(using Context): Boolean =
       (this <:< that) || (this isValueSubType that)
@@ -1888,7 +1894,15 @@ object Types {
       case st => st
     }
 
-    /** Same as superType, except that opaque types are treated as transparent aliases */
+    /** Same as superType, except for two differences:
+     *   - opaque types are treated as transparent aliases
+     *   - applied type are matchtype-reduced if possible
+     *
+     *  Note: the reason to reduce match type aliases here and not in `superType`
+     *  is that `superType` is context-independent and cached, whereas matchtype
+     *  reduction depends on context and should not be cached (at least not without
+     *  the very specific cache invalidation condition for matchtypes).
+     */
     def translucentSuperType(using Context): Type = superType
   }
 
@@ -2808,6 +2822,8 @@ object Types {
     private var myRef: Type = null
     private var computed = false
 
+    override def tryNormalize(using Context): Type = ref.tryNormalize
+
     def ref(using Context): Type =
       if computed then
         if myRef == null then
@@ -3640,9 +3656,15 @@ object Types {
         case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.InlineParamAnnot)))
         case _ => AnnotatedType(tp, Annotation(defn.InlineParamAnnot))
       }
+      def translateErased(tp: Type): Type = tp match {
+        case ExprType(resType) => ExprType(AnnotatedType(resType, Annotation(defn.ErasedParamAnnot)))
+        case _ => AnnotatedType(tp, Annotation(defn.ErasedParamAnnot))
+      }
       def paramInfo(param: Symbol) = {
-        val paramType = param.info.annotatedToRepeated
-        if (param.is(Inline)) translateInline(paramType) else paramType
+        var paramType = param.info.annotatedToRepeated
+        if (param.is(Inline)) paramType = translateInline(paramType)
+        if (param.is(Erased)) paramType = translateErased(paramType)
+        paramType
       }
 
       apply(params.map(_.name.asTermName))(
@@ -4005,7 +4027,7 @@ object Types {
       case tycon: TypeRef if tycon.symbol.isOpaqueAlias =>
         tycon.translucentSuperType.applyIfParameterized(args)
       case _ =>
-        superType
+        tryNormalize.orElse(superType)
     }
 
     inline def map(inline op: Type => Type)(using Context) =
@@ -4025,7 +4047,9 @@ object Types {
         def tryMatchAlias = tycon.info match {
           case MatchAlias(alias) =>
             trace(i"normalize $this", typr, show = true) {
-              alias.applyIfParameterized(args).tryNormalize
+              MatchTypeTrace.recurseWith(this) {
+                alias.applyIfParameterized(args).tryNormalize
+              }
             }
           case _ =>
             NoType
@@ -4372,13 +4396,17 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def inst_=(tp: Type): Unit = {
+    private[core] def setInst(tp: Type): Unit =
       myInst = tp
-      if (tp.exists && (owningState ne null)) {
-        owningState.get.ownedVars -= this
-        owningState = null // no longer needed; null out to avoid a memory leak
-      }
-    }
+      if tp.exists && owningState != null then
+        val owningState1 = owningState.get
+        if owningState1 != null then
+          owningState1.ownedVars -= this
+          owningState = null // no longer needed; null out to avoid a memory leak
+
+    private[core] def resetInst(ts: TyperState): Unit =
+      myInst = NoType
+      owningState = new WeakReference(ts)
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
@@ -4416,7 +4444,7 @@ object Types {
         typr.println(msg)
         val bound = TypeComparer.fullUpperBound(origin)
         if !(atp <:< bound) then
-          throw new TypeError(s"$msg,\nbut the latter type does not conform to the upper bound $bound")
+          throw new TypeError(i"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
       // AVOIDANCE TODO: This really works well only if variables are instantiated from below
       // If we hit a problematic symbol while instantiating from above, then avoidance
@@ -4430,7 +4458,7 @@ object Types {
       assert(tp ne this, s"self instantiation of ${tp.show}, constraint = ${ctx.typerState.constraint.show}")
       typr.println(s"instantiating ${this.show} with ${tp.show}")
       if ((ctx.typerState eq owningState.get) && !TypeComparer.subtypeCheckInProgress)
-        inst = tp
+        setInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
     }
@@ -4445,13 +4473,30 @@ object Types {
     def instantiate(fromBelow: Boolean)(using Context): Type =
       instantiateWith(avoidCaptures(TypeComparer.instanceType(origin, fromBelow)))
 
+    /** For uninstantiated type variables: the entry in the constraint (either bounds or
+     *  provisional instance value)
+     */
+    private def currentEntry(using Context): Type = ctx.typerState.constraint.entry(origin)
+
     /** For uninstantiated type variables: Is the lower bound different from Nothing? */
-    def hasLowerBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).loBound.isExactlyNothing
+    def hasLowerBound(using Context): Boolean = !currentEntry.loBound.isExactlyNothing
 
     /** For uninstantiated type variables: Is the upper bound different from Any? */
-    def hasUpperBound(using Context): Boolean =
-      !ctx.typerState.constraint.entry(origin).hiBound.isRef(defn.AnyClass)
+    def hasUpperBound(using Context): Boolean = !currentEntry.hiBound.isRef(defn.AnyClass)
+
+    /** For uninstantiated type variables: Is the lower bound different from Nothing and
+     *  does it not contain wildcard types?
+     */
+    def hasNonWildcardLowerBound(using Context): Boolean =
+      val lo = currentEntry.loBound
+      !lo.isExactlyNothing && !lo.containsWildcardTypes
+
+    /** For uninstantiated type variables: Is the upper bound different from Any and
+     *  does it not contain wildcard types?
+     */
+    def hasNonWildcardUpperBound(using Context): Boolean =
+      val hi = currentEntry.hiBound
+      !hi.isRef(defn.AnyClass) && !hi.containsWildcardTypes
 
     /** Unwrap to instance (if instantiated) or origin (if not), until result
      *  is no longer a TypeVar
@@ -4509,7 +4554,12 @@ object Types {
     private var myReduced: Type = null
     private var reductionContext: util.MutableMap[Type, Type] = null
 
-    override def tryNormalize(using Context): Type = reduced.normalized
+    override def tryNormalize(using Context): Type =
+      try
+        reduced.normalized
+      catch
+        case ex: Throwable =>
+          handleRecursive("normalizing", s"${scrutinee.show} match ..." , ex)
 
     def reduced(using Context): Type = {
 
@@ -4537,19 +4587,28 @@ object Types {
         }
 
       record("MatchType.reduce called")
-      if (!Config.cacheMatchReduced || myReduced == null || !isUpToDate) {
+      if !Config.cacheMatchReduced
+          || myReduced == null
+          || !isUpToDate
+          || MatchTypeTrace.isRecording
+      then
         record("MatchType.reduce computed")
         if (myReduced != null) record("MatchType.reduce cache miss")
         myReduced =
           trace(i"reduce match type $this $hashCode", matchTypes, show = true) {
             def matchCases(cmp: TrackingTypeComparer): Type =
+              val saved = ctx.typerState.snapshot()
               try cmp.matchCases(scrutinee.normalized, cases)
               catch case ex: Throwable =>
                 handleRecursive("reduce type ", i"$scrutinee match ...", ex)
-              finally updateReductionContext(cmp.footprint)
+              finally
+                updateReductionContext(cmp.footprint)
+                ctx.typerState.resetTo(saved)
+                  // this drops caseLambdas in constraint and undoes any typevar
+                  // instantiations during matchtype reduction
+
             TypeComparer.tracked(matchCases)
           }
-      }
       myReduced
     }
 
@@ -5043,7 +5102,7 @@ object Types {
         NoType
     }
     def isInstantiatable(tp: Type)(using Context): Boolean = zeroParamClass(tp) match {
-      case cinfo: ClassInfo =>
+      case cinfo: ClassInfo if !cinfo.cls.isOneOf(FinalOrSealed) =>
         val selfType = cinfo.selfType.asSeenFrom(tp, cinfo.cls)
         tp <:< selfType
       case _ =>

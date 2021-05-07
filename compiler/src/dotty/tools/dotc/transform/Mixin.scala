@@ -10,6 +10,7 @@ import SymUtils._
 import Symbols._
 import SymDenotations._
 import Types._
+import Periods._
 import Decorators._
 import DenotTransformers._
 import StdNames._
@@ -146,6 +147,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         // !decl.isClass avoids forcing nested traits, preventing cycles
         if !decl.isClass && needsTraitSetter(decl) then
           val setter = makeTraitSetter(decl.asTerm)
+          setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
           modified = true
       if modified then
