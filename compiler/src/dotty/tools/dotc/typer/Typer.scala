@@ -2724,6 +2724,7 @@ class Typer extends Namer
           case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.TypSplice => typedTypSplice(tree, pt)
+          case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
