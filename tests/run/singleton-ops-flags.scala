@@ -7,8 +7,7 @@ package example {
 
     final val EmptyFlags  = baseFlags
     final val Erased      = EmptyFlags.next
-    final val Internal    = Erased.next
-    final val Inline      = Internal.next
+    final val Inline      = Erased.next
     final val InlineProxy = Inline.next
     final val Opaque      = InlineProxy.next
     final val Scala2x     = Opaque.next
@@ -26,7 +25,6 @@ package example {
       if s == EmptyFlags then "EmptyFlags"
       else s.toSingletonSets[LastFlag].map ( [n <: Int] => (flag: SingletonFlagSet[n]) => flag match {
         case Erased      => "Erased"
-        case Internal    => "Internal"
         case Inline      => "Inline"
         case InlineProxy => "InlineProxy"
         case Opaque      => "Opaque"

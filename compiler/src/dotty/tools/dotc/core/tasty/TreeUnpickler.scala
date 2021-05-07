@@ -634,7 +634,6 @@ class TreeUnpickler(reader: TastyReader,
         }
         nextByte match {
           case PRIVATE => addFlag(Private)
-          case INTERNAL => ??? // addFlag(Internal)
           case PROTECTED => addFlag(Protected)
           case ABSTRACT =>
             readByte()
