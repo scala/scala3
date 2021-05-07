@@ -116,8 +116,8 @@ while [[ $# -gt 0 ]]; do
       verbose=true
       addScala "-verbose"
       shift ;;
-    -run|-repl)
-      PROG_NAME="$ReplMain"
+    -run)
+      setExecuteMode 'run'
       shift ;;
 
     *)
@@ -157,7 +157,7 @@ done
 #[ -n "${dump_args}" ] && dumpArgs ; exit 2
 if [ -z "${execute_mode-}" ]; then
   # no script was specified, set run or repl mode
-  if [[ $options_indicator -eq 0 && "${residual_args[@]-}" == "" ]]; then
+  if [[ $options_indicator -eq 0 ]]; then
     setExecuteMode 'repl'
   else
     setExecuteMode 'run'
@@ -179,7 +179,7 @@ script)
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
     PROG_NAME=$ScriptingMain
-    classpathArgs # initialize jvm_cp_args with toolchain classpath 
+    compilerJavaClasspathArgs # initialize jvm_cp_args with toolchain classpath
     scripting_string="-script $target_script ${script_args[@]}"
     # use eval instead of exec, to insure that onExit is subsequently called
 
@@ -210,20 +210,20 @@ repl)
   ;;
 
 run)
-  repl_cparg="$DOTTY_LIB$PSEP$SCALA_LIB"
+  run_cparg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
-    repl_cparg+="$PSEP."
+    run_cparg+="$PSEP."
   else
-    repl_cparg+="$PSEP$CLASS_PATH"
+    run_cparg+="$PSEP$CLASS_PATH"
   fi
   if [ "$class_path_count" -gt 1 ]; then
     echo "warning: multiple classpaths are found, scala only use the last one."
   fi
   if [ $with_compiler == true ]; then
-    repl_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
+    run_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "${DEBUG-}"  "-classpath \"$repl_cparg\"" "${java_args[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "${DEBUG-}"  "-classpath \"$run_cparg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
   ;;
 

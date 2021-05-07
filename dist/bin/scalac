@@ -61,7 +61,7 @@ case "$1" in
   esac
 done
 
-classpathArgs
+compilerJavaClasspathArgs
 
 if [ "$PROG_NAME" == "$ScriptingMain" ]; then
   setScriptName="-Dscript.path=$target_script"
