@@ -3581,7 +3581,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
-        else if in.token != WITH && parentsIsType then
+        else if (isStatSep || isStatSeqEnd) && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
@@ -3591,8 +3591,8 @@ object Parsers {
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
           val constr = makeConstructor(tparams1, vparamss1)
           val templ =
-            if in.token == WITH then withTemplate(constr, parents)
-            else Template(constr, parents, Nil, EmptyValDef, Nil)
+            if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
+            else withTemplate(constr, parents)
           if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
