@@ -113,16 +113,17 @@ trait SpaceLogic {
   /** Display space in string format */
   def show(sp: Space): String
 
-  /** Simplify space using the laws, there's no nested union after simplify */
+  /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def simplify(space: Space)(using Context): Space = trace(s"simplify ${show(space)} --> ", debug, x => show(x.asInstanceOf[Space]))(space match {
     case Prod(tp, fun, spaces) =>
-      val sp = Prod(tp, fun, spaces.map(simplify(_)))
-      if (sp.params.contains(Empty)) Empty
+      val sps = spaces.map(simplify(_))
+      if (sps.contains(Empty)) Empty
       else if (canDecompose(tp) && decompose(tp).isEmpty) Empty
-      else sp
+      else Prod(tp, fun, sps)
     case Or(spaces) =>
       val spaces2 = spaces.map(simplify(_)).filter(_ != Empty)
       if spaces2.isEmpty then Empty
+      else if spaces2.lengthCompare(1) == 0 then spaces2.head
       else Or(spaces2)
     case Typ(tp, _) =>
       if (canDecompose(tp) && decompose(tp).isEmpty) Empty
@@ -243,10 +244,10 @@ trait SpaceLogic {
           tryDecompose1(tp1)
         else
           a
-      case (_, Or(ss)) =>
-        ss.foldLeft(a)(minus)
       case (Or(ss), _) =>
         Or(ss.map(minus(_, b)))
+      case (_, Or(ss)) =>
+        ss.foldLeft(a)(minus)
       case (Prod(tp1, fun, ss), Typ(tp2, _)) =>
         // uncovered corner case: tp2 :< tp1, may happen when inheriting case class
         if (isSubType(tp1, tp2))
@@ -272,7 +273,10 @@ trait SpaceLogic {
         else if cache.forall(sub => isSubspace(sub, Empty)) then Empty
         else
           // `(_, _, _) - (Some, None, _)` becomes `(None, _, _) | (_, Some, _) | (_, _, Empty)`
-          Or(LazyList(range: _*).map { i => Prod(tp1, fun1, ss1.updated(i, sub(i))) })
+          val spaces = LazyList(range: _*).flatMap { i =>
+            flatten(sub(i)).map(s => Prod(tp1, fun1, ss1.updated(i, s)))
+          }
+          Or(spaces)
     }
   }
 }
