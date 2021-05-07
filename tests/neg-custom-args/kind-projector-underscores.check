@@ -1,0 +1,24 @@
+-- Error: tests/neg-custom-args/kind-projector-underscores.scala:7:23 --------------------------------------------------
+7 |class Bar3 extends Foo[λ[List[x] => Int]] // error
+  |                       ^^^^^^^^^^^^^^^^^
+  |                       λ requires a single argument of the form X => ... or (X, Y) => ...
+-- [E095] Syntax Error: tests/neg-custom-args/kind-projector-underscores.scala:10:8 ------------------------------------
+10 |  type -_ = Int // error -_ not allowed as a type def name without backticks
+   |        ^
+   |        =, >:, or <: expected, but '_' found
+
+longer explanation available when compiling with `-explain`
+-- [E095] Syntax Error: tests/neg-custom-args/kind-projector-underscores.scala:11:8 ------------------------------------
+11 |  type +_ = Int // error +_ not allowed as a type def name without backticks
+   |        ^
+   |        =, >:, or <: expected, but '_' found
+
+longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/kind-projector-underscores.scala:5:23 --------------------------------------------------
+5 |class Bar1 extends Foo[Either[_, _]] // error
+  |                       ^^^^^^^^^^^^
+  |                       Type argument Either does not have the same kind as its bound [_$1]
+-- Error: tests/neg-custom-args/kind-projector-underscores.scala:6:22 --------------------------------------------------
+6 |class Bar2 extends Foo[_] // error
+  |                      ^
+  |                      Type argument _ does not have the same kind as its bound [_$1]

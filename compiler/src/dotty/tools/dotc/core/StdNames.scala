@@ -660,8 +660,11 @@ object StdNames {
       final val STAR : N  = "*"
       final val TILDE: N  = "~"
 
-      final val MINUS_STAR: N = "-*"
-      final val PLUS_STAR : N = "+*"
+      // kind-projector compat symbols
+      final val MINUS_STAR  : N = "-*"
+      final val PLUS_STAR   : N = "+*"
+      final val MINUS_USCORE: N = "-_"
+      final val PLUS_USCORE : N = "+_"
 
       final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
     }
