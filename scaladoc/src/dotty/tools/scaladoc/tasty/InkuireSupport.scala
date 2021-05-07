@@ -5,9 +5,17 @@ import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 import dotty.tools.scaladoc.Inkuire
 
+import scala.quoted._
+
+import SymOps._
+import NameNormalizer._
+import SyntheticsSupport._
+
 trait InkuireSupport:
   self: TastyParser =>
   import qctx.reflect._
+
+  private given qctx.type = qctx
 
   private def paramsForClass(classDef: ClassDef, vars: Set[String], isVariable: Boolean): Seq[Inkuire.Variance] =
     classDef.getTypeParams.map(mkTypeArgumentInkuire(_, vars, isVariable))
