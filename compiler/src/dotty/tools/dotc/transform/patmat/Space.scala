@@ -775,7 +775,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (ctx.definitions.isTupleType(tp))
           "(" + params.map(doShow(_)).mkString(", ") + ")"
         else if (tp.isRef(scalaConsType.symbol))
-          if (flattenList) params.map(doShow(_, flattenList)).mkString(", ")
+          if (flattenList) params.map(doShow(_, flattenList)).filter(_.nonEmpty).mkString(", ")
           else params.map(doShow(_, flattenList = true)).filter(!_.isEmpty).mkString("List(", ", ", ")")
         else {
           val sym = fun.symbol
