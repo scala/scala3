@@ -21,6 +21,11 @@ sealed abstract class GadtConstraint extends Showable {
   /** Simiar to [[bounds]], while retrieve bounds for type members. */
   def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds
 
+  /** Retrieve GADT bounds of [[NamedType]]. Create internal representations if the type can be constrained but not registered in the constraint,
+    * only return null when the type is not constrainable.
+    */
+  def bounds(tp: NamedType)(using Context): TypeBounds
+
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
    * @note this performs subtype checks between ordered symbols.
@@ -58,6 +63,9 @@ sealed abstract class GadtConstraint extends Showable {
 
   /** Similar to [[GadtConstraint.addBound]], but constrain a type ref already in the constraint. */
   def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean
+
+  /** Further constrain a named type already registered in the constraint. */
+  def addBound(nt: NamedType, bound: Type, isUpper: Boolean)(using Context): Boolean
 
   /** Record a equation between two singleton types. */
   def addEquality(tp1: Symbol, tp2: Symbol): Unit
@@ -514,6 +522,9 @@ final class ProperGadtConstraint private(
     }, gadts)
   }
 
+  override def addBound(ntp: NamedType, bound: Type, isUpper: Boolean)(using Context): Boolean =
+    addBound(tvarOrError(ntp), bound, isUpper)
+
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean =
     addBound(tvarOrError(sym), bound, isUpper)
 
@@ -574,44 +585,52 @@ final class ProperGadtConstraint private(
 
   private def mapTpMem(path: SingletonType, designator: Designator)(using Context): TypeVar = mapTpMem(path, nameOfDesignator(designator))
 
+  override def bounds(ntp: NamedType)(using Context): TypeBounds = {
+    val tvar: TypeVar = tvarOfType(ntp) match {
+      case null =>
+        /** The type hasn't been registered yet, try internalizing it */
+        ntp match {
+          case TypeRef(path: TermRef, d: Designator) =>
+            gadts.println(i"**** type internalized: $path.$d")
+            internalizeTypeMember(path, d)
+          case _ => null
+        }
+      case tvar => tvar
+    }
+
+    tvar match {
+      case null => null
+      case tvar => bounds(tvar)
+    }
+  }
+
+  /** Retrieve GADT bounds of a internal type variable. */
+  private def bounds(tvar: TypeVar)(using Context): TypeBounds =
+    bounds(tvar.origin) match {
+      case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
+        TypeAlias(reverseTpmMapping(tpr))
+      case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
+        TypeAlias(reverseMapping(tpr).typeRef)
+      case tb => tb
+    }
+
   override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds =
     mapTpMem(path, designator) match {
       case null => null
       case tv =>
-        def retrieveBounds: TypeBounds =
-          bounds(tv.origin) match {
-            case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
-              TypeAlias(reverseTpmMapping(tpr))
-            case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).typeRef)
-            case tb => tb
-          }
-        retrieveBounds
+        bounds(tv)
     }
 
   override def bounds(sym: Symbol)(using Context): TypeBounds =
     mapping(sym) match {
       case null => null
       case tv =>
-        def retrieveBounds: TypeBounds =
-          bounds(tv.origin) match {
-            case TypeAlias(tpr: TypeParamRef) if reverseTpmMapping.contains(tpr) =>
-              TypeAlias(reverseTpmMapping(tpr))
-            case TypeAlias(tpr: TypeParamRef) if reverseMapping.contains(tpr) =>
-              TypeAlias(reverseMapping(tpr).typeRef)
-            case tb => tb
-          }
-        retrieveBounds
+        bounds(tv)
           //.showing(i"gadt bounds $sym: $result", gadts)
           //.ensuring(containsNoInternalTypes(_))
     }
 
-  override def contains(nt: NamedType)(using Context): Boolean = nt match {
-    case TypeRef(path: SingletonType, d: Designator) =>
-      contains(path, d)
-    case nt =>
-      contains(nt.symbol)
-  }
+  override def contains(nt: NamedType)(using Context): Boolean = bounds(nt) ne null
 
   override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
 
@@ -690,6 +709,9 @@ final class ProperGadtConstraint private(
       }
     }
 
+  private def tvarOrError(tp: NamedType)(using Context): TypeVar =
+    tvarOfType(tp).ensuring(_ ne null, i"not a constrainable type: $tp")
+
   private def tvarOrError(sym: Symbol)(using Context): TypeVar =
     mapping(sym).ensuring(_ ne null, i"not a constrainable symbol: $sym")
 
@@ -705,13 +727,6 @@ final class ProperGadtConstraint private(
 
   private def tvarOrError(path: SingletonType, designator: Designator)(using Context): TypeVar =
     tvarOrError(path, nameOfDesignator(designator))
-
-  private def tvarOrError(ntp: NamedType)(using Context): TypeVar = ntp match {
-    case TypeRef(path: SingletonType, designator: Designator) =>
-      tvarOrError(path, designator)
-    case ntp =>
-      tvarOrError(ntp.symbol)
-  }
 
   private def nameOfDesignator(d: Designator)(using Context): Name = d match {
     case s: Symbol => s.name
@@ -759,6 +774,7 @@ final class ProperGadtConstraint private(
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
+  override def bounds(ntp: NamedType)(using Context): TypeBounds = null
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
   override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
@@ -779,6 +795,7 @@ final class ProperGadtConstraint private(
   override def narrowScrutTp_=(tp: Type): Unit = unsupported("EmptyGadtConstraint.narrowScrutTp_=")
   override def narrowScrutTp: Type = unsupported("EmptyGadtConstraint.narrowScrutTp")
   override def narrowPatTp_=(tp: Type)(using Context): Unit = unsupported("EmptyGadtConstraint.narrowPatTp_=")
+  override def addBound(ntp: NamedType, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def addBound(path: SingletonType, designator: Designator, bound: Type, isUpper: Boolean)(using Context): Boolean = unsupported("EmptyGadtConstraint.addBound")
   override def internalizeTypeMember(path: TermRef, designator: Designator)(using Context): TypeVar = null

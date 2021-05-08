@@ -270,9 +270,6 @@ trait PatternTypeConstrainer { self: TypeComparer =>
       case _ =>
     }
 
-    internalizeAppliedParams(scrutineeTp)
-    internalizeAppliedParams(patternTp)
-
     val widePt =
       if migrateTo3 || refinementIsInvariant(patternTp) then scrutineeTp
       else widenVariantParams(scrutineeTp)
