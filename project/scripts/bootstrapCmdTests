@@ -74,3 +74,6 @@ grep -qe "Usage: scalac <options> <source files>" "$tmp"
 
 ./bin/scala -help > "$tmp" 2>&1
 grep -qe "Usage: scala <options> <source files>" "$tmp"
+
+./bin/scala -d hello.jar tests/run/hello.scala
+ls hello.jar

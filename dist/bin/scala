@@ -98,9 +98,6 @@ while [[ $# -gt 0 ]]; do
       addScala "$1"
       shift
       ;;
-    -d|-debug)
-      DEBUG="${DEBUG_STR-}"
-      shift ;;
     -version)
       # defer to scalac, then exit
       shift
@@ -187,7 +184,6 @@ script)
     # $scripting_string  must be last
     eval "\"$JAVACMD\"" \
        ${JAVA_OPTS:-$default_java_opts} \
-       "${DEBUG-}" \
        "${java_args[@]}" \
        "-classpath \"$jvm_cp_args\"" \
        -Dscala.usejavacp=true \
@@ -223,7 +219,7 @@ run)
     run_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "${DEBUG-}"  "-classpath \"$run_cparg\"" "${java_args[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "-classpath \"$run_cparg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
   ;;
 
