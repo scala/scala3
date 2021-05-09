@@ -31,7 +31,7 @@ class InkuireDelegateSearchEngine {
 
   given ec: ExecutionContext = global
 
-  val ec2 = "http://ec2-3-125-115-167.eu-central-1.compute.amazonaws.com:8080" //TODO configure
+  val ec2 = "https://pmfyy2t0sc.execute-api.eu-central-1.amazonaws.com/prod" //TODO configure
 
   private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText).fallbackTo(Future("[]"))
   
