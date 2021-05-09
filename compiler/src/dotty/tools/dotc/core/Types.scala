@@ -5640,7 +5640,12 @@ object Types {
         case Range(lo, hi) =>
           range(derivedLambdaType(tp)(formals, lo), derivedLambdaType(tp)(formals, hi))
         case _ =>
-          tp.derivedLambdaType(tp.paramNames, formals, restpe)
+          if formals.exists(isRange) then
+            range(
+              derivedLambdaType(tp)(formals.map(upper(_).asInstanceOf[tp.PInfo]), restpe),
+              derivedLambdaType(tp)(formals.map(lower(_).asInstanceOf[tp.PInfo]), restpe))
+          else
+            tp.derivedLambdaType(tp.paramNames, formals, restpe)
       }
 
     protected def reapply(tp: Type): Type = apply(tp)
