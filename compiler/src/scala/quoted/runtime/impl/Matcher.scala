@@ -20,20 +20,20 @@ import dotty.tools.dotc.core.StdNames.nme
  *
  *   Operations:
  *   - `s =?= p` checks if a scrutinee `s` matches the pattern `p` while accumulating extracted parts of the code.
- *   - `isColosedUnder(x1, .., xn)('{e})` returns true if and only if all the references in `e` to names defined in the patttern are contained in the set `{x1, ... xn}`.
+ *   - `isClosedUnder(x1, .., xn)('{e})` returns true if and only if all the references in `e` to names defined in the pattern are contained in the set `{x1, ... xn}`.
  *   - `lift(x1, .., xn)('{e})` returns `(y1, ..., yn) => [xi = $yi]'{e}` where `yi` is an `Expr` of the type of `xi`.
- *   - `withEnv(x1 -> y1, ..., xn -> yn)(matching)` evaluates mathing recording that `xi` is equivalent to `yi`.
- *   - `matched` denotes that the the match succedded and `matched('{e})` denotes that a matech succeded and extracts `'{e}`
+ *   - `withEnv(x1 -> y1, ..., xn -> yn)(matching)` evaluates matching recording that `xi` is equivalent to `yi`.
+ *   - `matched` denotes that the the match succeeded and `matched('{e})` denotes that a match succeeded and extracts `'{e}`
  *   - `&&&` matches if both sides match. Concatenates the extracted expressions of both sides.
  *
  *   Note: that not all quoted terms bellow are valid expressions
  *
  *   ```scala
  *   /* Term hole */
- *   '{ e } =?= '{ hole[T] }  &&  typeOf('{e}) <:< T && isColosedUnder()('{e})  ===>   matched('{e})
+ *   '{ e } =?= '{ hole[T] }  &&  typeOf('{e}) <:< T && isClosedUnder()('{e})  ===>   matched('{e})
  *
  *   /* Higher order term hole */
- *   '{ e } =?= '{ hole[(T1, ..., Tn) => T](x1, ..., xn) }  &&  isColosedUnder(x1, ... xn)('{e})  ===>   matched(lift(x1, ..., xn)('{e}))
+ *   '{ e } =?= '{ hole[(T1, ..., Tn) => T](x1, ..., xn) }  &&  isClosedUnder(x1, ... xn)('{e})  ===>   matched(lift(x1, ..., xn)('{e}))
  *
  *   /* Match literal */
  *   '{ lit } =?= '{ lit }   ===>   matched
@@ -216,42 +216,6 @@ object Matcher {
             val res = Lambda(Symbol.spliceOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
             matched(res.asExpr)
 
-          //
-          // Match two equivalent trees
-          //
-
-          /* Match literal */
-          case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
-            matched
-
-          /* Match type ascription (a) */
-          case (Typed(expr1, _), pattern) =>
-            expr1 =?= pattern
-
-          /* Match type ascription (b) */
-          case (scrutinee, Typed(expr2, _)) =>
-            scrutinee =?= expr2
-
-          /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee.asInstanceOf, pattern.asInstanceOf) =>
-            ref match
-              case Select(qual1, _) => qual1 =?= qual2
-              case ref: Ident =>
-                ref.tpe match
-                  case TermRef(qual: TermRef, _) => Ref.term(qual) =?= qual2
-                  case _ => matched
-
-          /* Match reference */
-          case (_: Ref, _: Ident) if symbolMatch(scrutinee.asInstanceOf, pattern.asInstanceOf) =>
-            matched
-
-          /* Match application */
-          case (Apply(fn1, args1), Apply(fn2, args2)) =>
-            fn1 =?= fn2 &&& args1 =?= args2
-
-          /* Match type application */
-          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
-            fn1 =?= fn2 &&& args1 =?= args2
 
           // No Match
           case _ =>
@@ -263,6 +227,7 @@ object Matcher {
     def otherCases(scrutinee: tpd.Tree, pattern: tpd.Tree)(using Env): Matching =
       import tpd.* // TODO remove
       import dotc.core.Flags.* // TODO remove
+      import dotc.core.Types.* // TODO remove
 
       /** Check that both are `val` or both are `lazy val` or both are `var` **/
       def checkValFlags(): Boolean = {
@@ -280,6 +245,43 @@ object Matcher {
       end TypeTreeTypeTest
 
       (scrutinee, pattern) match
+
+        //
+        // Match two equivalent trees
+        //
+
+        /* Match literal */
+        case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
+          matched
+
+        /* Match type ascription (a) */
+        case (Typed(expr1, _), pattern) =>
+          expr1 =?= pattern
+
+        /* Match type ascription (b) */
+        case (scrutinee, Typed(expr2, _)) =>
+          scrutinee =?= expr2
+
+        /* Match selection */
+        case (ref: RefTree, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
+          ref match
+            case Select(qual1, _) => qual1 =?= qual2
+            case ref: Ident =>
+              ref.tpe match
+                case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
+                case _ => matched
+
+        /* Match reference */
+        case (_: RefTree, _: Ident) if symbolMatch(scrutinee, pattern) =>
+          matched
+
+        /* Match application */
+        case (Apply(fn1, args1), Apply(fn2, args2)) =>
+          fn1 =?= fn2 &&& args1 =?= args2
+
+        /* Match type application */
+        case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
+          fn1 =?= fn2 &&& args1 =?= args2
 
         /* Match block */
         case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
