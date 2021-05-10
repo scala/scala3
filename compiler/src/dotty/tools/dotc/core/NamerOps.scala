@@ -76,7 +76,7 @@ object NamerOps:
   /** The flags of an `apply` method that serves as a constructor proxy */
   val ApplyProxyFlags = Synthetic | ConstructorProxy | Inline | Method
 
-  /** Does symbol `cls` need constructor proxies to be generated? */
+  /** Does symbol `sym` need constructor proxies to be generated? */
   def needsConstructorProxies(sym: Symbol)(using Context): Boolean =
     sym.isClass
     && !sym.flagsUNSAFE.isOneOf(NoConstructorProxyNeededFlags)
@@ -136,7 +136,7 @@ object NamerOps:
 
   /** Add all necesssary constructor proxy symbols for members of class `cls`. This means:
    *
-   *   - if a member is a class that needs a constructor companion, add one,
+   *   - if a member is a class, or type alias, that needs a constructor companion, add one,
    *     provided no member with the same name exists.
    *   - if `cls` is a companion object of a class that needs a constructor companion,
    *     and `cls` does not already define or inherit an `apply` method,
