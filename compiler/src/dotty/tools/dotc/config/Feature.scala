@@ -105,7 +105,16 @@ object Feature:
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     if !isExperimentalEnabled then
-      report.error(i"$sym is marked @experimental and therefore may only be used with a nightly or snapshot version of the compiler", srcPos)
+      val symMsg =
+        if sym eq defn.ExperimentalAnnot then
+          i"use of @experimental is experimental"
+        else if sym.hasAnnotation(defn.ExperimentalAnnot) then
+          i"$sym is marked @experimental"
+        else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then
+          i"${sym.owner} is marked @experimental"
+        else
+          i"$sym inherits @experimental"
+      report.error(s"$symMsg and therefore may only be used with a nightly or snapshot version of the compiler", srcPos)
 
   /** Check that experimental compiler options are only set for snapshot or nightly compiler versions. */
   def checkExperimentalSettings(using Context): Unit =

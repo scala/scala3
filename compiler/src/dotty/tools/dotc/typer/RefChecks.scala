@@ -978,15 +978,15 @@ object RefChecks {
     then
       Feature.checkExperimentalDef(sym, pos)
 
-  private def checkExperimentalTypes(tpe: Type, pos: SrcPos)(using Context): Unit =
+  private def checkExperimentalSignature(sym: Symbol, pos: SrcPos)(using Context): Unit =
     val checker = new TypeTraverser:
       def traverse(tp: Type): Unit =
         if tp.typeSymbol.isExperimental then
           Feature.checkExperimentalDef(tp.typeSymbol, pos)
         else
           traverseChildren(tp)
-    if !pos.span.isSynthetic then // avoid double errors
-      checker.traverse(tpe)
+    if !sym.owner.isExperimental && !pos.span.isSynthetic then // avoid double errors
+      checker.traverse(sym.info)
 
   private def checkExperimentalAnnots(sym: Symbol)(using Context): Unit =
     for annot <- sym.annotations if annot.symbol.isExperimental && annot.tree.span.exists do
@@ -1230,7 +1230,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
-    checkExperimentalTypes(tree.symbol.info, tree)
+    checkExperimentalSignature(tree.symbol, tree)
     val sym = tree.symbol
     if (sym.exists && sym.owner.isTerm) {
       tree.rhs match {
@@ -1252,7 +1252,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkNoPrivateOverrides(tree)
     checkDeprecatedOvers(tree)
     checkExperimentalAnnots(tree.symbol)
-    checkExperimentalTypes(tree.symbol.info, tree)
+    checkExperimentalSignature(tree.symbol, tree)
     checkImplicitNotFoundAnnotation.defDef(tree.symbol.denot)
     tree
   }
