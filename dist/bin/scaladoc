@@ -106,7 +106,6 @@ while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
   -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-       -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
       -colors) colors=true && shift ;;
@@ -126,7 +125,6 @@ classpathArgs
 
 eval "\"$JAVACMD\"" \
      ${JAVA_OPTS:-$default_java_opts} \
-     "${DEBUG-}" \
      "${java_args[@]}" \
      "${jvm_cp_args-}" \
      "dotty.tools.scaladoc.Main"  \

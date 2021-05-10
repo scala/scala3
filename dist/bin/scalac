@@ -36,7 +36,6 @@ while [[ $# -gt 0 ]]; do
 case "$1" in
            --) shift; for arg; do addResidual "$arg"; done; set -- ;;
   -v|-verbose) verbose=true && addScala "-verbose" && shift ;;
-       -debug) DEBUG="$DEBUG_STR" && shift ;;
     -q|-quiet) quiet=true && shift ;;
 
     # Optimize for short-running applications, see https://github.com/lampepfl/dotty/issues/222
@@ -61,7 +60,7 @@ case "$1" in
   esac
 done
 
-classpathArgs
+compilerJavaClasspathArgs
 
 if [ "$PROG_NAME" == "$ScriptingMain" ]; then
   setScriptName="-Dscript.path=$target_script"
@@ -72,7 +71,6 @@ fi
 [ -n "$script_trace" ] && set -x
 eval "\"$JAVACMD\"" \
    ${JAVA_OPTS:-$default_java_opts} \
-   "${DEBUG-}" \
    "${java_args[@]}" \
    "-classpath \"$jvm_cp_args\"" \
    -Dscala.usejavacp=true \
