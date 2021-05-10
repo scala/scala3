@@ -177,28 +177,8 @@ object Matcher {
         val scrutinee = normalize(scrutinee0)
         val pattern = normalize(pattern0)
 
-        (scrutinee, pattern) match {
+        otherCases(scrutinee.asInstanceOf, pattern.asInstanceOf)
 
-          /* Term hole */
-          // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
-                 s.tpe <:< tpt.tpe &&
-                 tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-            matched(scrutinee.asExpr)
-
-          /* Term hole */
-          // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-          case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
-                 scrutinee.tpe <:< tpt.tpe =>
-            matched(scrutinee.asExpr)
-
-
-          // No Match
-          case _ =>
-            otherCases(scrutinee.asInstanceOf, pattern.asInstanceOf)
-        }
       }
     end extension
 
@@ -230,6 +210,21 @@ object Matcher {
       end Lambda
 
       (scrutinee, pattern) match
+
+        /* Term hole */
+        // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
+        case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+            if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+                s.tpe <:< tpt.tpe &&
+                tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
+          matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
+
+        /* Term hole */
+        // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
+        case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+            if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+                scrutinee.tpe <:< tpt.tpe =>
+          matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
 
         /* Higher order term hole */
         // Matches an open term and wraps it into a lambda that provides the free variables
@@ -428,8 +423,8 @@ object Matcher {
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
-      def unapply(term: Term)(using Env): Option[term.type] =
-        if freePatternVars(term.asInstanceOf).isEmpty then Some(term) else None
+      def unapply(term: tpd.Tree)(using Env): Option[term.type] =
+        if freePatternVars(term).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
       def freePatternVars(term: dotc.ast.tpd.Tree)(using env: Env): Set[dotc.core.Symbols.Symbol] =
