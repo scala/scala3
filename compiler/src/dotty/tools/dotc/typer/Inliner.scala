@@ -657,6 +657,9 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
       paramBinding.get(tpe.name) match
         case Some(bound) => paramProxy(tpe) = bound
         case _ =>  // can happen for params bound by type-lambda trees.
+
+      // The widened type may contain param types too (see tests/pos/i12379a.scala)
+      if tpe.isTerm then registerType(tpe.widenTermRefExpr)
     case _ =>
   }
 
@@ -782,7 +785,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
             case t: ThisType => thisProxy.getOrElse(t.cls, t)
             case t: TypeRef => paramProxy.getOrElse(t, mapOver(t))
             case t: SingletonType =>
-              if t.termSymbol.isAllOf(Inline | Param) then mapOver(t.widenTermRefExpr)
+              if t.termSymbol.isAllOf(Inline | Param) then apply(t.widenTermRefExpr)
               else paramProxy.getOrElse(t, mapOver(t))
             case t => mapOver(t)
           }
