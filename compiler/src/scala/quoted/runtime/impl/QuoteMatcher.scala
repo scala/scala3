@@ -201,14 +201,14 @@ object Matcher {
               if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                   s.tpe <:< tpt.tpe &&
                   tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-            matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
+            matched(scrutinee)
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
               if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                   scrutinee.tpe <:< tpt.tpe =>
-            matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
+            matched(scrutinee)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
@@ -235,8 +235,8 @@ object Matcher {
                 ctx.owner,
                 MethodType(names)(
                   _ => argTypes, _ => resType),
-                  (meth, x) => TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
-            matched(quotes.reflect.TreeMethods.asExpr(res.asInstanceOf[quotes.reflect.Tree]))
+                  (meth, x) => TreeOps(bodyFn(x)).changeNonLocalOwners(meth))
+            matched(res)
 
           //
           // Match two equivalent trees
@@ -421,8 +421,11 @@ object Matcher {
   private object Matching {
 
     def notMatched: Matching = None
+
     val matched: Matching = Some(Tuple())
-    def matched(x: Any): Matching = Some(Tuple1(x))
+
+    def matched(tree: Tree)(using Context): Matching =
+      Some(Tuple1(new ExprImpl(tree, SpliceScope.getCurrent)))
 
     extension (self: Matching)
       def asOptionOfTuple: Option[Tuple] = self
