@@ -3539,7 +3539,7 @@ class Typer extends Namer
                   // this is needed for -Ycheck. Without the annotation Ycheck will
                   // skolemize the result type which will lead to different types before
                   // and after checking. See i11955.scala.
-                  AnnotatedType(conj, Annotation(defn.StableAnnot))
+                  AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot))
                 else conj
               else pt
             gadts.println(i"insert GADT cast from $tree to $target")
