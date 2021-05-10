@@ -575,7 +575,7 @@ class Typer extends Namer
       ConstFold(select)
     else if couldInstantiateTypeVar(qual.tpe.widen) then
        // there's a simply visible type variable in the result; try again with a more defined qualifier type
-       // There's a second trial wherw we try to instantiate all type variables in `qual.tpe.widen`,
+       // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
        // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
     else
