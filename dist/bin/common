@@ -162,7 +162,6 @@ JLINE_TERMINAL_JNA=$(find_lib "*jline-terminal-jna-3*")
 
 # jna-5 only appropriate for some combinations
 [[ ${conemu-} && ${msys-} ]] || JNA=$(find_lib "*jna-5*")
-#echo "conemu[${conemu}] msys[$msys] cygwin[$cygwin] JNA[$JNA]" 1>&2
 
 compilerJavaClasspathArgs () {
   # echo "dotty-compiler: $DOTTY_COMP"
