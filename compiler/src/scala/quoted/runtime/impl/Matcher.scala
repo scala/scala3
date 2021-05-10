@@ -253,52 +253,6 @@ object Matcher {
           case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
             fn1 =?= fn2 &&& args1 =?= args2
 
-          /* Match block */
-          case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
-            val newEnv = (stat1, stat2) match {
-              case (stat1: Definition, stat2: Definition) =>
-                summon[Env] + (stat1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> stat2.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
-              case _ =>
-                summon[Env]
-            }
-            withEnv(newEnv) {
-              stat1 =?= stat2 &&& Block(stats1, expr1) =?= Block(stats2, expr2)
-            }
-
-          /* Match if */
-          case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
-            cond1 =?= cond2 &&& thenp1 =?= thenp2 &&& elsep1 =?= elsep2
-
-          /* Match while */
-          case (While(cond1, body1), While(cond2, body2)) =>
-            cond1 =?= cond2 &&& body1 =?= body2
-
-          /* Match assign */
-          case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
-            lhs1 =?= lhs2 &&& rhs1 =?= rhs2
-
-          /* Match new */
-          case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
-            matched
-
-          /* Match this */
-          case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
-            matched
-
-          /* Match super */
-          case (Super(qual1, mix1), Super(qual2, mix2)) if mix1 == mix2 =>
-            qual1 =?= qual2
-
-          /* Match varargs */
-          case (Repeated(elems1, _), Repeated(elems2, _)) if elems1.size == elems2.size =>
-            elems1 =?= elems2
-
-          /* Match type */
-          // TODO remove this?
-          case (scrutinee: TypeTree, pattern: TypeTree) if scrutinee.tpe <:< pattern.tpe =>
-            matched
-
-
           // No Match
           case _ =>
             otherCases(scrutinee.asInstanceOf, pattern.asInstanceOf)
@@ -317,9 +271,62 @@ object Matcher {
         sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
       }
 
+      // TODO remove
+      object TypeTreeTypeTest:
+        def unapply(x: Tree): Option[Tree & x.type] = x match
+          case x: (tpd.TypeBoundsTree & x.type) => None
+          case x: (tpd.Tree & x.type) if x.isType => Some(x)
+          case _ => None
+      end TypeTreeTypeTest
+
       (scrutinee, pattern) match
 
-         /* Match val */
+        /* Match block */
+        case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
+          val newEnv = (stat1, stat2) match {
+            case (stat1: MemberDef, stat2: MemberDef) =>
+              summon[Env] + (stat1.symbol -> stat2.symbol)
+            case _ =>
+              summon[Env]
+          }
+          withEnv(newEnv) {
+            stat1 =?= stat2 &&& Block(stats1, expr1) =?= Block(stats2, expr2)
+          }
+
+        /* Match if */
+        case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
+          cond1 =?= cond2 &&& thenp1 =?= thenp2 &&& elsep1 =?= elsep2
+
+        /* Match while */
+        case (WhileDo(cond1, body1), WhileDo(cond2, body2)) =>
+          cond1 =?= cond2 &&& body1 =?= body2
+
+        /* Match assign */
+        case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
+          lhs1 =?= lhs2 &&& rhs1 =?= rhs2
+
+        /* Match new */
+        case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
+          matched
+
+        /* Match this */
+        case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
+          matched
+
+        /* Match super */
+        case (Super(qual1, mix1), Super(qual2, mix2)) if mix1 == mix2 =>
+          qual1 =?= qual2
+
+        /* Match varargs */
+        case (SeqLiteral(elems1, _), SeqLiteral(elems2, _)) if elems1.size == elems2.size =>
+          elems1 =?= elems2
+
+        /* Match type */
+        // TODO remove this?
+        case (TypeTreeTypeTest(scrutinee), TypeTreeTypeTest(pattern)) if scrutinee.tpe <:< pattern.tpe =>
+          matched
+
+        /* Match val */
         case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
           def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
           tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
