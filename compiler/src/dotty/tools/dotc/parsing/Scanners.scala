@@ -369,6 +369,8 @@ object Scanners {
       *   - it does not follow a blank line, and
       *   - it is followed by at least one whitespace character and a
       *     token that can start an expression.
+      *   - if the operator appears on its own line, the next line must have at least
+      *     the same indentation width as the operator. See pos/i12395 for a test where this matters.
       *  If a leading infix operator is found and the source version is `3.0-migration`, emit a change warning.
       */
     def isLeadingInfixOperator(nextWidth: IndentWidth = indentWidth(offset), inConditional: Boolean = true) =
@@ -397,7 +399,9 @@ object Scanners {
           // force a NEWLINE a after current token if it is on its own line
         lookahead.nextToken()
         assumeStartsExpr(lookahead)
-        || lookahead.token == NEWLINE && assumeStartsExpr(lookahead.next)
+        || lookahead.token == NEWLINE
+           && assumeStartsExpr(lookahead.next)
+           && indentWidth(offset) <= indentWidth(lookahead.next.offset)
       }
       && {
         currentRegion match

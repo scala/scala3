@@ -128,10 +128,12 @@ would have treated the continuations `++ " world"` or `|| xs.isEmpty` as separat
 
 To make this syntax work, the rules are modified to not infer semicolons in front of leading infix operators.
 A _leading infix operator_ is
- - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks,
- - that starts a new line,
- - that precedes a token on the same or the next line that can start an expression,
- - and that is immediately followed by at least one whitespace character.
+ - a symbolic identifier such as `+`, or `approx_==`, or an identifier in backticks that
+ - starts a new line, and
+ - is not following a blank line, and
+ - is followed by at least one whitespace character and a token that can start an expression.
+ - Furthermore, if the operator appears on its own line, the next line must have at least
+   the same indentation width as the operator.
 
 Example:
 
