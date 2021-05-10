@@ -1,11 +1,15 @@
-// Test flow-typing when NotNullInfos are from non-null cases
+// Test flow-typing when NotNullInfos are from cases
 
 object MatchTest {
-  locally {
-    val s: String|Null = ???
-    s match {
-      case _: String => println(s.length)
-      case _ => println(0)
-    }
+
+  def lengthOfStringOrNull(s: String | Null): Int = s match {
+    case _: String => s.length
+    case _ => 0
+  }
+
+  def stringOrNullToString(s: String | Null): String = s match {
+    case null => "null"
+    // after the null case, s becomes non-nullable
+    case _ => s
   }
 }
