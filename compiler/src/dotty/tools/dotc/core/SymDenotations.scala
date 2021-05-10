@@ -1180,11 +1180,13 @@ object SymDenotations {
      */
     final def companionModule(using Context): Symbol =
       if (is(Module)) sourceModule
+      else if registeredCompanion.isAbsent() then NoSymbol
       else registeredCompanion.sourceModule
 
     private def companionType(using Context): Symbol =
       if (is(Package)) NoSymbol
       else if (is(ModuleVal)) moduleClass.denot.companionType
+      else if registeredCompanion.isAbsent() then NoSymbol
       else registeredCompanion
 
     /** The class with the same (type-) name as this module or module class,
