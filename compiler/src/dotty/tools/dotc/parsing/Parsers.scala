@@ -2184,14 +2184,15 @@ object Parsers {
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
     val prefixExpr: Location => Tree = location =>
-      if (isIdent && nme.raw.isUnary(in.name)) {
+      if isIdent && nme.raw.isUnary(in.name)
+         && in.canStartExprTokens.contains(in.lookahead.token)
+      then
         val start = in.offset
         val op = termIdent()
         if (op.name == nme.raw.MINUS && isNumericLit)
           simpleExprRest(literal(start), location, canApply = true)
         else
           atSpan(start) { PrefixOp(op, simpleExpr(location)) }
-      }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
