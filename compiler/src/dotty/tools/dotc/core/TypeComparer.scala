@@ -850,11 +850,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
     /** When called from `pre1.A <:< pre2.A` does `pre1` relate to `pre2` so that
-     *  the subtype test is true? This is the case if `pre1 <:< pre2`, or
-     *  `pre1` and `pre2` are both this-types of related classes. Here, two classes
-     *  are related if each of them has a self type that derives from the other.
+     *  the subtype test is true? This is the case if
      *
-     *  This criterion is a bit dubious. I.e. in the test
+     *    1. `pre1 <:< pre2`, or
+     *    2. One of `pre1` and `pre2` refers to a package and the other to a
+     *       package object in that package, or
+     *    3. `pre1` and `pre2` are both this-types of related classes.
+     *
+     *  Here, two classes are related if each of them has a self type that derives from the other.
+     *  The third criterion is a bit dubious. I.e. in the test
      *
      *      A.this.T <:< B.this.T
      *
@@ -874,18 +878,32 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     |*  does not conform to  dotty.tools.dotc.util.Property.Key[Typer.this.Deriver & Namer.this.Deriver]
      */
     def isSubPrefix(pre1: Type, pre2: Type): Boolean =
+      def samePkg(sym1: Symbol, sym2: Symbol) =
+           sym2.is(Package) && sym1.isPackageObject && sym1.owner == sym2.moduleClass
+        || sym1.is(Package) && sym2.isPackageObject && sym2.owner == sym1.moduleClass
       pre1 match
         case pre1: ThisType =>
           pre2 match
             case pre2: ThisType =>
+              if samePkg(pre1.cls, pre2.cls) then return true
               if pre1.cls.classInfo.selfType.derivesFrom(pre2.cls)
                  && pre2.cls.classInfo.selfType.derivesFrom(pre1.cls)
               then
                 subtyping.println(i"assume equal prefixes $pre1 $pre2")
                 return true
+            case pre2: TermRef =>
+              if samePkg(pre1.cls, pre2.symbol) then return true
+            case _ =>
+        case pre1: TermRef =>
+          pre2 match
+            case pre2: TermRef =>
+              if samePkg(pre1.symbol, pre2.symbol) then return true
+            case pre2: ThisType =>
+              if samePkg(pre1.symbol, pre2.cls) then return true
             case _ =>
         case _ =>
       isSubType(pre1, pre2)
+    end isSubPrefix
 
     /** Compare `tycon[args]` with `other := otherTycon[otherArgs]`, via `>:>` if fromBelow is true, `<:<` otherwise
      *  (we call this relationship `~:~` in the rest of this comment).
