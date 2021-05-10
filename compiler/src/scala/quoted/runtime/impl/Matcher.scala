@@ -5,6 +5,7 @@ import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
 
 import dotty.tools.dotc
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames.nme
 
@@ -99,6 +100,7 @@ import dotty.tools.dotc.core.StdNames.nme
  *   ```
  */
 object Matcher {
+  import tpd.*
 
   class QuoteMatcher[QCtx <: Quotes & Singleton](val qctx: QCtx)(using Context) {
 
@@ -117,7 +119,7 @@ object Matcher {
      *  ```
      *  when matching `a * a` with `x * x` the environment will contain `Map(a -> x)`.
      */
-    private type Env = Map[Symbol, Symbol]
+    private type Env = Map[dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol]
 
     inline private def withEnv[T](env: Env)(inline body: Env ?=> T): T = body(using env)
 
@@ -202,7 +204,7 @@ object Matcher {
               new TreeMap {
                 override def transformTerm(tree: Term)(owner: Symbol): Term =
                   tree match
-                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree: Ident => summon[Env].get(tree.symbol.asInstanceOf).asInstanceOf[Option[Symbol]].flatMap(argsMap.get).getOrElse(tree)
                     case tree => super.transformTerm(tree)(owner)
               }.transformTree(scrutinee)(Symbol.spliceOwner)
             }
@@ -256,7 +258,7 @@ object Matcher {
           case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
             val newEnv = (stat1, stat2) match {
               case (stat1: Definition, stat2: Definition) =>
-                summon[Env] + (stat1.symbol -> stat2.symbol)
+                summon[Env] + (stat1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> stat2.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
               case _ =>
                 summon[Env]
             }
@@ -299,20 +301,20 @@ object Matcher {
 
           /* Match val */
           case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
-            def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
+            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
             tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
 
           /* Match def */
           case (DefDef(_, paramss1, tpt1, Some(rhs1)), DefDef(_, paramss2, tpt2, Some(rhs2))) =>
-            def rhsEnv =
-              val paramSyms: List[(Symbol, Symbol)] =
+            def rhsEnv: Env =
+              val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
                 for
                   (clause1, clause2) <- paramss1.zip(paramss2)
                   (param1, param2) <- clause1.params.zip(clause2.params)
                 yield
-                  param1.symbol -> param2.symbol
+                  param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
               val oldEnv: Env = summon[Env]
-              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol -> pattern.symbol) :: paramSyms
+              val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
               oldEnv ++ newEnv
 
             matchLists(paramss1, paramss2)(_ =?= _)
