@@ -9,7 +9,7 @@ import collection.immutable.ArraySeq
 import java.nio.file.Files
 
 import dotty.tools.dotc.config.Settings._
-import dotty.tools.dotc.config.CommonScalaSettings
+import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.core.Contexts._
 
@@ -100,7 +100,15 @@ object Scaladoc:
       }
 
     val commonScalaSettings = (new SettingGroup with CommonScalaSettings).allSettings
-    allSettings.filter(commonScalaSettings.contains).foreach(setInGlobal)
+    val allScalaSettings = (new SettingGroup with AllScalaSettings).allSettings
+
+    val (shared, other) = allSettings
+      .filter(s => !s.isDefaultIn(summary.sstate))
+      .filter(allScalaSettings.contains)
+      .partition(commonScalaSettings.contains)
+    shared.foreach(setInGlobal)
+
+    if !other.isEmpty then report.echo(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
