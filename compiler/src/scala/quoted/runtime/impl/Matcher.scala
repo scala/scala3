@@ -143,6 +143,13 @@ object Matcher {
       private def =?= (patterns: List[Tree])(using Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
+    extension (scrutinee: tpd.Tree)
+      private def =?= (pattern: tpd.Tree)(using Env): Matching =
+        scrutinee.asInstanceOf[Tree] =?= pattern.asInstanceOf[Tree]
+    extension (scrutinees: List[tpd.Tree])
+      private def =?= (patterns: List[tpd.Tree])(using Env)(using DummyImplicit): Matching =
+        matchLists(scrutinees, patterns)(_ =?= _)
+
     extension (scrutinee0: Tree)
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -168,14 +175,6 @@ object Matcher {
 
         val scrutinee = normalize(scrutinee0)
         val pattern = normalize(pattern0)
-
-        /** Check that both are `val` or both are `lazy val` or both are `var` **/
-        def checkValFlags(): Boolean = {
-          import Flags._
-          val sFlags = scrutinee.symbol.flags
-          val pFlags = pattern.symbol.flags
-          sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
-        }
 
         (scrutinee, pattern) match {
 
@@ -299,55 +298,77 @@ object Matcher {
           case (scrutinee: TypeTree, pattern: TypeTree) if scrutinee.tpe <:< pattern.tpe =>
             matched
 
-          /* Match val */
-          case (ValDef(_, tpt1, rhs1), ValDef(_, tpt2, rhs2)) if checkValFlags() =>
-            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
-            tpt1 =?= tpt2 &&& treeOptMatches(rhs1, rhs2)(using rhsEnv)
-
-          /* Match def */
-          case (DefDef(_, paramss1, tpt1, Some(rhs1)), DefDef(_, paramss2, tpt2, Some(rhs2))) =>
-            def rhsEnv: Env =
-              val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
-                for
-                  (clause1, clause2) <- paramss1.zip(paramss2)
-                  (param1, param2) <- clause1.params.zip(clause2.params)
-                yield
-                  param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-              val oldEnv: Env = summon[Env]
-              val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
-              oldEnv ++ newEnv
-
-            matchLists(paramss1, paramss2)(_ =?= _)
-              &&& tpt1 =?= tpt2
-              &&& withEnv(rhsEnv)(rhs1 =?= rhs2)
-
-          case (Closure(_, tpt1), Closure(_, tpt2)) =>
-            // TODO match tpt1 with tpt2?
-            matched
-
-          case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
-            arg1 =?= arg2
 
           // No Match
           case _ =>
-            if (debug)
-              println(
-                s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                   |Scrutinee
-                   |  ${scrutinee.show}
-                   |did not match pattern
-                   |  ${pattern.show}
-                   |
-                   |with environment: ${summon[Env]}
-                   |
-                   |Scrutinee: ${scrutinee.show(using Printer.TreeStructure)}
-                   |Pattern: ${pattern.show(using Printer.TreeStructure)}
-                   |
-                   |""".stripMargin)
-            notMatched
+            otherCases(scrutinee.asInstanceOf, pattern.asInstanceOf)
         }
       }
     end extension
+
+    def otherCases(scrutinee: tpd.Tree, pattern: tpd.Tree)(using Env): Matching =
+      import tpd.* // TODO remove
+      import dotc.core.Flags.* // TODO remove
+
+      /** Check that both are `val` or both are `lazy val` or both are `var` **/
+      def checkValFlags(): Boolean = {
+        val sFlags = scrutinee.symbol.flags
+        val pFlags = pattern.symbol.flags
+        sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
+      }
+
+      (scrutinee, pattern) match
+
+         /* Match val */
+        case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
+          def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
+          tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
+
+        /* Match def */
+        case (scrutinee @ DefDef(_, paramss1, tpt1, _), pattern @ DefDef(_, paramss2, tpt2, _)) =>
+          def rhsEnv: Env =
+            val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
+              for
+                (clause1, clause2) <- paramss1.zip(paramss2)
+                (param1, param2) <- clause1.zip(clause2)
+              yield
+                param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
+            val oldEnv: Env = summon[Env]
+            val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
+            oldEnv ++ newEnv
+
+          matchLists(paramss1, paramss2)(_ =?= _)
+            &&& tpt1 =?= tpt2
+            &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
+
+        case (Closure(_, _, tpt1), Closure(_, _, tpt2)) =>
+          // TODO match tpt1 with tpt2?
+          matched
+
+        case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
+          arg1 =?= arg2
+
+        case (EmptyTree, EmptyTree) =>
+          matched
+
+        // No Match
+        case _ =>
+          if (debug)
+            println(
+              s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                  |Scrutinee
+                  |  ${scrutinee.show}
+                  |did not match pattern
+                  |  ${pattern.show}
+                  |
+                  |with environment: ${summon[Env]}
+                  |
+                  |Scrutinee: ${Printer.TreeStructure.show(scrutinee.asInstanceOf)}
+                  |Pattern: ${Printer.TreeStructure.show(pattern.asInstanceOf)}
+                  |
+                  |""".stripMargin)
+          notMatched
+
 
     extension (scrutinee: ParamClause)
       /** Check that all parameters in the clauses clauses match with =?= and concatenate the results with &&& */
@@ -401,7 +422,7 @@ object Matcher {
         accumulator.apply(Set.empty, term)
     }
 
-    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env): Matching = {
+    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env)(using DummyImplicit): Matching = {
       (scrutinee, pattern) match {
         case (Some(x), Some(y)) => x =?= y
         case (None, None) => matched
