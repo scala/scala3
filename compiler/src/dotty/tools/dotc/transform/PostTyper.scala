@@ -451,10 +451,5 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         sym.addAnnotation(defn.ExperimentalAnnot)
         sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
 
-      if sym.is(Enum) && sym.hasAnnotation(defn.ExperimentalAnnot) then
-        // Add @experimental annotation to enum class definitions
-        val compMod = sym.companionModule.moduleClass
-        compMod.addAnnotation(defn.ExperimentalAnnot)
-        compMod.companionModule.addAnnotation(defn.ExperimentalAnnot)
   }
 }
