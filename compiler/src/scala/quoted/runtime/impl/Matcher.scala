@@ -7,6 +7,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.nme
 
 /** Matches a quoted tree against a quoted pattern tree.
@@ -193,29 +194,6 @@ object Matcher {
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.asExpr)
 
-          /* Higher order term hole */
-          // Matches an open term and wraps it into a lambda that provides the free variables
-          case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
-              if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
-
-            def bodyFn(lambdaArgs: List[Tree]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
-              new TreeMap {
-                override def transformTerm(tree: Term)(owner: Symbol): Term =
-                  tree match
-                    case tree: Ident => summon[Env].get(tree.symbol.asInstanceOf).asInstanceOf[Option[Symbol]].flatMap(argsMap.get).getOrElse(tree)
-                    case tree => super.transformTerm(tree)(owner)
-              }.transformTree(scrutinee)(Symbol.spliceOwner)
-            }
-            val names = args.map {
-              case Block(List(DefDef("$anonfun", _, _, Some(Apply(Ident(name), _)))), _) => name
-              case arg => arg.symbol.name
-            }
-            val argTypes = args.map(x => x.tpe.widenTermRefByName)
-            val resType = pattern.tpe
-            val res = Lambda(Symbol.spliceOwner, MethodType(names)(_ => argTypes, _ => resType), (meth, x) => bodyFn(x).changeOwner(meth))
-            matched(res.asExpr)
-
 
           // No Match
           case _ =>
@@ -228,6 +206,7 @@ object Matcher {
       import tpd.* // TODO remove
       import dotc.core.Flags.* // TODO remove
       import dotc.core.Types.* // TODO remove
+      import dotc.core.Symbols.* // TODO remove
 
       /** Check that both are `val` or both are `lazy val` or both are `var` **/
       def checkValFlags(): Boolean = {
@@ -244,7 +223,41 @@ object Matcher {
           case _ => None
       end TypeTreeTypeTest
 
+      object Lambda:
+        def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
+          val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
+          tpd.Closure(meth, tss => rhsFn(meth, tss.head))
+      end Lambda
+
       (scrutinee, pattern) match
+
+        /* Higher order term hole */
+        // Matches an open term and wraps it into a lambda that provides the free variables
+        case (scrutinee, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
+            if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
+
+          def bodyFn(lambdaArgs: List[Tree]): Tree = {
+            val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Tree]]).toMap
+            new TreeMap {
+              override def transform(tree: Tree)(using Context): Tree =
+                tree match
+                  case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                  case tree => super.transform(tree)
+            }.transform(scrutinee)
+          }
+          val names: List[TermName] = args.map {
+            case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
+            case arg => arg.symbol.name.asTermName
+          }
+          val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+          val resType = pattern.tpe
+          val res =
+            Lambda(
+              ctx.owner,
+              MethodType(names)(
+                _ => argTypes, _ => resType),
+                (meth, x) => tpd.TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
+          matched(qctx.reflect.TreeMethods.asExpr(res.asInstanceOf[qctx.reflect.Tree]))
 
         //
         // Match two equivalent trees
