@@ -6,6 +6,8 @@ import scala.annotation.{Annotation, compileTimeOnly}
 
 import dotty.tools.dotc
 import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.StdNames.nme
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -387,17 +389,6 @@ object Matcher {
               case _ => foldOverTree(x, tree)(owner)
         }
         accumulator.foldTree(Set.empty, term)(Symbol.spliceOwner)
-    }
-
-    private object IdentArgs {
-      def unapply(args: List[Term]): Option[List[Ident]] =
-        args.foldRight(Option(List.empty[Ident])) {
-          case (id: Ident, Some(acc)) => Some(id :: acc)
-          case (Block(List(DefDef("$anonfun", TermParamClause(params) :: Nil, Inferred(), Some(Apply(id: Ident, args)))), Closure(Ident("$anonfun"), None)), Some(acc))
-              if params.zip(args).forall(_.symbol == _.symbol) =>
-            Some(id :: acc)
-          case _ => None
-        }
     }
 
     private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env): Matching = {
