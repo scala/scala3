@@ -138,7 +138,7 @@ trait MessageRendering {
           |${Blue("===========").show}""".stripMargin
     )
     sb.append(EOL).append(m.explanation)
-    if (m.explanation.lastOption != Some(EOL)) sb.append(EOL)
+    if (!m.explanation.endsWith(EOL)) sb.append(EOL)
     sb.toString
   }
 
