@@ -216,7 +216,7 @@ object Matcher {
               if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Tree]]).toMap
+              val argsMap = args.map(_.symbol).zip(lambdaArgs).toMap
               new TreeMap {
                 override def transform(tree: Tree)(using Context): Tree =
                   tree match
@@ -322,7 +322,7 @@ object Matcher {
 
           /* Match val */
           case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
-            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[Symbol] -> pattern.symbol.asInstanceOf[Symbol])
+            def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
             tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
 
           /* Match def */
@@ -333,9 +333,9 @@ object Matcher {
                   (clause1, clause2) <- paramss1.zip(paramss2)
                   (param1, param2) <- clause1.zip(clause2)
                 yield
-                  param1.symbol.asInstanceOf[Symbol] -> param2.symbol.asInstanceOf[Symbol]
+                  param1.symbol -> param2.symbol
               val oldEnv: Env = summon[Env]
-              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol.asInstanceOf[Symbol] -> pattern.symbol.asInstanceOf[Symbol]) :: paramSyms
+              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol -> pattern.symbol) :: paramSyms
               oldEnv ++ newEnv
 
             matchLists(paramss1, paramss2)(_ =?= _)
