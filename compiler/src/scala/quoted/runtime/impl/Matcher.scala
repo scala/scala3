@@ -139,11 +139,6 @@ object Matcher {
       case _ => notMatched
     }
 
-    extension (scrutinees: List[Tree])
-      /** Check that all trees match with =?= and concatenate the results with &&& */
-      private def =?= (patterns: List[Tree])(using Env): Matching =
-        matchLists(scrutinees, patterns)(_ =?= _)
-
     extension (scrutinee: Tree)
       private def =?= (pattern: Tree)(using Env): Matching =
         scrutinee.asInstanceOf[tpd.Tree] =?= pattern.asInstanceOf[tpd.Tree]
@@ -156,7 +151,7 @@ object Matcher {
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
        *
-       *  @param scrutinee The tree beeing matched
+       *  @param scrutinee The tree being matched
        *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
@@ -382,21 +377,13 @@ object Matcher {
 
     end extension
 
-    extension (scrutinee: ParamClause)
-      /** Check that all parameters in the clauses clauses match with =?= and concatenate the results with &&& */
-      private def =?= (pattern: ParamClause)(using Env)(using DummyImplicit): Matching =
-        (scrutinee, pattern) match
-          case (TermParamClause(params1), TermParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
-          case (TypeParamClause(params1), TypeParamClause(params2)) => matchLists(params1, params2)(_ =?= _)
-          case _ => notMatched
-
     /** Does the scrutenne symbol match the pattern symbol? It matches if:
      *   - They are the same symbol
      *   - The scrutinee has is in the environment and they are equivalent
      *   - The scrutinee overrides the symbol of the pattern
      */
-    private def symbolMatch(scrutineeTree: dotc.ast.tpd.Tree, patternTree: dotc.ast.tpd.Tree)(using Env): Boolean =
-      import dotc.ast.tpd.* // TODO remove
+    private def symbolMatch(scrutineeTree: tpd.Tree, patternTree: tpd.Tree)(using Env): Boolean =
+      import tpd.* // TODO remove
       val scrutinee = scrutineeTree.symbol
 
       def overridingSymbol(ofclazz: dotc.core.Symbols.Symbol): dotc.core.Symbols.Symbol =
@@ -413,7 +400,7 @@ object Matcher {
 
 
       devirtualizedScrutinee == pattern
-      || summon[Env].get(devirtualizedScrutinee.asInstanceOf).contains(pattern)
+      || summon[Env].get(devirtualizedScrutinee).contains(pattern)
       || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
 
     private object ClosedPatternTerm {
@@ -428,18 +415,10 @@ object Matcher {
         val accumulator = new TreeAccumulator[Set[Symbol]] {
           def apply(x: Set[Symbol], tree: Tree)(using Context): Set[Symbol] =
             tree match
-              case tree: Ident if env.contains(tree.symbol.asInstanceOf) => foldOver(x + tree.symbol, tree)
+              case tree: Ident if env.contains(tree.symbol) => foldOver(x + tree.symbol, tree)
               case _ => foldOver(x, tree)
         }
         accumulator.apply(Set.empty, term)
-    }
-
-    private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env)(using DummyImplicit): Matching = {
-      (scrutinee, pattern) match {
-        case (Some(x), Some(y)) => x =?= y
-        case (None, None) => matched
-        case _ => notMatched
-      }
     }
 
   }
