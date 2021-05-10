@@ -12,7 +12,6 @@ import config.Printers.typr
 import ast.Trees._
 import NameOps._
 import ProtoTypes._
-import Inferencing.couldInstantiateTypeVar
 import collection.mutable
 import reporting._
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}

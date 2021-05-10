@@ -89,8 +89,10 @@ object Inferencing {
   }
 
   /** If `tp` is top-level type variable with a lower bound in the current constraint,
-   *  instantiate it from below. We also look for TypeVars whereever their instantiation
-   *  could uncover new type members.
+   *  instantiate it from below. We also look for TypeVars in other places where
+   *  their instantiation could uncover new type members. However that search is best
+   *  effort only. It might miss type variables that appear in structures involving
+   *  alias types and type projections.
    */
   def couldInstantiateTypeVar(tp: Type)(using Context): Boolean = tp.dealias match
     case tvar: TypeVar

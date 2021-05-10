@@ -574,13 +574,17 @@ class Typer extends Namer
       checkLegalValue(select, pt)
       ConstFold(select)
     else if couldInstantiateTypeVar(qual.tpe.widen) then
-      // try again with more defined qualifier type
+       // there's a simply visible type variable in the result; try again with a more defined qualifier type
+       // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
+       // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
     else
       val tree1 = tryExtensionOrConversion(
-          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, privateOK = true)
+          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
       if !tree1.isEmpty then
         tree1
+      else if canDefineFurther(qual.tpe.widen) then
+        typedSelect(tree, pt, qual)
       else if qual.tpe.derivesFrom(defn.DynamicClass)
         && selName.isTermName && !isDynamicExpansion(tree)
       then
@@ -3038,7 +3042,7 @@ class Typer extends Namer
         if selProto.isMatchedBy(qual.tpe) then None
         else
           tryEither {
-            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, privateOK = false)
+            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, inSelect = false)
             if tree1.isEmpty then None
             else Some(adapt(tree1, pt, locked))
           } { (_, _) => None
@@ -3052,10 +3056,10 @@ class Typer extends Namer
    *  @return The converted tree, or `EmptyTree` is not successful.
    */
   def tryExtensionOrConversion
-      (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, privateOK: Boolean)
+      (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, inSelect: Boolean)
       (using Context): Tree =
 
-    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK)
+    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
 
     def tryExtension(using Context): Tree =
       findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
@@ -3093,12 +3097,13 @@ class Typer extends Namer
                 return typedSelect(tree, pt, found)
             case failure: SearchFailure =>
               if failure.isAmbiguous then
-                return (
-                  if canDefineFurther(qual.tpe.widen) then
-                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, privateOK)
+                return
+                  if !inSelect // in a selection we will do the canDefineFurther afterwards
+                     && canDefineFurther(qual.tpe.widen)
+                  then
+                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
                   else
                     err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
-                )
               rememberSearchFailure(qual, failure)
         }
       catch case ex: TypeError => nestedFailure(ex)
