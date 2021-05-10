@@ -176,7 +176,6 @@ Standard-Section: "ASTs" TopLevelStat*
   TypeName      = typeOrBounds_ASTRef paramName_NameRef                            -- (`termName`: `type`)  or  (`typeName` `bounds`)
 
   Modifier      = PRIVATE                                                          -- private
-                  INTERNAL                                                         -- package private (not yet used)
                   PROTECTED                                                        -- protected
                   PRIVATEqualified     qualifier_Type                              -- private[qualifier]    (to be dropped(?)
                   PROTECTEDqualified   qualifier_Type                              -- protecred[qualifier]  (to be dropped(?)
@@ -433,12 +432,13 @@ object TastyFormat {
   // Cat. 1:    tag
 
   final val firstSimpleTreeTag = UNITconst
+  // final val ??? = 1
   final val UNITconst = 2
   final val FALSEconst = 3
   final val TRUEconst = 4
   final val NULLconst = 5
   final val PRIVATE = 6
-  final val INTERNAL = 7
+  // final val ??? = 7
   final val PROTECTED = 8
   final val ABSTRACT = 9
   final val FINAL = 10
@@ -461,6 +461,7 @@ object TastyFormat {
   final val CASEaccessor = 27
   final val COVARIANT = 28
   final val CONTRAVARIANT = 29
+  // final val ??? = 30
   final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
@@ -536,6 +537,7 @@ object TastyFormat {
   final val IMPORT = 132
   final val TYPEPARAM = 133
   final val PARAM = 134
+  // final val ??? = 135
   final val APPLY = 136
   final val TYPEAPPLY = 137
   final val TYPED = 138
@@ -566,7 +568,9 @@ object TastyFormat {
   final val TYPEBOUNDS = 163
   final val TYPEBOUNDStpt = 164
   final val ANDtype = 165
+  // final val ??? = 166
   final val ORtype = 167
+  // final val ??? = 168
   final val POLYtype = 169
   final val TYPELAMBDAtype = 170
   final val LAMBDAtpt = 171
@@ -576,7 +580,8 @@ object TastyFormat {
   final val TYPEREFin = 175
   final val SELECTin = 176
   final val EXPORT = 177
-
+  // final val ??? = 178
+  // final val ??? = 179
   final val METHODtype = 180
 
   final val MATCHtype = 190
@@ -603,7 +608,6 @@ object TastyFormat {
 
   def isModifierTag(tag: Int): Boolean = tag match {
     case PRIVATE
-       | INTERNAL
        | PROTECTED
        | ABSTRACT
        | FINAL
@@ -667,7 +671,6 @@ object TastyFormat {
     case TRUEconst => "TRUEconst"
     case NULLconst => "NULLconst"
     case PRIVATE => "PRIVATE"
-    case INTERNAL => "INTERNAL"
     case PROTECTED => "PROTECTED"
     case ABSTRACT => "ABSTRACT"
     case FINAL => "FINAL"
