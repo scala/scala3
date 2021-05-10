@@ -106,7 +106,7 @@ import dotty.tools.dotc.core.Symbols.*
 object Matcher {
   import tpd.*
 
-  class QuoteMatcher(val quotes: Quotes)(using Context) {
+  class QuoteMatcher(using Context) {
 
     // TODO improve performance
 
@@ -355,6 +355,7 @@ object Matcher {
           // No Match
           case _ =>
             if (debug)
+              val quotes = QuotesImpl()
               println(
                 s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
                     |Scrutinee

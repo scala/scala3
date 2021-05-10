@@ -2935,9 +2935,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         ctx1.gadt.addToConstraint(typeHoles)
         ctx1
 
-    val qctx1 = QuotesImpl()(using ctx1)
-
-    val matcher = new Matcher.QuoteMatcher(qctx1)(using ctx1)
+    val matcher = new Matcher.QuoteMatcher(using ctx1)
 
     val matchings =
       if pat1.isType then matcher.termMatch(scrutinee, pat1)
@@ -2949,7 +2947,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       // After matching and doing all subtype checks, we have to approximate all the type bindings
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
-        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
+        val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
+        val approx = ctx1.gadt.approximation(sym, !fromAboveAnnot)
+        reflect.TypeReprMethods.asType(approx)
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }
