@@ -19,31 +19,31 @@ This variant is more contentious and less stable than the rest of the significan
 Similar to what is done for classes and objects, a `:` that follows a function reference at the end of a line means braces can be omitted for function arguments. Example:
 ```scala
 times(10):
-   println("ah")
-   println("ha")
+  println("ah")
+  println("ha")
 ```
 
 The colon can also follow an infix operator:
 
 ```scala
 credentials ++ :
-   val file = Path.userHome / ".credentials"
-   if file.exists
-   then Seq(Credentials(file))
-   else Seq()
+  val file = Path.userHome / ".credentials"
+  if file.exists
+  then Seq(Credentials(file))
+  else Seq()
 ```
 
 Function calls that take multiple argument lists can also be handled this way:
 
 ```scala
 val firstLine = files.get(fileName).fold:
-      val fileNames = files.values
-      s"""no file named $fileName found among
-         |${values.mkString(\n)}""".stripMargin
-   :
-      f =>
-         val lines = f.iterator.map(_.readLine)
-         lines.mkString("\n)
+    val fileNames = files.values
+    s"""no file named $fileName found among
+      |${values.mkString(\n)}""".stripMargin
+  :
+    f =>
+      val lines = f.iterator.map(_.readLine)
+      lines.mkString("\n)
 ```
 
 
@@ -52,10 +52,10 @@ val firstLine = files.get(fileName).fold:
 Braces can also be omitted around multiple line function value arguments:
 ```scala
 val xs = elems.map x =>
-   val y = x - 1
-   y * y
+  val y = x - 1
+  y * y
 xs.foldLeft (x, y) =>
-   x + y
+  x + y
 ```
 Braces can be omitted if the lambda starts with a parameter list and `=>` or `=>?` at the end of one line and it has an indented body on the following lines.
 

@@ -21,7 +21,7 @@ However, there is a potential hole due to pattern matching. Consider:
 ```scala
 val imm: IArray[Int] = ...
 imm match
-   case a: Array[Int] => a(0) = 1
+  case a: Array[Int] => a(0) = 1
 ```
 
 The test will succeed at runtime since `IArray`s _are_ represented as
@@ -40,7 +40,7 @@ type `T` as match selector leads to the same problem:
 
 ```scala
 def f[T](x: T) = x match
-   case a: Array[Int] => a(0) = 0
+  case a: Array[Int] => a(0) = 0
 f(imm)
 ```
 
@@ -76,15 +76,15 @@ Here is the hierarchy of top-level classes and traits with their defined methods
 
 ```scala
 abstract class Any:
-   def getClass
-   def isInstanceOf
-   def asInstanceOf
-   def ==
-   def !=
-   def ##
-   def equals
-   def hashCode
-   def toString
+  def getClass
+  def isInstanceOf
+  def asInstanceOf
+  def ==
+  def !=
+  def ##
+  def equals
+  def hashCode
+  def toString
 
 trait Matchable extends Any
 
@@ -104,10 +104,10 @@ Matchable warning is turned on. The most common such method is the universal
 ```scala
 class C(val x: String):
 
-   override def equals(that: Any): Boolean =
-      that.asInstanceOf[Matchable] match
-         case that: C => this.x == that.x
-         case _ => false
+  override def equals(that: Any): Boolean =
+    that.asInstanceOf[Matchable] match
+      case that: C => this.x == that.x
+      case _ => false
 ```
 
 The cast of `that` to `Matchable` serves as an indication that universal equality
@@ -128,13 +128,13 @@ def Second(x: Double) = x
 Here, universal `equals` will return true for
 
 ```scala
-   Meter(10).equals(Second(10))
+  Meter(10).equals(Second(10))
 ```
 
 even though this is clearly false mathematically. With [multiversal equality](../contextual/multiversal-equality.md) one can mitigate that problem somewhat by turning
 
 ```scala
-   Meter(10) == Second(10)
+  Meter(10) == Second(10)
 ```
 
 into a type error.

@@ -16,14 +16,14 @@ Previously, the best way to do this was with a pattern-matching decomposition:
 
 ```scala
 xs.map {
-   case (x, y) => x + y
+  case (x, y) => x + y
 }
 ```
 While correct, this is inconvenient. Instead, we propose to write it the following way:
 
 ```scala
 xs.map {
-   (x, y) => x + y
+  (x, y) => x + y
 }
 ```
 
@@ -67,10 +67,10 @@ is feasible for parameter untupling with the expected type `TupleN[T1, ..., Tn] 
 
 ```scala
 (x: TupleN[T1, ..., Tn]) =>
-   def p1: T1 = x._1
-   ...
-   def pn: Tn = x._n
-   e
+  def p1: T1 = x._1
+  ...
+  def pn: Tn = x._n
+  e
 ```
 
 with the same expected type.
