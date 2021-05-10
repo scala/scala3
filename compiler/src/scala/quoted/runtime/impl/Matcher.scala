@@ -232,7 +232,7 @@ object Matcher {
             scrutinee =?= expr2
 
           /* Match selection */
-          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
+          case (ref: Ref, Select(qual2, _)) if symbolMatch(scrutinee.asInstanceOf, pattern.asInstanceOf) =>
             ref match
               case Select(qual1, _) => qual1 =?= qual2
               case ref: Ident =>
@@ -241,7 +241,7 @@ object Matcher {
                   case _ => matched
 
           /* Match reference */
-          case (_: Ref, _: Ident) if symbolMatch(scrutinee, pattern) =>
+          case (_: Ref, _: Ident) if symbolMatch(scrutinee.asInstanceOf, pattern.asInstanceOf) =>
             matched
 
           /* Match application */
@@ -360,18 +360,25 @@ object Matcher {
      *   - The scrutinee has is in the environment and they are equivalent
      *   - The scrutinee overrides the symbol of the pattern
      */
-    private def symbolMatch(scrutineeTree: Tree, patternTree: Tree)(using Env): Boolean =
+    private def symbolMatch(scrutineeTree: dotc.ast.tpd.Tree, patternTree: dotc.ast.tpd.Tree)(using Env): Boolean =
+      import dotc.ast.tpd.* // TODO remove
       val scrutinee = scrutineeTree.symbol
+
+      def overridingSymbol(ofclazz: dotc.core.Symbols.Symbol): dotc.core.Symbols.Symbol =
+        if ofclazz.isClass then scrutinee.denot.overridingSymbol(ofclazz.asClass)
+        else dotc.core.Symbols.NoSymbol
+
       val devirtualizedScrutinee = scrutineeTree match
         case Select(qual, _) =>
-          val sym = scrutinee.overridingSymbol(qual.tpe.typeSymbol)
+          val sym = overridingSymbol(qual.tpe.typeSymbol)
           if sym.exists then sym
           else scrutinee
         case _ => scrutinee
       val pattern = patternTree.symbol
 
+
       devirtualizedScrutinee == pattern
-      || summon[Env].get(devirtualizedScrutinee).contains(pattern)
+      || summon[Env].get(devirtualizedScrutinee.asInstanceOf).contains(pattern)
       || devirtualizedScrutinee.allOverriddenSymbols.contains(pattern)
 
     private object ClosedPatternTerm {
