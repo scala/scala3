@@ -144,14 +144,15 @@ object Matcher {
       private def =?= (patterns: List[Tree])(using Env): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    extension (scrutinee: tpd.Tree)
-      private def =?= (pattern: tpd.Tree)(using Env): Matching =
-        scrutinee.asInstanceOf[Tree] =?= pattern.asInstanceOf[Tree]
+    extension (scrutinee: Tree)
+      private def =?= (pattern: Tree)(using Env): Matching =
+        scrutinee.asInstanceOf[tpd.Tree] =?= pattern.asInstanceOf[tpd.Tree]
     extension (scrutinees: List[tpd.Tree])
       private def =?= (patterns: List[tpd.Tree])(using Env)(using DummyImplicit): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    extension (scrutinee0: Tree)
+    extension (scrutinee0: tpd.Tree)
+
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
        *
@@ -160,7 +161,11 @@ object Matcher {
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      private def =?= (pattern0: Tree)(using Env): Matching = {
+      private def =?= (pattern0: tpd.Tree)(using Env): Matching =
+        import tpd.* // TODO remove
+        import dotc.core.Flags.* // TODO remove
+        import dotc.core.Types.* // TODO remove
+        import dotc.core.Symbols.* // TODO remove
 
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
@@ -177,215 +182,205 @@ object Matcher {
         val scrutinee = normalize(scrutinee0)
         val pattern = normalize(pattern0)
 
-        otherCases(scrutinee.asInstanceOf, pattern.asInstanceOf)
+        /** Check that both are `val` or both are `lazy val` or both are `var` **/
+        def checkValFlags(): Boolean = {
+          val sFlags = scrutinee.symbol.flags
+          val pFlags = pattern.symbol.flags
+          sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
+        }
 
-      }
+        // TODO remove
+        object TypeTreeTypeTest:
+          def unapply(x: Tree): Option[Tree & x.type] = x match
+            case x: (tpd.TypeBoundsTree & x.type) => None
+            case x: (tpd.Tree & x.type) if x.isType => Some(x)
+            case _ => None
+        end TypeTreeTypeTest
+
+        object Lambda:
+          def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
+            val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
+            tpd.Closure(meth, tss => rhsFn(meth, tss.head))
+        end Lambda
+
+        (scrutinee, pattern) match
+
+          /* Term hole */
+          // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
+          case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+                  s.tpe <:< tpt.tpe &&
+                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
+            matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
+
+          /* Term hole */
+          // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
+          case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+                  scrutinee.tpe <:< tpt.tpe =>
+            matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
+
+          /* Higher order term hole */
+          // Matches an open term and wraps it into a lambda that provides the free variables
+          case (scrutinee, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
+              if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
+
+            def bodyFn(lambdaArgs: List[Tree]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Tree]]).toMap
+              new TreeMap {
+                override def transform(tree: Tree)(using Context): Tree =
+                  tree match
+                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree => super.transform(tree)
+              }.transform(scrutinee)
+            }
+            val names: List[TermName] = args.map {
+              case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
+              case arg => arg.symbol.name.asTermName
+            }
+            val argTypes = args.map(x => x.tpe.widenTermRefExpr)
+            val resType = pattern.tpe
+            val res =
+              Lambda(
+                ctx.owner,
+                MethodType(names)(
+                  _ => argTypes, _ => resType),
+                  (meth, x) => tpd.TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
+            matched(qctx.reflect.TreeMethods.asExpr(res.asInstanceOf[qctx.reflect.Tree]))
+
+          //
+          // Match two equivalent trees
+          //
+
+          /* Match literal */
+          case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
+            matched
+
+          /* Match type ascription (a) */
+          case (Typed(expr1, _), pattern) =>
+            expr1 =?= pattern
+
+          /* Match type ascription (b) */
+          case (scrutinee, Typed(expr2, _)) =>
+            scrutinee =?= expr2
+
+          /* Match selection */
+          case (ref: RefTree, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
+            ref match
+              case Select(qual1, _) => qual1 =?= qual2
+              case ref: Ident =>
+                ref.tpe match
+                  case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
+                  case _ => matched
+
+          /* Match reference */
+          case (_: RefTree, _: Ident) if symbolMatch(scrutinee, pattern) =>
+            matched
+
+          /* Match application */
+          case (Apply(fn1, args1), Apply(fn2, args2)) =>
+            fn1 =?= fn2 &&& args1 =?= args2
+
+          /* Match type application */
+          case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
+            fn1 =?= fn2 &&& args1 =?= args2
+
+          /* Match block */
+          case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
+            val newEnv = (stat1, stat2) match {
+              case (stat1: MemberDef, stat2: MemberDef) =>
+                summon[Env] + (stat1.symbol -> stat2.symbol)
+              case _ =>
+                summon[Env]
+            }
+            withEnv(newEnv) {
+              stat1 =?= stat2 &&& Block(stats1, expr1) =?= Block(stats2, expr2)
+            }
+
+          /* Match if */
+          case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
+            cond1 =?= cond2 &&& thenp1 =?= thenp2 &&& elsep1 =?= elsep2
+
+          /* Match while */
+          case (WhileDo(cond1, body1), WhileDo(cond2, body2)) =>
+            cond1 =?= cond2 &&& body1 =?= body2
+
+          /* Match assign */
+          case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
+            lhs1 =?= lhs2 &&& rhs1 =?= rhs2
+
+          /* Match new */
+          case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
+            matched
+
+          /* Match this */
+          case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
+            matched
+
+          /* Match super */
+          case (Super(qual1, mix1), Super(qual2, mix2)) if mix1 == mix2 =>
+            qual1 =?= qual2
+
+          /* Match varargs */
+          case (SeqLiteral(elems1, _), SeqLiteral(elems2, _)) if elems1.size == elems2.size =>
+            elems1 =?= elems2
+
+          /* Match type */
+          // TODO remove this?
+          case (TypeTreeTypeTest(scrutinee), TypeTreeTypeTest(pattern)) if scrutinee.tpe <:< pattern.tpe =>
+            matched
+
+          /* Match val */
+          case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
+            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
+            tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
+
+          /* Match def */
+          case (scrutinee @ DefDef(_, paramss1, tpt1, _), pattern @ DefDef(_, paramss2, tpt2, _)) =>
+            def rhsEnv: Env =
+              val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
+                for
+                  (clause1, clause2) <- paramss1.zip(paramss2)
+                  (param1, param2) <- clause1.zip(clause2)
+                yield
+                  param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
+              val oldEnv: Env = summon[Env]
+              val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
+              oldEnv ++ newEnv
+
+            matchLists(paramss1, paramss2)(_ =?= _)
+              &&& tpt1 =?= tpt2
+              &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
+
+          case (Closure(_, _, tpt1), Closure(_, _, tpt2)) =>
+            // TODO match tpt1 with tpt2?
+            matched
+
+          case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
+            arg1 =?= arg2
+
+          case (EmptyTree, EmptyTree) =>
+            matched
+
+          // No Match
+          case _ =>
+            if (debug)
+              println(
+                s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                    |Scrutinee
+                    |  ${scrutinee.show}
+                    |did not match pattern
+                    |  ${pattern.show}
+                    |
+                    |with environment: ${summon[Env]}
+                    |
+                    |Scrutinee: ${Printer.TreeStructure.show(scrutinee.asInstanceOf)}
+                    |Pattern: ${Printer.TreeStructure.show(pattern.asInstanceOf)}
+                    |
+                    |""".stripMargin)
+            notMatched
+
     end extension
-
-    def otherCases(scrutinee: tpd.Tree, pattern: tpd.Tree)(using Env): Matching =
-      import tpd.* // TODO remove
-      import dotc.core.Flags.* // TODO remove
-      import dotc.core.Types.* // TODO remove
-      import dotc.core.Symbols.* // TODO remove
-
-      /** Check that both are `val` or both are `lazy val` or both are `var` **/
-      def checkValFlags(): Boolean = {
-        val sFlags = scrutinee.symbol.flags
-        val pFlags = pattern.symbol.flags
-        sFlags.is(Lazy) == pFlags.is(Lazy) && sFlags.is(Mutable) == pFlags.is(Mutable)
-      }
-
-      // TODO remove
-      object TypeTreeTypeTest:
-        def unapply(x: Tree): Option[Tree & x.type] = x match
-          case x: (tpd.TypeBoundsTree & x.type) => None
-          case x: (tpd.Tree & x.type) if x.isType => Some(x)
-          case _ => None
-      end TypeTreeTypeTest
-
-      object Lambda:
-        def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
-          val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-          tpd.Closure(meth, tss => rhsFn(meth, tss.head))
-      end Lambda
-
-      (scrutinee, pattern) match
-
-        /* Term hole */
-        // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-        case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-            if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
-                s.tpe <:< tpt.tpe &&
-                tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-          matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
-
-        /* Term hole */
-        // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-        case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-            if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
-                scrutinee.tpe <:< tpt.tpe =>
-          matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
-
-        /* Higher order term hole */
-        // Matches an open term and wraps it into a lambda that provides the free variables
-        case (scrutinee, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
-            if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
-
-          def bodyFn(lambdaArgs: List[Tree]): Tree = {
-            val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Tree]]).toMap
-            new TreeMap {
-              override def transform(tree: Tree)(using Context): Tree =
-                tree match
-                  case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                  case tree => super.transform(tree)
-            }.transform(scrutinee)
-          }
-          val names: List[TermName] = args.map {
-            case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
-            case arg => arg.symbol.name.asTermName
-          }
-          val argTypes = args.map(x => x.tpe.widenTermRefExpr)
-          val resType = pattern.tpe
-          val res =
-            Lambda(
-              ctx.owner,
-              MethodType(names)(
-                _ => argTypes, _ => resType),
-                (meth, x) => tpd.TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
-          matched(qctx.reflect.TreeMethods.asExpr(res.asInstanceOf[qctx.reflect.Tree]))
-
-        //
-        // Match two equivalent trees
-        //
-
-        /* Match literal */
-        case (Literal(constant1), Literal(constant2)) if constant1 == constant2 =>
-          matched
-
-        /* Match type ascription (a) */
-        case (Typed(expr1, _), pattern) =>
-          expr1 =?= pattern
-
-        /* Match type ascription (b) */
-        case (scrutinee, Typed(expr2, _)) =>
-          scrutinee =?= expr2
-
-        /* Match selection */
-        case (ref: RefTree, Select(qual2, _)) if symbolMatch(scrutinee, pattern) =>
-          ref match
-            case Select(qual1, _) => qual1 =?= qual2
-            case ref: Ident =>
-              ref.tpe match
-                case TermRef(qual: TermRef, _) => tpd.ref(qual) =?= qual2
-                case _ => matched
-
-        /* Match reference */
-        case (_: RefTree, _: Ident) if symbolMatch(scrutinee, pattern) =>
-          matched
-
-        /* Match application */
-        case (Apply(fn1, args1), Apply(fn2, args2)) =>
-          fn1 =?= fn2 &&& args1 =?= args2
-
-        /* Match type application */
-        case (TypeApply(fn1, args1), TypeApply(fn2, args2)) =>
-          fn1 =?= fn2 &&& args1 =?= args2
-
-        /* Match block */
-        case (Block(stat1 :: stats1, expr1), Block(stat2 :: stats2, expr2)) =>
-          val newEnv = (stat1, stat2) match {
-            case (stat1: MemberDef, stat2: MemberDef) =>
-              summon[Env] + (stat1.symbol -> stat2.symbol)
-            case _ =>
-              summon[Env]
-          }
-          withEnv(newEnv) {
-            stat1 =?= stat2 &&& Block(stats1, expr1) =?= Block(stats2, expr2)
-          }
-
-        /* Match if */
-        case (If(cond1, thenp1, elsep1), If(cond2, thenp2, elsep2)) =>
-          cond1 =?= cond2 &&& thenp1 =?= thenp2 &&& elsep1 =?= elsep2
-
-        /* Match while */
-        case (WhileDo(cond1, body1), WhileDo(cond2, body2)) =>
-          cond1 =?= cond2 &&& body1 =?= body2
-
-        /* Match assign */
-        case (Assign(lhs1, rhs1), Assign(lhs2, rhs2)) =>
-          lhs1 =?= lhs2 &&& rhs1 =?= rhs2
-
-        /* Match new */
-        case (New(tpt1), New(tpt2)) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol =>
-          matched
-
-        /* Match this */
-        case (This(_), This(_)) if scrutinee.symbol == pattern.symbol =>
-          matched
-
-        /* Match super */
-        case (Super(qual1, mix1), Super(qual2, mix2)) if mix1 == mix2 =>
-          qual1 =?= qual2
-
-        /* Match varargs */
-        case (SeqLiteral(elems1, _), SeqLiteral(elems2, _)) if elems1.size == elems2.size =>
-          elems1 =?= elems2
-
-        /* Match type */
-        // TODO remove this?
-        case (TypeTreeTypeTest(scrutinee), TypeTreeTypeTest(pattern)) if scrutinee.tpe <:< pattern.tpe =>
-          matched
-
-        /* Match val */
-        case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
-          def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
-          tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
-
-        /* Match def */
-        case (scrutinee @ DefDef(_, paramss1, tpt1, _), pattern @ DefDef(_, paramss2, tpt2, _)) =>
-          def rhsEnv: Env =
-            val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
-              for
-                (clause1, clause2) <- paramss1.zip(paramss2)
-                (param1, param2) <- clause1.zip(clause2)
-              yield
-                param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
-            val oldEnv: Env = summon[Env]
-            val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
-            oldEnv ++ newEnv
-
-          matchLists(paramss1, paramss2)(_ =?= _)
-            &&& tpt1 =?= tpt2
-            &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
-
-        case (Closure(_, _, tpt1), Closure(_, _, tpt2)) =>
-          // TODO match tpt1 with tpt2?
-          matched
-
-        case (NamedArg(name1, arg1), NamedArg(name2, arg2)) if name1 == name2 =>
-          arg1 =?= arg2
-
-        case (EmptyTree, EmptyTree) =>
-          matched
-
-        // No Match
-        case _ =>
-          if (debug)
-            println(
-              s""">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-                  |Scrutinee
-                  |  ${scrutinee.show}
-                  |did not match pattern
-                  |  ${pattern.show}
-                  |
-                  |with environment: ${summon[Env]}
-                  |
-                  |Scrutinee: ${Printer.TreeStructure.show(scrutinee.asInstanceOf)}
-                  |Pattern: ${Printer.TreeStructure.show(pattern.asInstanceOf)}
-                  |
-                  |""".stripMargin)
-          notMatched
-
 
     extension (scrutinee: ParamClause)
       /** Check that all parameters in the clauses clauses match with =?= and concatenate the results with &&& */
