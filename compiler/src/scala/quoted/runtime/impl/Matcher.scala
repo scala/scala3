@@ -103,14 +103,13 @@ import dotty.tools.dotc.core.StdNames.nme
 object Matcher {
   import tpd.*
 
-  class QuoteMatcher[QCtx <: Quotes & Singleton](val qctx: QCtx)(using Context) {
+  class QuoteMatcher(val quotes: Quotes)(using Context) {
 
     // TODO improve performance
 
-    // TODO use flag from qctx.reflect. Maybe -debug or add -debug-macros
+    // TODO use flag from Context. Maybe -debug or add -debug-macros
     private inline val debug = false
 
-    import qctx.reflect._
     import Matching._
 
     /** A map relating equivalent symbols from the scrutinee and the pattern
@@ -124,11 +123,11 @@ object Matcher {
 
     inline private def withEnv[T](env: Env)(inline body: Env ?=> T): T = body(using env)
 
-    def termMatch(scrutineeTerm: Term, patternTerm: Term): Option[Tuple] =
+    def termMatch(scrutineeTerm: tpd.Tree, patternTerm: tpd.Tree): Option[Tuple] =
       given Env = Map.empty
       scrutineeTerm =?= patternTerm
 
-    def typeTreeMatch(scrutineeTypeTree: TypeTree, patternTypeTree: TypeTree): Option[Tuple] =
+    def typeTreeMatch(scrutineeTypeTree: tpd.Tree, patternTypeTree: tpd.Tree): Option[Tuple] =
       given Env = Map.empty
       scrutineeTypeTree =?= patternTypeTree
 
@@ -139,9 +138,6 @@ object Matcher {
       case _ => notMatched
     }
 
-    extension (scrutinee: Tree)
-      private def =?= (pattern: Tree)(using Env): Matching =
-        scrutinee.asInstanceOf[tpd.Tree] =?= pattern.asInstanceOf[tpd.Tree]
     extension (scrutinees: List[tpd.Tree])
       private def =?= (patterns: List[tpd.Tree])(using Env)(using DummyImplicit): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
@@ -206,14 +202,14 @@ object Matcher {
               if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
                   s.tpe <:< tpt.tpe &&
                   tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-            matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
+            matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
 
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
               if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
                   scrutinee.tpe <:< tpt.tpe =>
-            matched(qctx.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[qctx.reflect.Tree]))
+            matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
@@ -241,7 +237,7 @@ object Matcher {
                 MethodType(names)(
                   _ => argTypes, _ => resType),
                   (meth, x) => tpd.TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
-            matched(qctx.reflect.TreeMethods.asExpr(res.asInstanceOf[qctx.reflect.Tree]))
+            matched(quotes.reflect.TreeMethods.asExpr(res.asInstanceOf[quotes.reflect.Tree]))
 
           //
           // Match two equivalent trees
@@ -369,8 +365,8 @@ object Matcher {
                     |
                     |with environment: ${summon[Env]}
                     |
-                    |Scrutinee: ${Printer.TreeStructure.show(scrutinee.asInstanceOf)}
-                    |Pattern: ${Printer.TreeStructure.show(pattern.asInstanceOf)}
+                    |Scrutinee: ${quotes.reflect.Printer.TreeStructure.show(scrutinee.asInstanceOf)}
+                    |Pattern: ${quotes.reflect.Printer.TreeStructure.show(pattern.asInstanceOf)}
                     |
                     |""".stripMargin)
             notMatched

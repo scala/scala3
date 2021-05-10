@@ -2937,11 +2937,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     val qctx1 = QuotesImpl()(using ctx1)
 
-    val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1)(using ctx1)
+    val matcher = new Matcher.QuoteMatcher(qctx1)(using ctx1)
 
     val matchings =
-      if pat1.isType then matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
-      else matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
+      if pat1.isType then matcher.termMatch(scrutinee, pat1)
+      else matcher.termMatch(scrutinee, pat1)
 
     // val matchings = matcher.termMatch(scrutinee, pattern)
     if typeHoles.isEmpty then matchings
