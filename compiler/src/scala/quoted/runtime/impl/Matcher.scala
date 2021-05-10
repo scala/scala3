@@ -6,7 +6,6 @@ import scala.annotation.{Annotation, compileTimeOnly}
 
 import dotty.tools.dotc
 import dotty.tools.dotc.core.Contexts._
-import dotty.tools.dotc.core.Contexts._
 import dotty.tools.dotc.core.StdNames.nme
 
 /** Matches a quoted tree against a quoted pattern tree.
@@ -378,17 +377,19 @@ object Matcher {
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
       def unapply(term: Term)(using Env): Option[term.type] =
-        if freePatternVars(term).isEmpty then Some(term) else None
+        if freePatternVars(term.asInstanceOf).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
-      def freePatternVars(term: Term)(using env: Env): Set[Symbol] =
+      def freePatternVars(term: dotc.ast.tpd.Tree)(using env: Env): Set[dotc.core.Symbols.Symbol] =
+        import dotc.ast.tpd.* // TODO remove
+        import dotc.core.Symbols.* // TODO remove
         val accumulator = new TreeAccumulator[Set[Symbol]] {
-          def foldTree(x: Set[Symbol], tree: Tree)(owner: Symbol): Set[Symbol] =
+          def apply(x: Set[Symbol], tree: Tree)(using Context): Set[Symbol] =
             tree match
-              case tree: Ident if env.contains(tree.symbol) => foldOverTree(x + tree.symbol, tree)(owner)
-              case _ => foldOverTree(x, tree)(owner)
+              case tree: Ident if env.contains(tree.symbol.asInstanceOf) => foldOver(x + tree.symbol, tree)
+              case _ => foldOver(x, tree)
         }
-        accumulator.foldTree(Set.empty, term)(Symbol.spliceOwner)
+        accumulator.apply(Set.empty, term)
     }
 
     private def treeOptMatches(scrutinee: Option[Tree], pattern: Option[Tree])(using Env): Matching = {
