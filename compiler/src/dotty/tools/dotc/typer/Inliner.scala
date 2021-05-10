@@ -21,6 +21,7 @@ import Annotations.Annotation
 import SymDenotations.SymDenotation
 import Inferencing.isFullyDefined
 import config.Printers.inlining
+import config.Feature
 import ErrorReporting.errorTree
 import dotty.tools.dotc.util.{SimpleIdentityMap, SimpleIdentitySet, EqHashMap, SourceFile, SourcePosition, SrcPos}
 import dotty.tools.dotc.parsing.Parsers.Parser
@@ -93,6 +94,7 @@ object Inliner {
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
+    Feature.checkExperimentalDef(tree.symbol, tree)
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary

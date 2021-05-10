@@ -255,6 +255,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
+        // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
            pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
@@ -353,6 +354,7 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
+            annotateExperimental(sym)
             // Add SourceFile annotation to top-level classes
             if sym.owner.is(Package)
                && ctx.compilationUnit.source.exists
@@ -443,5 +445,11 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
      */
     private def normalizeErasedRhs(rhs: Tree, sym: Symbol)(using Context) =
       if (sym.isEffectivelyErased) dropInlines.transform(rhs) else rhs
+
+    private def annotateExperimental(sym: Symbol)(using Context): Unit =
+      if sym.is(Module) && sym.companionClass.hasAnnotation(defn.ExperimentalAnnot) then
+        sym.addAnnotation(defn.ExperimentalAnnot)
+        sym.companionModule.addAnnotation(defn.ExperimentalAnnot)
+
   }
 }

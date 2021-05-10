@@ -3088,7 +3088,7 @@ object Parsers {
           if prefix == nme.experimental
              && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
           then
-            Feature.checkExperimentalFeature("s", imp.srcPos)
+            Feature.checkExperimentalFeature("features", imp.srcPos)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
             if allSourceVersionNames.contains(imported)
