@@ -6,9 +6,12 @@ import scala.annotation.{Annotation, compileTimeOnly}
 
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
+import dotty.tools.dotc.core.Symbols.*
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -119,15 +122,15 @@ object Matcher {
      *  ```
      *  when matching `a * a` with `x * x` the environment will contain `Map(a -> x)`.
      */
-    private type Env = Map[dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol]
+    private type Env = Map[Symbol, Symbol]
 
     inline private def withEnv[T](env: Env)(inline body: Env ?=> T): T = body(using env)
 
-    def termMatch(scrutineeTerm: tpd.Tree, patternTerm: tpd.Tree): Option[Tuple] =
+    def termMatch(scrutineeTerm: Tree, patternTerm: Tree): Option[Tuple] =
       given Env = Map.empty
       scrutineeTerm =?= patternTerm
 
-    def typeTreeMatch(scrutineeTypeTree: tpd.Tree, patternTypeTree: tpd.Tree): Option[Tuple] =
+    def typeTreeMatch(scrutineeTypeTree: Tree, patternTypeTree: Tree): Option[Tuple] =
       given Env = Map.empty
       scrutineeTypeTree =?= patternTypeTree
 
@@ -138,11 +141,11 @@ object Matcher {
       case _ => notMatched
     }
 
-    extension (scrutinees: List[tpd.Tree])
-      private def =?= (patterns: List[tpd.Tree])(using Env)(using DummyImplicit): Matching =
+    extension (scrutinees: List[Tree])
+      private def =?= (patterns: List[Tree])(using Env)(using DummyImplicit): Matching =
         matchLists(scrutinees, patterns)(_ =?= _)
 
-    extension (scrutinee0: tpd.Tree)
+    extension (scrutinee0: Tree)
 
       /** Check that the trees match and return the contents from the pattern holes.
        *  Return None if the trees do not match otherwise return Some of a tuple containing all the contents in the holes.
@@ -152,11 +155,7 @@ object Matcher {
        *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
        *  @return `None` if it did not match or `Some(tup: Tuple)` if it matched where `tup` contains the contents of the holes.
        */
-      private def =?= (pattern0: tpd.Tree)(using Env): Matching =
-        import tpd.* // TODO remove
-        import dotc.core.Flags.* // TODO remove
-        import dotc.core.Types.* // TODO remove
-        import dotc.core.Symbols.* // TODO remove
+      private def =?= (pattern0: Tree)(using Env): Matching =
 
         /* Match block flattening */ // TODO move to cases
         /** Normalize the tree */
@@ -183,15 +182,15 @@ object Matcher {
         // TODO remove
         object TypeTreeTypeTest:
           def unapply(x: Tree): Option[Tree & x.type] = x match
-            case x: (tpd.TypeBoundsTree & x.type) => None
-            case x: (tpd.Tree & x.type) if x.isType => Some(x)
+            case x: (TypeBoundsTree & x.type) => None
+            case x: (Tree & x.type) if x.isType => Some(x)
             case _ => None
         end TypeTreeTypeTest
 
         object Lambda:
           def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
-            val meth = dotc.core.Symbols.newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-            tpd.Closure(meth, tss => rhsFn(meth, tss.head))
+            val meth = newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
+            Closure(meth, tss => rhsFn(meth, tss.head))
         end Lambda
 
         (scrutinee, pattern) match
@@ -199,7 +198,7 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
           case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+              if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                   s.tpe <:< tpt.tpe &&
                   tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
@@ -207,14 +206,14 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
+              if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                   scrutinee.tpe <:< tpt.tpe =>
             matched(quotes.reflect.TreeMethods.asExpr(scrutinee.asInstanceOf[quotes.reflect.Tree]))
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
           case (scrutinee, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
-              if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
+              if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Tree]]).toMap
@@ -236,7 +235,7 @@ object Matcher {
                 ctx.owner,
                 MethodType(names)(
                   _ => argTypes, _ => resType),
-                  (meth, x) => tpd.TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
+                  (meth, x) => TreeOps(bodyFn(x)).changeNonLocalOwners(meth.asInstanceOf))
             matched(quotes.reflect.TreeMethods.asExpr(res.asInstanceOf[quotes.reflect.Tree]))
 
           //
@@ -323,20 +322,20 @@ object Matcher {
 
           /* Match val */
           case (scrutinee @ ValDef(_, tpt1, _), pattern @ ValDef(_, tpt2, _)) if checkValFlags() =>
-            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol])
+            def rhsEnv = summon[Env] + (scrutinee.symbol.asInstanceOf[Symbol] -> pattern.symbol.asInstanceOf[Symbol])
             tpt1 =?= tpt2 &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
 
           /* Match def */
           case (scrutinee @ DefDef(_, paramss1, tpt1, _), pattern @ DefDef(_, paramss2, tpt2, _)) =>
             def rhsEnv: Env =
-              val paramSyms: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] =
+              val paramSyms: List[(Symbol, Symbol)] =
                 for
                   (clause1, clause2) <- paramss1.zip(paramss2)
                   (param1, param2) <- clause1.zip(clause2)
                 yield
-                  param1.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> param2.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
+                  param1.symbol.asInstanceOf[Symbol] -> param2.symbol.asInstanceOf[Symbol]
               val oldEnv: Env = summon[Env]
-              val newEnv: List[(dotc.core.Symbols.Symbol, dotc.core.Symbols.Symbol)] = (scrutinee.symbol.asInstanceOf[dotc.core.Symbols.Symbol] -> pattern.symbol.asInstanceOf[dotc.core.Symbols.Symbol]) :: paramSyms
+              val newEnv: List[(Symbol, Symbol)] = (scrutinee.symbol.asInstanceOf[Symbol] -> pattern.symbol.asInstanceOf[Symbol]) :: paramSyms
               oldEnv ++ newEnv
 
             matchLists(paramss1, paramss2)(_ =?= _)
@@ -373,18 +372,17 @@ object Matcher {
 
     end extension
 
-    /** Does the scrutenne symbol match the pattern symbol? It matches if:
+    /** Does the scrutinee symbol match the pattern symbol? It matches if:
      *   - They are the same symbol
      *   - The scrutinee has is in the environment and they are equivalent
      *   - The scrutinee overrides the symbol of the pattern
      */
-    private def symbolMatch(scrutineeTree: tpd.Tree, patternTree: tpd.Tree)(using Env): Boolean =
-      import tpd.* // TODO remove
+    private def symbolMatch(scrutineeTree: Tree, patternTree: Tree)(using Env): Boolean =
       val scrutinee = scrutineeTree.symbol
 
-      def overridingSymbol(ofclazz: dotc.core.Symbols.Symbol): dotc.core.Symbols.Symbol =
+      def overridingSymbol(ofclazz: Symbol): Symbol =
         if ofclazz.isClass then scrutinee.denot.overridingSymbol(ofclazz.asClass)
-        else dotc.core.Symbols.NoSymbol
+        else NoSymbol
 
       val devirtualizedScrutinee = scrutineeTree match
         case Select(qual, _) =>
@@ -401,13 +399,11 @@ object Matcher {
 
     private object ClosedPatternTerm {
       /** Matches a term that does not contain free variables defined in the pattern (i.e. not defined in `Env`) */
-      def unapply(term: tpd.Tree)(using Env): Option[term.type] =
+      def unapply(term: Tree)(using Env): Option[term.type] =
         if freePatternVars(term).isEmpty then Some(term) else None
 
       /** Return all free variables of the term defined in the pattern (i.e. defined in `Env`) */
-      def freePatternVars(term: dotc.ast.tpd.Tree)(using env: Env): Set[dotc.core.Symbols.Symbol] =
-        import dotc.ast.tpd.* // TODO remove
-        import dotc.core.Symbols.* // TODO remove
+      def freePatternVars(term: Tree)(using env: Env): Set[Symbol] =
         val accumulator = new TreeAccumulator[Set[Symbol]] {
           def apply(x: Set[Symbol], tree: Tree)(using Context): Set[Symbol] =
             tree match
