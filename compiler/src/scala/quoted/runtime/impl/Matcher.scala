@@ -4,6 +4,9 @@ package runtime.impl
 import scala.annotation.internal.sharable
 import scala.annotation.{Annotation, compileTimeOnly}
 
+import dotty.tools.dotc
+import dotty.tools.dotc.core.Contexts._
+
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
  *
@@ -96,7 +99,7 @@ import scala.annotation.{Annotation, compileTimeOnly}
  */
 object Matcher {
 
-  abstract class QuoteMatcher[QCtx <: Quotes & Singleton](val qctx: QCtx) {
+  class QuoteMatcher[QCtx <: Quotes & Singleton](val qctx: QCtx)(using Context) {
 
     // TODO improve performance
 
@@ -105,9 +108,6 @@ object Matcher {
 
     import qctx.reflect._
     import Matching._
-
-    def patternHoleSymbol: Symbol
-    def higherOrderHoleSymbol: Symbol
 
     /** A map relating equivalent symbols from the scrutinee and the pattern
      *  For example in
@@ -179,7 +179,7 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
           case (scrutinee @ Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
-              if patternHole.symbol == patternHoleSymbol &&
+              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
                  s.tpe <:< tpt.tpe &&
                  tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
             matched(scrutinee.asExpr)
@@ -187,14 +187,14 @@ object Matcher {
           /* Term hole */
           // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
           case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
-              if patternHole.symbol == patternHoleSymbol &&
+              if patternHole.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole) &&
                  scrutinee.tpe <:< tpt.tpe =>
             matched(scrutinee.asExpr)
 
           /* Higher order term hole */
           // Matches an open term and wraps it into a lambda that provides the free variables
           case (scrutinee, pattern @ Apply(TypeApply(Ident("higherOrderHole"), List(Inferred())), Repeated(args, _) :: Nil))
-              if pattern.symbol == higherOrderHoleSymbol =>
+              if pattern.symbol.eq(dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole) =>
 
             def bodyFn(lambdaArgs: List[Tree]): Tree = {
               val argsMap = args.map(_.symbol).zip(lambdaArgs.asInstanceOf[List[Term]]).toMap
