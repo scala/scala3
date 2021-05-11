@@ -230,18 +230,18 @@ object QuoteMatcher {
           scrutinee =?= expr2
 
         case _ =>
-          (scrutinee, pattern) match
+          scrutinee match
             /* Match type ascription (a) */
-            case (Typed(expr1, _), _) =>
+            case Typed(expr1, _) =>
               expr1 =?= pattern
 
             /* Match literal */
-            case (Literal(constant1), _) =>
+            case Literal(constant1) =>
               pattern match
                 case Literal(constant2) if constant1 == constant2 => matched
                 case _ => notMatched
 
-            case (ref: RefTree, _) =>
+            case ref: RefTree =>
               pattern match
                 /* Match selection */
                 case Select(qual2, _) if symbolMatch(scrutinee, pattern) =>
@@ -258,21 +258,21 @@ object QuoteMatcher {
                 case _ => notMatched
 
             /* Match application */
-            case (Apply(fn1, args1), _) =>
+            case Apply(fn1, args1) =>
               pattern match
                 case Apply(fn2, args2) =>
                   fn1 =?= fn2 &&& args1 =?= args2
                 case _ => notMatched
 
             /* Match type application */
-            case (TypeApply(fn1, args1), _) =>
+            case TypeApply(fn1, args1) =>
               pattern match
                 case TypeApply(fn2, args2) =>
                   fn1 =?= fn2 &&& args1 =?= args2
                 case _ => notMatched
 
             /* Match block */
-            case (Block(stat1 :: stats1, expr1), _) =>
+            case Block(stat1 :: stats1, expr1) =>
               pattern match
                 case Block(stat2 :: stats2, expr2) =>
                   val newEnv = (stat1, stat2) match {
@@ -287,57 +287,57 @@ object QuoteMatcher {
                 case _ => notMatched
 
             /* Match if */
-            case (If(cond1, thenp1, elsep1), _) =>
+            case If(cond1, thenp1, elsep1) =>
               pattern match
                 case If(cond2, thenp2, elsep2) =>
                   cond1 =?= cond2 &&& thenp1 =?= thenp2 &&& elsep1 =?= elsep2
                 case _ => notMatched
 
             /* Match while */
-            case (WhileDo(cond1, body1), _) =>
+            case WhileDo(cond1, body1) =>
               pattern match
                 case WhileDo(cond2, body2) => cond1 =?= cond2 &&& body1 =?= body2
                 case _ => notMatched
 
             /* Match assign */
-            case (Assign(lhs1, rhs1), _) =>
+            case Assign(lhs1, rhs1) =>
               pattern match
                 case Assign(lhs2, rhs2) => lhs1 =?= lhs2 &&& rhs1 =?= rhs2
                 case _ => notMatched
 
             /* Match new */
-            case (New(tpt1), _) =>
+            case New(tpt1) =>
               pattern match
                 case New(tpt2) if tpt1.tpe.typeSymbol == tpt2.tpe.typeSymbol => matched
                 case _ => notMatched
 
             /* Match this */
-            case (This(_), _) =>
+            case This(_) =>
               pattern match
                 case This(_) if scrutinee.symbol == pattern.symbol => matched
                 case _ => notMatched
 
             /* Match super */
-            case (Super(qual1, mix1), _) =>
+            case Super(qual1, mix1) =>
               pattern match
                 case Super(qual2, mix2) if mix1 == mix2 => qual1 =?= qual2
                 case _ => notMatched
 
             /* Match varargs */
-            case (SeqLiteral(elems1, _), _) =>
+            case SeqLiteral(elems1, _) =>
               pattern match
                 case SeqLiteral(elems2, _) if elems1.size == elems2.size => elems1 =?= elems2
                 case _ => notMatched
 
             /* Match type */
             // TODO remove this?
-            case (TypeTreeTypeTest(scrutinee), _) =>
+            case TypeTreeTypeTest(scrutinee) =>
               pattern match
                 case TypeTreeTypeTest(pattern) if scrutinee.tpe <:< pattern.tpe => matched
                 case _ => notMatched
 
             /* Match val */
-            case (scrutinee @ ValDef(_, tpt1, _), _) =>
+            case scrutinee @ ValDef(_, tpt1, _) =>
               pattern match
                 case pattern @ ValDef(_, tpt2, _) if checkValFlags() =>
                   def rhsEnv = summon[Env] + (scrutinee.symbol -> pattern.symbol)
@@ -345,7 +345,7 @@ object QuoteMatcher {
                 case _ => notMatched
 
             /* Match def */
-            case (scrutinee @ DefDef(_, paramss1, tpt1, _), _) =>
+            case scrutinee @ DefDef(_, paramss1, tpt1, _) =>
               pattern match
                 case pattern @ DefDef(_, paramss2, tpt2, _) =>
                   def rhsEnv: Env =
@@ -363,17 +363,17 @@ object QuoteMatcher {
                     &&& withEnv(rhsEnv)(scrutinee.rhs =?= pattern.rhs)
                 case _ => notMatched
 
-            case (Closure(_, _, tpt1), _) =>
+            case Closure(_, _, tpt1) =>
               pattern match
                 case Closure(_, _, tpt2) => matched // TODO match tpt1 with tpt2?
                 case _ => notMatched
 
-            case (NamedArg(name1, arg1), _) =>
+            case NamedArg(name1, arg1) =>
               pattern match
                 case NamedArg(name2, arg2) if name1 == name2 => arg1 =?= arg2
                 case _ => notMatched
 
-            case (EmptyTree, _) =>
+            case EmptyTree =>
               if pattern.isEmpty then matched
               else notMatched
 
