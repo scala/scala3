@@ -301,14 +301,27 @@ object TastyFormat {
    * is able to read final TASTy documents if the file's
    * `MinorVersion` is strictly less than the current value.
    */
-  final val ExperimentalVersion: Int = 3
+  final val ExperimentalVersion: Int = 0
 
   /**This method implements a binary relation (`<:<`) between two TASTy versions.
+   *
    * We label the lhs `file` and rhs `compiler`.
    * if `file <:< compiler` then the TASTy file is valid to be read.
    *
-   * TASTy versions have a partial order,
-   * for example `a <:< b` and `b <:< a` are both false if `a` and `b` have different major versions.
+   * A TASTy version, e.g. `v := 28.0-3` is composed of three fields:
+   *   - v.major == 28
+   *   - v.minor == 0
+   *   - v.experimental == 3
+   *
+   * TASTy versions have a partial order, for example,
+   * `a <:< b` and `b <:< a` are both false if
+   *   - `a` and `b` have different `major` fields.
+   *   - `a` and `b` have different `experimental` fields, both non-zero.
+   *
+   * A zero value for an `experimental` field is considered
+   * to be a stable TASTy version, and has higher precedence
+   * than a TASTy version with the same `major`/`minor` fields
+   * but a non-zero `experimental` field.
    *
    * We follow the given algorithm:
    * ```
