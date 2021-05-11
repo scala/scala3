@@ -261,11 +261,30 @@ inline def f: Any = summonFrom {
 ## `summonInline`
 
 The shorthand `summonInline` provides a simple way to write a `summon` that is delayed until the call is inlined.
-
+Unlike `summonFrom`, `summonInline` also yields the implicit-not-found error, if a given instance of the summoned
+type is not found.
 ```scala
-transparent inline def summonInline[T]: T = summonFrom {
-   case t: T => t
-}
+import scala.compiletime.summonInline
+import scala.annotation.implicitNotFound
+
+@implicitNotFound("Missing One")
+trait Missing1
+
+@implicitNotFound("Missing Two")
+trait Missing2
+
+trait NotMissing
+given NotMissing = ???
+
+transparent inline def summonInlineCheck[T <: Int](inline t : T) : Any =
+  inline t match
+    case 1 => summonInline[Missing1]
+    case 2 => summonInline[Missing2]
+    case _ => summonInline[NotMissing]
+
+val missing1 = summonInlineCheck(1) // error: Missing One
+val missing2 = summonInlineCheck(2) // error: Missing Two
+val notMissing : NotMissing = summonInlineCheck(3)
 ```
 
 ## Reference
