@@ -181,26 +181,30 @@ object QuoteMatcher {
           case _ => None
       end TypeTreeTypeTest
 
-      val res = (scrutinee, pattern) match
+      val res = pattern match
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-        case (Typed(s, tpt1), Typed(TypeApply(patternHole, tpt :: Nil), tpt2))
+        case Typed(TypeApply(patternHole, tpt :: Nil), tpt2)
             if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
-                s.tpe <:< tpt.tpe &&
-                tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
-          matched(scrutinee)
+               tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
+          scrutinee match
+            case Typed(s, tpt1) if s.tpe <:< tpt.tpe => matched(scrutinee)
+            case _ => notMatched
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-        case (ClosedPatternTerm(scrutinee), TypeApply(patternHole, tpt :: Nil))
+        case TypeApply(patternHole, tpt :: Nil)
             if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                 scrutinee.tpe <:< tpt.tpe =>
-          matched(scrutinee)
+          scrutinee match
+            case ClosedPatternTerm(scrutinee) => matched(scrutinee)
+            case _ => notMatched
+
 
         /* Higher order term hole */
         // Matches an open term and wraps it into a lambda that provides the free variables
-        case (_, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
+        case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
           val names: List[TermName] = args.map {
             case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
@@ -221,12 +225,8 @@ object QuoteMatcher {
           }
           matched(Closure(meth, bodyFn))
 
-        //
-        // Match two equivalent trees
-        //
-
         /* Match type ascription (b) */
-        case (_, Typed(expr2, _)) =>
+        case Typed(expr2, _) =>
           scrutinee =?= expr2
 
         case _ =>
