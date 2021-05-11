@@ -67,8 +67,10 @@ if [ "$PROG_NAME" == "$ScriptingMain" ]; then
   scripting_string="-script $target_script ${scripting_args[@]}"
 fi
 
-# exec here would prevent onExit from being called, leaving terminal in unusable state
 [ -n "$script_trace" ] && set -x
+[ -z "${ConEmuPID-}" -o -n "${cygwin-}" ] && export MSYSTEM= PWD= # workaround for #12405
+
+# exec here would prevent onExit from being called, leaving terminal in unusable state
 eval "\"$JAVACMD\"" \
    ${JAVA_OPTS:-$default_java_opts} \
    "${java_args[@]}" \
