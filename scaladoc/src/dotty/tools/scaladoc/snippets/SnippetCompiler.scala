@@ -32,6 +32,7 @@ class SnippetCompiler(
     val options = scalacOptions.split("\\s+").toList
     val settings =
       options ::: defaultFlags ::: "-classpath" :: classpath :: Nil
+
     new InteractiveDriver(settings)
   }
 

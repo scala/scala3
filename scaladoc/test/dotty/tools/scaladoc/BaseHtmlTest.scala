@@ -35,6 +35,7 @@ class BaseHtmlTest:
             output = dest.toFile,
             docsRoot = docsRoot,
             projectVersion = Some(projectVersion),
+            bootclasspath = dotty.tools.dotc.util.ClasspathFromClassloader(classOf[Predef$].getClassLoader())
           )
         Scaladoc.run(args)(using testContext)
         op(using ProjectContext(dest))

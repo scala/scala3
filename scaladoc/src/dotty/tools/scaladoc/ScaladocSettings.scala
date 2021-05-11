@@ -19,12 +19,13 @@ import dotty.tools.dotc.core.Contexts._
 class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val unsupportedSettings = Seq(
     // Options that we like to support
-    bootclasspath, extdirs, javabootclasspath, encoding, usejavacp,
+    extdirs, javabootclasspath, encoding, usejavacp,
     // Needed for plugin architecture
     plugin,disable,require, pluginsDir, pluginOptions,
     // we need support for sourcepath and sourceroot
     sourcepath, sourceroot
   )
+
 
   val projectName: Setting[String] =
     StringSetting("-project", "project title", "The name of the project.", "", aliases = List("-doc-title"))

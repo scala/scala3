@@ -5,16 +5,23 @@ import dotty.tools.scaladoc.DocContext
 import java.nio.file.Paths
 import java.io.File
 
-class SnippetChecker(val classpath: String, val tastyDirs: Seq[File]):
+import dotty.tools.io.AbstractFile
+import dotty.tools.dotc.fromtasty.TastyFileUtil
+
+class SnippetChecker(val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean):
   private val sep = System.getProperty("path.separator")
   private val cp = List(
-    tastyDirs.map(_.getAbsolutePath()).mkString(sep),
+    tastyFiles
+      .map(_.getAbsolutePath())
+      .map(AbstractFile.getFile(_))
+      .flatMap(t => try { TastyFileUtil.getClassPath(t) } catch { case e: AssertionError => Seq() })
+      .distinct.mkString(sep),
     classpath,
-    System.getProperty("java.class.path")
+    bootclasspath
   ).mkString(sep)
 
 
-  private val compiler: SnippetCompiler = SnippetCompiler(classpath = cp)
+  private val compiler: SnippetCompiler = SnippetCompiler(classpath = cp, scalacOptions = if isScalajs then "-scalajs" else "")
 
   // These constants were found empirically to make snippet compiler
   // report errors in the same position as main compiler.

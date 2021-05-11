@@ -38,7 +38,8 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags, debug: Boolean) 
       output = getTempDir().getRoot,
       projectVersion = Some("1.0"),
       snippetCompiler = List(s"${BuildInfo.test_testcasesSourceRoot}/tests=${flag.flagName}"),
-      snippetCompilerDebug = debug
+      snippetCompilerDebug = debug,
+      bootclasspath = dotty.tools.dotc.util.ClasspathFromClassloader(classOf[Predef$].getClassLoader())
     )
 
   override def withModule(op: DocContext ?=> Module => Unit) =

@@ -54,7 +54,8 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
           name = "Test Project Name",
           output = dest,
           tastyFiles = files,
-          docsRoot = Some("")
+          docsRoot = Some(""),
+          bootclasspath = dotty.tools.dotc.util.ClasspathFromClassloader(classOf[Predef$].getClassLoader())
         )
 
 def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
