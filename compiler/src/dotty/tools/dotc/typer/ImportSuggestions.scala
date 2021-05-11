@@ -167,12 +167,15 @@ trait ImportSuggestions:
       allCandidates.map(_.implicitRef.underlyingRef.symbol).toSet
     }
 
+    def testContext(): Context =
+      ctx.fresh.retractMode(Mode.ImplicitsEnabled).setExploreTyperState()
+
     /** Test whether the head of a given instance matches the expected type `pt`,
      *  ignoring any dependent implicit arguments.
      */
     def shallowTest(ref: TermRef): Boolean =
       System.currentTimeMillis < deadLine
-      && inContext(ctx.fresh.setExploreTyperState()) {
+      && inContext(testContext()) {
         def test(pt: Type): Boolean = pt match
           case ViewProto(argType, OrType(rt1, rt2)) =>
             // Union types do not constrain results, since comparison with a union
@@ -209,7 +212,7 @@ trait ImportSuggestions:
         try
           timer.schedule(task, testOneImplicitTimeOut)
           typedImplicit(candidate, expectedType, argument, span)(
-            using ctx.fresh.setExploreTyperState()).isSuccess
+            using testContext()).isSuccess
         finally
           if task.cancel() then // timer task has not run yet
             assert(!ctx.run.isCancelled)
