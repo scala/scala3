@@ -70,3 +70,25 @@ jobs:
             echo uplading docs to https://scala3doc.virtuslab.com/$DOC_DEST
             az storage container create --name $DOC_DEST --account-name scala3docstorage --public-access container
             az storage blob upload-batch -s scaladoc/output -d $DOC_DEST --account-name scala3docstorage
+
+  stdlib-sourcelinks-test:
+    runs-on: ubuntu-latest
+    if: "(    github.event_name == 'pull_request'
+           && !contains(github.event.pull_request.body, '[skip ci]')
+           && !contains(github.event.pull_request.body, '[skip docs]')
+         )
+         || contains(github.event.ref, 'scaladoc')
+         || contains(github.event.ref, 'scala3doc')
+         || contains(github.event.ref, 'master')"
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: Test sourcelinks to stdlib
+        run: ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test

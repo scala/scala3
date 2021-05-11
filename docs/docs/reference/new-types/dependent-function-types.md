@@ -42,7 +42,7 @@ refinement. In fact, the dependent function type above is just syntactic sugar f
 
 ```scala
 Function1[Entry, Entry#Key]:
-   def apply(e: Entry): e.Key
+  def apply(e: Entry): e.Key
 ```
 
 [More details](./dependent-function-types-spec.md)

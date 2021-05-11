@@ -1,4 +1,5 @@
 package dotty.tools.scaladoc
+package sourcelinks
 
 import java.nio.file._
 import org.junit.Assert._

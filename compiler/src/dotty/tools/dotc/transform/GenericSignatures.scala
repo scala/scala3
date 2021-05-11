@@ -131,10 +131,10 @@ object GenericSignatures {
      */
     def splitIntersection(parents: List[Type])(using Context): (List[Type], List[Type]) =
       val erasedParents = parents.map(erasure)
-      val erasedCls = erasedGlb(erasedParents).classSymbol
+      val erasedTp = erasedGlb(erasedParents)
       parents.zip(erasedParents)
         .partitionMap((parent, erasedParent) =>
-          if erasedParent.classSymbol eq erasedCls then
+          if erasedParent =:= erasedTp then
             Left(parent)
           else
             Right(parent))

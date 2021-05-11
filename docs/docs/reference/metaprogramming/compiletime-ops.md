@@ -17,9 +17,9 @@ import scala.compiletime.constValue
 import scala.compiletime.ops.int.S
 
 transparent inline def toIntC[N]: Int =
-   inline constValue[N] match
-      case 0        => 0
-      case _: S[n1] => 1 + toIntC[n1]
+  inline constValue[N] match
+    case 0        => 0
+    case _: S[n1] => 1 + toIntC[n1]
 
 inline val ctwo = toIntC[2]
 ```
@@ -52,17 +52,17 @@ Using `erasedValue`, we can then define `defaultValue` as follows:
 import scala.compiletime.erasedValue
 
 inline def defaultValue[T] =
-   inline erasedValue[T] match
-      case _: Byte    => Some(0: Byte)
-      case _: Char    => Some(0: Char)
-      case _: Short   => Some(0: Short)
-      case _: Int     => Some(0)
-      case _: Long    => Some(0L)
-      case _: Float   => Some(0.0f)
-      case _: Double  => Some(0.0d)
-      case _: Boolean => Some(false)
-      case _: Unit    => Some(())
-      case _          => None
+  inline erasedValue[T] match
+    case _: Byte    => Some(0: Byte)
+    case _: Char    => Some(0: Char)
+    case _: Short   => Some(0: Short)
+    case _: Int     => Some(0)
+    case _: Long    => Some(0L)
+    case _: Float   => Some(0.0f)
+    case _: Double  => Some(0.0d)
+    case _: Boolean => Some(false)
+    case _: Unit    => Some(())
+    case _          => None
 ```
 
 Then:
@@ -82,9 +82,9 @@ Match_ section above. Here is how `toIntT` can be defined:
 
 ```scala
 transparent inline def toIntT[N <: Nat]: Int =
-   inline scala.compiletime.erasedValue[N] match
-      case _: Zero.type => 0
-      case _: Succ[n] => toIntT[n] + 1
+  inline scala.compiletime.erasedValue[N] match
+    case _: Zero.type => 0
+    case _: Succ[n] => toIntT[n] + 1
 
 inline val two = toIntT[Succ[Succ[Zero.type]]]
 ```
@@ -109,7 +109,7 @@ produces an error message containing the given `msgStr`.
 import scala.compiletime.{error, code}
 
 inline def fail() =
-   error("failed for a reason")
+  error("failed for a reason")
 
 fail() // error: failed for a reason
 ```
@@ -118,7 +118,7 @@ or
 
 ```scala
 inline def fail(p1: => Any) =
-   error(code"failed on: $p1")
+  error(code"failed on: $p1")
 
 fail(identity("foo")) // error: failed on: identity("foo")
 ```
@@ -162,8 +162,8 @@ import scala.compiletime.ops.*
 import scala.annotation.infix
 
 type +[X <: Int | String, Y <: Int | String] = (X, Y) match
-   case (Int, Int) => int.+[X, Y]
-   case (String, String) => string.+[X, Y]
+  case (Int, Int) => int.+[X, Y]
+  case (String, String) => string.+[X, Y]
 
 val concat: "a" + "b" = "ab"
 val addition: 1 + 1 = 2
@@ -183,10 +183,10 @@ not. We can create a set of implicit definitions like this:
 trait SetFor[T, S <: Set[T]]
 
 class LowPriority:
-   implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
+  implicit def hashSetFor[T]: SetFor[T, HashSet[T]] = ...
 
 object SetsFor extends LowPriority:
-   implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
+  implicit def treeSetFor[T: Ordering]: SetFor[T, TreeSet[T]] = ...
 ```
 
 Clearly, this is not pretty. Besides all the usual indirection of implicit
@@ -212,8 +212,8 @@ would use it as follows:
 import scala.compiletime.summonFrom
 
 inline def setFor[T]: Set[T] = summonFrom {
-   case ord: Ordering[T] => new TreeSet[T](using ord)
-   case _                => new HashSet[T]
+  case ord: Ordering[T] => new TreeSet[T](using ord)
+  case _                => new HashSet[T]
 }
 ```
 
@@ -228,8 +228,8 @@ Alternatively, one can also use a pattern-bound given instance, which avoids the
 import scala.compiletime.summonFrom
 
 inline def setFor[T]: Set[T] = summonFrom {
-   case given Ordering[T] => new TreeSet[T]
-   case _                 => new HashSet[T]
+  case given Ordering[T] => new TreeSet[T]
+  case _                 => new HashSet[T]
 }
 ```
 
@@ -254,7 +254,7 @@ given a1: A = new A
 given a2: A = new A
 
 inline def f: Any = summonFrom {
-   case given _: A => ???  // error: ambiguous givens
+  case given _: A => ???  // error: ambiguous givens
 }
 ```
 

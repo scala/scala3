@@ -35,12 +35,12 @@ Here's an example of a structural type `Person`:
 
 ```scala
   class Record(elems: (String, Any)*) extends Selectable:
-     private val fields = elems.toMap
-     def selectDynamic(name: String): Any = fields(name)
+    private val fields = elems.toMap
+    def selectDynamic(name: String): Any = fields(name)
 
   type Person = Record { val name: String; val age: Int }
  ```
- 
+
 The type `Person` adds a _refinement_ to its parent type `Record` that defines the two fields `name` and `age`. We say the refinement is _structural_ since  `name` and `age` are not defined in the parent type. But they exist nevertheless as members of class `Person`. For instance, the following
 program would print  "Emma is 42 years old.":
 
@@ -135,11 +135,11 @@ than other classes. Here is an example:
 
 ```scala
 trait Vehicle extends reflect.Selectable:
-   val wheels: Int
+  val wheels: Int
 
 val i3 = new Vehicle: // i3: Vehicle { val range: Int }
-   val wheels = 4
-   val range = 240
+  val wheels = 4
+  val range = 240
 
 i3.range
 ```
@@ -153,11 +153,11 @@ defines the necessary `selectDynamic` member.
 
 ```scala
 trait Vehicle:
-   val wheels: Int
+  val wheels: Int
 
 val i3 = new Vehicle: // i3: Vehicle
-   val wheels = 4
-   val range = 240
+  val wheels = 4
+  val range = 240
 
 i3.range // error: range is not a member of `Vehicle`
 ```

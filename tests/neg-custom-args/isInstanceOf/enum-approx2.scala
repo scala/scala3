@@ -5,5 +5,6 @@ class Test {
   def eval(e: Fun[Int, Int]) = e match {
     case Fun(x: Fun[Int, Double]) => ???          // error
     case Fun(x: Exp[Int => String]) => ???        // error
+    case _ =>
   }
 }

@@ -1,0 +1,2 @@
+8: Pattern Match Exhaustivity: Foo(Inactive)
+17: Pattern Match Exhaustivity: Foo(Status.Active(_))

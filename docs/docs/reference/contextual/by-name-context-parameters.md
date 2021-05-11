@@ -7,14 +7,14 @@ Context parameters can be declared by-name to avoid a divergent inferred expansi
 
 ```scala
 trait Codec[T]:
-   def write(x: T): Unit
+  def write(x: T): Unit
 
 given intCodec: Codec[Int] = ???
 
 given optionCodec[T](using ev: => Codec[T]): Codec[Option[T]] with
-   def write(xo: Option[T]) = xo match
-      case Some(x) => ev.write(x)
-      case None =>
+  def write(xo: Option[T]) = xo match
+    case Some(x) => ev.write(x)
+    case None =>
 
 val s = summon[Codec[Option[Int]]]
 
@@ -52,7 +52,7 @@ In the example above, the definition of `s` would be expanded as follows.
 
 ```scala
 val s = summon[Test.Codec[Option[Int]]](
-   optionCodec[Int](using intCodec)
+  optionCodec[Int](using intCodec)
 )
 ```
 
