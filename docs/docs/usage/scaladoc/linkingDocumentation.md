@@ -1,5 +1,5 @@
 ---
-title: API Documentation
+title: Linking documentation
 ---
 
 # {{ page.title }}

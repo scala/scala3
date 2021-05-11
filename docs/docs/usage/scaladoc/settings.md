@@ -40,17 +40,17 @@ Revision (branch or ref) used to build project project. Useful with sourcelinks 
 Source links provide a mapping between file in documentation and code repository.
 
 Accepted formats:
-<\sub-path>=<\source-link>
-<\source-link>
+\<sub-path>=\<source-link>
+\<source-link>
 
-where <\source-link> is one of following:
+where <source-link> is one of following:
  - `github://<organization>/<repository>[/revision][#subpath]`
      will match https://github.com/$organization/$repository/\[blob|edit]/$revision\[/$subpath]/$filePath\[$lineNumber]
      when revision is not provided then requires revision to be specified as argument for scaladoc
  - `gitlab://<organization>/<repository>`
      will match https://gitlab.com/$organization/$repository/-/\[blob|edit]/$revision\[/$subpath]/$filePath\[$lineNumber]
      when revision is not provided then requires revision to be specified as argument for scaladoc
- - <\scaladoc-template>
+ - \<scaladoc-template>
 
 <scaladoc-template> is a format for `doc-source-url` parameter scaladoc.
 NOTE: We only supports `€{FILE_PATH_EXT}`, `€{TPL_NAME}`, `€{FILE_EXT}`,

@@ -121,8 +121,8 @@ Scaladoc provides two syntax parsers: `markdown` (default) or `wikidoc`.
 
 #### Markdown
 
-Markdown uses commonmark flavour to parse docstring, however it can understand `wikidoc` links.
-For more info about wiki links look at this [chapter](#linking-to-api)
+Markdown uses [commonmark flavour](https://spec.commonmark.org/current/) with extension of `wikidoc` links for referencing convenience.
+
 
 #### Wikidoc
 
@@ -141,6 +141,8 @@ __underline__
 [[entity link]], e.g. [[scala.collection.Seq]]
 [[https://external.link External Link]], e.g. [[https://scala-lang.org Scala Language Site]]
 ```
+
+For more info about wiki links look at this [chapter](#linking-to-api)
 
 Other formatting notes
 
@@ -179,10 +181,8 @@ More details on writing Scaladoc
 
 Further information on the formatting and style recommendations can be found in Scala-lang scaladoc style guide.
 
-
-
 ## Linking to API
 
 Scaladoc allows linking to API documentation with Wiki-style links. Linking to
 `scala.collection.immutable.List` is as simple as
-`[[scala.collection.immutable.List]]`. For more information on the exact syntax, see [doc comment documentation](./docComments.html#definition-links).
+`[[scala.collection.immutable.List]]`. For more information on the exact syntax, see [doc comment documentation](./linkingDocumentation.html#definition-links).
