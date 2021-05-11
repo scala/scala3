@@ -187,12 +187,6 @@ object Matcher {
             case _ => None
         end TypeTreeTypeTest
 
-        object Lambda:
-          def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
-            val meth = newSymbol(owner, nme.ANON_FUN, Synthetic | Method, tpe)
-            Closure(meth, tss => rhsFn(meth, tss.head))
-        end Lambda
-
         (scrutinee, pattern) match
 
           /* Term hole */
@@ -214,29 +208,24 @@ object Matcher {
           // Matches an open term and wraps it into a lambda that provides the free variables
           case (scrutinee, pattern @ Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil))
               if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
-
-            def bodyFn(lambdaArgs: List[Tree]): Tree = {
-              val argsMap = args.map(_.symbol).zip(lambdaArgs).toMap
-              new TreeMap {
-                override def transform(tree: Tree)(using Context): Tree =
-                  tree match
-                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
-                    case tree => super.transform(tree)
-              }.transform(scrutinee)
-            }
             val names: List[TermName] = args.map {
               case Block(List(DefDef(nme.ANON_FUN, _, _, Apply(Ident(name), _))), _) => name.asTermName
               case arg => arg.symbol.name.asTermName
             }
             val argTypes = args.map(x => x.tpe.widenTermRefExpr)
-            val resType = pattern.tpe
-            val res =
-              Lambda(
-                ctx.owner,
-                MethodType(names)(
-                  _ => argTypes, _ => resType),
-                  (meth, x) => TreeOps(bodyFn(x)).changeNonLocalOwners(meth))
-            matched(res)
+            val methTpe = MethodType(names)(_ => argTypes, _ => pattern.tpe)
+            val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, methTpe)
+            def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+              val argsMap = args.map(_.symbol).zip(lambdaArgss.head).toMap
+              val body = new TreeMap {
+                override def transform(tree: Tree)(using Context): Tree =
+                  tree match
+                    case tree: Ident => summon[Env].get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
+                    case tree => super.transform(tree)
+              }.transform(scrutinee)
+              TreeOps(body).changeNonLocalOwners(meth)
+            }
+            matched(Closure(meth, bodyFn))
 
           //
           // Match two equivalent trees
