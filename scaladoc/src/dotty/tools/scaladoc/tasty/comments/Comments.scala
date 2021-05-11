@@ -13,7 +13,7 @@ import scala.quoted._
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.wiki.Paragraph
 import dotty.tools.scaladoc.DocPart
-import dotty.tools.scaladoc.tasty.SymOpsWithLinkCache
+import dotty.tools.scaladoc.tasty.{ SymOpsWithLinkCache, SymOps }
 import collection.JavaConverters._
 import dotty.tools.scaladoc.snippets._
 
@@ -89,6 +89,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
 
   object SymOpsWithLinkCache extends SymOpsWithLinkCache
   export SymOpsWithLinkCache._
+  import SymOps._
 
   def resolveLink(queryStr: String): DocLink =
     if SchemeUri.matches(queryStr) then DocLink.ToURL(queryStr)

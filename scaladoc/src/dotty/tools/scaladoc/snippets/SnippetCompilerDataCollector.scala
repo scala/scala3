@@ -2,13 +2,12 @@ package dotty.tools.scaladoc
 package snippets
 
 import scala.quoted._
-import dotty.tools.scaladoc.tasty.SymOps
+import dotty.tools.scaladoc.tasty.SymOps._
 import dotty.tools.dotc.core._
 
 class SnippetCompilerDataCollector[Q <: Quotes](val qctx: Q):
   import qctx.reflect._
-  object SymOps extends SymOps[qctx.type](qctx)
-  export SymOps._
+  given qctx.type = qctx
 
   def getSnippetCompilerData(sym: Symbol, originalSym: Symbol): SnippetCompilerData =
     val packageName = sym.packageName
