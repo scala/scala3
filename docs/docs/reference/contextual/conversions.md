@@ -7,12 +7,12 @@ Implicit conversions are defined by given instances of the `scala.Conversion` cl
 This class is defined in package `scala` as follows:
 ```scala
 abstract class Conversion[-T, +U] extends (T => U):
-   def apply (x: T): U
+  def apply (x: T): U
 ```
 For example, here is an implicit conversion from `String` to `Token`:
 ```scala
 given Conversion[String, Token] with
-   def apply(str: String): Token = new KeyWord(str)
+  def apply(str: String): Token = new KeyWord(str)
 ```
 Using an alias this can be expressed more concisely as:
 ```scala
@@ -38,20 +38,20 @@ primitive number types to subclasses of `java.lang.Number`. For instance, the
 conversion from `Int` to `java.lang.Integer` can be defined as follows:
    ```scala
    given int2Integer: Conversion[Int, java.lang.Integer] =
-      java.lang.Integer.valueOf(_)
+     java.lang.Integer.valueOf(_)
    ```
 
 2. The "magnet" pattern is sometimes used to express many variants of a method. Instead of defining overloaded versions of the method, one can also let the method take one or more arguments of specially defined "magnet" types, into which various argument types can be converted. Example:
    ```scala
    object Completions:
 
-      // The argument "magnet" type
-      enum CompletionArg:
-         case Error(s: String)
-         case Response(f: Future[HttpResponse])
-         case Status(code: Future[StatusCode])
+     // The argument "magnet" type
+     enum CompletionArg:
+       case Error(s: String)
+       case Response(f: Future[HttpResponse])
+       case Status(code: Future[StatusCode])
 
-      object CompletionArg:
+     object CompletionArg:
 
        // conversions defining the possible arguments to pass to `complete`
        // these always come with CompletionArg
@@ -59,16 +59,16 @@ conversion from `Int` to `java.lang.Integer` can be defined as follows:
        //
        //   CompletionArg.fromStatusCode(statusCode)
 
-         given fromString    : Conversion[String, CompletionArg]               = Error(_)
-         given fromFuture    : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
-         given fromStatusCode: Conversion[Future[StatusCode], CompletionArg]   = Status(_)
-      end CompletionArg
-      import CompletionArg.*
+       given fromString    : Conversion[String, CompletionArg]               = Error(_)
+       given fromFuture    : Conversion[Future[HttpResponse], CompletionArg] = Response(_)
+       given fromStatusCode: Conversion[Future[StatusCode], CompletionArg]   = Status(_)
+     end CompletionArg
+     import CompletionArg.*
 
-      def complete[T](arg: CompletionArg) = arg match
-         case Error(s) => ...
-         case Response(f) => ...
-         case Status(code) => ...
+     def complete[T](arg: CompletionArg) = arg match
+       case Error(s) => ...
+       case Response(f) => ...
+       case Status(code) => ...
 
    end Completions
    ```

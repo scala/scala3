@@ -54,28 +54,28 @@ instance, here is how they can support the "builder pattern", where
 the aim is to construct tables like this:
 ```scala
   table {
-     row {
-        cell("top left")
-        cell("top right")
-     }
-     row {
-        cell("bottom left")
-        cell("bottom right")
-     }
+    row {
+      cell("top left")
+      cell("top right")
+    }
+    row {
+      cell("bottom left")
+      cell("bottom right")
+    }
   }
 ```
 The idea is to define classes for `Table` and `Row` that allow the
 addition of elements via `add`:
 ```scala
   class Table:
-     val rows = new ArrayBuffer[Row]
-     def add(r: Row): Unit = rows += r
-     override def toString = rows.mkString("Table(", ", ", ")")
+    val rows = new ArrayBuffer[Row]
+    def add(r: Row): Unit = rows += r
+    override def toString = rows.mkString("Table(", ", ", ")")
 
   class Row:
-     val cells = new ArrayBuffer[Cell]
-     def add(c: Cell): Unit = cells += c
-     override def toString = cells.mkString("Row(", ", ", ")")
+    val cells = new ArrayBuffer[Cell]
+    def add(c: Cell): Unit = cells += c
+    override def toString = cells.mkString("Row(", ", ", ")")
 
   case class Cell(elem: String)
 ```
@@ -84,9 +84,9 @@ with context function types as parameters to avoid the plumbing boilerplate
 that would otherwise be necessary.
 ```scala
   def table(init: Table ?=> Unit) =
-     given t: Table = Table()
-     init
-     t
+    given t: Table = Table()
+    init
+    t
 
   def row(init: Row ?=> Unit)(using t: Table) =
      given r: Row = Row()
@@ -117,14 +117,14 @@ As a larger example, here is a way to define constructs for checking arbitrary p
 
 ```scala
 object PostConditions:
-   opaque type WrappedResult[T] = T
+  opaque type WrappedResult[T] = T
 
-   def result[T](using r: WrappedResult[T]): T = r
+  def result[T](using r: WrappedResult[T]): T = r
 
-   extension [T](x: T)
-      def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
-         assert(condition(using x))
-         x
+  extension [T](x: T)
+    def ensuring(condition: WrappedResult[T] ?=> Boolean): T =
+      assert(condition(using x))
+      x
 end PostConditions
 import PostConditions.{ensuring, result}
 
@@ -137,14 +137,13 @@ scope to pass along to the `result` method. `WrappedResult` is a fresh type, to 
 that we do not get unwanted givens in scope (this is good practice in all cases
 where context parameters are involved). Since `WrappedResult` is an opaque type alias, its
 values need not be boxed, and since `ensuring` is added as an extension method, its argument
-does not need boxing either. Hence, the implementation of `ensuring` is as about as efficient
-as the best possible code one could write by hand:
+does not need boxing either. Hence, the implementation of `ensuring` is close in efficiency to the best possible code one could write by hand:
 
 ```scala
 val s =
-   val result = List(1, 2, 3).sum
-   assert(result == 6)
-   result
+  val result = List(1, 2, 3).sum
+  assert(result == 6)
+  result
 ```
 ### Reference
 

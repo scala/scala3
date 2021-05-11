@@ -10,11 +10,11 @@ The syntactical precedence of match expressions has been changed.
 
     ```scala
     xs match {
-       case Nil => "empty"
-       case _   => "nonempty"
+      case Nil => "empty"
+      case _   => "nonempty"
     } match {
-       case "empty"    => 0
-       case "nonempty" => 1
+      case "empty"    => 0
+      case "nonempty" => 1
     }
     ```
 
@@ -22,19 +22,19 @@ The syntactical precedence of match expressions has been changed.
 
     ```scala
     xs match
-       case Nil => "empty"
-       case _   => "nonempty"
+      case Nil => "empty"
+      case _   => "nonempty"
     match
-       case "empty" => 0
-       case "nonempty" => 1
+      case "empty" => 0
+      case "nonempty" => 1
     ```
 
  2. `match` may follow a period:
 
      ```scala
      if xs.match
-        case Nil => false
-        case _   => true
+       case Nil => false
+       case _   => true
      then "nonempty"
      else "empty"
      ```

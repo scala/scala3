@@ -10,22 +10,22 @@ class BitMap
 class InkJet
 
 class Printer:
-   type PrinterType
-   def print(bits: BitMap): Unit = ???
-   def status: List[String] = ???
+  type PrinterType
+  def print(bits: BitMap): Unit = ???
+  def status: List[String] = ???
 
 class Scanner:
-   def scan(): BitMap = ???
-   def status: List[String] = ???
+  def scan(): BitMap = ???
+  def status: List[String] = ???
 
 class Copier:
-   private val printUnit = new Printer { type PrinterType = InkJet }
-   private val scanUnit = new Scanner
+  private val printUnit = new Printer { type PrinterType = InkJet }
+  private val scanUnit = new Scanner
 
-   export scanUnit.scan
-   export printUnit.{status => _, *}
+  export scanUnit.scan
+  export printUnit.{status => _, *}
 
-   def status: List[String] = printUnit.status ++ scanUnit.status
+  def status: List[String] = printUnit.status ++ scanUnit.status
 ```
 
 The two `export` clauses define the following _export aliases_ in class `Copier`:
