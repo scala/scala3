@@ -30,7 +30,9 @@ class Semantic {
    *
    * `Warm` and `This` will be addresses refer to the abstract heap
    */
-  trait Value
+  trait Value {
+    def show: String = this.toString()
+  }
 
   /** A transitively initialized object */
   case object Hot extends Value
@@ -47,7 +49,7 @@ class Semantic {
   * needed to finitize addresses. E.g. OOPSLA 2020 paper restricts
   * args to be either `Hot` or `Cold`
   */
-  case class Addr(klass: Symbol, args: List[Value]) extends Value
+  case class Addr(klass: Symbol, args: List[Value], outer: Value) extends Value
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Addr, klass: Symbol) extends Value
@@ -58,8 +60,15 @@ class Semantic {
    */
   case class RefSet(refs: List[Addr | Fun]) extends Value
 
-  /** Object stores abstract values for all fields and the outer. */
-  case class Objekt(klass: Symbol, fields: Map[Symbol, Value], outer: Value)
+  /** Object stores abstract values for all fields and the outer.
+   *
+   *  Theoretically we only need to store the outer for the concrete class,
+   *  as all other outers are determined.
+   *
+   *  From performance reasons, we cache the immediate outer for all classes
+   *  in the inheritance hierarchy.
+   */
+  case class Objekt(klass: Symbol, fields: Map[Symbol, Value], outers: Map[ClassSymbol, Value])
 
   /** Abstract heap stores abstract objects
    *
@@ -285,7 +294,14 @@ class Semantic {
 
       case tp @ ThisType(tref) =>
         if tref.symbol.is(Flags.Package) then Result(Hot, heap, noErrors)
-        else resolveThis(tp, thisV: Value, klass: ClassSymbol, heap: Heap)
+        else
+          val value =
+            thisV match
+            case Hot => Hot
+            case addr: Addr =>
+              resolveThis(tp, addr, klass, heap, source)
+            case _ => ???
+          Result(value, heap, noErrors)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -297,8 +313,16 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(tp: Type, thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): Result = trace("resolving " + tp.show, printer, res => res.asInstanceOf[Result].show) {
-    ???
+  def resolveThis(tp: ThisType, thisV: Value, klass: ClassSymbol, heap: Heap, source: Tree)(using Context): Value = trace("resolving " + tp.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+    if tp.classSymbol == klass then thisV
+    else
+      thisV match
+        case Hot => Hot
+        case thisV: Addr =>
+          val outer = heap(thisV).outers.getOrElse(klass, Hot)
+          val outerCls = klass.owner.enclosingClass.asClass
+          resolveThis(tp, outer, outerCls, heap, source)
+        case _ => ???
   }
 
   /** Initialize an abstract object */
