@@ -100,10 +100,6 @@
 [submodule "community-build/community-projects/requests-scala"]
 	path = community-build/community-projects/requests-scala
 	url = https://github.com/dotty-staging/requests-scala.git
-[submodule "community-build/community-projects/cats-effect-2"]
-	path = community-build/community-projects/cats-effect-2
-	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/2.x
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git
@@ -196,3 +192,12 @@
 [submodule "community-build/community-projects/scalatestplus-testng"]
 	path = community-build/community-projects/scalatestplus-testng
 	url = https://github.com/dotty-staging/scalatestplus-testng.git
+[submodule "community-build/community-projects/munit-cats-effect"]
+	path = community-build/community-projects/munit-cats-effect
+	url = https://github.com/dotty-staging/munit-cats-effect.git
+[submodule "community-build/community-projects/scalacheck-effect"]
+	path = community-build/community-projects/scalacheck-effect
+	url = https://github.com/dotty-staging/scalacheck-effect.git
+[submodule "community-build/community-projects/fs2"]
+	path = community-build/community-projects/fs2
+	url = https://github.com/dotty-staging/fs2.git
