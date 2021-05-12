@@ -183,11 +183,12 @@ object Parsers {
     def isIdent = in.isIdent
     def isIdent(name: Name) = in.isIdent(name)
     def isErased = isIdent(nme.erased) && in.erasedEnabled
-    def isSimpleLiteral =
-      simpleLiteralTokens.contains(in.token)
-      || isIdent(nme.raw.MINUS) && numericLitTokens.contains(in.lookahead.token)
-    def isLiteral = literalTokens contains in.token
-    def isNumericLit = numericLitTokens contains in.token
+    def isNegatedNumber =
+      isIdent(nme.raw.MINUS)
+      && numericLitTokens.contains(in.lookahead.token)
+      && in.lookahead.offset == in.offset + 1
+    def isSimpleLiteral = simpleLiteralTokens.contains(in.token) || isNegatedNumber
+    def isLiteral = literalTokens.contains(in.token) || isNegatedNumber
     def isTemplateIntro = templateIntroTokens contains in.token
     def isDclIntro = dclIntroTokens contains in.token
     def isStatSeqEnd = in.isNestedEnd || in.token == EOF || in.token == RPAREN
@@ -1074,7 +1075,7 @@ object Parsers {
      * -- not yet      |  Singleton ‘[’ Types ‘]’
      */
     def singleton(): Tree =
-      if isSimpleLiteral then simpleLiteral()
+      if isSimpleLiteral then literal(inTypeOrSingleton = true)
       else dotSelectors(simpleRef())
 
     /** SimpleLiteral     ::=  [‘-’] integerLiteral
@@ -1082,16 +1083,7 @@ object Parsers {
      *                      |  booleanLiteral
      *                      |  characterLiteral
      *                      |  stringLiteral
-     */
-    def simpleLiteral(): Tree =
-      if isIdent(nme.raw.MINUS) then
-        val start = in.offset
-        in.nextToken()
-        literal(negOffset = start, inTypeOrSingleton = true)
-      else
-        literal(inTypeOrSingleton = true)
-
-    /** Literal           ::=  SimpleLiteral
+     * Literal            ::=  SimpleLiteral
      *                      |  processedStringLiteral
      *                      |  symbolLiteral
      *                      |  ‘null’
@@ -1099,9 +1091,8 @@ object Parsers {
      *  @param negOffset   The offset of a preceding `-' sign, if any.
      *                     If the literal is not negated, negOffset == in.offset.
      */
-    def literal(negOffset: Int = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
-      def literalOf(token: Token): Tree = {
-        val isNegated = negOffset < in.offset
+    def literal(start: Offset = in.offset, inPattern: Boolean = false, inTypeOrSingleton: Boolean = false, inStringInterpolation: Boolean = false): Tree = {
+      def literalOf(token: Token, isNegated: Boolean = false): Tree = {
         def digits0 = in.removeNumberSeparators(in.strVal)
         def digits = if (isNegated) "-" + digits0 else digits0
         if !inTypeOrSingleton then
@@ -1137,15 +1128,15 @@ object Parsers {
         val t = in.token match {
           case STRINGLIT | STRINGPART =>
             val value = in.strVal
-            atSpan(negOffset, negOffset, negOffset + value.length) { Literal(Constant(value)) }
+            atSpan(start, start, start + value.length) { Literal(Constant(value)) }
           case _ =>
             syntaxErrorOrIncomplete(IllegalLiteral())
-            atSpan(negOffset) { Literal(Constant(null)) }
+            atSpan(start) { Literal(Constant(null)) }
         }
         in.nextToken()
         t
       }
-      else atSpan(negOffset) {
+      else atSpan(start) {
         if (in.token == QUOTEID)
           if ((staged & StageKind.Spliced) != 0 && Chars.isIdentifierStart(in.name(0))) {
             val t = atSpan(in.offset + 1) {
@@ -1173,11 +1164,12 @@ object Parsers {
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal) }
         else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
-        else {
-          val t = literalOf(in.token)
+        else
+          val isNegated = isIdent(nme.raw.MINUS)
+          if isNegated then in.nextToken()
+          val t = literalOf(in.token, isNegated)
           in.nextToken()
           t
-        }
       }
     }
 
@@ -1217,7 +1209,7 @@ object Parsers {
         nextSegment(in.offset + offsetCorrection)
         offsetCorrection = 0
       if (in.token == STRINGLIT)
-        segmentBuf += literal(inPattern = inPattern, negOffset = in.offset + offsetCorrection, inStringInterpolation = true)
+        segmentBuf += literal(inPattern = inPattern, start = in.offset + offsetCorrection, inStringInterpolation = true)
 
       InterpolatedString(interpolator, segmentBuf.toList)
     }
@@ -1576,7 +1568,7 @@ object Parsers {
      */
     def simpleType(): Tree =
       if isSimpleLiteral then
-        SingletonTypeTree(simpleLiteral())
+        SingletonTypeTree(literal(inTypeOrSingleton = true))
       else if in.token == USCORE then
         if ctx.settings.YkindProjector.value == "underscores" then
           val start = in.skipToken()
@@ -2202,12 +2194,10 @@ object Parsers {
       if isIdent && nme.raw.isUnary(in.name)
          && in.canStartExprTokens.contains(in.lookahead.token)
       then
-        val start = in.offset
-        val op = termIdent()
-        if (op.name == nme.raw.MINUS && isNumericLit)
-          simpleExprRest(literal(start), location, canApply = true)
+        if isNegatedNumber then
+          simpleExprRest(literal(), location, canApply = true)
         else
-          atSpan(start) { PrefixOp(op, simpleExpr(location)) }
+          atSpan(in.offset) { PrefixOp(termIdent(), simpleExpr(location)) }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
@@ -2689,9 +2679,8 @@ object Parsers {
      */
     def simplePattern(): Tree = in.token match {
       case IDENTIFIER | BACKQUOTED_IDENT | THIS | SUPER =>
-        simpleRef() match
-          case id @ Ident(nme.raw.MINUS) if isNumericLit => literal(startOffset(id))
-          case t => simplePatternRest(t)
+        if isNegatedNumber then literal()
+        else simplePatternRest(simpleRef())
       case USCORE =>
         wildcardIdent()
       case LPAREN =>

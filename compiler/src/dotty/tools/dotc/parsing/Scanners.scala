@@ -759,21 +759,7 @@ object Scanners {
             putChar('/')
             getOperatorRest()
           }
-        case '0' =>
-          def fetchLeadingZero(): Unit = {
-            nextChar()
-            ch match {
-              case 'x' | 'X' => base = 16 ; nextChar()
-              //case 'b' | 'B' => base = 2  ; nextChar()
-              case _         => base = 10 ; putChar('0')
-            }
-            if (base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0)
-              error("invalid literal number")
-          }
-          fetchLeadingZero()
-          getNumber()
-        case '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
-          base = 10
+        case '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' =>
           getNumber()
         case '`' =>
           getBackquotedIdent()
@@ -1332,9 +1318,20 @@ object Scanners {
       if (isIdentifierPart(ch) && ch >= ' ')
         error("Invalid literal number")
 
-    /** Read a number into strVal and set base
-    */
+    /** Read a number into strVal and set base.
+     *  @pre  ch in '0'..'9'.
+     */
     protected def getNumber(): Unit = {
+      if ch == '0' then
+        nextChar()
+        ch match
+          case 'x' | 'X' => base = 16 ; nextChar()
+          //case 'b' | 'B' => base = 2  ; nextChar()
+          case _         => base = 10 ; putChar('0')
+        if base != 10 && !isNumberSeparator(ch) && digit2int(ch, base) < 0 then
+          error("invalid literal number")
+      else base = 10
+
       while (isNumberSeparator(ch) || digit2int(ch, base) >= 0) {
         putChar(ch)
         nextChar()
