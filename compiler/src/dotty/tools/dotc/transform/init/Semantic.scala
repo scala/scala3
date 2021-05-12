@@ -196,25 +196,22 @@ class Semantic {
         assert(name.isTermName, "type trees should not reach here")
         cases(expr.tpe, thisV, klass, heap, expr)
 
-      // case supert: Super => Handled in Apply case
-
-      case Apply(fun, args) =>
+      case NewExpr(newExpr, ctor, argss) =>
         ???
 
-      case TypeApply(fun, _) =>
+      // case supert: Super => Handled in Apply case
+
+      case Call(ref, argss) =>
         ???
 
       case Select(qualifier, name) =>
         ???
 
       case _: This =>
-        ???
+        cases(expr.tpe, thisV, klass, heap, expr)
 
       case Literal(_) =>
         Result(Hot, heap, noErrors)
-
-      case New(tpt) =>
-        ???
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, heap, noErrors)
@@ -327,4 +324,31 @@ class Semantic {
 
   /** Initialize an abstract object */
   def init(klass: Symbol, thisV: Addr, heap: Heap): Result = ???
+
+// ----- Utility methods and extractors --------------------------------
+
+  object Call {
+    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Tree]])] =
+      tree match
+      case Apply(fn, args) =>
+        unapply(fn) match
+        case Some((ref, args0)) => Some((ref, args0 :+ args))
+        case None => None
+
+      case TypeApply(fn, targs) =>
+        unapply(fn) match
+        case Some((ref, args)) => Some((ref, args :+ targs))
+        case None => None
+
+      case ref: RefTree if ref.symbol.is(Flags.Method) =>
+        Some((ref, Nil))
+  }
+
+  object NewExpr {
+    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, List[List[Tree]])] =
+      tree match
+      case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
+        Some((newTree, fn.symbol, argss))
+      case _ => None
+  }
 }
