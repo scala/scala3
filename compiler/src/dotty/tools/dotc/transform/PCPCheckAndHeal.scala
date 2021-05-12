@@ -66,8 +66,14 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       checkAnnotations(tree)
       super.transform(tree)
     else tree match {
-
-      case _: TypeTree | _: RefTree if tree.isType  =>
+      case tree: TypeTree  =>
+        val tree1 = treeify(tree)
+        if tree ne tree1 then transform(tree1.withSpan(tree.span))
+        else
+          val healedType = healType(tree.srcPos)(tree.tpe)
+          if healedType == tree.tpe then tree
+          else TypeTree(healedType).withSpan(tree.span)
+      case _: RefTree if tree.isType  =>
         val healedType = healType(tree.srcPos)(tree.tpe)
         if healedType == tree.tpe then tree
         else TypeTree(healedType).withSpan(tree.span)
@@ -274,6 +280,18 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
           | - but the access is at level $level.""", pos)
     tp
   }
+
+  /** Transform a TypeTree into a tree that contains the structure of the type */
+  private def treeify(tree: TypeTree)(using Context): Tree =
+    tree.tpe.stripTypeVar.dealias match
+      case tpe @ TypeRef(path: TermRef, _) =>
+        // Expand TypeTree(`x.T`) to Select(`x`, `T`)
+        // Needed in PickleQuotes in case x refers to a captured reference.
+        ref(path).select(tpe)
+      case AppliedType(tycon, args) =>
+        AppliedTypeTree(treeify(TypeTree(tycon)), args.map(TypeTree))
+      case _ =>
+        tree
 
 }
 

@@ -14,8 +14,8 @@ def f[T: Type](using Quotes) =
         ${ g[m.E](using Type.of[ME]) }
         ${ g[ME](using Type.of[m.E]) }
         ${ g[m.E](using Type.of[m.E]) }
-        // ${ g[ME] } // FIXME: issue seems to be in PickleQuotes
-        // ${ g[m.E] } // FIXME: issue seems to be in PickleQuotes
+        ${ g[ME] }
+        ${ g[m.E] }
       }
 
 def g[T](using Type[T]) = ???
