@@ -119,6 +119,10 @@ class Semantic {
 
     def select(f: Symbol, source: Tree)(using Context): Result =
       value.select(f, heap, source) ++ errors
+
+    def call(meth: Symbol, source: Tree)(using Context): Result = ???
+
+    def superCall(meth: Symbol, supertpe: Type, source: Tree)(using Context): Result = ???
   }
 
   val noErrors = Nil
@@ -223,10 +227,41 @@ class Semantic {
       case NewExpr(newExpr, ctor, argss) =>
         ???
 
-      // case supert: Super => Handled in Apply case
-
       case Call(ref, argss) =>
-        ???
+        // check args
+        val args = argss.flatten
+        val (values, errors, heap2) = eval(args, thisV, klass, heap)
+        val errors2 = new mutable.ArrayBuffer[Error]
+        args.zip(values).foreach { (arg, value) =>
+          if value != Hot then
+            // TODO: define a new error
+            errors2 += PromoteCold(arg, Vector(arg))
+        }
+
+        ref match
+        case Select(supert: Super, _) =>
+          val SuperType(thisTp, superTp) = supert.tpe
+          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, heap2)
+          Result(thisValue2, heap2, errors ++ errors2.toList).superCall(ref.symbol, superTp, expr)
+
+        case Select(qual, _) =>
+          val res = eval(qual, thisV, klass, heap2) ++ errors ++ errors2.toList
+          res.call(ref.symbol, expr)
+
+        case id: Ident =>
+          id.tpe match
+          case TermRef(NoPrefix, _) =>
+            // resolve this for the local method
+            val enclosingClass = id.symbol.owner.enclosingClass.asClass
+            val thisValue2 = resolveThis(enclosingClass, thisV, klass, heap)
+            thisValue2 match
+            case Hot => Result(Hot, heap2, errors)
+            case _ =>
+              val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
+              eval(rhs, thisValue2, enclosingClass, heap2)
+          case TermRef(prefix, _) =>
+            val res = cases(prefix, thisV, klass, heap2, id) ++ errors ++ errors2.toList
+            res.call(id.symbol, expr)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass, heap).select(expr.symbol, expr)
@@ -354,7 +389,7 @@ class Semantic {
             thisV match
             case Hot => Hot
             case addr: Addr =>
-              resolveThis(tp, addr, klass, heap, source)
+              resolveThis(tp.classSymbol.asClass, addr, klass, heap)
             case _ => ???
           Result(value, heap, noErrors)
 
@@ -368,15 +403,15 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(tp: ThisType, thisV: Value, klass: ClassSymbol, heap: Heap, source: Tree)(using Context): Value = trace("resolving " + tp.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
-    if tp.classSymbol == klass then thisV
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): Value = trace("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+    if target == klass then thisV
     else
       thisV match
         case Hot => Hot
         case thisV: Addr =>
           val outer = heap(thisV).outers.getOrElse(klass, Hot)
           val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(tp, outer, outerCls, heap, source)
+          resolveThis(target, outer, outerCls, heap)
         case _ => ???
   }
 
@@ -394,9 +429,7 @@ class Semantic {
         case None => None
 
       case TypeApply(fn, targs) =>
-        unapply(fn) match
-        case Some((ref, args)) => Some((ref, args :+ targs))
-        case None => None
+        unapply(fn)
 
       case ref: RefTree if ref.symbol.is(Flags.Method) =>
         Some((ref, Nil))
