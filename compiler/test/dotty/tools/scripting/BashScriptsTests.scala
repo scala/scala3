@@ -4,6 +4,7 @@ package scripting
 
 import java.io.File
 import java.nio.file.{Path, Paths, Files}
+import scala.sys.process._
 
 import org.junit.Test
 
@@ -15,37 +16,64 @@ class BashScriptsTests:
   // classpath tests managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting").filter { ! _.getName.startsWith("classpath") }
 
-  @Test def verifyScriptArgs =
-    import scala.sys.process._
-    val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
-    val scalacPath = which("scalac")
-    val commandline = Seq(scalacPath, "-script", showArgsScript, "a", "b", "c", "-repl", "-run", "-script", "-debug").mkString(" ")
-    val bashExe = getBashPath
-    val bashPath = Paths.get(bashExe)
-    printf("bashExe: [%s]\n", bashExe)
+  lazy val expectedOutput = List(
+    "arg  0:[a]", 
+    "arg  1:[b]", 
+    "arg  2:[c]", 
+    "arg  3:[-repl]", 
+    "arg  4:[-run]", 
+    "arg  5:[-script]", 
+    "arg  6:[-debug]", 
+  )
+  lazy val testScriptArgs = Seq(
+    "a", "b", "c", "-repl", "-run", "-script", "-debug"
+  )
+  lazy val (bashExe,bashPath) =
+    val bexe = getBashPath
+    val bpath = Paths.get(bexe)
+    printf("bashExe: [%s]\n", bexe)
+    (bexe, bpath)
+
+  val showArgsScript = testFiles.find(_.getName == "showArgs.sc").get.absPath
+
+  val scalacPath = which("scalac")
+  val scalaPath = which("scala")
+
+  /* verify `dist/bin/scalac` */
+  @Test def verifyScalacArgs =
+    val commandline = (Seq(scalacPath, "-script", showArgsScript) ++ testScriptArgs).mkString(" ")
     if bashPath.toFile.exists then
       var cmd = Array(bashExe, "-c", commandline)
       val output = for {
         line <- Process(cmd).lazyLines_!
       } yield line
-      val expected = Seq(
-      "arg  0:[a]", 
-      "arg  1:[b]", 
-      "arg  2:[c]", 
-      "arg  3:[-repl]", 
-      "arg  4:[-run]", 
-      "arg  5:[-script]", 
-      "arg  6:[-debug]", 
-      )
       var fail = false
       printf("\n")
-      for (line, expect) <- output zip expected do
+      for (line, expect) <- output zip expectedOutput do
         printf("expected: %-17s| actual: %s\n", line, expect)
         if line != expect then
           fail = true
 
       if fail then
-        assert(output == expected)
+        assert(output == expectedOutput)
+
+  /* verify `dist/bin/scala` */
+  @Test def verifyScalaArgs =
+    val commandline = (Seq(scalaPath, showArgsScript) ++ testScriptArgs).mkString(" ")
+    if bashPath.toFile.exists then
+      var cmd = Array(bashExe, "-c", commandline)
+      val output = for {
+        line <- Process(cmd).lazyLines_!
+      } yield line
+      var fail = false
+      printf("\n")
+      for (line, expect) <- output zip expectedOutput do
+        printf("expected: %-17s| actual: %s\n", line, expect)
+        if line != expect then
+          fail = true
+
+      if fail then
+        assert(output == expectedOutput)
 
   extension (str: String) def dropExtension =
     str.reverse.dropWhile(_ != '.').drop(1).reverse
@@ -60,14 +88,6 @@ class BashScriptsTests:
     printf("osname[%s]\n", osname)
     if osname.startsWith("windows") then
       whichBash = which("bash.exe")
-      /*
-      val testCygpath = which("cygpath.exe")
-      printf("testCygpath[%s]\n", testCygpath)
-      if testCygpath.nonEmpty then
-        whichBash = execCmd(testCygpath, "-m", whichBash).mkString(" ").trim
-        printf("whichBash[%s]\n", whichBash)
-        */
-
     else
       whichBash = which("bash")
 
@@ -75,7 +95,6 @@ class BashScriptsTests:
 
   def execCmd(command: String, options: String *): Seq[String] =
     val cmd = (command :: options.toList).toSeq
-    import scala.sys.process._
     for {
       line <- Process(cmd).lazyLines_!
     } yield line
