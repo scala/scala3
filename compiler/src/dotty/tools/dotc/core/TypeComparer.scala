@@ -114,8 +114,13 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   private def isBottom(tp: Type) = tp.widen.isRef(NothingClass)
 
-  protected def gadtBounds(ntp: NamedType)(using Context) = ctx.gadt.bounds(ntp)
+  private def gadtCanInternalize: Boolean = ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint
+
+  protected def gadtBounds(ntp: NamedType)(using Context) =
+    ctx.gadt.bounds(ntp, internalizing = gadtCanInternalize)
   protected def gadtBounds(sym: Symbol)(using Context) = ctx.gadt.bounds(sym)
+  protected def gadtContains(ntp: NamedType)(using Context) =
+    ctx.gadt.contains(ntp, internalizing = gadtCanInternalize)
   protected def gadtAddLowerBound(ntp: NamedType, b: Type): Boolean = ctx.gadt.addBound(ntp, b, isUpper = false)
   protected def gadtAddUpperBound(ntp: NamedType, b: Type): Boolean = ctx.gadt.addBound(ntp, b, isUpper = true)
 
@@ -504,7 +509,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           (gbounds2 != null) &&
             (isSubTypeWhenFrozen(tp1, gbounds2.lo) ||
               (tp1 match {
-                case tp1: NamedType if ctx.gadt.contains(tp1) =>
+                case tp1: NamedType if gadtContains(tp1) =>
                   // Note: since we approximate constrained types only with their non-param bounds,
                   // we need to manually handle the case when we're comparing two constrained types,
                   // one of which is constrained to be a subtype of another.

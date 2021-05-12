@@ -24,7 +24,7 @@ sealed abstract class GadtConstraint extends Showable {
   /** Retrieve GADT bounds of [[NamedType]]. Create internal representations if the type can be constrained but not registered in the constraint,
     * only return null when the type is not constrainable.
     */
-  def bounds(tp: NamedType)(using Context): TypeBounds
+  def bounds(tp: NamedType, internalizing: Boolean)(using Context): TypeBounds
 
   /** Full bounds of `sym`, including TypeRefs to other lower/upper symbols.
    *
@@ -83,7 +83,7 @@ sealed abstract class GadtConstraint extends Showable {
   def contains(path: SingletonType, d: Designator)(using Context): Boolean
 
   /** Is the named type registered in the constraint? Properly handles both type parameters and path-dependent types. */
-  def contains(nt: NamedType)(using Context): Boolean
+  def contains(nt: NamedType, internalizing: Boolean)(using Context): Boolean
 
   def isEmpty: Boolean
   final def nonEmpty: Boolean = !isEmpty
@@ -585,13 +585,13 @@ final class ProperGadtConstraint private(
 
   private def mapTpMem(path: SingletonType, designator: Designator)(using Context): TypeVar = mapTpMem(path, nameOfDesignator(designator))
 
-  override def bounds(ntp: NamedType)(using Context): TypeBounds = {
+  override def bounds(ntp: NamedType, internalizing: Boolean)(using Context): TypeBounds = {
     val tvar: TypeVar = tvarOfType(ntp) match {
       case null =>
         /** The type hasn't been registered yet, try internalizing it */
         ntp match {
-          case TypeRef(path: TermRef, d: Designator) =>
-            gadts.println(i"**** type internalized: $path.$d")
+          case TypeRef(path: TermRef, d: Designator) if internalizing =>
+            gadts.println(i"**** try to internalize type: $path.$d, ${ctx.mode.is(Mode.GadtConstraintInference)}")
             internalizeTypeMember(path, d)
           case _ => null
         }
@@ -630,7 +630,7 @@ final class ProperGadtConstraint private(
           //.ensuring(containsNoInternalTypes(_))
     }
 
-  override def contains(nt: NamedType)(using Context): Boolean = bounds(nt) ne null
+  override def contains(nt: NamedType, internalizing: Boolean)(using Context): Boolean = bounds(nt, internalizing) ne null
 
   override def contains(sym: Symbol)(using Context): Boolean = mapping(sym) ne null
 
@@ -774,7 +774,7 @@ final class ProperGadtConstraint private(
 }
 
 @sharable object EmptyGadtConstraint extends GadtConstraint {
-  override def bounds(ntp: NamedType)(using Context): TypeBounds = null
+  override def bounds(ntp: NamedType, internalizing: Boolean)(using Context): TypeBounds = null
   override def bounds(sym: Symbol)(using Context): TypeBounds = null
   override def bounds(path: SingletonType, designator: Name)(using Context): TypeBounds = null
   override def fullBounds(sym: Symbol)(using Context): TypeBounds = null
@@ -785,7 +785,7 @@ final class ProperGadtConstraint private(
 
   override def isEmpty: Boolean = true
 
-  override def contains(nt: NamedType)(using Context) = false
+  override def contains(nt: NamedType, internalizing: Boolean)(using Context) = false
   override def contains(sym: Symbol)(using Context) = false
   override def contains(path: SingletonType, d: Designator)(using Context) = false
 
