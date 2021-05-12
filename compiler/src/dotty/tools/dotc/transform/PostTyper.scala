@@ -253,6 +253,10 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
       if tree.symbol.is(ConstructorProxy) then
         report.error(em"constructor proxy ${tree.symbol} cannot be used as a value", tree.srcPos)
 
+    def checkNotPackage(tree: Tree)(using Context): Unit =
+      if tree.symbol.is(Package) then
+        report.error(i"${tree.symbol} cannot be used as a type", tree.srcPos)
+
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
         // TODO move CaseDef case lower: keep most probable trees first for performance
@@ -263,21 +267,25 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
              case None =>
                ctx
           super.transform(tree)(using gadtCtx)
-        case tree: Ident if !tree.isType =>
-          if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
-            ctx.compilationUnit.needsInlining = true
-          checkNoConstructorProxy(tree)
-          tree.tpe match {
-            case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
-            case _ => tree
-          }
+        case tree: Ident =>
+          if tree.isType then
+            checkNotPackage(tree)
+            tree
+          else
+            if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
+              ctx.compilationUnit.needsInlining = true
+            checkNoConstructorProxy(tree)
+            tree.tpe match {
+              case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
+              case _ => tree
+            }
         case tree @ Select(qual, name) =>
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
-          if (name.isTypeName) {
+          if name.isTypeName then
+            checkNotPackage(tree)
             Checking.checkRealizable(qual.tpe, qual.srcPos)
             withMode(Mode.Type)(super.transform(tree))
-          }
           else
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
