@@ -670,7 +670,7 @@ object projects:
 
   lazy val monocle = SbtCommunityProject(
     project = "Monocle",
-    sbtTestCommand = "monocleJVM/test",
+    sbtTestCommand = "coreJVM/test; macrosJVM/test; testJVM/test",
     dependencies = List(cats, munit, discipline, disciplineMunit)
   )
 
@@ -772,4 +772,3 @@ def allProjects = List(
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
-
