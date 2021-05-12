@@ -187,7 +187,6 @@
 [submodule "community-build/community-projects/Monocle"]
 	path = community-build/community-projects/Monocle
 	url = https://github.com/optics-dev/Monocle.git
-	branch = scala-3-RC2
 [submodule "community-build/community-projects/onnx-scala"]
 	path = community-build/community-projects/onnx-scala
 	url = https://github.com/dotty-staging/onnx-scala.git
@@ -200,4 +199,3 @@
 [submodule "community-build/community-projects/scalatestplus-testng"]
 	path = community-build/community-projects/scalatestplus-testng
 	url = https://github.com/dotty-staging/scalatestplus-testng.git
-
