@@ -778,6 +778,9 @@ class Typer extends Namer
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
+        val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
+        if tsym.is(Package) then
+          report error(em"$tsym cannot be instantiated", tpt1.srcPos)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
         tpt1 match {
           case AppliedTypeTree(_, targs) =>

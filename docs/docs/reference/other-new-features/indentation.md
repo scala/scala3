@@ -403,7 +403,7 @@ end IndentWidth
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `-old-syntax` and `-language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to

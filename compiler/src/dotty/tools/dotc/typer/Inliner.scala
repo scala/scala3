@@ -701,7 +701,7 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           return Intrinsics.codeOf(arg, call.srcPos)
       case _ =>
 
-  	// Special handling of `constValue[T]` and `constValueOpt[T]`
+  	// Special handling of `constValue[T]`, `constValueOpt[T], and summonInline[T]`
     if (callTypeArgs.length == 1)
       if (inlinedMethod == defn.Compiletime_constValue) {
         val constVal = tryConstValue
@@ -717,6 +717,19 @@ class Inliner(call: tpd.Tree, rhsToInline: tpd.Tree)(using Context) {
           if (constVal.isEmpty) ref(defn.NoneModule.termRef)
           else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
         )
+      }
+      else if (inlinedMethod == defn.Compiletime_summonInline) {
+        def searchImplicit(tpt: Tree) =
+          val evTyper = new Typer
+          val evCtx = ctx.fresh.setTyper(evTyper)
+          val evidence = evTyper.inferImplicitArg(tpt.tpe, tpt.span)(using evCtx)
+          evidence.tpe match
+            case fail: Implicits.SearchFailureType =>
+              val msg = evTyper.missingArgMsg(evidence, tpt.tpe, "")
+              errorTree(tpt, em"$msg")
+            case _ =>
+              evidence
+        return searchImplicit(callTypeArgs.head)
       }
 
     def paramTypess(call: Tree, acc: List[List[Type]]): List[List[Type]] = call match
