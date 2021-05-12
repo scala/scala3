@@ -109,8 +109,8 @@ class Semantic {
 
     def ++(errors: Seq[Error]): Result = this.copy(errors = this.errors ++ errors)
 
-    def fieldAccess(f: Symbol, source: Tree)(using Context): Result =
-      value.fieldAccess(f, heap, source) ++ errors
+    def select(f: Symbol, source: Tree)(using Context): Result =
+      value.select(f, heap, source) ++ errors
   }
 
   val noErrors = Nil
@@ -136,7 +136,7 @@ class Semantic {
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
-    def fieldAccess(f: Symbol, heap: Heap, source: Tree)(using Context): Result =
+    def select(f: Symbol, heap: Heap, source: Tree)(using Context): Result =
       value match {
         case Hot  =>
           Result(Hot, heap, noErrors)
@@ -157,7 +157,7 @@ class Semantic {
           ???
 
         case RefSet(refs) =>
-          val resList = refs.map(_.fieldAccess(f, heap, source))
+          val resList = refs.map(_.select(f, heap, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, heap, errors)
@@ -205,7 +205,7 @@ class Semantic {
         ???
 
       case Select(qualifier, name) =>
-        ???
+        cases(qualifier, thisV, klass, heap).select(expr.symbol, expr)
 
       case _: This =>
         cases(expr.tpe, thisV, klass, heap, expr)
@@ -287,7 +287,7 @@ class Semantic {
         Result(Hot, heap, noErrors)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass, heap, source).fieldAccess(tmref.symbol, source)
+        cases(tmref.prefix, thisV, klass, heap, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
         if tref.symbol.is(Flags.Package) then Result(Hot, heap, noErrors)
