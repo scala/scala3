@@ -769,7 +769,8 @@ object TypeOps:
             this(tref)
           else {
             prefixTVar = WildcardType  // prevent recursive call from assigning it
-            prefixTVar = newTypeVar(TypeBounds.upper(this(tref)))
+            val tref2 = this(tref.applyIfParameterized(tref.typeParams.map(_ => TypeBounds.empty)))
+            prefixTVar = newTypeVar(TypeBounds.upper(tref2))
             prefixTVar
           }
         case tp => mapOver(tp)
