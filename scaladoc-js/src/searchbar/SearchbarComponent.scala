@@ -2,6 +2,8 @@ package dotty.tools.scaladoc
 
 import org.scalajs.dom._
 import org.scalajs.dom.html.Input
+import scala.scalajs.js.timers._
+import scala.concurrent.duration._
 
 class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegateSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
@@ -41,28 +43,32 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegate
     resultsDiv.appendChild(fragment)
     def loadMoreResults(result: List[raw.HTMLElement]): Unit = {
       resultsDiv.onscroll = (event: Event) => {
-          if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight)
-          {
-              val fragment = document.createDocumentFragment()
-              result.take(resultsChunkSize).foreach(fragment.appendChild)
-              resultsDiv.appendChild(fragment)
-              loadMoreResults(result.drop(resultsChunkSize))
-          }
+        if (resultsDiv.scrollHeight - resultsDiv.scrollTop == resultsDiv.clientHeight) {
+          val fragment = document.createDocumentFragment()
+          result.take(resultsChunkSize).foreach(fragment.appendChild)
+          resultsDiv.appendChild(fragment)
+          loadMoreResults(result.drop(resultsChunkSize))
+        }
       }
     }
     loadMoreResults(result.drop(resultsChunkSize))
 
+  var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
-    resultsDiv.scrollTop = 0
-    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
-    val fragment = document.createDocumentFragment()
-    parser.parse(query) match {
-      case EngineMatchersQuery(matchers) =>
-        handleNewFluffQuery(matchers)
-      case BySignature(signature) =>
-        inkuireEngine.query(query) { (p: PageEntry) =>
-          resultsDiv.appendChild(p.toHTML)
-        }
+    clearTimeout(timeoutHandle)
+    timeoutHandle = setTimeout(1.second) {
+      resultsDiv.scrollTop = 0
+      while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+      val fragment = document.createDocumentFragment()
+      parser.parse(query) match {
+        case EngineMatchersQuery(matchers) =>
+          handleNewFluffQuery(matchers)
+        case BySignature(signature) =>
+          println("Searching")
+          inkuireEngine.query(query) { (p: PageEntry) =>
+            resultsDiv.appendChild(p.toHTML)
+          }
+      }
     }
 
   private val searchIcon: html.Div =
