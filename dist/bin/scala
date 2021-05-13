@@ -118,34 +118,35 @@ while [[ $# -gt 0 ]]; do
       shift ;;
 
     *)
-      if [ "${execute_mode-}" == 'script' ]; then
-        addScript "$1"
-      else
-        # script if extension .scala or .sc, or if has scala hashbang line
+      # script if extension .scala or .sc, or if has scala hashbang line
+      # no -f test, issue meaningful error message (file not found)
+      if [[ "$1" == *.scala || "$1" == *.sc ]]; then
+        setExecuteMode 'script' # execute_script=true
 
-        # no -f test, issue meaningful error message (file not found)
-        if [[ "$1" == *.scala || "$1" == *.sc ]]; then
-          setExecuteMode 'script' # execute_script=true
-
-        # -f test needed before we examine the hashbang line
-        elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
-          setExecuteMode 'script' # execute_script=true
-        fi
-
-        if [ "${execute_mode-}" == 'script' ]; then
-          target_script="$1"
-          if [ ! -f $target_script ]; then
-            # likely a typo or missing script file, quit early
-            echo "not found: $target_script" 1>&2
-            scala_exit_status=2
-            onExit
-          fi
-        else
-          # all unrecognized args appearing prior to a script name
-          addResidual "$1"
-        fi
+      # -f test needed before we examine the hashbang line
+      elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
+        setExecuteMode 'script' # execute_script=true
       fi
-      shift
+
+      if [ "${execute_mode-}" == 'script' ]; then
+        target_script="$1"
+        shift
+        if [ ! -f $target_script ]; then
+          # likely a typo or missing script file, quit early
+          echo "not found: $target_script" 1>&2
+          scala_exit_status=2
+          onExit
+        fi
+        # all are script args
+        while [[ $# -gt 0 ]]; do
+          addScript "${1}"
+          shift
+        done
+      else
+        # all unrecognized args appearing prior to a script name
+        addResidual "$1"
+        shift
+      fi
       ;;
 
   esac
