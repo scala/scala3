@@ -50,7 +50,7 @@ class Semantic {
   * needed to finitize addresses. E.g. OOPSLA 2020 paper restricts
   * args to be either `Hot` or `Cold`
   */
-  case class Addr(klass: ClassSymbol, args: List[Value], outer: Value) extends Value
+  case class Addr(klass: ClassSymbol, outer: Value) extends Value
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
@@ -129,6 +129,9 @@ class Semantic {
 
     def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
       value.call(meth, superType, source) ++ errors
+
+    def instantiate(klass: ClassSymbol, source: Tree)(using Context): Result =
+      value.instantiate(klass, source) ++ errors
   }
 
   val noErrors = Nil
@@ -223,6 +226,8 @@ class Semantic {
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
+
+    def instantiate(klass: ClassSymbol, source: Tree)(using Context): Result = ???
   end extension
 
 
@@ -265,8 +270,28 @@ class Semantic {
         assert(name.isTermName, "type trees should not reach here")
         cases(expr.tpe, thisV, klass, expr)
 
-      case NewExpr(newExpr, ctor, argss) =>
-        ???
+      case NewExpr(New(tpt), ctor, argss) =>
+        def typeRefOf(tp: Type): TypeRef = tp.dealias.typeConstructor match {
+          case tref: TypeRef => tref
+          case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
+        }
+
+        // check args
+        val args = argss.flatten
+        val ress = args.map { arg =>
+          eval(arg, thisV, klass).ensureHot("May use initialized value as arguments", arg)
+        }
+        val errors = ress.flatMap(_.errors)
+
+        val tref = typeRefOf(tpt.tpe)
+        val cls = tref.classSymbol.asClass
+        if (tref.prefix == NoPrefix) then
+          val enclosing = cls.owner.lexicallyEnclosingClass.asClass
+          val outer = resolveThis(enclosing, thisV, klass)
+          Result(outer, errors).instantiate(cls, expr)
+        else
+          val res = cases(tref.prefix, thisV, klass, tpt)
+          (res ++ errors).instantiate(cls, expr)
 
       case Call(ref, argss) =>
         // check args
@@ -475,7 +500,7 @@ class Semantic {
   }
 
   object NewExpr {
-    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, List[List[Tree]])] =
+    def unapply(tree: Tree)(using Context): Option[(New, Symbol, List[List[Tree]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
         Some((newTree, fn.symbol, argss))
