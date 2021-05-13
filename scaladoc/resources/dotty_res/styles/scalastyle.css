@@ -934,7 +934,7 @@ footer .socials {
 /* Portrait phones */
 @media(max-width: 576px) {
   :root {
-    --side-width: 0;
+    --side-width: 0px;
     --content-padding: 48px 12px;
   }
 
@@ -960,8 +960,10 @@ footer .socials {
     font-size: 30px;
   }
   #leftColumn.open ~ #main #leftToggler {
+    position: fixed;
     left: unset;
-    right: 5vw;
+    right: 16vw;
+    color: var(--leftbar-fg);
   }
   .icon-toggler::before {
     content: "\e90a"; /* menu icon */

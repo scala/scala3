@@ -22,6 +22,7 @@
         box-shadow: none;
         margin-top: 2px;
     }
+
     .search span:hover {
         fill: var(--link-hover-fg);
     }
@@ -43,9 +44,9 @@
 #scaladoc-searchbar {
     position: fixed;
     top: 50px;
-    right: 40px;
+    left: calc(5% + var(--side-width));
     z-index: 5;
-    width: calc(100% - 360px);
+    width: calc(90% - var(--side-width));
     box-shadow: 0 2px 16px 0 rgba(0, 42, 76, 0.15);
     font-size: 13px;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, sans-serif;
