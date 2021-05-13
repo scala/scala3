@@ -511,7 +511,7 @@ jobs:
         - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
         - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
         - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, test_sbt, test_java8]
+    # needs: [test_non_bootstrapped, test, test_sbt, test_java8]
     if: "github.event_name == 'push'
          && startsWith(github.event.ref, 'refs/tags/')
          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
