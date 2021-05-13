@@ -248,15 +248,8 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context): (List[Value], List[Error]) = {
-    val errors = new mutable.ArrayBuffer[Error]
-    val values = exprs.map { binding =>
-      val res = eval(binding, thisV, klass)
-      errors ++= res.errors
-      res.value
-    }
-    (values, errors.toList)
-  }
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context): List[Result] =
+    exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
    *
@@ -278,22 +271,19 @@ class Semantic {
       case Call(ref, argss) =>
         // check args
         val args = argss.flatten
-        val (values, errors) = eval(args, thisV, klass)
-        val errors2 = new mutable.ArrayBuffer[Error]
-        args.zip(values).foreach { (arg, value) =>
-          if value != Hot then
-            // TODO: define a new error
-            errors2 += PromoteCold(arg, Vector(arg))
+        val ress = args.map { arg =>
+          eval(arg, thisV, klass).ensureHot("May use initialized value as arguments", arg)
         }
+        val errors = ress.flatMap(_.errors)
 
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass)
-          Result(thisValue2, errors ++ errors2.toList).call(ref.symbol, superTp, expr)
+          Result(thisValue2, errors).call(ref.symbol, superTp, expr)
 
         case Select(qual, _) =>
-          val res = eval(qual, thisV, klass) ++ errors ++ errors2.toList
+          val res = eval(qual, thisV, klass) ++ errors
           res.call(ref.symbol, superType = NoType, source = expr)
 
         case id: Ident =>
@@ -308,7 +298,7 @@ class Semantic {
               val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
               eval(rhs, thisValue2, enclosingClass)
           case TermRef(prefix, _) =>
-            val res = cases(prefix, thisV, klass, id) ++ errors ++ errors2.toList
+            val res = cases(prefix, thisV, klass, id) ++ errors
             res.call(id.symbol, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
@@ -344,36 +334,41 @@ class Semantic {
           ??? // impossible
 
       case Block(stats, expr) =>
-        val (_, errors) = eval(stats, thisV, klass)
-        eval(expr, thisV, klass) ++ errors
+        val ress = eval(stats, thisV, klass)
+        eval(expr, thisV, klass) ++ ress.flatMap(_.errors)
 
       case If(cond, thenp, elsep) =>
-        val (_ :: values, errors) = eval(cond :: thenp :: elsep :: Nil, thisV, klass)
-        Result(values.join, errors)
+        val ress = eval(cond :: thenp :: elsep :: Nil, thisV, klass)
+        val value = ress.map(_.value).join
+        val errors = ress.flatMap(_.errors)
+        Result(value, errors)
 
       case Annotated(arg, annot) =>
         if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
-        val res1 = eval(selector, thisV, klass)
-        val (values, errors) = eval(cases.map(_.body), thisV, klass)
-        Result(values.join, res1.errors ++ errors)
+        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be initialized", selector)
+        val ress = eval(cases.map(_.body), thisV, klass)
+        val value = ress.map(_.value).join
+        val errors = res1.errors ++ ress.flatMap(_.errors)
+        Result(value, errors)
 
       case Return(expr, from) =>
         eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
 
       case WhileDo(cond, body) =>
-        val (_, errors) = eval(cond :: body :: Nil, thisV, klass)
-        Result(Hot, errors)
+        val ress = eval(cond :: body :: Nil, thisV, klass)
+        Result(Hot, ress.flatMap(_.errors))
 
       case Labeled(_, expr) =>
         eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
         val res1 = eval(block, thisV, klass)
-        val (values, errors) = eval(cases.map(_.body), thisV, klass)
-        val resValue = values.join
+        val ress = eval(cases.map(_.body), thisV, klass)
+        val errors = ress.flatMap(_.errors)
+        val resValue = ress.map(_.value).join
         if finalizer.isEmpty then
           Result(resValue, res1.errors ++ errors)
         else
@@ -381,18 +376,14 @@ class Semantic {
           Result(resValue, res1.errors ++ errors ++ res2.errors)
 
       case SeqLiteral(elems, elemtpt) =>
-        val (values, errors) = eval(elems, thisV, klass)
-        val errors2 = new mutable.ArrayBuffer[Error]
-        elems.zip(values).foreach { (elem, value) =>
-          if value != Hot then
-            // TODO: define a new error
-            errors2 += PromoteCold(elem, Vector(elem))
+        val ress = elems.map { elem =>
+          eval(elem, thisV, klass).ensureHot("May only use initialized value as arguments", elem)
         }
-        Result(Hot, errors2.toList ++ errors)
+        Result(Hot, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
-        val (_, errors) = eval(bindings, thisV, klass)
-        eval(expansion, thisV, klass) ++ errors
+        val ress = eval(bindings, thisV, klass)
+        eval(expansion, thisV, klass) ++ ress.flatMap(_.errors)
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
