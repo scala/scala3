@@ -166,7 +166,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           case m: Member => navigationIcon(m)
           case _ => Nil
         }
-        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(icon, nav.link.name))
+        Seq(a(href := pathToPage(pageLink.dri, nav.link.dri), attrs)(icon, span(nav.link.name)))
 
       nav.children match
         case Nil => isSelected -> div(linkHtml())
