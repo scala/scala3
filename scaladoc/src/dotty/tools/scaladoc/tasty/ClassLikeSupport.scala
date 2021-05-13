@@ -116,15 +116,16 @@ trait ClassLikeSupport:
 
       val methods = classDef.symbol.declaredMethods.collect {
         case methodSymbol: Symbol =>
-          val defdef = methodSymbol.tree.asInstanceOf[DefDef]
-          val methodVars = defdef.paramss.flatMap(_.params).collect {
+        val defdef = methodSymbol.tree.asInstanceOf[DefDef]
+        val methodVars = defdef.paramss.flatMap(_.params).collect {
             case TypeDef(name, _) => name
           }
           val vars = variableNames ++ methodVars
+          val receiver: Option[Inkuire.Type] = Some(classType).filter(_ => !isModule).orElse(methodSymbol.extendedSymbol.map(_.asInkuire(vars, false)))
           Inkuire.ExternalSignature(
             signature = Inkuire.Signature(
-              receiver = Some(classType).filter(_ => !isModule),
-              arguments = defdef.paramss.flatMap(_.params).collect {
+              receiver = receiver,
+              arguments = methodSymbol.nonExtensionParamLists.flatMap(_.params).collect {
                 case ValDef(_, tpe, _) => tpe.asInkuire(vars, false)
               },
               result = defdef.returnTpt.asInkuire(vars, false),
@@ -391,13 +392,7 @@ trait ClassLikeSupport:
       specificKind: (Kind.Def => Kind) = identity
     ): Member =
     val method = methodSymbol.tree.asInstanceOf[DefDef]
-    val paramLists: List[TermParamClause] =
-      if emptyParamsList then Nil
-      else if methodSymbol.isExtensionMethod then
-        val params = method.termParamss
-        if methodSymbol.isLeftAssoc || params.size == 1 then params.tail
-        else params.head :: params.tail.drop(1)
-      else method.termParamss
+    val paramLists: List[TermParamClause] = methodSymbol.nonExtensionParamLists
     val genericTypes = if (methodSymbol.isClassConstructor) Nil else method.leadingTypeParams
 
     val memberInfo = unwrapMemberInfo(c, methodSymbol)

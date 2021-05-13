@@ -141,6 +141,15 @@ object SymOps:
         else termParamss(1).params(0)
       }
 
+    def nonExtensionParamLists: List[reflect.TermParamClause] =
+      import reflect.*
+      val method = sym.tree.asInstanceOf[DefDef]
+      if sym.isExtensionMethod then
+        val params = method.termParamss
+        if sym.isLeftAssoc || params.size == 1 then params.tail
+        else params.head :: params.tail.drop(1)
+      else method.termParamss
+
   end extension
 
 end SymOps
