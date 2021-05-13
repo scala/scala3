@@ -25,162 +25,162 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  test_non_bootstrapped:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
-         )"
-    steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+  # test_non_bootstrapped:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+  #        || (
+  #          github.event_name == 'push'
+  #          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && contains(github.event.pull_request.body, '[test_non_bootstrapped]')
+  #        )
+  #        || (
+  #          github.event_name == 'workflow_dispatch'
+  #          && github.repository == 'lampepfl/dotty'
+  #        )"
+  #   steps:
+  #     - name: Set JDK 16 as default
+  #       run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Test
-        run: |
-          ./project/scripts/sbt ";compile ;test"
-          ./project/scripts/cmdTests
+  #     - name: Test
+  #       run: |
+  #         ./project/scripts/sbt ";compile ;test"
+  #         ./project/scripts/cmdTests
 
-  test:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
-         )"
+  # test:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+  #        || (
+  #          github.event_name == 'push'
+  #          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && !contains(github.event.pull_request.body, '[skip test]')
+  #        )
+  #        || (
+  #          github.event_name == 'workflow_dispatch'
+  #          && github.repository == 'lampepfl/dotty'
+  #        )"
 
-    steps:
-      - name: Set JDK 16 as default
-        run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
+  #   steps:
+  #     - name: Set JDK 16 as default
+  #       run: echo "/usr/lib/jvm/java-16-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Cmd Tests
-        run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
-          ./project/scripts/bootstrapCmdTests
+  #     - name: Cmd Tests
+  #       run: |
+  #         ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+  #         ./project/scripts/bootstrapCmdTests
 
-  test_windows_fast:
-    runs-on: [self-hosted, Windows]
-    if: "(
-           github.event_name == 'push'
-           && github.ref != 'refs/heads/master'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
-         )"
+  # test_windows_fast:
+  #   runs-on: [self-hosted, Windows]
+  #   if: "(
+  #          github.event_name == 'push'
+  #          && github.ref != 'refs/heads/master'
+  #          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && !contains(github.event.pull_request.body, '[skip test_windows_fast]')
+  #        )"
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-        shell: cmd
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #       shell: cmd
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Test
-        run: sbt ";scala3-bootstrapped/compile"
-        shell: cmd
+  #     - name: Test
+  #       run: sbt ";scala3-bootstrapped/compile"
+  #       shell: cmd
 
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
-        shell: cmd
+  #     - name: Scala.js Test
+  #       run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+  #       shell: cmd
 
-  test_windows_full:
-    runs-on: [self-hosted, Windows]
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_windows_full]')
-         )"
+  # test_windows_full:
+  #   runs-on: [self-hosted, Windows]
+  #   if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+  #        || (
+  #          github.event_name == 'push'
+  #          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && contains(github.event.pull_request.body, '[test_windows_full]')
+  #        )"
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-        shell: cmd
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #       shell: cmd
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Test
-        run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
-        shell: cmd
+  #     - name: Test
+  #       run: sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test"
+  #       shell: cmd
 
-      - name: Scala.js Test
-        run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
-        shell: cmd
+  #     - name: Scala.js Test
+  #       run: sbt ";sjsJUnitTests/test ;sjsCompilerTests/test"
+  #       shell: cmd
 
   # community_build_a:
   #   runs-on: [self-hosted, Linux]
@@ -329,178 +329,178 @@ jobs:
   #         git submodule update --init --recursive --jobs 7
   #         ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
 
-  test_sbt:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || github.event_name == 'push'
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && !contains(github.event.pull_request.body, '[skip test_sbt]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
-         )"
+  # test_sbt:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+  #        || github.event_name == 'push'
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && !contains(github.event.pull_request.body, '[skip test_sbt]')
+  #        )
+  #        || (
+  #          github.event_name == 'workflow_dispatch'
+  #          && github.repository == 'lampepfl/dotty'
+  #        )"
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Test sbt
-        run: ./project/scripts/sbt "sbt-dotty/scripted; sbt-community-build/scripted"
+  #     - name: Test sbt
+  #       run: ./project/scripts/sbt "sbt-dotty/scripted; sbt-community-build/scripted"
 
-  test_java8:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
+  # test_java8:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
 
-    if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
-         || (
-           github.event_name == 'push'
-           && startsWith(github.event.ref, 'refs/tags/')
-           && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
-         )
-         || (
-           github.event_name == 'pull_request'
-           && !contains(github.event.pull_request.body, '[skip ci]')
-           && contains(github.event.pull_request.body, '[test_java8]')
-         )
-         || (
-           github.event_name == 'workflow_dispatch'
-           && github.repository == 'lampepfl/dotty'
-         )"
+  #   if: "github.event_name == 'schedule' && github.repository == 'lampepfl/dotty'
+  #        || (
+  #          github.event_name == 'push'
+  #          && startsWith(github.event.ref, 'refs/tags/')
+  #          && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')
+  #        )
+  #        || (
+  #          github.event_name == 'pull_request'
+  #          && !contains(github.event.pull_request.body, '[skip ci]')
+  #          && contains(github.event.pull_request.body, '[test_java8]')
+  #        )
+  #        || (
+  #          github.event_name == 'workflow_dispatch'
+  #          && github.repository == 'lampepfl/dotty'
+  #        )"
 
-    steps:
-      - name: Set JDK 8 as default
-        run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
+  #   steps:
+  #     - name: Set JDK 8 as default
+  #       run: echo "/usr/lib/jvm/java-8-openjdk-amd64/bin" >> $GITHUB_PATH
 
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Test
-        run: |
-          ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
-          ./project/scripts/bootstrapCmdTests
+  #     - name: Test
+  #       run: |
+  #         ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-dotty/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
+  #         ./project/scripts/bootstrapCmdTests
 
-  publish_nightly:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_non_bootstrapped, test, test_sbt, test_java8]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
-    env:
-      NIGHTLYBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
+  # publish_nightly:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   needs: [test_non_bootstrapped, test, test_sbt, test_java8]
+  #   if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+  #   env:
+  #     NIGHTLYBUILD: yes
+  #     PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+  #     PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+  #     SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
+  #     SONATYPE_USER: ${{ secrets.SONATYPE_USER_ORGSCALALANG }}
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Publish Nightly
-        run: |
-          ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
+  #     - name: Publish Nightly
+  #       run: |
+  #         ./project/scripts/sbtPublish ";project scala3-bootstrapped ;publishSigned ;sonatypeBundleRelease"
 
-  nightly_documentation:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [publish_nightly]
-    if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
-    env:
-      NIGHTLYBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+  # nightly_documentation:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   needs: [publish_nightly]
+  #   if: "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.repository == 'lampepfl/dotty'"
+  #   env:
+  #     NIGHTLYBUILD: yes
+  #     BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+  #                                          # Generate one at https://github.com/settings/tokens
+  #                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Generate Website
-        run: |
-          ./project/scripts/genDocs -doc-snapshot
+  #     - name: Generate Website
+  #       run: |
+  #         ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+  #     - name: Deploy Website
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         personal_token: ${{ secrets.BOT_TOKEN }}
+  #         publish_dir: docs/_site
+  #         external_repository: lampepfl/dotty-website
+  #         publish_branch: gh-pages
 
   publish_release:
     runs-on: [self-hosted, Linux]
@@ -588,90 +588,90 @@ jobs:
           asset_name: sha256sum.txt
           asset_content_type: text/plain
 
-  release_documentation:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [publish_release]
-    if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/')
-         && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
+  # release_documentation:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   needs: [publish_release]
+  #   if: "github.event_name == 'push'
+  #        && startsWith(github.event.ref, 'refs/tags/')
+  #        && !startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
-    env:
-      RELEASEBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
+  #   env:
+  #     RELEASEBUILD: yes
+  #     BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
+  #                                          # Generate one at https://github.com/settings/tokens
+  #                                          # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Generate Website
-        run: |
-          ./project/scripts/genDocs -doc-snapshot
+  #     - name: Generate Website
+  #       run: |
+  #         ./project/scripts/genDocs -doc-snapshot
 
-      - name: Deploy Website
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
+  #     - name: Deploy Website
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         personal_token: ${{ secrets.BOT_TOKEN }}
+  #         publish_dir: docs/_site
+  #         external_repository: lampepfl/dotty-website
+  #         publish_branch: gh-pages
 
-  publish_sbt_release:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [test_sbt]
-    if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
+  # publish_sbt_release:
+  #   runs-on: [self-hosted, Linux]
+  #   container:
+  #     image: lampepfl/dotty:2021-03-22
+  #     options: --cpu-shares 4096
+  #     volumes:
+  #       - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
+  #       - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
+  #       - ${{ github.workspace }}/../../cache/general:/root/.cache
+  #   needs: [test_sbt]
+  #   if: "github.event_name == 'push'
+  #        && startsWith(github.event.ref, 'refs/tags/sbt-dotty-')"
 
-    env:
-      RELEASEBUILD: yes
-      PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
-      PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
-      SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
-      SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
+  #   env:
+  #     RELEASEBUILD: yes
+  #     PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
+  #     PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
+  #     SONATYPE_PW: ${{ secrets.SONATYPE_PW }}
+  #     SONATYPE_USER: ${{ secrets.SONATYPE_USER }}
 
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
+  #   steps:
+  #     - name: Reset existing repo
+  #       run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
 
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
+  #     - name: Checkout cleanup script
+  #       uses: actions/checkout@v2
 
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
+  #     - name: Cleanup
+  #       run: .github/workflows/cleanup.sh
 
-      - name: Git Checkout
-        uses: actions/checkout@v2
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v2
 
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
+  #     - name: Add SBT proxy repositories
+  #       run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
-      - name: Publish Dotty SBT Plugin Release
-        run: |
-          ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
+  #     - name: Publish Dotty SBT Plugin Release
+  #       run: |
+  #         ./project/scripts/sbtPublish ";project sbt-dotty ;publishSigned ;sonatypeBundleRelease"
