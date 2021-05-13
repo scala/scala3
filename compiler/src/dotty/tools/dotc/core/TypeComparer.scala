@@ -2852,7 +2852,7 @@ class TrackingTypeComparer(initctx: Context) extends TypeComparer(initctx) {
           caseLambda match {
             case caseLambda: HKTypeLambda =>
               val instances = paramInstances(new Array(caseLambda.paramNames.length), pat)
-              instantiateParams(instances)(body)
+              instantiateParams(instances)(body).simplified
             case _ =>
               body
           }
