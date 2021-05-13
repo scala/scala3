@@ -77,19 +77,19 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegate
   var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
     clearTimeout(timeoutHandle)
-    timeoutHandle = setTimeout(1.second) {
-      resultsDiv.scrollTop = 0
-      while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
-      val fragment = document.createDocumentFragment()
-      parser.parse(query) match {
-        case EngineMatchersQuery(matchers) =>
-          handleNewFluffQuery(matchers)
-        case BySignature(signature) =>
+    resultsDiv.scrollTop = 0
+    while (resultsDiv.hasChildNodes()) resultsDiv.removeChild(resultsDiv.lastChild)
+    val fragment = document.createDocumentFragment()
+    parser.parse(query) match {
+      case EngineMatchersQuery(matchers) =>
+        handleNewFluffQuery(matchers)
+      case BySignature(signature) =>
+        timeoutHandle = setTimeout(1.second) {
           println("Searching")
           inkuireEngine.query(query) { (p: PageEntry) =>
             resultsDiv.appendChild(p.toHTMLInkuireHack)
           }
-      }
+        }
     }
 
   private val searchIcon: html.Div =
