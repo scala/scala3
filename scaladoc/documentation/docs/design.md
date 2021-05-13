@@ -7,11 +7,11 @@ Scaladoc is divided into 3 modules, that are:
 
 ##### scaladoc
 
-This module consist core sourcecode and assets (css, js) used for building Scaladoc.
+This module contains the core source code and assets (css, js) used for building Scaladoc.
 
 ##### scaladoc-js
 
-This module consist Scala sourcecode that is transpiled to JavaScript that is used by scaladoc for:
+This module contains Scala source code that is compiled to JavaScript. It is used by scaladoc for:
 - searchbar
 - social links
 - snippets processor

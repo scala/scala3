@@ -22,14 +22,14 @@ All your blogposts must be put under `blog/_posts` directory.
 │   └── index.html
 ```
 
-If you are using sidebar don't forget to place
+If you are using yaml [sidebar](./staticSite.html#sidebar) don't forget to place
 
 ```
 sidebar:
     - title: Blog
 ```
 
-somewhere inside the tree. Scaladoc will attach under that section all of your blogposts.
+somewhere inside the `yaml` tree representing the sidebar sections. Scaladoc will attach under that section all of your blogposts.
 
 ## Naming convention
 

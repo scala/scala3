@@ -114,7 +114,7 @@ default table of contents allows you to have subsections - albeit the current
 depth limit is 2 however it accepts both files and directories and latter can be used to provide deeper structures.
 
 The items must provide either `subsection` or `url` but not both at once!
-The only excepiton is `Blog` which is only a `title` and behaves differently.
+The only exception is `Blog` which is only a `title` and behaves differently.
 You can read more about blog [here](blog.md).
 
 ```
@@ -128,11 +128,11 @@ You can read more about blog [here](blog.md).
 
 ## Static resources
 
-You can attach static resources (pdf, images) in your documentation using two dedicated directories:
+You can attach static resources (pdf, images) to your documentation by using two dedicated directories:
 `resources` and `images`. When you upload your assests under any of these directories you can reference them in markdown
 as if they were relatively at the same level.
 
-For example let's look at this situation:
+For example, consider the following situation:
 
 ```
 ├── blog
@@ -148,7 +148,7 @@ For example let's look at this situation:
 
 ```
 
-You can access them directly inside any of the files using markdown links:
+You can refer to the assets from within any of the files using markdown links:
 
 ```
 This is my blogpost. Here is the image ![](my_image.png) and here is my [pdf](my_file.pdf)

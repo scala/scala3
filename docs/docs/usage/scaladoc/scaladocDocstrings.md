@@ -4,7 +4,7 @@ title: Scaladoc docstrings - specific Tags and Features
 
 # {{page.title}}
 
-This chapater describes how to write correctly docstrings and how to use all available features of scaladoc.
+This chapter describes how to correctly write docstrings and how to use all the available features of scaladoc.
 Since many things are the same as in the old scaladoc, some parts are reused from this [article](https://docs.scala-lang.org/overviews/scaladoc/for-library-authors.html)
 
 
@@ -13,7 +13,7 @@ to API definitions. This can be used from within static documentation and blog
 posts to provide blend-in content.
 
 
-## Where to put scaladoc
+## Where to put docstrings
 
 Scaladoc comments go before the items they pertain to in a special comment block that starts with a /** and ends with a */, like this:
 
@@ -29,8 +29,12 @@ Scaladoc comments go before the items they pertain to in a special comment block
   * left margin is on the same column on the
   * first line and on subsequent ones.
   *
-  * The closing Scaladoc tag goes on its own,
-  * separate line. E.g.
+  * Close the comment with *\/
+  *
+  * If you use Scaladoc tags (@param, @group, etc.),
+  * remember to put them at separate lines with nothing preceding.
+  *
+  * For example:
   *
   * Calculate the square of the given number
   *
@@ -69,7 +73,7 @@ Scaladoc uses `@<tagname>` tags to provide specific detail fields in the comment
 - `@see` reference other sources of information like external document links or related entities in the documentation.
 - `@note` add a note for pre or post conditions, or any other notable restrictions or expectations.
 - `@example` for providing example code or related example documentation.
-- `@usecase` provide a simplified method definition for when the full method definition is too complex or noisy. An example is (in the collections API), providing documentation for methods that omit the implicit canBuildFrom.
+
 
 ### Member grouping tags
 
@@ -78,11 +82,11 @@ These tags are well-suited to larger types or packages, with many members. They 
 These tags are not enabled by default! You must pass the -groups flag to Scaladoc in order to turn them on. Typically the sbt for this will look something like:
 
 ```scala
-scalacOptions in (Compile, doc) ++= Seq(
+Compile / doc / scalacOptions ++= Seq(
   "-groups"
 )
 ```
-Each section should have a single-word identifier that is used in all of these tags, shown as <group> below. By default, that identifier is shown as the title of that documentation section, but you can use @groupname to provide a longer title.
+Each section should have a single-word identifier that is used in all of these tags, shown as `group` below. By default, that identifier is shown as the title of that documentation section, but you can use @groupname to provide a longer title.
 
 Typically, you should put @groupprio (and optionally @groupname and @groupdesc) in the Scaladoc for the package/trait/class/object itself, describing what all the groups are, and their order. Then put @group in the Scaladoc for each member, saying which group it is in.
 
@@ -108,25 +112,26 @@ Members that do not have a `@group` tag will be listed as “Ungrouped” in the
 If a comment is not provided for an entity at the current inheritance level, but is supplied for the overridden entity at a higher level in the inheritance hierarchy, the comment from the super-class will be used.
 
 Likewise if `@param`, `@tparam`, `@return` and other entity tags are omitted but available from a superclass, those comments will be used.
-Explicit
+
+### Explicit
 
 For explicit comment inheritance, use the @inheritdoc tag.
-Markup
-
-It is still possible to embed HTML tags in Scaladoc (like with Javadoc), but not necessary most of the time as markup may be used instead.
 
 ### Markup
 
 Scaladoc provides two syntax parsers: `markdown` (default) or `wikidoc`.
+It is still possible to embed HTML tags in Scaladoc (like with Javadoc), but not necessary most of the time as markup may be used instead.
 
 #### Markdown
 
-Markdown uses [commonmark flavour](https://spec.commonmark.org/current/) with extension of `wikidoc` links for referencing convenience.
+Markdown uses [commonmark flavour](https://spec.commonmark.org/current/) with two custom extensions:
+- `wikidoc` links for referencing convenience
+- `wikidoc` codeblocks with curly braces syntax
 
 
 #### Wikidoc
 
-Wikidoc is syntax used for scala2 scaladoc. It is supported because of many existing source code, however it is unrecommended to use it in new projects.
+Wikidoc is syntax used for scala2 scaladoc. It is supported because of many existing source code, however it is **not** recommended to use it in new projects.
 Wikisyntax can be toggled on with flag `-comment-syntax wiki` globally, or with `@syntax wiki` directive in docstring.
 
 Some of the standard markup available:

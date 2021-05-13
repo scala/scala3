@@ -4,7 +4,7 @@ title: Scaladoc settings
 
 # {{page.title}}
 
-You can find brief information included in this chapter while calling scaladoc with `-help` flag. However it can be a little tricky if one uses sbt `doc` task.
+This chapter lists the configuration options that can be used when calling scaladoc. Some of the information shown here can be found by calling scaladoc with the `-help` flag.
 
 ## Parity with scaladoc for Scala 2
 
@@ -13,7 +13,7 @@ If you want to know what is current state of compatibility with scaladoc old fla
 
 ## Providing settings
 
-Scaladoc accepts settings provided as a string, e. g. `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes` or, if called from sbt,
+Supply scaladoc settings as command-line arguments, e.g., `scaladoc -d output -project my-project target/scala-3.0.0-RC2/classes`. If called from sbt,
 update the value of `Compile / doc / scalacOptions`, e. g. `Compile / doc / scalacOptions ++= Seq("-d", "output", "-project", "my-project")`
 
 ## Overview of all available settings
@@ -31,7 +31,9 @@ The logo of your project that appears in a top left corner. To provide compatibi
 The string message that appears in a footer section. To provide compatibility with Scala2 aliases with `-doc-footer`
 
 ##### -comment-syntax
-The default syntax of comments. Defaults to markdown however wikisyntax can be used.
+The styling language used for parsing comments.
+Currently we support two syntaxes: `markdown` or `wiki`
+If setting is not present, scaladoc defaults `markdown`
 
 ##### -revision
 Revision (branch or ref) used to build project project. Useful with sourcelinks to prevent them from pointing always to the newest master that is subject to changes.
@@ -39,11 +41,15 @@ Revision (branch or ref) used to build project project. Useful with sourcelinks 
 ##### -source-links
 Source links provide a mapping between file in documentation and code repository.
 
+Example source links is:
+`-source-links:docs=github://lampepfl/dotty/master#docs`
+
 Accepted formats:
+
 \<sub-path>=\<source-link>
 \<source-link>
 
-where <source-link> is one of following:
+where \<source-link> is one of following:
  - `github://<organization>/<repository>[/revision][#subpath]`
      will match https://github.com/$organization/$repository/\[blob|edit]/$revision\[/$subpath]/$filePath\[$lineNumber]
      when revision is not provided then requires revision to be specified as argument for scaladoc
@@ -52,33 +58,32 @@ where <source-link> is one of following:
      when revision is not provided then requires revision to be specified as argument for scaladoc
  - \<scaladoc-template>
 
-<scaladoc-template> is a format for `doc-source-url` parameter scaladoc.
+\<scaladoc-template> is a format for `doc-source-url` parameter from old scaladoc.
 NOTE: We only supports `€{FILE_PATH_EXT}`, `€{TPL_NAME}`, `€{FILE_EXT}`,
- €{FILE_PATH}, and €{FILE_LINE} patterns
+ €{FILE_PATH}, and €{FILE_LINE} patterns.
 
 
 Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`.
 In such case paths used in templates will be relativized against `<sub-path>`
 
-Example source links is:
-`-source-links:docs=github://lampepfl/dotty/master#docs`
 
 
 ##### -external-mappings
 
 Mapping between regexes matching classpath entries and external documentation.
-'regex::\[scaladoc|scaladoc|javadoc]::path' syntax is used
 
 Example external mapping is:
 `-external-mappings:.*scala.*::scaladoc3::http://dotty.epfl.ch/api/,.*java.*::javadoc::https://docs.oracle.com/javase/8/docs/api/`
 
+A mapping is of the form '\<regex>::\[scaladoc3|scaladoc|javadoc]::\<path>'. You can supply several mappings, separated by commas, as shown in the example.
+
 ##### -social-links
 
-Links to social sites. '[github|twitter|gitter|discord]::link' syntax is used. 'custom::link::white_icon_name::black_icon_name' is also allowed, in this case icons must be present in 'images/'' directory.
-
-Example social link is:
+Links to social sites. For example:
 
 `-social-links:github::https://github.com/lampepfl/dotty,gitter::https://gitter.im/scala/scala,twitter::https://twitter.com/scala_lang`
+
+Valid values are of the form: '\[github|twitter|gitter|discord]::link'. Scaladoc also supports 'custom::link::white_icon_name::black_icon_name'. In this case icons must be present in 'images/' directory.
 
 ##### -skip-by-id
 
@@ -95,6 +100,8 @@ The file from which the root package documentation should be imported.
 ##### -author
 
 Include authors.
+Adding authors in docstring with `@author Name Surname` by default won't be included in generated html documentation.
+If you would like to label classes with authors explicitly, run scaladoc with this flag.
 
 ##### -groups
 
