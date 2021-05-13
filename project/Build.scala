@@ -401,7 +401,10 @@ object Build {
   lazy val `scala3-bootstrapped` = project.asDottyRoot(Bootstrapped)
 
   lazy val `scala3-interfaces` = project.in(file("interfaces")).
-    settings(commonJavaSettings)
+    settings(commonJavaSettings).
+    settings(
+      publish / skip := true
+    )
 
   /** Find an artifact with the given `name` in `classpath` */
   def findArtifact(classpath: Def.Classpath, name: String): File = classpath
@@ -926,7 +929,8 @@ object Build {
       Test / test := (LocalProject("scala3-sbt-bridge-tests") / Test / test).value,
 
       // The `newCompilerInterface` is backward compatible with the `oldCompilerInterface`
-      libraryDependencies += Dependencies.newCompilerInterface % Provided
+      libraryDependencies += Dependencies.newCompilerInterface % Provided,
+      publish / skip := true
     )
 
   // We use a separate project for the bridge tests since they can only be run
