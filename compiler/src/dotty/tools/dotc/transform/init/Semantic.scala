@@ -14,6 +14,7 @@ import config.Printers.{ init => printer }
 import reporting.trace
 
 import Errors._
+import Util._
 
 import scala.collection.mutable
 
@@ -49,10 +50,10 @@ class Semantic {
   * needed to finitize addresses. E.g. OOPSLA 2020 paper restricts
   * args to be either `Hot` or `Cold`
   */
-  case class Addr(klass: Symbol, args: List[Value], outer: Value) extends Value
+  case class Addr(klass: ClassSymbol, args: List[Value], outer: Value) extends Value
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: Symbol) extends Value
+  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -68,7 +69,7 @@ class Semantic {
    *  From performance reasons, we cache the immediate outer for all classes
    *  in the inheritance hierarchy.
    */
-  case class Objekt(klass: Symbol, fields: Map[Symbol, Value], outers: Map[ClassSymbol, Value])
+  case class Objekt(klass: ClassSymbol, fields: Map[Symbol, Value], outers: Map[ClassSymbol, Value])
 
   /** Abstract heap stores abstract objects
    *
@@ -120,9 +121,8 @@ class Semantic {
     def select(f: Symbol, source: Tree)(using Context): Result =
       value.select(f, heap, source) ++ errors
 
-    def call(meth: Symbol, source: Tree)(using Context): Result = ???
-
-    def superCall(meth: Symbol, supertpe: Type, source: Tree)(using Context): Result = ???
+    def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
+      value.call(meth, superType, heap, source) ++ errors
   }
 
   val noErrors = Nil
@@ -174,6 +174,50 @@ class Semantic {
           val errors = resList.flatMap(_.errors)
           Result(value2, heap, errors)
       }
+
+    def call(meth: Symbol, superType: Type, heap: Heap, source: Tree)(using Context): Result =
+      value match {
+        case Hot  =>
+          Result(Hot, heap, noErrors)
+
+        case Cold =>
+          val error = CallCold(meth, source, Vector(source))
+          Result(Hot, heap, error :: Nil)
+
+        case addr: Addr =>
+          val obj = heap(addr)
+          val target =
+            if superType.exists then
+              // TODO: superType could be A & B when there is self-annotation
+              resolveSuper(obj.klass, superType.classSymbol.asClass, meth)
+            else
+              resolve(obj.klass, meth)
+          if (target.isOneOf(Flags.Method | Flags.Lazy))
+            if target.hasSource then
+              val rhs = target.defTree.asInstanceOf[DefDef].rhs
+              eval(rhs, addr, target.owner.asClass, heap)
+            else
+              val error = CallUnknown(target, source, Vector(source))
+              Result(Hot, heap, error :: Nil)
+          else
+            if obj.fields.contains(target) then
+              Result(obj.fields(target), heap, Nil)
+            else
+              val error = AccessNonInit(target, Vector(source))
+              Result(Hot, heap, error :: Nil)
+
+        case Fun(body, thisV, klass) =>
+          if meth.name == nme.apply then eval(body, thisV, klass, heap)
+          else if meth.name.toString == "tupled" then Result(value, heap, Nil)
+          else Result(Hot, heap, Nil) // TODO: refine
+
+        case RefSet(refs) =>
+          val resList = refs.map(_.call(meth, superType, heap, source))
+          val value2 = resList.map(_.value).join
+          val errors = resList.flatMap(_.errors)
+          Result(value2, heap, errors)
+      }
+  end extension
 
 
 // ----- Semantic definition --------------------------------
@@ -242,11 +286,11 @@ class Semantic {
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, heap2)
-          Result(thisValue2, heap2, errors ++ errors2.toList).superCall(ref.symbol, superTp, expr)
+          Result(thisValue2, heap2, errors ++ errors2.toList).call(ref.symbol, superTp, expr)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass, heap2) ++ errors ++ errors2.toList
-          res.call(ref.symbol, expr)
+          res.call(ref.symbol, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -261,7 +305,7 @@ class Semantic {
               eval(rhs, thisValue2, enclosingClass, heap2)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, heap2, id) ++ errors ++ errors2.toList
-            res.call(id.symbol, expr)
+            res.call(id.symbol, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass, heap).select(expr.symbol, expr)
