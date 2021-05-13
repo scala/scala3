@@ -75,7 +75,13 @@ class Semantic {
    *
    * As in the OOPSLA paper, the abstract heap is monotonistic
    */
-  type Heap = Map[Addr, Objekt]
+  type Heap = mutable.Map[Addr, Objekt]
+
+  /** The heap for abstract objects
+   *
+   *  As the heap is monotonistic, we can avoid passing it around.
+   */
+  val heap: Heap = mutable.Map.empty[Addr, Objekt]
 
   /** Interpreter configuration
    *
@@ -105,7 +111,7 @@ class Semantic {
   val cache: Cache = mutable.Map.empty[Config, Value]
 
   /** Result of abstract interpretation */
-  case class Result(value: Value, heap: Heap, errors: Seq[Error]) {
+  case class Result(value: Value, errors: Seq[Error]) {
     def show(using Context) = ???
 
     def ++(errors: Seq[Error]): Result = this.copy(errors = this.errors ++ errors)
@@ -119,10 +125,10 @@ class Semantic {
         this + PromoteCold(source, Vector(source))
 
     def select(f: Symbol, source: Tree)(using Context): Result =
-      value.select(f, heap, source) ++ errors
+      value.select(f, source) ++ errors
 
     def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
-      value.call(meth, superType, heap, source) ++ errors
+      value.call(meth, superType, source) ++ errors
   }
 
   val noErrors = Nil
@@ -148,41 +154,41 @@ class Semantic {
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
-    def select(f: Symbol, heap: Heap, source: Tree)(using Context): Result =
+    def select(f: Symbol, source: Tree)(using Context): Result =
       value match {
         case Hot  =>
-          Result(Hot, heap, noErrors)
+          Result(Hot, noErrors)
 
         case Cold =>
           val error = AccessCold(f, source, Vector(source))
-          Result(Hot, heap, error :: Nil)
+          Result(Hot, error :: Nil)
 
         case addr: Addr =>
           val obj = heap(addr)
           if obj.fields.contains(f) then
-            Result(obj.fields(f), heap, Nil)
+            Result(obj.fields(f), Nil)
           else
             val error = AccessNonInit(f, Vector(source))
-            Result(Hot, heap, error :: Nil)
+            Result(Hot, error :: Nil)
 
         case _: Fun =>
           ???
 
         case RefSet(refs) =>
-          val resList = refs.map(_.select(f, heap, source))
+          val resList = refs.map(_.select(f, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
-          Result(value2, heap, errors)
+          Result(value2, errors)
       }
 
-    def call(meth: Symbol, superType: Type, heap: Heap, source: Tree)(using Context): Result =
+    def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
       value match {
         case Hot  =>
-          Result(Hot, heap, noErrors)
+          Result(Hot, noErrors)
 
         case Cold =>
           val error = CallCold(meth, source, Vector(source))
-          Result(Hot, heap, error :: Nil)
+          Result(Hot, error :: Nil)
 
         case addr: Addr =>
           val obj = heap(addr)
@@ -195,27 +201,27 @@ class Semantic {
           if (target.isOneOf(Flags.Method | Flags.Lazy))
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, addr, target.owner.asClass, heap)
+              eval(rhs, addr, target.owner.asClass)
             else
               val error = CallUnknown(target, source, Vector(source))
-              Result(Hot, heap, error :: Nil)
+              Result(Hot, error :: Nil)
           else
             if obj.fields.contains(target) then
-              Result(obj.fields(target), heap, Nil)
+              Result(obj.fields(target), Nil)
             else
               val error = AccessNonInit(target, Vector(source))
-              Result(Hot, heap, error :: Nil)
+              Result(Hot, error :: Nil)
 
         case Fun(body, thisV, klass) =>
-          if meth.name == nme.apply then eval(body, thisV, klass, heap)
-          else if meth.name.toString == "tupled" then Result(value, heap, Nil)
-          else Result(Hot, heap, Nil) // TODO: refine
+          if meth.name == nme.apply then eval(body, thisV, klass)
+          else if meth.name.toString == "tupled" then Result(value, Nil)
+          else Result(Hot, Nil) // TODO: refine
 
         case RefSet(refs) =>
-          val resList = refs.map(_.call(meth, superType, heap, source))
+          val resList = refs.map(_.call(meth, superType, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
-          Result(value2, heap, errors)
+          Result(value2, errors)
       }
   end extension
 
@@ -226,47 +232,45 @@ class Semantic {
    *
    * This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): Result = trace("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context): Result = trace("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
     val cfg = Config(thisV, expr.sourcePos)
-    if (cache.contains(cfg)) Result(cache(cfg), heap, noErrors)
+    if (cache.contains(cfg)) Result(cache(cfg), noErrors)
     else {
       // no need to compute fix-point, because
       // 1. the result is decided by `cfg` for a legal program
       //    (heap change is irrelevant thanks to monotonicity)
       // 2. errors will have been reported for an illegal program
       cache(cfg) = Hot
-      val res = cases(expr, thisV, klass, heap)
+      val res = cases(expr, thisV, klass)
       cache(cfg) = res.value
       res
     }
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): (List[Value], List[Error], Heap) = {
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context): (List[Value], List[Error]) = {
     val errors = new mutable.ArrayBuffer[Error]
-    var heap2 = heap
     val values = exprs.map { binding =>
-      val res = eval(binding, thisV, klass, heap2)
-      heap2 = res.heap
+      val res = eval(binding, thisV, klass)
       errors ++= res.errors
       res.value
     }
-    (values, errors.toList, heap2)
+    (values, errors.toList)
   }
 
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): Result =
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context): Result =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case Ident(name) =>
         assert(name.isTermName, "type trees should not reach here")
-        cases(expr.tpe, thisV, klass, heap, expr)
+        cases(expr.tpe, thisV, klass, expr)
 
       case NewExpr(newExpr, ctor, argss) =>
         ???
@@ -274,7 +278,7 @@ class Semantic {
       case Call(ref, argss) =>
         // check args
         val args = argss.flatten
-        val (values, errors, heap2) = eval(args, thisV, klass, heap)
+        val (values, errors) = eval(args, thisV, klass)
         val errors2 = new mutable.ArrayBuffer[Error]
         args.zip(values).foreach { (arg, value) =>
           if value != Hot then
@@ -285,11 +289,11 @@ class Semantic {
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
-          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, heap2)
-          Result(thisValue2, heap2, errors ++ errors2.toList).call(ref.symbol, superTp, expr)
+          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass)
+          Result(thisValue2, errors ++ errors2.toList).call(ref.symbol, superTp, expr)
 
         case Select(qual, _) =>
-          val res = eval(qual, thisV, klass, heap2) ++ errors ++ errors2.toList
+          val res = eval(qual, thisV, klass) ++ errors ++ errors2.toList
           res.call(ref.symbol, superType = NoType, source = expr)
 
         case id: Ident =>
@@ -297,149 +301,149 @@ class Semantic {
           case TermRef(NoPrefix, _) =>
             // resolve this for the local method
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
-            val thisValue2 = resolveThis(enclosingClass, thisV, klass, heap)
+            val thisValue2 = resolveThis(enclosingClass, thisV, klass)
             thisValue2 match
-            case Hot => Result(Hot, heap2, errors)
+            case Hot => Result(Hot, errors)
             case _ =>
               val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, thisValue2, enclosingClass, heap2)
+              eval(rhs, thisValue2, enclosingClass)
           case TermRef(prefix, _) =>
-            val res = cases(prefix, thisV, klass, heap2, id) ++ errors ++ errors2.toList
+            val res = cases(prefix, thisV, klass, id) ++ errors ++ errors2.toList
             res.call(id.symbol, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
-        eval(qualifier, thisV, klass, heap).select(expr.symbol, expr)
+        eval(qualifier, thisV, klass).select(expr.symbol, expr)
 
       case _: This =>
-        cases(expr.tpe, thisV, klass, heap, expr)
+        cases(expr.tpe, thisV, klass, expr)
 
       case Literal(_) =>
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case Typed(expr, tpt) =>
-        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, heap, noErrors)
-        else eval(expr, thisV, klass, heap)
+        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
+        else eval(expr, thisV, klass)
 
       case NamedArg(name, arg) =>
-        eval(arg, thisV, klass, heap)
+        eval(arg, thisV, klass)
 
       case Assign(lhs, rhs) =>
         lhs match
         case Select(qual, _) =>
-          val res = eval(qual, thisV, klass, heap)
-          eval(rhs, thisV, klass, res.heap).ensureHot("May only assign initialized value", rhs) ++ res.errors
+          val res = eval(qual, thisV, klass)
+          eval(rhs, thisV, klass).ensureHot("May only assign initialized value", rhs) ++ res.errors
         case id: Ident =>
-          eval(rhs, thisV, klass, heap).ensureHot("May only assign initialized value", rhs)
+          eval(rhs, thisV, klass).ensureHot("May only assign initialized value", rhs)
 
       case closureDef(ddef) =>
         thisV match
         case addr: Addr =>
           val value = Fun(ddef.rhs, addr, klass)
-          Result(value, heap, Nil)
+          Result(value, Nil)
         case _ =>
           ??? // impossible
 
       case Block(stats, expr) =>
-        val (_, errors, heap2) = eval(stats, thisV, klass, heap)
-        eval(expr, thisV, klass, heap2) ++ errors
+        val (_, errors) = eval(stats, thisV, klass)
+        eval(expr, thisV, klass) ++ errors
 
       case If(cond, thenp, elsep) =>
-        val (_ :: values, errors, heap2) = eval(cond :: thenp :: elsep :: Nil, thisV, klass, heap)
-        Result(values.join, heap2, errors)
+        val (_ :: values, errors) = eval(cond :: thenp :: elsep :: Nil, thisV, klass)
+        Result(values.join, errors)
 
       case Annotated(arg, annot) =>
-        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, heap, noErrors)
-        else eval(arg, thisV, klass, heap)
+        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
+        else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
-        val res1 = eval(selector, thisV, klass, heap)
-        val (values, errors, heap2) = eval(cases.map(_.body), thisV, klass, res1.heap)
-        Result(values.join, heap2, res1.errors ++ errors)
+        val res1 = eval(selector, thisV, klass)
+        val (values, errors) = eval(cases.map(_.body), thisV, klass)
+        Result(values.join, res1.errors ++ errors)
 
       case Return(expr, from) =>
-        eval(expr, thisV, klass, heap).ensureHot("return expression may only be initialized value", expr)
+        eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
 
       case WhileDo(cond, body) =>
-        val (_, errors, heap2) = eval(cond :: body :: Nil, thisV, klass, heap)
-        Result(Hot, heap2, errors)
+        val (_, errors) = eval(cond :: body :: Nil, thisV, klass)
+        Result(Hot, errors)
 
       case Labeled(_, expr) =>
-        eval(expr, thisV, klass, heap)
+        eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
-        val res1 = eval(block, thisV, klass, heap)
-        val (values, errors, heap2) = eval(cases.map(_.body), thisV, klass, res1.heap)
+        val res1 = eval(block, thisV, klass)
+        val (values, errors) = eval(cases.map(_.body), thisV, klass)
         val resValue = values.join
         if finalizer.isEmpty then
-          Result(resValue, heap2, res1.errors ++ errors)
+          Result(resValue, res1.errors ++ errors)
         else
-          val res2 = eval(finalizer, thisV, klass, heap2)
-          Result(resValue, res2.heap, res1.errors ++ errors ++ res2.errors)
+          val res2 = eval(finalizer, thisV, klass)
+          Result(resValue, res1.errors ++ errors ++ res2.errors)
 
       case SeqLiteral(elems, elemtpt) =>
-        val (values, errors, heap2) = eval(elems, thisV, klass, heap)
+        val (values, errors) = eval(elems, thisV, klass)
         val errors2 = new mutable.ArrayBuffer[Error]
         elems.zip(values).foreach { (elem, value) =>
           if value != Hot then
             // TODO: define a new error
             errors2 += PromoteCold(elem, Vector(elem))
         }
-        Result(Hot, heap2, errors2.toList ++ errors)
+        Result(Hot, errors2.toList ++ errors)
 
       case Inlined(call, bindings, expansion) =>
-        val (_, errors, heap2) = eval(bindings, thisV, klass, heap)
-        eval(expansion, thisV, klass, heap2) ++ errors
+        val (_, errors) = eval(bindings, thisV, klass)
+        eval(expansion, thisV, klass) ++ errors
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case vdef : ValDef =>
         // local val definition
         // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass, heap).ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass).ensureHot("Local definitions may only hold initialized values", vdef)
 
       case ddef : DefDef =>
         // local method
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case tdef: TypeDef =>
         // local type definition
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case _: Import | _: Export =>
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Value, klass: ClassSymbol, heap: Heap, source: Tree)(using Context): Result = trace("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree)(using Context): Result = trace("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass, heap, source).select(tmref.symbol, source)
+        cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        if tref.symbol.is(Flags.Package) then Result(Hot, heap, noErrors)
+        if tref.symbol.is(Flags.Package) then Result(Hot, noErrors)
         else
           val value =
             thisV match
             case Hot => Hot
             case addr: Addr =>
-              resolveThis(tp.classSymbol.asClass, addr, klass, heap)
+              resolveThis(tp.classSymbol.asClass, addr, klass)
             case _ => ???
-          Result(value, heap, noErrors)
+          Result(value, noErrors)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
-        Result(Hot, heap, noErrors)
+        Result(Hot, noErrors)
 
       case _ =>
         throw new Exception("unexpected type: " + tp)
@@ -447,7 +451,7 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, heap: Heap)(using Context): Value = trace("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol)(using Context): Value = trace("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
     else
       thisV match
@@ -455,12 +459,12 @@ class Semantic {
         case thisV: Addr =>
           val outer = heap(thisV).outers.getOrElse(klass, Hot)
           val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(target, outer, outerCls, heap)
+          resolveThis(target, outer, outerCls)
         case _ => ???
   }
 
   /** Initialize an abstract object */
-  def init(klass: Symbol, thisV: Addr, heap: Heap): Result = ???
+  def init(klass: Symbol, thisV: Addr): Result = ???
 
 // ----- Utility methods and extractors --------------------------------
 
