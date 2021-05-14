@@ -545,7 +545,7 @@ class Semantic {
       errorBuffer ++= res2.errors
 
     // parents
-    tpl.parents.foreach {
+    def initParent(parent: Tree) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         argss.flatten.foreach { arg =>
@@ -568,6 +568,26 @@ class Semantic {
         superCall(tref, tref.classSymbol.primaryConstructor, ref)
     }
 
+    // see spec 5.1 about "Template Evaluation".
+    // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
+    if !klass.is(Flags.Trait) then
+      // 1. first init parent class recursively
+      // 2. initialize traits according to linearization order
+      val superParent = tpl.parents.head
+      val superCls = superParent.tpe.classSymbol.asClass
+      initParent(superParent)
+
+      val parents = tpl.parents.tail
+      val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
+      mixins.reverse.foreach { mixin =>
+        parents.find(_.tpe.classSymbol == mixin) match
+        case Some(parent) => initParent(parent)
+        case None =>
+          val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
+          superCall(tref, tref.classSymbol.primaryConstructor, superParent)
+      }
+
+
     // class body
     tpl.body.foreach {
       case vdef : ValDef =>
@@ -585,6 +605,11 @@ class Semantic {
 
 // ----- Utility methods and extractors --------------------------------
 
+  def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
+    case tref: TypeRef => tref
+    case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
+  }
+
   object Call {
     def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Tree]])] =
       tree match
@@ -601,11 +626,6 @@ class Semantic {
   }
 
   object NewExpr {
-    private def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
-      case tref: TypeRef => tref
-      case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
-    }
-
     def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Tree]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
