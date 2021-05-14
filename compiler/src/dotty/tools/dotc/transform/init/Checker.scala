@@ -62,9 +62,8 @@ class Checker extends MiniPhase {
       // Checking.checkClassBody(tree)
 
       import semantic._
-      val addr = Addr(cls, outer = Hot)
-      heap(addr) = Objekt(cls, Map.empty, Map(cls -> Hot))
-      val res = addr.call(cls.primaryConstructor, superType = NoType, tree)(using ctx, Vector.empty)
+      val thisRef = ThisRef(cls)(fields = mutable.Map.empty)
+      val res = semantic.init(cls, thisRef)(using ctx, Vector.empty)
       res.errors.foreach(_.issue)
     }
 

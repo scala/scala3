@@ -27,9 +27,7 @@ class Semantic {
 
   /** Abstract values
    *
-   * Value = Hot | Cold | Addr | Fun | RefSet
-   *
-   * `Warm` and `This` will be addresses refer to the abstract heap
+   * Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
    */
   trait Value {
     def show: String = this.toString()
@@ -41,47 +39,30 @@ class Semantic {
   /** An object with unknown initialization status */
   case object Cold extends Value
 
-  /** Addresses to the abstract heap
-  *
-  * Addresses determine abstractions of objects. Objects created
-  * with same address are represented with the same abstraction.
-  *
-  * Nested addresses may lead to infinite domain, thus widen is
-  * needed to finitize addresses. E.g. OOPSLA 2020 paper restricts
-  * args to be either `Hot` or `Cold`
-  */
-  case class Addr(klass: ClassSymbol, outer: Value) extends Value
+  /** Object referred by `this` which stores abstract values for all fields
+   *
+   *  Note: the mutable `fields` plays the role of heap. Thanks to monotonicity
+   *  of the heap, we may handle it in a simple way.
+   */
+  case class ThisRef(klass: ClassSymbol)(val fields: mutable.Map[Symbol, Value]) extends Value {
+    def updateField(field: Symbol, value: Value): Unit =
+      fields(field) = value
+  }
+
+  /** An object with all fields initialized but reaches objects under initialization
+   *
+   *  We need to restrict nesting levels of `outer` to finitize the domain.
+   */
+  case class Warm(klass: ClassSymbol, outer: Value) extends Value
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
+  case class Fun(expr: Tree, thisV: ThisRef | Warm, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of addresses
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Addr | Fun]) extends Value
-
-  /** Object stores abstract values for all fields and the outer.
-   *
-   *  Theoretically we only need to store the outer for the concrete class,
-   *  as all other outers are determined.
-   *
-   *  From performance reasons, we cache the immediate outer for all classes
-   *  in the inheritance hierarchy.
-   */
-  case class Objekt(klass: ClassSymbol, fields: Map[Symbol, Value], outers: Map[ClassSymbol, Value])
-
-  /** Abstract heap stores abstract objects
-   *
-   * As in the OOPSLA paper, the abstract heap is monotonistic
-   */
-  type Heap = mutable.Map[Addr, Objekt]
-
-  /** The heap for abstract objects
-   *
-   *  As the heap is monotonistic, we can avoid passing it around.
-   */
-  val heap: Heap = mutable.Map.empty[Addr, Objekt]
+  case class RefSet(refs: List[Warm | Fun | ThisRef]) extends Value
 
   /** Interpreter configuration
    *
@@ -154,10 +135,10 @@ class Semantic {
       case (Cold, _) => Cold
       case (_, Cold) => Cold
 
-      case (a: (Fun | Addr), b: (Fun | Addr)) => RefSet(a :: b :: Nil)
+      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
 
-      case (a: (Fun | Addr), RefSet(refs))    => RefSet(a :: refs)
-      case (RefSet(refs), b: (Fun | Addr))    => RefSet(b :: refs)
+      case (a: (Fun | Warm | ThisRef), RefSet(refs))    => RefSet(a :: refs)
+      case (RefSet(refs), b: (Fun | Warm | ThisRef))    => RefSet(b :: refs)
 
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
 
@@ -165,28 +146,39 @@ class Semantic {
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
-    def select(f: Symbol, source: Tree)(using Context, Trace): Result =
+    def select(field: Symbol, source: Tree)(using Context, Trace): Result =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
 
         case Cold =>
-          val error = AccessCold(f, source, trace)
+          val error = AccessCold(field, source, trace)
           Result(Hot, error :: Nil)
 
-        case addr: Addr =>
-          val obj = heap(addr)
-          if obj.fields.contains(f) then
-            Result(obj.fields(f), Nil)
+        case thisRef: ThisRef =>
+          val target = resolve(thisRef.klass, field)
+          if target.is(Flags.Lazy) then value.call(target, superType = NoType, source)
+          else if thisRef.fields.contains(target) then
+            Result(thisRef.fields(target), Nil)
           else
-            val error = AccessNonInit(f, trace.add(source))
+            val error = AccessNonInit(target, trace.add(source))
+            Result(Hot, error :: Nil)
+
+        case warm: Warm =>
+          val target = resolve(warm.klass, field)
+          if target.is(Flags.Lazy) then value.call(target, superType = NoType, source)
+          else if target.hasSource then
+            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            eval(rhs, warm, target.owner.asClass)
+          else
+            val error = CallUnknown(field, source, trace)
             Result(Hot, error :: Nil)
 
         case _: Fun =>
           ???
 
         case RefSet(refs) =>
-          val resList = refs.map(_.select(f, source))
+          val resList = refs.map(_.select(field, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
@@ -201,29 +193,48 @@ class Semantic {
           val error = CallCold(meth, source, trace)
           Result(Hot, error :: Nil)
 
-        case addr: Addr =>
-          val obj = heap(addr)
+        case thisRef: ThisRef =>
           val target =
             if superType.exists then
               // TODO: superType could be A & B when there is self-annotation
-              resolveSuper(obj.klass, superType.classSymbol.asClass, meth)
+              resolveSuper(thisRef.klass, superType.classSymbol.asClass, meth)
             else
-              resolve(obj.klass, meth)
+              resolve(thisRef.klass, meth)
           if target.isPrimaryConstructor then
-            init(target.owner.asClass, addr)
+            init(target.owner.asClass, thisRef)
           else if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, addr, target.owner.asClass)
+              eval(rhs, thisRef, target.owner.asClass)
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
+          else if thisRef.fields.contains(target) then
+            Result(thisRef.fields(target), Nil)
           else
-            if obj.fields.contains(target) then
-              Result(obj.fields(target), Nil)
+            val error = AccessNonInit(target, trace.add(source))
+            Result(Hot, error :: Nil)
+
+        case warm: Warm =>
+          val target =
+            if superType.exists then
+              // TODO: superType could be A & B when there is self-annotation
+              resolveSuper(warm.klass, superType.classSymbol.asClass, meth)
             else
-              val error = AccessNonInit(target, trace.add(source))
+              resolve(warm.klass, meth)
+          if target.isOneOf(Flags.Method | Flags.Lazy) then
+            if target.hasSource then
+              val rhs = target.defTree.asInstanceOf[DefDef].rhs
+              eval(rhs, warm, target.owner.asClass)
+            else
+              val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
+          else if target.hasSource then
+            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            eval(rhs, warm, target.owner.asClass)
+          else
+            val error = CallUnknown(target, source, trace)
+            Result(Hot, error :: Nil)
 
         case Fun(body, thisV, klass) =>
           if meth.name == nme.apply then eval(body, thisV, klass)
@@ -246,13 +257,13 @@ class Semantic {
           val error = CallCold(ctor, source, trace)
           Result(Hot, error :: Nil)
 
-        case addr: Addr =>
+        case thisRef: ThisRef =>
+          Result(Warm(klass, outer = thisRef), noErrors)
+
+        case warm: Warm =>
           // widen the outer to finitize addresses
-          val outer = if addr.outer.isInstanceOf[Addr] then addr.copy(outer = Cold) else addr
-          val addr2 = Addr(klass, outer)
-          if !heap.contains(addr2) then
-            heap(addr2) = Objekt(klass, Map.empty, Map(klass -> outer))
-          addr2.call(ctor, superType = NoType, source)
+          val outer = if warm.outer.isInstanceOf[Warm] then warm.copy(outer = Cold) else warm
+          Result(Warm(klass, outer), noErrors)
 
         case Fun(body, thisV, klass) =>
           ??? // impossible
@@ -264,19 +275,6 @@ class Semantic {
           Result(value2, errors)
       }
   end extension
-
-  extension (addr: Addr)
-    def updateOuter(klass: ClassSymbol, value: Value): Unit =
-      val obj = heap(addr)
-      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
-      heap(addr) = obj2
-
-    def updateField(field: Symbol, value: Value): Unit =
-      val obj = heap(addr)
-      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
-      heap(addr) = obj2
-  end extension
-
 
 // ----- Semantic definition --------------------------------
 
@@ -388,8 +386,8 @@ class Semantic {
 
       case closureDef(ddef) =>
         thisV match
-        case addr: Addr =>
-          val value = Fun(ddef.rhs, addr, klass)
+        case obj: (ThisRef | Warm) =>
+          val value = Fun(ddef.rhs, obj, klass)
           Result(value, Nil)
         case _ =>
           ??? // impossible
@@ -485,12 +483,7 @@ class Semantic {
       case tp @ ThisType(tref) =>
         if tref.symbol.is(Flags.Package) then Result(Hot, noErrors)
         else
-          val value =
-            thisV match
-            case Hot => Hot
-            case addr: Addr =>
-              resolveThis(tp.classSymbol.asClass, addr, klass)
-            case _ => ???
+          val value = resolveThis(tp.classSymbol.asClass, thisV, klass)
           Result(value, noErrors)
 
       case _: TermParamRef | _: RecThis  =>
@@ -507,18 +500,26 @@ class Semantic {
     if target == klass then thisV
     else
       thisV match
-        case Hot => Hot
-        case thisV: Addr =>
-          val outer = heap(thisV).outers.getOrElse(klass, Hot)
-          val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(target, outer, outerCls)
+        case Hot | _: ThisRef => Hot
+        case warm: Warm =>
+          // use existing type information as a shortcut
+          val tref = typeRefOf(warm.klass.typeRef.baseType(klass))
+          if tref.prefix == NoPrefix then
+            // Current class is local, in the enclosing scope of `warm.klass`
+            val outerCls = warm.klass.owner.enclosingClass.asClass
+            resolveThis(target, warm.outer, outerCls)
+          else
+            val outerCls = klass.owner.enclosingClass.asClass
+            val res = cases(tref.prefix, warm.outer, warm.klass.owner.asClass, EmptyTree)
+            assert(res.errors.isEmpty, "unexpected error " + res)
+            resolveThis(target, res.value, outerCls)
         case _ => ???
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
   def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree)(using Context, Trace): Result =
     val cls = tref.classSymbol.asClass
-    if (tref.prefix == NoPrefix) then
+    if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
       val outerV = resolveThis(enclosing, thisV, klass)
       Result(outerV, noErrors)
@@ -526,27 +527,23 @@ class Semantic {
       cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(klass: ClassSymbol, thisV: Addr)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(klass: ClassSymbol, thisV: ThisRef)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     // init param fields
-    var obj = heap(thisV)
     klass.paramAccessors.foreach { acc =>
       if (!acc.is(Flags.Method)) {
         traceIndented(acc.show + " initialized", printer)
-        obj = obj.copy(fields = obj.fields.updated(acc, Hot))
+        thisV.updateField(acc, Hot)
       }
     }
-    heap(thisV) = obj
 
     def superCall(tref: TypeRef, ctor: Symbol, source: Tree): Unit =
-      // update outer for super class
       val cls = tref.classSymbol.asClass
-      val res = outerValue(tref, thisV, klass, source)
-      errorBuffer ++= res.errors
-      thisV.updateOuter(cls, res.value)
+      // update outer for super class
+      // ignored as they are all hot
 
       // follow constructor
       if !cls.defTree.isEmpty then
