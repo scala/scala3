@@ -112,7 +112,7 @@ class Semantic {
 
   /** Result of abstract interpretation */
   case class Result(value: Value, errors: Seq[Error]) {
-    def show(using Context) = ???
+    def show(using Context) = value.show + ", errors = " + errors.map(_.toString)
 
     def ++(errors: Seq[Error]): Result = this.copy(errors = this.errors ++ errors)
 
@@ -202,7 +202,7 @@ class Semantic {
             else
               resolve(obj.klass, meth)
           if target.isPrimaryConstructor then
-            init(addr.klass, addr)
+            init(target.owner.asClass, addr)
           else if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
@@ -518,7 +518,7 @@ class Semantic {
       cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(klass: ClassSymbol, thisV: Addr)(using Context): Result =
+  def init(klass: ClassSymbol, thisV: Addr)(using Context): Result = trace("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -541,8 +541,9 @@ class Semantic {
       thisV.updateOuter(cls, res.value)
 
       // follow constructor
-      val res2 = thisV.call(ctor, superType = NoType, source)
-      errorBuffer ++= res2.errors
+      if !cls.defTree.isEmpty then
+        val res2 = thisV.call(ctor, superType = NoType, source)
+        errorBuffer ++= res2.errors
 
     // parents
     def initParent(parent: Tree) = parent match {
@@ -551,7 +552,7 @@ class Semantic {
         argss.flatten.foreach { arg =>
           val res = eval(arg, thisV, klass)
           res.ensureHot("Argument must be an initialized value", arg)
-          errorBuffer ++ res.errors
+          errorBuffer ++= res.errors
         }
         superCall(tref, ctor, tree)
 
@@ -559,7 +560,7 @@ class Semantic {
         argss.flatten.foreach { arg =>
           val res = eval(arg, thisV, klass)
           res.ensureHot("Argument must be an initialized value", arg)
-          errorBuffer ++ res.errors
+          errorBuffer ++= res.errors
         }
         superCall(tref, ctor, tree)
 
@@ -584,7 +585,8 @@ class Semantic {
         case Some(parent) => initParent(parent)
         case None =>
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
-          superCall(tref, tref.classSymbol.primaryConstructor, superParent)
+          val ctor = tref.classSymbol.primaryConstructor
+          if ctor.exists then superCall(tref, ctor, superParent)
       }
 
 
@@ -592,7 +594,7 @@ class Semantic {
     tpl.body.foreach {
       case vdef : ValDef =>
         val res = eval(vdef.rhs, thisV, klass)
-        errorBuffer ++ res.errors
+        errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
 
       case _: MemberDef =>
@@ -602,6 +604,7 @@ class Semantic {
     }
 
     Result(thisV, errorBuffer.toList)
+  }
 
 // ----- Utility methods and extractors --------------------------------
 
@@ -623,6 +626,8 @@ class Semantic {
 
       case ref: RefTree if ref.symbol.is(Flags.Method) =>
         Some((ref, Nil))
+
+      case _ => None
   }
 
   object NewExpr {
