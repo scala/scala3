@@ -257,6 +257,18 @@ class Semantic {
       }
   end extension
 
+  extension (addr: Addr)
+    def updateOuter(klass: ClassSymbol, value: Value): Unit =
+      val obj = heap(addr)
+      val obj2 = obj.copy(outers = obj.outers.updated(klass, value))
+      heap(addr) = obj2
+
+    def updateField(field: Symbol, value: Value): Unit =
+      val obj = heap(addr)
+      val obj2 = obj.copy(fields = obj.fields.updated(field, value))
+      heap(addr) = obj2
+  end extension
+
 
 // ----- Semantic definition --------------------------------
 
@@ -526,9 +538,7 @@ class Semantic {
       val cls = tref.classSymbol.asClass
       val res = outerValue(tref, thisV, klass, source)
       errorBuffer ++= res.errors
-      val obj = heap(thisV)
-      val obj2 = obj.copy(outers = obj.outers.updated(cls, res.value))
-      heap(thisV) = obj2
+      thisV.updateOuter(cls, res.value)
 
       // follow constructor
       val res2 = thisV.call(ctor, superType = NoType, source)
@@ -563,9 +573,7 @@ class Semantic {
       case vdef : ValDef =>
         val res = eval(vdef.rhs, thisV, klass)
         errorBuffer ++ res.errors
-        val obj = heap(thisV)
-        val obj2 = obj.copy(fields = obj.fields.updated(vdef.symbol, res.value))
-        heap(thisV) = obj2
+        thisV.updateField(vdef.symbol, res.value)
 
       case _: MemberDef =>
 
