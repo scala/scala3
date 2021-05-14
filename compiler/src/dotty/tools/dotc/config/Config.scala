@@ -24,7 +24,10 @@ object Config {
   inline val checkConstraintsNonCyclic = false
 
   /** Check that each constraint resulting from a subtype test
-   *  is satisfiable.
+   *  is satisfiable. Also check that a type variable instantiation
+   *  satisfies its constraints.
+   *  Note that this can fail when bad bounds are in scope, like in
+   *  tests/neg/i4721a.scala.
    */
   inline val checkConstraintsSatisfiable = false
 

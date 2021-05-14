@@ -403,20 +403,21 @@ object Inferencing {
     val vs = variances(tp)
     val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
     vs foreachBinding { (tvar, v) =>
-      if (v == 1) tvar.instantiate(fromBelow = false)
-      else if (v == -1) tvar.instantiate(fromBelow = true)
-      else {
-        val bounds = TypeComparer.fullBounds(tvar.origin)
-        if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
-          tvar.instantiate(fromBelow = false)
+      if !tvar.isInstantiated then
+        if (v == 1) tvar.instantiate(fromBelow = false)
+        else if (v == -1) tvar.instantiate(fromBelow = true)
         else {
-          // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
-          // Instead, we simultaneously add them later on.
-          val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
-          tvar.instantiateWith(wildCard.typeRef)
-          patternBindings += ((wildCard, tvar.origin))
+          val bounds = TypeComparer.fullBounds(tvar.origin)
+          if (bounds.hi <:< bounds.lo || bounds.hi.classSymbol.is(Final) || fromScala2x)
+            tvar.instantiate(fromBelow = false)
+          else {
+            // We do not add the created symbols to GADT constraint immediately, since they may have inter-dependencies.
+            // Instead, we simultaneously add them later on.
+            val wildCard = newPatternBoundSymbol(UniqueName.fresh(tvar.origin.paramName), bounds, span, addToGadt = false)
+            tvar.instantiateWith(wildCard.typeRef)
+            patternBindings += ((wildCard, tvar.origin))
+          }
         }
-      }
     }
     val res = patternBindings.toList.map { (boundSym, _) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
@@ -654,13 +655,16 @@ trait Inferencing { this: Typer =>
             while buf.nonEmpty do
               val first @ (tvar, fromBelow) = buf.head
               buf.dropInPlace(1)
-              val suspend = buf.exists{ (following, _) =>
-                if fromBelow then
-                  constraint.isLess(following.origin, tvar.origin)
-                else
-                  constraint.isLess(tvar.origin, following.origin)
-              }
-              if suspend then suspended += first else tvar.instantiate(fromBelow)
+              if !tvar.isInstantiated then
+                val suspend = buf.exists{ (following, _) =>
+                  if fromBelow then
+                    constraint.isLess(following.origin, tvar.origin)
+                  else
+                    constraint.isLess(tvar.origin, following.origin)
+                }
+                if suspend then suspended += first else tvar.instantiate(fromBelow)
+              end if
+            end while
             doInstantiate(suspended)
         end doInstantiate
         doInstantiate(toInstantiate)

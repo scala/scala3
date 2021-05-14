@@ -170,6 +170,10 @@ object TypeOps:
         if (normed.exists) normed else mapOver
       case tp: MethodicType =>
         tp // See documentation of `Types#simplified`
+      case tp: SkolemType =>
+        // Mapping over a skolem creates a new skolem which by definition won't
+        // be =:= to the original one.
+        tp
       case _ =>
         mapOver
     }
