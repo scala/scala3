@@ -10,8 +10,8 @@ import StdNames._
 
 import ast.tpd._
 import util.SourcePosition
-import config.Printers.{ init => printer }
-import reporting.trace
+import config.Printers.init as printer
+import reporting.trace as log
 
 import Errors._
 import Util._
@@ -118,23 +118,31 @@ class Semantic {
 
     def +(error: Error): Result = this.copy(errors = this.errors :+ error)
 
-    def ensureHot(msg: String, source: Tree): Result =
+    def ensureHot(msg: String, source: Tree)(using Trace): Result =
       if value == Hot then this
       else
         // TODO: define a new error
-        this + PromoteCold(source, Vector(source))
+        this + PromoteCold(source, trace)
 
-    def select(f: Symbol, source: Tree)(using Context): Result =
+    def select(f: Symbol, source: Tree)(using Context, Trace): Result =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
+    def call(meth: Symbol, superType: Type, source: Tree)(using Context, Trace): Result =
       value.call(meth, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context): Result =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context, Trace): Result =
       value.instantiate(klass, ctor, source) ++ errors
   }
 
+// ----- Error Handling -----------------------------------
+  type Trace = Vector[Tree]
+
   val noErrors = Nil
+
+  extension (trace: Trace)
+    def add(node: Tree): Trace = trace :+ node
+
+  def trace(using t: Trace): Trace = t
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
@@ -157,13 +165,13 @@ class Semantic {
     def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
-    def select(f: Symbol, source: Tree)(using Context): Result =
+    def select(f: Symbol, source: Tree)(using Context, Trace): Result =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
 
         case Cold =>
-          val error = AccessCold(f, source, Vector(source))
+          val error = AccessCold(f, source, trace)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
@@ -171,7 +179,7 @@ class Semantic {
           if obj.fields.contains(f) then
             Result(obj.fields(f), Nil)
           else
-            val error = AccessNonInit(f, Vector(source))
+            val error = AccessNonInit(f, trace.add(source))
             Result(Hot, error :: Nil)
 
         case _: Fun =>
@@ -184,13 +192,13 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
+    def call(meth: Symbol, superType: Type, source: Tree)(using Context, Trace): Result =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
 
         case Cold =>
-          val error = CallCold(meth, source, Vector(source))
+          val error = CallCold(meth, source, trace)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
@@ -208,13 +216,13 @@ class Semantic {
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
               eval(rhs, addr, target.owner.asClass)
             else
-              val error = CallUnknown(target, source, Vector(source))
+              val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
           else
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else
-              val error = AccessNonInit(target, Vector(source))
+              val error = AccessNonInit(target, trace.add(source))
               Result(Hot, error :: Nil)
 
         case Fun(body, thisV, klass) =>
@@ -229,13 +237,13 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context): Result =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context, Trace): Result =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
 
         case Cold =>
-          val error = CallCold(ctor, source, Vector(source))
+          val error = CallCold(ctor, source, trace)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
@@ -276,7 +284,7 @@ class Semantic {
    *
    * This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context): Result = trace("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): Result = log("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
     val cfg = Config(thisV, expr.sourcePos)
     if (cache.contains(cfg)) Result(cache(cfg), noErrors)
     else {
@@ -292,14 +300,14 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context): List[Result] =
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Result] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context): Result =
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): Result =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -333,11 +341,11 @@ class Semantic {
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass)
-          Result(thisValue2, errors).call(ref.symbol, superTp, expr)
+          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using ctx, trace.add(expr))
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, superType = NoType, source = expr)
+          res.call(ref.symbol, superType = NoType, source = expr)(using ctx, trace.add(expr))
 
         case id: Ident =>
           id.tpe match
@@ -349,10 +357,10 @@ class Semantic {
             case Hot => Result(Hot, errors)
             case _ =>
               val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, thisValue2, enclosingClass)
+              eval(rhs, thisValue2, enclosingClass)(using ctx, trace.add(expr))
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, superType = NoType, source = expr)
+            res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace.add(expr))
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -463,7 +471,7 @@ class Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree)(using Context): Result = trace("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree)(using Context, Trace): Result = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, noErrors)
@@ -495,7 +503,7 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol)(using Context): Value = trace("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol)(using Context, Trace): Value = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
     else
       thisV match
@@ -508,7 +516,7 @@ class Semantic {
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
-  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree)(using Context): Result =
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree)(using Context, Trace): Result =
     val cls = tref.classSymbol.asClass
     if (tref.prefix == NoPrefix) then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -518,7 +526,7 @@ class Semantic {
       cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(klass: ClassSymbol, thisV: Addr)(using Context): Result = trace("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(klass: ClassSymbol, thisV: Addr)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
