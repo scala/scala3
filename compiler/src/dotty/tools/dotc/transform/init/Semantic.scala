@@ -242,6 +242,8 @@ class Semantic {
           // widen the outer to finitize addresses
           val outer = if addr.outer.isInstanceOf[Addr] then addr.copy(outer = Cold) else addr
           val addr2 = Addr(klass, outer)
+          if !heap.contains(addr2) then
+            heap(addr2) = Objekt(klass, Map.empty, Map(klass -> outer))
           addr2.call(ctor, superType = NoType, source)
 
         case Fun(body, thisV, klass) =>
@@ -295,12 +297,7 @@ class Semantic {
         assert(name.isTermName, "type trees should not reach here")
         cases(expr.tpe, thisV, klass, expr)
 
-      case NewExpr(New(tpt), ctor, argss) =>
-        def typeRefOf(tp: Type): TypeRef = tp.dealias.typeConstructor match {
-          case tref: TypeRef => tref
-          case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
-        }
-
+      case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
         val args = argss.flatten
         val ress = args.map { arg =>
@@ -308,15 +305,9 @@ class Semantic {
         }
         val errors = ress.flatMap(_.errors)
 
-        val tref = typeRefOf(tpt.tpe)
         val cls = tref.classSymbol.asClass
-        if (tref.prefix == NoPrefix) then
-          val enclosing = cls.owner.lexicallyEnclosingClass.asClass
-          val outer = resolveThis(enclosing, thisV, klass)
-          Result(outer, errors).instantiate(cls, ctor, expr)
-        else
-          val res = cases(tref.prefix, thisV, klass, tpt)
-          (res ++ errors).instantiate(cls, ctor, expr)
+        val res = outerValue(tref, thisV, klass, tpt)
+        (res ++ errors).instantiate(cls, ctor, expr)
 
       case Call(ref, argss) =>
         // check args
@@ -504,8 +495,85 @@ class Semantic {
         case _ => ???
   }
 
-  /** Initialize an abstract object */
-  def init(klass: Symbol, thisV: Addr): Result = ???
+  /** Compute the outer value that correspond to `tref.prefix` */
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree)(using Context): Result =
+    val cls = tref.classSymbol.asClass
+    if (tref.prefix == NoPrefix) then
+      val enclosing = cls.owner.lexicallyEnclosingClass.asClass
+      val outerV = resolveThis(enclosing, thisV, klass)
+      Result(outerV, noErrors)
+    else
+      cases(tref.prefix, thisV, klass, source)
+
+  /** Initialize part of an abstract object in `klass` of the inheritance chain */
+  def init(klass: ClassSymbol, thisV: Addr)(using Context): Result =
+    val errorBuffer = new mutable.ArrayBuffer[Error]
+
+    val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+
+    // init param fields
+    var obj = heap(thisV)
+    klass.paramAccessors.foreach { acc =>
+      if (!acc.is(Flags.Method)) {
+        traceIndented(acc.show + " initialized", printer)
+        obj = obj.copy(fields = obj.fields.updated(acc, Hot))
+      }
+    }
+    heap(thisV) = obj
+
+    def superCall(tref: TypeRef, ctor: Symbol, source: Tree): Unit =
+      // update outer for super class
+      val cls = tref.classSymbol.asClass
+      val res = outerValue(tref, thisV, klass, source)
+      errorBuffer ++= res.errors
+      val obj = heap(thisV)
+      val obj2 = obj.copy(outers = obj.outers.updated(cls, res.value))
+      heap(thisV) = obj2
+
+      // follow constructor
+      val res2 = thisV.call(ctor, superType = NoType, source)
+      errorBuffer ++= res2.errors
+
+    // parents
+    tpl.parents.foreach {
+      case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>
+        eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
+        argss.flatten.foreach { arg =>
+          val res = eval(arg, thisV, klass)
+          res.ensureHot("Argument must be an initialized value", arg)
+          errorBuffer ++ res.errors
+        }
+        superCall(tref, ctor, tree)
+
+      case tree @ NewExpr(tref, New(tpt), ctor, argss) =>
+        argss.flatten.foreach { arg =>
+          val res = eval(arg, thisV, klass)
+          res.ensureHot("Argument must be an initialized value", arg)
+          errorBuffer ++ res.errors
+        }
+        superCall(tref, ctor, tree)
+
+      case ref: RefTree =>
+        val tref = ref.tpe.asInstanceOf[TypeRef]
+        superCall(tref, tref.classSymbol.primaryConstructor, ref)
+    }
+
+    // class body
+    tpl.body.foreach {
+      case vdef : ValDef =>
+        val res = eval(vdef.rhs, thisV, klass)
+        errorBuffer ++ res.errors
+        val obj = heap(thisV)
+        val obj2 = obj.copy(fields = obj.fields.updated(vdef.symbol, res.value))
+        heap(thisV) = obj2
+
+      case _: MemberDef =>
+
+      case tree =>
+        eval(tree, thisV, klass)
+    }
+
+    Result(thisV, errorBuffer.toList)
 
 // ----- Utility methods and extractors --------------------------------
 
@@ -525,10 +593,16 @@ class Semantic {
   }
 
   object NewExpr {
-    def unapply(tree: Tree)(using Context): Option[(New, Symbol, List[List[Tree]])] =
+    private def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
+      case tref: TypeRef => tref
+      case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
+    }
+
+    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Tree]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
-        Some((newTree, fn.symbol, argss))
+        val tref = typeRefOf(newTree.tpe)
+        Some((tref, newTree, fn.symbol, argss))
       case _ => None
   }
 }
