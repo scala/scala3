@@ -130,8 +130,8 @@ class Semantic {
     def call(meth: Symbol, superType: Type, source: Tree)(using Context): Result =
       value.call(meth, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, source: Tree)(using Context): Result =
-      value.instantiate(klass, source) ++ errors
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context): Result =
+      value.instantiate(klass, ctor, source) ++ errors
   }
 
   val noErrors = Nil
@@ -201,7 +201,9 @@ class Semantic {
               resolveSuper(obj.klass, superType.classSymbol.asClass, meth)
             else
               resolve(obj.klass, meth)
-          if (target.isOneOf(Flags.Method | Flags.Lazy))
+          if target.isPrimaryConstructor then
+            init(addr.klass, addr)
+          else if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
               eval(rhs, addr, target.owner.asClass)
@@ -227,7 +229,30 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def instantiate(klass: ClassSymbol, source: Tree)(using Context): Result = ???
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context): Result =
+      value match {
+        case Hot  =>
+          Result(Hot, noErrors)
+
+        case Cold =>
+          val error = CallCold(ctor, source, Vector(source))
+          Result(Hot, error :: Nil)
+
+        case addr: Addr =>
+          // widen the outer to finitize addresses
+          val outer = if addr.outer.isInstanceOf[Addr] then addr.copy(outer = Cold) else addr
+          val addr2 = Addr(klass, outer)
+          addr2.call(ctor, superType = NoType, source)
+
+        case Fun(body, thisV, klass) =>
+          ??? // impossible
+
+        case RefSet(refs) =>
+          val resList = refs.map(_.instantiate(klass, ctor, source))
+          val value2 = resList.map(_.value).join
+          val errors = resList.flatMap(_.errors)
+          Result(value2, errors)
+      }
   end extension
 
 
@@ -288,10 +313,10 @@ class Semantic {
         if (tref.prefix == NoPrefix) then
           val enclosing = cls.owner.lexicallyEnclosingClass.asClass
           val outer = resolveThis(enclosing, thisV, klass)
-          Result(outer, errors).instantiate(cls, expr)
+          Result(outer, errors).instantiate(cls, ctor, expr)
         else
           val res = cases(tref.prefix, thisV, klass, tpt)
-          (res ++ errors).instantiate(cls, expr)
+          (res ++ errors).instantiate(cls, ctor, expr)
 
       case Call(ref, argss) =>
         // check args
