@@ -9,7 +9,7 @@ import Types._
 import StdNames._
 
 import ast.tpd._
-import util.SourcePosition
+import util.EqHashMap
 import config.Printers.init as printer
 import reporting.trace as log
 
@@ -21,9 +21,6 @@ import scala.collection.mutable
 class Semantic {
 
 // ----- Domain definitions --------------------------------
-
-  /** Locations are finite for any givn program */
-  type Loc   = SourcePosition
 
   /** Abstract values
    *
@@ -79,16 +76,23 @@ class Semantic {
    * Which also avoid computing fix-point on the cache, as the cache is
    * immutable.
    */
-  case class Config(thisV: Value, loc: Loc)
+  case class Config(thisV: Value, expr: Tree)
 
   /** Cache used to terminate the analysis
    *
    * A finitary configuration is not enough for the analysis to
    * terminate.  We need to use cache to let the interpreter "know"
    * that it can terminate.
+   *
+   * For performance reasons we use curried key.
+   *
+   * Note: It's tempting to use location of trees as key. That should
+   * be avoided as a template may have the same location as its single
+   * statement body. Macros may also create incorrect locations.
+   *
    */
-  type Cache = mutable.Map[Config, Value]
-  val cache: Cache = mutable.Map.empty[Config, Value]
+  type Cache = mutable.Map[Value, EqHashMap[Tree, Value]]
+  val cache: Cache = mutable.Map.empty[Value, EqHashMap[Tree, Value]]
 
   /** Result of abstract interpretation */
   case class Result(value: Value, errors: Seq[Error]) {
@@ -346,16 +350,16 @@ class Semantic {
    * This method only handles cache logic and delegates the work to `cases`.
    */
   def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false)(using Context, Trace): Result = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
-    val cfg = Config(thisV, expr.sourcePos)
-    if (cache.contains(cfg)) Result(cache(cfg), noErrors)
+    val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
+    if (innerMap.contains(expr)) Result(innerMap(expr), noErrors)
     else {
       // no need to compute fix-point, because
       // 1. the result is decided by `cfg` for a legal program
       //    (heap change is irrelevant thanks to monotonicity)
       // 2. errors will have been reported for an illegal program
-      if cacheResult then cache(cfg) = Hot
+      innerMap(expr) = Hot
       val res = cases(expr, thisV, klass)
-      if cacheResult then cache(cfg) = res.value
+      if cacheResult then innerMap(expr) = res.value else innerMap.remove(expr)
       res
     }
   }
