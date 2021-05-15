@@ -195,12 +195,15 @@ class Semantic {
               resolveSuper(thisRef.klass, superType.classSymbol.asClass, meth)
             else
               resolve(thisRef.klass, meth)
-          if target.isPrimaryConstructor then
-            init(target.owner.asClass, thisRef)
-          else if target.isOneOf(Flags.Method | Flags.Lazy) then
+          if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
-              val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-              eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
+              if target.isPrimaryConstructor then
+                val cls = target.owner.asClass
+                val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+                eval(tpl, thisRef, cls, cacheResult = true)
+              else
+                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
+                eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
@@ -220,8 +223,13 @@ class Semantic {
           if target.is(Flags.Param) then
             Result(Hot, Nil)
           else if target.hasSource then
-            val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-            eval(rhs, warm, target.owner.asClass, cacheResult = true)
+            if target.isPrimaryConstructor then
+              val cls = target.owner.asClass
+              val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
+              eval(tpl, warm, cls, cacheResult = true)
+            else
+              val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
+              eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
             val error = CallUnknown(target, source, trace)
             Result(Hot, error :: Nil)
@@ -248,12 +256,16 @@ class Semantic {
           Result(Hot, error :: Nil)
 
         case thisRef: ThisRef =>
-          Result(Warm(klass, outer = thisRef), noErrors)
+          val value = Warm(klass, outer = thisRef)
+          val res = value.call(ctor, superType = NoType, source)
+          Result(value, res.errors)
 
         case warm: Warm =>
           // widen the outer to finitize addresses
           val outer = if warm.outer.isInstanceOf[Warm] then warm.copy(outer = Cold) else warm
-          Result(Warm(klass, outer), noErrors)
+          val value = Warm(klass, outer)
+          val res = value.call(ctor, superType = NoType, source)
+          Result(value, res.errors)
 
         case Fun(body, thisV, klass) =>
           ??? // impossible
@@ -333,7 +345,7 @@ class Semantic {
    *
    * This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false)(using Context, Trace): Result = log("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false)(using Context, Trace): Result = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val cfg = Config(thisV, expr.sourcePos)
     if (cache.contains(cfg)) Result(cache(cfg), noErrors)
     else {
@@ -512,6 +524,11 @@ class Semantic {
         // local type definition
         Result(Hot, noErrors)
 
+      case tpl: Template =>
+        thisV match
+        case value: (ThisRef | Warm) => init(tpl, value, klass)
+        case _ => ??? // impossible
+
       case _: Import | _: Export =>
         Result(Hot, noErrors)
 
@@ -578,10 +595,8 @@ class Semantic {
       cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(klass: ClassSymbol, thisV: ThisRef)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(tpl: Template, thisV: ThisRef | Warm, klass: ClassSymbol)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
-
-    val tpl = klass.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
 
     // init param fields
     klass.paramAccessors.foreach { acc =>

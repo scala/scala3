@@ -62,8 +62,9 @@ class Checker extends MiniPhase {
       // Checking.checkClassBody(tree)
 
       import semantic._
+      val tpl = tree.rhs.asInstanceOf[Template]
       val thisRef = ThisRef(cls)(fields = mutable.Map.empty)
-      val res = semantic.init(cls, thisRef)(using ctx, Vector.empty)
+      val res = eval(tpl, thisRef, cls)(using ctx, Vector.empty)
       res.errors.foreach(_.issue)
     }
 
