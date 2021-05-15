@@ -221,7 +221,9 @@ class Semantic {
               resolveSuper(warm.klass, superType.classSymbol.asClass, meth)
             else
               resolve(warm.klass, meth)
-          if target.hasSource then
+          if target.is(Flags.Param) then
+            Result(Hot, Nil)
+          else if target.hasSource then
             val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
             eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
