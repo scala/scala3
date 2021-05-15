@@ -475,7 +475,7 @@ class Semantic {
       case tp @ ThisType(tref) =>
         if tref.symbol.is(Flags.Package) then Result(Hot, noErrors)
         else
-          val value = resolveThis(tp.classSymbol.asClass, thisV, klass)
+          val value = resolveThis(tref.classSymbol.asClass, thisV, klass)
           Result(value, noErrors)
 
       case _: TermParamRef | _: RecThis  =>
