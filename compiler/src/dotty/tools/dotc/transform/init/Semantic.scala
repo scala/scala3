@@ -169,7 +169,7 @@ class Semantic {
           if target.is(Flags.Lazy) then value.call(target, superType = NoType, source)
           else if target.hasSource then
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, warm, target.owner.asClass)
+            eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
             val error = CallUnknown(field, source, trace)
             Result(Hot, error :: Nil)
@@ -205,7 +205,7 @@ class Semantic {
           else if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, thisRef, target.owner.asClass)
+              eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
@@ -225,19 +225,19 @@ class Semantic {
           if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
               val rhs = target.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, warm, target.owner.asClass)
+              eval(rhs, warm, target.owner.asClass, cacheResult = true)
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
           else if target.hasSource then
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, warm, target.owner.asClass)
+            eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
             val error = CallUnknown(target, source, trace)
             Result(Hot, error :: Nil)
 
         case Fun(body, thisV, klass) =>
-          if meth.name == nme.apply then eval(body, thisV, klass)
+          if meth.name == nme.apply then eval(body, thisV, klass, cacheResult = true)
           else if meth.name.toString == "tupled" then Result(value, Nil)
           else Result(Hot, Nil) // TODO: refine
 
@@ -282,7 +282,7 @@ class Semantic {
    *
    * This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): Result = log("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false)(using Context, Trace): Result = log("evaluating " + expr.show, printer, res => res.asInstanceOf[Result].show) {
     val cfg = Config(thisV, expr.sourcePos)
     if (cache.contains(cfg)) Result(cache(cfg), noErrors)
     else {
@@ -290,9 +290,9 @@ class Semantic {
       // 1. the result is decided by `cfg` for a legal program
       //    (heap change is irrelevant thanks to monotonicity)
       // 2. errors will have been reported for an illegal program
-      cache(cfg) = Hot
+      if cacheResult then cache(cfg) = Hot
       val res = cases(expr, thisV, klass)
-      cache(cfg) = res.value
+      if cacheResult then cache(cfg) = res.value
       res
     }
   }
@@ -355,7 +355,7 @@ class Semantic {
             case Hot => Result(Hot, errors)
             case _ =>
               val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, thisValue2, enclosingClass)(using ctx, trace.add(expr))
+              eval(rhs, thisValue2, enclosingClass, cacheResult = true)(using ctx, trace.add(expr))
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
             res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace.add(expr))
