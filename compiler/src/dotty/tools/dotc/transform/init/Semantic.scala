@@ -45,8 +45,7 @@ class Semantic {
    *  of the heap, we may handle it in a simple way.
    */
   case class ThisRef(klass: ClassSymbol)(val fields: mutable.Map[Symbol, Value]) extends Value {
-    def updateField(field: Symbol, value: Value): Unit =
-      fields(field) = value
+    var allFieldsInitialized: Boolean = false
   }
 
   /** An object with all fields initialized but reaches objects under initialization
@@ -99,11 +98,8 @@ class Semantic {
 
     def +(error: Error): Result = this.copy(errors = this.errors :+ error)
 
-    def ensureHot(msg: String, source: Tree)(using Trace): Result =
-      if value == Hot then this
-      else
-        // TODO: define a new error
-        this + PromoteCold(source, trace)
+    def ensureHot(msg: String, source: Tree)(using Context, Trace): Result =
+      this ++ value.promote(msg, source)
 
     def select(f: Symbol, source: Tree)(using Context, Trace): Result =
       value.select(f, source) ++ errors
@@ -269,6 +265,67 @@ class Semantic {
           Result(value2, errors)
       }
   end extension
+
+  extension (value: Value)
+    def canDirectlyPromote(using Context): Boolean =
+      value match
+      case Hot   =>  true
+      case Cold  =>  false
+
+      case warm: Warm  =>
+        warm.outer.canDirectlyPromote
+
+      case thisRef: ThisRef =>
+        thisRef.allFieldsInitialized || {
+          // If we have all fields initialized, then we can promote This to hot.
+          thisRef.allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
+            val sym = denot.symbol
+            sym.isOneOf(Flags.Lazy | Flags.Deferred) || thisRef.fields.contains(sym)
+          }
+          thisRef.allFieldsInitialized
+        }
+
+      case fun: Fun => false
+
+      case RefSet(refs) =>
+        refs.forall(_.canDirectlyPromote)
+
+    end canDirectlyPromote
+
+    /** Promotion of values to hot */
+    def promote(msg: String, source: Tree)(using Context, Trace): List[Error] =
+      value match
+      case Hot   =>  Nil
+
+      case Cold  =>  PromoteCold(source, trace) :: Nil
+
+      case thisRef: ThisRef =>
+        if thisRef.canDirectlyPromote then Nil
+        else PromoteThis(source, trace) :: Nil
+
+      case warm: Warm =>
+        if warm.outer.canDirectlyPromote then Nil
+        else PromoteWarm(source, trace) :: Nil
+
+      case Fun(body, thisV, klass) =>
+        val res = eval(body, thisV, klass)
+        val errors2 = res.value.promote(msg, source)
+        if (res.errors.nonEmpty || errors2.nonEmpty)
+          UnsafePromotion(source, trace, res.errors ++ errors2) :: Nil
+        else
+          Nil
+
+      case RefSet(refs) =>
+        refs.flatMap(_.promote(msg, source))
+  end extension
+
+  extension (ref: ThisRef | Warm)
+    def updateField(field: Symbol, value: Value): Unit =
+      ref match
+      case thisRef: ThisRef => thisRef.fields(field) = value
+      case warm: Warm => // ignore
+  end extension
+
 
 // ----- Semantic definition --------------------------------
 

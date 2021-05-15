@@ -12,7 +12,7 @@ import Types._, Symbols._, Contexts._
 import Effects._, Potentials._
 
 object Errors {
-  type Errors = List[Error]
+  type Errors = Seq[Error]
   val empty: Errors = Nil
 
   def show(errs: Errors)(using Context): String =
@@ -70,12 +70,12 @@ object Errors {
   }
 
   /** Promote `this` under initialization to fully-initialized */
-  case class PromoteThis(pot: ThisRef, source: Tree, trace: Vector[Tree]) extends Error {
+  case class PromoteThis(source: Tree, trace: Vector[Tree]) extends Error {
     def show(using Context): String = "Promote the value under initialization to fully-initialized."
   }
 
   /** Promote `this` under initialization to fully-initialized */
-  case class PromoteWarm(pot: Warm, source: Tree, trace: Vector[Tree]) extends Error {
+  case class PromoteWarm(source: Tree, trace: Vector[Tree]) extends Error {
     def show(using Context): String =
       "Promoting the value under initialization to fully-initialized."
   }
@@ -102,7 +102,7 @@ object Errors {
   }
 
   /** Promote a value under initialization to fully-initialized */
-  case class UnsafePromotion(pot: Potential, source: Tree, trace: Vector[Tree], errors: Errors) extends Error {
+  case class UnsafePromotion(source: Tree, trace: Vector[Tree], errors: Errors) extends Error {
     assert(errors.nonEmpty)
 
     override def issue(using Context): Unit =
