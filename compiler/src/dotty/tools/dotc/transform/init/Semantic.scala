@@ -569,9 +569,9 @@ class Semantic {
         }
         superCall(tref, ctor, tree)
 
-      case ref: RefTree =>
-        val tref = ref.tpe.asInstanceOf[TypeRef]
-        superCall(tref, tref.classSymbol.primaryConstructor, ref)
+      case _ =>
+        val tref = typeRefOf(parent.tpe)
+        superCall(tref, tref.classSymbol.primaryConstructor, parent)
     }
 
     // see spec 5.1 about "Template Evaluation".
