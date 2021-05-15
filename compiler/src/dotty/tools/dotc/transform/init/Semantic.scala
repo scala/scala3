@@ -166,9 +166,8 @@ class Semantic {
 
         case warm: Warm =>
           val target = resolve(warm.klass, field)
-          if target.is(Flags.Lazy) then value.call(target, superType = NoType, source)
-          else if target.hasSource then
-            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+          if target.hasSource then
+            val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
             eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
             val error = CallUnknown(field, source, trace)
@@ -204,7 +203,7 @@ class Semantic {
             init(target.owner.asClass, thisRef)
           else if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
-              val rhs = target.defTree.asInstanceOf[DefDef].rhs
+              val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
               eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
             else
               val error = CallUnknown(target, source, trace)
@@ -222,15 +221,8 @@ class Semantic {
               resolveSuper(warm.klass, superType.classSymbol.asClass, meth)
             else
               resolve(warm.klass, meth)
-          if target.isOneOf(Flags.Method | Flags.Lazy) then
-            if target.hasSource then
-              val rhs = target.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, warm, target.owner.asClass, cacheResult = true)
-            else
-              val error = CallUnknown(target, source, trace)
-              Result(Hot, error :: Nil)
-          else if target.hasSource then
-            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+          if target.hasSource then
+            val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
             eval(rhs, warm, target.owner.asClass, cacheResult = true)
           else
             val error = CallUnknown(target, source, trace)
