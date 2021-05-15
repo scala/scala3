@@ -589,7 +589,7 @@ class Semantic {
 
     // class body
     tpl.body.foreach {
-      case vdef : ValDef =>
+      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
         val res = eval(vdef.rhs, thisV, klass)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
