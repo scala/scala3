@@ -305,7 +305,7 @@ class Semantic {
         // TODO:  disallow `var x: T = _`
         Result(Hot, noErrors)
 
-      case Ident(name) =>
+      case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
         cases(expr.tpe, thisV, klass, expr)
 
@@ -599,7 +599,7 @@ class Semantic {
       case _: MemberDef =>
 
       case tree =>
-        eval(tree, thisV, klass)
+        errorBuffer ++= eval(tree, thisV, klass).errors
     }
 
     Result(thisV, errorBuffer.toList)
