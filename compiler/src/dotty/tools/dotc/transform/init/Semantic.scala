@@ -652,7 +652,8 @@ class Semantic {
             resolveThis(target, warm.outer, outerCls)
           else
             val outerCls = klass.owner.enclosingClass.asClass
-            val res = cases(tref.prefix, warm.outer, warm.klass.owner.asClass, EmptyTree)
+            val warmOuterCls = warm.klass.owner.enclosingClass.asClass
+            val res = cases(tref.prefix, warm.outer, warmOuterCls, EmptyTree)
             assert(res.errors.isEmpty, "unexpected error " + res)
             resolveThis(target, res.value, outerCls)
         case _ => ???
