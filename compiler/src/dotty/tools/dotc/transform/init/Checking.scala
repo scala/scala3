@@ -321,7 +321,6 @@ object Checking {
       val f = denot.symbol
       if !f.isOneOf(excludedFlags) && f.hasSource then
         buffer += Promote(FieldReturn(warm, f)(source))(source)
-        buffer += FieldAccess(warm, f)(source)
     }
 
     classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>

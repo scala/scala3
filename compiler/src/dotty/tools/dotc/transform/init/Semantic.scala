@@ -321,7 +321,7 @@ class Semantic {
 
       case warm: Warm =>
         if warm.outer.canDirectlyPromote then Nil
-        else PromoteWarm(source, trace) :: Nil
+        else warm.tryPromote(msg, source)
 
       case Fun(body, thisV, klass) =>
         val res = eval(body, thisV, klass)
@@ -333,6 +333,48 @@ class Semantic {
 
       case RefSet(refs) =>
         refs.flatMap(_.promote(msg, source))
+  end extension
+
+  extension (warm: Warm)
+    /** Try early promotion of warm objects
+     *
+     *  Promotion is expensive and should only be performed for small classes.
+     *
+     *  1. for each concrete method `m` of the warm object:
+     *     call the method and promote the result
+     *
+     *  2. for each concrete field `f` of the warm object:
+     *     promote the field value
+     *
+     */
+    def tryPromote(msg: String, source: Tree)(using Context, Trace): List[Error] =
+      val classRef = warm.klass.appliedRef
+      if classRef.memberClasses.nonEmpty then
+        return PromoteWarm(source, trace) :: Nil
+
+      val fields  = classRef.fields
+      val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
+      val buffer  = new mutable.ArrayBuffer[Error]
+
+      fields.exists { denot =>
+        val f = denot.symbol
+        if !f.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && f.hasSource then
+          val res = warm.select(f, source)
+          buffer ++= res.ensureHot(msg, source).errors
+        buffer.nonEmpty
+      }
+
+      buffer.nonEmpty || methods.exists { denot =>
+        val m = denot.symbol
+        if !m.isConstructor && m.hasSource then
+          val res = warm.call(m, superType = m.owner.typeRef, source = source)
+          buffer ++= res.ensureHot(msg, source).errors
+        buffer.nonEmpty
+      }
+
+      if buffer.isEmpty then Nil
+      else UnsafePromotion(source, trace, buffer.toList) :: Nil
+
   end extension
 
   extension (ref: ThisRef | Warm)
@@ -669,7 +711,7 @@ class Semantic {
     // class body
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
-        val res = eval(vdef.rhs, thisV, klass)
+        val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
 
