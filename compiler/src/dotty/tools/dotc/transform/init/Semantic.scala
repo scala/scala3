@@ -14,7 +14,6 @@ import config.Printers.init as printer
 import reporting.trace as log
 
 import Errors._
-import Util._
 
 import scala.collection.mutable
 
@@ -212,8 +211,7 @@ class Semantic {
         case thisRef: ThisRef =>
           val target =
             if superType.exists then
-              // TODO: superType could be A & B when there is self-annotation
-              resolveSuper(thisRef.klass, superType.classSymbol.asClass, meth)
+              resolveSuper(thisRef.klass, superType, meth)
             else
               resolve(thisRef.klass, meth)
           if target.isOneOf(Flags.Method | Flags.Lazy) then
@@ -239,8 +237,7 @@ class Semantic {
         case warm: Warm =>
           val target =
             if superType.exists then
-              // TODO: superType could be A & B when there is self-annotation
-              resolveSuper(warm.klass, superType.classSymbol.asClass, meth)
+              resolveSuper(warm.klass, superType, meth)
             else
               resolve(warm.klass, meth)
           if target.is(Flags.Param) then
@@ -706,7 +703,7 @@ class Semantic {
     // init param fields
     klass.paramAccessors.foreach { acc =>
       if (!acc.is(Flags.Method)) {
-        traceIndented(acc.show + " initialized", printer)
+        printer.println(acc.show + " initialized")
         thisV.updateField(acc, Hot)
       }
     }
@@ -843,4 +840,25 @@ object Semantic {
         Some((tref, newTree, fn.symbol, argss))
       case _ => None
   }
+
+  extension (symbol: Symbol) def hasSource(using Context): Boolean =
+    !symbol.defTree.isEmpty
+
+  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =
+    if (sym.isEffectivelyFinal || sym.isConstructor) sym
+    else sym.matchingMember(cls.appliedRef)
+
+  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol = {
+    import annotation.tailrec
+    @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
+      case bc :: bcs1 =>
+        val cand = sym.matchingDecl(bcs.head, cls.thisType)
+          .suchThat(alt => !alt.is(Flags.Deferred)).symbol
+        if (cand.exists) cand else loop(bcs.tail)
+      case _ =>
+        NoSymbol
+    }
+    loop(cls.info.baseClasses.dropWhile(sym.owner != _))
+  }
+
 }
