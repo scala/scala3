@@ -465,16 +465,13 @@ final class ProperGadtConstraint private(
   }
 
   private def internalizeTypeMember(path: TermRef, designator: Name)(using Context): TypeVar = {
-    def collectTypeMembers(tp: Type): List[(Name, TypeBounds)] = {
-      val typeMemeberNames: List[Name] = tp.memberNames(abstractTypeNameFilter).toList
-
-      typeMemeberNames.flatMap { name =>
-        tp.findMember(name, tp).info match {
-          case tb: TypeBounds => Some(name -> tb)
+    def collectTypeMembers(tp: Type): List[(Name, TypeBounds)] =
+      tp.abstractTypeMembers.toList flatMap { d =>
+        d.info match {
+          case tb: TypeBounds => Some(d.name -> tb)
           case _ => None
         }
       }
-    }
 
     val widenPath = path.widen
     val tpMems = collectTypeMembers(widenPath)
