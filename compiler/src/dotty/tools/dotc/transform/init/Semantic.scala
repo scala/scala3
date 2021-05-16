@@ -57,7 +57,7 @@ class Semantic {
 
   /** The current object under initialization
    */
-  case class Objekt(val fields: mutable.Map[Symbol, Value]) {
+  case class Objekt(klass: ClassSymbol, val fields: mutable.Map[Symbol, Value]) {
     var allFieldsInitialized: Boolean = false
 
     val promotedValues = mutable.Set.empty[Value]
@@ -501,7 +501,7 @@ class Semantic {
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
-          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass)
+          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
           Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using heap, ctx, trace2)
 
         case Select(qual, _) =>
@@ -513,7 +513,7 @@ class Semantic {
           case TermRef(NoPrefix, _) =>
             // resolve this for the local method
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
-            val thisValue2 = resolveThis(enclosingClass, thisV, klass)
+            val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
             thisValue2 match
             case Hot => Result(Hot, errors)
             case _ =>
@@ -652,7 +652,7 @@ class Semantic {
       case tp @ ThisType(tref) =>
         if tref.symbol.is(Flags.Package) then Result(Hot, noErrors)
         else
-          val value = resolveThis(tref.classSymbol.asClass, thisV, klass)
+          val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, noErrors)
 
       case _: TermParamRef | _: RecThis  =>
@@ -665,8 +665,9 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
+    else if target.is(Flags.Package) || target.isStaticOwner && target != heap.klass then Hot
     else
       thisV match
         case Hot | _: ThisRef => Hot
@@ -676,14 +677,16 @@ class Semantic {
           if tref.prefix == NoPrefix then
             // Current class is local, in the enclosing scope of `warm.klass`
             val outerCls = warm.klass.owner.enclosingClass.asClass
-            resolveThis(target, warm.outer, outerCls)
+            resolveThis(target, warm.outer, outerCls, source)
           else
             val outerCls = klass.owner.enclosingClass.asClass
             val warmOuterCls = warm.klass.owner.enclosingClass.asClass
-            val res = cases(tref.prefix, warm.outer, warmOuterCls, EmptyTree)
+            val res = cases(tref.prefix, warm.outer, warmOuterCls, source)
             assert(res.errors.isEmpty, "unexpected error " + res)
-            resolveThis(target, res.value, outerCls)
-        case _ => ???
+            resolveThis(target, res.value, outerCls, source)
+        case _ =>
+          // report.error("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, source.srcPos)
+          Cold
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
@@ -691,7 +694,7 @@ class Semantic {
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
-      val outerV = resolveThis(enclosing, thisV, klass)
+      val outerV = resolveThis(enclosing, thisV, klass, source)
       Result(outerV, noErrors)
     else
       cases(tref.prefix, thisV, klass, source)
