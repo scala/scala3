@@ -438,7 +438,7 @@ class Semantic {
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
-        else eval(expr, thisV, klass)
+        else eval(expr, thisV, klass) ++ checkTermUsage(tpt, thisV, klass)
 
       case NamedArg(name, arg) =>
         eval(arg, thisV, klass)
@@ -526,7 +526,8 @@ class Semantic {
 
       case tdef: TypeDef =>
         // local type definition
-        Result(Hot, noErrors)
+        if tdef.isClassDef then Result(Hot, noErrors)
+        else Result(Hot, checkTermUsage(tdef.rhs, thisV, klass))
 
       case tpl: Template =>
         thisV match
@@ -680,6 +681,23 @@ class Semantic {
 
     Result(thisV, errorBuffer.toList)
   }
+
+  /** Check usage of terms inside types
+   *
+   *  This is intended to avoid type soundness issues in Dotty.
+   */
+   def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
+    val buf = new mutable.ArrayBuffer[Error]
+    val traverser = new TypeTraverser {
+      def traverse(tp: Type): Unit = tp match {
+        case TermRef(_: SingletonType, _) =>
+          buf ++= cases(tp, thisV, klass, tpt).errors
+        case _ =>
+          traverseChildren(tp)
+      }
+    }
+    traverser.traverse(tpt.tpe)
+    buf.toList
 
 // ----- Utility methods and extractors --------------------------------
 
