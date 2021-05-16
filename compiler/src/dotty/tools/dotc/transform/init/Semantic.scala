@@ -372,7 +372,7 @@ class Semantic {
       buffer.nonEmpty || methods.exists { denot =>
         val m = denot.symbol
         if !m.isConstructor && m.hasSource then
-          val res = warm.call(m, superType = m.owner.typeRef, source = source)
+          val res = warm.call(m, superType = NoType, source = source)
           buffer ++= res.ensureHot(msg, source).errors
         buffer.nonEmpty
       }
