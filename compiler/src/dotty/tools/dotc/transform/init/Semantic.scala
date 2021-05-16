@@ -209,6 +209,8 @@ class Semantic {
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
+            else if thisRef.canIgnoreMethodCall(target) then
+              Result(Hot, Nil)
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
@@ -235,6 +237,8 @@ class Semantic {
             else
               val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
               eval(rhs, warm, target.owner.asClass, cacheResult = true)
+          else if warm.canIgnoreMethodCall(target) then
+            Result(Hot, Nil)
           else
             val error = CallUnknown(target, source, trace)
             Result(Hot, error :: Nil)
@@ -385,6 +389,17 @@ class Semantic {
       case warm: Warm => // ignore
   end extension
 
+// ----- Policies ------------------------------------------------------
+  extension (value: Warm | ThisRef)
+    /** Can the method call on `value` be ignored?
+    *
+    *  Note: assume overriding resolution has been performed.
+    */
+    def canIgnoreMethodCall(meth: Symbol)(using Context): Boolean =
+      val cls = meth.owner
+      cls == defn.AnyClass ||
+      cls == defn.AnyValClass ||
+      cls == defn.ObjectClass
 
 // ----- Semantic definition --------------------------------
 
