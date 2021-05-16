@@ -60,6 +60,8 @@ class Semantic {
    */
   case class Objekt(val fields: mutable.Map[Symbol, Value]) {
     var allFieldsInitialized: Boolean = false
+
+    val promotedValues = mutable.Set.empty[Value]
   }
 
   /** Abstract heap stores abstract objects
@@ -219,7 +221,7 @@ class Semantic {
               if target.isPrimaryConstructor then
                 val cls = target.owner.asClass
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, thisRef, cls, cacheResult = true)
+                eval(tpl, thisRef, cls, cacheResult = true)(using heap, ctx, trace.add(tpl))
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, thisRef, target.owner.asClass, cacheResult = true)
@@ -317,19 +319,22 @@ class Semantic {
       case Cold  =>  false
 
       case warm: Warm  =>
-        warm.outer.canDirectlyPromote
+        heap.promotedValues.contains(warm)
+        || warm.outer.canDirectlyPromote
 
       case thisRef: ThisRef =>
-        heap.allFieldsInitialized || {
+        heap.promotedValues.contains(thisRef) || {
           // If we have all fields initialized, then we can promote This to hot.
-          heap.allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
+          val allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
             val sym = denot.symbol
             sym.isOneOf(Flags.Lazy | Flags.Deferred) || heap.fields.contains(sym)
           }
-          heap.allFieldsInitialized
+          if allFieldsInitialized then heap.promotedValues += thisRef
+          allFieldsInitialized
         }
 
-      case fun: Fun => false
+      case fun: Fun =>
+        heap.promotedValues.contains(fun)
 
       case RefSet(refs) =>
         refs.forall(_.canDirectlyPromote)
@@ -348,8 +353,13 @@ class Semantic {
         else PromoteThis(source, trace) :: Nil
 
       case warm: Warm =>
-        if warm.outer.canDirectlyPromote then Nil
-        else warm.tryPromote(msg, source)
+        if warm.canDirectlyPromote then Nil
+        else {
+          heap.promotedValues += warm
+          val errors = warm.tryPromote(msg, source)
+          if errors.nonEmpty then heap.promotedValues -= warm
+          errors
+        }
 
       case Fun(body, thisV, klass) =>
         val res = eval(body, thisV, klass)
@@ -374,6 +384,9 @@ class Semantic {
      *  2. for each concrete field `f` of the warm object:
      *     promote the field value
      *
+     *  TODO: we need to revisit whether this is needed once make the
+     *  system more flexible in other dimentions: e.g. leak to
+     *  methods or constructors, or use ownership for creating cold data structures.
      */
     def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
       val classRef = warm.klass.appliedRef
@@ -388,15 +401,15 @@ class Semantic {
         val f = denot.symbol
         if !f.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && f.hasSource then
           val res = warm.select(f, source)
-          buffer ++= res.ensureHot(msg, source).errors
+          buffer ++= res.ensureHot(msg, source)(using heap, ctx, trace.add(f.defTree)).errors
         buffer.nonEmpty
       }
 
       buffer.nonEmpty || methods.exists { denot =>
         val m = denot.symbol
         if !m.isConstructor && m.hasSource then
-          val res = warm.call(m, superType = NoType, source = source)
-          buffer ++= res.ensureHot(msg, source).errors
+          val res = warm.call(m, superType = NoType, source = source)(using heap, ctx, trace.add(m.defTree))
+          buffer ++= res.ensureHot(msg, source)(using heap, ctx, trace.add(m.defTree)).errors
         buffer.nonEmpty
       }
 
@@ -480,7 +493,7 @@ class Semantic {
 
         val cls = tref.classSymbol.asClass
         val res = outerValue(tref, thisV, klass, tpt)
-        (res ++ errors).instantiate(cls, ctor, expr)
+        (res ++ errors).instantiate(cls, ctor, expr)(using heap, ctx, trace.add(expr))
 
       case Call(ref, argss) =>
         // check args
@@ -705,7 +718,7 @@ class Semantic {
 
       // follow constructor
       if !cls.defTree.isEmpty then
-        val res2 = thisV.call(ctor, superType = NoType, source)
+        val res2 = thisV.call(ctor, superType = NoType, source)(using heap, ctx, trace.add(source))
         errorBuffer ++= res2.errors
 
     // parents

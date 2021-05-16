@@ -1,0 +1,9 @@
+-- Error: tests/init/neg/promotion-loop.scala:16:10 --------------------------------------------------------------------
+16 |  println(b)      // error
+   |          ^
+   |          Promoting the value to fully-initialized is unsafe.
+   |
+   |          The unsafe promotion may cause the following problem(s):
+   |
+   |          1. Promote the value under initialization to fully-initialized. Calling trace:
+   |           -> val outer = test	[ promotion-loop.scala:12 ]
