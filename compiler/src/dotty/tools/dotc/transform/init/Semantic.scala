@@ -19,6 +19,7 @@ import Util._
 import scala.collection.mutable
 
 class Semantic {
+  import Semantic._
 
 // ----- Domain definitions --------------------------------
 
@@ -410,6 +411,23 @@ class Semantic {
   def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Result] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
+  /** Evaluate arguments of methods */
+  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
+    val ress = args.map { arg =>
+      val res =
+        if arg.isByName then
+          thisV match
+          case obj: (ThisRef | Warm) =>
+            val value = Fun(arg.tree, obj, klass)
+            Result(value, Nil)
+          case _ => ??? // impossible
+        else
+          eval(arg.tree, thisV, klass)
+
+      res.ensureHot("May only use initialized value as arguments", arg.tree)
+    }
+    ress.flatMap(_.errors)
+
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
@@ -426,11 +444,7 @@ class Semantic {
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
-        val args = argss.flatten
-        val ress = args.map { arg =>
-          eval(arg, thisV, klass).ensureHot("May use initialized value as arguments", arg)
-        }
-        val errors = ress.flatMap(_.errors)
+        val errors = evalArgs(argss.flatten, thisV, klass)
 
         val cls = tref.classSymbol.asClass
         val res = outerValue(tref, thisV, klass, tpt)
@@ -438,11 +452,7 @@ class Semantic {
 
       case Call(ref, argss) =>
         // check args
-        val args = argss.flatten
-        val ress = args.map { arg =>
-          eval(arg, thisV, klass).ensureHot("May use initialized value as arguments", arg)
-        }
-        val errors = ress.flatMap(_.errors)
+        val errors = evalArgs(argss.flatten, thisV, klass)
 
         ref match
         case Select(supert: Super, _) =>
@@ -667,19 +677,11 @@ class Semantic {
     def initParent(parent: Tree) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
-        argss.flatten.foreach { arg =>
-          val res = eval(arg, thisV, klass)
-          res.ensureHot("Argument must be an initialized value", arg)
-          errorBuffer ++= res.errors
-        }
+        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, tree)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>
-        argss.flatten.foreach { arg =>
-          val res = eval(arg, thisV, klass)
-          res.ensureHot("Argument must be an initialized value", arg)
-          errorBuffer ++= res.errors
-        }
+        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, tree)
 
       case _ =>
@@ -728,7 +730,7 @@ class Semantic {
    *
    *  This is intended to avoid type soundness issues in Dotty.
    */
-   def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
+  def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
     val buf = new mutable.ArrayBuffer[Error]
     val traverser = new TypeTraverser {
       def traverse(tp: Type): Unit = tp match {
@@ -741,6 +743,10 @@ class Semantic {
     traverser.traverse(tpt.tpe)
     buf.toList
 
+}
+
+object Semantic {
+
 // ----- Utility methods and extractors --------------------------------
 
   def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
@@ -748,12 +754,28 @@ class Semantic {
     case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
   }
 
+  opaque type Arg  = Tree | ByNameArg
+  case class ByNameArg(tree: Tree)
+
+  extension (arg: Arg)
+    def isByName = arg.isInstanceOf[ByNameArg]
+    def tree: Tree = arg match
+      case t: Tree      => t
+      case ByNameArg(t) => t
+
   object Call {
-    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Tree]])] =
+
+    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
       tree match
       case Apply(fn, args) =>
+        val argTps = fn.tpe.widen match
+          case mt: MethodType => mt.paramInfos
+        val normArgs: List[Arg] = args.zip(argTps).map {
+          case (arg, _: ExprType) => ByNameArg(arg)
+          case (arg, _)           => arg
+        }
         unapply(fn) match
-        case Some((ref, args0)) => Some((ref, args0 :+ args))
+        case Some((ref, args0)) => Some((ref, args0 :+ normArgs))
         case None => None
 
       case TypeApply(fn, targs) =>
@@ -766,7 +788,7 @@ class Semantic {
   }
 
   object NewExpr {
-    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Tree]])] =
+    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Arg]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
         val tref = typeRefOf(newTree.tpe)
