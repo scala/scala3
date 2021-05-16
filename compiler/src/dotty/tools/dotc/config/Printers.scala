@@ -10,7 +10,9 @@ object Printers {
     inline override def println(msg: => String): Unit = ()
   }
 
-  val default = new Printer
+  val default = /*newPrinter*/noPrinter
+
+  val dbg = /*newPrinter*/noPrinter
 
   val constr = noPrinter
   val core = noPrinter
