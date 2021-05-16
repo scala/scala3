@@ -144,7 +144,9 @@ class Semantic {
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
 
   extension (values: Seq[Value])
-    def join: Value = values.reduce { (v1, v2) => v1.join(v2) }
+    def join: Value =
+      if values.isEmpty then Hot
+      else values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
     def select(field: Symbol, source: Tree)(using Context, Trace): Result =
