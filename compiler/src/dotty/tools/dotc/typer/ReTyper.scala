@@ -134,4 +134,5 @@ class ReTyper extends Typer with ReChecking {
   override protected def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] = body
   override protected def checkEqualityEvidence(tree: tpd.Tree, pt: Type)(using Context): Unit = ()
   override protected def matchingApply(methType: MethodOrPoly, pt: FunProto)(using Context): Boolean = true
+  override protected def typedScala2MacroBody(call: untpd.Tree)(using Context): Tree = promote(call)
 }
