@@ -38,13 +38,8 @@ class Semantic {
   case object Cold extends Value
 
   /** Object referred by `this` which stores abstract values for all fields
-   *
-   *  Note: the mutable `fields` plays the role of heap. Thanks to monotonicity
-   *  of the heap, we may handle it in a simple way.
    */
-  case class ThisRef(klass: ClassSymbol)(val fields: mutable.Map[Symbol, Value]) extends Value {
-    var allFieldsInitialized: Boolean = false
-  }
+  case class ThisRef(klass: ClassSymbol) extends Value
 
   /** An object with all fields initialized but reaches objects under initialization
    *
@@ -60,6 +55,21 @@ class Semantic {
    * It comes from `if` expressions.
    */
   case class RefSet(refs: List[Warm | Fun | ThisRef]) extends Value
+
+  /** The current object under initialization
+   */
+  case class Objekt(val fields: mutable.Map[Symbol, Value]) {
+    var allFieldsInitialized: Boolean = false
+  }
+
+  /** Abstract heap stores abstract objects
+   *
+   *  As in the OOPSLA paper, the abstract heap is monotonistic.
+   *
+   *  This is only one object we need to care about, hence it's just `Objekt`.
+   */
+  type Heap = Objekt
+  def heap(using h: Heap): Heap = h
 
   /** Interpreter configuration
    *
@@ -103,28 +113,30 @@ class Semantic {
 
     def +(error: Error): Result = this.copy(errors = this.errors :+ error)
 
-    def ensureHot(msg: String, source: Tree)(using Context, Trace): Result =
+    def ensureHot(msg: String, source: Tree): Contextual[Result] =
       this ++ value.promote(msg, source)
 
-    def select(f: Symbol, source: Tree)(using Context, Trace): Result =
+    def select(f: Symbol, source: Tree): Contextual[Result] =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, superType: Type, source: Tree)(using Context, Trace): Result =
+    def call(meth: Symbol, superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context, Trace): Result =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, source) ++ errors
   }
 
+  /** The state that threads through the interpreter */
+  type Contextual[T] = (Heap, Context, Trace) ?=> T
+
 // ----- Error Handling -----------------------------------
   type Trace = Vector[Tree]
-
-  val noErrors = Nil
+  def trace(using t: Trace): Trace = t
 
   extension (trace: Trace)
     def add(node: Tree): Trace = trace :+ node
 
-  def trace(using t: Trace): Trace = t
+  val noErrors = Nil
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
@@ -149,7 +161,7 @@ class Semantic {
       else values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
-    def select(field: Symbol, source: Tree)(using Context, Trace): Result =
+    def select(field: Symbol, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
@@ -161,8 +173,8 @@ class Semantic {
         case thisRef: ThisRef =>
           val target = resolve(thisRef.klass, field)
           if target.is(Flags.Lazy) then value.call(target, superType = NoType, source)
-          else if thisRef.fields.contains(target) then
-            Result(thisRef.fields(target), Nil)
+          else if heap.fields.contains(target) then
+            Result(heap.fields(target), Nil)
           else
             val error = AccessNonInit(target, trace.add(source))
             Result(Hot, error :: Nil)
@@ -186,7 +198,7 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def call(meth: Symbol, superType: Type, source: Tree)(using Context, Trace): Result =
+    def call(meth: Symbol, superType: Type, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
@@ -216,8 +228,8 @@ class Semantic {
             else
               val error = CallUnknown(target, source, trace)
               Result(Hot, error :: Nil)
-          else if thisRef.fields.contains(target) then
-            Result(thisRef.fields(target), Nil)
+          else if heap.fields.contains(target) then
+            Result(heap.fields(target), Nil)
           else
             val error = AccessNonInit(target, trace.add(source))
             Result(Hot, error :: Nil)
@@ -257,7 +269,7 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree)(using Context, Trace): Result =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
           Result(Hot, noErrors)
@@ -289,8 +301,17 @@ class Semantic {
       }
   end extension
 
+  extension (ref: ThisRef | Warm)
+    def updateField(field: Symbol, value: Value): Contextual[Unit] =
+      ref match
+      case thisRef: ThisRef => heap.fields(field) = value
+      case warm: Warm => // ignore
+  end extension
+
+// ----- Promotion ----------------------------------------------------
+
   extension (value: Value)
-    def canDirectlyPromote(using Context): Boolean =
+    def canDirectlyPromote(using Heap, Context): Boolean =
       value match
       case Hot   =>  true
       case Cold  =>  false
@@ -299,13 +320,13 @@ class Semantic {
         warm.outer.canDirectlyPromote
 
       case thisRef: ThisRef =>
-        thisRef.allFieldsInitialized || {
+        heap.allFieldsInitialized || {
           // If we have all fields initialized, then we can promote This to hot.
-          thisRef.allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
+          heap.allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
             val sym = denot.symbol
-            sym.isOneOf(Flags.Lazy | Flags.Deferred) || thisRef.fields.contains(sym)
+            sym.isOneOf(Flags.Lazy | Flags.Deferred) || heap.fields.contains(sym)
           }
-          thisRef.allFieldsInitialized
+          heap.allFieldsInitialized
         }
 
       case fun: Fun => false
@@ -316,7 +337,7 @@ class Semantic {
     end canDirectlyPromote
 
     /** Promotion of values to hot */
-    def promote(msg: String, source: Tree)(using Context, Trace): List[Error] =
+    def promote(msg: String, source: Tree): Contextual[List[Error]] =
       value match
       case Hot   =>  Nil
 
@@ -354,7 +375,7 @@ class Semantic {
      *     promote the field value
      *
      */
-    def tryPromote(msg: String, source: Tree)(using Context, Trace): List[Error] =
+    def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
       val classRef = warm.klass.appliedRef
       if classRef.memberClasses.nonEmpty then
         return PromoteWarm(source, trace) :: Nil
@@ -381,14 +402,8 @@ class Semantic {
 
       if buffer.isEmpty then Nil
       else UnsafePromotion(source, trace, buffer.toList) :: Nil
+    }
 
-  end extension
-
-  extension (ref: ThisRef | Warm)
-    def updateField(field: Symbol, value: Value): Unit =
-      ref match
-      case thisRef: ThisRef => thisRef.fields(field) = value
-      case warm: Warm => // ignore
   end extension
 
 // ----- Policies ------------------------------------------------------
@@ -409,7 +424,7 @@ class Semantic {
    *
    * This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false)(using Context, Trace): Result = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
     if (innerMap.contains(expr)) Result(innerMap(expr), noErrors)
     else {
@@ -425,11 +440,11 @@ class Semantic {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Result] =
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
+  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Error]] =
     val ress = args.map { arg =>
       val res =
         if arg.isByName then
@@ -449,7 +464,7 @@ class Semantic {
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): Result =
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Result] =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -471,15 +486,17 @@ class Semantic {
         // check args
         val errors = evalArgs(argss.flatten, thisV, klass)
 
+        val trace2: Trace = trace.add(expr)
+
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass)
-          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using ctx, trace.add(expr))
+          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using heap, ctx, trace2)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, superType = NoType, source = expr)(using ctx, trace.add(expr))
+          res.call(ref.symbol, superType = NoType, source = expr)(using heap, ctx, trace2)
 
         case id: Ident =>
           id.tpe match
@@ -491,10 +508,10 @@ class Semantic {
             case Hot => Result(Hot, errors)
             case _ =>
               val rhs = id.symbol.defTree.asInstanceOf[DefDef].rhs
-              eval(rhs, thisValue2, enclosingClass, cacheResult = true)(using ctx, trace.add(expr))
+              eval(rhs, thisValue2, enclosingClass, cacheResult = true)(using heap, ctx, trace2)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace.add(expr))
+            res.call(id.symbol, superType = NoType, source = expr)(using heap, ctx, trace2)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -611,7 +628,7 @@ class Semantic {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree)(using Context, Trace): Result = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
         Result(Hot, noErrors)
@@ -638,7 +655,7 @@ class Semantic {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol)(using Context, Trace): Value = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
     else
       thisV match
@@ -660,7 +677,7 @@ class Semantic {
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
-  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree)(using Context, Trace): Result =
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -670,7 +687,7 @@ class Semantic {
       cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
-  def init(tpl: Template, thisV: ThisRef | Warm, klass: ClassSymbol)(using Context, Trace): Result = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
+  def init(tpl: Template, thisV: ThisRef | Warm, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     // init param fields
@@ -748,7 +765,7 @@ class Semantic {
    *
    *  This is intended to avoid type soundness issues in Dotty.
    */
-  def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol)(using Context, Trace): List[Error] =
+  def checkTermUsage(tpt: Tree, thisV: Value, klass: ClassSymbol): Contextual[List[Error]] =
     val buf = new mutable.ArrayBuffer[Error]
     val traverser = new TypeTraverser {
       def traverse(tp: Type): Unit = tp match {
