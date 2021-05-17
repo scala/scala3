@@ -110,7 +110,10 @@ trait OldTastyInspector:
 
       override def newRun(implicit ctx: Context): Run =
         reset()
-        new TASTYRun(this, ctx.fresh.addMode(Mode.ReadPositions).addMode(Mode.ReadComments))
+        val ctx2 = ctx.fresh
+            .addMode(Mode.ReadPositions)
+            .setSetting(ctx.settings.YreadComments, true)
+        new TASTYRun(this, ctx2)
 
     new InspectorDriver
 
