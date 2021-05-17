@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase._
 import dotty.tools.dotc.transform._
 import Periods._
-import typer.{FrontEnd, RefChecks}
+import typer.{FrontEnd, RefineTypes, RefChecks}
 import typer.ImportInfo.withRootImports
 import ast.tpd
 import scala.annotation.internal.sharable
@@ -195,6 +195,7 @@ object Phases {
     }
 
     private var myTyperPhase: Phase = _
+    private var myRefinerPhase: Phase = _
     private var myPostTyperPhase: Phase = _
     private var mySbtExtractDependenciesPhase: Phase = _
     private var myPicklerPhase: Phase = _
@@ -216,6 +217,7 @@ object Phases {
     private var myGenBCodePhase: Phase = _
 
     final def typerPhase: Phase = myTyperPhase
+    final def refinerPhase: Phase = myRefinerPhase
     final def postTyperPhase: Phase = myPostTyperPhase
     final def sbtExtractDependenciesPhase: Phase = mySbtExtractDependenciesPhase
     final def picklerPhase: Phase = myPicklerPhase
@@ -240,6 +242,7 @@ object Phases {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
 
       myTyperPhase = phaseOfClass(classOf[FrontEnd])
+      myRefinerPhase = phases.find(_.isInstanceOf[RefineTypes]).getOrElse(myTyperPhase)
       myPostTyperPhase = phaseOfClass(classOf[PostTyper])
       mySbtExtractDependenciesPhase = phaseOfClass(classOf[sbt.ExtractDependencies])
       myPicklerPhase = phaseOfClass(classOf[Pickler])
@@ -262,6 +265,7 @@ object Phases {
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterRefiner(phase: Phase): Boolean = phase.id > refinerPhase.id
   }
 
   abstract class Phase {

@@ -391,6 +391,8 @@ object Contexts {
     /** Is current phase after FrontEnd? */
     final def isAfterTyper = base.isAfterTyper(phase)
 
+    final def isAfterRefiner = base.isAfterRefiner(phase)
+
     /** Is this a context for the members of a class definition? */
     def isClassDefContext: Boolean =
       owner.isClass && (owner ne outer.owner)
