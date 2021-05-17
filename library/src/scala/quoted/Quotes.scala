@@ -45,7 +45,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Returns `None` if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the `Some` of the value.
      */
-    def value(using FromExpr[T]): Option[T]
+    def value(using FromExpr[T]): Option[T] =
+      given Quotes = Quotes.this
+      summon[FromExpr[T]].unapply(self)
 
     /** Return the value of this expression.
      *
@@ -54,7 +56,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      */
     // TODO: deprecate in 3.1.0 and remove @experimental from valueOrAbort
     // @deprecated("Use valueOrThrow", "3.1.0")
-    def valueOrError(using FromExpr[T]): T
+    def valueOrError(using FromExpr[T]): T =
+      val fromExpr = summon[FromExpr[T]]
+      def reportError =
+        val msg = s"Expected a known value. \n\nThe value of: ${self.show}\ncould not be extracted using $fromExpr"
+        reflect.report.throwError(msg, self)
+      given Quotes = Quotes.this
+      fromExpr.unapply(self).getOrElse(reportError)
 
     /** Return the value of this expression.
      *

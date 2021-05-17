@@ -45,11 +45,6 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     def matches(that: scala.quoted.Expr[Any]): Boolean =
       treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
-    override def value(using fromExpr: FromExpr[T]): Option[T] =
-      fromExpr.unapply(self)(using QuotesImpl.this)
-
-    override def valueOrError(using FromExpr[T]): T = self.valueOrAbort
-
     def valueOrAbort(using fromExpr: FromExpr[T]): T =
       def reportError =
         val tree = reflect.asTerm(self)
