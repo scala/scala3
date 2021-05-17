@@ -1,6 +1,6 @@
 lazy val scala2Lib = project.in(file("scala2Lib"))
   .settings(
-    scalaVersion := "2.13.5"
+    scalaVersion := sys.props("plugin.scala2Version")
   )
 
 lazy val dottyApp = project.in(file("dottyApp"))

@@ -1,5 +1,5 @@
 val scala3Version = sys.props("plugin.scalaVersion")
-val scala2Version = "2.13.5"
+val scala2Version = sys.props("plugin.scala2Version")
 
 lazy val lib = project.in(file("lib"))
   .settings(

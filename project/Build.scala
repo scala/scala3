@@ -104,8 +104,8 @@ object Build {
    *  scala-library.
    */
   def stdlibVersion(implicit mode: Mode): String = mode match {
-    case NonBootstrapped => "2.13.5"
-    case Bootstrapped => "2.13.5"
+    case NonBootstrapped => "2.13.6"
+    case Bootstrapped => "2.13.6"
   }
 
   val dottyOrganization = "org.scala-lang"
@@ -1173,12 +1173,10 @@ object Build {
             -- "ObjectTest.scala" // compile errors caused by #9588
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
-            -- "PromiseMock.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
-                                   // and remove copy in tests/sjs-junit
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
-            -- "JSOptionalTest212.scala" // TODO: Enable once we use a Scala.js with https://github.com/scala-js/scala-js/pull/4451 in
+            -- "JSOptionalTest212FunParamInference.scala" // TODO: #11694
             )).get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
@@ -1387,6 +1385,7 @@ object Build {
       scriptedLaunchOpts ++= Seq(
         "-Dplugin.version=" + version.value,
         "-Dplugin.scalaVersion=" + dottyVersion,
+        "-Dplugin.scala2Version=" + stdlibVersion(Bootstrapped),
         "-Dplugin.scalaJSVersion=" + scalaJSVersion,
         "-Dsbt.boot.directory=" + ((ThisBuild / baseDirectory).value / ".sbt-scripted").getAbsolutePath // Workaround sbt/sbt#3469
       ),
