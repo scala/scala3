@@ -793,23 +793,27 @@ class SpaceEngine(using Context) extends SpaceLogic {
   private def exhaustivityCheckable(sel: Tree): Boolean = {
     // Possible to check everything, but be compatible with scalac by default
     def isCheckable(tp: Type): Boolean =
-      !tp.hasAnnotation(defn.UncheckedAnnot) && {
-        val tpw = tp.widen.dealias
-        val classSym = tpw.classSymbol
-        ctx.settings.YcheckAllPatmat.value ||
-        classSym.is(Sealed) ||
-        tpw.isInstanceOf[OrType] ||
-        (tpw.isInstanceOf[AndType] && {
-          val and = tpw.asInstanceOf[AndType]
-          isCheckable(and.tp1) || isCheckable(and.tp2)
-        }) ||
-        tpw.isRef(defn.BooleanClass) ||
-        classSym.isAllOf(JavaEnumTrait) ||
-        (defn.isProductSubType(tpw) && classSym.is(Case)
-           && productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_)))
-      }
+      val tpw = tp.widen.dealias
+      val classSym = tpw.classSymbol
+      classSym.is(Sealed) ||
+      tpw.isInstanceOf[OrType] ||
+      (tpw.isInstanceOf[AndType] && {
+        val and = tpw.asInstanceOf[AndType]
+        isCheckable(and.tp1) || isCheckable(and.tp2)
+      }) ||
+      tpw.isRef(defn.BooleanClass) ||
+      classSym.isAllOf(JavaEnumTrait)
 
-    val res = isCheckable(sel.tpe)
+    val res = !sel.tpe.hasAnnotation(defn.UncheckedAnnot) && {
+      ctx.settings.YcheckAllPatmat.value
+      || isCheckable(sel.tpe)
+      || {
+        val tpw = sel.tpe.widen.dealias
+        val classSym = tpw.classSymbol
+        classSym.is(Case) && productSelectorTypes(tpw, sel.srcPos).exists(isCheckable(_))
+      }
+    }
+
     debug.println(s"exhaustivity checkable: ${sel.show} = $res")
     res
   }
