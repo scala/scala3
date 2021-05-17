@@ -62,7 +62,7 @@ object ToExprMaker {
     Expr.summon[T] match
       case Some(expr) => expr
       case None =>
-        quotes.reflect.report.throwError(s"Could not find implicit ${Type.show[T]}")
+        quotes.reflect.report.errorAndAbort(s"Could not find implicit ${Type.show[T]}")
 
   private def switchExpr(scrutinee: Expr[Int], seq: List[Expr[ToExpr[_]]])(using Quotes): Expr[ToExpr[_]] =
     import quotes.reflect._

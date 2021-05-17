@@ -7,7 +7,7 @@ object Macro {
     ${unrolledForeachImpl('unrollSize, 'seq, 'f)}
 
   private def unrolledForeachImpl(unrollSizeExpr: Expr[Int], seq: Expr[Array[Int]], f: Expr[Int => Unit]) (using Quotes): Expr[Unit] =
-    unrolledForeachImpl(unrollSizeExpr.valueOrError, seq, f)
+    unrolledForeachImpl(unrollSizeExpr.valueOrAbort, seq, f)
 
   private def unrolledForeachImpl(unrollSize: Int, seq: Expr[Array[Int]], f: Expr[Int => Unit])(using Quotes): Expr[Unit] = '{
     val size = $seq.length

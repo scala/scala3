@@ -1,0 +1,1 @@
+def test = fail() // error

@@ -34,7 +34,7 @@ object SchemaInterpreter {
             vSchema <- interpretSchema(vSchemaExpr)
         yield Schema.mapSchema(using kSchema, vSchema).asInstanceOf[Schema[T]]
       case _ =>
-        None // could also hangle with `quotes.reflect.{error, throwError}`
+        None // could also hangle with `quotes.reflect.{error, errorAndAbort}`
     }
 }
 
