@@ -2935,11 +2935,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         ctx1.gadt.addToConstraint(typeHoles)
         ctx1
 
-    val matchings =
-      if pat1.isType then QuoteMatcher.termMatch(scrutinee, pat1)(using ctx1)
-      else QuoteMatcher.termMatch(scrutinee, pat1)(using ctx1)
+    val matchings = QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1)
 
-    // val matchings = matcher.termMatch(scrutinee, pattern)
     if typeHoles.isEmpty then matchings
     else {
       // After matching and doing all subtype checks, we have to approximate all the type bindings
