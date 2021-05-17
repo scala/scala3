@@ -2475,12 +2475,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
 
-        def memberField(name: String): Symbol =
+        def memberField(name: String): Symbol = fieldMember(name)
+        def fieldMember(name: String): Symbol =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).find {
             sym => isField(sym) && sym.name.toString == name
           }.getOrElse(dotc.core.Symbols.NoSymbol)
 
-        def memberFields: List[Symbol] =
+        def memberFields: List[Symbol] = fieldMembers
+        def fieldMembers: List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
           }.toList
@@ -2495,12 +2497,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def memberMethod(name: String): List[Symbol] =
+        def memberMethod(name: String): List[Symbol] = methodMember(name)
+        def methodMember(name: String): List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
           }.toList
 
-        def memberMethods: List[Symbol] =
+        def memberMethods: List[Symbol] = methodMembers
+        def methodMembers: List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
@@ -2515,10 +2519,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if sym.isType => sym.asType
           }.toList
 
-        def memberType(name: String): Symbol =
+        def memberType(name: String): Symbol = typeMember(name)
+        def typeMember(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-        def memberTypes: List[Symbol] =
+        def memberTypes: List[Symbol] = typeMembers
+        def typeMembers: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
 
         def declarations: List[Symbol] =
