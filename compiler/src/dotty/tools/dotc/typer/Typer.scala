@@ -3838,14 +3838,26 @@ class Typer extends Namer
           TypeComparer.constrainPatternType(tree.tpe, pt)
         }
 
+        import config.Printers.dbg
+
         // approximate type params with bounds
-        def approx = new ApproximatingTypeMap {
-          def apply(tp: Type) = tp.dealias match
-            case tp: TypeRef if !tp.symbol.isClass =>
-              expandBounds(tp.info.bounds)
-            case _ =>
-              mapOver(tp)
-        }
+        def approx(pt: Type) =
+          val map = new ApproximatingTypeMap {
+            var alreadyExpanding: List[TypeRef] = Nil
+            def apply(tp: Type) = tp.dealias match
+              case tp: TypeRef if !tp.symbol.isClass =>
+                dbg.println(i"going into bounds of $tp -> ${tp.info.bounds}")
+                if alreadyExpanding contains tp then tp else
+                  val saved = alreadyExpanding
+                  alreadyExpanding ::= tp
+                  val res = expandBounds(tp.info.bounds)
+                  alreadyExpanding = saved
+                  res
+              case _ =>
+                mapOver(tp)
+            }
+          dbg.println(i"approximating: $pt")
+          map(pt)
 
         // Is it certain that a value of `tree.tpe` is never a subtype of `pt`?
         // It is true if either

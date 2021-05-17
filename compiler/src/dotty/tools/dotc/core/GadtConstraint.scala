@@ -124,8 +124,12 @@ final class ProperGadtConstraint private(
     }
 
     // The replaced symbols are picked up here.
-    addToConstraint(poly1, tvars)
-      .showing(i"added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+    val res = addToConstraint(poly1, tvars)
+      .showing(i"gadt: added to constraint: [$poly1] $params%, %\n$debugBoundsDescription", gadts)
+    params.foreach { p =>
+      gadts.println(i"gadt: bounds: $p ${p.paramInfo}")
+    }
+    res
   }
 
   override def addBound(sym: Symbol, bound: Type, isUpper: Boolean)(using Context): Boolean = {

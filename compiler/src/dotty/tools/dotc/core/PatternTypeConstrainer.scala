@@ -77,9 +77,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def classOrModuleSym(tp: Type) = {
       val immediate = tp match {
-        case tp: NamedType =>
-          dbg.println(i"immediate: ${tp.symbol}")
-          tp.symbol.moduleClass
+        case tp: NamedType => tp.symbol.moduleClass
         case _ => NoSymbol
       }
       immediate.orElse(tp.classSymbol)
@@ -254,21 +252,26 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace/*force*/(i"constraining simple pattern type $tp >:< $pt", gadts, res => s"$res\ngadt = ${ctx.gadt.debugBoundsDescription}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) =>
-          tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
-            val variance = param.paramVarianceSign
-            if variance != 0 && !assumeInvariantRefinement then true
-            else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then true
-            else {
-              var res = true
-              if variance <  1 then res &&= isSubType(argS, argP)
-              if variance > -1 then res &&= isSubType(argP, argS)
-              res
+          val saved = state.constraint
+          val savedGadt = ctx.gadt.fresh
+          val result =
+            tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
+              val variance = param.paramVarianceSign
+              if variance != 0 && !assumeInvariantRefinement then true
+              else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then true
+              else {
+                var res = true
+                if variance <  1 then res &&= isSubType(argS, argP)
+                if variance > -1 then res &&= isSubType(argP, argS)
+                res
+              }
             }
-          }
+          if !result then
+            constraint = saved
+            ctx.gadt.restore(savedGadt)
+          result
         case _ =>
-          // give up if we don't get AppliedType, for instance if we upcasted to
-          // Any. Note that this false doesn't mean a contradictory constraint,
-          // but rather that
+          // give up if we don't get AppliedType, e.g. if we upcasted to Any.
           false
       }
     }
