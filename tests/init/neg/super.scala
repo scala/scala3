@@ -20,11 +20,11 @@ class Bar extends A, B, C:
 
   override def foo() = n * n
 
-  val n = 10
+  val n = 10  // error
 
 class Qux extends A, B, C:
   super.foo()
 
   override def foo() = n * n
 
-  val n = 10
+  val n = 10 // error

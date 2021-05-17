@@ -555,6 +555,14 @@ class Semantic {
         case _ =>
           ??? // impossible
 
+      case PolyFun(body) =>
+        thisV match
+          case obj: (ThisRef | Warm) =>
+            val value = Fun(body, obj, klass)
+            Result(value, Nil)
+          case _ =>
+            ??? // impossible
+
       case Block(stats, expr) =>
         val ress = eval(stats, thisV, klass)
         eval(expr, thisV, klass) ++ ress.flatMap(_.errors)
@@ -829,7 +837,7 @@ object Semantic {
       case TypeApply(fn, targs) =>
         unapply(fn)
 
-      case ref: RefTree if ref.symbol.is(Flags.Method) =>
+      case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
         Some((ref, Nil))
 
       case _ => None
@@ -842,6 +850,19 @@ object Semantic {
         val tref = typeRefOf(newTree.tpe)
         Some((tref, newTree, fn.symbol, argss))
       case _ => None
+  }
+
+  object PolyFun {
+    def unapply(tree: Tree)(using Context): Option[Tree] =
+      tree match
+      case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
+      if tref.symbol.isAnonymousClass && tref <:< defn.PolyFunctionType
+      =>
+        val body = cdef.rhs.asInstanceOf[Template].body
+        val apply = body.head.asInstanceOf[DefDef]
+        Some(apply.rhs)
+      case _ =>
+        None
   }
 
   extension (symbol: Symbol) def hasSource(using Context): Boolean =
