@@ -90,3 +90,11 @@ For more information, see `scaladoc/README.md`.
 
 Before contributing to Dotty, we invite you to consult the
 [Dotty Developer Guidelines](https://github.com/lampepfl/dotty/blob/master/CONTRIBUTING.md).
+
+
+Community
+-------------
+The main development discussion channels are:
+- [github.com/lampepfl/dotty/discussions](github.com/lampepfl/dotty/discussions)
+- [contributors.scala-lang.org](contributors.scala-lang.org)
+- [gitter.im/scala/contributors](gitter.im/scala/contributors)
