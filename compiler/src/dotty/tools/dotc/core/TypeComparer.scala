@@ -1275,14 +1275,17 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     else if tp1 eq tp2 then true
     else
       val saved = constraint
+      val savedGadt = ctx.gadt.fresh
+      inline def restore() =
+        state.constraint = saved
+        ctx.gadt.restore(savedGadt)
       val savedSuccessCount = successCount
       try
         recCount += 1
         if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
         val result = if monitored then monitoredIsSubType else firstTry
         recCount -= 1
-        if !result then
-          state.constraint = saved
+        if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
           needsGc = false
@@ -1291,7 +1294,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       catch case NonFatal(ex) =>
         if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
         recCount -= 1
-        state.constraint = saved
+        restore()
         successCount = savedSuccessCount
         throw ex
   }
@@ -2763,8 +2766,8 @@ object TypeComparer {
   def dropTransparentTraits(tp: Type, bound: Type)(using Context): Type =
     comparing(_.dropTransparentTraits(tp, bound))
 
-  def constrainPatternType(pat: Type, scrut: Type, widenParams: Boolean = true)(using Context): Boolean =
-    comparing(_.constrainPatternType(pat, scrut, widenParams))
+  def constrainPatternType(pat: Type, scrut: Type, forceInvariantRefinement: Boolean = false)(using Context): Boolean =
+    comparing(_.constrainPatternType(pat, scrut, forceInvariantRefinement))
 
   def explained[T](op: ExplainingTypeComparer => T, header: String = "Subtype trace:")(using Context): String =
     comparing(_.explained(op, header))

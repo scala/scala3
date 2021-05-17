@@ -3840,9 +3840,15 @@ class Typer extends Namer
 
         // approximate type params with bounds
         def approx = new ApproximatingTypeMap {
+          var alreadyExpanding: List[TypeRef] = Nil
           def apply(tp: Type) = tp.dealias match
             case tp: TypeRef if !tp.symbol.isClass =>
-              expandBounds(tp.info.bounds)
+              if alreadyExpanding contains tp then tp else
+                val saved = alreadyExpanding
+                alreadyExpanding ::= tp
+                val res = expandBounds(tp.info.bounds)
+                alreadyExpanding = saved
+                res
             case _ =>
               mapOver(tp)
         }
