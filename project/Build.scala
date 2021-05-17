@@ -1362,10 +1362,7 @@ object Build {
             "-siteroot", "docs",
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
             "-doc-root-content", docRootFile.toString,
-            "-Ydocument-synthetic-types",
-            "-snippet-compiler:" +
-              s"$dottyLibRoot=compile," +
-              "docs=compile"
+            "-Ydocument-synthetic-types"
           )
         ))
       }.evaluated,
