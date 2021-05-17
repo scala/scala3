@@ -4,5 +4,5 @@ class Test {
       println(n)
       arg
     }
-  val n = m.apply(arg = 23)
+  val n = m.apply(arg = 23)   // error
 }

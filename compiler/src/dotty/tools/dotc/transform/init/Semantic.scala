@@ -257,9 +257,9 @@ class Semantic {
             Result(Hot, error :: Nil)
 
         case Fun(body, thisV, klass) =>
-          if meth.name == nme.apply then eval(body, thisV, klass, cacheResult = true)
-          else if meth.name.toString == "tupled" then Result(value, Nil)
-          else Result(Hot, Nil) // TODO: refine
+          // meth == NoSymbol for poly functions
+          if meth.name.toString == "tupled" then Result(value, Nil)
+          else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, superType, source))
