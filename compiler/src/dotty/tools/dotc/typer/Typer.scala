@@ -858,7 +858,7 @@ class Typer extends Namer
       def typedTpt = checkSimpleKinded(typedType(tree.tpt))
       def handlePattern: Tree = {
         val tpt1 = typedTpt
-        if !ctx.isAfterTyper && pt != defn.ImplicitScrutineeTypeRef then
+        if !ctx.isAfterRefiner && pt != defn.ImplicitScrutineeTypeRef then
           withMode(Mode.GadtConstraintInference) {
             TypeComparer.constrainPatternType(tpt1.tpe, pt)
           }
@@ -1573,7 +1573,7 @@ class Typer extends Namer
           assert(sym.name != tpnme.WILDCARD)
           if ctx.scope.lookup(b.name) == NoSymbol then ctx.enter(sym)
           else report.error(new DuplicateBind(b, cdef), b.srcPos)
-          if (!ctx.isAfterTyper) {
+          if (!ctx.isAfterRefiner) {
             val bounds = ctx.gadt.fullBounds(sym)
             if (bounds != null) sym.info = bounds
           }

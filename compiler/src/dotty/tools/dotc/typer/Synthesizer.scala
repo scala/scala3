@@ -180,7 +180,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
    *  and mark it with given attachment so that it is made into a mirror at PostTyper.
    */
   private def anonymousMirror(monoType: Type, attachment: Property.StickyKey[Unit], span: Span)(using Context) =
-    if ctx.isAfterTyper then ctx.compilationUnit.needsMirrorSupport = true
+    if ctx.isAfterRefiner then ctx.compilationUnit.needsMirrorSupport = true
     val monoTypeDef = untpd.TypeDef(tpnme.MirroredMonoType, untpd.TypeTree(monoType))
     val newImpl = untpd.Template(
       constr = untpd.emptyConstructor,

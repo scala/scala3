@@ -4408,7 +4408,7 @@ object Types {
           owningState1.ownedVars -= this
           owningState = null // no longer needed; null out to avoid a memory leak
 
-    private[core] def resetInst(ts: TyperState): Unit =
+    private[dotc] def resetInst(ts: TyperState): Unit =
       myInst = NoType
       owningState = new WeakReference(ts)
 
