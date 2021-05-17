@@ -3,7 +3,7 @@ package dotc
 
 import core._
 import Contexts._
-import typer.{FrontEnd, RefChecks}
+import typer.{FrontEnd, RefChecks, RefineTypes}
 import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
@@ -37,6 +37,7 @@ class Compiler {
   /** Phases dealing with the frontend up to trees ready for TASTY pickling */
   protected def frontendPhases: List[List[Phase]] =
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
+    List(new RefineTypes) ::
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files
