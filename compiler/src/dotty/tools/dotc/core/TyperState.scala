@@ -82,7 +82,8 @@ class TyperState() {
   /** The set of uninstantiated type variables which have this state as their owning state.
    *
    *  Invariant:
-   *  `tstate.ownedVars.contains(tvar)` iff `tvar.owningState.get eq tstate`
+   *   if `tstate.isCommittable` then
+   *     `tstate.ownedVars.contains(tvar)` iff `tvar.owningState.get eq tstate`
    */
   private var myOwnedVars: TypeVars = _
   def ownedVars: TypeVars = myOwnedVars
@@ -138,6 +139,7 @@ class TyperState() {
   def commit()(using Context): Unit = {
     Stats.record("typerState.commit")
     assert(isCommittable)
+    setCommittable(false)
     val targetState = ctx.typerState
     if constraint ne targetState.constraint then
       Stats.record("typerState.commit.new constraint")
@@ -157,12 +159,7 @@ class TyperState() {
    *  in this constraint and its predecessors where necessary.
    */
   def ensureNotConflicting(other: Constraint)(using Context): Unit =
-    def hasConflictingTypeVarsFor(tl: TypeLambda) =
-      constraint.typeVarOfParam(tl.paramRefs(0)) ne other.typeVarOfParam(tl.paramRefs(0))
-        // Note: Since TypeVars are allocated in bulk for each type lambda, we only
-        // have to check the first one to find out if some of them are different.
-    val conflicting = constraint.domainLambdas.find(tl =>
-      other.contains(tl) && hasConflictingTypeVarsFor(tl))
+    val conflicting = constraint.domainLambdas.find(constraint.hasConflictingTypeVarsFor(_, other))
     for tl <- conflicting do
       val tl1 = constraint.ensureFresh(tl)
       for case (tvar: TypeVar, pref1) <- tl.paramRefs.map(constraint.typeVarOfParam).lazyZip(tl1.paramRefs) do
@@ -172,6 +169,12 @@ class TyperState() {
         ts.constraint = ts.constraint.subst(tl, tl1)
         ts = ts.previous
 
+  /** Integrate the constraints from `that` into this TyperState.
+   *
+   *  @pre If `that` is committable, it must not contain any type variable which
+   *       does not exist in `this` (in other words, all its type variables must
+   *       be owned by a common parent of `this` and `that`).
+   */
   def mergeConstraintWith(that: TyperState)(using Context): Unit =
     that.ensureNotConflicting(constraint)
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
@@ -180,7 +183,15 @@ class TyperState() {
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
 
+  /** Take ownership of `tvar`.
+   *
+   *  @pre `tvar` is not owned by a committable TyperState. This ensures
+   *       each tvar can only be instantiated by one TyperState.
+   */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
+    val oldState = tvar.owningState.get
+    assert(oldState == null || !oldState.isCommittable,
+      i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 
