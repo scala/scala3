@@ -1083,14 +1083,14 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
       js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
     }
 
-    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.Tree] = {
+    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.TreeOrJSSpread] = {
       val fixedArgRefs = fixedParamNames.toList.map { paramName =>
         js.VarRef(js.LocalIdent(paramName))(jstpe.AnyType)
       }
 
       if (needsRestParam) {
         val restArgRef = js.VarRef(js.LocalIdent(restParamName))(jstpe.AnyType)
-        fixedArgRefs :+ restArgRef
+        fixedArgRefs :+ js.JSSpread(restArgRef)
       } else {
         fixedArgRefs
       }
