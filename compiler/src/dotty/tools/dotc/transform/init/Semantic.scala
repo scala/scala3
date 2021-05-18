@@ -58,8 +58,6 @@ class Semantic {
   /** The current object under initialization
    */
   case class Objekt(klass: ClassSymbol, val fields: mutable.Map[Symbol, Value]) {
-    var allFieldsInitialized: Boolean = false
-
     val promotedValues = mutable.Set.empty[Value]
   }
 
