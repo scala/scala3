@@ -79,10 +79,10 @@ class TyperState() {
 
   private var isCommitted: Boolean = _
 
-  /** The set of uninstantiated type variables which have this state as their owning state
-   *  NOTE: It could be that a variable in `ownedVars` is already instantiated. This is because
-   *  the link between ownedVars and variable instantiation in TypeVar#setInst is made up
-   *  from a weak reference and weak references can have spurious nulls.
+  /** The set of uninstantiated type variables which have this state as their owning state.
+   *
+   *  Invariant:
+   *  `tstate.ownedVars.contains(tvar)` iff `tvar.owningState.get eq tstate`
    */
   private var myOwnedVars: TypeVars = _
   def ownedVars: TypeVars = myOwnedVars
@@ -176,7 +176,7 @@ class TyperState() {
     that.ensureNotConflicting(constraint)
     constraint = constraint & (that.constraint, otherHasErrors = that.reporter.errorsReported)
     for tvar <- constraint.uninstVars do
-      if !isOwnedAnywhere(this, tvar) then ownedVars += tvar
+      if !isOwnedAnywhere(this, tvar) then includeVar(tvar)
     for tl <- constraint.domainLambdas do
       if constraint.isRemovable(tl) then constraint = constraint.remove(tl)
 
@@ -196,12 +196,13 @@ class TyperState() {
       Stats.record("typerState.gc")
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
-        if !tvar.inst.exists then // See comment of `ownedVars` for why this test is necessary
-          val inst = constraint.instType(tvar)
-          if inst.exists then
-            tvar.setInst(inst)
-            val tl = tvar.origin.binder
-            if constraint.isRemovable(tl) then toCollect += tl
+        assert(tvar.owningState.get eq this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvar.owningState.get}")
+        assert(!tvar.inst.exists, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
+        val inst = constraint.instType(tvar)
+        if inst.exists then
+          tvar.setInst(inst)
+          val tl = tvar.origin.binder
+          if constraint.isRemovable(tl) then toCollect += tl
       for tl <- toCollect do
         constraint = constraint.remove(tl)
 
