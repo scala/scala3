@@ -599,6 +599,8 @@ trait Inferencing { this: Typer =>
         val toInstantiate = new InstantiateQueue
         for (tvar <- qualifying)
           if (!tvar.isInstantiated && constraint.contains(tvar)) {
+            constrainIfDependentParamRef(tvar, tree)
+
             // Needs to be checked again, since previous interpolations could already have
             // instantiated `tvar` through unification.
             val v = vs(tvar)
@@ -663,6 +665,33 @@ trait Inferencing { this: Typer =>
     }
     tree
   }
+
+  /** If `tvar` represents a parameter of a dependent method type in the current `call`
+   *  approximate it from below with the type of the actual argument. Skolemize that
+   *  type if necessary to make it a Singleton.
+   */
+  private def constrainIfDependentParamRef(tvar: TypeVar, call: Tree)(using Context): Unit =
+    representedParamRef(tvar) match
+      case ref: TermParamRef =>
+
+        def findArg(tree: Tree)(using Context): Tree = tree match
+          case Apply(fn, args) =>
+            if fn.tpe.widen eq ref.binder then
+              if ref.paramNum < args.length then args(ref.paramNum)
+              else EmptyTree
+            else findArg(fn)
+          case TypeApply(fn, _) => findArg(fn)
+          case Block(_, expr) => findArg(expr)
+          case Inlined(_, _, expr) => findArg(expr)
+          case _ => EmptyTree
+
+        val arg = findArg(call)
+        if !arg.isEmpty then
+          var argType = arg.tpe
+          if !argType.isSingleton then argType = SkolemType(argType)
+          argType <:< tvar
+      case _ =>
+  end constrainIfDependentParamRef
 }
 
 /** An enumeration controlling the degree of forcing in "is-dully-defined" checks. */

@@ -529,7 +529,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       case mt: MethodType => mt
       case pt: PolyType   =>
         inContext(ctx.fresh.setExploreTyperState()) {
-          val tvars = pt.paramInfos.map(newTypeVar)
+          val tvars = pt.paramInfos.map(newTypeVar(_))
           val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
           scrutineeTp <:< mt.paramInfos(0)
           // force type inference to infer a narrower type: could be singleton
