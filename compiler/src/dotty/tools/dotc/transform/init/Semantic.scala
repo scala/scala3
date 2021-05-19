@@ -24,9 +24,24 @@ class Semantic {
 
   /** Abstract values
    *
-   * Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
+   *  Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
+   *
+   *                 Cold
+   *        ┌──────►  ▲   ◄──┐  ◄────┐
+   *        │         │      │       │
+   *        │         │      │       │
+   *   ThisRef(C)     │      │       │
+   *        ▲         │      │       │
+   *        │     Warm(D)   Fun    RefSet
+   *        │         ▲      ▲       ▲
+   *        │         │      │       │
+   *      Warm(C)     │      │       │
+   *        ▲         │      │       │
+   *        │         │      │       │
+   *        └─────────┴──────┴───────┘
+   *                  Hot
    */
-  trait Value {
+  sealed abstract class Value {
     def show: String = this.toString()
   }
 
@@ -36,7 +51,7 @@ class Semantic {
   /** An object with unknown initialization status */
   case object Cold extends Value
 
-  /** Object referred by `this` which stores abstract values for all fields
+  /** A reference to the object under initialization pointed by `this`
    */
   case class ThisRef(klass: ClassSymbol) extends Value
 
@@ -55,7 +70,11 @@ class Semantic {
    */
   case class RefSet(refs: List[Warm | Fun | ThisRef]) extends Value
 
+  // end of value definition
+
   /** The current object under initialization
+   *
+   *  Note: Object is NOT a value.
    */
   case class Objekt(klass: ClassSymbol, val fields: mutable.Map[Symbol, Value]) {
     val promotedValues = mutable.Set.empty[Value]
@@ -146,6 +165,9 @@ class Semantic {
 
       case (Cold, _) => Cold
       case (_, Cold) => Cold
+
+      case (a: Warm, b: ThisRef) if a.klass == b.klass => b
+      case (a: ThisRef, b: Warm) if a.klass == b.klass => a
 
       case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
 
@@ -256,7 +278,7 @@ class Semantic {
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
-          if meth.name.toString == "tupled" then Result(value, Nil)
+          if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
@@ -308,14 +330,23 @@ class Semantic {
 // ----- Promotion ----------------------------------------------------
 
   extension (value: Value)
-    def canDirectlyPromote(using Heap, Context): Boolean =
+    /** Can we promote the value by checking the extrinsic values?
+     *
+     *  The extrinsic values are environment values, e.g. outers for `Warm`
+     *  and `thisV` captured in functions.
+     *
+     *  This is a fast track for early promotion of values.
+     */
+    def canPromoteExtrinsic(using Heap, Context): Boolean =
       value match
       case Hot   =>  true
       case Cold  =>  false
 
       case warm: Warm  =>
-        heap.promotedValues.contains(warm)
-        || warm.outer.canDirectlyPromote
+        warm.outer.canPromoteExtrinsic && {
+          heap.promotedValues += warm
+          true
+        }
 
       case thisRef: ThisRef =>
         heap.promotedValues.contains(thisRef) || {
@@ -329,12 +360,15 @@ class Semantic {
         }
 
       case fun: Fun =>
-        heap.promotedValues.contains(fun)
+        fun.thisV.canPromoteExtrinsic && {
+          heap.promotedValues += fun
+          true
+        }
 
       case RefSet(refs) =>
-        refs.forall(_.canDirectlyPromote)
+        refs.forall(_.canPromoteExtrinsic)
 
-    end canDirectlyPromote
+    end canPromoteExtrinsic
 
     /** Promotion of values to hot */
     def promote(msg: String, source: Tree): Contextual[List[Error]] =
@@ -344,11 +378,13 @@ class Semantic {
       case Cold  =>  PromoteCold(source, trace) :: Nil
 
       case thisRef: ThisRef =>
-        if thisRef.canDirectlyPromote then Nil
+        if heap.promotedValues.contains(thisRef) then Nil
+        else if thisRef.canPromoteExtrinsic then Nil
         else PromoteThis(source, trace) :: Nil
 
       case warm: Warm =>
-        if warm.canDirectlyPromote then Nil
+        if heap.promotedValues.contains(warm) then Nil
+        else if warm.canPromoteExtrinsic then Nil
         else {
           heap.promotedValues += warm
           val errors = warm.tryPromote(msg, source)
@@ -356,13 +392,16 @@ class Semantic {
           errors
         }
 
-      case Fun(body, thisV, klass) =>
-        val res = eval(body, thisV, klass)
-        val errors2 = res.value.promote(msg, source)
-        if (res.errors.nonEmpty || errors2.nonEmpty)
-          UnsafePromotion(source, trace, res.errors ++ errors2) :: Nil
+      case fun @ Fun(body, thisV, klass) =>
+        if heap.promotedValues.contains(fun) then Nil
         else
-          Nil
+          val res = eval(body, thisV, klass)
+          val errors2 = res.value.promote(msg, source)
+          if (res.errors.nonEmpty || errors2.nonEmpty)
+            UnsafePromotion(source, trace, res.errors ++ errors2) :: Nil
+          else
+            heap.promotedValues += fun
+            Nil
 
       case RefSet(refs) =>
         refs.flatMap(_.promote(msg, source))
@@ -379,7 +418,10 @@ class Semantic {
      *  2. for each concrete field `f` of the warm object:
      *     promote the field value
      *
-     *  TODO: we need to revisit whether this is needed once make the
+     *  If the object contains nested classes as members, the checker simply
+     *  reports a warning to avoid expensive checks.
+     *
+     *  TODO: we need to revisit whether this is needed once we make the
      *  system more flexible in other dimentions: e.g. leak to
      *  methods or constructors, or use ownership for creating cold data structures.
      */
@@ -430,7 +472,18 @@ class Semantic {
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
-   * This method only handles cache logic and delegates the work to `cases`.
+   *  Note that `klass` might be a super class of the object referred by `thisV`.
+   *  The parameter `klass` is needed for `this` resolution. Consider the following code:
+   *
+   *  class A {
+   *    A.this
+   *    class B extends A { A.this }
+   *  }
+   *
+   *  As can be seen above, the meaning of the expression `A.this` depends on where
+   *  it is located.
+   *
+   *  This method only handles cache logic and delegates the work to `cases`.
    */
   def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
@@ -551,7 +604,10 @@ class Semantic {
           val value = Fun(ddef.rhs, obj, klass)
           Result(value, Nil)
         case _ =>
-          ??? // impossible
+          // The reason is that we never evaluate an expression if `thisV` is
+          // Cold. And `thisV` can never be `Fun`.
+          report.warning("Unexpected branch reached. this = " + thisV.show, expr.srcPos)
+          Result(Hot, Nil)
 
       case PolyFun(body) =>
         thisV match
@@ -559,7 +615,9 @@ class Semantic {
             val value = Fun(body, obj, klass)
             Result(value, Nil)
           case _ =>
-            ??? // impossible
+            // See the comment for the case above
+            report.warning("Unexpected branch reached. this = " + thisV.show, expr.srcPos)
+            Result(Hot, Nil)
 
       case Block(stats, expr) =>
         val ress = eval(stats, thisV, klass)
@@ -723,22 +781,22 @@ class Semantic {
       // ignored as they are all hot
 
       // follow constructor
-      if !cls.defTree.isEmpty then
+      if cls.hasSource then
         val res2 = thisV.call(ctor, superType = NoType, source)(using heap, ctx, trace.add(source))
         errorBuffer ++= res2.errors
 
     // parents
     def initParent(parent: Tree) = parent match {
-      case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>
+      case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, tree)
 
-      case tree @ NewExpr(tref, New(tpt), ctor, argss) =>
+      case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
         errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
         superCall(tref, ctor, tree)
 
-      case _ =>
+      case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
         superCall(tref, tref.classSymbol.primaryConstructor, parent)
     }
@@ -758,6 +816,13 @@ class Semantic {
         parents.find(_.tpe.classSymbol == mixin) match
         case Some(parent) => initParent(parent)
         case None =>
+          // According to the language spec, if the mixin trait requires
+          // arguments, then the class must provide arguments to it explicitly
+          // in the parent list. That means we will encounter it in the Some
+          // branch.
+          //
+          // When a trait A extends a parameterized trait B, it cannot provide
+          // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
           if ctor.exists then superCall(tref, ctor, superParent)
@@ -780,7 +845,7 @@ class Semantic {
     Result(thisV, errorBuffer.toList)
   }
 
-  /** Check usage of terms inside types
+  /** Check that path in path-dependent types are initialized
    *
    *  This is intended to avoid type soundness issues in Dotty.
    */

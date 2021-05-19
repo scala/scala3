@@ -98,7 +98,8 @@ object Errors {
 
   case class CallUnknown(meth: Symbol, source: Tree, trace: Vector[Tree]) extends Error {
     def show(using Context): String =
-      "Calling the external method " + meth.show + " may cause initialization errors" + "."
+      val prefix = if meth.is(Flags.Method) then "Calling the external method " else "Accessing the external field"
+      prefix + meth.show + " may cause initialization errors" + "."
   }
 
   /** Promote a value under initialization to fully-initialized */
