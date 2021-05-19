@@ -84,13 +84,13 @@ class WorksheetTest {
         ((m1 to m2), s"1${nl}2${nl}3"))
   }
 
-  @Test def patternMatching0: Unit = {
+  @Test def   : Unit = {
     ws"""${m1}1 + 2 match {
           case x if x % 2 == 0 => "even"
           case _ => "odd"
         }${m2}""".withSource
       .run(m1,
-        ((m1 to m2), "val res0: String = odd"))
+        ((m1 to m2), "val res0: String = \"odd\""))
   }
 
   @Test def patternMatching1: Unit = {

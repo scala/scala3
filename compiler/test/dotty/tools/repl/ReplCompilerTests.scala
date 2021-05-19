@@ -196,7 +196,7 @@ class ReplCompilerTests extends ReplTest {
 
   @Test def testSingletonPrint = fromInitialState { implicit state =>
     run("""val a = "hello"; val x: a.type = a""")
-    assertMultiLineEquals("val a: String = hello\nval x: a.type = hello", storedOutput().trim)
+    assertMultiLineEquals("val a: String = \"hello\"\nval x: a.type = \"hello\"", storedOutput().trim)
   }
 
   @Test def i6574 = fromInitialState { implicit state =>
