@@ -339,7 +339,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: TypeApply =>
           if tree.symbol.isQuote then
             ctx.compilationUnit.needsStaging = true
-            ctx.compilationUnit.needsQuotePickling = true
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)

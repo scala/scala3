@@ -13,3 +13,5 @@ def letTest: Unit =
   let(new Foo) { _.hashCode }
 
 class Foo
+
+def polyTest: Unit = poly

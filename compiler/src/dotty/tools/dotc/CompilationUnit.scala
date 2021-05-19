@@ -47,14 +47,9 @@ class CompilationUnit protected (val source: SourceFile) {
   var needsMirrorSupport: Boolean = false
 
   /** Will be set to `true` if contains `Quote`.
-   *  The information is used in phase `Staging` in order to avoid traversing trees that need no transformations.
+   *  The information is used in phase `Staging`/`Splicing`/`PickleQuotes` in order to avoid traversing trees that need no transformations.
    */
   var needsStaging: Boolean = false
-
-  /** Will be set to `true` if contains `Quote` that needs to be pickled
-   *  The information is used in phase `PickleQuotes` in order to avoid traversing trees that need no transformations.
-   */
-  var needsQuotePickling: Boolean = false
 
   var suspended: Boolean = false
   var suspendedAtInliningPhase: Boolean = false
@@ -115,7 +110,6 @@ object CompilationUnit {
       val force = new Force
       force.traverse(unit1.tpdTree)
       unit1.needsStaging = force.containsQuote
-      unit1.needsQuotePickling = force.containsQuote
       unit1.needsInlining = force.containsInline
     }
     unit1

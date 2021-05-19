@@ -536,6 +536,10 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(using Context): PackageDef =
     tree.withType(pid.symbol.termRef)
+
+  def assignType(tree: untpd.Hole, tpt: Tree)(using Context): Hole =
+    tree.withType(tpt.tpe)
+
 }
 
 
