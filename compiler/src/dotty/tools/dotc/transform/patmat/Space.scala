@@ -355,18 +355,21 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
-        Typ(c.value.asInstanceOf[Symbol].termRef, false)
+        Typ(c.value.asInstanceOf[Symbol].termRef, decomposed = false)
       else
-        Typ(ConstantType(c), false)
+        Typ(ConstantType(c), decomposed = false)
 
     case pat: Ident if isBackquoted(pat) =>
-      Typ(pat.tpe, false)
+      Typ(pat.tpe, decomposed = false)
 
     case Ident(nme.WILDCARD) =>
-      Or(Typ(erase(pat.tpe.stripAnnots), false) :: constantNullSpace :: Nil)
+      if pat.tpe.classSymbol.isNullableClass then
+        Or(Typ(erase(pat.tpe.stripAnnots), decomposed = false) :: constantNullSpace :: Nil)
+      else
+        Typ(pat.tpe, decomposed = false)
 
     case Ident(_) | Select(_, _) =>
-      Typ(erase(pat.tpe.stripAnnots), false)
+      Typ(erase(pat.tpe.stripAnnots), decomposed = false)
 
     case Alternative(trees) =>
       Or(trees.map(project(_)))
@@ -397,20 +400,20 @@ class SpaceEngine(using Context) extends SpaceLogic {
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots), true)
+      Typ(erase(tpt.tpe.stripAnnots), decomposed = false)
 
     case This(_) =>
-      Typ(pat.tpe.stripAnnots, false)
+      Typ(pat.tpe.stripAnnots, decomposed = false)
 
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
-      Typ(WildcardType, false)
+      Typ(WildcardType, decomposed = false)
 
     case Block(Nil, expr) =>
       project(expr)
 
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
-      Typ(pat.tpe.narrow, false)
+      Typ(pat.tpe.narrow, decomposed = false)
   }
 
   private def project(tp: Type): Space = tp match {
