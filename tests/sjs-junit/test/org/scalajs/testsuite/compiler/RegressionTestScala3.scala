@@ -27,6 +27,14 @@ class RegressionTestScala3 {
     assertEquals("foo", new RangeErrorIssue11592("foo").message)
     assertEquals("", new RangeErrorIssue11592().message)
   }
+
+  @Test def testNonJVMCharsInClosureParametersIssue12507(): Unit = {
+    def foo(`[-3, 3]`: Int): Int => Int = { x =>
+      `[-3, 3]`
+    }
+
+    assertEquals(5, foo(5)(4))
+  }
 }
 
 object RegressionTestScala3 {
