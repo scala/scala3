@@ -1000,6 +1000,8 @@ class Namer { typer: Typer =>
           ) match
               case Some(other) => No(i"overrides ${other.showLocated}, which is already a member of $cls")
               case None => Yes
+        else if sym.isAllOf(JavaModule) then
+          Skip
         else Yes
       }
 
