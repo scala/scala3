@@ -4400,7 +4400,7 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[core] def setInst(tp: Type): Unit =
+    private[dotc] def setInst(tp: Type): Unit =
       myInst = tp
       if tp.exists && owningState != null then
         val owningState1 = owningState.get
