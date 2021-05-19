@@ -254,7 +254,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
               val variance = param.paramVarianceSign
               if variance != 0 && !assumeInvariantRefinement then true
-              else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then true
+              else if argS.isInstanceOf[TypeBounds] || argP.isInstanceOf[TypeBounds] then
+                // Passing TypeBounds to isSubType on LHS or RHS does the
+                // incorrect thing and infers unsound constraints, while simply
+                // returning true is sound. However, I believe that it should
+                // still be possible to extract useful constraints here.
+                // TODO extract GADT information out of wildcard type arguments
+                true
               else {
                 var res = true
                 if variance <  1 then res &&= isSubType(argS, argP)
@@ -267,7 +273,10 @@ trait PatternTypeConstrainer { self: TypeComparer =>
             ctx.gadt.restore(savedGadt)
           result
         case _ =>
-          // give up if we don't get AppliedType, e.g. if we upcasted to Any.
+          // Give up if we don't get AppliedType, e.g. if we upcasted to Any.
+          // Note that this doesn't mean that patternTp, scrutineeTp cannot possibly
+          // be co-inhabited, just that we cannot extract information out of them directly
+          // and should upcast.
           false
       }
     }
