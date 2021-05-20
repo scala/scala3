@@ -138,12 +138,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     end resetTypeVars
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
-      if tree.symbol == defn.ClassTagModule_apply && false then
-        // ClassTag types behave weirdly in many situations. They are usually taken over
-        // a typevariable ClassTag[T] and inferred implicitly. In that case the type variable
-        // is fully defined before doing the search. But when they are given explicitly
-        // the type variable is interpolated. This can make a difference in direction.
-        // Fully defined would avoid Nothing, but interpolation does not. Test case is pos/i6127.scala.
+      if tree.symbol == defn.Predef_classOf then
         promote(tree)
       else
         val tree1 = resetTypeVars(tree.asInstanceOf[TypeApply])._1.asInstanceOf[TypeApply]
@@ -158,7 +153,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           newTvars.nonEmpty
           && sym.rawParamss.nestedExists(param =>
             param.info.existsPart({
-              case tvar1: TypeVar => newTvars.contains(tvar1.instanceOpt)
+              case tvar1: TypeVar => newTvars.exists(_.isLinked(tvar1))
               case _ => false
             }, stopAtStatic = true, forceLazy = false))
         if bindsNestedTypeVar then

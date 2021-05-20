@@ -427,7 +427,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         }
       case tp1: SkolemType =>
         tp2 match {
-          case tp2: SkolemType if !ctx.phase.isTyper && recur(tp1.info, tp2.info) => true
+          case tp2: SkolemType if ctx.isAfterTyper && recur(tp1.info, tp2.info) => true
           case _ => thirdTry
         }
       case tp1: TypeVar =>
