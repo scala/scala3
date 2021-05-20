@@ -333,26 +333,31 @@ object Trees {
 
     import WithEndMarker.*
 
-    final def endToken: SimpleName = endMarker.stripModuleClassSuffix.lastPart
+    final def endSpan(using Context): Span =
+      self.getAttachment(EndIndex) match
+        case Some(end) =>
+          val realName = endName.stripModuleClassSuffix.lastPart
+          Span(end - realName.length, end)
+        case none => NoSpan
 
-    protected def endMarker: Name
+    protected def endName(using Context): Name
 
-    final def withEndSpan(span: Span): self.type =
-      self.withAttachment(EndMarker, span)
+    final def withEndIndex(index: Int): self.type =
+      self.withAttachment(EndIndex, index)
 
-    final def withEndSpan(copyFrom: WithEndMarker): self.type =
-      copyFrom.endSpan.foreach(span => withEndSpan(span=span))
+    final def withEndIndex(copyFrom: WithEndMarker): self.type =
+      copyFrom.endIndex.foreach(index => withEndIndex(index))
       this
 
-    final def dropEndSpan: self.type =
-      self.removeAttachment(EndMarker)
+    final def dropEndIndex: self.type =
+      self.removeAttachment(EndIndex)
       this
 
-    final def endSpan: Option[Span] = self.getAttachment(EndMarker)
+    protected def endIndex: Option[Int] = self.getAttachment(EndIndex)
 
   object WithEndMarker:
     /** Property key for trees with an `end` marker */
-    private val EndMarker: Property.StickyKey[Span] = Property.StickyKey()
+    private val EndIndex: Property.StickyKey[Int] = Property.StickyKey()
 
   end WithEndMarker
 
@@ -360,8 +365,12 @@ object Trees {
   extends NameTree[T] with DefTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
-    protected def endMarker =
+    protected def endName(using Context) =
       if name == nme.CONSTRUCTOR then nme.this_
+      else srcName
+
+    protected def srcName(using Context): Name =
+      if symbol.isPackageObject then symbol.owner.name
       else name
 
     /** The position of the name defined by this definition.
@@ -376,7 +385,6 @@ object Trees {
         val point = span.point
         if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
         else {
-          val srcName = if symbol.isPackageObject then symbol.owner.name else name
           val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)
         }
@@ -895,7 +903,7 @@ object Trees {
     extends ProxyTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
-    protected def endMarker: Name = pid.name
+    protected def endName(using Context): Name = pid.name
   }
 
   /** arg @annot */

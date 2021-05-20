@@ -241,7 +241,8 @@ class ExtractSemanticDB extends Phase:
 
       tree match
         case tree: WithEndMarker =>
-          for endSpan <- tree.endSpan do
+          val endSpan = tree.endSpan
+          if endSpan.exists then
             registerUseGuarded(None, tree.symbol, endSpan, tree.source)
         case _ =>
 

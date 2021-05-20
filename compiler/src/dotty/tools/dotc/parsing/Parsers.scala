@@ -1300,8 +1300,7 @@ object Parsers {
         if didMatch then
           stat match
             case stat: WithEndMarker =>
-              val end = in.lastCharOffset
-              stat.withEndSpan(span=Span(end - stat.endToken.length, end))
+              stat.withEndIndex(index=in.lastCharOffset)
             case _ =>
               ()
         didMatch
