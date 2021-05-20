@@ -4411,8 +4411,6 @@ object Types {
    */
   final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
 
-    private var instDirection: InstDirection = InstDirection.Other
-
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4438,9 +4436,15 @@ object Types {
       myInst = NoType
       owningState = new WeakReference(ts)
 
+    private var instDirection: InstDirection = InstDirection.Other
+    private var linkedVar: TypeVar = null
+
     private[dotc] def link(previous: TypeVar): Unit =
-      previous.setInst(this)
+      linkedVar = previous
       instDirection = previous.instDirection
+
+    private[dotc] def isLinked(previous: TypeVar): Boolean =
+      previous eq linkedVar
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
