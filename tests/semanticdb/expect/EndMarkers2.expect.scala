@@ -1,4 +1,4 @@
-package object endmark/*<-endmarkers2::package.*/ers2:
+package object endmarkers2/*<-endmarkers2::package.*/:
 
   type Foo/*<-endmarkers2::package.Foo#*/ =
     Unit/*->scala::Unit#*/

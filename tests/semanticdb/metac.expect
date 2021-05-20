@@ -756,7 +756,7 @@ endmarkers2/package. => final package object endmarkers2
 endmarkers2/package.Foo# => type Foo
 
 Occurrences:
-[0:15..0:22): endmark <- endmarkers2/package.
+[0:15..0:26): endmarkers2 <- endmarkers2/package.
 [2:7..2:10): Foo <- endmarkers2/package.Foo#
 [3:4..3:8): Unit -> scala/Unit#
 [4:6..4:9): Foo -> endmarkers2/package.Foo#
@@ -3833,7 +3833,7 @@ Occurrences:
 [2:13..2:21): language -> scala/language.
 [2:22..2:34): experimental -> scala/language.experimental.
 [2:35..2:41): macros -> scala/language.experimental.macros.
-[4:15..5:3): <- flags/p/package.
+[4:15..4:16): p <- flags/p/package.
 [5:2..5:3): p -> flags/p/
 [5:19..5:20): x <- flags/p/package.x.
 [6:25..6:26): y <- flags/p/package.y().

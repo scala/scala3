@@ -376,7 +376,8 @@ object Trees {
         val point = span.point
         if (rawMods.is(Synthetic) || span.isSynthetic || name.toTermName == nme.ERROR) Span(point)
         else {
-          val realName = name.stripModuleClassSuffix.lastPart
+          val srcName = if symbol.isPackageObject then symbol.owner.name else name
+          val realName = srcName.stripModuleClassSuffix.lastPart
           Span(point, point + realName.length, point)
         }
       }
