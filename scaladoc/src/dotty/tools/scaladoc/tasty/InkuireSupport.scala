@@ -44,7 +44,7 @@ trait InkuireSupport:
   given SymbolSyntaxInkuire: AnyRef with
     extension (symbol: Symbol)
       def itid(using dctx: DocContext): Option[Inkuire.ITID] = Some(Inkuire.ITID(symbol.dri.symbolUUID, isParsed = false))
-  
+
   given TypeSyntaxInkuire: AnyRef with
     extension (tpe: TypeRepr)
       def asInkuire(vars: Set[String]): Inkuire.Type = inner(tpe, vars)

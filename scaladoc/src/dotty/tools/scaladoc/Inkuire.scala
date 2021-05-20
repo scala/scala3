@@ -159,7 +159,11 @@ object Inkuire {
           ("typ", serialize(v.typ)),
           ("variancekind", serialize("contravariance"))
         )
-      case _: UnresolvedVariance => serialize("KAWABANGA")
+      case _: UnresolvedVariance =>
+        jsonObject(
+          ("typ", serialize(v.typ)),
+          ("variancekind", serialize("unresolved"))
+        )
     }
 
     private def serialize(e: ExternalSignature): JSON = {

@@ -74,6 +74,23 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegate
     }
     loadMoreResults(result.drop(resultsChunkSize))
 
+  extension (s: String)
+    def toHTMLError =
+      val wrapper = document.createElement("div").asInstanceOf[html.Div]
+      wrapper.classList.add("scaladoc-searchbar-result")
+      wrapper.classList.add("monospace")
+
+      val resultA = document.createElement("a").asInstanceOf[html.Anchor]
+      resultA.text = s
+
+      val location = document.createElement("span")
+      location.classList.add("pull-right")
+      location.classList.add("scaladoc-searchbar-location")
+
+      wrapper.appendChild(resultA)
+      wrapper.appendChild(location)
+      wrapper
+
   var timeoutHandle: SetTimeoutHandle = null
   def handleNewQuery(query: String) =
     clearTimeout(timeoutHandle)
@@ -85,9 +102,10 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegate
         handleNewFluffQuery(matchers)
       case BySignature(signature) =>
         timeoutHandle = setTimeout(1.second) {
-          println("Searching")
           inkuireEngine.query(query) { (p: PageEntry) =>
             resultsDiv.appendChild(p.toHTMLInkuireHack)
+          } { (s: String) =>
+            resultsDiv.appendChild(s.toHTMLError)
           }
         }
     }

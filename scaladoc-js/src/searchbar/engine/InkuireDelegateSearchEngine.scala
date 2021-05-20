@@ -34,7 +34,7 @@ class InkuireDelegateSearchEngine {
   val ec2 = "https://pmfyy2t0sc.execute-api.eu-central-1.amazonaws.com/prod" //TODO configure
 
   private def getURLContent(url: String): Future[String] = Ajax.get(url).map(_.responseText).fallbackTo(Future("[]"))
-  
+
   def dynamicToPageEntry(d: Dynamic): PageEntry =
     PageEntry(
       d.functionName.asInstanceOf[String],
@@ -44,10 +44,11 @@ class InkuireDelegateSearchEngine {
       List.empty
     )
 
-  def query(s: String)(callback: PageEntry => Node): Unit = {
+  def query(s: String)(callback: PageEntry => Node)(errorCallback: String => Node): Unit = { //TODO handle errors
     val signature = URIUtils.encodeURIComponent(s)
-    getURLContent(ec2 + "/forSignature?signature=" + signature).map(JSON.parse(_)).foreach { (d: Dynamic) =>
-      d.matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry).foreach(callback)
+    val request = getURLContent(ec2 + "/forSignature?signature=" + signature)
+    request.foreach { (s: String) =>
+      JSON.parse(s).matches.asInstanceOf[js.Array[Dynamic]].map(dynamicToPageEntry).foreach(callback)
     }
   }
 
