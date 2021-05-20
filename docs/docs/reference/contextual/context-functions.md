@@ -146,7 +146,7 @@ val s =
   result
 ```
 
-The only additional cost if creation of the function at runtime. However, we
+The only additional cost is the creation of the function at runtime. However, we
 expect JVM to optimize that away.
 ### Reference
 
