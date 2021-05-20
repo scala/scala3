@@ -51,7 +51,8 @@ object Scaladoc:
     docCanonicalBaseUrl: String = "",
     documentSyntheticTypes: Boolean = false,
     snippetCompiler: List[String] = Nil,
-    snippetCompilerDebug: Boolean = false
+    snippetCompilerDebug: Boolean = false,
+    versionsDictionaryUrl: Option[String] = None
   )
 
   def run(args: Array[String], rootContext: CompilerContext): Reporter =
@@ -195,7 +196,8 @@ object Scaladoc:
         docCanonicalBaseUrl.get,
         YdocumentSyntheticTypes.get,
         snippetCompiler.get,
-        snippetCompilerDebug.get
+        snippetCompilerDebug.get,
+        versionsDictionaryUrl.nonDefault
       )
       (Some(docArgs), newContext)
     }

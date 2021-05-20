@@ -93,6 +93,13 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     "./docs"
   )
 
+  val versionsDictionaryUrl: Setting[String] = StringSetting(
+    "-versions-dictionary-url",
+    "versions dictionary url",
+    "A URL pointing to json with dictionary version -> documentation location. Useful for libraries that maintain different releases docs",
+    ""
+  )
+
   val YdocumentSyntheticTypes: Setting[Boolean] =
     BooleanSetting("-Ydocument-synthetic-types", "Documents intrinsic types e. g. Any, Nothing. Setting is useful only for stdlib", false)
 
