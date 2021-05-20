@@ -2,10 +2,9 @@ package dotty.tools.scaladoc
 package snippets
 
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.interactive.Interactive
-import dotty.tools.dotc.interactive.InteractiveCompiler
+import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.config.Settings.Setting._
 import dotty.tools.dotc.interfaces.SourcePosition
 import dotty.tools.dotc.ast.Trees.Tree
@@ -21,22 +20,27 @@ import dotty.tools.dotc.interfaces.Diagnostic._
 import scala.util.{ Try, Success, Failure }
 
 class SnippetCompiler(
-  classpath: String,
-  val scalacOptions: String = "",
+  val snippetCompilerSettings: Seq[SnippetCompilerSetting[_]],
   target: AbstractFile = new VirtualDirectory("(memory)")
 ):
+  object SnippetDriver extends Driver:
+    val currentCtx =
+      val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions).addMode(Mode.Interactive)
+      rootCtx.setSetting(rootCtx.settings.YretainTrees, true)
+      rootCtx.setSetting(rootCtx.settings.YcookComments, true)
+      rootCtx.setSetting(rootCtx.settings.YreadComments, true)
+      rootCtx.setSetting(rootCtx.settings.color, "never")
+      rootCtx.setSetting(rootCtx.settings.XimportSuggestionTimeout, 0)
 
-  private def newDriver: InteractiveDriver = {
-    val defaultFlags =
-      List("-color:never", "-unchecked", "-deprecation", "-Ximport-suggestion-timeout", "0")
-    val options = scalacOptions.split("\\s+").toList
-    val settings =
-      options ::: defaultFlags ::: "-classpath" :: classpath :: Nil
-
-    new InteractiveDriver(settings)
-  }
-
-  private val driver = newDriver
+      val ctx = setup(Array(""), rootCtx) match
+        case Some((_, ctx)) =>
+          ctx
+        case None => rootCtx
+      val res = snippetCompilerSettings.foldLeft(ctx.fresh) { (ctx, setting) =>
+        ctx.setSetting(setting.setting, setting.value)
+      }
+      res.initialize()(using res)
+      res
 
   private val scala3Compiler = new Compiler
 
@@ -86,9 +90,9 @@ class SnippetCompiler(
     wrappedSnippet: WrappedSnippet,
     arg: SnippetCompilerArg
   ): SnippetCompilationResult = {
-    val context = driver.currentCtx.fresh
+    val context = SnippetDriver.currentCtx.fresh
       .setSetting(
-        driver.currentCtx.settings.outputDir,
+        SnippetDriver.currentCtx.settings.outputDir,
         target
       )
       .setReporter(new StoreReporter)

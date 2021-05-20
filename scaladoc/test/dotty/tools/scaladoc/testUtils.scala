@@ -55,10 +55,12 @@ def testArgs(files: Seq[File] = Nil, dest: File = new File("notUsed")) = Scalado
           output = dest,
           tastyFiles = files,
           docsRoot = Some(""),
-          bootclasspath = dotty.tools.dotc.util.ClasspathFromClassloader(classOf[Predef$].getClassLoader())
         )
 
-def testContext = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+def testContext = 
+  val ctx = (new ContextBase).initialCtx.fresh.setReporter(new TestReporter)
+  ctx.setSetting(ctx.settings.usejavacp, true)
+  ctx
 
 def testDocContext(files: Seq[File] = Nil) = DocContext(testArgs(files), testContext)
 

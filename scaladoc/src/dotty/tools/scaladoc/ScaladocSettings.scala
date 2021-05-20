@@ -19,7 +19,7 @@ import dotty.tools.dotc.core.Contexts._
 class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val unsupportedSettings = Seq(
     // Options that we like to support
-    extdirs, javabootclasspath, encoding, usejavacp,
+    extdirs, javabootclasspath, encoding,
     // Needed for plugin architecture
     plugin,disable,require, pluginsDir, pluginOptions,
     // we need support for sourcepath and sourceroot
@@ -100,7 +100,7 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
     MultiStringSetting("-snippet-compiler", "snippet-compiler", snippets.SnippetCompilerArgs.usage)
 
   val snippetCompilerDebug: Setting[Boolean] =
-    BooleanSetting("-snippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
+    BooleanSetting("-Ysnippet-compiler-debug", snippets.SnippetCompilerArgs.debugUsage, false)
 
   def scaladocSpecificSettings: Set[Setting[_]] =
     Set(sourceLinks, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, snippetCompilerDebug)

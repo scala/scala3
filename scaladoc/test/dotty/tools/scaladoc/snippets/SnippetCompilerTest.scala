@@ -6,7 +6,9 @@ import org.junit.Assert._
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 
 class SnippetCompilerTest {
-  val compiler = SnippetCompiler(System.getProperty("java.class.path"))
+  val compiler = SnippetCompiler(
+    Seq(SnippetCompilerSetting(testContext.settings.usejavacp, true))
+  )
   def wrapFn: String => WrappedSnippet = (str: String) => WrappedSnippet(
     str,
     Some("test"),

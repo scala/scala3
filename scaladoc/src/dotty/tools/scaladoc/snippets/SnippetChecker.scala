@@ -7,21 +7,28 @@ import java.io.File
 
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.fromtasty.TastyFileUtil
+import dotty.tools.dotc.config.Settings._
+import dotty.tools.dotc.config.ScalaSettings
 
-class SnippetChecker(val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean):
+class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
+
+// (val classpath: String, val bootclasspath: String, val tastyFiles: Seq[File], isScalajs: Boolean, useJavaCp: Boolean):
   private val sep = System.getProperty("path.separator")
-  private val cp = List(
-    tastyFiles
+
+  private val fullClasspath = List(
+    args.tastyFiles
       .map(_.getAbsolutePath())
       .map(AbstractFile.getFile(_))
       .flatMap(t => try { TastyFileUtil.getClassPath(t) } catch { case e: AssertionError => Seq() })
       .distinct.mkString(sep),
-    classpath,
-    bootclasspath
+    args.classpath
   ).mkString(sep)
 
+  private val snippetCompilerSettings: Seq[SnippetCompilerSetting[_]] = cctx.settings.userSetSettings(cctx.settingsState).filter(_ != cctx.settings.classpath).map( s =>
+    SnippetCompilerSetting(s, s.valueIn(cctx.settingsState))
+  ) :+ SnippetCompilerSetting(cctx.settings.classpath, fullClasspath)
 
-  private val compiler: SnippetCompiler = SnippetCompiler(classpath = cp, scalacOptions = if isScalajs then "-scalajs" else "")
+  private val compiler: SnippetCompiler = SnippetCompiler(snippetCompilerSettings = snippetCompilerSettings)
 
   // These constants were found empirically to make snippet compiler
   // report errors in the same position as main compiler.

@@ -18,7 +18,7 @@ object SnippetRenderer:
     case MessageLevel.Error => "snippet-error"
     case MessageLevel.Debug => "snippet-debug"
 
-  private def cutBetwenSymbols[A](
+  private def cutBetweenSymbols[A](
     startSymbol: String,
     endSymbol: String,
     snippetLines: Seq[SnippetLine]
@@ -33,7 +33,7 @@ object SnippetRenderer:
     } yield f(begin, mid, end)
 
   private def wrapHiddenSymbols(snippetLines: Seq[SnippetLine]): Seq[SnippetLine] =
-    val mRes = cutBetwenSymbols("//{", "//}", snippetLines) {
+    val mRes = cutBetweenSymbols("//{", "//}", snippetLines) {
       case (begin, mid, end) =>
         begin ++ mid.drop(1).dropRight(1).map(_.withClass("hideable")) ++ wrapHiddenSymbols(end)
     }
@@ -74,7 +74,7 @@ object SnippetRenderer:
     }
 
   private def wrapMultiLineComments(snippetLines: Seq[SnippetLine]): Seq[SnippetLine] =
-    val mRes = cutBetwenSymbols("/*", "*/", snippetLines) {
+    val mRes = cutBetweenSymbols("/*", "*/", snippetLines) {
       case (begin, mid, end) if mid.size == 1 =>
         val midRedacted = mid.map(wrapLineInBetween(Some("/*"), Some("*/"), _))
         begin ++ midRedacted ++ end

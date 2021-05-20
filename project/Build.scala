@@ -1243,7 +1243,7 @@ object Build {
       libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
     )
 
-  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, addBootclasspath: Boolean = false) =
+  def generateDocumentation(targets: Seq[String], name: String, outDir: String, ref: String, params: Seq[String] = Nil, usingScript: Boolean = true) =
     Def.taskDyn {
       val distLocation = (dist / pack).value
       val projectVersion = version.value
@@ -1255,13 +1255,6 @@ object Build {
       def srcManaged(v: String, s: String) = s"out/bootstrap/stdlib-bootstrapped/scala-$v/src_managed/main/$s-library-src"
       def scalaSrcLink(v: String, s: String) = s"-source-links:$s=github://scala/scala/v$v#src/library"
       def dottySrcLink(v: String, s: String) = s"-source-links:$s=github://lampepfl/dotty/$v#library/src"
-      def bootclasspath: Seq[String] = if(addBootclasspath) Seq(
-        "-bootclasspath",
-        Seq(
-            scalaLib,
-            dottyLib
-        ).mkString(System.getProperty("path.separator"))
-      ) else Nil
 
       val revision = Seq("-revision", ref, "-project-version", projectVersion)
       val cmd = Seq(
@@ -1272,9 +1265,22 @@ object Build {
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala")),
         dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty")),
         s"-source-links:github://lampepfl/dotty/$referenceVersion",
-      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets ++ bootclasspath
+      ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
-      Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
+      if (usingScript)
+        Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
+      else {
+        val escapedCmd = cmd.map(arg => if(arg.contains(" ")) s""""$arg"""" else arg)
+        Def.task {
+          try {
+            (Compile / run).toTask(escapedCmd.mkString(" ", " ", "")).value
+            0
+          } catch {
+            case _ : Throwable => 1
+          }
+        }
+      }
+
     }
 
   val SourceLinksIntegrationTest = config("sourceLinksIntegrationTest") extend Test
@@ -1321,8 +1327,7 @@ object Build {
       generateSelfDocumentation := Def.taskDyn {
         generateDocumentation(
           (Compile / classDirectory).value.getAbsolutePath :: Nil,
-          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash,
-          addBootclasspath = true
+          "scaladoc", "scaladoc/output/self", VersionUtil.gitHash
         )
       }.value,
       generateScalaDocumentation := Def.inputTaskDyn {
@@ -1363,7 +1368,7 @@ object Build {
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
             "-doc-root-content", docRootFile.toString,
             "-Ydocument-synthetic-types"
-          )
+          ), usingScript = false
         ))
       }.evaluated,
 
@@ -1372,8 +1377,8 @@ object Build {
           (Test / Build.testcasesOutputDir).value,
           "scaladoc testcases",
           "scaladoc/output/testcases",
-          "master",
-          addBootclasspath = true)
+          "master"
+        )
       }.value,
 
       Test / buildInfoKeys := Seq[BuildInfoKey](
