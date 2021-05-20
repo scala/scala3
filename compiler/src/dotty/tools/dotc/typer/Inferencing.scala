@@ -690,7 +690,7 @@ trait Inferencing { this: Typer =>
 
         val arg = findArg(call)
         if !arg.isEmpty then
-          var argType = arg.tpe
+          var argType = arg.tpe.widenExpr.widenTermRefExpr
           if !argType.isSingleton then argType = SkolemType(argType)
           argType <:< tvar
       case _ =>
