@@ -105,7 +105,7 @@ trait SpaceLogic {
   def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int): List[Type]
 
   /** Get components of decomposable types */
-  def decompose(tp: Type): List[Space]
+  def decompose(tp: Type): List[Typ]
 
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type): Boolean
@@ -589,11 +589,11 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type): List[Space] =
+  def decompose(tp: Type): List[Typ] =
     tp.dealias match {
       case AndType(tp1, tp2) =>
-        def decomposeComponent(tpA: Type, tpB: Type) =
-          decompose(tpA).asInstanceOf[List[Typ]].flatMap {
+        def decomposeComponent(tpA: Type, tpB: Type): List[Typ] =
+          decompose(tpA).flatMap {
             case Typ(tp, _) =>
               if tp <:< tpB then
                 Typ(tp, decomposed = true) :: Nil
@@ -602,7 +602,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
               else
                 intersectUnrelatedAtomicTypes(tp, tpB) match
                 case Empty => Nil
-                case space => List(space)
+                case typ: Typ => List(typ)
           }
 
         if canDecompose(tp1) then
