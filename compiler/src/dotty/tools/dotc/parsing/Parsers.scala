@@ -1283,8 +1283,8 @@ object Parsers {
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
-        case PatDef(_, IdPattern(id, _) :: Nil, _, _) =>
-         in.isIdent && in.name == id.name
+        case PatDef(_, IdPattern(id, _) :: Nil, _, _) => // TODO: it looks like this case is never reached
+          in.isIdent && in.name == id.name
         case stat: MemberDef if stat.mods.is(Given) => in.token == GIVEN
         case _: PatDef => in.token == VAL
         case _: If => in.token == IF
@@ -1295,9 +1295,21 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
+      def matchesWithUpdated(stat: Tree): Boolean = {
+        val didMatch = matches(stat)
+        if didMatch then
+          stat match
+            case stat: WithEndMarker =>
+              val end = in.lastCharOffset
+              stat.withEndSpan(span=Span(end - stat.endToken.length, end))
+            case _ =>
+              ()
+        didMatch
+      }
+
       if in.token == END then
         val start = in.skipToken()
-        if stats.isEmpty || !matches(stats.last) then
+        if stats.isEmpty || !matchesWithUpdated(stats.last) then
           syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()

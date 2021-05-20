@@ -327,8 +327,42 @@ object Trees {
 
   extension (mdef: untpd.DefTree) def mods: untpd.Modifiers = mdef.rawMods
 
-  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile) extends NameTree[T] with DefTree[T] {
+  /** PackageDef | NamedDefTree */
+  sealed trait WithEndMarker:
+    self: Attachment.Container =>
+
+    import WithEndMarker.*
+
+    final def endToken: SimpleName = endMarker.stripModuleClassSuffix.lastPart
+
+    protected def endMarker: Name
+
+    final def withEndSpan(span: Span): self.type =
+      self.withAttachment(EndMarker, span)
+
+    final def withEndSpan(copyFrom: WithEndMarker): self.type =
+      copyFrom.endSpan.foreach(span => withEndSpan(span=span))
+      this
+
+    final def dropEndSpan: self.type =
+      self.removeAttachment(EndMarker)
+      this
+
+    final def endSpan: Option[Span] = self.getAttachment(EndMarker)
+
+  object WithEndMarker:
+    /** Property key for trees with an `end` marker */
+    private val EndMarker: Property.StickyKey[Span] = Property.StickyKey()
+
+  end WithEndMarker
+
+  abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile)
+  extends NameTree[T] with DefTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
+
+    protected def endMarker =
+      if name == nme.CONSTRUCTOR then nme.this_
+      else name
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position
@@ -857,9 +891,10 @@ object Trees {
 
   /** package pid { stats } */
   case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends ProxyTree[T] {
+    extends ProxyTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
+    protected def endMarker: Name = pid.name
   }
 
   /** arg @annot */
