@@ -320,7 +320,7 @@ given eqProduct[A](using inst: K0.ProductInstances[Eq, A]): Eq[A] with
       Complete(!eqt.eqv(t0, t1))(false)(true)
   )
 
-inline def derived[A](using gen: K0.Generic[A]) as Eq[A] =
+inline def derived[A](using gen: K0.Generic[A]): Eq[A] =
   gen.derive(eqSum, eqProduct)
 ```
 
