@@ -1,7 +1,18 @@
--- [E008] Not Found Error: tests/neg/i7056.scala:19:10 -----------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/i7056.scala:19:8 --------------------------------------------------------------
 19 |val z = x.idnt1  // error
-   |        ^^^^^^^
-   |        value idnt1 is not a member of B.
-   |        An extension method was tried, but could not be fully constructed:
+   |        ^
+   |        Found:    (given_PartialId_B : B)
+   |        Required: PartialId[T]
    |
-   |            given_T1_T[T](given_PartialId_B).idnt1()
+   |        where:    T is a type variable with constraint <: A
+   |
+   |
+   |        Note: a match type could not be fully reduced:
+   |
+   |          trying to reduce  PartialId[T]
+   |          failed since selector  T
+   |          matches none of the cases
+   |
+   |            case B => T
+
+longer explanation available when compiling with `-explain`

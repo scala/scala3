@@ -33,7 +33,10 @@ object Inferencing {
    */
   def isFullyDefined(tp: Type, force: ForceDegree.Value)(using Context): Boolean = {
     val nestedCtx = ctx.fresh.setNewTyperState()
-    val result = new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
+    val result =
+      try new IsFullyDefinedAccumulator(force)(using nestedCtx).process(tp)
+      catch case ex: StackOverflowError =>
+        false // can happen for programs with illegal recusions, e.g. neg/recursive-lower-constraint.scala
     if (result) nestedCtx.typerState.commit()
     result
   }
@@ -43,7 +46,7 @@ object Inferencing {
    */
   def canDefineFurther(tp: Type)(using Context): Boolean =
     val prevConstraint = ctx.typerState.constraint
-    isFullyDefined(tp, force = ForceDegree.all)
+    isFullyDefined(tp, force = ForceDegree.failBottom)
     && (ctx.typerState.constraint ne prevConstraint)
 
   /** The fully defined type, where all type variables are forced.
