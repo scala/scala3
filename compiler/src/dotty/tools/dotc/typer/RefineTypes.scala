@@ -22,7 +22,6 @@ import util.Chars.*
 import Nullables._
 import transform.*
 import scala.collection.mutable
-import util.Chars.*
 import reporting._
 import ProtoTypes._
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
@@ -76,7 +75,9 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
       val qual1 = withoutMode(Mode.Pattern)(typed(qual, AnySelectionProto))
       val qualType = qual1.tpe.widenIfUnstable
       val pre = maybeSkolemizePrefix(qualType, name)
-      val mbr = qualType.findMember(name, pre).suchThat(tree.symbol ==)
+      val mbr = qualType.findMember(name, pre,
+          excluded = if tree.symbol.is(Private) then EmptyFlags else Private)
+        .suchThat(tree.symbol ==)
       val ownType = qualType.select(name, mbr)
       untpd.cpy.Select(tree)(qual1, name).withType(ownType)
 
