@@ -38,11 +38,15 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
   def run(using Context): Unit =
     println(i"refine types of ${ctx.compilationUnit}")
     val refiner = newRefiner()
+    ctx.typerState.constraint = OrderingConstraint.empty
+    ctx.typerState.ownedVars = SimpleIdentitySet.empty
     val refineCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
+//        .setNewTyperState()
         .setTyper(refiner)
     refiner.typedExpr(ctx.compilationUnit.tpdTree)(using refineCtx)
+//    refineCtx.typerState.commit()
 
   def newRefiner(): TypeRefiner = TypeRefiner()
 
@@ -51,6 +55,23 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
 
     // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
     override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
+
+    /* Exclude all typevars that are referred to in a parameter of an enclosing closure
+    override def qualifyForInterpolation(tvars: TypeVars)(using Context): TypeVars =
+      var qualifying = tvars
+      val anonFuns = ctx.owner.ownersIterator.filter(_.isAnonymousFunction).toList
+      if anonFuns.nonEmpty then
+        val anonFunParamTypes = anonFuns.flatMap(_.rawParamss.flatten).map(_.info)
+        qualifying.foreach { tvar =>
+          if anonFunParamTypes.exists(formal =>
+            formal.existsPart({
+              case tvar1: TypeVar => tvar1.instanceOpt eq tvar
+              case _ => false
+            }, stopAtStatic = true, forceLazy = false))
+          then qualifying -= tvar
+        }
+      qualifying
+        */
 
     /** Exclude from double definition checks any erased symbols that were
      *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
@@ -95,7 +116,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           val args = tree.args
           val args1 = constrained(tree.fun.tpe.widen.asInstanceOf[TypeLambda], tree)._2
           for i <- args.indices do
-            args(i).tpe.asInstanceOf[TypeVar].setInst(args1(i).tpe)
+            args1(i).tpe.asInstanceOf[TypeVar].link(args(i).tpe.asInstanceOf[TypeVar])
           (cpy.TypeApply(tree)(tree.fun, args1), args1.tpes.asInstanceOf[List[TypeVar]])
         else
           (tree, Nil)
@@ -117,8 +138,16 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     end resetTypeVars
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
-      val tree1 = resetTypeVars(tree.asInstanceOf[TypeApply])._1.asInstanceOf[TypeApply]
-      super.typedTypeApply(tree1, pt)
+      if tree.symbol == defn.ClassTagModule_apply && false then
+        // ClassTag types behave weirdly in many situations. They are usually taken over
+        // a typevariable ClassTag[T] and inferred implicitly. In that case the type variable
+        // is fully defined before doing the search. But when they are given explicitly
+        // the type variable is interpolated. This can make a difference in direction.
+        // Fully defined would avoid Nothing, but interpolation does not. Test case is pos/i6127.scala.
+        promote(tree)
+      else
+        val tree1 = resetTypeVars(tree.asInstanceOf[TypeApply])._1.asInstanceOf[TypeApply]
+        super.typedTypeApply(tree1, pt)
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       if sym.isAnonymousFunction then
@@ -139,6 +168,38 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
         else
           super.typedDefDef(ddef1, sym)
       else super.typedDefDef(ddef, sym)
+
+/*
+      val isInferred = tree.args.forall {
+        case arg: TypeVarBinder[?] => arg.typeOpt.isInstanceOf[TypeVar]
+        case _ => false
+      }
+      if isInferred then
+        var origin: Type = null
+        for arg <- tree.args do
+          assert(arg.isInstanceOf[untpd.TypeTree], arg)
+          arg.typeOpt match
+            case tvar: TypeVar =>
+              if origin == null then origin = tvar.origin.binder
+              else assert(tvar.origin.binder eq origin)
+      if isInferred then
+        val args1 = tree.args.asInstanceOf[List[tpd.Tree]]
+        val tvars = args1.tpes.asInstanceOf[List[TypeVar]]
+        for tvar <- tvars do
+          tvar.resetInst(ctx.typerState)
+          ctx.typerState.ownedVars += tvar
+        val binder = tvars.head.origin.binder
+        val added = ctx.typerState.constraint.ensureFresh(binder)
+        if added ne binder then
+          for i <- tvars.indices do
+            tvars(i).setOrigin(added.paramRefs(i))
+        val fun1 = typedExpr(tree.fun, PolyProto(args1, pt))
+        //println(i"adding $added, $tree to ${ctx.typerState.constraint}")
+        TypeComparer.addToConstraint(added, tvars)
+        assignType(tree, fun1, args1)
+      else
+        super.typedTypeApply(tree, pt)
+*/
 
     override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
       if tree.symbol == defn.StdLibPatchesPackage then

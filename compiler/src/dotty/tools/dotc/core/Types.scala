@@ -4391,6 +4391,10 @@ object Types {
 
   // ------------ Type variables ----------------------------------------
 
+  /** The direction with which a variable was or should be instantiated */
+  enum InstDirection:
+    case FromBelow, FromAbove, Other
+
   /** In a TypeApply tree, a TypeVar is created for each argument type to be inferred.
    *  Every type variable is referred to by exactly one inferred type parameter of some
    *  TypeApply tree.
@@ -4407,6 +4411,8 @@ object Types {
    */
   final class TypeVar private(initOrigin: TypeParamRef, creatorState: TyperState, nestingLevel: Int) extends CachedProxyType with ValueType {
 
+    private var instDirection: InstDirection = InstDirection.Other
+
     private var currentOrigin = initOrigin
 
     def origin: TypeParamRef = currentOrigin
@@ -4420,7 +4426,7 @@ object Types {
     private var myInst: Type = NoType
 
     private[core] def inst: Type = myInst
-    private[dotc] def setInst(tp: Type): Unit =
+    private[core] def setInst(tp: Type): Unit =
       myInst = tp
       if tp.exists && owningState != null then
         val owningState1 = owningState.get
@@ -4431,6 +4437,10 @@ object Types {
     private[dotc] def resetInst(ts: TyperState): Unit =
       myInst = NoType
       owningState = new WeakReference(ts)
+
+    private[dotc] def link(previous: TypeVar): Unit =
+      previous.setInst(this)
+      instDirection = previous.instDirection
 
     /** The state owning the variable. This is at first `creatorState`, but it can
      *  be changed to an enclosing state on a commit.
@@ -4495,7 +4505,11 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      instantiateWith(avoidCaptures(TypeComparer.instanceType(origin, fromBelow)))
+      if instDirection == InstDirection.Other then
+        instDirection = if fromBelow then InstDirection.FromBelow else InstDirection.FromAbove
+      instantiateWith(
+        avoidCaptures(
+          TypeComparer.instanceType(origin, instDirection == InstDirection.FromBelow)))
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
