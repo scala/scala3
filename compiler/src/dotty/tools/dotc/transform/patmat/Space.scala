@@ -337,9 +337,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val res = TypeComparer.provablyDisjoint(tp1, tp2)
 
       if (res) Empty
-      else if (tp1.isSingleton) Typ(tp1, true)
-      else if (tp2.isSingleton) Typ(tp2, true)
-      else Typ(AndType(tp1, tp2), true)
+      else Typ(AndType(tp1, tp2), decomposed = true)
     }
   }
 
@@ -594,11 +592,24 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def decompose(tp: Type): List[Space] =
     tp.dealias match {
       case AndType(tp1, tp2) =>
-        intersect(Typ(tp1, false), Typ(tp2, false)) match {
-          case Or(spaces) => spaces.toList
-          case Empty => Nil
-          case space => List(space)
-        }
+        def decomposeComponent(tpA: Type, tpB: Type) =
+          decompose(tpA).asInstanceOf[List[Typ]].flatMap {
+            case Typ(tp, _) =>
+              if tp <:< tpB then
+                Typ(tp, decomposed = true) :: Nil
+              else if tpB <:< tp then
+                Typ(tpB, decomposed = true) :: Nil
+              else
+                intersectUnrelatedAtomicTypes(tp, tpB) match
+                case Empty => Nil
+                case space => List(space)
+          }
+
+        if canDecompose(tp1) then
+          decomposeComponent(tp1, tp2)
+        else
+          decomposeComponent(tp2, tp1)
+
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case tp if tp.isRef(defn.BooleanClass) =>
         List(
