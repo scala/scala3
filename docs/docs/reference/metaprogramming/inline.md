@@ -10,21 +10,21 @@ definition will be inlined at the point of use. Example:
 
 ```scala
 object Config:
-   inline val logging = false
+  inline val logging = false
 
 object Logger:
 
-   private var indent = 0
+  private var indent = 0
 
-   inline def log[T](msg: String, indentMargin: =>Int)(op: => T): T =
-      if Config.logging then
-         println(s"${"  " * indent}start $msg")
-         indent += indentMargin
-         val result = op
-         indent -= indentMargin
-         println(s"${"  " * indent}$msg = $result")
-         result
-      else op
+  inline def log[T](msg: String, indentMargin: =>Int)(op: => T): T =
+    if Config.logging then
+      println(s"${"  " * indent}start $msg")
+      indent += indentMargin
+      val result = op
+      indent -= indentMargin
+      println(s"${"  " * indent}$msg = $result")
+      result
+    else op
 end Logger
 ```
 
@@ -49,18 +49,18 @@ Here's an example:
 var indentSetting = 2
 
 def factorial(n: BigInt): BigInt =
-   log(s"factorial($n)", indentSetting) {
-      if n == 0 then 1
-      else n * factorial(n - 1)
-   }
+  log(s"factorial($n)", indentSetting) {
+    if n == 0 then 1
+    else n * factorial(n - 1)
+  }
 ```
 
 If `Config.logging == false`, this will be rewritten (simplified) to:
 
 ```scala
 def factorial(n: BigInt): BigInt =
-   if n == 0 then 1
-   else n * factorial(n - 1)
+  if n == 0 then 1
+  else n * factorial(n - 1)
 ```
 
 As you notice, since neither `msg` or `indentMargin` were used, they do not
@@ -73,15 +73,15 @@ In the `true` case the code will be rewritten to:
 
 ```scala
 def factorial(n: BigInt): BigInt =
-   val msg = s"factorial($n)"
-   println(s"${"  " * indent}start $msg")
-   Logger.inline$indent_=(indent.+(indentSetting))
-   val result =
-      if n == 0 then 1
-      else n * factorial(n - 1)
-   Logger.inline$indent_=(indent.-(indentSetting))
-   println(s"${"  " * indent}$msg = $result")
-   result
+  val msg = s"factorial($n)"
+  println(s"${"  " * indent}start $msg")
+  Logger.inline$indent_=(indent.+(indentSetting))
+  val result =
+    if n == 0 then 1
+    else n * factorial(n - 1)
+  Logger.inline$indent_=(indent.-(indentSetting))
+  println(s"${"  " * indent}$msg = $result")
+  result
 ```
 
 Note that the by-value parameter `msg` is evaluated only once, per the usual Scala
@@ -97,20 +97,20 @@ straight inline code without any loop or recursion.
 
 ```scala
 inline def power(x: Double, n: Int): Double =
-   if n == 0 then 1.0
-   else if n == 1 then x
-   else
-      val y = power(x, n / 2)
-      if n % 2 == 0 then y * y else y * y * x
+  if n == 0 then 1.0
+  else if n == 1 then x
+  else
+    val y = power(x, n / 2)
+    if n % 2 == 0 then y * y else y * y * x
 
 power(expr, 10)
 // translates to
 //
-//    val x = expr
-//    val y1 = x * x   // ^2
-//    val y2 = y1 * y1 // ^4
-//    val y3 = y2 * x  // ^5
-//    y3 * y3          // ^10
+//   val x = expr
+//   val y1 = x * x   // ^2
+//   val y2 = y1 * y1 // ^4
+//   val y3 = y2 * x  // ^5
+//   y3 * y3          // ^10
 ```
 
 Parameters of inline methods can have an `inline` modifier as well. This means
@@ -124,16 +124,16 @@ parameters:
 
 ```scala
 inline def funkyAssertEquals(actual: Double, expected: =>Double, inline delta: Double): Unit =
-   if (actual - expected).abs > delta then
-      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
+  if (actual - expected).abs > delta then
+    throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${delta}")
 
 funkyAssertEquals(computeActual(), computeExpected(), computeDelta())
 // translates to
 //
-//    val actual = computeActual()
-//    def expected = computeExpected()
-//    if (actual - expected).abs > computeDelta() then
-//      throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
+//   val actual = computeActual()
+//   def expected = computeExpected()
+//   if (actual - expected).abs > computeDelta() then
+//     throw new AssertionError(s"difference between ${expected} and ${actual} was larger than ${computeDelta()}")
 ```
 
 ### Rules for Overriding
@@ -144,12 +144,12 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     ```scala
     abstract class A:
-       def f: Int
-       def g: Int = f
+      def f: Int
+      def g: Int = f
 
     class B extends A:
-       inline def f = 22
-       override inline def g = f + 11
+      inline def f = 22
+      override inline def g = f + 11
 
     val b = new B
     val a: A = b
@@ -169,10 +169,10 @@ Inline methods can override other non-inline methods. The rules are as follows:
 
     ```scala
     abstract class A:
-       inline def f: Int
+      inline def f: Int
 
     object B extends A:
-       inline def f: Int = 22
+      inline def f: Int = 22
 
     B.f         // OK
     val a: A = B
@@ -231,10 +231,10 @@ It is also possible to have inline vals of types that do not have a syntax, such
 
 ```scala
 trait InlineConstants:
-   inline val myShort: Short
+  inline val myShort: Short
 
 object Constants extends InlineConstants:
-   inline val myShort/*: Short(4)*/ = 4
+  inline val myShort/*: Short(4)*/ = 4
 ```
 
 ## Transparent Inline Methods
@@ -246,10 +246,10 @@ specialized to a more precise type upon expansion. Example:
 ```scala
 class A
 class B extends A:
-   def m = true
+  def m = true
 
 transparent inline def choose(b: Boolean): A =
-   if b then new A else new B
+  if b then new A else new B
 
 val obj1 = choose(true)  // static type is A
 val obj2 = choose(false) // static type is B
@@ -309,8 +309,8 @@ Example:
 
 ```scala
 inline def update(delta: Int) =
-   inline if delta >= 0 then increaseBy(delta)
-   else decreaseBy(-delta)
+  inline if delta >= 0 then increaseBy(delta)
+  else decreaseBy(-delta)
 ```
 
 A call `update(22)` would rewrite to `increaseBy(22)`. But if `update` was called with
@@ -318,13 +318,13 @@ a value that was not a compile-time constant, we would get a compile time error 
 below:
 
 ```scala
-   |  inline if delta >= 0 then ???
-   |  ^
-   |  cannot reduce inline if
-   |   its condition
-   |     delta >= 0
-   |   is not a constant value
-   | This location is in code that was inlined at ...
+  |  inline if delta >= 0 then ???
+  |  ^
+  |  cannot reduce inline if
+  |   its condition
+  |     delta >= 0
+  |   is not a constant value
+  | This location is in code that was inlined at ...
 ```
 
 In a transparent inline, an `inline if` will force the inlining of any inline definition in its condition during type checking.
@@ -342,9 +342,9 @@ single inline match expression that picks a case based on its static type:
 
 ```scala
 transparent inline def g(x: Any): Any =
-   inline x match
-      case x: String => (x, x) // Tuple2[String, String](x, x)
-      case x: Double => x
+  inline x match
+    case x: String => (x, x) // Tuple2[String, String](x, x)
+    case x: Double => x
 
 g(1.0d) // Has type 1.0d which is a subtype of Double
 g("test") // Has type (String, String)
@@ -362,9 +362,9 @@ case object Zero extends Nat
 case class Succ[N <: Nat](n: N) extends Nat
 
 transparent inline def toInt(n: Nat): Int =
-   inline n match
-      case Zero     => 0
-      case Succ(n1) => toInt(n1) + 1
+  inline n match
+    case Zero     => 0
+    case Succ(n1) => toInt(n1) + 1
 
 inline val natTwo = toInt(Succ(Succ(Zero)))
 val intTwo: 2 = natTwo

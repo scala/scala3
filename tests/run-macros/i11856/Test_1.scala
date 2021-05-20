@@ -5,8 +5,8 @@ object Str:
         ${ evalConcat('a, 'b) }
 
     def evalConcat(expra: Expr[String], exprb: Expr[String])(using Quotes): Expr[String] =
-        val a = expra.valueOrError
-        val b = exprb.valueOrError
+        val a = expra.valueOrAbort
+        val b = exprb.valueOrAbort
         Expr(a ++ b)
 
 object I:
@@ -14,6 +14,6 @@ object I:
       ${ evalConcat('a, 'b) }
 
   def evalConcat(expra: Expr[Int], exprb: Expr[Int])(using Quotes): Expr[Int] =
-      val a = expra.valueOrError
-      val b = exprb.valueOrError
+      val a = expra.valueOrAbort
+      val b = exprb.valueOrAbort
       Expr(a + b)

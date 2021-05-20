@@ -731,6 +731,7 @@ class TreePickler(pickler: TastyPickler) {
     if flags.is(Infix) then writeModTag(INFIX)
     if flags.is(Invisible) then writeModTag(INVISIBLE)
     if (flags.is(Erased)) writeModTag(ERASED)
+    if (flags.is(Exported)) writeModTag(EXPORTED)
     if (isTerm) {
       if (flags.is(Implicit)) writeModTag(IMPLICIT)
       if (flags.is(Given)) writeModTag(GIVEN)
@@ -744,7 +745,6 @@ class TreePickler(pickler: TastyPickler) {
       if (flags.is(Extension)) writeModTag(EXTENSION)
       if (flags.is(ParamAccessor)) writeModTag(PARAMsetter)
       if (flags.is(SuperParamAlias)) writeModTag(PARAMalias)
-      if (flags.is(Exported)) writeModTag(EXPORTED)
       assert(!(flags.is(Label)))
     }
     else {

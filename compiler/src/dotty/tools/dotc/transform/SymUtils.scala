@@ -259,6 +259,13 @@ object SymUtils:
         && self.owner.linkedClass.is(Case)
         && self.owner.linkedClass.isDeclaredInfix
 
+    /** Is symbol declared or inherits @experimental? */
+    def isExperimental(using Context): Boolean =
+      // TODO should be add `@experimental` to `class experimental` in PostTyper?
+      self.eq(defn.ExperimentalAnnot)
+      || self.hasAnnotation(defn.ExperimentalAnnot)
+      || (self.maybeOwner.isClass && self.owner.hasAnnotation(defn.ExperimentalAnnot))
+
     /** The declared self type of this class, as seen from `site`, stripping
     *  all refinements for opaque types.
     */

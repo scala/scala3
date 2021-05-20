@@ -10,13 +10,14 @@ import config.Printers.Printer
 import annotation.tailrec
 
 object Util {
-  def traceIndented(msg: String, printer: Printer)(using Context): Unit =
+  def traceIndented(msg: => String, printer: Printer)(using Context): Unit =
     printer.println(s"${ctx.base.indentTab * ctx.base.indent} $msg")
 
-  def traceOp(msg: String, printer: Printer)(op: => Unit)(using Context): Unit = {
-    traceIndented(s"==> ${msg}", printer)
+  def traceOp(msg: => String, printer: Printer)(op: => Unit)(using Context): Unit = {
+    lazy val computedMsg = msg // Make sure we only compute msg once
+    traceIndented(s"==> ${computedMsg}", printer)
     op
-    traceIndented(s"<== ${msg}", printer)
+    traceIndented(s"<== ${computedMsg}", printer)
   }
 
   extension (symbol: Symbol) def hasSource(using Context): Boolean =

@@ -10,18 +10,18 @@ package p
 
 open class Writer[T]:
 
-   /** Sends to stdout, can be overridden */
-   def send(x: T) = println(x)
+  /** Sends to stdout, can be overridden */
+  def send(x: T) = println(x)
 
-   /** Sends all arguments using `send` */
-   def sendAll(xs: T*) = xs.foreach(send)
+  /** Sends all arguments using `send` */
+  def sendAll(xs: T*) = xs.foreach(send)
 end Writer
 
 // File EncryptedWriter.scala
 package p
 
 class EncryptedWriter[T: Encryptable] extends Writer[T]:
-   override def send(x: T) = super.send(encrypt(x))
+  override def send(x: T) = super.send(encrypt(x))
 ```
 An open class typically comes with some documentation that describes
 the internal calling patterns between methods of the class as well as hooks that can be overridden. We call this the _extension contract_ of the class. It is different from the _external contract_ between a class and its users.

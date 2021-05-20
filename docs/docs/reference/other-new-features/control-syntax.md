@@ -8,11 +8,11 @@ enclosing the condition in parentheses, and also allows to drop parentheses or b
 around the generators of a `for`-expression. Examples:
 ```scala
 if x < 0 then
-   "negative"
+  "negative"
 else if x == 0 then
-   "zero"
+  "zero"
 else
-   "positive"
+  "positive"
 
 if x < 0 then -x else x
 
@@ -22,10 +22,10 @@ for x <- xs if x > 0
 yield x * x
 
 for
-   x <- xs
-   y <- ys
+  x <- xs
+  y <- ys
 do
-   println(x + y)
+  println(x + y)
 
 try body
 catch case ex: IOException => handle

@@ -72,8 +72,8 @@ The unsoundness happens because uninitialized fields in a class start out as `nu
 
 ```scala
 class C:
-   val f: String = foo(f)
-   def foo(f2: String): String = f2
+  val f: String = foo(f)
+  def foo(f2: String): String = f2
 
 val c = new C()
 // c.f == "field is null"
@@ -123,8 +123,8 @@ We illustrate the rules with following examples:
 
   ```java
   class C {
-     String s;
-     int x;
+    String s;
+    int x;
   }
   ```
 
@@ -132,8 +132,8 @@ We illustrate the rules with following examples:
 
   ```scala
   class C:
-     val s: String | Null
-     val x: Int
+    val s: String | Null
+    val x: Int
   ```
 
 - We nullify type parameters because in Java a type parameter is always nullable, so the following code compiles.
@@ -152,8 +152,8 @@ We illustrate the rules with following examples:
 
   ```scala
   class InScala:
-     val c: C[Bool] = ???  // C as above
-     val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool | Null
+    val c: C[Bool] = ???  // C as above
+    val b: Bool = c.foo() // no longer typechecks, since foo now returns Bool | Null
   ```
 
 - We can reduce the number of redundant nullable types we need to add. Consider
@@ -193,8 +193,8 @@ We illustrate the rules with following examples:
 
   ```scala
   class BoxFactory[T]:
-     def makeBox(): Box[T | Null] | Null
-     def makeCrazyBoxes(): java.util.List[Box[java.util.List[T] | Null]] | Null
+    def makeBox(): Box[T | Null] | Null
+    def makeCrazyBoxes(): java.util.List[Box[java.util.List[T] | Null]] | Null
   ```
 
   In this case, since `Box` is Scala-defined, we will get `Box[T | Null] | Null`.
@@ -209,11 +209,11 @@ We illustrate the rules with following examples:
 
   ```java
   class Constants {
-     final String NAME = "name";
-     final int AGE = 0;
-     final char CHAR = 'a';
+    final String NAME = "name";
+    final int AGE = 0;
+    final char CHAR = 'a';
 
-     final String NAME_GENERATED = getNewName();
+    final String NAME_GENERATED = getNewName();
   }
   ```
 
@@ -221,11 +221,11 @@ We illustrate the rules with following examples:
 
   ```scala
   class Constants:
-     val NAME: String("name") = "name"
-     val AGE: Int(0) = 0
-     val CHAR: Char('a') = 'a'
+    val NAME: String("name") = "name"
+    val AGE: Int(0) = 0
+    val CHAR: Char('a') = 'a'
 
-     val NAME_GENERATED: String | Null = getNewName()
+    val NAME_GENERATED: String | Null = getNewName()
   ```
 
 - We don't append `Null` to a field nor to a return type of a method which is annotated with a
@@ -233,9 +233,9 @@ We illustrate the rules with following examples:
 
   ```java
   class C {
-     @NotNull String name;
-     @NotNull List<String> getNames(String prefix); // List is Java-defined
-     @NotNull Box<String> getBoxedName(); // Box is Scala-defined
+    @NotNull String name;
+    @NotNull List<String> getNames(String prefix); // List is Java-defined
+    @NotNull Box<String> getBoxedName(); // Box is Scala-defined
   }
   ```
 
@@ -243,9 +243,9 @@ We illustrate the rules with following examples:
 
   ```scala
   class C:
-     val name: String
-     def getNames(prefix: String | Null): java.util.List[String] // we still need to nullify the paramter types
-     def getBoxedName(): Box[String | Null] // we don't append `Null` to the outmost level, but we still need to nullify inside
+    val name: String
+    def getNames(prefix: String | Null): java.util.List[String] // we still need to nullify the paramter types
+    def getBoxedName(): Box[String | Null] // we don't append `Null` to the outmost level, but we still need to nullify inside
   ```
 
   The annotation must be from the list below to be recognized as `NotNull` by the compiler.
@@ -304,7 +304,7 @@ Example:
 ```scala
 val s: String | Null = ???
 if s != null then
-   // s: String
+  // s: String
 
 // s: String | Null
 
@@ -316,9 +316,9 @@ A similar inference can be made for the `else` case if the test is `p == null`
 
 ```scala
 if s == null then
-   // s: String | Null
+  // s: String | Null
 else
-   // s: String
+  // s: String
 ```
 
 `==` and `!=` is considered a comparison for the purposes of the flow inference.
@@ -331,15 +331,15 @@ We also support logical operators (`&&`, `||`, and `!`):
 val s: String | Null = ???
 val s2: String | Null = ???
 if s != null && s2 != null then
-   // s: String
-   // s2: String
+  // s: String
+  // s2: String
 
 if s == null || s2 == null then
-   // s: String | Null
-   // s2: String | Null
+  // s: String | Null
+  // s2: String | Null
 else
-   // s: String
-   // s2: String
+  // s: String
+  // s2: String
 ```
 
 ### Inside Conditions
@@ -350,12 +350,12 @@ We also support type specialization _within_ the condition, taking into account 
 val s: String | Null = ???
 
 if s != null && s.length > 0 then // s: String in `s.length > 0`
-   // s: String
+  // s: String
 
 if s == null || s.length > 0 then // s: String in `s.length > 0`
-   // s: String | Null
+  // s: String | Null
 else
-   // s: String
+  // s: String
 ```
 
 ### Match Case
@@ -366,8 +366,8 @@ The non-null cases can be detected in match statements.
 val s: String | Null = ???
 
 s match
-   case _: String => // s: String
-   case _ =>
+  case _: String => // s: String
+  case _ =>
 ```
 
 ### Mutable Variable
@@ -380,13 +380,13 @@ class C(val x: Int, val next: C | Null)
 var xs: C | Null = C(1, C(2, null))
 // xs is trackable, since all assignments are in the same method
 while xs != null do
-   // xs: C
-   val xsx: Int = xs.x
-   val xscpy: C = xs
-   xs = xscpy // since xscpy is non-null, xs still has type C after this line
-   // xs: C
-   xs = xs.next // after this assignment, xs can be null again
-   // xs: C | Null
+  // xs: C
+  val xsx: Int = xs.x
+  val xscpy: C = xs
+  xs = xscpy // since xscpy is non-null, xs still has type C after this line
+  // xs: C
+  xs = xs.next // after this assignment, xs can be null again
+  // xs: C | Null
 ```
 
 When dealing with local mutable variables, there are two questions:
@@ -399,7 +399,7 @@ When dealing with local mutable variables, there are two questions:
    ```scala
    var x: String | Null = ???
    def y =
-      x = null
+     x = null
 
    if x != null then
       // y can be called here, which would break the fact
@@ -416,13 +416,13 @@ When dealing with local mutable variables, there are two questions:
    ```scala
    var x: String | Null = ???
    def y =
-      if x != null then
-         // not safe to use the fact (x != null) here
-         // since y can be executed at the same time as the outer block
-         val _: String = x
+     if x != null then
+       // not safe to use the fact (x != null) here
+       // since y can be executed at the same time as the outer block
+       val _: String = x
    if x != null then
-      val a: String = x // ok to use the fact here
-      x = null
+     val a: String = x // ok to use the fact here
+     x = null
    ```
 
 See [more examples](https://github.com/lampepfl/dotty/blob/master/tests/explicit-nulls/neg/flow-varref-in-closure.scala).
@@ -441,8 +441,8 @@ We don't support:
   val s: String | Null = ???
   val s2: String | Null = ???
   if s != null && s == s2 then
-     // s:  String inferred
-     // s2: String not inferred
+    // s:  String inferred
+    // s2: String not inferred
   ```
 
 ### UnsafeNulls

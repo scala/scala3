@@ -8,4 +8,4 @@ private def showTypeImpl[T: Type](using Quotes): Expr[String] =
       case Some(ct) => '{ $ct.runtimeClass.getName }
       case None =>
         import quotes.reflect._
-        report.throwError(s"Unable to find a ClassTag for type ${Type.show[T]}", Position.ofMacroExpansion)
+        report.errorAndAbort(s"Unable to find a ClassTag for type ${Type.show[T]}", Position.ofMacroExpansion)

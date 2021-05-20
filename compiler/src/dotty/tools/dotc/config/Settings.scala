@@ -125,7 +125,7 @@ object Settings {
         case (ListTag, _) =>
           if (argRest.isEmpty) missingArg
           else update((argRest split ",").toList, args)
-        case (StringTag, _) if argRest.nonEmpty =>
+        case (StringTag, _) if argRest.nonEmpty || choices.exists(_.contains("")) =>
           setString(argRest, args)
         case (StringTag, arg2 :: args2) =>
           if (arg2 startsWith "-") missingArg

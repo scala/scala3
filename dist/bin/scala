@@ -98,9 +98,6 @@ while [[ $# -gt 0 ]]; do
       addScala "$1"
       shift
       ;;
-    -d|-debug)
-      DEBUG="${DEBUG_STR-}"
-      shift ;;
     -version)
       # defer to scalac, then exit
       shift
@@ -116,39 +113,40 @@ while [[ $# -gt 0 ]]; do
       verbose=true
       addScala "-verbose"
       shift ;;
-    -run|-repl)
-      PROG_NAME="$ReplMain"
+    -run)
+      setExecuteMode 'run'
       shift ;;
 
     *)
-      if [ "${execute_mode-}" == 'script' ]; then
-        addScript "$1"
-      else
-        # script if extension .scala or .sc, or if has scala hashbang line
+      # script if extension .scala or .sc, or if has scala hashbang line
+      # no -f test, issue meaningful error message (file not found)
+      if [[ "$1" == *.scala || "$1" == *.sc ]]; then
+        setExecuteMode 'script' # execute_script=true
 
-        # no -f test, issue meaningful error message (file not found)
-        if [[ "$1" == *.scala || "$1" == *.sc ]]; then
-          setExecuteMode 'script' # execute_script=true
-
-        # -f test needed before we examine the hashbang line
-        elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
-          setExecuteMode 'script' # execute_script=true
-        fi
-
-        if [ "${execute_mode-}" == 'script' ]; then
-          target_script="$1"
-          if [ ! -f $target_script ]; then
-            # likely a typo or missing script file, quit early
-            echo "not found: $target_script" 1>&2
-            scala_exit_status=2
-            onExit
-          fi
-        else
-          # all unrecognized args appearing prior to a script name
-          addResidual "$1"
-        fi
+      # -f test needed before we examine the hashbang line
+      elif [[ (-f "$1" && `head -n 1 -- "$1" | grep '#!.*scala'`) ]]; then
+        setExecuteMode 'script' # execute_script=true
       fi
-      shift
+
+      if [ "${execute_mode-}" == 'script' ]; then
+        target_script="$1"
+        shift
+        if [ ! -f $target_script ]; then
+          # likely a typo or missing script file, quit early
+          echo "not found: $target_script" 1>&2
+          scala_exit_status=2
+          onExit
+        fi
+        # all are script args
+        while [[ $# -gt 0 ]]; do
+          addScript "${1}"
+          shift
+        done
+      else
+        # all unrecognized args appearing prior to a script name
+        addResidual "$1"
+        shift
+      fi
       ;;
 
   esac
@@ -157,7 +155,7 @@ done
 #[ -n "${dump_args}" ] && dumpArgs ; exit 2
 if [ -z "${execute_mode-}" ]; then
   # no script was specified, set run or repl mode
-  if [[ $options_indicator -eq 0 && "${residual_args[@]-}" == "" ]]; then
+  if [[ $options_indicator -eq 0 ]]; then
     setExecuteMode 'repl'
   else
     setExecuteMode 'run'
@@ -179,7 +177,7 @@ script)
   else
     [[ $save_compiled == true ]] && rm -f $target_jar
     PROG_NAME=$ScriptingMain
-    classpathArgs # initialize jvm_cp_args with toolchain classpath 
+    compilerJavaClasspathArgs # initialize jvm_cp_args with toolchain classpath
     scripting_string="-script $target_script ${script_args[@]}"
     # use eval instead of exec, to insure that onExit is subsequently called
 
@@ -187,7 +185,6 @@ script)
     # $scripting_string  must be last
     eval "\"$JAVACMD\"" \
        ${JAVA_OPTS:-$default_java_opts} \
-       "${DEBUG-}" \
        "${java_args[@]}" \
        "-classpath \"$jvm_cp_args\"" \
        -Dscala.usejavacp=true \
@@ -210,20 +207,20 @@ repl)
   ;;
 
 run)
-  repl_cparg="$DOTTY_LIB$PSEP$SCALA_LIB"
+  run_cparg="$DOTTY_LIB$PSEP$SCALA_LIB"
   if [ -z "$CLASS_PATH" ]; then
-    repl_cparg+="$PSEP."
+    run_cparg+="$PSEP."
   else
-    repl_cparg+="$PSEP$CLASS_PATH"
+    run_cparg+="$PSEP$CLASS_PATH"
   fi
   if [ "$class_path_count" -gt 1 ]; then
     echo "warning: multiple classpaths are found, scala only use the last one."
   fi
   if [ $with_compiler == true ]; then
-    repl_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
+    run_cparg+="$PSEP$DOTTY_COMP$PSEP$TASTY_CORE$PSEP$DOTTY_INTF$PSEP$SCALA_ASM$PSEP$DOTTY_STAGING$PSEP$DOTTY_TASTY_INSPECTOR"
   fi
   # exec here would prevent onExit from being called, leaving terminal in unusable state
-  eval "\"$JAVACMD\"" "${DEBUG-}"  "-classpath \"$repl_cparg\"" "${java_args[@]}" "${residual_args[@]}"
+  eval "\"$JAVACMD\"" "-classpath \"$run_cparg\"" "${java_args[@]}" "${residual_args[@]}"
   scala_exit_status=$?
   ;;
 

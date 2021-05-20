@@ -63,8 +63,10 @@ object Splicer {
       catch {
         case ex: CompilationUnit.SuspendException =>
           throw ex
-        case ex: scala.quoted.runtime.StopMacroExpansion if ctx.reporter.hasErrors =>
-           // errors have been emitted
+        case ex: scala.quoted.runtime.StopMacroExpansion =>
+          if !ctx.reporter.hasErrors then
+            report.error("Macro expansion was aborted by the macro without any errors reported. Macros should issue errors to end-users to facilitate debugging when aborting a macro expansion.", splicePos)
+          // errors have been emitted
           EmptyTree
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
@@ -546,4 +548,3 @@ object Splicer {
     }
   }
 }
-

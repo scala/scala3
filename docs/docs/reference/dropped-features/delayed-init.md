@@ -10,7 +10,7 @@ now partially broken. You can still use `App` as a simple way to set up a main p
 
 ```scala
 object HelloWorld extends App {
-   println("Hello, world!")
+  println("Hello, world!")
 }
 ```
 
@@ -21,8 +21,8 @@ you need to use an explicit `main` method for that.
 
 ```scala
 object Hello:
-   def main(args: Array[String]) =
-      println(s"Hello, ${args(0)}")
+  def main(args: Array[String]) =
+    println(s"Hello, ${args(0)}")
 ```
 
 On the other hand, Scala 3 offers a convenient alternative to such "program" objects

@@ -9,8 +9,8 @@ how an `Option` type can be represented as an ADT:
 
 ```scala
 enum Option[+T]:
-   case Some(x: T)
-   case None
+  case Some(x: T)
+  case None
 ```
 
 This example introduces an `Option` enum with a covariant type
@@ -24,8 +24,8 @@ be given explicitly:
 
 ```scala
 enum Option[+T]:
-   case Some(x: T) extends Option[T]
-   case None       extends Option[Nothing]
+  case Some(x: T) extends Option[T]
+  case None       extends Option[Nothing]
 ```
 
 Note that the parent type of the `None` value is inferred as
@@ -60,17 +60,17 @@ As all other enums, ADTs can define methods. For instance, here is `Option` agai
 
 ```scala
 enum Option[+T]:
-   case Some(x: T)
-   case None
+  case Some(x: T)
+  case None
 
-   def isDefined: Boolean = this match
-      case None => false
-      case _    => true
+  def isDefined: Boolean = this match
+    case None => false
+    case _    => true
 
 object Option:
 
-   def apply[T >: Null](x: T): Option[T] =
-      if x == null then None else Some(x)
+  def apply[T >: Null](x: T): Option[T] =
+    if x == null then None else Some(x)
 
 end Option
 ```
@@ -84,10 +84,10 @@ parameterized case that takes an RGB value.
 
 ```scala
 enum Color(val rgb: Int):
-   case Red   extends Color(0xFF0000)
-   case Green extends Color(0x00FF00)
-   case Blue  extends Color(0x0000FF)
-   case Mix(mix: Int) extends Color(mix)
+  case Red   extends Color(0xFF0000)
+  case Green extends Color(0x00FF00)
+  case Blue  extends Color(0x0000FF)
+  case Mix(mix: Int) extends Color(mix)
 ```
 
 ### Parameter Variance of Enums
@@ -101,7 +101,7 @@ mapping a type `T` to itself:
 
 ```scala
 enum View[-T]:
-   case Refl(f: T => T)
+  case Refl(f: T => T)
 ```
 
 The definition of `Refl` is incorrect, as it uses contravariant type `T` in the covariant result position of a
@@ -119,7 +119,7 @@ Because `Refl` does not declare explicit parameters, it looks to the compiler li
 
 ```scala
 enum View[-T]:
-   case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
+  case Refl[/*synthetic*/-T1](f: T1 => T1) extends View[T1]
 ```
 
 The compiler has inferred for `Refl` the contravariant type parameter `T1`, following `T` in `View`.
@@ -128,8 +128,8 @@ and can remedy the error by the following change to `Refl`:
 
 ```diff
 enum View[-T]:
--   case Refl(f: T => T)
-+   case Refl[R](f: R => R) extends View[R]
+-  case Refl(f: T => T)
++  case Refl[R](f: R => R) extends View[R]
 ```
 
 Above, type `R` is chosen as the parameter for `Refl` to highlight that it has a different meaning to
@@ -140,10 +140,10 @@ as the function type `T => U`:
 
 ```scala
 enum View[-T, +U] extends (T => U):
-   case Refl[R](f: R => R) extends View[R, R]
+  case Refl[R](f: R => R) extends View[R, R]
 
-   final def apply(t: T): U = this match
-      case refl: Refl[r] => refl.f(t)
+  final def apply(t: T): U = this match
+    case refl: Refl[r] => refl.f(t)
 ```
 
 ### Syntax of Enums

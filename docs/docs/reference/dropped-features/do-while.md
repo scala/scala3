@@ -15,22 +15,22 @@ while ({ <body> ; <cond> }) ()
 For instance, instead of
 ```scala
 do
-   i += 1
+  i += 1
 while (f(i) == 0)
 ```
 one writes
 ```scala
 while
-   i += 1
-   f(i) == 0
+  i += 1
+  f(i) == 0
 do ()
 ```
 The idea to use a block as the condition of a while also gives a solution
 to the "loop-and-a-half" problem. Here is another example:
 ```scala
 while
-   val x: Int = iterator.next
-   x >= 0
+  val x: Int = iterator.next
+  x >= 0
 do print(".")
 ```
 

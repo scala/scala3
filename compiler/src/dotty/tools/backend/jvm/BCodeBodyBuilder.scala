@@ -228,7 +228,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       resKind
     }
 
-    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = tree match {
+    def genPrimitiveOp(tree: Apply, expectedType: BType): BType = (tree: @unchecked) match {
       case Apply(fun @ DesugaredSelect(receiver, _), _) =>
       val sym = tree.symbol
 
@@ -610,7 +610,7 @@ trait BCodeBodyBuilder extends BCodeSkelBuilder {
       }
     }
 
-    def genTypeApply(t: TypeApply): BType = t match {
+    def genTypeApply(t: TypeApply): BType = (t: @unchecked) match {
       case TypeApply(fun@DesugaredSelect(obj, _), targs) =>
 
         val sym = fun.symbol

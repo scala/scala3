@@ -17,7 +17,7 @@ val y: BigInt = 0x123_abc_789_def_345_678_901
 val z: BigDecimal = 110_222_799_799.99
 
 (y: BigInt) match
-   case 123_456_789_012_345_678_901 =>
+  case 123_456_789_012_345_678_901 =>
 ```
 
 The syntax of numeric literals is the same as before, except there are no pre-set limits
@@ -72,7 +72,7 @@ as follows:
 
 ```scala
 trait FromDigits[T]:
-   def fromDigits(digits: String): T
+  def fromDigits(digits: String): T
 ```
 
 Implementations of the `fromDigits` convert strings of digits to the values of the
@@ -88,23 +88,23 @@ numbers that can have both a decimal point and an exponent:
 ```scala
 object FromDigits:
 
-   /** A subclass of `FromDigits` that also allows to convert whole
-    *  number literals with a radix other than 10
-    */
-   trait WithRadix[T] extends FromDigits[T]:
-      def fromDigits(digits: String): T = fromDigits(digits, 10)
-      def fromDigits(digits: String, radix: Int): T
+  /** A subclass of `FromDigits` that also allows to convert whole
+   *  number literals with a radix other than 10
+   */
+  trait WithRadix[T] extends FromDigits[T]:
+    def fromDigits(digits: String): T = fromDigits(digits, 10)
+    def fromDigits(digits: String, radix: Int): T
 
-   /** A subclass of `FromDigits` that also allows to convert number
-    *  literals containing a decimal point ".".
-    */
-   trait Decimal[T] extends FromDigits[T]
+  /** A subclass of `FromDigits` that also allows to convert number
+   *  literals containing a decimal point ".".
+   */
+  trait Decimal[T] extends FromDigits[T]
 
-   /** A subclass of `FromDigits`that allows also to convert number
-    *  literals containing a decimal point "." or an
-    *  exponent `('e' | 'E')['+' | '-']digit digit*`.
-    */
-   trait Floating[T] extends Decimal[T]
+  /** A subclass of `FromDigits`that allows also to convert number
+   *  literals containing a decimal point "." or an
+   *  exponent `('e' | 'E')['+' | '-']digit digit*`.
+   */
+  trait Floating[T] extends Decimal[T]
 ```
 
 A user-defined number type can implement one of those, which signals to the compiler
@@ -131,7 +131,7 @@ As a fully worked out example, here is an implementation of a new numeric class,
 
 ```scala
 case class BigFloat(mantissa: BigInt, exponent: Int):
-   override def toString = s"${mantissa}e${exponent}"
+  override def toString = s"${mantissa}e${exponent}"
 ```
 
 `BigFloat` literals can have a decimal point as well as an exponent. E.g. the following expression
@@ -146,34 +146,34 @@ from a `digits` string. Here is a possible implementation:
 
 ```scala
 object BigFloat:
-   import scala.util.FromDigits
+  import scala.util.FromDigits
 
-   def apply(digits: String): BigFloat =
-      val (mantissaDigits, givenExponent) =
-         digits.toUpperCase.split('E') match
-            case Array(mantissaDigits, edigits) =>
-               val expo =
-                  try FromDigits.intFromDigits(edigits)
-                  catch case ex: FromDigits.NumberTooLarge =>
-                     throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
-               (mantissaDigits, expo)
-            case Array(mantissaDigits) =>
-               (mantissaDigits, 0)
-      val (intPart, exponent) =
-         mantissaDigits.split('.') match
-            case Array(intPart, decimalPart) =>
-               (intPart ++ decimalPart, givenExponent - decimalPart.length)
-            case Array(intPart) =>
-               (intPart, givenExponent)
-      BigFloat(BigInt(intPart), exponent)
+  def apply(digits: String): BigFloat =
+    val (mantissaDigits, givenExponent) =
+      digits.toUpperCase.split('E') match
+        case Array(mantissaDigits, edigits) =>
+          val expo =
+            try FromDigits.intFromDigits(edigits)
+            catch case ex: FromDigits.NumberTooLarge =>
+              throw FromDigits.NumberTooLarge(s"exponent too large: $edigits")
+          (mantissaDigits, expo)
+        case Array(mantissaDigits) =>
+          (mantissaDigits, 0)
+    val (intPart, exponent) =
+      mantissaDigits.split('.') match
+        case Array(intPart, decimalPart) =>
+          (intPart ++ decimalPart, givenExponent - decimalPart.length)
+        case Array(intPart) =>
+          (intPart, givenExponent)
+    BigFloat(BigInt(intPart), exponent)
 ```
 
 To accept `BigFloat` literals, all that's needed in addition is a `given` instance of type
 `FromDigits.Floating[BigFloat]`:
 
 ```scala
-   given FromDigits: FromDigits.Floating[BigFloat] with
-      def fromDigits(digits: String) = apply(digits)
+  given FromDigits: FromDigits.Floating[BigFloat] with
+    def fromDigits(digits: String) = apply(digits)
 end BigFloat
 ```
 
@@ -204,15 +204,15 @@ To do this, replace the `FromDigits` instance in the `BigFloat` object by the fo
 
 ```scala
 object BigFloat:
-   ...
+  ...
 
-   class FromDigits extends FromDigits.Floating[BigFloat]:
-      def fromDigits(digits: String) = apply(digits)
+  class FromDigits extends FromDigits.Floating[BigFloat]:
+    def fromDigits(digits: String) = apply(digits)
 
-   given FromDigits with
-      override inline def fromDigits(digits: String) = ${
-        fromDigitsImpl('digits)
-      }
+  given FromDigits with
+    override inline def fromDigits(digits: String) = ${
+      fromDigitsImpl('digits)
+    }
 ```
 
 Note that an inline method cannot directly fill in for an abstract method, since it produces
@@ -222,17 +222,17 @@ method in the `FromDigits` given instance. That method is defined in terms of a 
 implementation method `fromDigitsImpl`. Here is its definition:
 
 ```scala
-   private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
-      digits.value match
-         case Some(ds) =>
-            try
-               val BigFloat(m, e) = apply(ds)
-               '{BigFloat(${Expr(m)}, ${Expr(e)})}
-            catch case ex: FromDigits.FromDigitsException =>
-               ctx.error(ex.getMessage)
-               '{BigFloat(0, 0)}
-         case None =>
-            '{apply($digits)}
+  private def fromDigitsImpl(digits: Expr[String])(using ctx: Quotes): Expr[BigFloat] =
+    digits.value match
+      case Some(ds) =>
+        try
+          val BigFloat(m, e) = apply(ds)
+          '{BigFloat(${Expr(m)}, ${Expr(e)})}
+        catch case ex: FromDigits.FromDigitsException =>
+          ctx.error(ex.getMessage)
+          '{BigFloat(0, 0)}
+      case None =>
+        '{apply($digits)}
 end BigFloat
 ```
 

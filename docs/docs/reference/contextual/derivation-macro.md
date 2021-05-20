@@ -17,7 +17,7 @@ As in the original code, the type class definition is the same:
 
 ```scala
 trait Eq[T]:
-   def eqv(x: T, y: T): Boolean
+  def eqv(x: T, y: T): Boolean
 ```
 
 we need to implement a method `Eq.derived` on the companion object of `Eq` that
@@ -41,25 +41,25 @@ from the signature. The body of the `derived` method is shown below:
 
 ```scala
 given derived[T: Type](using Quotes): Expr[Eq[T]] =
-   import quotes.reflect.*
+  import quotes.reflect.*
 
-   val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
+  val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
-   ev match
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
-         val elemInstances = summonAll[elementTypes]
-         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) =>
-            elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
-               case (acc, (elem, index)) =>
-                  val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
-                  val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
-                  '{ $acc && $elem.asInstanceOf[Eq[Any]].eqv($e1, $e2) }
-            }
+  ev match
+    case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
+      val elemInstances = summonAll[elementTypes]
+      val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) =>
+        elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
+          case (acc, (elem, index)) =>
+            val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
+            val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
+            '{ $acc && $elem.asInstanceOf[Eq[Any]].eqv($e1, $e2) }
+        }
 
-         '{ eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)}) }
+      '{ eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)}) }
 
-   // case for Mirror.ProductOf[T]
-   // ...
+  // case for Mirror.ProductOf[T]
+  // ...
 ```
 
 Note, that in the `inline` case we can merely write

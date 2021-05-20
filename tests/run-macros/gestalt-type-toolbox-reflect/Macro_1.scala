@@ -44,7 +44,7 @@ object TypeToolbox {
   inline def fieldIn[T](inline mem: String): String = ${fieldInImpl[T]('mem)}
   private def fieldInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[String] = {
     import quotes.reflect.*
-    val field = TypeTree.of[T].symbol.declaredField(mem.valueOrError)
+    val field = TypeTree.of[T].symbol.declaredField(mem.valueOrAbort)
     Expr(if field.isNoSymbol then "" else field.name)
   }
 
@@ -58,7 +58,7 @@ object TypeToolbox {
   inline def methodIn[T](inline mem: String): Seq[String] = ${methodInImpl[T]('mem)}
   private def methodInImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect.*
-    Expr(TypeTree.of[T].symbol.declaredMethod(mem.valueOrError).map(_.name))
+    Expr(TypeTree.of[T].symbol.declaredMethod(mem.valueOrAbort).map(_.name))
   }
 
   inline def methodsIn[T]: Seq[String] = ${methodsInImpl[T]}
@@ -70,7 +70,7 @@ object TypeToolbox {
   inline def method[T](inline mem: String): Seq[String] = ${methodImpl[T]('mem)}
   private def methodImpl[T: Type](mem: Expr[String])(using Quotes) : Expr[Seq[String]] = {
     import quotes.reflect.*
-    Expr(TypeTree.of[T].symbol.memberMethod(mem.valueOrError).map(_.name))
+    Expr(TypeTree.of[T].symbol.memberMethod(mem.valueOrAbort).map(_.name))
   }
 
   inline def methods[T]: Seq[String] = ${methodsImpl[T]}

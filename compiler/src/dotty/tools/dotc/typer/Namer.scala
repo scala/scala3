@@ -617,7 +617,7 @@ class Namer { typer: Typer =>
           val classSym = ctx.effectiveScope.lookup(className)
           val moduleName = className.toTermName
           if needsConstructorProxies(classSym) && ctx.effectiveScope.lookupEntry(moduleName) == null then
-            enterSymbol(constructorCompanion(classSym.asClass))
+            enterSymbol(classConstructorCompanion(classSym.asClass))
       else if ctx.owner.is(PackageClass) then
         for case cdef @ TypeDef(moduleName, _) <- moduleDef.values do
           val moduleSym = ctx.effectiveScope.lookup(moduleName)
@@ -634,12 +634,12 @@ class Namer { typer: Typer =>
             val moduleName = className.toTermName
             val companionVals = ctx.effectiveScope.lookupAll(moduleName.encode)
             if companionVals.isEmpty && needsConstructorProxies(classSym) then
-              enterSymbol(constructorCompanion(classSym.asClass))
+              enterSymbol(classConstructorCompanion(classSym.asClass))
             else
               for moduleSym <- companionVals do
                 if moduleSym.is(Module) && !moduleSym.isDefinedInCurrentRun then
                   val companion =
-                    if needsConstructorProxies(classSym) then constructorCompanion(classSym.asClass)
+                    if needsConstructorProxies(classSym) then classConstructorCompanion(classSym.asClass)
                     else newModuleSymbol(
                       ctx.owner, moduleName, EmptyFlags, EmptyFlags, (_, _) => NoType)
                   enterSymbol(companion)
@@ -974,7 +974,6 @@ class Namer { typer: Typer =>
 
     /** The forwarders defined by export `exp` */
     private def exportForwarders(exp: Export)(using Context): List[tpd.MemberDef] =
-      val SKIP = "(skip)" // A string indicating that no forwarders for this kind of symbol are emitted
       val buf = new mutable.ListBuffer[tpd.MemberDef]
       val Export(expr, selectors) = exp
       if expr.isEmpty then
@@ -986,19 +985,24 @@ class Namer { typer: Typer =>
       lazy val wildcardBound = importBound(selectors, isGiven = false)
       lazy val givenBound = importBound(selectors, isGiven = true)
 
-      def whyNoForwarder(mbr: SingleDenotation): String = {
+      def canForward(mbr: SingleDenotation): CanForward = {
+        import CanForward.*
         val sym = mbr.symbol
-        if (!sym.isAccessibleFrom(path.tpe)) "is not accessible"
-        else if (sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy)) SKIP
-        else if (cls.derivesFrom(sym.owner) &&
-                  (sym.owner == cls || !sym.is(Deferred))) i"is already a member of $cls"
-        else if (sym.is(Override))
+        if !sym.isAccessibleFrom(path.tpe) then
+          No("is not accessible")
+        else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(ConstructorProxy) then
+          Skip
+        else if cls.derivesFrom(sym.owner) && (sym.owner == cls || !sym.is(Deferred)) then
+          No(i"is already a member of $cls")
+        else if sym.is(Override) then
           sym.allOverriddenSymbols.find(
-            other => cls.derivesFrom(other.owner) && !other.is(Deferred)) match {
-              case Some(other) => i"overrides ${other.showLocated}, which is already a member of $cls"
-              case None => ""
-          }
-        else ""
+            other => cls.derivesFrom(other.owner) && !other.is(Deferred)
+          ) match
+              case Some(other) => No(i"overrides ${other.showLocated}, which is already a member of $cls")
+              case None => Yes
+        else if sym.isAllOf(JavaModule) then
+          Skip
+        else Yes
       }
 
       /** Add a forwarder with name `alias` or its type name equivalent to `mbr`,
@@ -1021,7 +1025,7 @@ class Namer { typer: Typer =>
             case _ =>
               acc.reverse ::: prefss
 
-        if whyNoForwarder(mbr) == "" then
+        if canForward(mbr) == CanForward.Yes then
           val sym = mbr.symbol
           val forwarder =
             if mbr.isType then
@@ -1038,7 +1042,7 @@ class Namer { typer: Typer =>
               // a parameterized class, say `C[X]` the alias will read `type C = d.C`. We currently do
               // allow such type aliases. If we forbid them at some point (requiring the referred type to be
               // fully applied), we'd have to change the scheme here as well.
-            else {
+            else
               def refersToPrivate(tp: Type): Boolean = tp match
                 case tp: TermRef => tp.termSymbol.is(Private) || refersToPrivate(tp.prefix)
                 case _ => false
@@ -1051,16 +1055,17 @@ class Namer { typer: Typer =>
               if sym.is(ExtensionMethod) then mbrFlags |= ExtensionMethod
               val forwarderName = checkNoConflict(alias, isPrivate = false, span)
               newSymbol(cls, forwarderName, mbrFlags, mbrInfo, coord = span)
-            }
+
           forwarder.info = avoidPrivateLeaks(forwarder)
           forwarder.addAnnotations(sym.annotations)
+
           val forwarderDef =
             if (forwarder.isType) tpd.TypeDef(forwarder.asType)
             else {
               import tpd._
               val ref = path.select(sym.asTerm)
               val ddef = tpd.DefDef(forwarder.asTerm, prefss =>
-                ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
+                  ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, prefss))
               )
               if forwarder.isInlineMethod then
                 PrepareInlineable.registerInlineInfo(forwarder, ddef.rhs)
@@ -1070,18 +1075,15 @@ class Namer { typer: Typer =>
           buf += forwarderDef.withSpan(span)
       end addForwarder
 
-      def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit = {
+      def addForwardersNamed(name: TermName, alias: TermName, span: Span): Unit =
         val size = buf.size
         val mbrs = List(name, name.toTypeName).flatMap(path.tpe.member(_).alternatives)
         mbrs.foreach(addForwarder(alias, _, span))
-        if (buf.size == size) {
-          val reason = mbrs.map(whyNoForwarder).dropWhile(_ == SKIP) match {
-            case Nil => ""
-            case why :: _ => i"\n$path.$name cannot be exported because it $why"
-          }
+        if buf.size == size then
+          val reason = mbrs.map(canForward).collect {
+            case CanForward.No(whyNot) => i"\n$path.$name cannot be exported because it $whyNot"
+          }.headOption.getOrElse("")
           report.error(i"""no eligible member $name at $path$reason""", ctx.source.atSpan(span))
-        }
-      }
 
       def addWildcardForwardersNamed(name: TermName, span: Span): Unit =
         List(name, name.toTypeName)
@@ -1356,6 +1358,12 @@ class Namer { typer: Typer =>
       addConstructorProxies(cls)
     }
   }
+
+  /** Possible actions to perform when deciding on a forwarder for a member */
+  private enum CanForward:
+    case Yes
+    case No(whyNot: String)
+    case Skip  // for members that have never forwarders
 
   class SuspendCompleter extends LazyType, SymbolLoaders.SecondCompleter {
 

@@ -426,7 +426,6 @@ object projects:
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit),
-    requiresExperimental = true,
   )
 
   lazy val scodec = SbtCommunityProject(
@@ -435,7 +434,6 @@ object projects:
     // Adds <empty> package
     sbtDocCommand   = "coreJVM/doc",
     dependencies = List(munit, scodecBits),
-    requiresExperimental = true,
   )
 
   lazy val scalaParserCombinators = SbtCommunityProject(
@@ -477,16 +475,10 @@ object projects:
     sbtDocCommand = ";json-schemaJVM/doc ;algebraJVM/doc; openapiJVM/doc; http4s-server/doc ;http4s-client/doc ;play-server/doc ;play-client/doc ;akka-http-server/doc ;akka-http-client/doc",
   )
 
-  lazy val catsEffect2 = SbtCommunityProject(
-    project        = "cats-effect-2",
-    sbtTestCommand = "test",
-    sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc",
-    dependencies   = List(cats, disciplineMunit)
-  )
-
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
     sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
     dependencies   = List(cats, coop, disciplineSpecs2, scalacheck)
   )
@@ -520,7 +512,7 @@ object projects:
 
   lazy val disciplineMunit = SbtCommunityProject(
     project = "discipline-munit",
-    sbtTestCommand = "test",
+    sbtTestCommand = "coreJVM/test;coreJS/test",
     sbtPublishCommand = "coreJVM/publishLocal;coreJS/publishLocal",
     dependencies = List(discipline, munit)
   )
@@ -678,6 +670,27 @@ object projects:
     dependencies = List(scalatest, scalatestplusScalacheck),
   )
 
+  lazy val munitCatsEffect = SbtCommunityProject(
+    project = "munit-cats-effect",
+    sbtTestCommand = "ce3JVM/test; ce3JS/test",
+    sbtPublishCommand = "ce3JVM/publishLocal; ce3JS/publishLocal",
+    dependencies = List(munit, catsEffect3)
+  )
+
+  lazy val scalacheckEffect = SbtCommunityProject(
+    project = "scalacheck-effect",
+    sbtTestCommand = "test",
+    sbtPublishCommand = "publishLocal",
+    dependencies = List(cats, catsEffect3, munit, scalacheck)
+  )
+
+  lazy val fs2 = SbtCommunityProject(
+    project = "fs2",
+    sbtTestCommand = "coreJVM/test; coreJS/test",  // io/test requires JDK9+
+    sbtPublishCommand = "coreJVM/publishLocal; coreJS/publishLocal",
+    dependencies = List(cats, catsEffect3, munitCatsEffect, scalacheckEffect, scodecBits)
+  )
+
 end projects
 
 def allProjects = List(
@@ -721,7 +734,6 @@ def allProjects = List(
   projects.dottyCpsAsync,
   projects.scalaz,
   projects.endpoints4s,
-  projects.catsEffect2,
   projects.catsEffect3,
   projects.scalaParallelCollections,
   projects.scalaCollectionCompat,
@@ -750,6 +762,9 @@ def allProjects = List(
   projects.onnxScala,
   projects.playJson,
   projects.scalatestplusTestNG,
+  projects.munitCatsEffect,
+  projects.scalacheckEffect,
+  projects.fs2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

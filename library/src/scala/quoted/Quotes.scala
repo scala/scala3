@@ -1,5 +1,6 @@
 package scala.quoted
 
+import scala.annotation.experimental
 import scala.reflect.TypeTest
 
 /** Current Quotes in scope
@@ -53,6 +54,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  Emits an error and throws if the expression does not represent a value or possibly contains side effects.
      *  Otherwise returns the value.
      */
+    // TODO: deprecate in 3.1.0 and remove @experimental from valueOrAbort
+    // @deprecated("Use valueOrThrow", "3.1.0")
     def valueOrError(using FromExpr[T]): T =
       val fromExpr = summon[FromExpr[T]]
       def reportError =
@@ -60,6 +63,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         reflect.report.throwError(msg, self)
       given Quotes = Quotes.this
       fromExpr.unapply(self).getOrElse(reportError)
+
+    /** Return the value of this expression.
+     *
+     *  Emits an error and aborts if the expression does not represent a value or possibly contains side effects.
+     *  Otherwise returns the value.
+     */
+    @experimental
+    def valueOrAbort(using FromExpr[T]): T
 
   end extension
 
@@ -2179,6 +2190,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this a given parameter clause `(using X1, ..., Xn)` or `(using x1: X1, ..., xn: Xn)` */
         def isGiven: Boolean
         /** Is this a erased parameter clause `(erased x1: X1, ..., xn: Xn)` */
+        @experimental
         def isErased: Boolean
     end TermParamClauseMethods
 
@@ -3576,10 +3588,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredFields: List[Symbol]
 
         /** Get named non-private fields declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMember
+        // @deprecated("Use fieldMember", "3.1")
         def memberField(name: String): Symbol
 
+        /** Get named non-private fields declared or inherited */
+        @experimental
+        def fieldMember(name: String): Symbol
+
         /** Get all non-private fields declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from fieldMembers
+        // @deprecated("Use fieldMembers", "3.1")
         def memberFields: List[Symbol]
+
+        /** Get all non-private fields declared or inherited */
+        @experimental
+        def fieldMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
         def declaredMethod(name: String): List[Symbol]
@@ -3588,10 +3612,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredMethods: List[Symbol]
 
         /** Get named non-private methods declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from methodMember
+        // @deprecated("Use methodMember", "3.1")
         def memberMethod(name: String): List[Symbol]
 
+        /** Get named non-private methods declared or inherited */
+        @experimental
+        def methodMember(name: String): List[Symbol]
+
         /** Get all non-private methods declared or inherited */
+        // TODO: deprecate in 3.1.0 and remove @experimental from methodMembers
+        // @deprecated("Use methodMembers", "3.1")
         def memberMethods: List[Symbol]
+
+        /** Get all non-private methods declared or inherited */
+        @experimental
+        def methodMembers: List[Symbol]
 
         /** Get non-private named methods defined directly inside the class */
         def declaredType(name: String): List[Symbol]
@@ -3600,10 +3636,22 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def declaredTypes: List[Symbol]
 
         /** Type member with the given name directly declared in the class */
+        // TODO: deprecate in 3.1.0 and remove @experimental from typeMember
+        // @deprecated("Use typeMember", "3.1")
         def memberType(name: String): Symbol
 
+        /** Type member with the given name directly declared in the class */
+        @experimental
+        def typeMember(name: String): Symbol
+
         /** Type member directly declared in the class */
+        // TODO: deprecate in 3.1.0 and remove @experimental from typeMembers
+        // @deprecated("Use typeMembers", "3.1")
         def memberTypes: List[Symbol]
+
+        /** Type member directly declared in the class */
+        @experimental
+        def typeMembers: List[Symbol]
 
         /** All members directly declared in the class */
         def declarations: List[Symbol]
@@ -4131,12 +4179,30 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def error(msg: String, pos: Position): Unit
 
       /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String): Nothing
+
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, expr: Expr[Any]): Nothing
+
+      /** Report an error message at the given position and throw a StopMacroExpansion */
+      @experimental
+      def errorAndAbort(msg: String, pos: Position): Nothing
+
+      /** Report an error at the position of the macro expansion and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String): Nothing
 
-      /** Report an error at the position of `expr` */
+      /** Report an error at the position of `expr` and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, expr: Expr[Any]): Nothing
 
       /** Report an error message at the given position and throw a StopMacroExpansion */
+      // TODO: deprecate in 3.1.0 and remove @experimental from errorAndAbort
+      // @deprecated("Use errorAndAbort", "3.1.0")
       def throwError(msg: String, pos: Position): Nothing
 
       /** Report a warning at the position of the macro expansion */

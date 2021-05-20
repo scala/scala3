@@ -44,6 +44,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   /** Other settings */
   val encoding: Setting[String] = StringSetting("-encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val usejavacp: Setting[Boolean] = BooleanSetting("-usejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path"))
+  val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
 
   /** Plugin-related setting */
   val plugin: Setting[List[String]]             = MultiStringSetting  ("-Xplugin", "paths", "Load a plugin from each classpath.")
@@ -54,7 +55,7 @@ trait CommonScalaSettings { self: Settings.SettingGroup =>
   val pluginOptions: Setting[List[String]]      = MultiStringSetting  ("-P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
 }
 
-class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
+trait AllScalaSettings extends CommonScalaSettings { self: Settings.SettingGroup =>
   // Keep synchronized with `classfileVersion` in `BCodeIdiomatic`
   private val minTargetVersion = 8
   private val maxTargetVersion = 17
@@ -80,7 +81,6 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val feature: Setting[Boolean] = BooleanSetting("-feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
   val release: Setting[String] = ChoiceSetting("-release", "release", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version.", supportedReleaseVersions, "", aliases = List("--release"))
   val source: Setting[String] = ChoiceSetting("-source", "source version", "source version", List("3.0", "future", "3.0-migration", "future-migration"), "3.0", aliases = List("--source"))
-  val scalajs: Setting[Boolean] = BooleanSetting("-scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
   val unchecked: Setting[Boolean] = BooleanSetting("-unchecked", "Enable additional warnings where generated code depends on assumptions.", aliases = List("--unchecked"))
   val uniqid: Setting[Boolean] = BooleanSetting("-uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
   val language: Setting[List[String]] = MultiStringSetting("-language", "feature", "Enable one or more language features.", aliases = List("--language"))
@@ -165,7 +165,7 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val YstopBefore: Setting[List[String]] = PhasesSetting("-Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting("-Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting("-Ydetailed-stats", "Show detailed internal compiler stats (needs Stats.enabled to be set to true).")
-  val YkindProjector: Setting[Boolean] = BooleanSetting("-Ykind-projector", "Allow `*` as wildcard to be compatible with kind projector.")
+  val YkindProjector: Setting[String] = ChoiceSetting("-Ykind-projector", "[underscores, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Ykind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable")
   val YprintPos: Setting[Boolean] = BooleanSetting("-Yprint-pos", "Show tree positions.")
   val YprintPosSyms: Setting[Boolean] = BooleanSetting("-Yprint-pos-syms", "Show symbol definitions positions.")
   val YnoDeepSubtypes: Setting[Boolean] = BooleanSetting("-Yno-deep-subtypes", "Throw an exception on deep subtyping call stacks.")
@@ -177,8 +177,9 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting("-Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
   val YtestPickler: Setting[Boolean] = BooleanSetting("-Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting("-Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")
-  val YdropComments: Setting[Boolean] = BooleanSetting("-Ydrop-comments", "Drop comments when scanning source files.")
-  val YcookComments: Setting[Boolean] = BooleanSetting("-Ycook-comments", "Cook the comments (type check `@usecase`, etc.)")
+  val YdropComments: Setting[Boolean] = BooleanSetting("-Ydrop-docs", "Drop documentation when scanning source files.", aliases = List("-Ydrop-comments"))
+  val YcookComments: Setting[Boolean] = BooleanSetting("-Ycook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Ycook-comments"))
+  val YreadComments: Setting[Boolean] = BooleanSetting("-Yread-docs", "Read documentation from tasty.")
   val YforceSbtPhases: Setting[Boolean] = BooleanSetting("-Yforce-sbt-phases", "Run the phases used by sbt for incremental compilation (ExtractDependencies and ExtractAPI) even if the compiler is ran outside of sbt, for debugging.")
   val YdumpSbtInc: Setting[Boolean] = BooleanSetting("-Ydump-sbt-inc", "For every compiled foo.scala, output the API representation and dependencies used for sbt incremental compilation in foo.inc, implies -Yforce-sbt-phases.")
   val YcheckAllPatmat: Setting[Boolean] = BooleanSetting("-Ycheck-all-patmat", "Check exhaustivity and redundancy of all pattern matching (used for testing the algorithm).")
@@ -225,3 +226,5 @@ class ScalaSettings extends Settings.SettingGroup with CommonScalaSettings {
 
   val wikiSyntax: Setting[Boolean] = BooleanSetting("-Xwiki-syntax", "Retains the Scala2 behavior of using Wiki Syntax in Scaladoc.")
 }
+
+class ScalaSettings extends Settings.SettingGroup with AllScalaSettings

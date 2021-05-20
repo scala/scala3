@@ -8,9 +8,9 @@ its scrutinee. For example:
 
 ```scala
 type Elem[X] = X match
-   case String => Char
-   case Array[t] => t
-   case Iterable[t] => t
+  case String => Char
+  case Array[t] => t
+  case Iterable[t] => t
 ```
 
 This defines a type that reduces as follows:
@@ -38,18 +38,18 @@ Match types can form part of recursive type definitions. Example:
 
 ```scala
 type LeafElem[X] = X match
-   case String => Char
-   case Array[t] => LeafElem[t]
-   case Iterable[t] => LeafElem[t]
-   case AnyVal => X
+  case String => Char
+  case Array[t] => LeafElem[t]
+  case Iterable[t] => LeafElem[t]
+  case AnyVal => X
 ```
 
 Recursive match type definitions can also be given an upper bound, like this:
 
 ```scala
 type Concat[Xs <: Tuple, +Ys <: Tuple] <: Tuple = Xs match
-   case EmptyTuple => Ys
-   case x *: xs => x *: Concat[xs, Ys]
+  case EmptyTuple => Ys
+  case x *: xs => x *: Concat[xs, Ys]
 ```
 
 In this definition, every instance of `Concat[A, B]`, whether reducible or not,
@@ -65,10 +65,10 @@ use of the match type as the return type):
 
 ```scala
 def leafElem[X](x: X): LeafElem[X] = x match
-   case x: String      => x.charAt(0)
-   case x: Array[t]    => leafElem(x(9))
-   case x: Iterable[t] => leafElem(x.head)
-   case x: AnyVal      => x
+  case x: String      => x.charAt(0)
+  case x: Array[t]    => leafElem(x(9))
+  case x: Iterable[t] => leafElem(x.head)
+  case x: AnyVal      => x
 ```
 
 This special mode of typing for match expressions is only used when the
@@ -191,7 +191,7 @@ error message:
 
 ```scala
 type L[X] = X match
-   case Int => L[X]
+  case Int => L[X]
 
 def g[X]: L[X] = ???
 ```

@@ -45,6 +45,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     def matches(that: scala.quoted.Expr[Any]): Boolean =
       treeMatch(reflect.asTerm(self), reflect.asTerm(that)).nonEmpty
 
+    def valueOrAbort(using fromExpr: FromExpr[T]): T =
+      def reportError =
+        val tree = reflect.asTerm(self)
+        val code = reflect.Printer.TreeCode.show(tree)
+        val msg = s"Expected a known value. \n\nThe value of: $code\ncould not be extracted using $fromExpr"
+        reflect.report.throwError(msg, self)
+      fromExpr.unapply(self)(using QuotesImpl.this).getOrElse(reportError)
+
   end extension
 
   extension (self: scala.quoted.Expr[Any])
@@ -2475,12 +2483,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
 
-        def memberField(name: String): Symbol =
+        def memberField(name: String): Symbol = fieldMember(name)
+        def fieldMember(name: String): Symbol =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).find {
             sym => isField(sym) && sym.name.toString == name
           }.getOrElse(dotc.core.Symbols.NoSymbol)
 
-        def memberFields: List[Symbol] =
+        def memberFields: List[Symbol] = fieldMembers
+        def fieldMembers: List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isField(sym) => sym.asTerm
           }.toList
@@ -2495,12 +2505,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if isMethod(sym) => sym.asTerm
           }.toList
 
-        def memberMethod(name: String): List[Symbol] =
+        def memberMethod(name: String): List[Symbol] = methodMember(name)
+        def methodMember(name: String): List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) && sym.name.toString == name => sym.asTerm
           }.toList
 
-        def memberMethods: List[Symbol] =
+        def memberMethods: List[Symbol] = methodMembers
+        def methodMembers: List[Symbol] =
           appliedTypeRef(self).allMembers.iterator.map(_.symbol).collect {
             case sym if isMethod(sym) => sym.asTerm
           }.toList
@@ -2515,10 +2527,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case sym if sym.isType => sym.asType
           }.toList
 
-        def memberType(name: String): Symbol =
+        def memberType(name: String): Symbol = typeMember(name)
+        def typeMember(name: String): Symbol =
           self.unforcedDecls.find(sym => sym.name == name.toTypeName)
 
-        def memberTypes: List[Symbol] =
+        def memberTypes: List[Symbol] = typeMembers
+        def typeMembers: List[Symbol] =
           self.unforcedDecls.filter(_.isType)
 
         def declarations: List[Symbol] =
@@ -2744,14 +2758,23 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         dotc.report.error(msg, pos)
 
       def throwError(msg: String): Nothing =
+        errorAndAbort(msg)
+
+      def throwError(msg: String, expr: Expr[Any]): Nothing =
+        errorAndAbort(msg, expr)
+
+      def throwError(msg: String, pos: Position): Nothing =
+        errorAndAbort(msg, pos)
+
+      def errorAndAbort(msg: String): Nothing =
         error(msg)
         throw new scala.quoted.runtime.StopMacroExpansion
 
-      def throwError(msg: String, expr: Expr[Any]): Nothing =
+      def errorAndAbort(msg: String, expr: Expr[Any]): Nothing =
         error(msg, expr)
         throw new scala.quoted.runtime.StopMacroExpansion
 
-      def throwError(msg: String, pos: Position): Nothing =
+      def errorAndAbort(msg: String, pos: Position): Nothing =
         error(msg, pos)
         throw new scala.quoted.runtime.StopMacroExpansion
 
@@ -2935,24 +2958,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         ctx1.gadt.addToConstraint(typeHoles)
         ctx1
 
-    val qctx1 = QuotesImpl()(using ctx1)
+    val matchings = QuoteMatcher.treeMatch(scrutinee, pat1)(using ctx1)
 
-    val matcher = new Matcher.QuoteMatcher[qctx1.type](qctx1) {
-      def patternHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_patternHole.asInstanceOf
-      def higherOrderHoleSymbol: qctx1.reflect.Symbol = dotc.core.Symbols.defn.QuotedRuntimePatterns_higherOrderHole.asInstanceOf
-    }
-
-    val matchings =
-      if pat1.isType then matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
-      else matcher.termMatch(scrutinee.asInstanceOf[matcher.qctx.reflect.Term], pat1.asInstanceOf[matcher.qctx.reflect.Term])
-
-    // val matchings = matcher.termMatch(scrutinee, pattern)
     if typeHoles.isEmpty then matchings
     else {
       // After matching and doing all subtype checks, we have to approximate all the type bindings
       // that we have found, seal them in a quoted.Type and add them to the result
       def typeHoleApproximation(sym: Symbol) =
-        ctx1.gadt.approximation(sym, !sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)).asInstanceOf[qctx1.reflect.TypeRepr].asType
+        val fromAboveAnnot = sym.hasAnnotation(dotc.core.Symbols.defn.QuotedRuntimePatterns_fromAboveAnnot)
+        val approx = ctx1.gadt.approximation(sym, !fromAboveAnnot)
+        reflect.TypeReprMethods.asType(approx)
       matchings.map { tup =>
         Tuple.fromIArray(typeHoles.map(typeHoleApproximation).toArray.asInstanceOf[IArray[Object]]) ++ tup
       }

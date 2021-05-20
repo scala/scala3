@@ -114,6 +114,10 @@ jobs:
           ./project/scripts/sbt ";scala3-bootstrapped/compile ;scala3-bootstrapped/test;sjsSandbox/run;sjsSandbox/test;sjsJUnitTests/test;sjsCompilerTests/test ;sbt-test/scripted scala2-compat/* ;configureIDE ;stdlib-bootstrapped/test:run ;stdlib-bootstrapped-tasty-tests/test"
           ./project/scripts/bootstrapCmdTests
 
+      - name: MiMa
+        run: |
+          ./project/scripts/sbt ";scala3-interfaces/mimaReportBinaryIssues ;scala3-library-bootstrapped/mimaReportBinaryIssues ;scala3-library-bootstrappedJS/mimaReportBinaryIssues"
+
   test_windows_fast:
     runs-on: [self-hosted, Windows]
     if: "(
@@ -582,53 +586,6 @@ jobs:
           asset_path: ./dist/target/sha256sum.txt
           asset_name: sha256sum.txt
           asset_content_type: text/plain
-
-  release_documentation:
-    runs-on: [self-hosted, Linux]
-    container:
-      image: lampepfl/dotty:2021-03-22
-      options: --cpu-shares 4096
-      volumes:
-        - ${{ github.workspace }}/../../cache/sbt:/root/.sbt
-        - ${{ github.workspace }}/../../cache/ivy:/root/.ivy2/cache
-        - ${{ github.workspace }}/../../cache/general:/root/.cache
-    needs: [publish_release]
-    if: "github.event_name == 'push'
-         && startsWith(github.event.ref, 'refs/tags/')"
-
-    env:
-      RELEASEBUILD: yes
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # If you need to change this:
-                                           # Generate one at https://github.com/settings/tokens
-                                           # Make sure you have the write permissions to the repo: https://github.com/lampepfl/dotty-website
-
-    steps:
-      - name: Reset existing repo
-        run: git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/lampepfl/dotty" && git reset --hard FETCH_HEAD || true
-
-      - name: Checkout cleanup script
-        uses: actions/checkout@v2
-
-      - name: Cleanup
-        run: .github/workflows/cleanup.sh
-
-      - name: Git Checkout
-        uses: actions/checkout@v2
-
-      - name: Add SBT proxy repositories
-        run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
-
-      - name: Generate Website
-        run: |
-          ./project/scripts/genDocs -doc-snapshot
-
-      - name: Deploy Website
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.BOT_TOKEN }}
-          publish_dir: docs/_site
-          external_repository: lampepfl/dotty-website
-          publish_branch: gh-pages
 
   open_issue_on_failure:
     runs-on: [self-hosted, Linux]

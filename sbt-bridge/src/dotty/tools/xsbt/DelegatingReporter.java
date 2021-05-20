@@ -30,7 +30,7 @@ final public class DelegatingReporter extends AbstractReporter {
 
   public void doReport(Diagnostic dia, Context ctx) {
     Severity severity = severityOf(dia.level());
-    Position position = positionOf(dia.pos());
+    Position position = positionOf(dia.pos().nonInlined());
 
     Message message = dia.msg();
     StringBuilder rendered = new StringBuilder();

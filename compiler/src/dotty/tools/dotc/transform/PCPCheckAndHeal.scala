@@ -124,6 +124,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
       val targs2 = targs.map(targ => TypeTree(healTypeOfTerm(quote.fun.srcPos)(targ.tpe)))
       cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, targs2), body2 :: Nil)
     else
+      val quotes = quote.args.mapConserve(transform)
       body.tpe match
         case tp @ TypeRef(x: TermRef, _) if tp.symbol == defn.QuotedType_splice =>
           // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
@@ -131,7 +132,7 @@ class PCPCheckAndHeal(@constructorOnly ictx: Context) extends TreeMapWithStages(
         case _ =>
           // `quoted.Type.of[<body>](quotes)`  --> `quoted.Type.of[<body2>](quotes)`
           val TypeApply(fun, _) = quote.fun
-          cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body2 :: Nil), quote.args)
+          cpy.Apply(quote)(cpy.TypeApply(quote.fun)(fun, body2 :: Nil), quotes)
   }
 
   /** Transform splice

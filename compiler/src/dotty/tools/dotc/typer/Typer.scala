@@ -574,13 +574,17 @@ class Typer extends Namer
       checkLegalValue(select, pt)
       ConstFold(select)
     else if couldInstantiateTypeVar(qual.tpe.widen) then
-      // try again with more defined qualifier type
+       // there's a simply visible type variable in the result; try again with a more defined qualifier type
+       // There's a second trial where we try to instantiate all type variables in `qual.tpe.widen`,
+       // but that is done only after we search for extension methods or conversions.
       typedSelect(tree, pt, qual)
     else
       val tree1 = tryExtensionOrConversion(
-          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, privateOK = true)
+          tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
       if !tree1.isEmpty then
         tree1
+      else if canDefineFurther(qual.tpe.widen) then
+        typedSelect(tree, pt, qual)
       else if qual.tpe.derivesFrom(defn.DynamicClass)
         && selName.isTermName && !isDynamicExpansion(tree)
       then
@@ -774,6 +778,9 @@ class Typer extends Namer
         typed(cpy.Block(tree)(clsDef :: Nil, New(Ident(x), Nil)), pt)
       case _ =>
         var tpt1 = typedType(tree.tpt)
+        val tsym = tpt1.tpe.underlyingClassRef(refinementOK = false).typeSymbol
+        if tsym.is(Package) then
+          report error(em"$tsym cannot be instantiated", tpt1.srcPos)
         tpt1 = tpt1.withType(ensureAccessible(tpt1.tpe, superAccess = false, tpt1.srcPos))
         tpt1 match {
           case AppliedTypeTree(_, targs) =>
@@ -2724,6 +2731,7 @@ class Typer extends Namer
           case tree: untpd.Quote => typedQuote(tree, pt)
           case tree: untpd.Splice => typedSplice(tree, pt)
           case tree: untpd.TypSplice => typedTypSplice(tree, pt)
+          case tree: untpd.MacroTree => report.error("Unexpected macro", tree.srcPos); tpd.nullLiteral  // ill-formed code may reach here
           case _ => typedUnadapted(desugar(tree), pt, locked)
         }
 
@@ -3037,7 +3045,7 @@ class Typer extends Namer
         if selProto.isMatchedBy(qual.tpe) then None
         else
           tryEither {
-            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, privateOK = false)
+            val tree1 = tryExtensionOrConversion(tree, pt, pt, qual, locked, NoViewsAllowed, inSelect = false)
             if tree1.isEmpty then None
             else Some(adapt(tree1, pt, locked))
           } { (_, _) => None
@@ -3051,10 +3059,10 @@ class Typer extends Namer
    *  @return The converted tree, or `EmptyTree` is not successful.
    */
   def tryExtensionOrConversion
-      (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, privateOK: Boolean)
+      (tree: untpd.Select, pt: Type, mbrProto: Type, qual: Tree, locked: TypeVars, compat: Compatibility, inSelect: Boolean)
       (using Context): Tree =
 
-    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK)
+    def selectionProto = SelectionProto(tree.name, mbrProto, compat, privateOK = inSelect)
 
     def tryExtension(using Context): Tree =
       findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos) match
@@ -3092,12 +3100,13 @@ class Typer extends Namer
                 return typedSelect(tree, pt, found)
             case failure: SearchFailure =>
               if failure.isAmbiguous then
-                return (
-                  if canDefineFurther(qual.tpe.widen) then
-                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, privateOK)
+                return
+                  if !inSelect // in a selection we will do the canDefineFurther afterwards
+                     && canDefineFurther(qual.tpe.widen)
+                  then
+                    tryExtensionOrConversion(tree, pt, mbrProto, qual, locked, compat, inSelect)
                   else
                     err.typeMismatch(qual, selProto, failure.reason) // TODO: report NotAMember instead, but need to be aware of failure
-                )
               rememberSearchFailure(qual, failure)
         }
       catch case ex: TypeError => nestedFailure(ex)
@@ -3247,7 +3256,7 @@ class Typer extends Namer
         replaceSingletons(tp)
       }
       wtp.paramInfos.foreach(instantiate)
-      val constr = ctx.typerState.constraint
+      val saved = ctx.typerState.snapshot()
 
       def dummyArg(tp: Type) = untpd.Ident(nme.???).withTypeUnchecked(tp)
 
@@ -3347,8 +3356,9 @@ class Typer extends Namer
         if (propFail.exists) {
           // If there are several arguments, some arguments might already
           // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint needs to be reset.
-          ctx.typerState.constraint = constr
+          // might fail. In that case the constraint and instantiated variables
+          // need to be reset.
+          ctx.typerState.resetTo(saved)
 
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
@@ -3532,7 +3542,7 @@ class Typer extends Namer
                   // this is needed for -Ycheck. Without the annotation Ycheck will
                   // skolemize the result type which will lead to different types before
                   // and after checking. See i11955.scala.
-                  AnnotatedType(conj, Annotation(defn.StableAnnot))
+                  AnnotatedType(conj, Annotation(defn.UncheckedStableAnnot))
                 else conj
               else pt
             gadts.println(i"insert GADT cast from $tree to $target")

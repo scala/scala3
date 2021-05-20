@@ -137,9 +137,8 @@ transparent inline def summonFrom[T](f: Nothing => T): T =
  *  @tparam T the type of the value to be summoned
  *  @return the given value typed as the provided type parameter
  */
-transparent inline def summonInline[T]: T = summonFrom {
-  case t: T => t
-}
+transparent inline def summonInline[T]: T =
+  error("Compiler bug: `summonInline` was not evaluated by the compiler")
 
 /** Given a tuple T, summons each of its member types and returns them in
  *  a Tuple.

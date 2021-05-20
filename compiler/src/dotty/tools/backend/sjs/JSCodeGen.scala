@@ -3041,7 +3041,7 @@ class JSCodeGen()(using genCtx: Context) {
     val formalAndActualCaptures = allCaptureValues.map { value =>
       implicit val pos = value.span
       val (formalIdent, originalName) = value match {
-        case Ident(name) => (freshLocalIdent(name.toString), OriginalName(name.toString))
+        case Ident(name) => (freshLocalIdent(name.toTermName), OriginalName(name.toString))
         case This(_)     => (freshLocalIdent("this"), thisOriginalName)
         case _           => (freshLocalIdent(), NoOriginalName)
       }
@@ -3069,7 +3069,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val formalAndActualParams = formalParamNames.lazyZip(formalParamTypes).lazyZip(formalParamRepeateds).map {
       (name, tpe, repeated) =>
-        val formalParam = js.ParamDef(freshLocalIdent(name.toString),
+        val formalParam = js.ParamDef(freshLocalIdent(name),
             OriginalName(name.toString), jstpe.AnyType, mutable = false)
         val actualParam =
           if (repeated) genJSArrayToVarArgs(formalParam.ref)(tree.sourcePos)

@@ -103,9 +103,9 @@ It is an error if the indentation width of the token following an `<outdent>` do
 
 ```scala
 if x < 0 then
-     -x
+    -x
   else   // error: `else` does not align correctly
-     x
+    x
 ```
 
 Indentation tokens are only inserted in regions where newline statement separators are also inferred:
@@ -144,25 +144,25 @@ With these new rules, the following constructs are all valid:
 
 ```scala
 trait A:
-   def f: Int
+  def f: Int
 
 class C(x: Int) extends A:
-   def f = x
+  def f = x
 
 object O:
-   def f = 3
+  def f = 3
 
 enum Color:
-   case Red, Green, Blue
+  case Red, Green, Blue
 
 new A:
-   def f = 3
+  def f = 3
 
 package p:
-   def a = 1
+  def a = 1
 
 package q:
-   def b = 2
+  def b = 2
 ```
 
 In each case, the `:` at the end of line can be replaced without change of meaning by a pair of braces that enclose the following indented definition(s).
@@ -202,13 +202,13 @@ Indentation can be mixed freely with braces `{...}`, as well as brackets `[...]`
 For instance, consider:
 ```scala
 {
-   val x = f(x: Int, y =>
-      x * (
-         y + 1
-      ) +
-      (x +
-      x)
-   )
+  val x = f(x: Int, y =>
+    x * (
+      y + 1
+    ) +
+    (x +
+    x)
+  )
 }
 ```
  - Here, the indentation width of the region enclosed by the braces is 3 (i.e. the indentation width of the
@@ -250,12 +250,12 @@ To solve this problem, Scala 3 offers an optional `end` marker. Example:
 
 ```scala
 def largeMethod(...) =
-   ...
-   if ... then ...
-   else
-      ... // a large block
-   end if
-   ... // more code
+  ...
+  if ... then ...
+  else
+    ... // a large block
+  end if
+  ... // more code
 end largeMethod
 ```
 
@@ -282,47 +282,47 @@ For instance, the following end markers are all legal:
 ```scala
 package p1.p2:
 
-   abstract class C():
+  abstract class C():
 
-      def this(x: Int) =
-         this()
-         if x > 0 then
-            val a :: b =
-               x :: Nil
-            end val
-            var y =
-               x
-            end y
-            while y > 0 do
-               println(y)
-               y -= 1
-            end while
-            try
-               x match
-                  case 0 => println("0")
-                  case _ =>
-               end match
-            finally
-               println("done")
-            end try
-         end if
-      end this
+    def this(x: Int) =
+      this()
+      if x > 0 then
+        val a :: b =
+          x :: Nil
+        end val
+        var y =
+          x
+        end y
+        while y > 0 do
+          println(y)
+          y -= 1
+        end while
+        try
+          x match
+            case 0 => println("0")
+            case _ =>
+          end match
+        finally
+          println("done")
+        end try
+      end if
+    end this
 
-      def f: String
-   end C
+    def f: String
+  end C
 
-   object C:
-      given C =
-         new C:
-            def f = "!"
-            end f
-         end new
-      end given
-   end C
+  object C:
+    given C =
+      new C:
+        def f = "!"
+        end f
+      end new
+    end given
+  end C
 
-   extension (x: C)
-      def ff: String = x.f ++ x.f
-   end extension
+  extension (x: C)
+    def ff: String = x.f ++ x.f
+  end extension
 
 end p2
 ```
@@ -354,56 +354,56 @@ Here is a (somewhat meta-circular) example of code using indentation. It provide
 
 ```scala
 enum IndentWidth:
-   case Run(ch: Char, n: Int)
-   case Conc(l: IndentWidth, r: Run)
+  case Run(ch: Char, n: Int)
+  case Conc(l: IndentWidth, r: Run)
 
-   def <= (that: IndentWidth): Boolean = this match
-      case Run(ch1, n1) =>
-         that match
-            case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
-            case Conc(l, r)   => this <= l
-      case Conc(l1, r1) =>
-         that match
-            case Conc(l2, r2) => l1 == l2 && r1 <= r2
-            case _            => false
+  def <= (that: IndentWidth): Boolean = this match
+    case Run(ch1, n1) =>
+      that match
+        case Run(ch2, n2) => n1 <= n2 && (ch1 == ch2 || n1 == 0)
+        case Conc(l, r)   => this <= l
+    case Conc(l1, r1) =>
+      that match
+        case Conc(l2, r2) => l1 == l2 && r1 <= r2
+        case _            => false
 
-   def < (that: IndentWidth): Boolean =
-      this <= that && !(that <= this)
+  def < (that: IndentWidth): Boolean =
+    this <= that && !(that <= this)
 
-   override def toString: String =
-      this match
+  override def toString: String =
+    this match
       case Run(ch, n) =>
-         val kind = ch match
-            case ' '  => "space"
-            case '\t' => "tab"
-            case _    => s"'$ch'-character"
-         val suffix = if n == 1 then "" else "s"
-         s"$n $kind$suffix"
+        val kind = ch match
+          case ' '  => "space"
+          case '\t' => "tab"
+          case _    => s"'$ch'-character"
+        val suffix = if n == 1 then "" else "s"
+        s"$n $kind$suffix"
       case Conc(l, r) =>
-         s"$l, $r"
+        s"$l, $r"
 
 object IndentWidth:
-   private inline val MaxCached = 40
+  private inline val MaxCached = 40
 
-   private val spaces = IArray.tabulate(MaxCached + 1)(new Run(' ', _))
-   private val tabs = IArray.tabulate(MaxCached + 1)(new Run('\t', _))
+  private val spaces = IArray.tabulate(MaxCached + 1)(new Run(' ', _))
+  private val tabs = IArray.tabulate(MaxCached + 1)(new Run('\t', _))
 
-   def Run(ch: Char, n: Int): Run =
-      if n <= MaxCached && ch == ' ' then
-         spaces(n)
-      else if n <= MaxCached && ch == '\t' then
-         tabs(n)
-      else
-         new Run(ch, n)
-   end Run
+  def Run(ch: Char, n: Int): Run =
+    if n <= MaxCached && ch == ' ' then
+      spaces(n)
+    else if n <= MaxCached && ch == '\t' then
+      tabs(n)
+    else
+      new Run(ch, n)
+  end Run
 
-   val Zero = Run(' ', 0)
+  val Zero = Run(' ', 0)
 end IndentWidth
 ```
 
 ### Settings and Rewrites
 
-Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `old-syntax` and `language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
+Significant indentation is enabled by default. It can be turned off by giving any of the options `-no-indent`, `-old-syntax` and `-language:Scala2`. If indentation is turned off, it is nevertheless checked that indentation conforms to the logical program structure as defined by braces. If that is not the case, the compiler issues a warning.
 
 The Scala 3 compiler can rewrite source code to indented code and back.
 When invoked with options `-rewrite -indent` it will rewrite braces to
@@ -423,17 +423,17 @@ This variant is more contentious and less stable than the rest of the significan
 
 ```scala
 times(10):
-   println("ah")
-   println("ha")
+  println("ah")
+  println("ha")
 ```
 
 or
 
 ```scala
 xs.map:
-   x =>
-      val y = x - 1
-      y * y
+  x =>
+    val y = x - 1
+    y * y
 ```
 
 The colon is usable not only for lambdas and by-name parameters, but
@@ -441,10 +441,10 @@ also even for ordinary parameters:
 
 ```scala
 credentials ++ :
-   val file = Path.userHome / ".credentials"
-   if file.exists
-   then Seq(Credentials(file))
-   else Seq()
+  val file = Path.userHome / ".credentials"
+  if file.exists
+  then Seq(Credentials(file))
+  else Seq()
 ```
 
 How does this syntax variant work? Colons at the end of lines are their own token, distinct from normal `:`.

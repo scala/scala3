@@ -3,6 +3,7 @@ import scala.math.{BigInt}
 import quoted._
 import annotation.internal.sharable
 
+
 /** A type class for types that admit numeric literals.
  */
 trait FromDigits[T] {
@@ -28,7 +29,7 @@ object FromDigits {
   trait WithRadix[T] extends FromDigits[T] {
     def fromDigits(digits: String): T = fromDigits(digits, 10)
 
-    /** Convert digits string with given radix to numberof type `T`.
+    /** Convert digits string with given radix to number of type `T`.
      *  E.g. if radix is 16, digits `a..f` and `A..F` are also allowed.
      */
     def fromDigits(digits: String, radix: Int): T

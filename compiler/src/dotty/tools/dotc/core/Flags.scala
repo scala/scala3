@@ -465,7 +465,7 @@ object Flags {
     Module, Package, Deferred, Method, Case, Enum, Param, ParamAccessor,
     Scala2SpecialFlags, MutableOrOpen, Opaque, Touched, JavaStatic,
     OuterOrCovariant, LabelOrContravariant, CaseAccessor,
-    Extension, NonMember, Implicit, Given, Permanent, Synthetic,
+    Extension, NonMember, Implicit, Given, Permanent, Synthetic, Exported,
     SuperParamAliasOrScala2x, Inline, Macro, ConstructorProxy, Invisible)
 
   /** Flags that are not (re)set when completing the denotation, or, if symbol is

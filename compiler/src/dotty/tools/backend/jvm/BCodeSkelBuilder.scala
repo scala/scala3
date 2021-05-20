@@ -206,7 +206,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val optSerial: Option[Long] =
         claszSymbol.getAnnotation(defn.SerialVersionUIDAnnot).flatMap { annot =>
           if (claszSymbol.is(Trait)) {
-            report.error("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
+            report.warning("@SerialVersionUID does nothing on a trait", annot.tree.sourcePos)
             None
           } else {
             val vuid = annot.argumentConstant(0).map(_.longValue)

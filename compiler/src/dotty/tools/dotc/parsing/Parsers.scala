@@ -1356,7 +1356,7 @@ object Parsers {
             if imods.is(Given) && params.isEmpty then
               syntaxError("context function types require at least one parameter", paramSpan)
             new FunctionWithMods(params, t, imods)
-          else if ctx.settings.YkindProjector.value then
+          else if !ctx.settings.YkindProjector.isDefault then
             val (newParams :+ newT, tparams) = replaceKindProjectorPlaceholders(params :+ t)
 
             lambdaAbstract(tparams, Function(newParams, newT))
@@ -1462,12 +1462,16 @@ object Parsers {
      */
     private def replaceKindProjectorPlaceholders(params: List[Tree]): (List[Tree], List[TypeDef]) = {
       val tparams = new ListBuffer[TypeDef]
+      def addParam() = {
+        val name = WildcardParamName.fresh().toTypeName
+        tparams += makeKindProjectorTypeDef(name)
+        Ident(name)
+      }
 
+      val uscores = ctx.settings.YkindProjector.value == "underscores"
       val newParams = params.mapConserve {
-        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) =>
-          val name = WildcardParamName.fresh().toTypeName
-          tparams += makeKindProjectorTypeDef(name)
-          Ident(name)
+        case param @ Ident(tpnme.raw.STAR | tpnme.raw.MINUS_STAR | tpnme.raw.PLUS_STAR) => addParam()
+        case param @ Ident(tpnme.USCOREkw | tpnme.raw.MINUS_USCORE | tpnme.raw.PLUS_USCORE) if uscores => addParam()
         case other => other
       }
 
@@ -1574,15 +1578,26 @@ object Parsers {
       if isSimpleLiteral then
         SingletonTypeTree(simpleLiteral())
       else if in.token == USCORE then
-        if sourceVersion.isAtLeast(future) then
-          deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
-          patch(source, Span(in.offset, in.offset + 1), "?")
+        if ctx.settings.YkindProjector.value == "underscores" then
+          val start = in.skipToken()
+          Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
+        else
+          if sourceVersion.isAtLeast(future) then
+            deprecationWarning(em"`_` is deprecated for wildcard arguments of types: use `?` instead")
+            patch(source, Span(in.offset, in.offset + 1), "?")
+          val start = in.skipToken()
+          typeBounds().withSpan(Span(start, in.lastOffset, start))
+      // Allow symbols -_ and +_ through for compatibility with code written using kind-projector in Scala 3 underscore mode.
+      // While these signify variant type parameters in Scala 2 + kind-projector, we ignore their variance markers since variance is inferred.
+      else if (isIdent(nme.MINUS) || isIdent(nme.PLUS)) && in.lookahead.token == USCORE && ctx.settings.YkindProjector.value == "underscores" then
+        val identName = in.name.toTypeName ++ nme.USCOREkw
         val start = in.skipToken()
-        typeBounds().withSpan(Span(start, in.lastOffset, start))
+        in.nextToken()
+        Ident(identName).withSpan(Span(start, in.lastOffset, start))
       else if isIdent(nme.?) then
         val start = in.skipToken()
         typeBounds().withSpan(Span(start, in.lastOffset, start))
-      else if isIdent(nme.*) && ctx.settings.YkindProjector.value then
+      else if isIdent(nme.*) && !ctx.settings.YkindProjector.isDefault then
         typeIdent()
       else
         def singletonArgs(t: Tree): Tree =
@@ -1628,7 +1643,7 @@ object Parsers {
         val applied = rejectWildcardType(t)
         val args = typeArgs(namedOK = false, wildOK = true)
 
-        if (ctx.settings.YkindProjector.value) {
+        if (!ctx.settings.YkindProjector.isDefault) {
           def fail(): Tree = {
             syntaxError(
               "λ requires a single argument of the form X => ... or (X, Y) => ...",
@@ -1660,7 +1675,7 @@ object Parsers {
         }
       })
       case _ =>
-        if (ctx.settings.YkindProjector.value) {
+        if (!ctx.settings.YkindProjector.isDefault) {
           t match {
             case Tuple(params) =>
               val (newParams, tparams) = replaceKindProjectorPlaceholders(params)
@@ -2184,14 +2199,15 @@ object Parsers {
     /** PrefixExpr   ::= [`-' | `+' | `~' | `!'] SimpleExpr
     */
     val prefixExpr: Location => Tree = location =>
-      if (isIdent && nme.raw.isUnary(in.name)) {
+      if isIdent && nme.raw.isUnary(in.name)
+         && in.canStartExprTokens.contains(in.lookahead.token)
+      then
         val start = in.offset
         val op = termIdent()
         if (op.name == nme.raw.MINUS && isNumericLit)
           simpleExprRest(literal(start), location, canApply = true)
         else
           atSpan(start) { PrefixOp(op, simpleExpr(location)) }
-      }
       else simpleExpr(location)
 
     /** SimpleExpr    ::= ‘new’ ConstrApp {`with` ConstrApp} [TemplateBody]
@@ -3087,7 +3103,7 @@ object Parsers {
           if prefix == nme.experimental
              && selectors.exists(sel => Feature.experimental(sel.name) != Feature.scala2macros)
           then
-            Feature.checkExperimentalFeature("s", imp.srcPos)
+            Feature.checkExperimentalFeature("features", imp.srcPos)
           for
             case ImportSelector(id @ Ident(imported), EmptyTree, _) <- selectors
             if allSourceVersionNames.contains(imported)
@@ -3581,7 +3597,7 @@ object Parsers {
             ValDef(name, parents.head, subExpr())
           else
             DefDef(name, joinParams(tparams, vparamss), parents.head, subExpr())
-        else if in.token != WITH && parentsIsType then
+        else if (isStatSep || isStatSeqEnd) && parentsIsType then
           if name.isEmpty then
             syntaxError(em"anonymous given cannot be abstract")
           DefDef(name, joinParams(tparams, vparamss), parents.head, EmptyTree)
@@ -3591,8 +3607,8 @@ object Parsers {
             vparam.withMods(vparam.mods &~ Param | ParamAccessor | Protected)))
           val constr = makeConstructor(tparams1, vparamss1)
           val templ =
-            if in.token == WITH then withTemplate(constr, parents)
-            else Template(constr, parents, Nil, EmptyValDef, Nil)
+            if isStatSep || isStatSeqEnd then Template(constr, parents, Nil, EmptyValDef, Nil)
+            else withTemplate(constr, parents)
           if noParams then ModuleDef(name, templ)
           else TypeDef(name.toTypeName, templ)
       end gdef
