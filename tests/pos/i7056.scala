@@ -16,4 +16,5 @@ given [T <: A](using PartialId[T]): T1[T] = new T1[T] {
 given PartialId[B] = ???
 
 val x: B = ???
-val z = x.idnt1  // error
+val z = x.idnt1  // used to be an error, now ok
+
