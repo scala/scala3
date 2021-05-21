@@ -142,6 +142,8 @@ signature and implementation of a `derived` method for a type class `TC[_]` are 
 following form,
 
 ```scala
+import scala.deriving.Mirror
+
 def derived[T](using Mirror.Of[T]): TC[T] = ...
 ```
 
@@ -176,6 +178,8 @@ we need to implement a method `Eq.derived` on the companion object of `Eq` that 
 a `Mirror[T]`. Here is a possible implementation,
 
 ```scala
+import scala.deriving.Mirror
+
 inline given derived[T](using m: Mirror.Of[T]): Eq[T] =
   val elemInstances = summonAll[m.MirroredElemTypes]           // (1)
   inline m match                                               // (2)
@@ -209,6 +213,8 @@ values are of the same subtype of the ADT (3) and then, if they are, to further 
 instance for the appropriate ADT subtype using the auxiliary method `check` (4).
 
 ```scala
+import scala.deriving.Mirror
+
 def eqSum[T](s: Mirror.SumOf[T], elems: List[Eq[_]]): Eq[T] =
   new Eq[T]:
     def eqv(x: T, y: T): Boolean =
@@ -220,6 +226,8 @@ In the product case, `eqProduct` we test the runtime values of the arguments to 
 on the `Eq` instances for the fields of the data type (5),
 
 ```scala
+import scala.deriving.Mirror
+
 def eqProduct[T](p: Mirror.ProductOf[T], elems: List[Eq[_]]): Eq[T] =
   new Eq[T]:
     def eqv(x: T, y: T): Boolean =
