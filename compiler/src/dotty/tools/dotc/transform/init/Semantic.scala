@@ -777,7 +777,7 @@ class Semantic {
         case warm: Warm =>
           val obj = heap(warm)
           val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(target, obj.outers(outerCls), outerCls, source)
+          resolveThis(target, obj.outers(klass), outerCls, source)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass, source)).join
         case fun: Fun =>
