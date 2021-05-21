@@ -53,7 +53,7 @@ class Checker extends MiniPhase {
       given Heap = Heap.empty
       given Promoted = Promoted.empty
       given Trace = Trace.empty
-      heap.add(thisRef, obj)
+      heap.update(thisRef, obj)
       val res = eval(tpl, thisRef, cls)
       res.errors.foreach(_.issue)
     }

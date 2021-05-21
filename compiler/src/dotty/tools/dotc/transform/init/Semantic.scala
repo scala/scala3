@@ -112,8 +112,10 @@ class Semantic {
     def empty: Heap = mutable.Map.empty
 
     extension (heap: Heap)
+      def contains(addr: Addr): Boolean = heap.contains(addr)
       def apply(addr: Addr): Objekt = heap(addr)
-      def add(addr: Addr, obj: Objekt): Unit = heap(addr) = obj
+      def update(addr: Addr, obj: Objekt): Unit =
+        heap(addr) = obj
     end extension
 
     extension (ref: Addr)
@@ -346,15 +348,18 @@ class Semantic {
           val error = CallCold(ctor, source, trace.toVector)
           Result(Hot, error :: Nil)
 
-        case thisRef: ThisRef =>
-          val value = Warm(klass, outer = thisRef)
-          val res = value.call(ctor, superType = NoType, source)
-          Result(value, res.errors)
-
-        case warm: Warm =>
+        case addr: Addr =>
           // widen the outer to finitize addresses
-          val outer = if warm.outer.isInstanceOf[Warm] then warm.copy(outer = Cold) else warm
+          val outer = addr match
+            case _: ThisRef => addr
+            case warm: Warm =>
+              if warm.outer.isInstanceOf[Warm] then warm.copy(outer = Cold)
+              else warm
+
           val value = Warm(klass, outer)
+          if !heap.contains(value) then
+            val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
+            heap.update(value, obj)
           val res = value.call(ctor, superType = NoType, source)
           Result(value, res.errors)
 
