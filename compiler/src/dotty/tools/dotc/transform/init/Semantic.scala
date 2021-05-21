@@ -105,11 +105,46 @@ class Semantic {
    *
    *  This is only one object we need to care about, hence it's just `Objekt`.
    */
-  type Heap = mutable.Map[Addr, Objekt]
+  object Heap {
+    opaque type Heap = mutable.Map[Addr, Objekt]
+
+    /** Note: don't use `val` to avoid incorrect sharing */
+    def empty: Heap = mutable.Map.empty
+
+    extension (heap: Heap)
+      def apply(addr: Addr): Objekt = heap(addr)
+      def add(addr: Addr, obj: Objekt): Unit = heap(addr) = obj
+    end extension
+
+    extension (ref: Addr)
+      def updateField(field: Symbol, value: Value): Contextual[Unit] =
+        heap(ref).fields(field) = value
+
+      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
+        heap(ref).outers(klass) = value
+    end extension
+  }
+  type Heap = Heap.Heap
+
+  import Heap._
   def heap(using h: Heap): Heap = h
 
-  /** Values that have been safely promoted */
-  type Promoted = mutable.Set[Value]
+  object Promoted {
+    /** Values that have been safely promoted */
+    opaque type Promoted = mutable.Set[Value]
+
+    /** Note: don't use `val` to avoid incorrect sharing */
+    def empty: Promoted = mutable.Set.empty
+
+    extension (promoted: Promoted)
+      def contains(value: Value): Boolean = promoted.contains(value)
+      def add(value: Value): Unit = promoted += value
+      def remove(value: Value): Unit = promoted -= value
+    end extension
+  }
+  type Promoted = Promoted.Promoted
+
+  import Promoted._
   def promoted(using p: Promoted): Promoted = p
 
   /** Interpreter configuration
@@ -171,11 +206,21 @@ class Semantic {
   type Contextual[T] = (Heap, Context, Trace, Promoted) ?=> T
 
 // ----- Error Handling -----------------------------------
-  type Trace = Vector[Tree]
-  def trace(using t: Trace): Trace = t
 
-  extension (trace: Trace)
-    def add(node: Tree): Trace = trace :+ node
+  object Trace {
+    opaque type Trace = Vector[Tree]
+
+    val empty: Trace = Vector.empty
+
+    extension (trace: Trace)
+      def add(node: Tree): Trace = trace :+ node
+      def toVector: Vector[Tree] = trace
+  }
+
+  type Trace = Trace.Trace
+
+  import Trace._
+  def trace(using t: Trace): Trace = t
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
@@ -209,7 +254,7 @@ class Semantic {
           Result(Hot, Errors.empty)
 
         case Cold =>
-          val error = AccessCold(field, source, trace)
+          val error = AccessCold(field, source, trace.toVector)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
@@ -225,10 +270,10 @@ class Semantic {
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, target.owner.asClass, cacheResult = true)
               else
-                val error = CallUnknown(field, source, trace)
+                val error = CallUnknown(field, source, trace.toVector)
                 Result(Hot, error :: Nil)
             else
-              val error = AccessNonInit(target, trace.add(source))
+              val error = AccessNonInit(target, trace.add(source).toVector)
               Result(Hot, error :: Nil)
 
         case _: Fun =>
@@ -247,7 +292,7 @@ class Semantic {
           Result(Hot, Errors.empty)
 
         case Cold =>
-          val error = CallCold(meth, source, trace)
+          val error = CallCold(meth, source, trace.toVector)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
@@ -270,7 +315,7 @@ class Semantic {
             else if addr.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
-              val error = CallUnknown(target, source, trace)
+              val error = CallUnknown(target, source, trace.toVector)
               Result(Hot, error :: Nil)
           else
             val obj = heap(addr)
@@ -298,7 +343,7 @@ class Semantic {
           Result(Hot, Errors.empty)
 
         case Cold =>
-          val error = CallCold(ctor, source, trace)
+          val error = CallCold(ctor, source, trace.toVector)
           Result(Hot, error :: Nil)
 
         case thisRef: ThisRef =>
@@ -324,14 +369,6 @@ class Semantic {
       }
   end extension
 
-  extension (ref: Addr)
-    def updateField(field: Symbol, value: Value): Contextual[Unit] =
-      heap(ref).fields(field) = value
-
-    def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
-      heap(ref).outers(klass) = value
-  end extension
-
 // ----- Promotion ----------------------------------------------------
 
   extension (value: Value)
@@ -349,7 +386,7 @@ class Semantic {
 
       case warm: Warm  =>
         warm.outer.canPromoteExtrinsic && {
-          promoted += warm
+          promoted.add(warm)
           true
         }
 
@@ -361,13 +398,13 @@ class Semantic {
             val sym = denot.symbol
             sym.isOneOf(Flags.Lazy | Flags.Deferred) || obj.fields.contains(sym)
           }
-          if allFieldsInitialized then promoted += thisRef
+          if allFieldsInitialized then promoted.add(thisRef)
           allFieldsInitialized
         }
 
       case fun: Fun =>
         fun.thisV.canPromoteExtrinsic && {
-          promoted += fun
+          promoted.add(fun)
           true
         }
 
@@ -381,20 +418,20 @@ class Semantic {
       value match
       case Hot   =>  Nil
 
-      case Cold  =>  PromoteError(msg, source, trace) :: Nil
+      case Cold  =>  PromoteError(msg, source, trace.toVector) :: Nil
 
       case thisRef: ThisRef =>
         if promoted.contains(thisRef) then Nil
         else if thisRef.canPromoteExtrinsic then Nil
-        else PromoteError(msg, source, trace) :: Nil
+        else PromoteError(msg, source, trace.toVector) :: Nil
 
       case warm: Warm =>
         if promoted.contains(warm) then Nil
         else if warm.canPromoteExtrinsic then Nil
         else {
-          promoted += warm
+          promoted.add(warm)
           val errors = warm.tryPromote(msg, source)
-          if errors.nonEmpty then promoted -= warm
+          if errors.nonEmpty then promoted.remove(warm)
           errors
         }
 
@@ -404,9 +441,9 @@ class Semantic {
           val res = eval(body, thisV, klass)
           val errors2 = res.value.promote(msg, source)
           if (res.errors.nonEmpty || errors2.nonEmpty)
-            UnsafePromotion(msg, source, trace, res.errors ++ errors2) :: Nil
+            UnsafePromotion(msg, source, trace.toVector, res.errors ++ errors2) :: Nil
           else
-            promoted += fun
+            promoted.add(fun)
             Nil
 
       case RefSet(refs) =>
@@ -434,7 +471,7 @@ class Semantic {
     def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
       val classRef = warm.klass.appliedRef
       if classRef.memberClasses.nonEmpty then
-        return PromoteError(msg, source, trace) :: Nil
+        return PromoteError(msg, source, trace.toVector) :: Nil
 
       val fields  = classRef.fields
       val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
@@ -465,7 +502,7 @@ class Semantic {
       }
 
       if buffer.isEmpty then Nil
-      else UnsafePromotion(msg, source, trace, buffer.toList) :: Nil
+      else UnsafePromotion(msg, source, trace.toVector, buffer.toList) :: Nil
     }
 
   end extension

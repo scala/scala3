@@ -50,8 +50,11 @@ class Checker extends MiniPhase {
       val tpl = tree.rhs.asInstanceOf[Template]
       val thisRef = ThisRef(cls)
       val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map.empty)
-      val heap: Heap = mutable.Map(thisRef -> obj)
-      val res = eval(tpl, thisRef, cls)(using heap, ctx, Vector.empty, mutable.Set.empty)
+      given Heap = Heap.empty
+      given Promoted = Promoted.empty
+      given Trace = Trace.empty
+      heap.add(thisRef, obj)
+      val res = eval(tpl, thisRef, cls)
       res.errors.foreach(_.issue)
     }
 
