@@ -307,13 +307,13 @@ class Semantic {
               resolve(addr.klass, meth)
           if target.isOneOf(Flags.Method | Flags.Lazy) then
             if target.hasSource then
+              val cls = target.owner.enclosingClass.asClass
               if target.isPrimaryConstructor then
-                val cls = target.owner.asClass
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
                 eval(tpl, addr, cls, cacheResult = true)(using heap, ctx, trace.add(tpl), promoted)
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, target.owner.asClass, cacheResult = true)
+                eval(rhs, addr, cls, cacheResult = true)
             else if addr.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
