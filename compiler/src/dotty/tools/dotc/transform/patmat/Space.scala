@@ -599,10 +599,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
                 Typ(tp, decomposed = true) :: Nil
               else if tpB <:< tp then
                 Typ(tpB, decomposed = true) :: Nil
+              else if TypeComparer.provablyDisjoint(tp, tpB) then
+                Nil
               else
-                intersectUnrelatedAtomicTypes(tp, tpB) match
-                case Empty => Nil
-                case typ: Typ => List(typ)
+                Typ(AndType(tp, tpB), decomposed = true) :: Nil
           }
 
         if canDecompose(tp1) then
