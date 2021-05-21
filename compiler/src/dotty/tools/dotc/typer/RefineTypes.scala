@@ -93,14 +93,16 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree =
       val Select(qual, name) = tree
-      val qual1 = withoutMode(Mode.Pattern)(typed(qual, AnySelectionProto))
-      val qualType = qual1.tpe.widenIfUnstable
-      val pre = maybeSkolemizePrefix(qualType, name)
-      val mbr = qualType.findMember(name, pre,
-          excluded = if tree.symbol.is(Private) then EmptyFlags else Private)
-        .suchThat(tree.symbol ==)
-      val ownType = qualType.select(name, mbr)
-      untpd.cpy.Select(tree)(qual1, name).withType(ownType)
+      if name.is(OuterSelectName) then promote(tree)
+      else
+        val qual1 = withoutMode(Mode.Pattern)(typed(qual, AnySelectionProto))
+        val qualType = qual1.tpe.widenIfUnstable
+        val pre = maybeSkolemizePrefix(qualType, name)
+        val mbr = qualType.findMember(name, pre,
+            excluded = if tree.symbol.is(Private) then EmptyFlags else Private)
+          .suchThat(tree.symbol ==)
+        val ownType = qualType.select(name, mbr)
+        untpd.cpy.Select(tree)(qual1, name).withType(ownType)
 
     private def resetTypeVars(tree: Tree)(using Context): (Tree, List[TypeVar]) = tree match
       case tree: TypeApply =>
