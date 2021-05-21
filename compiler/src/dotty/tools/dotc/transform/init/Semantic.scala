@@ -351,10 +351,8 @@ class Semantic {
         case addr: Addr =>
           // widen the outer to finitize addresses
           val outer = addr match
-            case _: ThisRef => addr
-            case warm: Warm =>
-              if warm.outer.isInstanceOf[Warm] then warm.copy(outer = Cold)
-              else warm
+            case Warm(_, _: Warm) => Cold
+            case _ => addr
 
           val value = Warm(klass, outer)
           if !heap.contains(value) then
