@@ -176,6 +176,8 @@ trait SpaceLogic {
         ss.forall(isSubspace(_, b))
       case (Typ(tp1, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
+        || canDecompose(tp1) && tryDecompose1(tp1)
+        || canDecompose(tp2) && tryDecompose2(tp2)
       case (Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
         ss.exists(isSubspace(a, _)) || tryDecompose1(tp1)
       case (_, Or(_)) =>
