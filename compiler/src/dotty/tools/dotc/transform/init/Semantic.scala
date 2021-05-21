@@ -40,6 +40,20 @@ class Semantic {
    *        │         │      │       │
    *        └─────────┴──────┴───────┘
    *                  Hot
+   *
+   *   The most important ordering is the following:
+   *
+   *       Hot ⊑ Warm(C) ⊑ ThisRef(C) ⊑ Cold
+   *
+   *   The diagram above does not reflect relationship between `RefSet`
+   *   and other values. `RefSet` represents a set of values which could
+   *   be `ThisRef`, `Warm` or `Fun`. The following ordering applies for
+   *   RefSet:
+   *
+   *         R_a ⊑ R_b if R_a ⊆ R_b
+   *
+   *         V ⊑ R if V ∈ R
+   *
    */
   sealed abstract class Value {
     def show: String = this.toString()
@@ -288,6 +302,7 @@ class Semantic {
           Result(value2, errors)
       }
 
+    /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
