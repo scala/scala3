@@ -3678,7 +3678,7 @@ class Typer extends Namer
           return readapt(tree.cast(target))
 
       def recover(failure: SearchFailureType) =
-        if canDefineFurther(wtp) then readapt(tree)
+        if canDefineFurther(wtp) || canDefineFurther(pt) then readapt(tree)
         else err.typeMismatch(tree, pt, failure)
 
       pt match
