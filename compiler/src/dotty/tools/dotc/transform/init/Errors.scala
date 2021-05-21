@@ -9,8 +9,6 @@ import core._
 import Decorators._, printing.SyntaxHighlighting
 import Types._, Symbols._, Contexts._
 
-import Effects._, Potentials._
-
 object Errors {
   type Errors = Seq[Error]
   val empty: Errors = Nil
