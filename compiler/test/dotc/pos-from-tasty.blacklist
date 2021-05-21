@@ -11,3 +11,6 @@ rbtree.scala
 
 # transitive reduction of match types
 i10511.scala
+
+# Violates tightened condition in Retyper#typedTyped
+i11247.scala
