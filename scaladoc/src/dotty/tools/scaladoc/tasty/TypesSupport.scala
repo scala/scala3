@@ -272,6 +272,20 @@ trait TypesSupport:
 
       case RecursiveType(tp) => inner(tp)
 
+      case MatchCase(pattern, rhs) =>
+        texts("case ") ++ inner(pattern) ++ texts(" => ") ++ inner(rhs)
+
+      case t: dotty.tools.dotc.core.Types.LazyRef => try {
+        inner(t.ref(using ctx.compilerContext).asInstanceOf[TypeRepr])
+      } catch {
+        case e: AssertionError => texts("LazyRef(...)")
+      }
+
+      case tpe =>
+        val msg = s"Encountered unsupported type. Report this problem to https://github.com/lampepfl/dotty/.\n" +
+          s"${tpe.show(using Printer.TypeReprStructure)}"
+        throw MatchError(msg)
+
   private def typeBound(using Quotes)(t: reflect.TypeRepr, low: Boolean) =
     import reflect._
     val ignore = if (low) t.typeSymbol == defn.NothingClass else t.typeSymbol == defn.AnyClass
