@@ -4,7 +4,7 @@ class Foo {
   val fun2: Int => Int = n => 1 + n + list.size
   fun2(5)
 
-  List(5, 9).map(n => 2 + n + list.size)
+  List(5, 9).map(n => 2 + n + list.size)         // error
 
   final val list = List(1, 2, 3)                 // error
 

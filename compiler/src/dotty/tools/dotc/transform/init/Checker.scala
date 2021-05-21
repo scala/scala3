@@ -26,6 +26,8 @@ class Checker extends MiniPhase {
   // cache of class summary
   private val cache = new Cache
 
+  private val semantic = new Semantic
+
   override val runsAfter = Set(Pickler.name)
 
   override def isEnabled(using Context): Boolean =
@@ -57,7 +59,14 @@ class Checker extends MiniPhase {
         env = Env(ctx.withOwner(cls), cache)
       )
 
-      Checking.checkClassBody(tree)
+      // Checking.checkClassBody(tree)
+
+      import semantic._
+      val tpl = tree.rhs.asInstanceOf[Template]
+      val thisRef = ThisRef(cls)
+      val heap = Objekt(cls, fields = mutable.Map.empty)
+      val res = eval(tpl, thisRef, cls)(using heap, ctx, Vector.empty)
+      res.errors.foreach(_.issue)
     }
 
     tree

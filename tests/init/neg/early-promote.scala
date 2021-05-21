@@ -24,7 +24,7 @@ class A { // checking A
     def c = new C
   }
   val b = new B()
-  List(b) // Direct promotion works here
+  List(b) // error: the checker simply issue warnings for objects that contain inner classes
   val af = 42
 }
 

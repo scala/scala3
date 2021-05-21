@@ -321,7 +321,6 @@ object Checking {
       val f = denot.symbol
       if !f.isOneOf(excludedFlags) && f.hasSource then
         buffer += Promote(FieldReturn(warm, f)(source))(source)
-        buffer += FieldAccess(warm, f)(source)
     }
 
     classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred).foreach { denot =>
@@ -342,7 +341,7 @@ object Checking {
     for (eff <- buffer.toList) {
       val errs = check(eff)
       if !errs.isEmpty then
-        return UnsafePromotion(warm, eff.source, state.path, errs.toList).toErrors
+        return UnsafePromotion(eff.source, state.path, errs.toList).toErrors
     }
     Errors.empty
 
@@ -355,7 +354,7 @@ object Checking {
           Errors.empty
         else pot match {
           case pot: ThisRef =>
-              PromoteThis(pot, eff.source, state.path).toErrors
+              PromoteThis(eff.source, state.path).toErrors
 
           case _: Cold =>
             PromoteCold(eff.source, state.path).toErrors
@@ -374,7 +373,7 @@ object Checking {
             }
 
             if (errs1.nonEmpty || errs2.nonEmpty)
-              UnsafePromotion(pot, eff.source, state.path, errs1 ++ errs2).toErrors
+              UnsafePromotion(eff.source, state.path, errs1 ++ errs2).toErrors
             else
               Errors.empty
 
