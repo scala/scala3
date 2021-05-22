@@ -40,9 +40,9 @@
 
     /* Auto-swap the dark/light theme if the user changes it in their system */
     colorSchemePrefMql.addEventListener('change', e => {
-      const preferDark = e.matches
-      themeToggler.checked = !preferDark
-      toggleDarkTheme(preferDark)
-    })
+      const preferDark = e.matches;
+      themeToggler.checked = !preferDark;
+      toggleDarkTheme(preferDark);
+    });
   });
 })();
