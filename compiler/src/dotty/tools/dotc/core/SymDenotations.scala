@@ -1806,6 +1806,11 @@ object SymDenotations {
     def baseClasses(implicit onBehalf: BaseData, ctx: Context): List[ClassSymbol] =
       baseData._1
 
+    /** Like `baseClasses.length` but more efficient. */
+    def baseClassesLength(using BaseData, Context): Int =
+      // `+ 1` because the baseClassSet does not include the current class unlike baseClasses
+      baseClassSet.classIds.length + 1
+
     /** A bitset that contains the superId's of all base classes */
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
