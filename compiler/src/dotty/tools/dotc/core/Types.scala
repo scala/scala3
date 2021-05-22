@@ -35,7 +35,7 @@ import config.Feature
 import annotation.{tailrec, constructorOnly}
 import language.implicitConversions
 import scala.util.hashing.{ MurmurHash3 => hashing }
-import config.Printers.{core, typr, refiner, matchTypes}
+import config.Printers.{core, typr, refinr, matchTypes}
 import reporting.{trace, Message}
 import java.lang.ref.WeakReference
 
@@ -4517,10 +4517,10 @@ object Types {
         // Force new instantiation to be also a singleton.
         // This is neceesary to make several macro tests pass. An example is pos-macros/i9812.scala.
         (this <:< defn.SingletonType)
-          .showing(i"add upper singleton bound to $this, success = $result", refiner)
+          .showing(i"add upper singleton bound to $this, success = $result", refinr)
       var inst = TypeComparer.instanceType(origin, instDirection == InstDirection.FromBelow)
       if linkedVar != null then
-        refiner.println(i"instantiate $this to $inst, was ${linkedVar.inst}, fromBelow = ${instDirection == InstDirection.FromBelow}")
+        refinr.println(i"instantiate $this to $inst, was ${linkedVar.inst}, fromBelow = ${instDirection == InstDirection.FromBelow}")
         // Instead of instantiating to an extremal type Nothing or Any, pick the previous
         // instantiation as long as it is compatible with the current constraints.
         // This is needed because of a particular interaction of type variable instantiation
@@ -4541,17 +4541,10 @@ object Types {
             && this <:< linkedVar.inst
         if needsOldInstance then
           inst = linkedVar.inst
-            .showing(i"avoid extremal instance for $this be instantiating with old $inst", refiner)
+            .showing(i"avoid extremal instance for $this be instantiating with old $inst", refinr)
 
       instantiateWith(avoidCaptures(inst))
     end instantiate
-
-    private def linkForward(using Context): TypeMap = new TypeMap:
-      def apply(tp: Type): Type = tp match
-        case tvar: TypeVar if tvar.linkedVar != null && tvar.inst.exists =>
-          tvar.linkedVar
-        case _ =>
-          mapOver(tp)
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
      *  provisional instance value)
