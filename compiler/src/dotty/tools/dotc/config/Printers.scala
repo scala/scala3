@@ -39,7 +39,7 @@ object Printers {
   val quotePickling = noPrinter
   val plugins = noPrinter
   val refcheck = noPrinter
-  val refiner = noPrinter
+  val refinr = noPrinter
   val simplify = noPrinter
   val staging = noPrinter
   val subtyping = noPrinter
