@@ -991,18 +991,6 @@ trait Checking {
         report.error(i"""$called is already implemented by super${caller.superClass},
                    |its constructor cannot be called again""", call.srcPos)
 
-      if (caller.is(Module)) {
-        val traverser = new TreeTraverser {
-          def traverse(tree: Tree)(using Context) = tree match {
-            case tree: RefTree if tree.isTerm && (tree.tpe.classSymbol eq caller) =>
-              report.error("super constructor cannot be passed a self reference", tree.srcPos)
-            case _ =>
-              traverseChildren(tree)
-          }
-        }
-        traverser.traverse(call)
-      }
-
       // Check that constructor call is of the form _.<init>(args1)...(argsN).
       // This guards against calls resulting from inserted implicits or applies.
       def checkLegalConstructorCall(tree: Tree, encl: Tree, kind: String): Unit = tree match {

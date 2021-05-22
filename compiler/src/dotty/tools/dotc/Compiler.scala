@@ -121,6 +121,7 @@ class Compiler {
          new ElimStaticThis,         // Replace `this` references to static objects by global identifiers
          new CountOuterAccesses) ::  // Identify outer accessors that can be dropped
     List(new DropOuterAccessors,     // Drop unused outer accessors
+         new CheckNoSuperThis,       // Check that supercalls don't contain references to `this`
          new Flatten,                // Lift all inner classes to package scope
          new RenameLifted,           // Renames lifted classes to local numbering scheme
          new TransformWildcards,     // Replace wildcards with default values
