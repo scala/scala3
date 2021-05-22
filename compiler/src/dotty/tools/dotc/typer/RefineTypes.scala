@@ -38,8 +38,6 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
   def run(using Context): Unit =
     refinr.println(i"refine types of ${ctx.compilationUnit}")
     val refiner = newRefiner()
-    ctx.typerState.constraint = OrderingConstraint.empty
-    ctx.typerState.ownedVars = SimpleIdentitySet.empty
     val refineCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
@@ -50,16 +48,6 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
 
   class TypeRefiner extends ReTyper:
     import ast.tpd.*
-
-    // don't check value classes after typer, as the constraint about constructors doesn't hold after transform
-    override def checkDerivedValueClass(clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
-
-    /** Exclude from double definition checks any erased symbols that were
-     *  made `private` in phase `UnlinkErasedDecls`. These symbols will be removed
-     *  completely in phase `Erasure` if they are defined in a currently compiled unit.
-     */
-    override def excludeFromDoubleDeclCheck(sym: Symbol)(using Context): Boolean =
-      sym.isEffectivelyErased && sym.is(Private) && !sym.initial.is(Private)
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       trace(i"typed $tree, $pt", refinr, show = true) {
@@ -84,6 +72,18 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           .suchThat(tree.symbol ==)
         val ownType = qualType.select(name, mbr)
         untpd.cpy.Select(tree)(qual1, name).withType(ownType)
+
+    override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+      val expr1 = tree.expr match
+        case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
+          tree.expr.withType(tpt1.tpe)
+        case _ =>
+          var pt1 = tpt1.tpe
+          if pt1.isRepeatedParam then
+            pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
+          typed(tree.expr, pt1)
+      untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
 
     private def resetTypeVars(tree: Tree)(using Context): (Tree, List[TypeVar]) = tree match
       case tree: TypeApply =>
