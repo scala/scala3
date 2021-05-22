@@ -49,15 +49,20 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
   class TypeRefiner extends ReTyper:
     import ast.tpd.*
 
+    override def newLikeThis: Typer = new TypeRefiner
+
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       trace(i"typed $tree, $pt", refinr, show = true) {
-        tree match
-          case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
-            super.typedUnadapted(tree, pt, locked)
-          case _ if tree.isType =>
-            promote(tree)
-          case _ =>
-            super.typedUnadapted(tree, pt, locked)
+        tree.removeAttachment(TypedAhead) match
+          case Some(ttree) => ttree
+          case none =>
+            tree match
+              case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
+                super.typedUnadapted(tree, pt, locked)
+              case _ if tree.isType =>
+                promote(tree)
+              case _ =>
+                super.typedUnadapted(tree, pt, locked)
       }
 
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree =
