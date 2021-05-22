@@ -107,7 +107,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     private def resetTypeVars(tree: Tree)(using Context): (Tree, List[TypeVar]) = tree match
       case tree: TypeApply =>
         val isInferred = tree.args.forall {
-          case arg: TypeVarBinder[?] =>
+          case arg: InferredTypeTree[?] =>
             arg.tpe match
               case tvar: TypeVar =>
                 tvar.isInstantiated // test makes sure we do not reset typevars again in eta expanded closures
