@@ -9,16 +9,24 @@
     }
   })();
 
+  const settingKey = "use-dark-theme";
+
   function toggleDarkTheme(isDark) {
     currentlyDark = isDark
     // this triggers the `:root.theme-dark` rule from scalastyle.css,
     // which changes the values of a bunch of CSS color variables
     document.documentElement.classList.toggle("theme-dark", isDark);
-    supportsLocalStorage && localStorage.setItem("use-dark-theme", isDark);
+    supportsLocalStorage && localStorage.setItem(settingKey, isDark);
   }
 
+  /* Infer a dark/light theme preference from the user's system */
+  const colorSchemePrefMql = window.matchMedia("(prefers-color-scheme: dark)");
+
   /* This needs to happen ASAP so we don't get a FOUC of bright colors before the dark theme is applied */
-  const initiallyDark = supportsLocalStorage && (localStorage.getItem("use-dark-theme") === "true");
+  const initiallyDark = (() => {
+    const storedSetting = supportsLocalStorage && localStorage.getItem(settingKey);
+    return (storedSetting === null) ? colorSchemePrefMql.matches : storedSetting === "true";
+  })();
   let currentlyDark = initiallyDark;
   toggleDarkTheme(initiallyDark);
 
@@ -29,5 +37,12 @@
     themeToggler.addEventListener("change", e => {
       toggleDarkTheme(!e.target.checked);
     });
+
+    /* Auto-swap the dark/light theme if the user changes it in their system */
+    colorSchemePrefMql.addEventListener('change', e => {
+      const preferDark = e.matches
+      themeToggler.checked = !preferDark
+      toggleDarkTheme(preferDark)
+    })
   });
 })();
