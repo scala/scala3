@@ -168,8 +168,6 @@ class Semantic {
   extension (trace: Trace)
     def add(node: Tree): Trace = trace :+ node
 
-  val noErrors = Nil
-
 // ----- Operations on domains -----------------------------
   extension (a: Value)
     def join(b: Value): Value =
@@ -199,7 +197,7 @@ class Semantic {
     def select(field: Symbol, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
-          Result(Hot, noErrors)
+          Result(Hot, Errors.empty)
 
         case Cold =>
           val error = AccessCold(field, source, trace)
@@ -236,7 +234,7 @@ class Semantic {
     def call(meth: Symbol, superType: Type, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
-          Result(Hot, noErrors)
+          Result(Hot, Errors.empty)
 
         case Cold =>
           val error = CallCold(meth, source, trace)
@@ -306,7 +304,7 @@ class Semantic {
     def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
-          Result(Hot, noErrors)
+          Result(Hot, Errors.empty)
 
         case Cold =>
           val error = CallCold(ctor, source, trace)
@@ -390,12 +388,12 @@ class Semantic {
       value match
       case Hot   =>  Nil
 
-      case Cold  =>  PromoteCold(source, trace) :: Nil
+      case Cold  =>  PromoteError(msg, source, trace) :: Nil
 
       case thisRef: ThisRef =>
         if heap.promotedValues.contains(thisRef) then Nil
         else if thisRef.canPromoteExtrinsic then Nil
-        else PromoteThis(source, trace) :: Nil
+        else PromoteError(msg, source, trace) :: Nil
 
       case warm: Warm =>
         if heap.promotedValues.contains(warm) then Nil
@@ -413,7 +411,7 @@ class Semantic {
           val res = eval(body, thisV, klass)
           val errors2 = res.value.promote(msg, source)
           if (res.errors.nonEmpty || errors2.nonEmpty)
-            UnsafePromotion(source, trace, res.errors ++ errors2) :: Nil
+            UnsafePromotion(msg, source, trace, res.errors ++ errors2) :: Nil
           else
             heap.promotedValues += fun
             Nil
@@ -443,7 +441,7 @@ class Semantic {
     def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
       val classRef = warm.klass.appliedRef
       if classRef.memberClasses.nonEmpty then
-        return PromoteWarm(source, trace) :: Nil
+        return PromoteError(msg, source, trace) :: Nil
 
       val fields  = classRef.fields
       val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
@@ -466,7 +464,7 @@ class Semantic {
       }
 
       if buffer.isEmpty then Nil
-      else UnsafePromotion(source, trace, buffer.toList) :: Nil
+      else UnsafePromotion(msg, source, trace, buffer.toList) :: Nil
     }
 
   end extension
@@ -502,7 +500,7 @@ class Semantic {
    */
   def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
-    if (innerMap.contains(expr)) Result(innerMap(expr), noErrors)
+    if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
     else {
       // no need to compute fix-point, because
       // 1. the result is decided by `cfg` for a legal program
@@ -544,7 +542,7 @@ class Semantic {
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
@@ -596,10 +594,10 @@ class Semantic {
         cases(expr.tpe, thisV, klass, expr)
 
       case Literal(_) =>
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case Typed(expr, tpt) =>
-        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
+        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, Errors.empty)
         else eval(expr, thisV, klass) ++ checkTermUsage(tpt, thisV, klass)
 
       case NamedArg(name, arg) =>
@@ -609,9 +607,9 @@ class Semantic {
         lhs match
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass)
-          eval(rhs, thisV, klass).ensureHot("May only assign initialized value", rhs) ++ res.errors
+          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs) ++ res.errors
         case id: Ident =>
-          eval(rhs, thisV, klass).ensureHot("May only assign initialized value", rhs)
+          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs)
 
       case closureDef(ddef) =>
         thisV match
@@ -645,11 +643,11 @@ class Semantic {
         Result(value, errors)
 
       case Annotated(arg, annot) =>
-        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, noErrors)
+        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, Errors.empty)
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
-        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be initialized", selector)
+        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be fully initialized", selector)
         val ress = eval(cases.map(_.body), thisV, klass)
         val value = ress.map(_.value).join
         val errors = res1.errors ++ ress.flatMap(_.errors)
@@ -678,7 +676,7 @@ class Semantic {
 
       case SeqLiteral(elems, elemtpt) =>
         val ress = elems.map { elem =>
-          eval(elem, thisV, klass).ensureHot("May only use initialized value as arguments", elem)
+          eval(elem, thisV, klass).ensureHot("May only use initialized value as method arguments", elem)
         }
         Result(Hot, ress.flatMap(_.errors))
 
@@ -688,7 +686,7 @@ class Semantic {
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case vdef : ValDef =>
         // local val definition
@@ -697,11 +695,11 @@ class Semantic {
 
       case ddef : DefDef =>
         // local method
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case tdef: TypeDef =>
         // local type definition
-        if tdef.isClassDef then Result(Hot, noErrors)
+        if tdef.isClassDef then Result(Hot, Errors.empty)
         else Result(Hot, checkTermUsage(tdef.rhs, thisV, klass))
 
       case tpl: Template =>
@@ -710,7 +708,7 @@ class Semantic {
         case _ => ??? // impossible
 
       case _: Import | _: Export =>
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
@@ -720,23 +718,23 @@ class Semantic {
   def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        if tref.symbol.is(Flags.Package) then Result(Hot, noErrors)
+        if tref.symbol.is(Flags.Package) then Result(Hot, Errors.empty)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
-          Result(value, noErrors)
+          Result(value, Errors.empty)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
-        Result(Hot, noErrors)
+        Result(Hot, Errors.empty)
 
       case _ =>
         throw new Exception("unexpected type: " + tp)
@@ -774,7 +772,7 @@ class Semantic {
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
       val outerV = resolveThis(enclosing, thisV, klass, source)
-      Result(outerV, noErrors)
+      Result(outerV, Errors.empty)
     else
       cases(tref.prefix, thisV, klass, source)
 
