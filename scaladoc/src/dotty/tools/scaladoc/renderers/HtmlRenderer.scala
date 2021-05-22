@@ -130,6 +130,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
       case _ =>
         memberResourcesPaths
 
+    val earlyResources = page.content match
+      case t: ResolvedTemplate => if t.hasFrame then earlyMemberResourcePaths else Nil
+      case _ => earlyMemberResourcePaths
+
     head(
       meta(charset := "utf-8"),
       meta(util.HTML.name := "viewport", content := "width=device-width, initial-scale=1"),
@@ -140,7 +144,8 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         `type` := "image/x-icon",
         href := resolveLink(page.link.dri, "favicon.ico")
       ),
-      linkResources(page.link.dri, resources).toList,
+      linkResources(page.link.dri, earlyResources, deferJs = false).toList,
+      linkResources(page.link.dri, resources, deferJs = true).toList,
       script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
       ctx.args.versionsDictionaryUrl match
         case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
@@ -259,6 +264,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
               span(cls:="icon-vertical_align_top"),
               raw("&nbsp;Back to top")
             )
+          ),
+          label(id := "theme-toggle", cls := "switch")(
+            input(`type` := "checkbox"),
+            span(cls := "slider")
           ),
           div(cls := "socials")(
             if hasSocialLinks then Seq(raw("Social links&nbsp;")) else Nil,

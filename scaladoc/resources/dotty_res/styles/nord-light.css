@@ -1,14 +1,37 @@
 /* Theme inspired by nordtheme. The colors have been darkened to work on light backgrounds. */
+:root {
+  --hljs-bg: var(--code-bg);
+  --hljs-fg: var(--code-fg);
+  --hljs-comment: #90A1C1;
+  --hljs-doctag: #4B6B92;
+  --hljs-meta: hsl(40, 100%, 40%);
+  --hljs-subst: hsl(40, 100%, 40%);
+  --hljs-title: hsl(193, 60%, 42%);
+  --hljs-type: hsl(179, 61%, 30%);
+  --hljs-keyword: hsl(213, 60%, 45%);
+  --hljs-string: hsl(92, 46%, 43%);
+  --hljs-literal: hsl(311, 30%, 47%);
+}
+:root.theme-dark {
+  --hljs-meta: hsl(40, 100%, 49%);
+  --hljs-subst: hsl(40, 100%, 49%);
+  --hljs-title: hsl(193, 60%, 58%);
+  --hljs-keyword: hsl(213, 60%, 60%);
+  --hljs-type: hsl(179, 61%, 45%);
+  --hljs-string: hsl(92, 46%, 68%);
+  --hljs-literal: hsl(311, 30%, 62%);
+}
+
 pre, .hljs {
-  background: #F4F5FA;
-  color: #4C566A;
+  background: var(--hljs-bg);
+  color: var(--code-fg);
 }
 
 .hljs-comment {
-  color: #90A1C1;
+  color: var(--hljs-comment);
 }
 .hljs-doctag {
-  color: #4B6B92;
+  color: var(--hljs-doctag);
   font-weight: 500;
 }
 .hljs-emphasis {
@@ -19,26 +42,26 @@ pre, .hljs {
 }
 
 .hljs-meta {
-  color: #F9A600;
+  color: var(--hljs-meta);
   font-weight: 500;
 }
 .hljs-subst {
-  color: #F9A600;
+  color: var(--hljs-subst);
 }
 .hljs-title {
-  color: #2B8FAC;
+  color: var(--hljs-title);
   font-weight: 500;
 }
 .hljs-type {
-  color: #1E7C7A;
+  color: var(--hljs-type);
 }
 .hljs-keyword {
-  color: #2E6BB8;
+  color: var(--hljs-keyword);
   font-weight: 500;
 }
 .hljs-string {
-  color: #6AA13B;
+  color: var(--hljs-string);
 }
 .hljs-built_in, .hljs-number, .hljs-literal {
-  color: #9D5490;
+  color: var(--hljs-literal);
 }

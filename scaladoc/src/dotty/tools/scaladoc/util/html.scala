@@ -65,6 +65,7 @@ object HTML:
   val svg = Tag("svg")
   val button = Tag("button")
   val input = Tag("input")
+  val label = Tag("label")
   val script = Tag("script")
   val link = Tag("link")
   val footer = Tag("footer")
