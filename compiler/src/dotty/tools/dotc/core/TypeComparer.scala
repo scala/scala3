@@ -1821,7 +1821,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     ctx.mode.is(Mode.GadtConstraintInference) && !frozenGadt && !frozenConstraint && !boundImprecise && {
       // val tparam = tr.symbol
       gadts.println(i"narrow gadt bound of $tr from ${if (isUpper) "above" else "below"} to $bound ${bound.toString}")
-      if (isUpper) gadtAddUpperBound(tr, bound)
+
+      def isAliasSkolem: Boolean = bound match {
+        case SkolemType(tp) if tr == tp => true
+        case _ => false
+      }
+
+      if isAliasSkolem then false
+      else if (isUpper) gadtAddUpperBound(tr, bound)
       else gadtAddLowerBound(tr, bound)
     }
   }
