@@ -36,11 +36,10 @@ class CheckNoSuperThis extends MiniPhase:
                   fail(t)
                 case t: RefTree => t.tpe match
                   case tpe @ TermRef(prefix, _)
-                  if prefix == cls.thisType && !tpe.symbol.is(JavaStatic) => fail(t)
-                  case tpe @ TermRef(prefix, _)
-                  if cls.is(Module) && prefix.termSymbol == cls.sourceModule && !tpe.symbol.is(JavaStatic) => fail(t)
-                  case tpe @ TermRef(prefix, _)
-                  if cls.is(Module) && tpe.symbol == cls.sourceModule => fail(t)
+                  if (prefix == cls.thisType
+                      || cls.is(Module)
+                         && (prefix.termSymbol == cls.sourceModule || tpe.symbol == cls.sourceModule)
+                    ) && !tpe.symbol.is(JavaStatic) => fail(t)
                   case _ =>
                 case _ =>
               }
