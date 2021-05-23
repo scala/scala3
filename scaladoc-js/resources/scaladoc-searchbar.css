@@ -88,6 +88,14 @@
 
 .scaladoc-searchbar-result a {
     color: #1f2326;
+    /* for some reason, with display:block if there's a wrap between the
+     * search result text and the location span, the dead space to the
+     * left of the location span doesn't get treated as part of the block,
+     * which defeats the purpose of making the <a> a block element.
+     * But inline-block with width:100% works as desired.
+     */
+    display: inline-block;
+    width: 100%;
 }
 
 .scaladoc-searchbar-result .scaladoc-searchbar-location {

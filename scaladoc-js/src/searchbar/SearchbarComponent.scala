@@ -21,7 +21,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       location.textContent = p.description
 
       wrapper.appendChild(resultA)
-      wrapper.appendChild(location)
+      resultA.appendChild(location)
       wrapper.addEventListener("mouseover", {
         case e: MouseEvent => handleHover(wrapper)
       })
@@ -59,6 +59,8 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         document.body.appendChild(rootDiv)
         input.focus()
       }
+    // open the search if the user hits the `s` key when not focused on a text input
+    document.body.addEventListener("keydown", (e: KeyboardEvent) => handleGlobalKeyDown(e))
 
     val element = createNestingDiv("search-content")(
       createNestingDiv("search-container")(
@@ -69,7 +71,6 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
     )
     document.getElementById("scaladoc-searchBar").appendChild(element)
     element
-
 
   private val input: html.Input =
     val element = document.createElement("input").asInstanceOf[html.Input]
@@ -106,6 +107,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
         if e.keyCode == 40 then handleArrowDown()
         else if e.keyCode == 38 then handleArrowUp()
         else if e.keyCode == 13 then handleEnter()
+        else if e.keyCode == 27 then handleEscape()
     })
     element.id = "scaladoc-searchbar"
     element.appendChild(input)
@@ -146,6 +148,12 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       selectedElement.click()
     }
   }
+  private def handleEscape() = {
+    // clear the search input and close the search
+    input.value = ""
+    handleNewQuery("")
+    document.body.removeChild(rootDiv)
+  }
 
   private def handleHover(elem: html.Element) = {
     val selectedElement = resultsDiv.querySelector("[selected]")
@@ -153,6 +161,20 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       selectedElement.removeAttribute("selected")
     }
     elem.setAttribute("selected","")
+  }
+
+  private def handleGlobalKeyDown(e: KeyboardEvent) = {
+    // if the user presses the "S" key while not focused on an input, open the search
+    if (e.key == "s") {
+      val tag = e.target.asInstanceOf[html.Element].tagName
+      if (tag != "INPUT" && tag != "TEXTAREA") {
+        if (!document.body.contains(rootDiv)) {
+          document.body.appendChild(rootDiv)
+          // if we focus during the event handler, the `s` gets typed into the input
+          window.setTimeout(() => input.focus(), 1.0)
+        }
+      }
+    }
   }
 
   handleNewQuery("")
