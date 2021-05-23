@@ -123,7 +123,11 @@ object Build {
     else
       baseVersion + "-bin-SNAPSHOT"
   }
-  val dottyNonBootstrappedVersion = dottyVersion + "-nonbootstrapped"
+  val dottyNonBootstrappedVersion = {
+    // Make sure sbt always computes the scalaBinaryVersion correctly
+    val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
+    dottyVersion + bin + "-nonbootstrapped"
+  }
 
   val sbtCommunityBuildVersion = "0.1.0-SNAPSHOT"
 
