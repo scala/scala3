@@ -320,18 +320,10 @@ class SpaceEngine(using Context) extends SpaceLogic {
   private val scalaConsType        = defn.ConsClass.typeRef
 
   private val constantNullType     = ConstantType(Constant(null))
-  private val constantNullSpace    = Typ(constantNullType)
 
   /** Does the given tree stand for the literal `null`? */
   def isNullLit(tree: Tree): Boolean = tree match {
     case Literal(Constant(null)) => true
-    case _ => false
-  }
-
-  /** Does the given space contain just the value `null`? */
-  def isNullSpace(space: Space): Boolean = space match {
-    case Typ(tpe, _) => tpe.dealias == constantNullType || tpe.isNullType
-    case Or(spaces) => spaces.forall(isNullSpace)
     case _ => false
   }
 
@@ -355,18 +347,18 @@ class SpaceEngine(using Context) extends SpaceLogic {
   def project(pat: Tree): Space = pat match {
     case Literal(c) =>
       if (c.value.isInstanceOf[Symbol])
-        Typ(c.value.asInstanceOf[Symbol].termRef, false)
+        Typ(c.value.asInstanceOf[Symbol].termRef, decomposed = false)
       else
-        Typ(ConstantType(c), false)
+        Typ(ConstantType(c), decomposed = false)
 
     case pat: Ident if isBackquoted(pat) =>
-      Typ(pat.tpe, false)
+      Typ(pat.tpe, decomposed = false)
 
     case Ident(nme.WILDCARD) =>
-      Or(Typ(erase(pat.tpe.stripAnnots), false) :: constantNullSpace :: Nil)
+      Typ(erase(pat.tpe.stripAnnots, isValue = true), decomposed = false)
 
     case Ident(_) | Select(_, _) =>
-      Typ(erase(pat.tpe.stripAnnots), false)
+      Typ(erase(pat.tpe.stripAnnots, isValue = true), decomposed = false)
 
     case Alternative(trees) =>
       Or(trees.map(project(_)))
@@ -386,31 +378,31 @@ class SpaceEngine(using Context) extends SpaceLogic {
         else {
           val (arity, elemTp, resultTp) = unapplySeqInfo(fun.tpe.widen.finalResultType, fun.srcPos)
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots), funRef, projectSeq(pats) :: Nil)
+            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, projectSeq(pats) :: Nil)
           else
-            Prod(erase(pat.tpe.stripAnnots), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
+            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots), funRef, pats.map(project))
+        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
 
     case Typed(_, tpt) =>
-      Typ(erase(tpt.tpe.stripAnnots), true)
+      Typ(erase(tpt.tpe.stripAnnots, isValue = true), decomposed = false)
 
     case This(_) =>
-      Typ(pat.tpe.stripAnnots, false)
+      Typ(pat.tpe.stripAnnots, decomposed = false)
 
     case EmptyTree =>         // default rethrow clause of try/catch, check tests/patmat/try2.scala
-      Typ(WildcardType, false)
+      Typ(WildcardType, decomposed = false)
 
     case Block(Nil, expr) =>
       project(expr)
 
     case _ =>
       // Pattern is an arbitrary expression; assume a skolem (i.e. an unknown value) of the pattern type
-      Typ(pat.tpe.narrow, false)
+      Typ(pat.tpe.narrow, decomposed = false)
   }
 
   private def project(tp: Type): Space = tp match {
@@ -458,29 +450,37 @@ class SpaceEngine(using Context) extends SpaceLogic {
    *       case (IntExpr(_), IntExpr(_)) =>
    *       case (BooleanExpr(_), BooleanExpr(_)) =>
    *     }
+   *
+   *  @param inArray whether `tp` is a type argument to `Array`
+   *  @param isValue whether `tp` is the type which match against values
+   *
+   *  If `isValue` is true, then pattern-bound symbols are erased to its upper bound.
+   *  This is needed to avoid spurious unreachable warnings. See tests/patmat/i6197.scala.
    */
-  private def erase(tp: Type, inArray: Boolean = false): Type = trace(i"$tp erased to", debug) {
+  private def erase(tp: Type, inArray: Boolean = false, isValue: Boolean = false): Type = trace(i"$tp erased to", debug) {
 
     tp match {
       case tp @ AppliedType(tycon, args) =>
         if tycon.typeSymbol.isPatternBound then return WildcardType
 
         val args2 =
-          if (tycon.isRef(defn.ArrayClass)) args.map(arg => erase(arg, inArray = true))
-          else args.map(arg => erase(arg, inArray = false))
-        tp.derivedAppliedType(erase(tycon, inArray), args2)
+          if (tycon.isRef(defn.ArrayClass)) args.map(arg => erase(arg, inArray = true, isValue = false))
+          else args.map(arg => erase(arg, inArray = false, isValue = false))
+        tp.derivedAppliedType(erase(tycon, inArray, isValue = false), args2)
 
       case tp @ OrType(tp1, tp2) =>
-        OrType(erase(tp1, inArray), erase(tp2, inArray), tp.isSoft)
+        OrType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue), tp.isSoft)
 
       case AndType(tp1, tp2) =>
-        AndType(erase(tp1, inArray), erase(tp2, inArray))
+        AndType(erase(tp1, inArray, isValue), erase(tp2, inArray, isValue))
 
       case tp @ RefinedType(parent, _, _) =>
-        erase(parent)
+        erase(parent, inArray, isValue)
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
-        if (inArray) tref.underlying else WildcardType
+        if inArray then tref.underlying
+        else if isValue then tref.superType
+        else WildcardType
 
       case _ => tp
     }
@@ -864,25 +864,28 @@ class SpaceEngine(using Context) extends SpaceLogic {
     && !sel.tpe.widen.isRef(defn.QuotedTypeClass)
 
   def checkRedundancy(_match: Match): Unit = {
+    debug.println(s"---------------checking redundant patterns ${_match.show}")
+
     val Match(sel, cases) = _match
     val selTyp = sel.tpe.widen.dealias
 
     if (!redundancyCheckable(sel)) return
 
     val targetSpace =
-      if (ctx.explicitNulls || selTyp.classSymbol.isPrimitiveValueClass)
+      if !selTyp.classSymbol.isNullableClass then
         project(selTyp)
       else
         project(OrType(selTyp, constantNullType, soft = false))
 
     // in redundancy check, take guard as false in order to soundly approximate
-    def projectPrevCases(cases: List[CaseDef]): List[Space] =
-      cases.map { x =>
+    val spaces = cases.map { x =>
+      val res =
         if (x.guard.isEmpty) project(x.pat)
         else Empty
-      }
 
-    val spaces = projectPrevCases(cases)
+      debug.println(s"${x.pat.show} ====> ${res}")
+      res
+    }
 
     (1 until cases.length).foreach { i =>
       val pat = cases(i).pat
@@ -902,20 +905,13 @@ class SpaceEngine(using Context) extends SpaceLogic {
         if (covered == Empty && !isNullLit(pat)) covered = curr
 
         if (isSubspace(covered, prevs)) {
-          report.warning(MatchCaseUnreachable(), pat.srcPos)
-        }
-
-        // if last case is `_` and only matches `null`, produce a warning
-        // If explicit nulls are enabled, this check isn't needed because most of the cases
-        // that would trigger it would also trigger unreachability warnings.
-        if (!ctx.explicitNulls && i == cases.length - 1 && !isNullLit(pat) ) {
-          val spaces = flatten(simplify(minus(covered, prevs)))
-          if spaces.lengthCompare(10) < 0 then
-            dedup(spaces).toList match
-            case Typ(`constantNullType`, _) :: Nil =>
-              report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
-            case s =>
-              debug.println("`_` matches = " + s)
+          if i == cases.length - 1
+             && isWildcardArg(pat)
+             && pat.tpe.classSymbol.isNullableClass
+          then
+            report.warning(MatchCaseOnlyNullWarning(), pat.srcPos)
+          else
+            report.warning(MatchCaseUnreachable(), pat.srcPos)
         }
       }
     }
