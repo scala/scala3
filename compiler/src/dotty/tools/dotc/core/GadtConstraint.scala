@@ -583,11 +583,13 @@ final class ProperGadtConstraint private(
   private def mapTpMem(path: SingletonType, designator: Designator)(using Context): TypeVar = mapTpMem(path, nameOfDesignator(designator))
 
   override def bounds(ntp: NamedType, internalizing: Boolean)(using Context): TypeBounds = {
+    def isAbstract(path: TermRef, d: Designator): Boolean = abstractTypeNameFilter(path, nameOfDesignator(d))
+
     val tvar: TypeVar = tvarOfType(ntp) match {
       case null =>
         /** The type hasn't been registered yet, try internalizing it */
         ntp match {
-          case TypeRef(path: TermRef, d: Designator) if internalizing =>
+          case TypeRef(path: TermRef, d: Designator) if internalizing && isAbstract(path, d) =>
             gadts.println(i"**** try to internalize type: $path.$d, ${ctx.mode.is(Mode.GadtConstraintInference)}")
             internalizeTypeMember(path, d)
           case _ => null
