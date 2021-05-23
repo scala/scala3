@@ -838,7 +838,7 @@ import transform.SymUtils._
 
   class MatchCaseOnlyNullWarning()(using Context)
   extends PatternMatchMsg(MatchCaseOnlyNullWarningID) {
-    def msg = em"""Unreachable case. If ${hl("null")} is matched, consider using ${hl("case null =>")}."""
+    def msg = em"""Unreachable case except for ${hl("null")} (if this is intentional, consider writing ${hl("case null =>")} instead)."""
     def explain = ""
   }
 
