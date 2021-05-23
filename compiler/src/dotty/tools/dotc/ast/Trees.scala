@@ -11,6 +11,7 @@ import printing.Printer
 import printing.Texts.Text
 import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
 import config.Config
+import config.Printers.overload
 import annotation.internal.sharable
 import annotation.unchecked.uncheckedVariance
 import annotation.constructorOnly
@@ -1729,7 +1730,9 @@ object Trees {
       val typer = ctx.typer
       val proto = FunProto(args, expectedType)
       val denot = receiver.tpe.member(method)
-      assert(denot.exists, i"no member $receiver . $method, members = ${receiver.tpe.decls}")
+      if !denot.exists then
+        overload.println(i"members = ${receiver.tpe.decls}")
+        report.error(i"no member $receiver . $method", receiver.srcPos)
       val selected =
         if (denot.isOverloaded) {
           def typeParamCount(tp: Type) = tp.widen match {

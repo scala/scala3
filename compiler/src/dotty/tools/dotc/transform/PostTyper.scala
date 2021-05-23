@@ -7,6 +7,7 @@ import core._
 import dotty.tools.dotc.typer.Checking
 import dotty.tools.dotc.typer.Inliner
 import dotty.tools.dotc.typer.VarianceChecker
+import typer.ErrorReporting.errorTree
 import Types._, Contexts._, Names._, Flags._, DenotTransformers._, Phases._
 import SymDenotations._, StdNames._, Annotations._, Trees._, Scopes._
 import Decorators._
@@ -263,9 +264,9 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case Select(qual, _) => check(qual)    // simple select _n
         case Apply(TypeApply(Select(qual, _), _), _) => check(qual) // generic select .apply[T](n)
 
-    def checkNotPackage(tree: Tree)(using Context): Unit =
-      if tree.symbol.is(Package) then
-        report.error(i"${tree.symbol} cannot be used as a type", tree.srcPos)
+    def checkNotPackage(tree: Tree)(using Context): Tree =
+      if !tree.symbol.is(Package) then tree
+      else errorTree(tree, i"${tree.symbol} cannot be used as a type")
 
     override def transform(tree: Tree)(using Context): Tree =
       try tree match {
@@ -280,7 +281,6 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
         case tree: Ident =>
           if tree.isType then
             checkNotPackage(tree)
-            tree
           else
             if tree.symbol.is(Inline) && !Inliner.inInlineMethod then
               ctx.compilationUnit.needsInlining = true
@@ -293,9 +293,8 @@ class PostTyper extends MacroTransform with IdentityDenotTransformer { thisPhase
           if tree.symbol.is(Inline) then
             ctx.compilationUnit.needsInlining = true
           if name.isTypeName then
-            checkNotPackage(tree)
             Checking.checkRealizable(qual.tpe, qual.srcPos)
-            withMode(Mode.Type)(super.transform(tree))
+            withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
             checkNoConstructorProxy(tree)
             transformSelect(tree, Nil)
