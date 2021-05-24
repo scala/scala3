@@ -8,7 +8,7 @@ import scala.reflect.TypeTest
  *  Usage:
  *  ```scala
  *  def myExpr[T](using Quotes): Expr[T] = {
- *     import quotes.relect._
+ *     import quotes.reflect._
  *     ...
  *  }
  *  ```
