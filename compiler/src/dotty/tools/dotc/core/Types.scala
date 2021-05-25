@@ -4421,7 +4421,6 @@ object Types {
 
     private[dotc] def link(previous: TypeVar): Unit =
       linkedVar = previous
-      instDirection = previous.instDirection
 
     private[dotc] def isLinked(previous: TypeVar): Boolean =
       previous eq linkedVar
@@ -4489,41 +4488,45 @@ object Types {
      *  is also a singleton type.
      */
     def instantiate(fromBelow: Boolean)(using Context): Type =
-      if instDirection == InstDirection.Other then
-        instDirection = if fromBelow then InstDirection.FromBelow else InstDirection.FromAbove
-      if instDirection == InstDirection.FromBelow
-         && linkedVar != null && linkedVar.inst.isSingleton
-      then
-        // Force new instantiation to be also a singleton.
-        // This is neceesary to make several macro tests pass. An example is pos-macros/i9812.scala.
-        (this <:< defn.SingletonType)
-          .showing(i"add upper singleton bound to $this, success = $result", refinr)
-      var inst = TypeComparer.instanceType(origin, instDirection == InstDirection.FromBelow)
-      if linkedVar != null then
-        refinr.println(i"instantiate $this to $inst, was ${linkedVar.inst}, fromBelow = ${instDirection == InstDirection.FromBelow}")
-        // Instead of instantiating to an extremal type Nothing or Any, pick the previous
-        // instantiation as long as it is compatible with the current constraints.
-        // This is needed because of a particular interaction of type variable instantiation
-        // and implicit search. Before doing an implicit search, some type variables are
-        // instantiated via `instantiatSelected`. During retyping, the implicit argument
-        // is passed explicitly, but if it has type parameters, those parameters become
-        // fresh type variables. Instantiating these type variables is now done in a constraint
-        // that is weaker than the original typing constraint, since the `instantiateSelected`
-        // step is missing. An example with more explanations is run/i7960.scala.
-        val needsOldInstance =
-          if instDirection == InstDirection.FromBelow then
-            inst.isExactlyNothing
-            && !linkedVar.inst.isExactlyNothing
-            && linkedVar.inst <:< this
-          else
-            inst.isExactlyAny
-            && !linkedVar.inst.isExactlyAny
-            && this <:< linkedVar.inst
-        if needsOldInstance then
-          inst = linkedVar.inst
-            .showing(i"avoid extremal instance for $this be instantiating with old $inst", refinr)
+      instDirection = if fromBelow then InstDirection.FromBelow else InstDirection.FromAbove
+      if linkedVar != null
+          && linkedVar.instDirection != instDirection
+          && linkedVar.instDirection != InstDirection.Other then
+        instantiate(!fromBelow)
+      else
+        if instDirection == InstDirection.FromBelow
+          && linkedVar != null && linkedVar.inst.isSingleton
+        then
+          // Force new instantiation to be also a singleton.
+          // This is neceesary to make several macro tests pass. An example is pos-macros/i9812.scala.
+          (this <:< defn.SingletonType)
+            .showing(i"add upper singleton bound to $this, success = $result", refinr)
+        var inst = TypeComparer.instanceType(origin, fromBelow)
+        if linkedVar != null then
+          refinr.println(i"instantiate $this to $inst, was ${linkedVar.inst}, fromBelow = ${instDirection == InstDirection.FromBelow}")
+          // Instead of instantiating to an extremal type Nothing or Any, pick the previous
+          // instantiation as long as it is compatible with the current constraints.
+          // This is needed because of a particular interaction of type variable instantiation
+          // and implicit search. Before doing an implicit search, some type variables are
+          // instantiated via `instantiatSelected`. During retyping, the implicit argument
+          // is passed explicitly, but if it has type parameters, those parameters become
+          // fresh type variables. Instantiating these type variables is now done in a constraint
+          // that is weaker than the original typing constraint, since the `instantiateSelected`
+          // step is missing. An example with more explanations is run/i7960.scala.
+          val needsOldInstance =
+            if instDirection == InstDirection.FromBelow then
+              inst.isExactlyNothing
+              && !linkedVar.inst.isExactlyNothing
+              && linkedVar.inst <:< this
+            else
+              inst.isExactlyAny
+              && !linkedVar.inst.isExactlyAny
+              && this <:< linkedVar.inst
+          if needsOldInstance then
+            inst = linkedVar.inst
+              .showing(i"avoid extremal instance for $this be instantiating with old $inst", refinr)
 
-      instantiateWith(avoidCaptures(inst))
+        instantiateWith(avoidCaptures(inst))
     end instantiate
 
     /** For uninstantiated type variables: the entry in the constraint (either bounds or
