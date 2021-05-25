@@ -33,6 +33,8 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
 
   def phaseName: String = RefineTypes.name
 
+  override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
+
   override def isTyper: Boolean = true
 
   def run(using Context): Unit =

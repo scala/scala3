@@ -216,6 +216,15 @@ class CompilationTests {
     ).checkCompile()
   }
 
+  @Test def refiner: Unit =
+    given TestGroup = TestGroup("testRefiner")
+    aggregateTests(
+      compileFilesInDir("tests/new", refinerOptions),
+      compileFilesInDir("tests/pos", refinerOptions, FileFilter.exclude(TestSources.posTestRefinerExcluded)),
+      compileFilesInDir("tests/run", refinerOptions, FileFilter.exclude(TestSources.runTestRefinerExcluded))
+    ).checkCompile()
+
+
   /** The purpose of this test is three-fold, being able to compile dotty
    *  bootstrapped, and making sure that TASTY can link against a compiled
    *  version of Dotty, and compiling the compiler using the SemanticDB generation

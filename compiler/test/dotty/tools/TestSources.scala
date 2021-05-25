@@ -11,17 +11,21 @@ object TestSources {
 
   def posFromTastyBlacklistFile: String = "compiler/test/dotc/pos-from-tasty.blacklist"
   def posTestPicklingBlacklistFile: String = "compiler/test/dotc/pos-test-pickling.blacklist"
+  def posTestRefinerExcludesFile = "compiler/test/dotc/pos-test-refiner.exludes"
 
   def posFromTastyBlacklisted: List[String] = loadList(posFromTastyBlacklistFile)
   def posTestPicklingBlacklisted: List[String] = loadList(posTestPicklingBlacklistFile)
+  def posTestRefinerExcluded = loadList(posTestRefinerExcludesFile)
 
   // run tests lists
 
   def runFromTastyBlacklistFile: String = "compiler/test/dotc/run-from-tasty.blacklist"
   def runTestPicklingBlacklistFile: String = "compiler/test/dotc/run-test-pickling.blacklist"
+  def runTestRefinerExcludesFile = "compiler/test/dotc/run-test-refiner.exludes"
 
   def runFromTastyBlacklisted: List[String] = loadList(runFromTastyBlacklistFile)
   def runTestPicklingBlacklisted: List[String] = loadList(runTestPicklingBlacklistFile)
+  def runTestRefinerExcluded = loadList(runTestRefinerExcludesFile)
 
   // load lists
 
