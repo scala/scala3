@@ -1283,8 +1283,6 @@ object Parsers {
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
-        case PatDef(_, IdPattern(id, _) :: Nil, _, _) => // TODO: it looks like this case is never reached
-          in.isIdent && in.name == id.name
         case stat: MemberDef if stat.mods.is(Given) => in.token == GIVEN
         case _: PatDef => in.token == VAL
         case _: If => in.token == IF
