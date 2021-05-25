@@ -91,7 +91,7 @@ class TreeChecker extends Phase with SymTransformer {
     // until erasure, see the comment above `Compiler#phases`.
     if (ctx.phaseId <= erasurePhase.id) {
       val initial = symd.initial
-      assert(symd.signature == initial.signature,
+      assert(symd == initial || symd.signature == initial.signature,
         i"""Signature of ${sym.showLocated} changed at phase ${ctx.base.fusedContaining(ctx.phase.prev)}
            |Initial info: ${initial.info}
            |Initial sig : ${initial.signature}
