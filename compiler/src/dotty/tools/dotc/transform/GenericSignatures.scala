@@ -81,21 +81,14 @@ object GenericSignatures {
       val (repr :: _, others) = splitIntersection(bounds)
       builder.append(':')
 
-      // According to the Java spec
-      // (https://docs.oracle.com/javase/specs/jls/se8/html/jls-4.html#jls-4.4),
-      // intersections erase to their first member and must start with a class.
-      // So, if our intersection erases to a trait, in theory we should emit
-      // just that trait in the generic signature even if the intersection type
-      // is composed of multiple traits. But in practice Scala 2 has always
-      // ignored this restriction as intersections of traits seem to be handled
-      // correctly by javac, we do the same here since type soundness seems
-      // more important than adhering to the spec.
+      // In Java, intersections always erase to their first member, so put
+      // whatever parent erases to the Scala intersection erasure first in the
+      // signature.
       if repr.classSymbol.is(Trait) then
+        // An initial ':' is needed if the intersection starts with an interface
+        // (cf https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html#jvms-TypeParameter)
         builder.append(':')
-        boxedSig(repr)
-        // If we wanted to be compliant with the spec, we would `return` here.
-      else
-        boxedSig(repr)
+      boxedSig(repr)
       others.filter(_.classSymbol.is(Trait)).foreach { tp =>
         builder.append(':')
         boxedSig(tp)
