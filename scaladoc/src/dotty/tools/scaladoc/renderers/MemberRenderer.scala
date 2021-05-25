@@ -147,10 +147,9 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
     )
 
   def memberIcon(member: Member) = member.kind match {
-    case Kind.Package => Nil
     case _ =>
       val withCompanion = member.companion.fold("")(_ => "-wc")
-      val iconSpan = span(cls := s"micon ${member.kind.name.head}$withCompanion")()
+      val iconSpan = span(cls := s"micon ${member.kind.name.take(2)}$withCompanion")()
       Seq(member.companion.flatMap(link(_)).fold(iconSpan)(link => a(href := link)(iconSpan)))
   }
 

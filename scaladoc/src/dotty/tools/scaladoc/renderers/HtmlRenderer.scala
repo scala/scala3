@@ -146,7 +146,7 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
 
   private def buildNavigation(pageLink: Link): AppliedTag =
     def navigationIcon(member: Member) = member match {
-      case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.head}"))
+      case m if m.needsOwnPage => Seq(span(cls := s"micon ${member.kind.name.take(2)}"))
       case _ => Nil
     }
 

@@ -73,9 +73,15 @@
 
 .scaladoc-searchbar-result {
     background: white;
-    line-height: 32px;
-    padding-left: 10px;
-    padding-right: 10px;
+    line-height: 24px;
+    display: flex;
+    padding: 4px 10px 4px 10px;
+}
+
+.scaladoc-searchbar-result .micon {
+    height: 16px;
+    width: 16px;
+    margin: 4px 8px 0px 0px;
 }
 
 .scaladoc-searchbar-result:first-of-type {
@@ -88,6 +94,8 @@
 
 .scaladoc-searchbar-result a {
     color: #1f2326;
+    text-indent: -20px;
+    padding-left: 20px;
 }
 
 .scaladoc-searchbar-result .scaladoc-searchbar-location {

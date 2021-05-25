@@ -632,40 +632,60 @@ footer .pull-right {
   color:transparent;
 }
 
-.micon.c {
+.micon.cl {
   content: url("../images/class.svg")
 }
 
-.micon.c-wc {
+.micon.cl-wc {
   content: url("../images/class_comp.svg")
 }
 
-.micon.o {
+.micon.ob {
   content: url("../images/object.svg")
 }
 
-.micon.o-wc {
+.micon.ob-wc {
   content: url("../images/object_comp.svg")
 }
 
-.micon.t {
+.micon.tr {
   content: url("../images/trait.svg")
 }
 
-.micon.t-wc {
+.micon.tr-wc {
   content: url("../images/trait_comp.svg")
 }
 
-.micon.e {
+.micon.en {
   content: url("../images/enum.svg")
 }
 
-.micon.e-wc {
+.micon.en-wc {
   content: url("../images/enum_comp.svg")
 }
 
-.micon.g {
+.micon.gi {
   content: url("../images/given.svg")
+}
+
+.micon.va {
+  content: url("../images/val.svg")
+}
+
+.micon.ty {
+  content: url("../images/type.svg")
+}
+
+.micon.st {
+  content: url("../images/static.svg")
+}
+
+.micon.pa {
+  content: url("../images/package.svg")
+}
+
+.micon.de {
+  content: url("../images/method.svg")
 }
 
 #leftColumn .socials {
