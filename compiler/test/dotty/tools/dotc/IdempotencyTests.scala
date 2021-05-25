@@ -18,9 +18,8 @@ class IdempotencyTests {
   import IdempotencyTests._
   import CompilationTest.aggregateTests
 
-  // Flaky test on Windows
-  // https://github.com/lampepfl/dotty/issues/11885
-  val filter = FileFilter.exclude("i6507b.scala")
+  // ignore flaky tests
+  val filter = FileFilter.NoFilter
 
   @Category(Array(classOf[SlowTests]))
   @Test def idempotency: Unit = {

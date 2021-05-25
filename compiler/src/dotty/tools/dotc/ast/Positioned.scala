@@ -65,12 +65,11 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
     if (span == mySpan) this
     else {
       val newpd: this.type =
-        if (mySpan.isSynthetic) {
-          if (!mySpan.exists && span.exists)
-            envelope(source, span.startPos) // fill in children spans
+        if !mySpan.exists then
+          if span.exists then envelope(source, span.startPos) // fill in children spans
           this
-        }
-        else cloneIn(source)
+        else
+          cloneIn(source)
       newpd.span = span
       newpd
     }
