@@ -65,9 +65,11 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
             (paramss, wrapMethodType(_: Type, paramss, isJava = false))
           case _: ValDef =>
             (Nil, (x: Type) => x)
-        val rhsType = inferredResultType(original, symd.symbol, paramss, paramFn, WildcardType)
-        typedAheadType(original.tpt, rhsType)
-        symd.info = paramFn(rhsType)
+        inContext(ctx.fresh.setOwner(symd.symbol).setTree(original)) {
+          val rhsType = inferredResultType(original, symd.symbol, paramss, paramFn, WildcardType)
+          typedAheadType(original.tpt, rhsType)
+          symd.info = paramFn(rhsType)
+        }
 
       def complete(symd: SymDenotation)(using Context): Unit = completeInCreationContext(symd)
     end RefineCompleter
@@ -110,7 +112,10 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           case Some(ttree) => ttree
           case none =>
             tree match
-              case _: untpd.TypedSplice | _: untpd.Thicket | _: EmptyValDef[?] =>
+              case _: untpd.TypedSplice
+                  | _: untpd.Thicket
+                  | _: EmptyValDef[?]
+                  | _: untpd.TypeTree =>
                 super.typedUnadapted(tree, pt, locked)
               case _ if tree.isType =>
                 promote(tree)
@@ -130,6 +135,12 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           .suchThat(tree.symbol ==)
         val ownType = qualType.select(name, mbr)
         untpd.cpy.Select(tree)(qual1, name).withType(ownType)
+
+    override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
+      if tree.isInstanceOf[InferredTypeTree[_]] && isFullyDefined(pt, ForceDegree.flipBottom) then
+        tree.withType(pt)
+      else
+        promote(tree)
 
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
       val tpt1 = checkSimpleKinded(typedType(tree.tpt))
@@ -186,6 +197,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
         super.typedTypeApply(tree1, pt)
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
+      sym.ensureCompleted()
       if sym.isAnonymousFunction then
         val ddef0 = ddef.asInstanceOf[tpd.DefDef]
         val (rhs2, newTvars) = resetTypeVars(ddef0.rhs)
