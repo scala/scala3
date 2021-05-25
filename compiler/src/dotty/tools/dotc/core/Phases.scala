@@ -106,7 +106,8 @@ object Phases {
               phase
             }
           fusedPhases += phaseToAdd
-          val shouldAddYCheck = YCheckAfter.containsPhase(phaseToAdd) || YCheckAll
+          val shouldAddYCheck =
+            phaseToAdd.isCheckable && (YCheckAfter.containsPhase(phaseToAdd) || YCheckAll)
           if (shouldAddYCheck) {
             val checker = new TreeChecker
             fusedPhases += checker

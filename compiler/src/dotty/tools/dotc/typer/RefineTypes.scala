@@ -9,10 +9,11 @@ import Types._
 import Symbols._
 import StdNames._
 import Decorators._
-import typer.ProtoTypes._
+import ProtoTypes._
+import Inferencing.isFullyDefined
 import config.Printers.refinr
 import ast.{tpd, untpd, Trees}
-import core.NameKinds.{DocArtifactName, OuterSelectName}
+import NameKinds.{DocArtifactName, OuterSelectName, DefaultGetterName}
 import Trees._
 import scala.util.control.NonFatal
 import typer.ErrorReporting._
@@ -26,7 +27,6 @@ import reporting._
 import ProtoTypes._
 import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
-
 class RefineTypes extends Phase, IdentityDenotTransformer:
   import RefineTypes.*
   import ast.tpd.*
@@ -38,11 +38,17 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
   def run(using Context): Unit =
     refinr.println(i"refine types of ${ctx.compilationUnit}")
     val refiner = newRefiner()
+    val unit = ctx.compilationUnit
     val refineCtx = ctx
         .fresh
         .setMode(Mode.ImplicitsEnabled)
         .setTyper(refiner)
-    refiner.typedExpr(ctx.compilationUnit.tpdTree)(using refineCtx)
+    val refinedTree = refiner.typedExpr(unit.tpdTree)(using refineCtx)
+    if ctx.settings.Xprint.value.containsPhase(this) then
+      report.echo(i"discarded result of $unit after refineTypes:\n\n$refinedTree")
+
+  def preRefinePhase = this.prev.asInstanceOf[PreRefine]
+  def thisPhase = this
 
   def newRefiner(): TypeRefiner = TypeRefiner()
 
@@ -50,6 +56,53 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     import ast.tpd.*
 
     override def newLikeThis: Typer = new TypeRefiner
+
+    class RefineCompleter(val original: ValOrDefDef)(using Context) extends LazyType:
+      def completeInCreationContext(symd: SymDenotation): Unit =
+        val (paramss, paramFn) = original match
+          case ddef: DefDef =>
+            val paramss = ddef.paramss.nestedMap(_.symbol)
+            (paramss, wrapMethodType(_: Type, paramss, isJava = false))
+          case _: ValDef =>
+            (Nil, (x: Type) => x)
+        val rhsType = inferredResultType(original, symd.symbol, paramss, paramFn, WildcardType)
+        typedAheadType(original.tpt, rhsType)
+        symd.info = paramFn(rhsType)
+
+      def complete(symd: SymDenotation)(using Context): Unit = completeInCreationContext(symd)
+    end RefineCompleter
+
+    override def typedAhead(tree: untpd.Tree, typed: untpd.Tree => Tree)(using Context): Tree =
+      tree.getAttachment(TypedAhead) match
+        case Some(ttree) => ttree
+        case none =>
+          val ttree = typed(tree)
+          tree.putAttachment(TypedAhead, ttree)
+          ttree
+
+    def resultNeedsRetyping(tree: untpd.ValOrDefDef)(using Context): Boolean =
+      val sym = tree.symbol
+      tree.tpt.isInstanceOf[InferredTypeTree[?]]
+      && (sym.is(Private) || sym.owner.isTerm)
+      && !sym.isOneOf(Param | JavaDefined)
+      && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
+      && !sym.name.is(DefaultGetterName)
+
+    override def index(trees: List[untpd.Tree])(using Context): Context =
+      for case tree: ValOrDefDef <- trees.asInstanceOf[List[Tree]] do
+        val sym = tree.symbol
+        if tree.tpt.isInstanceOf[InferredTypeTree[?]]
+          && (sym.is(Private) || sym.owner.isTerm)
+          && !sym.isOneOf(Param | JavaDefined)
+          && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
+          && !sym.name.is(DefaultGetterName)
+        then
+          tree.symbol.copySymDenotation().installAfter(thisPhase) // reset
+          tree.symbol.copySymDenotation(
+              info = RefineCompleter(tree),
+              initFlags = tree.symbol.flags &~ Touched
+          ).installAfter(preRefinePhase)
+      ctx
 
     override def typedUnadapted(tree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree =
       trace(i"typed $tree, $pt", refinr, show = true) {
@@ -151,6 +204,10 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
         else
           super.typedDefDef(ddef1, sym)
       else super.typedDefDef(ddef, sym)
+
+    override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
+      sym.ensureCompleted()
+      super.typedValDef(vdef, sym)
 
     override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
       if tree.symbol == defn.StdLibPatchesPackage then
