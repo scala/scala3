@@ -1139,10 +1139,13 @@ class Typer extends Namer
         // if expected result type is a wildcard, approximate from above.
         // this can type the greatest set of admissible closures.
         (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
-      case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
+      case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
+      if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
+        (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
+      case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
         (formals,
-         if (sam.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
+         if (mt.isResultDependent)
+           untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
