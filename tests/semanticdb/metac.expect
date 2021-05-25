@@ -4277,14 +4277,20 @@ Schema => SemanticDB v4
 Uri => toplevel.scala
 Text => empty
 Language => Scala
-Symbols => 18 entries
-Occurrences => 42 entries
+Symbols => 28 entries
+Occurrences => 60 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram
 _empty_/MyProgram#`<init>`(). => primary ctor <init>
 _empty_/MyProgram#main(). => static method main
 _empty_/MyProgram#main().(args) => param args
+_empty_/Ord# => trait Ord
+_empty_/Ord#[T] => typeparam T
+_empty_/Ord#`<init>`(). => primary ctor <init>
+_empty_/Ord#compare(). => abstract method compare
+_empty_/Ord#compare().(x) => param x
+_empty_/Ord#compare().(y) => param y
 _empty_/toplevel$package. => final package object _empty_
 _empty_/toplevel$package.MyProgram(). => method MyProgram
 _empty_/toplevel$package.MyProgram().(times) => param times
@@ -4298,6 +4304,10 @@ _empty_/toplevel$package.combine(+1).(y) => param y
 _empty_/toplevel$package.combine(+1).(z) => param z
 _empty_/toplevel$package.combine(+2). => method combine
 _empty_/toplevel$package.foo(). => method foo
+_empty_/toplevel$package.intOrd. => final implicit object intOrd
+_empty_/toplevel$package.intOrd.compare(). => method compare
+_empty_/toplevel$package.intOrd.compare().(x) => param x
+_empty_/toplevel$package.intOrd.compare().(y) => param y
 local0 => val local error
 
 Occurrences:
@@ -4343,4 +4353,22 @@ Occurrences:
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
+[7:6..7:9): Ord <- _empty_/Ord#
+[7:9..7:9): <- _empty_/Ord#`<init>`().
+[7:10..7:11): T <- _empty_/Ord#[T]
+[8:7..8:14): compare <- _empty_/Ord#compare().
+[8:15..8:16): x <- _empty_/Ord#compare().(x)
+[8:18..8:19): T -> _empty_/Ord#[T]
+[8:21..8:22): y <- _empty_/Ord#compare().(y)
+[8:24..8:25): T -> _empty_/Ord#[T]
+[8:28..8:31): Int -> scala/Int#
+[10:6..10:12): intOrd <- _empty_/toplevel$package.intOrd.
+[10:14..10:17): Ord -> _empty_/Ord#
+[10:18..10:21): Int -> scala/Int#
+[11:7..11:14): compare <- _empty_/toplevel$package.intOrd.compare().
+[11:15..11:16): x <- _empty_/toplevel$package.intOrd.compare().(x)
+[11:18..11:21): Int -> scala/Int#
+[11:23..11:24): y <- _empty_/toplevel$package.intOrd.compare().(y)
+[11:26..11:29): Int -> scala/Int#
+[11:33..11:36): ??? -> scala/Predef.`???`().
 
