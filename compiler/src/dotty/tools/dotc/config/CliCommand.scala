@@ -63,6 +63,7 @@ trait CliCommand:
     }
 
     sg.processArguments(expandedArguments, processAll = true, settingsState = ss)
+  end distill
 
   /** Creates a help message for a subset of options based on cond */
   protected def availableOptionsMsg(cond: Setting[?] => Boolean)(using settings: ConcreteSettings)(using SettingsState): String =
@@ -108,6 +109,7 @@ trait CliCommand:
           ""
       s"${formatName(s.name)} ${formatDescription(s.description)}${formatSetting("Default", defaultValue)}${formatSetting("Choices", s.legalChoices)}"
     ss.map(helpStr).mkString("", "\n", s"\n${formatName("@<file>")} ${formatDescription("A text file containing compiler arguments (options and source files).")}\n")
+  end availableOptionsMsg
 
   protected def shortUsage: String = s"Usage: $cmdName <options> <source files>"
 
