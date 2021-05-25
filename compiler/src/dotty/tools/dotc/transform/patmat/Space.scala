@@ -846,6 +846,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
 
     if (!exhaustivityCheckable(sel)) return
 
+    debug.println("checking " + _match.show)
+    debug.println("selTyp = " + selTyp.show)
+
     val patternSpace = Or(cases.foldLeft(List.empty[Space]) { (acc, x) =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
       debug.println(s"${x.pat.show} ====> ${show(space)}")
