@@ -148,6 +148,11 @@ with `with-compiler` in their name.
 
 ### SemanticDB tests
 
+```bash
+$ sbt
+> scala3-compiler-bootstrapped/testOnly dotty.tools.dotc.semanticdb.SemanticdbTests
+```
+
 The output of the `extractSemanticDB` phase, enabled with `-Xsemanticdb` is tested with the bootstrapped JUnit test
 `dotty.tools.dotc.semanticdb.SemanticdbTests`. It uses source files in `tests/semanticdb/expect` to generate
 two kinds of output file that are compared with "expect files": placement of semanticdb symbol occurrences inline in
