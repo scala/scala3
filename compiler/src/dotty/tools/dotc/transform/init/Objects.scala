@@ -74,6 +74,20 @@ class Objects {
    */
   case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value], outers: mutable.Map[ClassSymbol, Value])
 
+  /** The environment for method parameters */
+  object Env {
+    opaque type Env = Map[Symbol, Value]
+    def apply(bindings: Map[Symbol, Value]): Env = bindings
+
+    extension (env: Env)
+      def lookup(sym: Symbol): Value = env(sym)
+  }
+
+  type Env = Env.Env
+  def env(using env: Env) = env
+
+  import Env._
+
   /** Abstract heap stores abstract objects
    *
    *  As in the OOPSLA paper, the abstract heap is monotonistic.
@@ -144,7 +158,7 @@ class Objects {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Context, Trace) ?=> T
+  type Contextual[T] = (Env, Context, Trace) ?=> T
 
 // ----- Error Handling -----------------------------------
 
