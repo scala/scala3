@@ -159,7 +159,7 @@ class TyperState() {
    *  in this constraint and its predecessors where necessary.
    */
   def ensureNotConflicting(other: Constraint)(using Context): Unit =
-    val conflicting = constraint.domainLambdas.find(constraint.hasConflictingTypeVarsFor(_, other))
+    val conflicting = constraint.domainLambdas.filter(constraint.hasConflictingTypeVarsFor(_, other))
     for tl <- conflicting do
       val tl1 = constraint.ensureFresh(tl)
       for case (tvar: TypeVar, pref1) <- tl.paramRefs.map(constraint.typeVarOfParam).lazyZip(tl1.paramRefs) do
