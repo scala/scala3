@@ -46,7 +46,9 @@ Scaladoc comments go before the items they pertain to in a special comment block
 
 In the example above, this Scaladoc comment is associated with the method square since it is right before it in the source code.
 
-Scaladoc comments can go before fields, methods, classes, traits, objects and even (especially) package objects. Scaladoc comments for package objects make a great place to put an overview of a specific package or API.
+Scaladoc comments can go before fields, methods, classes, traits, objects.
+For now, scaladoc doesn't support straightforward solution to document packages. There is a dedicated github
+[issue](https://github.com/lampepfl/dotty/issues/11284), where you can check the current status of the problem.
 
 For class primary constructors which in Scala coincide with the definition of the class itself, a @constructor tag is used to target a comment to be put on the primary constructor documentation rather than the class overview.
 

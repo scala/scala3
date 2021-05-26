@@ -99,7 +99,6 @@ The file from which the root package documentation should be imported.
 
 ##### -author
 
-Include authors.
 Adding authors in docstring with `@author Name Surname` by default won't be included in generated html documentation.
 If you would like to label classes with authors explicitly, run scaladoc with this flag.
 
