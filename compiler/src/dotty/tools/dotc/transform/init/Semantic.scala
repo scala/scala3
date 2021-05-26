@@ -129,7 +129,7 @@ class Semantic {
   type Heap = Heap.Heap
 
   import Heap._
-  def heap(using h: Heap): Heap = h
+  val heap: Heap = Heap.empty
 
   object Promoted {
     /** Values that have been safely promoted */
@@ -205,7 +205,7 @@ class Semantic {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Heap, Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Context, Trace, Promoted) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -268,7 +268,13 @@ class Semantic {
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else if addr.isInstanceOf[Warm] then
-              if target.hasSource then
+              if target.is(Flags.ParamAccessor) then
+                // possible for trait parameters
+                // see tests/init/neg/trait2.scala
+                //
+                // return `Hot` here, errors are reported in checking `ThisRef`
+                Result(Hot, Nil)
+              else if target.hasSource then
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, target.owner.asClass, cacheResult = true)
               else
@@ -310,7 +316,7 @@ class Semantic {
               val cls = target.owner.enclosingClass.asClass
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using heap, ctx, trace.add(tpl), promoted)
+                eval(tpl, addr, cls, cacheResult = true)(using ctx, trace.add(tpl), promoted)
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, cls, cacheResult = true)
@@ -608,11 +614,11 @@ class Semantic {
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using heap, ctx, trace2)
+          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using ctx, trace2)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, superType = NoType, source = expr)(using heap, ctx, trace2)
+          res.call(ref.symbol, superType = NoType, source = expr)(using ctx, trace2)
 
         case id: Ident =>
           id.tpe match
@@ -624,7 +630,7 @@ class Semantic {
             thisValue2.call(id.symbol, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, superType = NoType, source = expr)(using heap, ctx, trace2)
+            res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace2)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -816,7 +822,7 @@ class Semantic {
 
       // follow constructor
       if cls.hasSource then
-        val res2 = thisV.call(ctor, superType = NoType, source)(using heap, ctx, trace.add(source))
+        val res2 = thisV.call(ctor, superType = NoType, source)(using ctx, trace.add(source))
         errorBuffer ++= res2.errors
 
     // parents
