@@ -123,6 +123,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
       checkInternalAnnotations(sym)
 
+      stripJSAnnotsOnExported(sym)
+
       /* Checks related to @js.native:
        * - if @js.native, verify that it is allowed in this context, and if
        *   yes, compute and store the JS native load spec
@@ -296,6 +298,12 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           }
 
           // TODO Warn for known duplicate property names
+
+          super.transform(tree)
+
+        case _: Export =>
+          if anyEnclosingOwner is OwnerKind.JSNative then
+            report.error("Native JS traits, classes and objects cannot contain exported definitions.", tree)
 
           super.transform(tree)
 
@@ -814,20 +822,41 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       super.transform(tree)
     }
 
-    private def checkRHSCallsJSNative(tree: ValOrDefDef, longKindStr: String)(using Context): Unit = {
-      // Check that the rhs is exactly `= js.native`
-      tree.rhs match {
-        case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
-          // ok
-        case _ =>
-          val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
-          report.error(s"$longKindStr may only call js.native.", pos)
-      }
+    /** Removes annotations from exported definitions (e.g. `export foo.bar`):
+     *  - `js.native`
+     *  - `js.annotation.*`
+     *  - `js.annotation.internal.*`
+     */
+    private def stripJSAnnotsOnExported(sym: Symbol)(using Context): Unit =
+      if !sym.is(Exported) then return
 
-      // Check that the resul type was explicitly specified
-      // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
-      if (tree.tpt.span.isSynthetic)
-        report.error(i"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
+      val JSNativeAnnot = jsdefn.JSNativeAnnot
+      val JSAnnotPackage = jsdefn.JSAnnotPackage
+      val JSAnnotInternalPackage = jsdefn.JSAnnotInternalPackage
+
+      extension (sym: Symbol) def isJSAnnot =
+        (sym eq JSNativeAnnot) || (sym.owner eq JSAnnotPackage) || (sym.owner eq JSAnnotInternalPackage)
+
+      val newAnnots = sym.annotations.filterConserve(!_.symbol.isJSAnnot)
+      if newAnnots ne sym.annotations then
+        sym.annotations = newAnnots
+    end stripJSAnnotsOnExported
+
+    private def checkRHSCallsJSNative(tree: ValOrDefDef, longKindStr: String)(using Context): Unit = {
+      if !tree.symbol.is(Exported) then
+        // Check that the rhs is exactly `= js.native`
+        tree.rhs match {
+          case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
+            // ok
+          case _ =>
+            val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
+            report.error(s"$longKindStr may only call js.native.", pos)
+        }
+
+        // Check that the resul type was explicitly specified
+        // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
+        if (tree.tpt.span.isSynthetic)
+          report.error(i"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
     }
 
     private def checkJSNativeSpecificAnnotsOnNonJSNative(memberDef: MemberDef)(using Context): Unit = {

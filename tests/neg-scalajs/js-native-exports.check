@@ -1,0 +1,12 @@
+-- Error: tests/neg-scalajs/js-native-exports.scala:15:11 --------------------------------------------------------------
+15 |    export bag.{str, int} // error
+   |    ^^^^^^^^^^^^^^^^^^^^^
+   |    Native JS traits, classes and objects cannot contain exported definitions.
+-- Error: tests/neg-scalajs/js-native-exports.scala:21:11 --------------------------------------------------------------
+21 |    export bag.{str, int} // error
+   |    ^^^^^^^^^^^^^^^^^^^^^
+   |    Native JS traits, classes and objects cannot contain exported definitions.
+-- Error: tests/neg-scalajs/js-native-exports.scala:28:11 --------------------------------------------------------------
+28 |    export bag.{str, int} // error
+   |    ^^^^^^^^^^^^^^^^^^^^^
+   |    Native JS traits, classes and objects cannot contain exported definitions.
