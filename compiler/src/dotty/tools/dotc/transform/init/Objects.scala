@@ -50,7 +50,7 @@ class Objects {
   case class ObjectRef(klass: ClassSymbol) extends Addr
 
   /** An instance of class */
-  case class Instance(klass: ClassSymbol, outer: Value) extends Addr
+  case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
@@ -78,6 +78,11 @@ class Objects {
   object Env {
     opaque type Env = Map[Symbol, Value]
     def apply(bindings: Map[Symbol, Value]): Env = bindings
+
+    def apply(ddef: DefDef, args: List[Value])(using Context): Env =
+      val params = ddef.paramss.collect(l => ValDefs.unapply(l)).asInstanceOf[List[ValDef]].map(_.symbol)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+      params.zip(args).toMap
 
     extension (env: Env)
       def lookup(sym: Symbol): Value = env(sym)
@@ -144,17 +149,14 @@ class Objects {
 
     def +(error: Error): Result = this.copy(errors = this.errors :+ error)
 
-    def ensureHot(msg: String, source: Tree): Contextual[Result] =
-      this ++ value.promote(msg, source)
-
     def select(f: Symbol, source: Tree): Contextual[Result] =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, superType: Type, source: Tree): Contextual[Result] =
-      value.call(meth, superType, source) ++ errors
+    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree): Contextual[Result] =
+      value.call(meth, args, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
-      value.instantiate(klass, ctor, source) ++ errors
+    def instantiate(klass: ClassSymbol, args: List[Value], ctor: Symbol, source: Tree): Contextual[Result] =
+      value.instantiate(klass, ctor, args, source) ++ errors
   }
 
   /** The state that threads through the interpreter */
@@ -202,37 +204,34 @@ class Objects {
   extension (value: Value)
     def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] =
       value match {
-        case Hot  =>
-          Result(Hot, Errors.empty)
+        case Bottom  =>
+          Result(Bottom, Errors.empty)
 
         case Cold =>
           val error = AccessCold(field, source, trace.toVector)
-          Result(Hot, error :: Nil)
+          Result(Bottom, error :: Nil)
 
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
           if target.is(Flags.Lazy) then
-            value.call(target, superType = NoType, source, needResolve = false)
+            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
-            else if addr.isInstanceOf[Warm] then
-              if target.is(Flags.ParamAccessor) then
-                // possible for trait parameters
-                // see tests/init/neg/trait2.scala
-                //
-                // return `Hot` here, errors are reported in checking `ThisRef`
-                Result(Hot, Nil)
-              else if target.hasSource then
-                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, target.owner.asClass, cacheResult = true)
-              else
-                val error = CallUnknown(field, source, trace.toVector)
-                Result(Hot, error :: Nil)
+            else if target.is(Flags.ParamAccessor) then
+              // possible for trait parameters
+              // see tests/init/neg/trait2.scala
+              //
+              // return `Bottom` here, errors are reported in checking `ThisRef`
+              Result(Bottom, Nil)
+            else if target.hasSource then
+              val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
+              eval(rhs, addr, target.owner.asClass, cacheResult = true)
             else
-              val error = AccessNonInit(target, trace.add(source).toVector)
-              Result(Hot, error :: Nil)
+              val error = CallUnknown(field, source, trace.toVector)
+              Result(Bottom, error :: Nil)
 
         case _: Fun =>
           ???
@@ -244,14 +243,14 @@ class Objects {
           Result(value2, errors)
       }
 
-    def call(meth: Symbol, superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
+    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
       value match {
-        case Hot  =>
-          Result(Hot, Errors.empty)
+        case Bottom  =>
+          Result(Bottom, Errors.empty)
 
         case Cold =>
           val error = CallCold(meth, source, trace.toVector)
-          Result(Hot, error :: Nil)
+          Result(Bottom, error :: Nil)
 
         case addr: Addr =>
           val target =
@@ -261,20 +260,21 @@ class Objects {
               resolveSuper(addr.klass, superType, meth)
             else
               resolve(addr.klass, meth)
-          if target.isOneOf(Flags.Method | Flags.Lazy) then
+          if target.isOneOf(Flags.Method) then
             if target.hasSource then
               val cls = target.owner.enclosingClass.asClass
+              val ddef = target.defTree.asInstanceOf[DefDef]
+              given Env = Env(ddef, args)
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using ctx, trace.add(tpl), promoted)
+                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(tpl))
               else
-                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, cls, cacheResult = true)
+                eval(ddef.rhs, addr, cls, cacheResult = true)
             else if addr.canIgnoreMethodCall(target) then
-              Result(Hot, Nil)
+              Result(Bottom, Nil)
             else
               val error = CallUnknown(target, source, trace.toVector)
-              Result(Hot, error :: Nil)
+              Result(Bottom, error :: Nil)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
@@ -288,40 +288,47 @@ class Objects {
           else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
-          val resList = refs.map(_.call(meth, superType, source))
+          val resList = refs.map(_.call(meth, args, superType, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value match {
-        case Hot  =>
-          Result(Hot, Errors.empty)
+        case Bottom  =>
+          Result(Bottom, Errors.empty)
 
         case Cold =>
           val error = CallCold(ctor, source, trace.toVector)
-          Result(Hot, error :: Nil)
+          Result(Bottom, error :: Nil)
 
         case addr: Addr =>
-          // widen the outer to finitize addresses
-          val outer = addr match
-            case Warm(_, _: Warm) => Cold
-            case _ => addr
+          // widen the outer and args to finitize addresses
+          extension (value: Value)
+            def widen: Value = value match
+              case RefSet(refs) => refs.map(_.widen).join
+              case Instance(_, outer, _, args) =>
+                val nested = (outer :: args).exists(_.isInstanceOf[Instance])
+                if nested then Cold
+                else value
+              case _ => value
 
-          val value = Warm(klass, outer)
-          if !heap.contains(value) then
-            val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
-            heap.update(value, obj)
-          val res = value.call(ctor, superType = NoType, source)
-          Result(value, res.errors)
+          val outerWidened = value.widen
+          val argsWidened = args.map(_.widen)
+          val inst = Instance(klass, outerWidened, ctor, argsWidened)
+          if !heap.contains(inst) then
+            val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outerWidened))
+            heap.update(inst, obj)
+          val res = inst.call(ctor, argsWidened, superType = NoType, source)
+          Result(inst, res.errors)
 
         case Fun(body, thisV, klass) =>
           ??? // impossible
 
         case RefSet(refs) =>
-          val resList = refs.map(_.instantiate(klass, ctor, source))
+          val resList = refs.map(_.instantiate(klass, ctor, args, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
