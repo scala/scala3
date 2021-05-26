@@ -24,7 +24,7 @@ object Sidebar:
   private object RawTypeRef extends TypeReference[RawInnerTpe]
 
   private def toSidebar(r: RawInput): Sidebar = r match
-    case RawInput(title, url, list) if title.nonEmpty && url.nonEmpty && list.isEmpty() =>
+    case RawInput(title, url, list) if title.nonEmpty && url.nonEmpty && list.isEmpty() || title == "Blog" =>
       Sidebar.Page(title, url)
     case RawInput(title, url, list) if title.nonEmpty && url.isEmpty && !list.isEmpty() =>
       Sidebar.Category(title, list.asScala.map(toSidebar).toList)
