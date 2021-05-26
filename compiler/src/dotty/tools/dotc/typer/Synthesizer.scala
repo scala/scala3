@@ -163,7 +163,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     formal.argInfos match
       case arg :: Nil =>
-        fullyDefinedType(arg.dealias, "ValueOf argument", span).normalized match
+        fullyDefinedType(arg, "ValueOf argument", span).normalized.dealias match
           case ConstantType(c: Constant) =>
             success(Literal(c))
           case TypeRef(_, sym) if sym == defn.UnitClass =>
