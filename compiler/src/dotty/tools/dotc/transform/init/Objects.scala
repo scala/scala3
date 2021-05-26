@@ -17,38 +17,17 @@ import Errors._
 
 import scala.collection.mutable
 
-class Semantic {
+class Objects {
   import Semantic._
 
 // ----- Domain definitions --------------------------------
 
   /** Abstract values
    *
-   *  Value = Hot | Cold | Warm | ThisRef | Fun | RefSet
+   *  Value = Cold | ObjectRef | Instance | Fun | RefSet
    *
-   *                 Cold
-   *        ┌──────►  ▲   ◄──┐  ◄────┐
-   *        │         │      │       │
-   *        │         │      │       │
-   *   ThisRef(C)     │      │       │
-   *        ▲         │      │       │
-   *        │     Warm(D)   Fun    RefSet
-   *        │         ▲      ▲       ▲
-   *        │         │      │       │
-   *      Warm(C)     │      │       │
-   *        ▲         │      │       │
-   *        │         │      │       │
-   *        └─────────┴──────┴───────┘
-   *                  Hot
-   *
-   *   The most important ordering is the following:
-   *
-   *       Hot ⊑ Warm(C) ⊑ ThisRef(C) ⊑ Cold
-   *
-   *   The diagram above does not reflect relationship between `RefSet`
-   *   and other values. `RefSet` represents a set of values which could
-   *   be `ThisRef`, `Warm` or `Fun`. The following ordering applies for
-   *   RefSet:
+   *  `RefSet` represents a set of values which could be `ObjectRef`,
+   *  `Instance` or `Fun`. The following ordering applies for RefSet:
    *
    *         R_a ⊑ R_b if R_a ⊆ R_b
    *
@@ -59,25 +38,19 @@ class Semantic {
     def show: String = this.toString()
   }
 
-  /** A transitively initialized object */
-  case object Hot extends Value
-
-  /** An object with unknown initialization status */
+  /** An unknown object */
   case object Cold extends Value
 
   sealed abstract class Addr extends Value {
     def klass: ClassSymbol
   }
 
-  /** A reference to the object under initialization pointed by `this`
+  /** A reference to a static object
    */
-  case class ThisRef(klass: ClassSymbol) extends Addr
+  case class ObjectRef(klass: ClassSymbol) extends Addr
 
-  /** An object with all fields initialized but reaches objects under initialization
-   *
-   *  We need to restrict nesting levels of `outer` to finitize the domain.
-   */
-  case class Warm(klass: ClassSymbol, outer: Value) extends Addr
+  /** An instance of class */
+  case class Instance(klass: ClassSymbol, outer: Value) extends Addr
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
@@ -87,6 +60,8 @@ class Semantic {
    * It comes from `if` expressions.
    */
   case class RefSet(refs: List[Fun | Addr]) extends Value
+
+  val Bottom: Value = RefSet(Nil)
 
   // end of value definition
 
@@ -131,42 +106,6 @@ class Semantic {
   import Heap._
   val heap: Heap = Heap.empty
 
-  object Promoted {
-    /** Values that have been safely promoted */
-    opaque type Promoted = mutable.Set[Value]
-
-    /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Promoted = mutable.Set.empty
-
-    extension (promoted: Promoted)
-      def contains(value: Value): Boolean = promoted.contains(value)
-      def add(value: Value): Unit = promoted += value
-      def remove(value: Value): Unit = promoted -= value
-    end extension
-  }
-  type Promoted = Promoted.Promoted
-
-  import Promoted._
-  def promoted(using p: Promoted): Promoted = p
-
-  /** Interpreter configuration
-   *
-   * The (abstract) interpreter can be seen as a push-down automaton
-   * that transits between the configurations where the stack is the
-   * implicit call stack of the meta-language.
-   *
-   * It's important that the configuration is finite for the analysis
-   * to terminate.
-   *
-   * For soundness, we need to compute fixed point of the cache, which
-   * maps configuration to evaluation result.
-   *
-   * Thanks to heap monotonicity, heap is not part of the configuration.
-   * Which also avoid computing fix-point on the cache, as the cache is
-   * immutable.
-   */
-  case class Config(thisV: Value, expr: Tree)
-
   /** Cache used to terminate the analysis
    *
    * A finitary configuration is not enough for the analysis to
@@ -205,7 +144,7 @@ class Semantic {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Context, Trace) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -228,25 +167,22 @@ class Semantic {
   extension (a: Value)
     def join(b: Value): Value =
       (a, b) match
-      case (Hot, _)  => b
-      case (_, Hot)  => a
+      case (Bottom, _)  => b
+      case (_, Bottom)  => a
 
       case (Cold, _) => Cold
       case (_, Cold) => Cold
 
-      case (a: Warm, b: ThisRef) if a.klass == b.klass => b
-      case (a: ThisRef, b: Warm) if a.klass == b.klass => a
+      case (a: (Fun | Addr), b: (Fun | Addr)) => RefSet(a :: b :: Nil)
 
-      case (a: (Fun | Warm | ThisRef), b: (Fun | Warm | ThisRef)) => RefSet(a :: b :: Nil)
-
-      case (a: (Fun | Warm | ThisRef), RefSet(refs))    => RefSet(a :: refs)
-      case (RefSet(refs), b: (Fun | Warm | ThisRef))    => RefSet(b :: refs)
+      case (a: (Fun | Addr), RefSet(refs))    => RefSet(a :: refs)
+      case (RefSet(refs), b: (Fun | Addr))    => RefSet(b :: refs)
 
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
 
   extension (values: Seq[Value])
     def join: Value =
-      if values.isEmpty then Hot
+      if values.isEmpty then Bottom
       else values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (value: Value)
@@ -378,144 +314,6 @@ class Semantic {
       }
   end extension
 
-// ----- Promotion ----------------------------------------------------
-
-  extension (value: Value)
-    /** Can we promote the value by checking the extrinsic values?
-     *
-     *  The extrinsic values are environment values, e.g. outers for `Warm`
-     *  and `thisV` captured in functions.
-     *
-     *  This is a fast track for early promotion of values.
-     */
-    def canPromoteExtrinsic: Contextual[Boolean] =
-      value match
-      case Hot   =>  true
-      case Cold  =>  false
-
-      case warm: Warm  =>
-        warm.outer.canPromoteExtrinsic && {
-          promoted.add(warm)
-          true
-        }
-
-      case thisRef: ThisRef =>
-        promoted.contains(thisRef) || {
-          val obj = heap(thisRef)
-          // If we have all fields initialized, then we can promote This to hot.
-          val allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
-            val sym = denot.symbol
-            sym.isOneOf(Flags.Lazy | Flags.Deferred) || obj.fields.contains(sym)
-          }
-          if allFieldsInitialized then promoted.add(thisRef)
-          allFieldsInitialized
-        }
-
-      case fun: Fun =>
-        fun.thisV.canPromoteExtrinsic && {
-          promoted.add(fun)
-          true
-        }
-
-      case RefSet(refs) =>
-        refs.forall(_.canPromoteExtrinsic)
-
-    end canPromoteExtrinsic
-
-    /** Promotion of values to hot */
-    def promote(msg: String, source: Tree): Contextual[List[Error]] =
-      value match
-      case Hot   =>  Nil
-
-      case Cold  =>  PromoteError(msg, source, trace.toVector) :: Nil
-
-      case thisRef: ThisRef =>
-        if promoted.contains(thisRef) then Nil
-        else if thisRef.canPromoteExtrinsic then Nil
-        else PromoteError(msg, source, trace.toVector) :: Nil
-
-      case warm: Warm =>
-        if promoted.contains(warm) then Nil
-        else if warm.canPromoteExtrinsic then Nil
-        else {
-          promoted.add(warm)
-          val errors = warm.tryPromote(msg, source)
-          if errors.nonEmpty then promoted.remove(warm)
-          errors
-        }
-
-      case fun @ Fun(body, thisV, klass) =>
-        if promoted.contains(fun) then Nil
-        else
-          val res = eval(body, thisV, klass)
-          val errors2 = res.value.promote(msg, source)
-          if (res.errors.nonEmpty || errors2.nonEmpty)
-            UnsafePromotion(msg, source, trace.toVector, res.errors ++ errors2) :: Nil
-          else
-            promoted.add(fun)
-            Nil
-
-      case RefSet(refs) =>
-        refs.flatMap(_.promote(msg, source))
-  end extension
-
-  extension (warm: Warm)
-    /** Try early promotion of warm objects
-     *
-     *  Promotion is expensive and should only be performed for small classes.
-     *
-     *  1. for each concrete method `m` of the warm object:
-     *     call the method and promote the result
-     *
-     *  2. for each concrete field `f` of the warm object:
-     *     promote the field value
-     *
-     *  If the object contains nested classes as members, the checker simply
-     *  reports a warning to avoid expensive checks.
-     *
-     *  TODO: we need to revisit whether this is needed once we make the
-     *  system more flexible in other dimentions: e.g. leak to
-     *  methods or constructors, or use ownership for creating cold data structures.
-     */
-    def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
-      val classRef = warm.klass.appliedRef
-      if classRef.memberClasses.nonEmpty then
-        return PromoteError(msg, source, trace.toVector) :: Nil
-
-      val fields  = classRef.fields
-      val methods = classRef.membersBasedOnFlags(Flags.Method, Flags.Deferred | Flags.Accessor)
-      val buffer  = new mutable.ArrayBuffer[Error]
-
-      fields.exists { denot =>
-        val f = denot.symbol
-        if !f.isOneOf(Flags.Deferred | Flags.Private | Flags.Protected) && f.hasSource then
-          val trace2 = trace.add(f.defTree)
-          val res = warm.select(f, source)
-          locally {
-            given Trace = trace2
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
-      }
-
-      buffer.nonEmpty || methods.exists { denot =>
-        val m = denot.symbol
-        if !m.isConstructor && m.hasSource then
-          val trace2 = trace.add(m.defTree)
-          locally {
-            given Trace = trace2
-            val res = warm.call(m, superType = NoType, source = source)
-            buffer ++= res.ensureHot(msg, source).errors
-          }
-        buffer.nonEmpty
-      }
-
-      if buffer.isEmpty then Nil
-      else UnsafePromotion(msg, source, trace.toVector, buffer.toList) :: Nil
-    }
-
-  end extension
-
 // ----- Policies ------------------------------------------------------
   extension (value: Addr)
     /** Can the method call on `value` be ignored?
@@ -643,7 +441,7 @@ class Semantic {
 
       case Typed(expr, tpt) =>
         if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, Errors.empty)
-        else eval(expr, thisV, klass) ++ checkTermUsage(tpt, thisV, klass)
+        else eval(expr, thisV, klass)
 
       case NamedArg(name, arg) =>
         eval(arg, thisV, klass)
@@ -731,8 +529,7 @@ class Semantic {
 
       case tdef: TypeDef =>
         // local type definition
-        if tdef.isClassDef then Result(Hot, Errors.empty)
-        else Result(Hot, checkTermUsage(tdef.rhs, thisV, klass))
+        Result(Hot, Errors.empty)
 
       case tpl: Template =>
         init(tpl, thisV, klass)
@@ -885,108 +682,4 @@ class Semantic {
 
     Result(thisV, errorBuffer.toList)
   }
-
-  /** Check that path in path-dependent types are initialized
-   *
-   *  This is intended to avoid type soundness issues in Dotty.
-   */
-  def checkTermUsage(tpt: Tree, thisV: Addr, klass: ClassSymbol): Contextual[List[Error]] =
-    val buf = new mutable.ArrayBuffer[Error]
-    val traverser = new TypeTraverser {
-      def traverse(tp: Type): Unit = tp match {
-        case TermRef(_: SingletonType, _) =>
-          buf ++= cases(tp, thisV, klass, tpt).errors
-        case _ =>
-          traverseChildren(tp)
-      }
-    }
-    traverser.traverse(tpt.tpe)
-    buf.toList
-
-}
-
-object Semantic {
-
-// ----- Utility methods and extractors --------------------------------
-
-  def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
-    case tref: TypeRef => tref
-    case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
-  }
-
-  opaque type Arg  = Tree | ByNameArg
-  case class ByNameArg(tree: Tree)
-
-  extension (arg: Arg)
-    def isByName = arg.isInstanceOf[ByNameArg]
-    def tree: Tree = arg match
-      case t: Tree      => t
-      case ByNameArg(t) => t
-
-  object Call {
-
-    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
-      tree match
-      case Apply(fn, args) =>
-        val argTps = fn.tpe.widen match
-          case mt: MethodType => mt.paramInfos
-        val normArgs: List[Arg] = args.zip(argTps).map {
-          case (arg, _: ExprType) => ByNameArg(arg)
-          case (arg, _)           => arg
-        }
-        unapply(fn) match
-        case Some((ref, args0)) => Some((ref, args0 :+ normArgs))
-        case None => None
-
-      case TypeApply(fn, targs) =>
-        unapply(fn)
-
-      case ref: RefTree if ref.tpe.widenSingleton.isInstanceOf[MethodicType] =>
-        Some((ref, Nil))
-
-      case _ => None
-  }
-
-  object NewExpr {
-    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Arg]])] =
-      tree match
-      case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
-        val tref = typeRefOf(newTree.tpe)
-        Some((tref, newTree, fn.symbol, argss))
-      case _ => None
-  }
-
-  object PolyFun {
-    def unapply(tree: Tree)(using Context): Option[Tree] =
-      tree match
-      case Block((cdef: TypeDef) :: Nil, Typed(NewExpr(tref, _, _, _), _))
-      if tref.symbol.isAnonymousClass && tref <:< defn.PolyFunctionType
-      =>
-        val body = cdef.rhs.asInstanceOf[Template].body
-        val apply = body.head.asInstanceOf[DefDef]
-        Some(apply.rhs)
-      case _ =>
-        None
-  }
-
-  extension (symbol: Symbol) def hasSource(using Context): Boolean =
-    !symbol.defTree.isEmpty
-
-  def resolve(cls: ClassSymbol, sym: Symbol)(using Context): Symbol =
-    if (sym.isEffectivelyFinal || sym.isConstructor) sym
-    else sym.matchingMember(cls.appliedRef)
-
-  def resolveSuper(cls: ClassSymbol, superType: Type, sym: Symbol)(using Context): Symbol = {
-    import annotation.tailrec
-    @tailrec def loop(bcs: List[ClassSymbol]): Symbol = bcs match {
-      case bc :: bcs1 =>
-        val cand = sym.matchingDecl(bcs.head, cls.thisType)
-          .suchThat(alt => !alt.is(Flags.Deferred)).symbol
-        if (cand.exists) cand else loop(bcs.tail)
-      case _ =>
-        NoSymbol
-    }
-    loop(cls.info.baseClasses.dropWhile(sym.owner != _))
-  }
-
 }
