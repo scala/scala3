@@ -492,7 +492,12 @@ object Implicits:
   /** An ambiguous implicits failure */
   class AmbiguousImplicits(val alt1: SearchSuccess, val alt2: SearchSuccess, val expectedType: Type, val argument: Tree) extends SearchFailureType {
     def explanation(using Context): String =
-      em"both ${err.refStr(alt1.ref)} and ${err.refStr(alt2.ref)} $qualify"
+      var str1 = err.refStr(alt1.ref)
+      var str2 = err.refStr(alt2.ref)
+      if str1 == str2 then
+        str1 = ctx.printer.toTextRef(alt1.ref).show
+        str2 = ctx.printer.toTextRef(alt2.ref).show
+      em"both $str1 and $str2 $qualify"
     override def whyNoConversion(using Context): String =
       if !argument.isEmpty && argument.tpe.widen.isRef(defn.NothingClass) then
         ""
