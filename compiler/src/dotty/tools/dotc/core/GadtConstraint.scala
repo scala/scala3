@@ -589,7 +589,7 @@ final class ProperGadtConstraint private(
       case null =>
         /** The type hasn't been registered yet, try internalizing it */
         ntp match {
-          case TypeRef(path: TermRef, d: Designator) if internalizing && isAbstract(path, d) =>
+          case TypeRef(path: TermRef, d: Designator) if internalizing && isAbstract(path, d) && !path.symbol.is(Flags.Package) =>
             gadts.println(i"**** try to internalize type: $path.$d, ${ctx.mode.is(Mode.GadtConstraintInference)}")
             internalizeTypeMember(path, d)
           case _ => null
