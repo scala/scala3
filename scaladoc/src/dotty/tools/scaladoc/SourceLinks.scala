@@ -125,7 +125,7 @@ object SourceLinks:
       | €{FILE_PATH}, and €{FILE_LINE} patterns
       |
       |
-      |Template can defined only by subset of sources defined by path prefix represented by `<sub-path>`.
+      |Template can be defined only by subset of sources defined by path prefix represented by `<sub-path>`.
       |In such case paths used in templates will be relativized against `<sub-path>`""".stripMargin
 
   def load(config: Seq[String], revision: Option[String], projectRoot: Path = Paths.get("").toAbsolutePath)(using CompilerContext): SourceLinks =
