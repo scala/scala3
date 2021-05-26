@@ -979,8 +979,10 @@ trait Implicits:
       val result =
         result0 match {
           case result: SearchSuccess =>
-            result.tstate.commit()
-            ctx.gadt.restore(result.gstate)
+            if result.tstate ne ctx.typerState then
+              result.tstate.commit()
+            if result.gstate ne ctx.gadt then
+              ctx.gadt.restore(result.gstate)
             if hasSkolem(false, result.tree) then
               report.error(SkolemInInferred(result.tree, pt, argument), ctx.source.atSpan(span))
             implicits.println(i"success: $result")

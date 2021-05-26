@@ -493,6 +493,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         merge(this.upperMap, that.upperMap, mergeParams))
   }.showing(i"constraint merge $this with $other = $result", constr)
 
+  def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean =
+    contains(tl) && that.contains(tl) &&
+    // Since TypeVars are allocated in bulk for each type lambda, we only have
+    // to check the first one to find out if some of them are different.
+    (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
+
   def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
     def swapKey[T](m: ArrayValuedMap[T]) = m.remove(from).updated(to, m(from))
     var current = newConstraint(swapKey(boundsMap), swapKey(lowerMap), swapKey(upperMap))

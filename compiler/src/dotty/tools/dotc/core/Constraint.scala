@@ -162,6 +162,11 @@ abstract class Constraint extends Showable {
    */
   def & (other: Constraint, otherHasErrors: Boolean)(using Context): Constraint
 
+  /** Whether `tl` is present in both `this` and `that` but is associated with
+   *  different TypeVars there, meaning that the constraints cannot be merged.
+   */
+  def hasConflictingTypeVarsFor(tl: TypeLambda, that: Constraint): Boolean
+
   /** Check that no constrained parameter contains itself as a bound */
   def checkNonCyclic()(using Context): this.type
 
