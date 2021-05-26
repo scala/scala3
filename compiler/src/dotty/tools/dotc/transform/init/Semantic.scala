@@ -799,7 +799,8 @@ class Semantic {
       val outerV = resolveThis(enclosing, thisV, klass, source)
       Result(outerV, Errors.empty)
     else
-      cases(tref.prefix, thisV, klass, source)
+      if cls.isAllOf(Flags.JavaInterface) then Result(Hot, Nil)
+      else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
   def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
