@@ -208,10 +208,6 @@ th {
   margin-top: 1px;
   margin-bottom: 1px;
   width: 100%;
-  /* This trick adds selected background stretching to the left side of screen */
-  margin-left: calc(0px - var(--side-width));
-  padding-left: var(--side-width);
-  width: calc(2 * var(--side-width));
 }
 
 #sideMenu2 a.selected {
