@@ -2618,8 +2618,7 @@ object Parsers {
         in.token match {
           case USCORE if in.lookahead.isArrow =>
             val start = in.skipToken()
-            typeBounds().withSpan(Span(start, in.lastOffset, start))
-
+            Ident(tpnme.WILDCARD).withSpan(Span(start, in.lastOffset, start))
           case _ =>
             infixType()
         }
