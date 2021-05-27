@@ -1350,7 +1350,8 @@ object Build {
             "-comment-syntax", "wiki",
             "-siteroot", "docs",
             s"-source-links:docs=github://lampepfl/dotty/master#docs",
-            "-doc-root-content", docRootFile.toString
+            "-doc-root-content", docRootFile.toString,
+            "-Ydocument-synthetic-types"
           )
         ))
       }.evaluated,
