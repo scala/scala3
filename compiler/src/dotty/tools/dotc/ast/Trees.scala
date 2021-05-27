@@ -1081,6 +1081,7 @@ object Trees {
     type JavaSeqLiteral = Trees.JavaSeqLiteral[T]
     type Inlined = Trees.Inlined[T]
     type TypeTree = Trees.TypeTree[T]
+    type InferredTypeTree = Trees.InferredTypeTree[T]
     type SingletonTypeTree = Trees.SingletonTypeTree[T]
     type RefinedTypeTree = Trees.RefinedTypeTree[T]
     type AppliedTypeTree = Trees.AppliedTypeTree[T]
