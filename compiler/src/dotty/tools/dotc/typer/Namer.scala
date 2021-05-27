@@ -703,7 +703,7 @@ class Namer { typer: Typer =>
         typer1.defDefSig(original, sym)(using localContext(sym).setTyper(typer1))
       case imp: Import =>
         try
-          val expr1 = typedImportQualifier(imp, typedAheadExpr)
+          val expr1 = typedImportQualifier(imp, typedAheadExpr(_, _)(using ctx.withOwner(sym)))
           ImportType(expr1)
         catch case ex: CyclicReference =>
           typr.println(s"error while completing ${imp.expr}")

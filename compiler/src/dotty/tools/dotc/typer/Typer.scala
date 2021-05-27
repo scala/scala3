@@ -2457,7 +2457,7 @@ class Typer extends Namer
     else typd(imp.expr, AnySelectionProto)
 
   def typedImport(imp: untpd.Import, sym: Symbol)(using Context): Import =
-    val expr1 = typedImportQualifier(imp, typedExpr)
+    val expr1 = typedImportQualifier(imp, typedExpr(_, _)(using ctx.withOwner(sym)))
     checkLegalImportPath(expr1)
     val selectors1 = typedSelectors(imp.selectors)
     assignType(cpy.Import(imp)(expr1, selectors1), sym)
