@@ -95,6 +95,6 @@ Before contributing to Dotty, we invite you to consult the
 Community
 -------------
 The main development discussion channels are:
-- [github.com/lampepfl/dotty/discussions](github.com/lampepfl/dotty/discussions)
-- [contributors.scala-lang.org](contributors.scala-lang.org)
-- [gitter.im/scala/contributors](gitter.im/scala/contributors)
+- [github.com/lampepfl/dotty/discussions](https://github.com/lampepfl/dotty/discussions)
+- [contributors.scala-lang.org](https://contributors.scala-lang.org)
+- [gitter.im/scala/contributors](https://gitter.im/scala/contributors)
