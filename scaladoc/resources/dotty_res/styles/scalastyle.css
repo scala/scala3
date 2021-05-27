@@ -93,6 +93,10 @@ pre, .symbol.monospace {
   font-weight: 500;
   font-size: 12px;
 }
+pre .hljs-comment {
+  /* Fold comments in snippets */
+  white-space: normal;
+}
 a, a:visited, span[data-unresolved-link] {
   text-decoration: none;
   color: var(--link-fg);

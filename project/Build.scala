@@ -1260,7 +1260,8 @@ object Build {
         "-project",
         name,
         scalaSrcLink(stdLibVersion, srcManaged(dottyNonBootstrappedVersion, "scala")),
-        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty"))
+        dottySrcLink(referenceVersion, srcManaged(dottyNonBootstrappedVersion, "dotty")),
+        s"-source-links:github://lampepfl/dotty/$referenceVersion",
       ) ++ scalacOptionsDocSettings ++ revision ++ params ++ targets
       import _root_.scala.sys.process._
       Def.task((s"$distLocation/bin/scaladoc" +: cmd).!)
