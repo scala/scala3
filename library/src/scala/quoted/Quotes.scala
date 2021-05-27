@@ -590,14 +590,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term])
 
       /** Creates a block `{ val <name> = <rhs: Term>; <body(x): Term> }` */
-      def let(owner: Symbol, name: String, rhs: Term)(body: Ident => Term): Term
+      def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term
 
       /** Creates a block `{ val x = <rhs: Term>; <body(x): Term> }` */
-      def let(owner: Symbol, rhs: Term)(body: Ident => Term): Term =
+      def let(owner: Symbol, rhs: Term)(body: Ref => Term): Term =
         let(owner, "x", rhs)(body)
 
       /** Creates a block `{ val x1 = <terms(0): Term>; ...; val xn = <terms(n-1): Term>; <body(List(x1, ..., xn)): Term> }` */
-      def let(owner: Symbol, terms: List[Term])(body: List[Ident] => Term): Term
+      def let(owner: Symbol, terms: List[Term])(body: List[Ref] => Term): Term
     }
 
     /** Makes extension methods on `ValDef` available without any imports */
