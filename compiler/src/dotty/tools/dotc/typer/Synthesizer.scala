@@ -160,13 +160,12 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def success(t: Tree) =
       New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
-
     formal.argInfos match
       case arg :: Nil =>
         fullyDefinedType(arg.dealias, "ValueOf argument", span).normalized match
           case ConstantType(c: Constant) =>
             success(Literal(c))
-          case TypeRef(_, sym) if sym == defn.UnitClass =>
+          case tp: TypeRef if tp.isRef(defn.UnitClass) =>
             success(Literal(Constant(())))
           case n: TermRef =>
             success(ref(n))
