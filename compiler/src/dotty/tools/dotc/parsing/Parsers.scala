@@ -1293,12 +1293,12 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
-      def matchesWithUpdated(stat: Tree): Boolean = {
+      def matchesAndSetEnd(stat: Tree): Boolean = {
         val didMatch = matches(stat)
         if didMatch then
           stat match
             case stat: WithEndMarker =>
-              stat.withEndIndex(index=in.lastCharOffset)
+              stat.withEndIndex(index = in.lastCharOffset)
             case _ =>
               ()
         didMatch
@@ -1306,7 +1306,7 @@ object Parsers {
 
       if in.token == END then
         val start = in.skipToken()
-        if stats.isEmpty || !matchesWithUpdated(stats.last) then
+        if stats.isEmpty || !matchesAndSetEnd(stats.last) then
           syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()

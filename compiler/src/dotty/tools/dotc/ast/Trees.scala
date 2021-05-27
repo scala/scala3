@@ -346,10 +346,10 @@ object Trees {
       self.withAttachment(EndIndex, index)
 
     final def withEndIndex(copyFrom: WithEndMarker): self.type =
-      copyFrom.endIndex.foreach(index => withEndIndex(index))
+      copyFrom.endIndex.foreach(withEndIndex)
       this
 
-    final def dropEndIndex: self.type =
+    final def dropEndIndex(): self.type =
       self.removeAttachment(EndIndex)
       this
 
