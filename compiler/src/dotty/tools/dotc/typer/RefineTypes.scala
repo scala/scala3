@@ -86,7 +86,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
 
     def resultNeedsRetyping(tree: untpd.ValOrDefDef)(using Context): Boolean =
       val sym = tree.symbol
-      tree.tpt.isInstanceOf[InferredTypeTree[?]]
+      tree.tpt.isInstanceOf[untpd.InferredTypeTree]
       && (sym.is(Private) || sym.owner.isTerm)
       && !sym.isOneOf(Param | JavaDefined)
       && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
@@ -95,7 +95,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     override def index(trees: List[untpd.Tree])(using Context): Context =
       for case tree: ValOrDefDef <- trees.asInstanceOf[List[Tree]] do
         val sym = tree.symbol
-        if tree.tpt.isInstanceOf[InferredTypeTree[?]]
+        if tree.tpt.isInstanceOf[untpd.InferredTypeTree]
           && (sym.is(Private) || sym.owner.isTerm)
           && !sym.isOneOf(Param | JavaDefined)
           && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
@@ -139,7 +139,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
         untpd.cpy.Select(tree)(qual1, name).withType(ownType)
 
     override def typedTypeTree(tree: untpd.TypeTree, pt: Type)(using Context): TypeTree =
-      if tree.isInstanceOf[InferredTypeTree[_]] && isFullyDefined(pt, ForceDegree.flipBottom) then
+      if tree.isInstanceOf[untpd.InferredTypeTree] && isFullyDefined(pt, ForceDegree.flipBottom) then
         tree.withType(pt)
       else
         promote(tree)
@@ -159,7 +159,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
     private def resetTypeVars(tree: Tree)(using Context): (Tree, List[TypeVar]) = tree match
       case tree: TypeApply =>
         val isInferred = tree.args.forall {
-          case arg: InferredTypeTree[?] =>
+          case arg: InferredTypeTree =>
             arg.tpe match
               case tvar: TypeVar =>
                 tvar.isInstantiated // test makes sure we do not reset typevars again in eta expanded closures
