@@ -53,7 +53,7 @@ class Objects {
   case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
+  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -86,6 +86,20 @@ class Objects {
 
     extension (env: Env)
       def lookup(sym: Symbol): Value = env(sym)
+
+      /** Widen the environment for closures */
+      def widenForClosure: Env =
+        env.map { (k, v) =>
+          k ->
+          v.match
+          case RefSet(refs) => refs.map(_.widen).join
+          case Instance(_, outer, _, args) =>
+            val nested = (outer :: args).exists(_.isInstanceOf[Instance])
+            if nested then Cold
+            else value
+          case _: Fun => Cold
+          case _ => value
+        }
   }
 
   type Env = Env.Env
@@ -161,6 +175,8 @@ class Objects {
 
   /** The state that threads through the interpreter */
   type Contextual[T] = (Env, Context, Trace) ?=> T
+
+  inline def use[T, R](v: T)(inline op: T ?=> R): R = op(using v)
 
 // ----- Error Handling -----------------------------------
 
@@ -313,6 +329,7 @@ class Objects {
                 val nested = (outer :: args).exists(_.isInstanceOf[Instance])
                 if nested then Cold
                 else value
+              case _: Fun => Cold
               case _ => value
 
           val outerWidened = value.widen
@@ -372,7 +389,7 @@ class Objects {
       // 1. the result is decided by `cfg` for a legal program
       //    (heap change is irrelevant thanks to monotonicity)
       // 2. errors will have been reported for an illegal program
-      innerMap(expr) = Hot
+      innerMap(expr) = Bottom
       val res = cases(expr, thisV, klass)
       if cacheResult then innerMap(expr) = res.value else innerMap.remove(expr)
       res
@@ -384,18 +401,15 @@ class Objects {
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[List[Error]] =
-    val ress = args.map { arg =>
+  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
+    args.map { arg =>
       val res =
         if arg.isByName then
           val fun = Fun(arg.tree, thisV, klass)
           Result(fun, Nil)
         else
           eval(arg.tree, thisV, klass)
-
-      res.ensureHot("May only use initialized value as arguments", arg.tree)
     }
-    ress.flatMap(_.errors)
 
   /** Handles the evaluation of different expressions
    *
@@ -405,7 +419,7 @@ class Objects {
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case id @ Ident(name) if !id.symbol.is(Flags.Method)  =>
         assert(name.isTermName, "type trees should not reach here")
@@ -413,19 +427,21 @@ class Objects {
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
-        val errors = evalArgs(argss.flatten, thisV, klass)
+        val resArgs = evalArgs(argss.flatten, thisV, klass)
+        val argsValues = resArgs.map(_.value)
+        val argsErrors = resArgs.flatMap(_.errors)
 
         val cls = tref.classSymbol.asClass
         val res = outerValue(tref, thisV, klass, tpt)
-        val trace2 = trace.add(expr)
-        locally {
-          given Trace = trace2
-          (res ++ errors).instantiate(cls, ctor, expr)
+        use(trace.add(expr)) {
+          (res ++ argsErrors).instantiate(cls, ctor, argsValues, expr)
         }
 
       case Call(ref, argss) =>
         // check args
-        val errors = evalArgs(argss.flatten, thisV, klass)
+        val resArgs = evalArgs(argss.flatten, thisV, klass)
+        val argsValues = resArgs.map(_.value)
+        val argsErrors = resArgs.flatMap(_.errors)
 
         val trace2: Trace = trace.add(expr)
 
@@ -433,11 +449,15 @@ class Objects {
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using ctx, trace2)
+          use(trace2) {
+            Result(thisValue2, argsErrors).call(ref.symbol, argsValues, superTp, expr)
+          }
 
         case Select(qual, _) =>
-          val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, superType = NoType, source = expr)(using ctx, trace2)
+          val res = eval(qual, thisV, klass) ++ argsErrors
+          use(trace2) {
+            res.call(ref.symbol, argsValues, superType = NoType, source = expr)
+          }
 
         case id: Ident =>
           id.tpe match
@@ -446,10 +466,12 @@ class Objects {
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
             // local methods are not a member, but we can reuse the method `call`
-            thisValue2.call(id.symbol, superType = NoType, expr, needResolve = false)
+            Result(thisValue2, argsErrors).call(id.symbol, argsValues, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
-            val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace2)
+            val res = cases(prefix, thisV, klass, id) ++ argsErrors
+            use(trace2) {
+              res.call(id.symbol, argsValues, superType = NoType, source = expr)
+            }
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -458,10 +480,10 @@ class Objects {
         cases(expr.tpe, thisV, klass, expr)
 
       case Literal(_) =>
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case Typed(expr, tpt) =>
-        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, Errors.empty)
+        if (tpt.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Bottom, Errors.empty)
         else eval(expr, thisV, klass)
 
       case NamedArg(name, arg) =>
@@ -471,16 +493,16 @@ class Objects {
         lhs match
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass)
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs) ++ res.errors
+          eval(rhs, thisV, klass) ++ res.errors
         case id: Ident =>
-          eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs)
+          eval(rhs, thisV, klass)
 
       case closureDef(ddef) =>
-        val value = Fun(ddef.rhs, thisV, klass)
+        val value = Fun(ddef.rhs, thisV, klass, env.widenForClosure)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, thisV, klass)
+        val value = Fun(body, thisV, klass, env.widenForClosure)
         Result(value, Nil)
 
       case Block(stats, expr) =>
@@ -494,7 +516,7 @@ class Objects {
         Result(value, errors)
 
       case Annotated(arg, annot) =>
-        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Hot, Errors.empty)
+        if (expr.tpe.hasAnnotation(defn.UncheckedAnnot)) Result(Bottom, Errors.empty)
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
@@ -509,7 +531,7 @@ class Objects {
 
       case WhileDo(cond, body) =>
         val ress = eval(cond :: body :: Nil, thisV, klass)
-        Result(Hot, ress.flatMap(_.errors))
+        Result(Bottom, ress.flatMap(_.errors))
 
       case Labeled(_, expr) =>
         eval(expr, thisV, klass)
@@ -529,7 +551,7 @@ class Objects {
         val ress = elems.map { elem =>
           eval(elem, thisV, klass).ensureHot("May only use initialized value as method arguments", elem)
         }
-        Result(Hot, ress.flatMap(_.errors))
+        Result(Bottom, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
         val ress = eval(bindings, thisV, klass)
@@ -537,26 +559,25 @@ class Objects {
 
       case Thicket(List()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case vdef : ValDef =>
         // local val definition
-        // TODO: support explicit @cold annotation for local definitions
-        eval(vdef.rhs, thisV, klass).ensureHot("Local definitions may only hold initialized values", vdef)
+        eval(vdef.rhs, thisV, klass, cacheResult = true)
 
       case ddef : DefDef =>
         // local method
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case tdef: TypeDef =>
         // local type definition
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case tpl: Template =>
         init(tpl, thisV, klass)
 
       case _: Import | _: Export =>
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case _ =>
         throw new Exception("unexpected tree: " + expr.show)
@@ -566,23 +587,31 @@ class Objects {
   def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        Result(Hot, Errors.empty)
+        // - only var definitions are cold, it means they are not inspected
+        // - look up parameters from environment
+        // - evaluate the rhs of the local definition for val definitions: they are already cached
+        if tmref.is(Flags.Param) then env.lookup(tmref.symbol)
+        else if tmref.is(Flags.Mutable) then Cold
+        else {
+          val rhs = tmref.symbol.defTree.asInstanceOf[ValDef].rhs
+          eval(rhs, thisV, klass, cacheResult = true)
+        }
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        if tref.symbol.is(Flags.Package) then Result(Hot, Errors.empty)
+        if tref.symbol.is(Flags.Package) then Result(Bottom, Errors.empty)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, Errors.empty)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
-        Result(Hot, Errors.empty)
+        Result(Bottom, Errors.empty)
 
       case _ =>
         throw new Exception("unexpected type: " + tp)
@@ -595,9 +624,9 @@ class Objects {
     else if target.is(Flags.Package) || target.isStaticOwner then Hot
     else
       thisV match
-        case Hot | _: ThisRef => Hot
-        case warm: Warm =>
-          val obj = heap(warm)
+        case Bottom => Bottom
+        case addr: Addr =>
+          val obj = heap(addr)
           val outerCls = klass.owner.enclosingClass.asClass
           resolveThis(target, obj.outers(klass), outerCls, source)
         case RefSet(refs) =>
@@ -617,7 +646,7 @@ class Objects {
       val outerV = resolveThis(enclosing, thisV, klass, source)
       Result(outerV, Errors.empty)
     else
-      if cls.isAllOf(Flags.JavaInterface) then Result(Hot, Nil)
+      if cls.isAllOf(Flags.JavaInterface) then Result(Bottom, Nil)
       else cases(tref.prefix, thisV, klass, source)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
@@ -693,7 +722,8 @@ class Objects {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
-        thisV.updateField(vdef.symbol, res.value)
+        val fieldV = if vdef.symbol.is(Flags.Mutable) then Cold else res.value
+        thisV.updateField(vdef.symbol, fieldV)
 
       case _: MemberDef =>
 
