@@ -149,7 +149,6 @@ import transform.SymUtils._
   }
 
   class AnonymousFunctionMissingParamType(param: untpd.ValDef,
-                                          args: List[untpd.Tree],
                                           tree: untpd.Function,
                                           pt: Type)
                                           (using Context)
@@ -157,7 +156,7 @@ import transform.SymUtils._
     def msg = {
       val ofFun =
         if param.name.is(WildcardParamName)
-           || (MethodType.syntheticParamNames(args.length + 1) contains param.name)
+           || (MethodType.syntheticParamNames(tree.args.length + 1) contains param.name)
         then i" of expanded function:\n$tree"
         else ""
 

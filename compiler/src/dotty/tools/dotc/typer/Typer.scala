@@ -1114,7 +1114,7 @@ class Typer extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int, tree: untpd.Tree)(using Context): (List[Type], untpd.Tree) = {
+  protected def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
@@ -1132,7 +1132,7 @@ class Typer extends Namer
       report.error(
         i"""Implementation restriction: Expected result type $pt1
            |is a curried dependent context function type. Such types are not yet supported.""",
-        tree.srcPos)
+        pos)
     pt1 match {
       case pt1 if defn.isNonRefinedFunction(pt1) =>
         // if expected parameter type(s) are wildcards, approximate from below.
@@ -1149,11 +1149,42 @@ class Typer extends Namer
          else
            typeTree(restpe))
       case tp: TypeParamRef =>
-        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
+        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
       case _ =>
         (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
     }
   }
+
+  /** The parameter type for a parameter in a lambda that does
+   *  not have an explicit type given, and where the type is not known from the context.
+   *  In this case the paranmeter type needs to be inferred the "target type" T known
+   *  from the callee `f` if the lambda is of a form like `x => f(x)`.
+   *  If `T` exists, we know that `S <: I <: T`.
+   *
+   *  The inference makes two attempts:
+   *
+   *    1. Compute the target type `T` and make it known that `S <: T`.
+   *       If the expected type `S` can be fully defined under ForceDegree.flipBottom,
+   *       pick this one (this might use the fact that S <: T for an upper approximation).
+   *    2. Otherwise, if the target type `T` can be fully defined under ForceDegree.flipBottom,
+   *       pick this one.
+   *
+   *  If both attempts fail, issue a "missing parameter type" error.
+   */
+  def inferredFromTarget(
+      param: untpd.ValDef, formal: Type, calleeType: Type, paramIndex: Name => Int)(using Context): Type =
+    val target = calleeType.widen match
+      case mtpe: MethodType =>
+        val pos = paramIndex(param.name)
+        if pos < mtpe.paramInfos.length then
+          val ptype = mtpe.paramInfos(pos)
+          if ptype.isRepeatedParam then NoType else ptype
+        else NoType
+      case _ => NoType
+    if target.exists then formal <:< target
+    if isFullyDefined(formal, ForceDegree.flipBottom) then formal
+    else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
+    else NoType
 
   def typedFunction(tree: untpd.Function, pt: Type)(using Context): Tree =
     if (ctx.mode is Mode.Type) typedFunctionType(tree, pt)
@@ -1327,41 +1358,7 @@ class Typer extends Namer
       case _ =>
     }
 
-    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree)
-
-    /** The inferred parameter type for a parameter in a lambda that does
-     *  not have an explicit type given.
-     *  An inferred parameter type I has two possible sources:
-     *   - the type S known from the context
-     *   - the "target type" T known from the callee `f` if the lambda is of a form like `x => f(x)`
-     *  If `T` exists, we know that `S <: I <: T`.
-     *
-     *  The inference makes three attempts:
-     *
-     *    1. If the expected type `S` is already fully defined under ForceDegree.failBottom
-     *       pick this one.
-     *    2. Compute the target type `T` and make it known that `S <: T`.
-     *       If the expected type `S` can be fully defined under ForceDegree.flipBottom,
-     *       pick this one (this might use the fact that S <: T for an upper approximation).
-     *    3. Otherwise, if the target type `T` can be fully defined under ForceDegree.flipBottom,
-     *       pick this one.
-     *
-     *  If all attempts fail, issue a "missing parameter type" error.
-     */
-    def inferredParamType(param: untpd.ValDef, formal: Type): Type =
-      if isFullyDefined(formal, ForceDegree.failBottom) then return formal
-      val target = calleeType.widen match
-        case mtpe: MethodType =>
-          val pos = paramIndex(param.name)
-          if pos < mtpe.paramInfos.length then
-            val ptype = mtpe.paramInfos(pos)
-            if ptype.isRepeatedParam then NoType else ptype
-          else NoType
-        case _ => NoType
-      if target.exists then formal <:< target
-      if isFullyDefined(formal, ForceDegree.flipBottom) then formal
-      else if target.exists && isFullyDefined(target, ForceDegree.flipBottom) then target
-      else errorType(AnonymousFunctionMissingParamType(param, params, tree, formal), param.srcPos)
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)
@@ -1387,9 +1384,19 @@ class Typer extends Namer
         val inferredParams: List[untpd.ValDef] =
           for ((param, i) <- params.zipWithIndex) yield
             if (!param.tpt.isEmpty) param
-            else cpy.ValDef(param)(
-              tpt = untpd.TypeTree(
-                inferredParamType(param, protoFormal(i)).translateFromRepeated(toArray = false)))
+            else
+              val formal = protoFormal(i)
+              val knownFormal = isFullyDefined(formal, ForceDegree.failBottom)
+              val paramType =
+                if knownFormal then formal
+                else inferredFromTarget(param, formal, calleeType, paramIndex)
+                  .orElse(errorType(AnonymousFunctionMissingParamType(param, tree, formal), param.srcPos))
+              val paramTpt = untpd.TypedSplice(
+                  (if knownFormal then InferredTypeTree() else untpd.TypeTree())
+                    .withType(paramType.translateFromRepeated(toArray = false))
+                    .withSpan(param.span.endPos)
+                )
+              cpy.ValDef(param)(tpt = paramTpt)
         desugar.makeClosure(inferredParams, fnBody, resultTpt, isContextual, tree.span)
       }
     typed(desugared, pt)
@@ -1455,7 +1462,7 @@ class Typer extends Namer
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
-          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree)
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree.srcPos)
           val checkMode =
             if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
             else desugar.MatchCheck.Exhaustive
