@@ -302,8 +302,10 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           super.transform(tree)
 
         case _: Export =>
-          if anyEnclosingOwner is OwnerKind.JSNative then
+          if enclosingOwner is OwnerKind.JSNative then
             report.error("Native JS traits, classes and objects cannot contain exported definitions.", tree)
+          else if enclosingOwner is OwnerKind.JSTrait then
+            report.error("Non-native JS traits cannot contain exported definitions.", tree)
 
           super.transform(tree)
 
@@ -465,7 +467,8 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
       val kind = {
         if (!isJSNative) {
           if (sym.is(ModuleClass)) OwnerKind.JSMod
-          else OwnerKind.JSClass
+          else if (sym.is(Trait)) OwnerKind.JSTrait
+          else OwnerKind.JSNonTraitClass
         } else {
           if (sym.is(ModuleClass)) OwnerKind.JSNativeMod
           else OwnerKind.JSNativeClass
@@ -825,17 +828,16 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     /** Removes annotations from exported definitions (e.g. `export foo.bar`):
      *  - `js.native`
      *  - `js.annotation.*`
-     *  - `js.annotation.internal.*`
      */
     private def stripJSAnnotsOnExported(sym: Symbol)(using Context): Unit =
-      if !sym.is(Exported) then return
+      if !sym.is(Exported) then
+        return // only remove annotations from exported definitions
 
       val JSNativeAnnot = jsdefn.JSNativeAnnot
       val JSAnnotPackage = jsdefn.JSAnnotPackage
-      val JSAnnotInternalPackage = jsdefn.JSAnnotInternalPackage
 
       extension (sym: Symbol) def isJSAnnot =
-        (sym eq JSNativeAnnot) || (sym.owner eq JSAnnotPackage) || (sym.owner eq JSAnnotInternalPackage)
+        (sym eq JSNativeAnnot) || (sym.owner eq JSAnnotPackage)
 
       val newAnnots = sym.annotations.filterConserve(!_.symbol.isJSAnnot)
       if newAnnots ne sym.annotations then
@@ -843,20 +845,22 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
     end stripJSAnnotsOnExported
 
     private def checkRHSCallsJSNative(tree: ValOrDefDef, longKindStr: String)(using Context): Unit = {
-      if !tree.symbol.is(Exported) then
-        // Check that the rhs is exactly `= js.native`
-        tree.rhs match {
-          case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
-            // ok
-          case _ =>
-            val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
-            report.error(s"$longKindStr may only call js.native.", pos)
-        }
+      if tree.symbol.is(Exported) then
+        return // we already report an error that exports are not allowed here, this prevents extra errors.
 
-        // Check that the resul type was explicitly specified
-        // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
-        if (tree.tpt.span.isSynthetic)
-          report.error(i"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
+      // Check that the rhs is exactly `= js.native`
+      tree.rhs match {
+        case sel: Select if sel.symbol == jsdefn.JSPackage_native =>
+          // ok
+        case _ =>
+          val pos = if (tree.rhs != EmptyTree) tree.rhs.srcPos else tree.srcPos
+          report.error(s"$longKindStr may only call js.native.", pos)
+      }
+
+      // Check that the resul type was explicitly specified
+      // (This is stronger than Scala 2, which only warns, and only if it was inferred as Nothing.)
+      if (tree.tpt.span.isSynthetic)
+        report.error(i"The type of ${tree.name} must be explicitly specified because it is JS native.", tree)
     }
 
     private def checkJSNativeSpecificAnnotsOnNonJSNative(memberDef: MemberDef)(using Context): Unit = {
@@ -1021,10 +1025,12 @@ object PrepJSInterop {
     val JSNativeClass = new OwnerKind(0x04)
     /** A native JS object, which extends js.Any. */
     val JSNativeMod = new OwnerKind(0x08)
-    /** A non-native JS class/trait. */
-    val JSClass = new OwnerKind(0x10)
+    /** A non-native JS class (not a trait). */
+    val JSNonTraitClass = new OwnerKind(0x10)
+    /** A non-native JS trait. */
+    val JSTrait = new OwnerKind(0x20)
     /** A non-native JS object. */
-    val JSMod = new OwnerKind(0x20)
+    val JSMod = new OwnerKind(0x40)
 
     // Compound kinds
 
@@ -1034,12 +1040,12 @@ object PrepJSInterop {
     /** A native JS class/trait/object. */
     val JSNative = JSNativeClass | JSNativeMod
     /** A non-native JS class/trait/object. */
-    val JSNonNative = JSClass | JSMod
+    val JSNonNative = JSNonTraitClass | JSTrait | JSMod
     /** A JS type, i.e., something extending js.Any. */
     val JSType = JSNative | JSNonNative
 
     /** Any kind of class/trait, i.e., a Scala or JS class/trait. */
-    val AnyClass = ScalaClass | JSNativeClass | JSClass
+    val AnyClass = ScalaClass | JSNativeClass | JSNonTraitClass | JSTrait
   }
 
   /** Tests if the symbol extend `js.Any`.

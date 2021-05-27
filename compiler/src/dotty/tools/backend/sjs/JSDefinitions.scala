@@ -105,8 +105,6 @@ final class JSDefinitions()(using Context) {
   @threadUnsafe lazy val ExposedJSMemberAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.ExposedJSMember")
   def ExposedJSMemberAnnot(using Context) = ExposedJSMemberAnnotType.symbol.asClass
 
-  def JSAnnotInternalPackage(using Context) = JSTypeAnnot.owner.asClass
-
   @threadUnsafe lazy val JSImportNamespaceModuleRef = requiredModuleRef("scala.scalajs.js.annotation.JSImport.Namespace")
   def JSImportNamespaceModule(using Context) = JSImportNamespaceModuleRef.symbol
 
