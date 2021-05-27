@@ -498,6 +498,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if ctx.mode.is(Mode.Pattern) then
       if name == nme.WILDCARD then
         return tree.withType(pt)
+      if name == tpnme.WILDCARD then
+        return tree.withType(defn.AnyType)
       if untpd.isVarPattern(tree) && name.isTermName then
         return typed(desugar.patternVar(tree), pt)
     else if ctx.mode.is(Mode.QuotedPattern) then
@@ -1559,13 +1561,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 val Typed(_, tpt) = tpd.unbind(tpd.unsplice(pat1))
                 instantiateMatchTypeProto(pat1, pt) match {
                   case defn.MatchCase(patternTp, _) => tpt.tpe frozen_=:= patternTp
-                  case MatchType.WildcardPattern(_) => tpt.tpe frozen_=:= defn.AnyType
                   case _ => false
                 }
               case (id @ Ident(nme.WILDCARD), pt) =>
                 pt match {
                   case defn.MatchCase(patternTp, _) => defn.AnyType frozen_=:= patternTp
-                  case MatchType.WildcardPattern(_) => true
                   case _ => false
                 }
               case _ => false
@@ -1677,7 +1677,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def caseRest(pat: Tree)(using Context) = {
       val pt1 = instantiateMatchTypeProto(pat, pt) match {
         case defn.MatchCase(_, bodyPt) => bodyPt
-        case MatchType.WildcardPattern(bodyPt) => bodyPt
         case pt => pt
       }
       val pat1 = indexPattern(tree).transform(pat)

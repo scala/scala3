@@ -4877,14 +4877,6 @@ object Types {
   object MatchType {
     def apply(bound: Type, scrutinee: Type, cases: List[Type])(using Context): MatchType =
       unique(new CachedMatchType(bound, scrutinee, cases))
-
-    /** Extractor for `case _ =>` match type patterns */
-    object WildcardPattern {
-      def unapply(tp: Type)(using Context): Option[Type] = tp match {
-        case HKTypeLambda(LambdaParam(tl1, 0) :: Nil, defn.MatchCase(TypeParamRef(tl2, 0), bodyTp)) => Some(bodyTp)
-        case _ => None
-      }
-    }
   }
 
   // ------ ClassInfo, Type Bounds --------------------------------------------------
