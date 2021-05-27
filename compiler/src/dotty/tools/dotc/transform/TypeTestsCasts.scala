@@ -295,7 +295,7 @@ object TypeTestsCasts {
             derivedTree(expr, defn.Any_asInstanceOf, testType)
         }
 
-        /** Transform isInstanceOf OrType
+        /** Transform isInstanceOf
          *
          *    expr.isInstanceOf[A | B]  ~~>  expr.isInstanceOf[A] | expr.isInstanceOf[B]
          *    expr.isInstanceOf[A & B]  ~~>  expr.isInstanceOf[A] & expr.isInstanceOf[B]
