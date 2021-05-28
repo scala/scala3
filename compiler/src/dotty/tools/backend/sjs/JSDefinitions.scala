@@ -95,6 +95,9 @@ final class JSDefinitions()(using Context) {
   def JSExportStaticAnnot(using Context) = JSExportStaticAnnotType.symbol.asClass
   @threadUnsafe lazy val JSExportAllAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.JSExportAll")
   def JSExportAllAnnot(using Context) = JSExportAllAnnotType.symbol.asClass
+
+  def JSAnnotPackage(using Context) = JSGlobalAnnot.owner.asClass
+
   @threadUnsafe lazy val JSTypeAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSType")
   def JSTypeAnnot(using Context) = JSTypeAnnotType.symbol.asClass
   @threadUnsafe lazy val JSOptionalAnnotType: TypeRef = requiredClassRef("scala.scalajs.js.annotation.internal.JSOptional")
