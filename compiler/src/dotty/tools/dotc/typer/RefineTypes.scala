@@ -197,41 +197,47 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
      *  by fresh, uninstantiated type variables that are pairwise linked with
      *  the old ones. The type application can either be the toplevel tree `tree`
      *  or wrapped in one or more closures.
-     *  @return  The changed tree with the new type variables, and the list of freshly created type variables
+     *  Replacement insde closures is necessary since sometimes type variables
+     *  bound in a callee are leaked in the parameter types of an enclosing closure
+     *  that infers its parameter types from the callee.
+     *  @return  The changed tree with the new type variables,
+     *           and a map from old type variables to corresponding freshly created type variables
      */
-    private def resetTypeVars[T <: tpd.Tree](tree: T)(using Context): (T, List[TypeVar]) = tree match
+    private def resetTypeVars[T <: tpd.Tree](tree: T)(using Context): (T, Map[TypeVar, TypeVar]) = tree match
       case tree: TypeApply =>
-        val isInferred = tree.args.forall {
-          case arg: InferredTypeTree =>
-            arg.tpe match
-              case tvar: TypeVar =>
-                tvar.isInstantiated // test makes sure we do not reset typevars again in eta expanded closures
-              case _ => false
-          case _ => false
-        }
-        if isInferred then
-          val args = tree.args
-          val args1 = constrained(tree.fun.tpe.widen.asInstanceOf[TypeLambda], tree)._2
-          for i <- args.indices do
-            args1(i).tpe.asInstanceOf[TypeVar].link(args(i).tpe.asInstanceOf[TypeVar])
-          (cpy.TypeApply(tree)(tree.fun, args1).asInstanceOf[T], args1.tpes.asInstanceOf[List[TypeVar]])
+        val tvars = for arg <- tree.args; case tvar: TypeVar <- arg.tpe :: Nil yield tvar
+        if tvars.nonEmpty && tvars.length == tree.args.length then
+          val (args1, tvars1) =
+            if tvars.head.isInstantiated then
+              // we are seeing type variables that are not yet copied by a previous resetTypeVars
+              val args1 = constrained(tree.fun.tpe.widen.asInstanceOf[TypeLambda], tree)._2
+              val tvars1 = args1.tpes.asInstanceOf[List[TypeVar]]
+              for (tvar, tvar1) <- tvars.lazyZip(tvars1) do tvar1.link(tvar)
+              (args1, tvars1)
+            else
+              (tree.args, tvars)
+          (cpy.TypeApply(tree)(tree.fun, args1).asInstanceOf[T],
+           tvars1.map(tvar => (tvar.linkedOriginal, tvar)).toMap)
         else
-          (tree, Nil)
+          (tree, Map.empty)
+      case tree @ Apply(fn, args) =>
+        val (fn1, map1) = resetTypeVars(fn)
+        (cpy.Apply(tree)(fn, args).asInstanceOf[T], map1)
       case Block(stats, closure: Closure) =>
-        var tvars: List[TypeVar] = Nil
+        var tvmap: Map[TypeVar, TypeVar] = Map.empty
         val stats1 = stats.mapConserve {
           case stat: DefDef if stat.symbol == closure.meth.symbol =>
-            val (rhs1, tvars1) = resetTypeVars(stat.rhs)
-            tvars = tvars1
+            val (rhs1, map1) = resetTypeVars(stat.rhs)
+            tvmap = map1
             cpy.DefDef(stat)(rhs = rhs1)
           case stat => stat
         }
-        (cpy.Block(tree)(stats1, closure).asInstanceOf[T], tvars)
+        (cpy.Block(tree)(stats1, closure).asInstanceOf[T], tvmap)
       case Block(Nil, expr) =>
-        val (rhs1, tvars1) = resetTypeVars(expr)
-        (cpy.Block(tree)(Nil, rhs1).asInstanceOf[T], tvars1)
+        val (rhs1, map1) = resetTypeVars(expr)
+        (cpy.Block(tree)(Nil, rhs1).asInstanceOf[T], map1)
       case _ =>
-        (tree, Nil)
+        (tree, Map.empty)
     end resetTypeVars
 
     /** The application with all inferred type arguments reset to fresh type variab;es
@@ -279,27 +285,33 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
           blk
       super.typedBlock(blk1, pt)
 
-    /** If tree defines an anonymous function,???
+    /** If tree defines an anonymous function, make sure that any type variables
+     *  defined in the callee rhs are replaced in the function itself.
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
       sym.ensureCompleted()
       if sym.isAnonymousFunction then
         val ddef0 = promote(ddef)
-        val (rhs2, newTvars) = resetTypeVars(ddef0.rhs)
-        val ddef1 = cpy.DefDef(ddef0)(rhs = rhs2)
-        val bindsNestedTypeVar =
-          newTvars.nonEmpty
-          && sym.rawParamss.nestedExists(param =>
-            param.info.existsPart({
-              case tvar1: TypeVar => newTvars.exists(_.isLinked(tvar1))
-              case _ => false
-            }, stopAtStatic = true, forceLazy = false))
-        if bindsNestedTypeVar then
-          val nestedCtx = ctx.fresh.setNewTyperState()
+        val (rhs1, tvmap) = resetTypeVars(ddef0.rhs)
+        if tvmap.nonEmpty then
+          val tmap = new TypeMap:
+            def apply(t: Type) = mapOver {
+              t match
+                case t: TypeVar => tvmap.getOrElse(t, t)
+                case _ => t
+            }
+          val ValDefs(params) :: Nil = ddef0.paramss
+          val params1 = params.mapConserve { param =>
+            updateInfo(param.symbol, tmap(param.symbol.info))
+            cpy.ValDef(param)(tpt = param.tpt.withType(tmap(param.tpt.tpe)))
+          }
+          val mt = sym.info.asInstanceOf[MethodType]
+          updateInfo(sym, mt.derivedLambdaType(paramInfos = mt.paramInfos.mapConserve(tmap)))
+          val ddef1 = cpy.DefDef(ddef0)(paramss = params1 :: Nil, rhs = rhs1)
+          val nestedCtx = ctx.fresh.setNewTyperState() // needed so that leaked type variables properly nest in their owning typerstate
           try inContext(nestedCtx) { super.typedDefDef(ddef1, sym) }
           finally nestedCtx.typerState.commit()
-        else
-          super.typedDefDef(ddef1, sym)
+        else super.typedDefDef(ddef, sym)
       else super.typedDefDef(ddef, sym)
 
     override def typedValDef(vdef: untpd.ValDef, sym: Symbol)(using Context): Tree =
