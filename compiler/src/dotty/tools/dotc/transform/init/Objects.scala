@@ -77,6 +77,9 @@ class Objects {
   /** The environment for method parameters */
   object Env {
     opaque type Env = Map[Symbol, Value]
+
+    val empty: Env = Map.empty
+
     def apply(bindings: Map[Symbol, Value]): Env = bindings
 
     def apply(ddef: DefDef, args: List[Value])(using Context): Env =
@@ -395,6 +398,22 @@ class Objects {
       cls == defn.AnyClass ||
       cls == defn.AnyValClass ||
       cls == defn.ObjectClass
+  end extension
+
+  /** Check a static objet
+   *
+   *  @param cls the module class of the static object
+   */
+  def check(cls: ClassSymbol, tpl: Template)(using Context): Unit = {
+    val objRef = ObjectRef(cls)
+    val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map.empty)
+    given Path = Path.empty.add(cls)
+    given Trace = Trace.empty
+    given Env = Env.empty
+    heap.update(objRef, obj)
+    val res = eval(tpl, objRef, cls)
+    res.errors.foreach(_.issue)
+  }
 
 // ----- Semantic definition -------------------------------
 
@@ -789,5 +808,5 @@ class Objects {
 
   extension (sym: Symbol)
     def isStaticObjectRef(using Context) =
-      sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
+      !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
 }

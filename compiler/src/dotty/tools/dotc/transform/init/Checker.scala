@@ -24,6 +24,7 @@ class Checker extends MiniPhase {
   val phaseName = "initChecker"
 
   private val semantic = new Semantic
+  private val objects = new Objects
 
   override val runsAfter = Set(Pickler.name)
 
@@ -55,6 +56,9 @@ class Checker extends MiniPhase {
       heap.update(thisRef, obj)
       val res = eval(tpl, thisRef, cls)
       res.errors.foreach(_.issue)
+
+      if objects.isStaticObjectRef(cls) then
+        objects.check(cls, tpl)
     }
 
     tree
