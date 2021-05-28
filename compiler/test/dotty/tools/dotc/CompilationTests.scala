@@ -251,7 +251,7 @@ class CompilationTests {
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
       ).mkString(File.pathSeparator),
-      Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
+      Array("-Ycheck-reentrant", "-Yrefine-types", "-language:postfixOps", "-Xsemanticdb")
     )
 
     val libraryDirs = List(Paths.get("library/src"), Paths.get("library/src-bootstrapped"))
@@ -259,7 +259,7 @@ class CompilationTests {
 
     val lib =
       compileList("lib", librarySources,
-        defaultOptions.and("-Ycheck-reentrant",
+        defaultOptions.and("-Ycheck-reentrant", "-Yrefine-types",
           "-language:experimental.erasedDefinitions", // support declaration of scala.compiletime.erasedValue
           //  "-source", "future",  // TODO: re-enable once we allow : @unchecked in pattern definitions. Right now, lots of narrowing pattern definitions fail.
           ))(libGroup)
