@@ -386,6 +386,9 @@ class Objects {
           else
             ObjectLeakDuringInit(obj.klass, trace1)
         Result(obj, warning :: Nil)
+      else if obj.klass.is(Flags.JavaDefined) then
+        // Errors will be reported for method calls on it
+        Result(Bottom, Nil)
       else
         use(path.add(obj.klass)) {
           use(trace.add(source)) {
