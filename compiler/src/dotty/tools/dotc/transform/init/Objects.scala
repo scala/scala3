@@ -353,12 +353,16 @@ class Objects {
 
           val outerWidened = value.widen
           val argsWidened = args.map(_.widen)
-          val inst = Instance(klass, outerWidened, ctor, argsWidened)
-          if !heap.contains(inst) then
+          val addr =
+            if klass.isStaticObjectRef then
+              ObjectRef(klass)
+            else
+              Instance(klass, outerWidened, ctor, argsWidened)
+          if !heap.contains(addr) then
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outerWidened))
-            heap.update(inst, obj)
-          val res = inst.call(ctor, argsWidened, superType = NoType, source)
-          Result(inst, res.errors)
+            heap.update(addr, obj)
+          val res = addr.call(ctor, argsWidened, superType = NoType, source)
+          Result(addr, res.errors)
 
         case Fun(body, thisV, klass, _) =>
           ??? // impossible
