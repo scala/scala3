@@ -4439,6 +4439,8 @@ object Types {
     private var instDirection: InstDirection = InstDirection.Other
     private var linkedVar: TypeVar = null
 
+    private[dotc] def linkedOriginal: TypeVar = linkedVar
+
     private[dotc] def link(previous: TypeVar): Unit =
       linkedVar = previous
 
