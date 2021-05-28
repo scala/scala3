@@ -656,10 +656,11 @@ class Objects {
         if sym.is(Flags.Param) then Result(env.lookup(sym), Nil)
         else if sym.is(Flags.Mutable) then Result(Cold, Nil)
         else if sym.is(Flags.Package) then Result(Bottom, Nil)
-        else {
+        else if sym.hasSource then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass, cacheResult = true)
-        }
+        else
+          Result(Bottom, CallUnknown(sym, source, trace.toVector) :: Nil)
 
       case tmref: TermRef =>
         val sym = tmref.symbol
