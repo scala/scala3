@@ -165,10 +165,13 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
 
   private def handleGlobalKeyDown(e: KeyboardEvent) = {
     // if the user presses the "S" key while not focused on an input, open the search
-    if (e.key == "s") {
+    if (e.key == "s" || e.key == "/") {
       val tag = e.target.asInstanceOf[html.Element].tagName
       if (tag != "INPUT" && tag != "TEXTAREA") {
         if (!document.body.contains(rootDiv)) {
+          // Firefox's "quick find" uses "/" as a trigger; prevent that.
+          e.preventDefault()
+
           document.body.appendChild(rootDiv)
           // if we focus during the event handler, the `s` gets typed into the input
           window.setTimeout(() => input.focus(), 1.0)
