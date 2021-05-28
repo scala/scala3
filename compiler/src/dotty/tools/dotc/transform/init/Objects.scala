@@ -24,7 +24,7 @@ class Objects {
 
   /** Abstract values
    *
-   *  Value = Cold | ObjectRef | Instance | Fun | RefSet
+   *  Value = TypeAbs | ObjectRef | Instance | Fun | RefSet
    *
    *  `RefSet` represents a set of values which could be `ObjectRef`,
    *  `Instance` or `Fun`. The following ordering applies for RefSet:
@@ -38,8 +38,8 @@ class Objects {
     def show: String = this.toString()
   }
 
-  /** An unknown object */
-  case object Cold extends Value
+  /** An object abstract by its type */
+  case class TypeAbs(tp: Type) extends Value
 
   sealed abstract class Addr extends Value {
     def klass: ClassSymbol
@@ -50,10 +50,10 @@ class Objects {
   case class ObjectRef(klass: ClassSymbol) extends Addr
 
   /** An instance of class */
-  case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
+  case class Instance(klass: ClassSymbol, outer: Value) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -88,22 +88,15 @@ class Objects {
       params.zip(args).toMap
 
     extension (env: Env)
-      def lookup(sym: Symbol): Value = env(sym)
+      def lookup(sym: Symbol)(using Context): Value =
+        if sym.info <:< defn.StringType
+           || sym.info.classSymbol.isPrimitiveValueClass
+        then
+          Bottom
+        else
+          TypeAbs(sym.info)
 
       def union(other: Env): Env = env ++ other
-
-      /** Widen the environment for closures */
-      def widenForClosure: Env =
-        def widen(v: Value): Value = v.match
-          case RefSet(refs) => refs.map(widen(_)).join
-          case Instance(_, outer, _, args) =>
-            val nested = (outer :: args).exists(_.isInstanceOf[Instance])
-            if nested then Cold
-            else v
-          case _: Fun => Cold
-          case _ => v
-
-        env.map { (k, v) => k -> widen(v) }
   }
 
   type Env = Env.Env
@@ -175,6 +168,11 @@ class Objects {
 
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
+
+    def ensureAccess(source: Tree): Contextual[Result] =
+      value match
+      case obj: ObjectRef => obj.access(source) ++ errors
+      case _ => this
   }
 
   /** The state that threads through the interpreter */
@@ -221,8 +219,8 @@ class Objects {
       case (Bottom, _)  => b
       case (_, Bottom)  => a
 
-      case (Cold, _) => Cold
-      case (_, Cold) => Cold
+      case (_: TypeAbs, _) => a
+      case (_, _: TypeAbs) => b
 
       case (a: (Fun | Addr), b: (Fun | Addr)) => RefSet(a :: b :: Nil)
 
@@ -242,9 +240,19 @@ class Objects {
         case Bottom  =>
           Result(Bottom, Errors.empty)
 
-        case Cold =>
-          val error = AccessCold(field, source, trace.toVector)
-          Result(Bottom, error :: Nil)
+        case TypeAbs(tp) =>
+          if field.isEffectivelyFinal then
+            if field.hasSource then
+              val vdef = field.defTree.asInstanceOf[ValDef]
+              eval(vdef.rhs, value, field.owner.enclosingClass.asClass, cacheResult = true)
+            else if value.canIgnoreMethodCall(field) then
+              Result(Bottom, Nil)
+            else
+              val error = CallUnknown(field, source, trace.toVector)
+              Result(Bottom, error :: Nil)
+          else
+            val error = AccessCold(field, source, trace.toVector)
+            Result(Bottom, error :: Nil)
 
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
@@ -286,9 +294,20 @@ class Objects {
         case Bottom  =>
           Result(Bottom, Errors.empty)
 
-        case Cold =>
-          val error = CallCold(meth, source, trace.toVector)
-          Result(Bottom, error :: Nil)
+        case TypeAbs(tp) =>
+          if meth.isEffectivelyFinal then
+            if meth.hasSource then
+              val ddef = meth.defTree.asInstanceOf[DefDef]
+              given Env = Env(ddef, args)
+              eval(ddef.rhs, value, meth.owner.enclosingClass.asClass, cacheResult = true)
+            else if value.canIgnoreMethodCall(meth) then
+              Result(Bottom, Nil)
+            else
+              val error = CallUnknown(meth, source, trace.toVector)
+              Result(Bottom, error :: Nil)
+          else
+            val error = CallCold(meth, source, trace.toVector)
+            Result(Bottom, error :: Nil)
 
         case addr: Addr =>
           val target =
@@ -323,13 +342,10 @@ class Objects {
             else
               value.select(target, source, needResolve = false)
 
-        case Fun(body, thisV, klass, env2) =>
+        case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
-          else
-            use(env.union(env2)) {
-              eval(body, thisV, klass, cacheResult = true)
-            }
+          else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, args, superType, source))
@@ -342,7 +358,8 @@ class Objects {
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       val trace1 = trace.add(source)
       value match {
-        case Cold =>
+        case TypeAbs(tp) =>
+          // TODO: can do better here
           given Trace = trace1
           val error = CallCold(ctor, source, trace.toVector)
           Result(Bottom, error :: Nil)
@@ -352,28 +369,27 @@ class Objects {
           extension (value: Value)
             def widen: Value = value match
               case RefSet(refs) => refs.map(_.widen).join
-              case Instance(_, outer, _, args) =>
-                val nested = (outer :: args).exists(_.isInstanceOf[Instance])
-                if nested then Cold
+              case Instance(klass, outer) =>
+                val nested = outer.isInstanceOf[Instance]
+                if nested then TypeAbs(klass.typeRef)
                 else value
-              case _: Fun => Cold
+              case _: Fun => TypeAbs(defn.AnyType)
               case _ => value
 
           given Trace = trace1
           val outerWidened = value.widen
-          val argsWidened = args.map(_.widen)
           val addr =
             if klass.isStaticObjectRef then
               ObjectRef(klass)
             else
-              Instance(klass, outerWidened, ctor, argsWidened)
+              Instance(klass, outerWidened)
           if !heap.contains(addr) then
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outerWidened))
             heap.update(addr, obj)
-          val res = addr.call(ctor, argsWidened, superType = NoType, source)
+          val res = addr.call(ctor, args, superType = NoType, source)
           Result(addr, res.errors)
 
-        case Fun(body, thisV, klass, _) =>
+        case Fun(body, thisV, klass) =>
           ??? // impossible
 
         case RefSet(refs) =>
@@ -405,7 +421,7 @@ class Objects {
         }
 
 // ----- Policies ------------------------------------------
-  extension (value: Addr)
+  extension (value: Value)
     /** Can the method call on `value` be ignored?
      *
      *  Note: assume overriding resolution has been performed.
@@ -429,7 +445,7 @@ class Objects {
     given Env = Env.empty
     heap.update(objRef, obj)
     val res = objRef.access(tpl)
-    res.errors.foreach(_.issue)
+    res.errors.filterNot(_.isInstanceOf[CallUnknown]).foreach(_.issue)
   }
 
 // ----- Semantic definition -------------------------------
@@ -449,7 +465,7 @@ class Objects {
    *
    *  This method only handles cache logic and delegates the work to `cases`.
    */
-  def eval(expr: Tree, thisV: Addr, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
+  def eval(expr: Tree, thisV: Value, klass: ClassSymbol, cacheResult: Boolean = false): Contextual[Result] = log("evaluating " + expr.show + ", this = " + thisV.show, printer, res => res.asInstanceOf[Result].show) {
     val innerMap = cache.getOrElseUpdate(thisV, new EqHashMap[Tree, Value])
     if (innerMap.contains(expr)) Result(innerMap(expr), Errors.empty)
     else {
@@ -465,24 +481,24 @@ class Objects {
   }
 
   /** Evaluate a list of expressions */
-  def eval(exprs: List[Tree], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
+  def eval(exprs: List[Tree], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
+  def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     args.map { arg =>
       if arg.isByName then
-        val fun = Fun(arg.tree, thisV, klass, env.widenForClosure)
+        val fun = Fun(arg.tree, thisV, klass)
         Result(fun, Nil)
       else
-        eval(arg.tree, thisV, klass)
+        eval(arg.tree, thisV, klass).ensureAccess(arg.tree)
     }
 
   /** Handles the evaluation of different expressions
    *
    *  Note: Recursive call should go to `eval` instead of `cases`.
    */
-  def cases(expr: Tree, thisV: Addr, klass: ClassSymbol): Contextual[Result] =
+  def cases(expr: Tree, thisV: Value, klass: ClassSymbol): Contextual[Result] =
     expr match {
       case Ident(nme.WILDCARD) =>
         // TODO:  disallow `var x: T = _`
@@ -555,11 +571,11 @@ class Objects {
           eval(rhs, thisV, klass)
 
       case closureDef(ddef) =>
-        val value = Fun(ddef.rhs, thisV, klass, env.widenForClosure)
+        val value = Fun(ddef.rhs, thisV, klass)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, thisV, klass, env.widenForClosure)
+        val value = Fun(body, thisV, klass)
         Result(value, Nil)
 
       case Block(stats, expr) =>
@@ -610,7 +626,7 @@ class Objects {
         val ress = elems.map { elem =>
           eval(elem, thisV, klass)
         }
-        Result(Cold, ress.flatMap(_.errors))
+        Result(TypeAbs(expr.tpe), ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
         val ress = eval(bindings, thisV, klass)
@@ -633,7 +649,7 @@ class Objects {
         Result(Bottom, Errors.empty)
 
       case tpl: Template =>
-        init(tpl, thisV, klass)
+        init(tpl, thisV.asInstanceOf[Addr], klass)
 
       case _: Import | _: Export =>
         Result(Bottom, Errors.empty)
@@ -643,7 +659,7 @@ class Objects {
     }
 
   /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
         Result(Bottom, Errors.empty)
@@ -654,7 +670,8 @@ class Objects {
         // - evaluate the rhs of the local definition for val definitions: they are already cached
         val sym = tmref.symbol
         if sym.is(Flags.Param) then Result(env.lookup(sym), Nil)
-        else if sym.is(Flags.Mutable) then Result(Cold, Nil)
+        else if sym.info <:< defn.StringType || sym.info.classSymbol.isPrimitiveValueClass then Result(Bottom, Nil)
+        else if sym.is(Flags.Mutable) then Result(TypeAbs(sym.info), Nil)
         else if sym.is(Flags.Package) then Result(Bottom, Nil)
         else if sym.hasSource then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
@@ -665,7 +682,7 @@ class Objects {
       case tmref: TermRef =>
         val sym = tmref.symbol
         if sym.isStaticObjectRef then
-          ObjectRef(sym.moduleClass.asClass).access(source)
+          Result(ObjectRef(sym.moduleClass.asClass), Nil)
         else
           cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
@@ -673,7 +690,7 @@ class Objects {
         val sym = tref.symbol
         if sym.is(Flags.Package) then Result(Bottom, Errors.empty)
         else if sym.isStaticObjectRef && sym != klass then
-          ObjectRef(sym.moduleClass.asClass).access(source)
+          Result(ObjectRef(sym.moduleClass.asClass), Nil)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, Errors.empty)
@@ -702,13 +719,12 @@ class Objects {
           refs.map(ref => resolveThis(target, ref, klass, source)).join
         case fun: Fun =>
           report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, source.srcPos)
-          Cold
-        case Cold => Cold
-
+          TypeAbs(defn.AnyType)
+        case TypeAbs(tp) => TypeAbs(target.info)
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
-  def outerValue(tref: TypeRef, thisV: Addr, klass: ClassSymbol, source: Tree): Contextual[Result] =
+  def outerValue(tref: TypeRef, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] =
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
@@ -801,8 +817,12 @@ class Objects {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
-        val fieldV = if vdef.symbol.is(Flags.Mutable) then Cold else res.value
-        thisV.updateField(vdef.symbol, fieldV)
+        val sym = vdef.symbol
+        val fieldV =
+          if sym.info <:< defn.StringType || sym.info.classSymbol.isPrimitiveValueClass then Bottom
+          else if sym.is(Flags.Mutable) then TypeAbs(sym.info)
+          else res.value
+        thisV.updateField(sym, fieldV)
 
       case _: MemberDef =>
 
