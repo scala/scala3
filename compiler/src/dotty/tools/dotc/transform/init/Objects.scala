@@ -383,9 +383,11 @@ class Objects {
             ObjectLeakDuringInit(obj.klass, trace1)
         Result(obj, warning :: Nil)
       else
-        given Path = path.add(obj.klass)
-        given Trace = trace.add(source)
-        Bottom.instantiate(obj.klass, obj.klass.primaryConstructor, Nil, source)
+        use(path.add(obj.klass)) {
+          use(trace.add(source)) {
+            Bottom.instantiate(obj.klass, obj.klass.primaryConstructor, Nil, source)
+          }
+        }
 
 // ----- Policies ------------------------------------------
   extension (value: Addr)
