@@ -5,7 +5,7 @@ class BaseClass(s: String) {
 object Obj {                           // error
   val s: String = "hello"
 
-  object AObj extends BaseClass(s)
+  object AObj extends BaseClass(s)     // error
 
   object BObj extends BaseClass(s)
 
