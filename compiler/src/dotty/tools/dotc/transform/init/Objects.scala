@@ -356,7 +356,7 @@ class Objects {
       }
   end extension
 
-// ----- Policies ------------------------------------------------------
+// ----- Policies ------------------------------------------
   extension (value: Addr)
     /** Can the method call on `value` be ignored?
      *
@@ -368,7 +368,7 @@ class Objects {
       cls == defn.AnyValClass ||
       cls == defn.ObjectClass
 
-// ----- Semantic definition --------------------------------
+// ----- Semantic definition -------------------------------
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
@@ -607,10 +607,17 @@ class Objects {
         }
 
       case tmref: TermRef =>
-        cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
+        val sym = tmref.symbol
+        if sym.isStaticObjectRef then
+          Result(ObjectRef(sym.moduleClass.asClass), Nil)
+        else
+          cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        if tref.symbol.is(Flags.Package) then Result(Bottom, Errors.empty)
+        val sym = tref.symbol
+        if sym.is(Flags.Package) then Result(Bottom, Errors.empty)
+        else if sym.isStaticObjectRef && sym != klass then
+          Result(ObjectRef(sym.moduleClass.asClass), Nil)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, Errors.empty)
@@ -749,4 +756,10 @@ class Objects {
 
     Result(thisV, errorBuffer.toList)
   }
+
+// ----- Utility methods ------------------------------------
+
+  extension (sym: Symbol)
+    def isStaticObjectRef(using Context) =
+      sym.isTerm && !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
 }
