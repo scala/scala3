@@ -80,7 +80,7 @@ class Objects {
     def apply(bindings: Map[Symbol, Value]): Env = bindings
 
     def apply(ddef: DefDef, args: List[Value])(using Context): Env =
-      val params = ddef.paramss.collect(l => ValDefs.unapply(l)).asInstanceOf[List[ValDef]].map(_.symbol)
+      val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       params.zip(args).toMap
 
@@ -89,17 +89,16 @@ class Objects {
 
       /** Widen the environment for closures */
       def widenForClosure: Env =
-        env.map { (k, v) =>
-          k ->
-          v.match
-          case RefSet(refs) => refs.map(_.widen).join
+        def widen(v: Value) = v.match
+          case RefSet(refs) => refs.map(widen(_)).join
           case Instance(_, outer, _, args) =>
             val nested = (outer :: args).exists(_.isInstanceOf[Instance])
             if nested then Cold
             else value
           case _: Fun => Cold
           case _ => value
-        }
+
+        env.map { (k, v) => k -> widen(v) }
   }
 
   type Env = Env.Env
@@ -653,15 +652,15 @@ class Objects {
   def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
+    val paramsMap = tpl.constr.termParamss.flatten.map(vdef => vdef.name -> vdef.symbol).toMap
+
     // init param fields
-    klass.paramAccessors.foreach { acc =>
-      if (!acc.is(Flags.Method)) {
-        printer.println(acc.show + " initialized")
-        thisV.updateField(acc, Hot)
-      }
+    klass.paramGetters.foreach { acc =>
+      printer.println(acc.show + " initialized")
+      thisV.updateField(acc, env.lookup(paramsMap(acc.name.toTermName)))
     }
 
-    def superCall(tref: TypeRef, ctor: Symbol, source: Tree): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -670,23 +669,33 @@ class Objects {
 
       // follow constructor
       if cls.hasSource then
-        val res2 = thisV.call(ctor, superType = NoType, source)(using ctx, trace.add(source))
-        errorBuffer ++= res2.errors
+        use(trace.add(source)) {
+          val res2 = thisV.call(ctor, args, superType = NoType, source)
+          errorBuffer ++= res2.errors
+        }
 
     // parents
     def initParent(parent: Tree) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
-        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, tree)
+        val resArgs = evalArgs(argss.flatten, thisV, klass)
+        val argsValues = resArgs.map(_.value)
+        val argsErrors = resArgs.flatMap(_.errors)
+
+        errorBuffer ++= argsErrors
+        superCall(tref, ctor, argsValues, tree)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
-        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, tree)
+        val resArgs = evalArgs(argss.flatten, thisV, klass)
+        val argsValues = resArgs.map(_.value)
+        val argsErrors = resArgs.flatMap(_.errors)
+
+        errorBuffer ++= argsErrors
+        superCall(tref, ctor, argsValues, tree)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, parent)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent)
     }
 
     // see spec 5.1 about "Template Evaluation".
@@ -713,7 +722,7 @@ class Objects {
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then superCall(tref, ctor, superParent)
+          if ctor.exists then superCall(tref, ctor, Nil, superParent)
       }
 
 
