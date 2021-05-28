@@ -161,7 +161,7 @@ class Objects {
 
   /** Result of abstract interpretation */
   case class Result(value: Value, errors: Seq[Error]) {
-    def show(using Context) = value.show + ", errors = " + errors.map(_.toString)
+    def show(using Context) = value.show + ", errors = " + errors.map(_.getClass.getName)
 
     def ++(errors: Seq[Error]): Result = this.copy(errors = this.errors ++ errors)
 
@@ -650,6 +650,7 @@ class Objects {
         val sym = tmref.symbol
         if sym.is(Flags.Param) then Result(env.lookup(sym), Nil)
         else if sym.is(Flags.Mutable) then Result(Cold, Nil)
+        else if sym.is(Flags.Package) then Result(Bottom, Nil)
         else {
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass, cacheResult = true)
