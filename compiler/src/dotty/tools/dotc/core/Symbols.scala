@@ -818,9 +818,10 @@ object Symbols {
             val oinfo = original.info match
               case ClassInfo(pre, _, parents, decls, selfInfo) =>
                 assert(original.isClass)
+                val parents1 = parents.mapConserve(ttmap.mapType)
                 val otypeParams = original.typeParams
                 if otypeParams.isEmpty then
-                  ClassInfo(pre, copy.asClass, parents, decls.cloneScope, selfInfo)
+                  ClassInfo(pre, copy.asClass, parents1, decls.cloneScope, selfInfo)
                 else
                   // copy type params, enter other definitions unchanged
                   // type parameters need to be copied early, since other type
@@ -829,11 +830,11 @@ object Symbols {
                   val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
                   newTypeParams.foreach(decls1.enter)
                   for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
-                  val parents1 = parents.map(_.substSym(otypeParams, newTypeParams))
+                  val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
                   val selfInfo1 = selfInfo match
                     case selfInfo: Type => selfInfo.substSym(otypeParams, newTypeParams)
                     case _ => selfInfo
-                  ClassInfo(pre, copy.asClass, parents1, decls1, selfInfo1)
+                  ClassInfo(pre, copy.asClass, parents2, decls1, selfInfo1)
               case oinfo => oinfo
 
             denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
