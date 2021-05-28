@@ -105,4 +105,21 @@ object Errors {
         }.mkString)
     }
   }
+
+  case class CyclicObjectInit(objs: Seq[Symbol], trace: Seq[Tree]) extends Error {
+    def source: Tree = trace.last
+    def show(using Context): String =
+      "Cyclic object initialization for " + objs.map(_.show).mkString(", ") + "."
+
+    override def issue(using Context): Unit =
+      report.warning(show + stacktrace, objs.head.srcPos)
+  }
+
+  case class ObjectLeakDuringInit(obj: Symbol, trace: Seq[Tree]) extends Error {
+    def source: Tree = trace.last
+    def show(using Context): String = obj.show + " leaked during its initialization " + "."
+
+    override def issue(using Context): Unit =
+      report.warning(show + stacktrace, obj.srcPos)
+  }
 }

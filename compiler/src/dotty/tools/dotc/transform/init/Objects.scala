@@ -175,7 +175,7 @@ class Objects {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace) ?=> T
+  type Contextual[T] = (Env, Context, Trace, Path) ?=> T
 
   inline def use[T, R](v: T)(inline op: T ?=> R): R = op(using v)
 
@@ -195,6 +195,21 @@ class Objects {
 
   import Trace._
   def trace(using t: Trace): Trace = t
+
+  object Path {
+    opaque type Path = Vector[ClassSymbol]
+
+    val empty: Path = Vector.empty
+
+    extension (path: Path)
+      def add(node: ClassSymbol): Path = path :+ node
+      def from(node: ClassSymbol): Vector[ClassSymbol] = path.dropWhile(_ != node)
+  }
+
+  type Path = Path.Path
+
+  import Path._
+  def path(using p: Path): Path = p
 
 // ----- Operations on domains -----------------------------
   extension (a: Value)
@@ -317,14 +332,11 @@ class Objects {
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value match {
-        case Bottom  =>
-          Result(Bottom, Errors.empty)
-
         case Cold =>
           val error = CallCold(ctor, source, trace.toVector)
           Result(Bottom, error :: Nil)
 
-        case addr: Addr =>
+        case _: Addr | Bottom =>
           // widen the outer and args to finitize addresses
           extension (value: Value)
             def widen: Value = value match
@@ -355,6 +367,22 @@ class Objects {
           Result(value2, errors)
       }
   end extension
+
+  extension (obj: ObjectRef)
+    def access(source: Tree): Contextual[Result] =
+      val cycle = path.from(obj.klass)
+      if cycle.nonEmpty then
+        var trace1 = trace.toVector :+ source
+        val warning =
+          if cycle.size > 1 then
+            CyclicObjectInit(cycle, trace1)
+          else
+            ObjectLeakDuringInit(obj.klass, trace1)
+        Result(obj, warning :: Nil)
+      else
+        given Path = path.add(obj.klass)
+        given Trace = trace.add(source)
+        Bottom.instantiate(obj.klass, obj.klass.primaryConstructor, Nil, source)
 
 // ----- Policies ------------------------------------------
   extension (value: Addr)
@@ -609,7 +637,7 @@ class Objects {
       case tmref: TermRef =>
         val sym = tmref.symbol
         if sym.isStaticObjectRef then
-          Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          ObjectRef(sym.moduleClass.asClass).access(source)
         else
           cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
@@ -617,7 +645,7 @@ class Objects {
         val sym = tref.symbol
         if sym.is(Flags.Package) then Result(Bottom, Errors.empty)
         else if sym.isStaticObjectRef && sym != klass then
-          Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          ObjectRef(sym.moduleClass.asClass).access(source)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, Errors.empty)
