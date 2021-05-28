@@ -87,16 +87,18 @@ class Objects {
     extension (env: Env)
       def lookup(sym: Symbol): Value = env(sym)
 
+      def union(other: Env): Env = env ++ other
+
       /** Widen the environment for closures */
       def widenForClosure: Env =
-        def widen(v: Value) = v.match
+        def widen(v: Value): Value = v.match
           case RefSet(refs) => refs.map(widen(_)).join
           case Instance(_, outer, _, args) =>
             val nested = (outer :: args).exists(_.isInstanceOf[Instance])
             if nested then Cold
-            else value
+            else v
           case _: Fun => Cold
-          case _ => value
+          case _ => v
 
         env.map { (k, v) => k -> widen(v) }
   }
@@ -168,7 +170,7 @@ class Objects {
     def call(meth: Symbol, args: List[Value], superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, args, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, args: List[Value], ctor: Symbol, source: Tree): Contextual[Result] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
   }
 
@@ -297,10 +299,13 @@ class Objects {
             else
               value.select(target, source, needResolve = false)
 
-        case Fun(body, thisV, klass) =>
+        case Fun(body, thisV, klass, env2) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
-          else eval(body, thisV, klass, cacheResult = true)
+          else
+            use(env.union(env2)) {
+              eval(body, thisV, klass, cacheResult = true)
+            }
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, args, superType, source))
@@ -340,7 +345,7 @@ class Objects {
           val res = inst.call(ctor, argsWidened, superType = NoType, source)
           Result(inst, res.errors)
 
-        case Fun(body, thisV, klass) =>
+        case Fun(body, thisV, klass, _) =>
           ??? // impossible
 
         case RefSet(refs) =>
@@ -402,12 +407,11 @@ class Objects {
   /** Evaluate arguments of methods */
   def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[List[Result]] =
     args.map { arg =>
-      val res =
-        if arg.isByName then
-          val fun = Fun(arg.tree, thisV, klass)
-          Result(fun, Nil)
-        else
-          eval(arg.tree, thisV, klass)
+      if arg.isByName then
+        val fun = Fun(arg.tree, thisV, klass, env.widenForClosure)
+        Result(fun, Nil)
+      else
+        eval(arg.tree, thisV, klass)
     }
 
   /** Handles the evaluation of different expressions
@@ -465,7 +469,7 @@ class Objects {
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
             // local methods are not a member, but we can reuse the method `call`
-            Result(thisValue2, argsErrors).call(id.symbol, argsValues, superType = NoType, expr, needResolve = false)
+            Result(thisValue2, argsErrors).call(id.symbol, argsValues, superType = NoType, expr)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ argsErrors
             use(trace2) {
@@ -519,14 +523,16 @@ class Objects {
         else eval(arg, thisV, klass)
 
       case Match(selector, cases) =>
-        val res1 = eval(selector, thisV, klass).ensureHot("The value to be matched needs to be fully initialized", selector)
+        // TODO: handle extractors
+        val res1 = eval(selector, thisV, klass)
         val ress = eval(cases.map(_.body), thisV, klass)
         val value = ress.map(_.value).join
         val errors = res1.errors ++ ress.flatMap(_.errors)
         Result(value, errors)
 
       case Return(expr, from) =>
-        eval(expr, thisV, klass).ensureHot("return expression may only be initialized value", expr)
+        // TODO: handle return by writing the interpreter in CPS
+        eval(expr, thisV, klass)
 
       case WhileDo(cond, body) =>
         val ress = eval(cond :: body :: Nil, thisV, klass)
@@ -548,9 +554,9 @@ class Objects {
 
       case SeqLiteral(elems, elemtpt) =>
         val ress = elems.map { elem =>
-          eval(elem, thisV, klass).ensureHot("May only use initialized value as method arguments", elem)
+          eval(elem, thisV, klass)
         }
-        Result(Bottom, ress.flatMap(_.errors))
+        Result(Cold, ress.flatMap(_.errors))
 
       case Inlined(call, bindings, expansion) =>
         val ress = eval(bindings, thisV, klass)
@@ -592,10 +598,11 @@ class Objects {
         // - only var definitions are cold, it means they are not inspected
         // - look up parameters from environment
         // - evaluate the rhs of the local definition for val definitions: they are already cached
-        if tmref.is(Flags.Param) then env.lookup(tmref.symbol)
-        else if tmref.is(Flags.Mutable) then Cold
+        val sym = tmref.symbol
+        if sym.is(Flags.Param) then Result(env.lookup(sym), Nil)
+        else if sym.is(Flags.Mutable) then Result(Cold, Nil)
         else {
-          val rhs = tmref.symbol.defTree.asInstanceOf[ValDef].rhs
+          val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass, cacheResult = true)
         }
 
@@ -620,7 +627,7 @@ class Objects {
   /** Resolve C.this that appear in `klass` */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
-    else if target.is(Flags.Package) || target.isStaticOwner then Hot
+    else if target.is(Flags.Package) || target.isStaticOwner then Bottom
     else
       thisV match
         case Bottom => Bottom
