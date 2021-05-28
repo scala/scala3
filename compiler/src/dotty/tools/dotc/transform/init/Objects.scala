@@ -248,10 +248,13 @@ class Objects {
 
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
+          val trace1 = trace.add(source)
           if target.is(Flags.Lazy) then
+            given Trace = trace1
             val rhs = target.defTree.asInstanceOf[ValDef].rhs
             eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
+            given Trace = trace1
             val obj = heap(addr)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
@@ -295,14 +298,17 @@ class Objects {
               resolveSuper(addr.klass, superType, meth)
             else
               resolve(addr.klass, meth)
+
+          val trace1 = trace.add(source)
           if target.isOneOf(Flags.Method) then
             if target.hasSource then
+              given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
               given Env = Env(ddef, args)
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(tpl))
+                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(cls.defTree))
               else
                 eval(ddef.rhs, addr, cls, cacheResult = true)
             else if addr.canIgnoreMethodCall(target) then
@@ -334,8 +340,10 @@ class Objects {
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
+      val trace1 = trace.add(source)
       value match {
         case Cold =>
+          given Trace = trace1
           val error = CallCold(ctor, source, trace.toVector)
           Result(Bottom, error :: Nil)
 
@@ -351,6 +359,7 @@ class Objects {
               case _: Fun => Cold
               case _ => value
 
+          given Trace = trace1
           val outerWidened = value.widen
           val argsWidened = args.map(_.widen)
           val addr =
@@ -379,7 +388,8 @@ class Objects {
     def access(source: Tree): Contextual[Result] =
       val cycle = path.from(obj.klass)
       if cycle.nonEmpty then
-        var trace1 = trace.toVector :+ source
+        val classDef = obj.klass.defTree
+        var trace1 = trace.toVector.dropWhile(_ != classDef) :+ source
         val warning =
           if cycle.size > 1 then
             CyclicObjectInit(cycle, trace1)
@@ -391,9 +401,7 @@ class Objects {
         Result(Bottom, Nil)
       else
         use(path.add(obj.klass)) {
-          use(trace.add(source)) {
-            Bottom.instantiate(obj.klass, obj.klass.primaryConstructor, Nil, source)
-          }
+          Bottom.instantiate(obj.klass, obj.klass.primaryConstructor, Nil, source)
         }
 
 // ----- Policies ------------------------------------------
@@ -416,11 +424,11 @@ class Objects {
   def check(cls: ClassSymbol, tpl: Template)(using Context): Unit = {
     val objRef = ObjectRef(cls)
     val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map.empty)
-    given Path = Path.empty.add(cls)
+    given Path = Path.empty
     given Trace = Trace.empty
     given Env = Env.empty
     heap.update(objRef, obj)
-    val res = eval(tpl, objRef, cls)
+    val res = objRef.access(tpl)
     res.errors.foreach(_.issue)
   }
 
@@ -492,9 +500,7 @@ class Objects {
 
         val cls = tref.classSymbol.asClass
         val res = outerValue(tref, thisV, klass, tpt)
-        use(trace.add(expr)) {
-          (res ++ argsErrors).instantiate(cls, ctor, argsValues, expr)
-        }
+        (res ++ argsErrors).instantiate(cls, ctor, argsValues, expr)
 
       case Call(ref, argss) =>
         // check args
@@ -502,21 +508,15 @@ class Objects {
         val argsValues = resArgs.map(_.value)
         val argsErrors = resArgs.flatMap(_.errors)
 
-        val trace2: Trace = trace.add(expr)
-
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          use(trace2) {
-            Result(thisValue2, argsErrors).call(ref.symbol, argsValues, superTp, expr)
-          }
+          Result(thisValue2, argsErrors).call(ref.symbol, argsValues, superTp, expr)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ argsErrors
-          use(trace2) {
-            res.call(ref.symbol, argsValues, superType = NoType, source = expr)
-          }
+          res.call(ref.symbol, argsValues, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -528,9 +528,7 @@ class Objects {
             Result(thisValue2, argsErrors).call(id.symbol, argsValues, superType = NoType, expr)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ argsErrors
-            use(trace2) {
-              res.call(id.symbol, argsValues, superType = NoType, source = expr)
-            }
+            res.call(id.symbol, argsValues, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
