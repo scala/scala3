@@ -1874,7 +1874,22 @@ class Typer extends Namer
           args = args.take(tparams.length)
         }
         def typedArg(arg: untpd.Tree, tparam: ParamInfo) = {
-          def tparamBounds = tparam.paramInfoAsSeenFrom(tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty)))
+          val tlambdaParams: List[TypeLambda] =
+            tparams.collect { case LambdaParam(tl, _) => tl }
+          def avoidLambdaParams(tp: Type): Type =
+            val approx = new ApproximatingTypeMap {
+              def apply(t: Type): Type = t match {
+                case TypeParamRef(tl, n) if tlambdaParams.contains(tl) =>
+                  val bounds = tl.paramInfos(n)
+                  range(bounds.lo, bounds.hi)
+                case _ =>
+                  mapOver(t)
+              }
+            }
+            approx(tp)
+          val prefix = tpt1.tpe.appliedTo(tparams.map(_ => TypeBounds.empty))
+          val tparamBounds = avoidLambdaParams(tparam.paramInfoAsSeenFrom(prefix))
+
           val (desugaredArg, argPt) =
             if ctx.mode.is(Mode.Pattern) then
               (if (untpd.isVarPattern(arg)) desugar.patternVar(arg) else arg, tparamBounds)
