@@ -25,8 +25,7 @@
   --link-fg: #00607D;
   --link-hover-fg: #00A0D0;
 
-  --link-sig-fd: #2da0d1;
-  --link-sig-hover-fd: #7c99a5;
+  --link-sig-fg: var(--link-fg);
 
   --leftbar-bg: hsl(200, 65%, 75%);
   --leftbar-fg: #333;
@@ -34,6 +33,8 @@
   --leftbar-current-fg: #fff;
   --leftbar-hover-bg: hsl(200, 65%, 65%);
   --leftbar-hover-fg: #333;
+
+  --footer-bg: #FFF;
 
   --icon-color: #00485E;
   --selected-fg: #00303E;
@@ -73,15 +74,17 @@
   --link-fg: hsl(200, 100%, 70%);
   --link-hover-fg: #00A0D0;
 
-  --link-sig-fd: #2da0d1;
-  --link-sig-hover-fd: #7c99a5;
+  --link-sig-fg: #2da0d1;
 
   --leftbar-bg: hsl(200, 100%, 14%);
   --leftbar-fg: #CCC;
   --leftbar-current-bg: hsl(200, 100%, 35%);
-  --leftbar-current-fg: #CCC;
+  --leftbar-current-fg: #FFF;
   --leftbar-hover-bg: hsl(200, 80%, 25%);
   --leftbar-hover-fg: #CCC;
+
+  --footer-bg: var(--body-bg);
+  --footer-fg: var(--body-fg);
 
   --icon-color: #00485E;
   --selected-fg: #00303E;
@@ -321,6 +324,7 @@ th {
 
 #sideMenu2 a.selected {
   background: var(--leftbar-current-bg);
+  color: var(--leftbar-current-fg);
   font-weight: bold;
 }
 
@@ -536,6 +540,8 @@ Same solution is already used in Dokka.
 
 /* Footer */
 footer {
+  background: var(--footer-bg);
+  color: var(--footer-fg);
   display: flex;
   bottom: 0px;
   align-items: center;
@@ -546,8 +552,12 @@ footer {
   min-height: var(--footer-height);
   border-top: 1px solid var(--border-light);
 }
-footer span.go-to-top-icon {
-  background-color: white;
+.theme-dark footer img {
+  /* "Poor man's dark mode" for images.
+   * This works great with black images,
+   * and just-okay with colored images.
+   */
+  filter: invert(100%) hue-rotate(180deg);
 }
 footer > span:first-child {
   margin-left: 24px;
@@ -612,9 +622,7 @@ footer .pull-right {
   -webkit-transition: 0.4s;
   transition: 0.4s;
   box-shadow: 0 0px 15px #2020203d;
-
-  background-repeat: no-repeat;
-  background-position: center;
+  background: #555;
 }
 .switch input:checked + .slider {
   background-color: hsl(200, 80%, 65%); /* --active-bg, but not affected by the theme */
@@ -656,7 +664,7 @@ footer .pull-right {
 }
 
 .other-modifiers a, .other-modifiers a:visited, .other-modifiers span[data-unresolved-link] {
-  color: var(--link-sig-fd);
+  color: var(--link-sig-fg);
 }
 
 .documentableElement.expand .modifiers {
@@ -671,7 +679,7 @@ footer .pull-right {
 }
 
 .signature a, .signature a:visited, .signature span[data-unresolved-link] {
-  color: var(--link-sig-fd);
+  color: var(--link-sig-fg);
 }
 
 .expand .signature {
@@ -869,10 +877,6 @@ footer .pull-right {
   margin-right: 5%;
 }
 
-footer {
-  color: grey;
-}
-
 footer .socials {
   margin-left: 10px;
   margin-right: 10px;
@@ -975,10 +979,6 @@ footer .socials {
   .main-subrow .anchor-icon {
     display: none;
   }
-}
-
-footer {
-  background-color: white;
 }
 
 /* The container <div> - needed to position the dropdown content */
