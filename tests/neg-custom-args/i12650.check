@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/i12650.scala:2:58 ----------------------------------------------------------------------
+2 |  type This <: FooBase { type This <: FooBase.this.This } & FooBase { type This <: FooBase.this.This } // error
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |               cyclic reference involving type This

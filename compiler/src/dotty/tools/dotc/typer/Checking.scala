@@ -403,11 +403,11 @@ object Checking {
       return
 
     def qualifies(sym: Symbol) = sym.name.isTypeName && !sym.is(Private)
-    val abstractTypeNames =
-      for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
-      yield mbr.name.asTypeName
-
     withMode(Mode.CheckCyclic) {
+      val abstractTypeNames =
+        for (parent <- parents; mbr <- parent.abstractTypeMembers if qualifies(mbr.symbol))
+        yield mbr.name.asTypeName
+
       for name <- abstractTypeNames do
         try
           val mbr = joint.member(name)

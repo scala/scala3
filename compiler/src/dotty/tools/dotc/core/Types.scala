@@ -2833,7 +2833,9 @@ object Types {
         if myRef == null then
           // if errors were reported previously handle this by throwing a CyclicReference
           // instead of crashing immediately. A test case is neg/i6057.scala.
-          assert(ctx.mode.is(Mode.CheckCyclic) || ctx.reporter.errorsReported)
+          assert(ctx.mode.is(Mode.CheckCyclic)
+              || ctx.mode.is(Mode.Printing)
+              || ctx.reporter.errorsReported)
           throw CyclicReference(NoDenotation)
       else
         computed = true
