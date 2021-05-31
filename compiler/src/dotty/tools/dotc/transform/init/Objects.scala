@@ -41,6 +41,12 @@ class Objects {
   /** An object abstract by its type */
   case class TypeAbs(tp: Type) extends Value
 
+  /** An object abstract by its class
+   *
+   *  This is used for arguments
+   */
+  case class ClassAbs(klass: ClassSymbol) extends Value
+
   sealed abstract class Addr extends Value {
     def klass: ClassSymbol
   }
@@ -50,10 +56,10 @@ class Objects {
   case class ObjectRef(klass: ClassSymbol) extends Addr
 
   /** An instance of class */
-  case class Instance(klass: ClassSymbol, outer: Value) extends Addr
+  case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -94,7 +100,7 @@ class Objects {
         then
           Bottom
         else
-          TypeAbs(sym.info)
+          env(sym)
 
       def union(other: Env): Env = env ++ other
   }
@@ -219,20 +225,24 @@ class Objects {
       case (Bottom, _)  => b
       case (_, Bottom)  => a
 
-      case (_: TypeAbs, _) => a
-      case (_, _: TypeAbs) => b
-
-      case (a: (Fun | Addr), b: (Fun | Addr)) => RefSet(a :: b :: Nil)
-
-      case (a: (Fun | Addr), RefSet(refs))    => RefSet(a :: refs)
-      case (RefSet(refs), b: (Fun | Addr))    => RefSet(b :: refs)
-
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
+
+      case (a, RefSet(refs))    => RefSet(a :: refs)
+      case (RefSet(refs), b)    => RefSet(b :: refs)
+      case (a, b)               => RefSet(a :: b :: Nil)
+
+    def widen: Value = v.match
+      case RefSet(refs) => refs.map(widen(_)).join
+      case inst: Instance => ClassAbs(inst.klass)
+      case Fun(e, thisV, klass, env) => Fun(e, thisV.widen, klass, env)
+      case _ => v
 
   extension (values: Seq[Value])
     def join: Value =
       if values.isEmpty then Bottom
       else values.reduce { (v1, v2) => v1.join(v2) }
+
+    def widen: List[Value] = values.map(_.widen).toList
 
   extension (value: Value)
     def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] =
@@ -263,7 +273,7 @@ class Objects {
             eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             given Trace = trace1
-            val obj = heap(addr)
+            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty, mutable.Map.empty)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else if target.is(Flags.ParamAccessor) then
@@ -336,11 +346,7 @@ class Objects {
               val error = CallUnknown(target, source, trace.toVector)
               Result(Bottom, error :: Nil)
           else
-            val obj = heap(addr)
-            if obj.fields.contains(target) then
-              Result(obj.fields(target), Nil)
-            else
-              value.select(target, source, needResolve = false)
+            value.select(target, source, needResolve = false)
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
