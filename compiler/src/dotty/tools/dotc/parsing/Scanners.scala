@@ -601,7 +601,9 @@ object Scanners {
       case r: Indented
       if !r.isOutermost
          && closingRegionTokens.contains(token)
-         && !(token == CASE && r.prefix == MATCH) =>
+         && !(token == CASE && r.prefix == MATCH)
+         && next.token == EMPTY  // can be violated for ill-formed programs, e.g. neg/i12605.sala
+      =>
         currentRegion = r.enclosing
         insert(OUTDENT, offset)
       case _ =>
