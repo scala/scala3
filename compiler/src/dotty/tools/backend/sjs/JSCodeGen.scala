@@ -18,6 +18,7 @@ import Decorators._
 import Flags._
 import dotty.tools.dotc.ast.Trees._
 import Names._
+import NameKinds.DefaultGetterName
 import Types._
 import Symbols._
 import Denotations._
@@ -1068,6 +1069,14 @@ class JSCodeGen()(using genCtx: Context) {
             OptimizerHints.empty, None))
       } else if (sym.isJSNativeCtorDefaultParam) {
         // #11592
+        None
+      } else if (sym.is(Bridge) && sym.name.is(DefaultGetterName) && currentClassSym.isNonNativeJSClass) {
+        /* #12572 Bridges for default accessors in non-native JS classes must not be emitted,
+         * because they call another default accessor, making their entire body an
+         * <undefined-param> that cannot be eliminated.
+         * Such methods are never called anyway, because they are filtered out in
+         * JSExportsGen.defaultGetterDenot().
+         */
         None
       } else /*if (sym.isClassConstructor && isHijackedBoxedClass(sym.owner)) {
         None

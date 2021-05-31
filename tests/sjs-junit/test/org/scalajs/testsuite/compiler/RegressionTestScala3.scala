@@ -35,6 +35,10 @@ class RegressionTestScala3 {
 
     assertEquals(5, foo(5)(4))
   }
+
+  @Test def defaultAccessorBridgesIssue12572(): Unit = {
+    new MyPromiseIssue12572[Int](5)
+  }
 }
 
 object RegressionTestScala3 {
@@ -52,6 +56,25 @@ object RegressionTestScala3 {
   @JSGlobal("RangeError")
   class RangeErrorIssue11592(msg: String = js.native) extends js.Object {
     val message: String = js.native
+  }
+
+  class MyPromiseIssue12572[T](t: T) extends js.Promise[T]((resolve, reject) => resolve(t)) {
+    override def `then`[S](
+        onFulfilled: js.Function1[T, S | js.Thenable[S]],
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
+      ???
+    }
+
+    override def `then`[S >: T](
+        onFulfilled: Unit,
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]]): js.Promise[S] = {
+      ???
+    }
+
+    override def `catch`[S >: T](
+        onRejected: js.UndefOr[js.Function1[scala.Any, S | js.Thenable[S]]] = js.undefined): js.Promise[S] = {
+      ???
+    }
   }
 }
 
