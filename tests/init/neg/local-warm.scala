@@ -9,7 +9,7 @@ abstract class A {
 
 class C extends A {
     def g() = {
-        val t = m1()
+        val t = m1() // error
         t.x
     }
     val x = g()
