@@ -1275,7 +1275,13 @@ object Parsers {
 
     def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
-      def matches(stat: Tree): Boolean = stat match
+      def updateSpanOfLast(last: T): Unit =
+        last match
+          case last: WithEndMarker[t] => last.withEndMarker()
+          case _ =>
+        last.span = last.span.withEnd(in.lastCharOffset)
+
+      def matches(stat: T): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
@@ -1283,8 +1289,6 @@ object Parsers {
           in.token == IDENTIFIER && in.name == nme.extension
         case PackageDef(pid: RefTree, _) =>
           in.isIdent && in.name == pid.name
-        case PatDef(_, IdPattern(id, _) :: Nil, _, _) =>
-         in.isIdent && in.name == id.name
         case stat: MemberDef if stat.mods.is(Given) => in.token == GIVEN
         case _: PatDef => in.token == VAL
         case _: If => in.token == IF
@@ -1295,9 +1299,16 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
+      def matchesAndSetEnd(last: T): Boolean = {
+        val didMatch = matches(last)
+        if didMatch then
+          updateSpanOfLast(last)
+        didMatch
+      }
+
       if in.token == END then
         val start = in.skipToken()
-        if stats.isEmpty || !matches(stats.last) then
+        if stats.isEmpty || !matchesAndSetEnd(stats.last) then
           syntaxError("misaligned end marker", Span(start, in.lastCharOffset))
         in.token = IDENTIFIER // Leaving it as the original token can confuse newline insertion
         in.nextToken()

@@ -182,6 +182,7 @@ object desugar {
         tpt     = TypeTree(defn.UnitType),
         rhs     = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
+       .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     }
     else vdef1
@@ -883,6 +884,7 @@ object desugar {
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
+        .withEndMarker(copyFrom = mdef) // copy over the end marker position to the module class def
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }
@@ -1299,7 +1301,9 @@ object desugar {
     if (nestedStats.isEmpty) pdef
     else {
       val name = packageObjectName(ctx.source)
-      val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      val grouped =
+        ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+          .withMods(Modifiers(Synthetic))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }

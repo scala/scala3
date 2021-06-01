@@ -6,7 +6,7 @@ import core._
 import Phases._
 import ast.tpd._
 import ast.untpd.given
-import ast.Trees.mods
+import ast.Trees.{mods, WithEndMarker}
 import Contexts._
 import Symbols._
 import Flags._
@@ -139,47 +139,46 @@ class ExtractSemanticDB extends Phase:
             case tree => registerDefinition(tree.symbol, tree.span, Set.empty, tree.source)
           tree.stats.foreach(traverse)
         case tree: NamedDefTree =>
-          if tree.symbol.isAllOf(ModuleValCreationFlags) then
-            return
-          if !excludeDef(tree.symbol)
-          && tree.span.hasLength then
-            registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
-            val privateWithin = tree.symbol.privateWithin
-            if privateWithin.exists then
-              registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
-          else if !excludeSymbol(tree.symbol) then
-            registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
-          tree match
-          case tree: ValDef
-          if tree.symbol.isAllOf(EnumValue) =>
-            tree.rhs match
-            case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
-              template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
-            case _ => // calls $new
-          case tree: ValDef
-          if tree.symbol.isSelfSym =>
-            if tree.tpt.span.hasLength then
-              traverse(tree.tpt)
-          case tree: DefDef
-          if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
-            tree.trailingParamss.foreach(_.foreach(traverse))
-            traverse(tree.rhs)
-          case tree: (DefDef | ValDef)
-          if tree.symbol.isSyntheticWithIdent =>
+          if !tree.symbol.isAllOf(ModuleValCreationFlags) then
+            if !excludeDef(tree.symbol)
+            && tree.span.hasLength then
+              registerDefinition(tree.symbol, tree.nameSpan, symbolKinds(tree), tree.source)
+              val privateWithin = tree.symbol.privateWithin
+              if privateWithin.exists then
+                registerUseGuarded(None, privateWithin, spanOfSymbol(privateWithin, tree.span, tree.source), tree.source)
+            else if !excludeSymbol(tree.symbol) then
+              registerSymbol(tree.symbol, symbolName(tree.symbol), symbolKinds(tree))
             tree match
-              case tree: DefDef =>
-                tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
-              case tree: ValDef if tree.symbol.is(Given) => traverse(tree.tpt)
-              case _ =>
-            if !tree.symbol.isGlobal then
-              localBodies(tree.symbol) = tree.rhs
-            // ignore rhs
-          case PatternValDef(pat, rhs) =>
-            traverse(rhs)
-            PatternValDef.collectPats(pat).foreach(traverse)
-          case tree =>
-            if !excludeChildren(tree.symbol) then
-              traverseChildren(tree)
+            case tree: ValDef
+            if tree.symbol.isAllOf(EnumValue) =>
+              tree.rhs match
+              case Block(TypeDef(_, template: Template) :: _, _) => // simple case with specialised extends clause
+                template.parents.filter(!_.span.isZeroExtent).foreach(traverse)
+              case _ => // calls $new
+            case tree: ValDef
+            if tree.symbol.isSelfSym =>
+              if tree.tpt.span.hasLength then
+                traverse(tree.tpt)
+            case tree: DefDef
+            if tree.symbol.isConstructor => // ignore typeparams for secondary ctors
+              tree.trailingParamss.foreach(_.foreach(traverse))
+              traverse(tree.rhs)
+            case tree: (DefDef | ValDef)
+            if tree.symbol.isSyntheticWithIdent =>
+              tree match
+                case tree: DefDef =>
+                  tree.paramss.foreach(_.foreach(param => registerSymbolSimple(param.symbol)))
+                case tree: ValDef if tree.symbol.is(Given) => traverse(tree.tpt)
+                case _ =>
+              if !tree.symbol.isGlobal then
+                localBodies(tree.symbol) = tree.rhs
+              // ignore rhs
+            case PatternValDef(pat, rhs) =>
+              traverse(rhs)
+              PatternValDef.collectPats(pat).foreach(traverse)
+            case tree =>
+              if !excludeChildren(tree.symbol) then
+                traverseChildren(tree)
         case tree: Template =>
           val ctorSym = tree.constr.symbol
           if !excludeDef(ctorSym) then
@@ -239,6 +238,13 @@ class ExtractSemanticDB extends Phase:
           traverse(tree.call)
         case _ =>
           traverseChildren(tree)
+
+      tree match
+        case tree: WithEndMarker[t] =>
+          val endSpan = tree.endSpan
+          if endSpan.exists then
+            registerUseGuarded(None, tree.symbol, endSpan, tree.source)
+        case _ =>
 
     end traverse
 
