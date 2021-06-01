@@ -103,7 +103,6 @@ class Semantic {
    *
    *  As in the OOPSLA paper, the abstract heap is monotonistic.
    *
-   *  This is only one object we need to care about, hence it's just `Objekt`.
    */
   object Heap {
     opaque type Heap = mutable.Map[Addr, Objekt]
@@ -119,9 +118,17 @@ class Semantic {
     end extension
 
     extension (ref: Addr)
+      /** Update field value of the abstract object
+       *
+       *  Invariant: fields are immutable and only set once from `init`
+       */
       def updateField(field: Symbol, value: Value): Contextual[Unit] =
         heap(ref).fields(field) = value
 
+      /** Update the immediate outer of the given `klass` of the abstract object
+       *
+       *  Invariant: outers are immutable and only set once from `init`
+       */
       def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
         heap(ref).outers(klass) = value
     end extension
@@ -316,7 +323,7 @@ class Semantic {
               val cls = target.owner.enclosingClass.asClass
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using ctx, trace.add(tpl), promoted)
+                eval(tpl, addr, cls, cacheResult = true)(using ctx, trace.add(cls.defTree), promoted)
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, cls, cacheResult = true)
@@ -777,9 +784,9 @@ class Semantic {
     else if target.is(Flags.Package) || target.isStaticOwner then Hot
     else
       thisV match
-        case Hot | _: ThisRef => Hot
-        case warm: Warm =>
-          val obj = heap(warm)
+        case Hot => Hot
+        case addr: Addr =>
+          val obj = heap(addr)
           val outerCls = klass.owner.enclosingClass.asClass
           resolveThis(target, obj.outers(klass), outerCls, source)
         case RefSet(refs) =>
