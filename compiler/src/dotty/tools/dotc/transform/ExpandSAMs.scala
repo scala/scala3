@@ -105,17 +105,8 @@ class ExpandSAMs extends MiniPhase:
    *  ```
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree = {
-    /** An extractor for match, either contained in a block or standalone. */
-    object PartialFunctionRHS {
-      def unapply(tree: Tree): Option[Match] = tree match {
-        case Block(Nil, expr) => unapply(expr)
-        case m: Match => Some(m)
-        case _ => None
-      }
-    }
-
     val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree
-    
+
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
     // Otherwise construct a match `x match case _ => rhs` where `x` is the parameter of the closure.
