@@ -6,7 +6,7 @@ class A {
 class B extends A {
     def updateThenCompare(c: Int): Boolean = {
         x = c
-        compare()
+        compare() // error
     }
     val result = updateThenCompare(5)
 }
