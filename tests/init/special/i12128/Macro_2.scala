@@ -1,6 +1,8 @@
 import scala.quoted._
 import scala.language.experimental.macros
 
+class Location(val line: Int)
+
 object MacroCompat {
   trait LocationMacro {
     inline implicit def generate: Location = ${ locationImpl() }

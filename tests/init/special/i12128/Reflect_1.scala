@@ -20,11 +20,11 @@ trait Context: // Dummy scala.reflect.macros.Context
     def New(tpe: Type, arg: Tree): Tree
   }
 
-  def enclosingPosition: Location
+  def enclosingPosition: Position
 
   trait Mirror {
     def staticClass(name: String): universe.Type
   }
   val mirror: Mirror
 
-class Location(val line: Int)
+class Position(val line: Int)
