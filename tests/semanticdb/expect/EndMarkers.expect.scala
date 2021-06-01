@@ -6,7 +6,7 @@ package endmarkers:
     end this/*->endmarkers::MultiCtor#`<init>`(+1).*/
   end MultiCtor/*->endmarkers::MultiCtor#*/
 
-  /*<-endmarkers::EndMarkers$package.*/def topLevelMethod/*<-endmarkers::EndMarkers$package.topLevelMethod().*/: String/*->scala::Predef.String#*/ =
+  def topLevelMethod/*<-endmarkers::EndMarkers$package.topLevelMethod().*/: String/*->scala::Predef.String#*/ =
     "hello"
   end topLevelMethod/*->endmarkers::EndMarkers$package.topLevelMethod().*/
 

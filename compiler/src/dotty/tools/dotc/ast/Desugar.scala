@@ -1301,7 +1301,9 @@ object desugar {
     if (nestedStats.isEmpty) pdef
     else {
       val name = packageObjectName(ctx.source)
-      val grouped = ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+      val grouped =
+        ModuleDef(name, Template(emptyConstructor, Nil, Nil, EmptyValDef, nestedStats))
+          .withMods(Modifiers(Synthetic))
       cpy.PackageDef(pdef)(pdef.pid, topStats :+ grouped)
     }
   }

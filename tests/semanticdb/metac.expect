@@ -338,7 +338,7 @@ Uri => AnonymousGiven.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 6 entries
+Occurrences => 5 entries
 
 Symbols:
 angiven/AnonymousGiven$package. => final package object angiven
@@ -351,7 +351,6 @@ Occurrences:
 [0:8..0:15): angiven <- angiven/
 [2:0..2:0): <- angiven/Foo#`<init>`().
 [2:6..2:9): Foo <- angiven/Foo#
-[4:0..4:0): <- angiven/AnonymousGiven$package.
 [4:4..4:7): bar <- angiven/AnonymousGiven$package.bar().
 [4:14..4:17): Foo -> angiven/Foo#
 
@@ -667,7 +666,7 @@ Uri => EndMarkers.scala
 Text => empty
 Language => Scala
 Symbols => 24 entries
-Occurrences => 43 entries
+Occurrences => 42 entries
 
 Symbols:
 endmarkers/Container# => class Container
@@ -705,7 +704,6 @@ Occurrences:
 [4:11..4:11): -> endmarkers/MultiCtor#`<init>`().
 [5:8..5:12): this -> endmarkers/MultiCtor#`<init>`(+1).
 [6:6..6:15): MultiCtor -> endmarkers/MultiCtor#
-[8:2..8:2): <- endmarkers/EndMarkers$package.
 [8:6..8:20): topLevelMethod <- endmarkers/EndMarkers$package.topLevelMethod().
 [8:22..8:28): String -> scala/Predef.String#
 [10:6..10:20): topLevelMethod -> endmarkers/EndMarkers$package.topLevelMethod().
@@ -1278,7 +1276,7 @@ Uri => Extension.scala
 Text => empty
 Language => Scala
 Symbols => 8 entries
-Occurrences => 19 entries
+Occurrences => 18 entries
 
 Symbols:
 ext/Extension$package. => final package object ext
@@ -1292,7 +1290,6 @@ ext/Extension$package.foo().(s) => param s
 
 Occurrences:
 [0:8..0:11): ext <- ext/
-[2:0..2:0): <- ext/Extension$package.
 [2:11..2:12): s <- ext/Extension$package.foo().(s)
 [2:11..2:12): s <- ext/Extension$package.`#*#`().(s)
 [2:14..2:20): String -> scala/Predef.String#
@@ -1747,7 +1744,7 @@ Uri => InventedNames.scala
 Text => empty
 Language => Scala
 Symbols => 45 entries
-Occurrences => 73 entries
+Occurrences => 72 entries
 
 Symbols:
 givens/InventedNames$package. => final package object givens
@@ -1812,7 +1809,6 @@ Occurrences:
 [9:6..9:9): doZ <- givens/Z#doZ().
 [9:11..9:15): List -> scala/package.List#
 [9:16..9:17): T -> givens/Z#[T]
-[13:0..13:0): <- givens/InventedNames$package.
 [13:6..13:14): intValue <- givens/InventedNames$package.intValue.
 [13:16..13:19): Int -> scala/Int#
 [14:6..14:6): <- givens/InventedNames$package.given_String.
@@ -2731,7 +2727,7 @@ Uri => RightAssociativeExtension.scala
 Text => empty
 Language => Scala
 Symbols => 5 entries
-Occurrences => 14 entries
+Occurrences => 13 entries
 
 Symbols:
 ext/RightAssociativeExtension$package. => final package object ext
@@ -2742,7 +2738,6 @@ ext/RightAssociativeExtension$package.b. => val method b
 
 Occurrences:
 [0:8..0:11): ext <- ext/
-[2:0..2:0): <- ext/RightAssociativeExtension$package.
 [2:11..2:12): s <- ext/RightAssociativeExtension$package.`:*:`().(s)
 [2:14..2:20): String -> scala/Predef.String#
 [3:6..3:9): :*: <- ext/RightAssociativeExtension$package.`:*:`().
@@ -3471,7 +3466,7 @@ Uri => exports-package.scala
 Text => empty
 Language => Scala
 Symbols => 4 entries
-Occurrences => 6 entries
+Occurrences => 5 entries
 
 Symbols:
 exports/`exports-package$package`. => final package object exports
@@ -3481,7 +3476,6 @@ exports/`exports-package$package`.Encoder# => final type Encoder
 
 Occurrences:
 [0:8..0:15): exports <- exports/
-[2:0..2:0): <- exports/`exports-package$package`.
 [2:7..2:14): example -> exports/example/
 [2:16..2:23): Decoder <- exports/`exports-package$package`.Decoder#
 [2:25..2:32): Encoder <- exports/`exports-package$package`.Encoder#
@@ -3516,7 +3510,7 @@ Uri => i9727.scala
 Text => empty
 Language => Scala
 Symbols => 7 entries
-Occurrences => 12 entries
+Occurrences => 11 entries
 
 Symbols:
 i9727/Test# => class Test
@@ -3533,7 +3527,6 @@ Occurrences:
 [2:10..2:10): <- i9727/Test#`<init>`().
 [2:11..2:12): a <- i9727/Test#a.
 [2:14..2:17): Int -> scala/Int#
-[3:0..3:0): <- i9727/i9727$package.
 [3:4..3:5): a <- i9727/i9727$package.a.
 [3:12..3:16): Test -> i9727/Test#
 [3:16..3:16): -> i9727/Test#`<init>`().
@@ -4381,8 +4374,8 @@ Schema => SemanticDB v4
 Uri => toplevel.scala
 Text => empty
 Language => Scala
-Symbols => 18 entries
-Occurrences => 42 entries
+Symbols => 19 entries
+Occurrences => 44 entries
 
 Symbols:
 _empty_/MyProgram# => final class MyProgram
@@ -4402,10 +4395,10 @@ _empty_/toplevel$package.combine(+1).(y) => param y
 _empty_/toplevel$package.combine(+1).(z) => param z
 _empty_/toplevel$package.combine(+2). => method combine
 _empty_/toplevel$package.foo(). => method foo
+_empty_/toplevel$package.fooRef(). => method fooRef
 local0 => val local error
 
 Occurrences:
-[0:0..0:0): <- _empty_/toplevel$package.
 [0:11..0:12): a <- _empty_/toplevel$package.a.
 [1:11..1:12): x <- _empty_/toplevel$package.combine().(x)
 [1:14..1:17): Int -> scala/Int#
@@ -4447,4 +4440,7 @@ Occurrences:
 [5:46..5:51): times -> _empty_/toplevel$package.MyProgram().(times)
 [5:53..5:60): foreach -> scala/collection/immutable/Range#foreach().
 [5:67..5:74): println -> scala/Predef.println(+1).
+[6:4..6:10): fooRef <- _empty_/toplevel$package.fooRef().
+[6:13..6:29): toplevel$package -> _empty_/toplevel$package.
+[6:30..6:33): foo -> _empty_/toplevel$package.foo().
 
