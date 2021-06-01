@@ -15,7 +15,7 @@ class D[A <: AnyVal] extends InteractiveDriver[A] {
 
 object InteractiveDriver {
     def h(x: InteractiveDriver[?]): C[?] = x match {
-        case c: C[?] => c
+        case c: C[?] => c // error
         case _ => new C[Int]
     }
     val l: Seq[Any] = Seq(1, 2, new C[Double], new D[Int])
