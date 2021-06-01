@@ -1,5 +1,5 @@
 class Parent {
-    val child: Child = new Child(this)
+    val child: Child = new Child(this) // error
 }
 
 class Child(parent: Parent) {
