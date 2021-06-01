@@ -1275,7 +1275,13 @@ object Parsers {
 
     def checkEndMarker[T <: Tree](stats: ListBuffer[T]): Unit =
 
-      def matches(stat: Tree): Boolean = stat match
+      def updateSpanOfLast(last: T): Unit =
+        last match
+          case last: WithEndMarker[t] => last.withEndMarker()
+          case _ =>
+        last.span = last.span.withEnd(in.lastCharOffset)
+
+      def matches(stat: T): Boolean = stat match
         case stat: MemberDef if !stat.name.isEmpty =>
           if stat.name == nme.CONSTRUCTOR then in.token == THIS
           else in.isIdent && in.name == stat.name.toTermName
@@ -1293,14 +1299,10 @@ object Parsers {
         case _: (ForYield | ForDo) => in.token == FOR
         case _ => false
 
-      def matchesAndSetEnd(stat: Tree): Boolean = {
-        val didMatch = matches(stat)
+      def matchesAndSetEnd(last: T): Boolean = {
+        val didMatch = matches(last)
         if didMatch then
-          stat match
-            case stat: WithEndMarker =>
-              stat.withEndIndex(index = in.lastCharOffset)
-            case _ =>
-              ()
+          updateSpanOfLast(last)
         didMatch
       }
 

@@ -182,7 +182,7 @@ object desugar {
         tpt     = TypeTree(defn.UnitType),
         rhs     = setterRhs
       ).withMods((mods | Accessor) &~ (CaseAccessor | GivenOrImplicit | Lazy))
-       .dropEndIndex() // the end marker should only appear on the getter definition
+       .dropEndMarker() // the end marker should only appear on the getter definition
       Thicket(vdef1, setter)
     }
     else vdef1
@@ -875,7 +875,6 @@ object desugar {
       val modul = ValDef(moduleName, clsRef, New(clsRef, Nil))
         .withMods(mods.toTermFlags & RetainedModuleValFlags | ModuleValCreationFlags)
         .withSpan(mdef.span.startPos)
-        .withEndIndex(copyFrom = mdef) // copy over the end marker position to the module val
       val ValDef(selfName, selfTpt, _) = impl.self
       val selfMods = impl.self.mods
       if (!selfTpt.isEmpty) report.error(ObjectMayNotHaveSelfType(mdef), impl.self.srcPos)
@@ -885,6 +884,7 @@ object desugar {
       val clsTmpl = cpy.Template(impl)(self = clsSelf, body = impl.body)
       val cls = TypeDef(clsName, clsTmpl)
         .withMods(mods.toTypeFlags & RetainedModuleClassFlags | ModuleClassCreationFlags)
+        .withEndMarker(copyFrom = mdef) // copy over the end marker position to the module class def
       Thicket(modul, classDef(cls).withSpan(mdef.span))
     }
   }

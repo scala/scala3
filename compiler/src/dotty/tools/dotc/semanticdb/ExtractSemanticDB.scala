@@ -240,7 +240,7 @@ class ExtractSemanticDB extends Phase:
           traverseChildren(tree)
 
       tree match
-        case tree: WithEndMarker =>
+        case tree: WithEndMarker[t] =>
           val endSpan = tree.endSpan
           if endSpan.exists then
             registerUseGuarded(None, tree.symbol, endSpan, tree.source)

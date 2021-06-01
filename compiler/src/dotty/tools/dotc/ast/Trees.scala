@@ -327,42 +327,51 @@ object Trees {
 
   extension (mdef: untpd.DefTree) def mods: untpd.Modifiers = mdef.rawMods
 
-  /** PackageDef | NamedDefTree */
-  sealed trait WithEndMarker:
-    self: Attachment.Container =>
+  sealed trait WithEndMarker[-T >: Untyped]:
+    self: PackageDef[T] | NamedDefTree[T] =>
 
     import WithEndMarker.*
 
     final def endSpan(using Context): Span =
-      self.getAttachment(EndIndex) match
-        case Some(end) =>
-          val realName = srcName.stripModuleClassSuffix.lastPart
-          Span(end - realName.length, end)
-        case none => NoSpan
+      if hasEndMarker then
+        val realName = srcName.stripModuleClassSuffix.lastPart
+        span.withStart(span.end - realName.length)
+      else
+        NoSpan
 
+    /** The name in source code that represents this construct,
+     *  and is the name that the user must write to create a valid
+     *  end marker.
+     *  e.g. a constructor definition is terminated in the source
+     *  code by `end this`, so it's `srcName` should return `this`.
+     */
     protected def srcName(using Context): Name
 
-    final def withEndIndex(index: Int): self.type =
-      self.withAttachment(EndIndex, index)
+    final def withEndMarker(): self.type =
+      self.withAttachment(HasEndMarker, ())
 
-    final def withEndIndex(copyFrom: WithEndMarker): self.type =
-      copyFrom.endIndex.foreach(withEndIndex)
+    final def withEndMarker(copyFrom: WithEndMarker[?]): self.type =
+      if copyFrom.hasEndMarker then
+        this.withEndMarker()
+      else
+        this
+
+    final def dropEndMarker(): self.type =
+      self.removeAttachment(HasEndMarker)
       this
 
-    final def dropEndIndex(): self.type =
-      self.removeAttachment(EndIndex)
-      this
-
-    protected def endIndex: Option[Int] = self.getAttachment(EndIndex)
+    protected def hasEndMarker: Boolean = self.hasAttachment(HasEndMarker)
 
   object WithEndMarker:
-    /** Property key for trees with an `end` marker */
-    private val EndIndex: Property.StickyKey[Int] = Property.StickyKey()
+    /** Property key that signals the tree was terminated
+     *  with an `end` marker in the source code
+     */
+    private val HasEndMarker: Property.StickyKey[Unit] = Property.StickyKey()
 
   end WithEndMarker
 
   abstract class NamedDefTree[-T >: Untyped](implicit @constructorOnly src: SourceFile)
-  extends NameTree[T] with DefTree[T] with WithEndMarker {
+  extends NameTree[T] with DefTree[T] with WithEndMarker[T] {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
     protected def srcName(using Context): Name =
@@ -897,7 +906,7 @@ object Trees {
 
   /** package pid { stats } */
   case class PackageDef[-T >: Untyped] private[ast] (pid: RefTree[T], stats: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends ProxyTree[T] with WithEndMarker {
+    extends ProxyTree[T] with WithEndMarker[T] {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
     protected def srcName(using Context): Name = pid.name
