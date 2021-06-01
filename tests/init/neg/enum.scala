@@ -1,6 +1,6 @@
 enum ErrorMessageID extends java.lang.Enum[ErrorMessageID] {
     case
-        LazyErrorId, // // errorNumber: -2
-        NoExplanationID
+        LazyErrorId,
+        NoExplanationID // error
     def errorNumber = ordinal - 2
 }
