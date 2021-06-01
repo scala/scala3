@@ -1,4 +1,4 @@
-object Text extends App {
+object Test extends App {
   val a: PartialFunction[Int, Int] = { case x => x }
   val b: PartialFunction[Int, Int] = x => x match { case 1 => 1; case 2 => 2 }
   val c: PartialFunction[Int, Int] = x => { x match { case 1 => 1 } }
