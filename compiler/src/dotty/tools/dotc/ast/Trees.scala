@@ -336,11 +336,11 @@ object Trees {
     final def endSpan(using Context): Span =
       self.getAttachment(EndIndex) match
         case Some(end) =>
-          val realName = endName.stripModuleClassSuffix.lastPart
+          val realName = srcName.stripModuleClassSuffix.lastPart
           Span(end - realName.length, end)
         case none => NoSpan
 
-    protected def endName(using Context): Name
+    protected def srcName(using Context): Name
 
     final def withEndIndex(index: Int): self.type =
       self.withAttachment(EndIndex, index)
@@ -365,12 +365,9 @@ object Trees {
   extends NameTree[T] with DefTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] <: NamedDefTree[T]
 
-    protected def endName(using Context) =
-      if name == nme.CONSTRUCTOR then nme.this_
-      else srcName
-
     protected def srcName(using Context): Name =
-      if symbol.isPackageObject then symbol.owner.name
+      if name == nme.CONSTRUCTOR then nme.this_
+      else if symbol.isPackageObject then symbol.owner.name
       else name
 
     /** The position of the name defined by this definition.
@@ -903,7 +900,7 @@ object Trees {
     extends ProxyTree[T] with WithEndMarker {
     type ThisTree[-T >: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
-    protected def endName(using Context): Name = pid.name
+    protected def srcName(using Context): Name = pid.name
   }
 
   /** arg @annot */
