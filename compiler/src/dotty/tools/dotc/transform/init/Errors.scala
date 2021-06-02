@@ -115,9 +115,9 @@ object Errors {
       report.warning(show + stacktrace, objs.head.srcPos)
   }
 
-  case class ObjectLeakDuringInit(obj: Symbol, trace: Seq[Tree]) extends Error {
+  case class ObjectNotInit(obj: Symbol, trace: Seq[Tree]) extends Error {
     def source: Tree = trace.last
-    def show(using Context): String = obj.show + " leaked during its initialization " + "."
+    def show(using Context): String = obj.show + " not yet initialized " + "."
 
     override def issue(using Context): Unit =
       report.warning(show + stacktrace, obj.srcPos)

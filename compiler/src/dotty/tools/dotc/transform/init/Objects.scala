@@ -447,12 +447,14 @@ class Objects {
       if cycle.nonEmpty then
         val classDef = obj.klass.defTree
         var trace1 = trace.toVector.dropWhile(_ != classDef) :+ source
-        val warning =
+        val warnings =
           if cycle.size > 1 then
-            CyclicObjectInit(cycle, trace1)
+            CyclicObjectInit(cycle, trace1) :: Nil
           else
-            ObjectLeakDuringInit(obj.klass, trace1)
-        Result(obj, warning :: Nil)
+            val o = heap(obj)
+            if o.fields.contains(obj.klass) then Nil
+            else ObjectNotInit(obj.klass, trace1) :: Nil
+        Result(obj, warnings)
       else if obj.klass.is(Flags.JavaDefined) then
         // Errors will be reported for method calls on it
         Result(Bottom, Nil)
@@ -844,6 +846,10 @@ class Objects {
       val superParent = tpl.parents.head
       val superCls = superParent.tpe.classSymbol.asClass
       initParent(superParent)
+
+      // Access to the object possible after this point
+      if klass.isStaticOwner then
+        thisV.updateField(klass, thisV)
 
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
