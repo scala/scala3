@@ -93,7 +93,7 @@ object Tuple {
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  /** Type of the element a position N in the tuple X */
+  /** Type of the element at position N in the tuple X */
   type Elem[X <: Tuple, N <: Int] = X match {
     case x *: xs =>
       N match {
