@@ -94,7 +94,8 @@ object Inliner {
       if (tree.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree)
       if (tree.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree)
 
-    Feature.checkExperimentalDef(tree.symbol, tree)
+    if tree.symbol.isExperimental then
+      Feature.checkExperimentalDef(tree.symbol, tree)
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
