@@ -175,9 +175,11 @@ class Objects {
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
 
-    def ensureAccess(source: Tree): Contextual[Result] =
+    def ensureAccess(klass: ClassSymbol, source: Tree): Contextual[Result] =
       value match
-      case obj: ObjectRef => obj.access(source) ++ errors
+      case obj: ObjectRef =>
+        if obj.klass == klass then this
+        else obj.access(source) ++ errors
       case _ => this
   }
 
@@ -528,7 +530,7 @@ class Objects {
         val fun = Fun(arg.tree, Nil, thisV, klass, env)
         Result(fun, Nil)
       else
-        eval(arg.tree, thisV, klass).ensureAccess(arg.tree)
+        eval(arg.tree, thisV, klass)
     }
 
   /** Handles the evaluation of different expressions
@@ -584,7 +586,9 @@ class Objects {
             res.call(id.symbol, argsValues, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
-        eval(qualifier, thisV, klass).select(expr.symbol, expr)
+        val sym = expr.symbol
+        if sym.isStaticObjectRef then Result(ObjectRef(sym.moduleClass.asClass), Nil).ensureAccess(klass, expr)
+        else eval(qualifier, thisV, klass).select(expr.symbol, expr)
 
       case _: This =>
         cases(expr.tpe, thisV, klass, expr)
@@ -696,8 +700,13 @@ class Objects {
         throw new Exception("unexpected tree: " + expr.show)
     }
 
-  /** Handle semantics of leaf nodes */
-  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
+  /** Handle semantics of leaf nodes
+   *
+   *  @param elideObjectAccess Whether object access should be omitted
+   *
+   *  It happens when the object access is used as a prefix in `new o.C`
+   */
+  def cases(tp: Type, thisV: Value, klass: ClassSymbol, source: Tree, elideObjectAccess: Boolean = false): Contextual[Result] = log("evaluating " + tp.show, printer, res => res.asInstanceOf[Result].show) {
     tp match {
       case _: ConstantType =>
         Result(Bottom, Errors.empty)
@@ -720,7 +729,8 @@ class Objects {
       case tmref: TermRef =>
         val sym = tmref.symbol
         if sym.isStaticObjectRef then
-          Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          val res = Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          if elideObjectAccess then res else res.ensureAccess(klass, source)
         else
           cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
@@ -728,7 +738,8 @@ class Objects {
         val sym = tref.symbol
         if sym.is(Flags.Package) then Result(Bottom, Errors.empty)
         else if sym.isStaticObjectRef && sym != klass then
-          Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          val res = Result(ObjectRef(sym.moduleClass.asClass), Nil)
+          if elideObjectAccess then res else res.ensureAccess(klass, source)
         else
           val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
           Result(value, Errors.empty)
@@ -772,7 +783,8 @@ class Objects {
       Result(outerV, Errors.empty)
     else
       if cls.isAllOf(Flags.JavaInterface) then Result(Bottom, Nil)
-      else cases(tref.prefix, thisV, klass, source)
+      else
+        cases(tref.prefix, thisV, klass, source, elideObjectAccess = cls.isStatic)
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain */
   def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
