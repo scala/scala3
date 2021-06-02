@@ -58,7 +58,7 @@ class Checker extends MiniPhase {
       res.errors.foreach(_.issue)
 
       if objects.isStaticObjectRef(cls) then
-        objects.check(cls, tpl)
+        objects.check(cls)
     }
 
     tree

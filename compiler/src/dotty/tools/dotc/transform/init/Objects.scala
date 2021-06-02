@@ -476,14 +476,12 @@ class Objects {
    *
    *  @param cls the module class of the static object
    */
-  def check(cls: ClassSymbol, tpl: Template)(using Context): Unit = {
+  def check(cls: ClassSymbol)(using Context): Unit = {
     val objRef = ObjectRef(cls)
-    val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map.empty)
     given Path = Path.empty
     given Trace = Trace.empty
     given Env = Env.empty
-    heap.update(objRef, obj)
-    val res = objRef.access(tpl)
+    val res = objRef.access(cls.defTree)
     res.errors.filterNot(_.isInstanceOf[CallUnknown]).foreach(_.issue)
   }
 
