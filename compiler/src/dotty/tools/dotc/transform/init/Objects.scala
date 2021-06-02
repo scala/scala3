@@ -43,7 +43,7 @@ class Objects {
 
   /** An object abstract by its class
    *
-   *  This is used for arguments
+   *  This abstraction is used for arguments to methods and constructors
    */
   case class ClassAbs(klass: ClassSymbol) extends Value
 
@@ -345,8 +345,9 @@ class Objects {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              given Env = Env(ddef, args)
-              eval(ddef.rhs, value, cls, cacheResult = true)
+              use(Env(ddef, args).union(env)) {
+                eval(ddef.rhs, value, cls, cacheResult = true)
+              }
             else if value.canIgnoreMethodCall(target) then
               Result(Bottom, Nil)
             else
@@ -370,12 +371,15 @@ class Objects {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              given Env = Env(ddef, args)
+              val env2 = Env(ddef, args)
               if target.isPrimaryConstructor then
+                given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
                 eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(cls.defTree))
               else
-                eval(ddef.rhs, addr, cls, cacheResult = true)
+                use(env2.union(env)) {
+                  eval(ddef.rhs, addr, cls, cacheResult = true)
+                }
             else if addr.canIgnoreMethodCall(target) then
               Result(Bottom, Nil)
             else
