@@ -692,14 +692,23 @@ object TypeOps:
    */
   private def instantiateToSubType(tp1: NamedType, tp2: Type)(using Context): Type = {
     // In order for a child type S to qualify as a valid subtype of the parent
-    // T, we need to test whether it is possible S <: T. Therefore, we replace
-    // type parameters in T with tvars, and see if the subtyping is true.
-    val approximateTypeParams = new TypeMap {
+    // T, we need to test whether it is possible S <: T.
+    //
+    // The check is different from subtype checking due to type parameters and
+    // `this`. We perform the following operations to approximate the parameters:
+    //
+    // 1. Replace type parameters in T with tvars
+    // 2. Replace `A.this.C` with `A#C` (see tests/patmat/i12681.scala)
+    //
+    val approximateParent = new TypeMap {
       val boundTypeParams = util.HashMap[TypeRef, TypeVar]()
 
       def apply(tp: Type): Type = tp.dealias match {
         case _: MatchType =>
           tp // break cycles
+
+        case ThisType(tref: TypeRef) if !tref.symbol.isStaticOwner =>
+          tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
           def lo = LazyRef.of(apply(tp.underlying.loBound))
@@ -787,7 +796,7 @@ object TypeOps:
     // we manually patch subtyping check instead of changing TypeComparer.
     // See tests/patmat/i3645b.scala
     def parentQualify(tp1: Type, tp2: Type) = tp1.classSymbol.info.parents.exists { parent =>
-      parent.argInfos.nonEmpty && approximateTypeParams(parent) <:< tp2
+      parent.argInfos.nonEmpty && approximateParent(parent) <:< tp2
     }
 
     def instantiate(): Type = {
@@ -797,8 +806,8 @@ object TypeOps:
 
     if (protoTp1 <:< tp2) instantiate()
     else {
-      val protoTp2 = approximateTypeParams(tp2)
-      if (protoTp1 <:< protoTp2 || parentQualify(protoTp1, protoTp2)) instantiate()
+      val approxTp2 = approximateParent(tp2)
+      if (protoTp1 <:< approxTp2 || parentQualify(protoTp1, approxTp2)) instantiate()
       else NoType
     }
   }
