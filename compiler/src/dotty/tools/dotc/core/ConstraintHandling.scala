@@ -191,6 +191,7 @@ trait ConstraintHandling {
     assert(constraint.isLess(p1, p2))
     val down = constraint.exclusiveLower(p2, p1)
     val up = constraint.exclusiveUpper(p1, p2)
+    constraint = constraint.addLess(p2, p1)
     constraint = constraint.unify(p1, p2)
     val bounds = constraint.nonParamBounds(p1)
     val lo = bounds.lo
