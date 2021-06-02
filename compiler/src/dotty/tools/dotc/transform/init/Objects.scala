@@ -59,13 +59,13 @@ class Objects {
   case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, params: List[Symbol], thisV: Value, klass: ClassSymbol, env: Env) extends Value
 
-  /** A value which represents a set of addresses
+  /** A value which represents a set of values
    *
    * It comes from `if` expressions.
    */
-  case class RefSet(refs: List[Fun | Addr]) extends Value
+  case class RefSet(refs: List[Value]) extends Value
 
   val Bottom: Value = RefSet(Nil)
 
@@ -231,11 +231,11 @@ class Objects {
       case (RefSet(refs), b)    => RefSet(b :: refs)
       case (a, b)               => RefSet(a :: b :: Nil)
 
-    def widen: Value = v.match
-      case RefSet(refs) => refs.map(widen(_)).join
+    def widen: Value = a.match
+      case RefSet(refs) => refs.map(_.widen).join
       case inst: Instance => ClassAbs(inst.klass)
-      case Fun(e, thisV, klass, env) => Fun(e, thisV.widen, klass, env)
-      case _ => v
+      case Fun(e, params, thisV, klass, env) => Fun(e, params, thisV.widen, klass, env)
+      case _ => a
 
   extension (values: Seq[Value])
     def join: Value =
@@ -261,8 +261,19 @@ class Objects {
               val error = CallUnknown(field, source, trace.toVector)
               Result(Bottom, error :: Nil)
           else
-            val error = AccessCold(field, source, trace.toVector)
-            Result(Bottom, error :: Nil)
+            val fieldType = tp.memberInfo(field)
+            Result(TypeAbs(fieldType), Nil)
+
+        case ClassAbs(klass) =>
+          val target = if needResolve then resolve(klass, field) else field
+          val trace1 = trace.add(source)
+          if target.is(Flags.Lazy) then
+            given Trace = trace1
+            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            eval(rhs, value, target.owner.asClass, cacheResult = true)
+          else
+            val fieldType = klass.typeRef.memberInfo(field)
+            Result(TypeAbs(fieldType), Nil)
 
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
@@ -319,6 +330,31 @@ class Objects {
             val error = CallCold(meth, source, trace.toVector)
             Result(Bottom, error :: Nil)
 
+        case ClassAbs(klass) =>
+          val target =
+            if !needResolve then
+              meth
+            else if superType.exists then
+              resolveSuper(klass, superType, meth)
+            else
+              resolve(klass, meth)
+
+          val trace1 = trace.add(source)
+          if target.isOneOf(Flags.Method) then
+            if target.hasSource then
+              given Trace = trace1
+              val cls = target.owner.enclosingClass.asClass
+              val ddef = target.defTree.asInstanceOf[DefDef]
+              given Env = Env(ddef, args)
+              eval(ddef.rhs, value, cls, cacheResult = true)
+            else if value.canIgnoreMethodCall(target) then
+              Result(Bottom, Nil)
+            else
+              val error = CallUnknown(target, source, trace.toVector)
+              Result(Bottom, error :: Nil)
+          else
+            value.select(target, source, needResolve = false)
+
         case addr: Addr =>
           val target =
             if !needResolve then
@@ -348,10 +384,14 @@ class Objects {
           else
             value.select(target, source, needResolve = false)
 
-        case Fun(body, thisV, klass) =>
+        case Fun(body, params, thisV, klass, env2) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
-          else eval(body, thisV, klass, cacheResult = true)
+          else
+            val env3 = Env(params.zip(args.widen).toMap).union(env2)
+            use(env3) {
+              eval(body, thisV, klass, cacheResult = true)
+            }
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, args, superType, source))
@@ -364,38 +404,27 @@ class Objects {
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       val trace1 = trace.add(source)
       value match {
-        case TypeAbs(tp) =>
+        case _: TypeAbs | _: ClassAbs =>
           // TODO: can do better here
           given Trace = trace1
           val error = CallCold(ctor, source, trace.toVector)
           Result(Bottom, error :: Nil)
 
         case _: Addr | Bottom =>
-          // widen the outer and args to finitize addresses
-          extension (value: Value)
-            def widen: Value = value match
-              case RefSet(refs) => refs.map(_.widen).join
-              case Instance(klass, outer) =>
-                val nested = outer.isInstanceOf[Instance]
-                if nested then TypeAbs(klass.typeRef)
-                else value
-              case _: Fun => TypeAbs(defn.AnyType)
-              case _ => value
-
           given Trace = trace1
           val outerWidened = value.widen
           val addr =
             if klass.isStaticObjectRef then
               ObjectRef(klass)
             else
-              Instance(klass, outerWidened)
+              Instance(klass, outerWidened, ctor, args.widen)
           if !heap.contains(addr) then
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outerWidened))
             heap.update(addr, obj)
           val res = addr.call(ctor, args, superType = NoType, source)
           Result(addr, res.errors)
 
-        case Fun(body, thisV, klass) =>
+        case _: Fun =>
           ??? // impossible
 
         case RefSet(refs) =>
@@ -494,7 +523,7 @@ class Objects {
   def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     args.map { arg =>
       if arg.isByName then
-        val fun = Fun(arg.tree, thisV, klass)
+        val fun = Fun(arg.tree, Nil, thisV, klass, env)
         Result(fun, Nil)
       else
         eval(arg.tree, thisV, klass).ensureAccess(arg.tree)
@@ -577,11 +606,12 @@ class Objects {
           eval(rhs, thisV, klass)
 
       case closureDef(ddef) =>
-        val value = Fun(ddef.rhs, thisV, klass)
+        val params = ddef.termParamss.head.map(_.symbol)
+        val value = Fun(ddef.rhs, params, thisV, klass, env)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, thisV, klass)
+        val value = Fun(body, Nil, thisV, klass, env)
         Result(value, Nil)
 
       case Block(stats, expr) =>
@@ -717,6 +747,7 @@ class Objects {
     else
       thisV match
         case Bottom => Bottom
+
         case addr: Addr =>
           val obj = heap(addr)
           val outerCls = klass.owner.enclosingClass.asClass
@@ -727,6 +758,7 @@ class Objects {
           report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, source.srcPos)
           TypeAbs(defn.AnyType)
         case TypeAbs(tp) => TypeAbs(target.info)
+        case ClassAbs(tp) => TypeAbs(target.typeRef)
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
