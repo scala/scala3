@@ -830,6 +830,7 @@ class Semantic {
 
       // follow constructor
       if cls.hasSource then
+        printer.println("init super class " + cls.show)
         val res2 = thisV.call(ctor, superType = NoType, source)(using ctx, trace.add(source))
         errorBuffer ++= res2.errors
 

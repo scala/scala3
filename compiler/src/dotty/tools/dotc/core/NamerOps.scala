@@ -11,15 +11,14 @@ import ast.untpd
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
 
-  /** The given type, unless `sym` is a constructor, in which case the
-   *  type of the constructed instance is returned
+  /** The type of the constructed instance is returned
+   *
+   *  @param ctor the constructor
    */
-  def effectiveResultType(sym: Symbol, paramss: List[List[Symbol]], givenTp: Type)(using Context): Type =
-    if sym.name == nme.CONSTRUCTOR then
-      paramss match
-        case TypeSymbols(tparams) :: _ => sym.owner.typeRef.appliedTo(tparams.map(_.typeRef))
-        case _ => sym.owner.typeRef
-    else givenTp
+  def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
+    paramss match
+      case TypeSymbols(tparams) :: _ => ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef))
+      case _ => ctor.owner.typeRef
 
   /** if isConstructor, make sure it has one leading non-implicit parameter list */
   def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean)(using Context): List[List[Symbol]] =

@@ -325,6 +325,27 @@ class CompilationTests {
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     compileFilesInDir("tests/init/pos", options).checkCompile()
     compileFilesInDir("tests/init/crash", options.without("-Xfatal-warnings")).checkCompile()
+
+    // The regression test for i12128 has some atypical classpath requirements.
+    // The test consists of three files: (a) Reflect_1  (b) Macro_2  (c) Test_3
+    // which must be compiled separately. In addition:
+    //   - the output from (a) must be on the classpath while compiling (b)
+    //   - the output from (b) must be on the classpath while compiling (c)
+    //   - the output from (a) _must not_ be on the classpath while compiling (c)
+    locally {
+      val i12128Group = TestGroup("checkInit/i12128")
+      val i12128Options = options.without("-Xfatal-warnings")
+      val outDir1 = defaultOutputDir + i12128Group + "/Reflect_1/i12128/Reflect_1"
+      val outDir2 = defaultOutputDir + i12128Group + "/Macro_2/i12128/Macro_2"
+
+      val tests = List(
+        compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(i12128Group),
+        compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(i12128Group),
+        compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(i12128Group)
+      ).map(_.keepOutput.checkCompile())
+
+      tests.foreach(_.delete())
+    }
   }
 }
 
