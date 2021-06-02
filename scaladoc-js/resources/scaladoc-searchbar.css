@@ -100,5 +100,38 @@
 
 .pull-right {
     float: right;
-    margin-left: auto
+    margin-left: auto;
 }
+
+.snippet-comment-button {
+    position: absolute;
+    display: inline-block;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    background:
+        linear-gradient(#fff, #fff),
+        linear-gradient(#fff, #fff),
+        #aaa;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+    border-radius: 12px;
+    box-shadow: 0 0 2px black;
+}
+
+.snippet-comment-button:hover {
+    background:
+        linear-gradient(#444, #444),
+        linear-gradient(#444, #444),
+        #ddd;
+    background-position: center;
+    background-size: 50% 2px, 2px 50%;
+    background-repeat: no-repeat;
+}
+
+.hide-snippet-comments-button {
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+

@@ -37,7 +37,7 @@ class StoreReporter(outer: Reporter = Reporter.NoReporter) extends Reporter {
     if (infos != null) try infos.toList finally infos = null
     else Nil
 
-  override def pendingMessages(using Context): List[Diagnostic] = infos.toList
+  override def pendingMessages(using Context): List[Diagnostic] = if (infos != null) infos.toList else Nil
 
   override def errorsReported: Boolean = hasErrors || (outer != null && outer.errorsReported)
 }

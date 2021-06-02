@@ -16,7 +16,7 @@ abstract class ScaladocTest(val name: String):
     given DocContext = testDocContext(tastyFiles(name))
     op(ScalaModuleProvider.mkModule())
 
-  private def getTempDir() : TemporaryFolder =
+  protected def getTempDir() : TemporaryFolder =
     val folder = new TemporaryFolder()
     folder.create()
     folder
