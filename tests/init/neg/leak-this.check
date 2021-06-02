@@ -1,0 +1,4 @@
+-- Error: tests/init/neg/leak-this.scala:2:33 --------------------------------------------------------------------------
+2 |    val child: Child = new Child(this) // error
+  |                                 ^^^^
+  |          Promote the value under initialization to fully-initialized. May only use initialized value as arguments

@@ -1,0 +1,4 @@
+-- Error: tests/init/neg/leak-this-inner.scala:6:14 --------------------------------------------------------------------
+6 |    val b = B(this) // error
+  |              ^^^^
+  |          Promote the value under initialization to fully-initialized. May only use initialized value as arguments

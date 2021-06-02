@@ -9,4 +9,5 @@ class Outer {
 
     val l: List[A] = List(new A(5), new A(10))
     l.foreach(a => a.addX(this)) // error
+    val y = 10
 }
