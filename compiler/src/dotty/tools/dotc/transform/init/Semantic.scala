@@ -138,7 +138,10 @@ class Semantic {
   import Heap._
   val heap: Heap = Heap.empty
 
-  /** The environment for method parameters */
+  /** The environment for method parameters
+   *
+   *  For performance and usability, we restrict parameters to be either `Cold` or `Hot`.
+   */
   object Env {
     opaque type Env = Map[Symbol, Value]
 
