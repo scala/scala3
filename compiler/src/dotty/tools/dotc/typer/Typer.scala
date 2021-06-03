@@ -1125,6 +1125,7 @@ class Typer extends Namer
           newTypeVar(apply(bounds.orElse(TypeBounds.empty)).bounds)
         case _ => mapOver(t)
     }
+
     val pt1 = pt.stripTypeVar.dealias
     if (pt1 ne pt1.dropDependentRefinement)
        && defn.isContextFunctionType(pt1.nonPrivateMember(nme.apply).info.finalResultType)
@@ -1133,22 +1134,25 @@ class Typer extends Namer
         i"""Implementation restriction: Expected result type $pt1
            |is a curried dependent context function type. Such types are not yet supported.""",
         tree.srcPos)
+
     pt1 match {
-      case pt1 if defn.isNonRefinedFunction(pt1) =>
-        // if expected parameter type(s) are wildcards, approximate from below.
-        // if expected result type is a wildcard, approximate from above.
-        // this can type the greatest set of admissible closures.
-        (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
-      case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
-        (formals,
-         if (sam.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
-         else
-           typeTree(restpe))
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
-      case _ =>
-        (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+      case _ => pt1.findFunctionTypeInUnion match {
+        case pt1 if defn.isNonRefinedFunction(pt1) =>
+          // if expected parameter type(s) are wildcards, approximate from below.
+          // if expected result type is a wildcard, approximate from above.
+          // this can type the greatest set of admissible closures.
+          (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
+        case SAMType(sam @ MethodTpe(_, formals, restpe)) =>
+          (formals,
+            if sam.isResultDependent then
+              untpd.DependentTypeTree(syms => restpe.substParams(sam, syms.map(_.termRef)))
+            else
+              typeTree(restpe))
+        case _ =>
+          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+      }
     }
   }
 
@@ -1399,7 +1403,7 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            pt.stripNull match {
+            pt.findFunctionTypeInUnion match {
               case pt @ SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.
