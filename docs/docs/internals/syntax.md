@@ -116,7 +116,7 @@ given     if        implicit  import    lazy      match     new
 null      object    override  package   private   protected return
 sealed    super     then      throw     trait     true      try
 type      val       var       while     with      yield
-:         =         <-        =>        <:        :>        #
+:         =         <-        =>        <:        >:        #
 @         =>>       ?=>
 ```
 
