@@ -97,15 +97,21 @@ trait ConstraintHandling {
         constraint = constraint.replace(param, bound)
         true
       else
+        val dropWildcards = new ApproximatingTypeMap:
+          if !isUpper then variance = -1
+          def apply(t: Type): Type = t match
+            case WildcardType => range(param.underlying.loBound, param.underlying.hiBound)
+            case _ => mapOver(t)
         // Narrow one of the bounds of type parameter `param`
         // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
         // that `param >: bound`.
+        val bound1 = dropWildcards(bound)
         val narrowedBounds =
           val saved = homogenizeArgs
           homogenizeArgs = Config.alignArgsInAnd
           try
-            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi)
+            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound1)
+            else oldBounds.derivedTypeBounds(lo | bound1, hi)
           finally homogenizeArgs = saved
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
