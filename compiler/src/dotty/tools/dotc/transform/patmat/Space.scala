@@ -105,7 +105,7 @@ trait SpaceLogic {
   def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int): List[Type]
 
   /** Get components of decomposable types */
-  def decompose(tp: Type): List[Space]
+  def decompose(tp: Type): List[Typ]
 
   /** Whether the extractor covers the given type */
   def covers(unapp: TermRef, scrutineeTp: Type): Boolean
@@ -176,6 +176,8 @@ trait SpaceLogic {
         ss.forall(isSubspace(_, b))
       case (Typ(tp1, _), Typ(tp2, _)) =>
         isSubType(tp1, tp2)
+        || canDecompose(tp1) && tryDecompose1(tp1)
+        || canDecompose(tp2) && tryDecompose2(tp2)
       case (Typ(tp1, _), Or(ss)) =>  // optimization: don't go to subtraction too early
         ss.exists(isSubspace(a, _)) || tryDecompose1(tp1)
       case (_, Or(_)) =>
@@ -337,9 +339,7 @@ class SpaceEngine(using Context) extends SpaceLogic {
       val res = TypeComparer.provablyDisjoint(tp1, tp2)
 
       if (res) Empty
-      else if (tp1.isSingleton) Typ(tp1, true)
-      else if (tp2.isSingleton) Typ(tp2, true)
-      else Typ(AndType(tp1, tp2), true)
+      else Typ(AndType(tp1, tp2), decomposed = true)
     }
   }
 
@@ -591,14 +591,27 @@ class SpaceEngine(using Context) extends SpaceLogic {
     }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
-  def decompose(tp: Type): List[Space] =
+  def decompose(tp: Type): List[Typ] =
     tp.dealias match {
       case AndType(tp1, tp2) =>
-        intersect(Typ(tp1, false), Typ(tp2, false)) match {
-          case Or(spaces) => spaces.toList
-          case Empty => Nil
-          case space => List(space)
-        }
+        def decomposeComponent(tpA: Type, tpB: Type): List[Typ] =
+          decompose(tpA).flatMap {
+            case Typ(tp, _) =>
+              if tp <:< tpB then
+                Typ(tp, decomposed = true) :: Nil
+              else if tpB <:< tp then
+                Typ(tpB, decomposed = true) :: Nil
+              else if TypeComparer.provablyDisjoint(tp, tpB) then
+                Nil
+              else
+                Typ(AndType(tp, tpB), decomposed = true) :: Nil
+          }
+
+        if canDecompose(tp1) then
+          decomposeComponent(tp1, tp2)
+        else
+          decomposeComponent(tp2, tp1)
+
       case OrType(tp1, tp2) => List(Typ(tp1, true), Typ(tp2, true))
       case tp if tp.isRef(defn.BooleanClass) =>
         List(
@@ -832,6 +845,9 @@ class SpaceEngine(using Context) extends SpaceLogic {
     val selTyp = sel.tpe.widen.dealias
 
     if (!exhaustivityCheckable(sel)) return
+
+    debug.println("checking " + _match.show)
+    debug.println("selTyp = " + selTyp.show)
 
     val patternSpace = Or(cases.foldLeft(List.empty[Space]) { (acc, x) =>
       val space = if (x.guard.isEmpty) project(x.pat) else Empty
