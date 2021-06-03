@@ -233,15 +233,15 @@ class Semantic {
     def select(f: Symbol, source: Tree): Contextual[Result] =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, superType: Type, source: Tree): Contextual[Result] =
-      value.call(meth, superType, source) ++ errors
+    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree): Contextual[Result] =
+      value.call(meth, args, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
-      value.instantiate(klass, ctor, source) ++ errors
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
+      value.instantiate(klass, ctor, args, source) ++ errors
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Context, Trace, Promoted) ?=> T
+  type Contextual[T] = (Env, Context, Trace, Promoted) ?=> T
 
 // ----- Error Handling -----------------------------------
 
@@ -282,9 +282,8 @@ class Semantic {
 
     def widen: Value =
       a match
+      case _: Addr | _: Fun => Cold
       case RefSet(refs) => refs.map(_.widen).join
-      case _: Addr => Cold
-      case Fun(e, params, thisV, klass, env) => Fun(e, params, thisV.widen, klass, env)
       case _ => a
 
 
@@ -308,7 +307,7 @@ class Semantic {
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
           if target.is(Flags.Lazy) then
-            value.call(target, superType = NoType, source, needResolve = false)
+            value.call(target, Nil, superType = NoType, source, needResolve = false)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
@@ -330,8 +329,9 @@ class Semantic {
               val error = AccessNonInit(target, trace.add(source).toVector)
               Result(Hot, error :: Nil)
 
-        case _: Fun =>
-          ???
+        case fun: Fun =>
+          report.error("unexpected tree in selecting a function, fun = " + fun.expr.show, source)
+          Result(Hot, Nil)
 
         case RefSet(refs) =>
           val resList = refs.map(_.select(field, source))
@@ -340,7 +340,7 @@ class Semantic {
           Result(value2, errors)
       }
 
-    def call(meth: Symbol, superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
+    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
       value match {
         case Hot  =>
           Result(Hot, Errors.empty)
@@ -362,7 +362,7 @@ class Semantic {
               val cls = target.owner.enclosingClass.asClass
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using ctx, trace.add(cls.defTree), promoted)
+                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(cls.defTree), promoted)
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, cls, cacheResult = true)
@@ -378,20 +378,20 @@ class Semantic {
             else
               value.select(target, source, needResolve = false)
 
-        case Fun(body, thisV, klass) =>
+        case Fun(body, params, thisV, klass, env) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
-          val resList = refs.map(_.call(meth, superType, source))
+          val resList = refs.map(_.call(meth, args, superType, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, source: Tree): Contextual[Result] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value match {
         case Hot  =>
           Result(Hot, Errors.empty)
@@ -403,21 +403,22 @@ class Semantic {
         case addr: Addr =>
           // widen the outer to finitize addresses
           val outer = addr match
-            case Warm(_, _: Warm) => Cold
+            case Warm(_, _: Warm, _, _) => Cold
             case _ => addr
 
-          val value = Warm(klass, outer)
+          val value = Warm(klass, outer, ctor, args.widen)
           if !heap.contains(value) then
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
             heap.update(value, obj)
-          val res = value.call(ctor, superType = NoType, source)
+          val res = value.call(ctor, args, superType = NoType, source)
           Result(value, res.errors)
 
-        case Fun(body, thisV, klass) =>
-          ??? // impossible
+        case Fun(body, params, thisV, klass, env) =>
+          report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
+          Result(Hot, Nil)
 
         case RefSet(refs) =>
-          val resList = refs.map(_.instantiate(klass, ctor, source))
+          val resList = refs.map(_.instantiate(klass, ctor, args, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
@@ -490,7 +491,7 @@ class Semantic {
           errors
         }
 
-      case fun @ Fun(body, thisV, klass) =>
+      case fun @ Fun(body, params, thisV, klass, env) =>
         if promoted.contains(fun) then Nil
         else
           val res = eval(body, thisV, klass)
@@ -550,7 +551,8 @@ class Semantic {
           val trace2 = trace.add(m.defTree)
           locally {
             given Trace = trace2
-            val res = warm.call(m, superType = NoType, source = source)
+            val args = m.info.paramInfoss.flatten.map(_ => Hot)
+            val res = warm.call(m, args, superType = NoType, source = source)
             buffer ++= res.ensureHot(msg, source).errors
           }
         buffer.nonEmpty
@@ -611,18 +613,15 @@ class Semantic {
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[List[Error]] =
+  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[Value])] =
     val ress = args.map { arg =>
-      val res =
-        if arg.isByName then
-          val fun = Fun(arg.tree, thisV, klass)
-          Result(fun, Nil)
-        else
-          eval(arg.tree, thisV, klass)
-
-      res.ensureHot("May only use initialized value as arguments", arg.tree)
+      if arg.isByName then
+        val fun = Fun(arg.tree, Nil, thisV, klass, env)
+        Result(fun, Nil)
+      else
+        eval(arg.tree, thisV, klass)
     }
-    ress.flatMap(_.errors)
+    (ress.flatMap(_.errors), ress.map(_.value))
 
   /** Handles the evaluation of different expressions
    *
@@ -640,19 +639,19 @@ class Semantic {
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
-        val errors = evalArgs(argss.flatten, thisV, klass)
+        val (errors, args) = evalArgs(argss.flatten, thisV, klass)
 
         val cls = tref.classSymbol.asClass
         val res = outerValue(tref, thisV, klass, tpt)
         val trace2 = trace.add(expr)
         locally {
           given Trace = trace2
-          (res ++ errors).instantiate(cls, ctor, expr)
+          (res ++ errors).instantiate(cls, ctor, args, expr)
         }
 
       case Call(ref, argss) =>
         // check args
-        val errors = evalArgs(argss.flatten, thisV, klass)
+        val (errors, args) = evalArgs(argss.flatten, thisV, klass)
 
         val trace2: Trace = trace.add(expr)
 
@@ -660,11 +659,11 @@ class Semantic {
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, errors).call(ref.symbol, superTp, expr)(using ctx, trace2)
+          Result(thisValue2, errors).call(ref.symbol, args, superTp, expr)(using env, ctx, trace2)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, superType = NoType, source = expr)(using ctx, trace2)
+          res.call(ref.symbol, args, superType = NoType, source = expr)(using env, ctx, trace2)
 
         case id: Ident =>
           id.tpe match
@@ -673,10 +672,10 @@ class Semantic {
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
             val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
             // local methods are not a member, but we can reuse the method `call`
-            thisValue2.call(id.symbol, superType = NoType, expr, needResolve = false)
+            thisValue2.call(id.symbol, args, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, superType = NoType, source = expr)(using ctx, trace2)
+            res.call(id.symbol, args, superType = NoType, source = expr)(using env, ctx, trace2)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -703,11 +702,12 @@ class Semantic {
           eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs)
 
       case closureDef(ddef) =>
-        val value = Fun(ddef.rhs, thisV, klass)
+        val params = ddef.termParamss.head.map(_.symbol)
+        val value = Fun(ddef.rhs, params, thisV, klass, env)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, thisV, klass)
+        val value = Fun(body, Nil, thisV, klass, env)
         Result(value, Nil)
 
       case Block(stats, expr) =>
@@ -860,7 +860,7 @@ class Semantic {
       }
     }
 
-    def superCall(tref: TypeRef, ctor: Symbol, source: Tree): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -870,23 +870,25 @@ class Semantic {
       // follow constructor
       if cls.hasSource then
         printer.println("init super class " + cls.show)
-        val res2 = thisV.call(ctor, superType = NoType, source)(using ctx, trace.add(source))
+        val res2 = thisV.call(ctor, args, superType = NoType, source)(using env, ctx, trace.add(source))
         errorBuffer ++= res2.errors
 
     // parents
     def initParent(parent: Tree) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
-        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, tree)
+        val (erros, args) = evalArgs(argss.flatten, thisV, klass)
+        errorBuffer ++= erros
+        superCall(tref, ctor, args, tree)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
-        errorBuffer ++= evalArgs(argss.flatten, thisV, klass)
-        superCall(tref, ctor, tree)
+      val (erros, args) = evalArgs(argss.flatten, thisV, klass)
+      errorBuffer ++= erros
+      superCall(tref, ctor, args, tree)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, parent)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent)
     }
 
     // see spec 5.1 about "Template Evaluation".
@@ -913,7 +915,7 @@ class Semantic {
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then superCall(tref, ctor, superParent)
+          if ctor.exists then superCall(tref, ctor, Nil, superParent)
       }
 
 

@@ -52,6 +52,7 @@ class Checker extends MiniPhase {
       val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map(cls -> Hot))
       given Promoted = Promoted.empty
       given Trace = Trace.empty
+      given Env = Env.empty
       heap.update(thisRef, obj)
       val res = eval(tpl, thisRef, cls)
       res.errors.foreach(_.issue)
