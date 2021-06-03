@@ -221,7 +221,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val modifiers = apiModifiers(sym)
     val anns = apiAnnotations(sym).toArray
     val topLevel = sym.isTopLevelClass
-    val childrenOfSealedClass = sym.children.sorted(classFirstSort).map(c =>
+    val childrenOfSealedClass = sym.sealedDescendants.sorted(classFirstSort).map(c =>
       if (c.isClass)
         apiType(c.typeRef)
       else
