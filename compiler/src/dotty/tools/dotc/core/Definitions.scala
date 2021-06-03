@@ -455,8 +455,9 @@ class Definitions {
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val NullClass: ClassSymbol = {
-    val parent = if ctx.explicitNulls then AnyType else ObjectType
-    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parent :: Nil)
+    // When explicit-nulls is enabled, Null becomes a direct subtype of Any and Matchable
+    val parents = if ctx.explicitNulls then AnyType :: MatchableType :: Nil else ObjectType :: Nil
+    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
   }
   def NullType: TypeRef = NullClass.typeRef
 

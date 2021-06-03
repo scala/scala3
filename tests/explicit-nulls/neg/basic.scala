@@ -9,6 +9,9 @@ class Basic {
   val any1: Any  = null
   val any2: Any  = n
 
+  val matchable1: Matchable = null
+  val matchable2: Matchable = n
+
   val s1: String = null // error
   val s2: String = n // error
   val s3: String | Null = null
