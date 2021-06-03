@@ -24,10 +24,10 @@ class Objects {
 
   /** Abstract values
    *
-   *  Value = TypeAbs | ObjectRef | Instance | Fun | RefSet
+   *  Value = TypeAbs | ObjectRef | ClassAbs | Fun | RefSet
    *
-   *  `RefSet` represents a set of values which could be `ObjectRef`,
-   *  `Instance` or `Fun`. The following ordering applies for RefSet:
+   *  RefSet represents a set of values which may contain values other than
+   *  RefSet. The following ordering applies for RefSet:
    *
    *         R_a ⊑ R_b if R_a ⊆ R_b
    *
@@ -41,29 +41,22 @@ class Objects {
   /** An object abstract by its type */
   case class TypeAbs(tp: Type) extends Value
 
-  /** An object abstract by its class
-   *
-   *  This abstraction is used for arguments to methods and constructors
-   */
-  case class ClassAbs(klass: ClassSymbol) extends Value
-
   sealed abstract class Addr extends Value {
     def klass: ClassSymbol
   }
 
-  /** A reference to a static object
-   */
+  /** A reference to a static object */
   case class ObjectRef(klass: ClassSymbol) extends Addr
 
-  /** An instance of class */
-  case class Instance(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
+  /** An ClassAbs of class */
+  case class ClassAbs(klass: ClassSymbol) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, params: List[Symbol], thisV: Value, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
 
   /** A value which represents a set of values
    *
-   * It comes from `if` expressions.
+   *  It comes from `if` expressions.
    */
   case class RefSet(refs: List[Value]) extends Value
 
@@ -71,44 +64,11 @@ class Objects {
 
   // end of value definition
 
-  /** The abstract object which stores value about its fields and immediate outers.
-   *
-   *  Semantically it suffices to store the outer for `klass`. We cache other outers
-   *  for performance reasons.
+  /** The abstract object which stores value about its fields.
    *
    *  Note: Object is NOT a value.
    */
-  case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value], outers: mutable.Map[ClassSymbol, Value])
-
-  /** The environment for method parameters */
-  object Env {
-    opaque type Env = Map[Symbol, Value]
-
-    val empty: Env = Map.empty
-
-    def apply(bindings: Map[Symbol, Value]): Env = bindings
-
-    def apply(ddef: DefDef, args: List[Value])(using Context): Env =
-      val params = ddef.termParamss.flatten.map(_.symbol)
-      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
-      params.zip(args).toMap
-
-    extension (env: Env)
-      def lookup(sym: Symbol)(using Context): Value =
-        if sym.info <:< defn.StringType
-           || sym.info.classSymbol.isPrimitiveValueClass
-        then
-          Bottom
-        else
-          env(sym)
-
-      def union(other: Env): Env = env ++ other
-  }
-
-  type Env = Env.Env
-  def env(using env: Env) = env
-
-  import Env._
+  case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value])
 
   /** Abstract heap stores abstract objects
    *
@@ -133,8 +93,7 @@ class Objects {
       def updateField(field: Symbol, value: Value): Contextual[Unit] =
         heap(ref).fields(field) = value
 
-      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
-        heap(ref).outers(klass) = value
+      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = ()
     end extension
   }
   type Heap = Heap.Heap
@@ -184,7 +143,7 @@ class Objects {
   }
 
   /** The state that threads through the interpreter */
-  type Contextual[T] = (Env, Context, Trace, Path) ?=> T
+  type Contextual[T] = (Context, Trace, Path) ?=> T
 
   inline def use[T, R](v: T)(inline op: T ?=> R): R = op(using v)
 
@@ -233,18 +192,10 @@ class Objects {
       case (RefSet(refs), b)    => RefSet(b :: refs)
       case (a, b)               => RefSet(a :: b :: Nil)
 
-    def widen: Value = a.match
-      case RefSet(refs) => refs.map(_.widen).join
-      case inst: Instance => ClassAbs(inst.klass)
-      case Fun(e, params, thisV, klass, env) => Fun(e, params, thisV.widen, klass, env)
-      case _ => a
-
   extension (values: Seq[Value])
     def join: Value =
       if values.isEmpty then Bottom
       else values.reduce { (v1, v2) => v1.join(v2) }
-
-    def widen: List[Value] = values.map(_.widen).toList
 
   extension (value: Value)
     def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] =
@@ -265,19 +216,10 @@ class Objects {
             val fieldType = tp.memberInfo(field)
             Result(TypeAbs(fieldType), Nil)
 
-        case ClassAbs(klass) =>
-          val target = if needResolve then resolve(klass, field) else field
-          val trace1 = trace.add(source)
-          if target.is(Flags.Lazy) then
-            given Trace = trace1
-            val rhs = target.defTree.asInstanceOf[ValDef].rhs
-            eval(rhs, value, target.owner.asClass, cacheResult = true)
-          else
-            val fieldType = klass.typeRef.memberInfo(field)
-            Result(TypeAbs(fieldType), Nil)
-
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
+          if !target.hasSource then return Result(Bottom, Nil)
+
           val trace1 = trace.add(source)
           if target.is(Flags.Lazy) then
             given Trace = trace1
@@ -285,23 +227,18 @@ class Objects {
             eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             given Trace = trace1
-            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty, mutable.Map.empty)
+            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else if target.is(Flags.ParamAccessor) then
-              // possible for trait parameters
-              // see tests/init/neg/trait2.scala
-              //
-              // return `Bottom` here, errors are reported in checking `ThisRef`
-              Result(Bottom, Nil)
-            else if target.hasSource then
+              Result(TypeAbs(target.info), Nil)
+            else
               val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
               eval(rhs, addr, target.owner.asClass, cacheResult = true)
-            else
-              Result(Bottom, Nil)
 
-        case _: Fun =>
-          ???
+        case fun: Fun =>
+          report.error("unexpected tree in select a function, fun = " + fun.expr.show, source)
+          Result(Bottom, Nil)
 
         case RefSet(refs) =>
           val resList = refs.map(_.select(field, source))
@@ -316,10 +253,10 @@ class Objects {
           Result(Bottom, Errors.empty)
 
         case TypeAbs(tp) =>
-          if meth.isEffectivelyFinal then
+          if meth.exists && meth.isEffectivelyFinal then
             if meth.hasSource then
+              val isLocal = meth.owner.isClass
               val ddef = meth.defTree.asInstanceOf[DefDef]
-              given Env = Env(ddef, args)
               eval(ddef.rhs, value, meth.owner.enclosingClass.asClass, cacheResult = true)
             else if value.canIgnoreMethodCall(meth) then
               Result(Bottom, Nil)
@@ -329,32 +266,8 @@ class Objects {
             val error = CallCold(meth, source, trace.toVector)
             Result(Bottom, error :: Nil)
 
-        case ClassAbs(klass) =>
-          val target =
-            if !needResolve then
-              meth
-            else if superType.exists then
-              resolveSuper(klass, superType, meth)
-            else
-              resolve(klass, meth)
-
-          val trace1 = trace.add(source)
-          if target.isOneOf(Flags.Method) then
-            if target.hasSource then
-              given Trace = trace1
-              val cls = target.owner.enclosingClass.asClass
-              val ddef = target.defTree.asInstanceOf[DefDef]
-              use(Env(ddef, args).union(env)) {
-                eval(ddef.rhs, value, cls, cacheResult = true)
-              }
-            else if value.canIgnoreMethodCall(target) then
-              Result(Bottom, Nil)
-            else
-              Result(Bottom, Nil)
-          else
-            value.select(target, source, needResolve = false)
-
         case addr: Addr =>
+          val isLocal = meth.owner.isClass
           val target =
             if !needResolve then
               meth
@@ -369,15 +282,13 @@ class Objects {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              val env2 = Env(ddef, args)
               if target.isPrimaryConstructor then
-                given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(cls.defTree))
-              else
-                use(env2.union(env)) {
-                  eval(ddef.rhs, addr, cls, cacheResult = true)
+                use(trace.add(cls.defTree)) {
+                  eval(tpl, addr, cls, cacheResult = true)
                 }
+              else
+                eval(ddef.rhs, addr, cls, cacheResult = true)
             else if addr.canIgnoreMethodCall(target) then
               Result(Bottom, Nil)
             else
@@ -385,14 +296,10 @@ class Objects {
           else
             value.select(target, source, needResolve = false)
 
-        case Fun(body, params, thisV, klass, env2) =>
+        case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
-          else
-            val env3 = Env(params.zip(args.widen).toMap).union(env2)
-            use(env3) {
-              eval(body, thisV, klass, cacheResult = true)
-            }
+          else eval(body, thisV, klass, cacheResult = true)
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, args, superType, source))
@@ -405,28 +312,24 @@ class Objects {
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       val trace1 = trace.add(source)
       value match {
-        case _: TypeAbs | _: ClassAbs =>
-          // TODO: can do better here
-          given Trace = trace1
-          val error = CallCold(ctor, source, trace.toVector)
-          Result(Bottom, error :: Nil)
+        case fun: Fun =>
+          report.error("unexpected tree in instantiate a function, fun = " + fun.expr.show, source)
+          Result(Bottom, Nil)
 
-        case _: Addr | Bottom =>
+        case Bottom | _: TypeAbs | _: ClassAbs | _: ObjectRef =>
           given Trace = trace1
-          val outerWidened = value.widen
           val addr =
             if klass.isStaticObjectRef then
               ObjectRef(klass)
             else
-              Instance(klass, outerWidened, ctor, args.widen)
+              ClassAbs(klass)
+
           if !heap.contains(addr) then
-            val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outerWidened))
+            val obj = Objekt(klass, fields = mutable.Map.empty)
             heap.update(addr, obj)
+
           val res = addr.call(ctor, args, superType = NoType, source)
           Result(addr, res.errors)
-
-        case _: Fun =>
-          ??? // impossible
 
         case RefSet(refs) =>
           val resList = refs.map(_.instantiate(klass, ctor, args, source))
@@ -476,10 +379,10 @@ class Objects {
    *  @param cls the module class of the static object
    */
   def check(cls: ClassSymbol)(using Context): Unit = {
+    printer.println("checking " + cls.show)
     val objRef = ObjectRef(cls)
     given Path = Path.empty
     given Trace = Trace.empty
-    given Env = Env.empty
     val res = objRef.access(cls.defTree)
     res.errors.foreach(_.issue)
   }
@@ -524,7 +427,7 @@ class Objects {
   def evalArgs(args: List[Arg], thisV: Value, klass: ClassSymbol): Contextual[List[Result]] =
     args.map { arg =>
       if arg.isByName then
-        val fun = Fun(arg.tree, Nil, thisV, klass, env)
+        val fun = Fun(arg.tree, thisV, klass)
         Result(fun, Nil)
       else
         eval(arg.tree, thisV, klass)
@@ -563,8 +466,8 @@ class Objects {
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
-          val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, argsErrors).call(ref.symbol, argsValues, superTp, expr)
+          val res = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
+          (res ++ argsErrors).call(ref.symbol, argsValues, superTp, expr)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ argsErrors
@@ -575,9 +478,9 @@ class Objects {
           case TermRef(NoPrefix, _) =>
             // resolve this for the local method
             val enclosingClass = id.symbol.owner.enclosingClass.asClass
-            val thisValue2 = resolveThis(enclosingClass, thisV, klass, id)
+            val res = resolveThis(enclosingClass, thisV, klass, id)
             // local methods are not a member, but we can reuse the method `call`
-            Result(thisValue2, argsErrors).call(id.symbol, argsValues, superType = NoType, expr)
+            (res ++ argsErrors).call(id.symbol, argsValues, superType = NoType, expr)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ argsErrors
             res.call(id.symbol, argsValues, superType = NoType, source = expr)
@@ -610,11 +513,11 @@ class Objects {
 
       case closureDef(ddef) =>
         val params = ddef.termParamss.head.map(_.symbol)
-        val value = Fun(ddef.rhs, params, thisV, klass, env)
+        val value = Fun(ddef.rhs, thisV, klass)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, Nil, thisV, klass, env)
+        val value = Fun(body, thisV, klass)
         Result(value, Nil)
 
       case Block(stats, expr) =>
@@ -709,19 +612,17 @@ class Objects {
         Result(Bottom, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        // - only var definitions are cold, it means they are not inspected
-        // - look up parameters from environment
+        // - params and var definitions are abstract by its type
         // - evaluate the rhs of the local definition for val definitions: they are already cached
         val sym = tmref.symbol
-        if sym.is(Flags.Param) then Result(env.lookup(sym), Nil)
-        else if sym.info <:< defn.StringType || sym.info.classSymbol.isPrimitiveValueClass then Result(Bottom, Nil)
-        else if sym.is(Flags.Mutable) then Result(TypeAbs(sym.info), Nil)
+        if sym.isOneOf(Flags.Param | Flags.Mutable) then Result(TypeAbs(sym.info), Nil)
         else if sym.is(Flags.Package) then Result(Bottom, Nil)
         else if sym.hasSource then
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass, cacheResult = true)
         else
-          Result(Bottom, Nil)
+          // pattern-bound variables
+          Result(TypeAbs(sym.info), Nil)
 
       case tmref: TermRef =>
         val sym = tmref.symbol
@@ -738,8 +639,7 @@ class Objects {
           val res = Result(ObjectRef(sym.moduleClass.asClass), Nil)
           if elideObjectAccess then res else res.ensureAccess(klass, source)
         else
-          val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
-          Result(value, Errors.empty)
+          resolveThis(tref.classSymbol.asClass, thisV, klass, source)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -751,24 +651,14 @@ class Objects {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
-    if target == klass then thisV
-    else if target.is(Flags.Package) || target.isStaticOwner then Bottom
-    else
-      thisV match
-        case Bottom => Bottom
-
-        case addr: Addr =>
-          val obj = heap(addr)
-          val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(target, obj.outers(klass), outerCls, source)
-        case RefSet(refs) =>
-          refs.map(ref => resolveThis(target, ref, klass, source)).join
-        case fun: Fun =>
-          report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, source.srcPos)
-          TypeAbs(defn.AnyType)
-        case TypeAbs(tp) => TypeAbs(target.info)
-        case ClassAbs(tp) => TypeAbs(target.typeRef)
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree, elideObjectAccess: Boolean = false): Contextual[Result] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+    if target == klass then Result(thisV, Nil)
+    else if target.is(Flags.Package) then Result(Bottom, Nil)
+    else if target.isStaticObjectRef then
+      val res = Result(ObjectRef(target.moduleClass.asClass), Nil)
+      if target == klass || elideObjectAccess then res
+      else res.ensureAccess(klass, source)
+    else Result(TypeAbs(target.typeRef), Nil)
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
@@ -776,8 +666,7 @@ class Objects {
     val cls = tref.classSymbol.asClass
     if tref.prefix == NoPrefix then
       val enclosing = cls.owner.lexicallyEnclosingClass.asClass
-      val outerV = resolveThis(enclosing, thisV, klass, source)
-      Result(outerV, Errors.empty)
+      resolveThis(enclosing, thisV, klass, source, elideObjectAccess = cls.isStatic)
     else
       if cls.isAllOf(Flags.JavaInterface) then Result(Bottom, Nil)
       else
@@ -788,12 +677,6 @@ class Objects {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
     val paramsMap = tpl.constr.termParamss.flatten.map(vdef => vdef.name -> vdef.symbol).toMap
-
-    // init param fields
-    klass.paramGetters.foreach { acc =>
-      printer.println(acc.show + " initialized")
-      thisV.updateField(acc, env.lookup(paramsMap(acc.name.toTermName)))
-    }
 
     def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree): Unit =
       val cls = tref.classSymbol.asClass
@@ -890,5 +773,5 @@ class Objects {
 
   extension (sym: Symbol)
     def isStaticObjectRef(using Context) =
-      !sym.is(Flags.Package) && sym.is(Flags.Module) && sym.isStatic
+      sym.is(Flags.Module, butNot = Flags.Package) && sym.isStatic
 }
