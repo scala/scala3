@@ -1422,7 +1422,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo]): Boolean =
       if (args1.isEmpty) args2.isEmpty
-      else args2.nonEmpty && {
+      else args2.nonEmpty && tparams2.nonEmpty && {
         val tparam = tparams2.head
         val v = tparam.paramVarianceSign
 
