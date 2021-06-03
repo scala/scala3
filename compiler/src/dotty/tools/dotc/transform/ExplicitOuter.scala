@@ -282,6 +282,10 @@ object ExplicitOuter {
       case TypeRef(prefix, _) => isOuterRef(prefix)
       case _ => false
     }
+    def containsOuterRefs(tp: Type): Boolean = tp match
+      case tp: SingletonType => isOuterRef(tp)
+      case tp: AndOrType => containsOuterRefs(tp.tp1) || containsOuterRefs(tp.tp2)
+      case _ => false
     tree match {
       case _: This | _: Ident => isOuterRef(tree.tpe)
       case nw: New =>
@@ -292,6 +296,9 @@ object ExplicitOuter {
           // newCls might get proxies for free variables. If current class is
           // properly contained in newCls, it needs an outer path to newCls access the
           // proxies and forward them to the new instance.
+      case app: TypeApply if app.symbol.isTypeTest =>
+        // Type tests of singletons translate to `eq` tests with references, which might require outer pointers
+        containsOuterRefs(app.args.head.tpe)
       case _ =>
         false
     }
