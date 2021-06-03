@@ -77,10 +77,10 @@ class Semantic {
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value) extends Addr
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol) extends Value
+  case class Fun(expr: Tree, params: List[Symbol], thisV: Addr, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -137,6 +137,32 @@ class Semantic {
 
   import Heap._
   val heap: Heap = Heap.empty
+
+  /** The environment for method parameters */
+  object Env {
+    opaque type Env = Map[Symbol, Value]
+
+    val empty: Env = Map.empty
+
+    def apply(bindings: Map[Symbol, Value]): Env = bindings
+
+    def apply(ddef: DefDef, args: List[Value])(using Context): Env =
+      val params = ddef.termParamss.flatten.map(_.symbol)
+      assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
+      params.zip(args).toMap
+
+    extension (env: Env)
+      def lookup(sym: Symbol)(using Context): Value = env(sym)
+
+      def getOrElse(sym: Symbol, default: Value)(using Context): Value = env.getOrElse(sym, default)
+
+      def union(other: Env): Env = env ++ other
+  }
+
+  type Env = Env.Env
+  def env(using env: Env) = env
+
+  import Env._
 
   object Promoted {
     /** Values that have been safely promoted */
@@ -251,10 +277,20 @@ class Semantic {
 
       case (RefSet(refs1), RefSet(refs2))     => RefSet(refs1 ++ refs2)
 
+    def widen: Value =
+      a match
+      case RefSet(refs) => refs.map(_.widen).join
+      case _: Addr => Cold
+      case Fun(e, params, thisV, klass, env) => Fun(e, params, thisV.widen, klass, env)
+      case _ => a
+
+
   extension (values: Seq[Value])
     def join: Value =
       if values.isEmpty then Hot
       else values.reduce { (v1, v2) => v1.join(v2) }
+
+    def widen: List[Value] = values.map(_.widen).toList
 
   extension (value: Value)
     def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] =
