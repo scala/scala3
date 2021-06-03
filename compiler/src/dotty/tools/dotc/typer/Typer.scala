@@ -1138,7 +1138,7 @@ class Typer extends Namer
     pt1 match {
       case tp: TypeParamRef =>
         decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
-      case _ => pt1.findFuntionTypeInUnion match {
+      case _ => pt1.findFunctionTypeInUnion match {
         case pt1 if defn.isNonRefinedFunction(pt1) =>
           // if expected parameter type(s) are wildcards, approximate from below.
           // if expected result type is a wildcard, approximate from above.
@@ -1403,7 +1403,7 @@ class Typer extends Namer
       if (tree.tpt.isEmpty)
         meth1.tpe.widen match {
           case mt: MethodType =>
-            pt.findFuntionTypeInUnion match {
+            pt.findFunctionTypeInUnion match {
               case pt @ SAMType(sam)
               if !defn.isFunctionType(pt) && mt <:< sam =>
                 // SAMs of the form C[?] where C is a class cannot be conversion targets.

@@ -1654,16 +1654,16 @@ object Types {
     /** Find the function type in union.
      *  If there are multiple function types, NoType is returned.
      */
-    def findFuntionTypeInUnion(using Context): Type = this match {
+    def findFunctionTypeInUnion(using Context): Type = this match {
       case t: OrType =>
-        val t1 = t.tp1.findFuntionTypeInUnion
-        if t1 == NoType then t.tp2.findFuntionTypeInUnion else
-          val t2 = t.tp2.findFuntionTypeInUnion
+        val t1 = t.tp1.findFunctionTypeInUnion
+        if t1 == NoType then t.tp2.findFunctionTypeInUnion else
+          val t2 = t.tp2.findFunctionTypeInUnion
           // Returen NoType if the union contains multiple function types
           if t2 == NoType then t1 else NoType
       case t if defn.isNonRefinedFunction(t) =>
         t
-      case t @ SAMType(_: MethodType) =>
+      case t @ SAMType(_) =>
         t
       case _ =>
         NoType
