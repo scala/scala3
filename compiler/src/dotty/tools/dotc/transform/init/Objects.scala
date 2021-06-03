@@ -260,8 +260,7 @@ class Objects {
             else if value.canIgnoreMethodCall(field) then
               Result(Bottom, Nil)
             else
-              val error = CallUnknown(field, source, trace.toVector)
-              Result(Bottom, error :: Nil)
+              Result(Bottom, Nil)
           else
             val fieldType = tp.memberInfo(field)
             Result(TypeAbs(fieldType), Nil)
@@ -299,8 +298,7 @@ class Objects {
               val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
               eval(rhs, addr, target.owner.asClass, cacheResult = true)
             else
-              val error = CallUnknown(field, source, trace.toVector)
-              Result(Bottom, error :: Nil)
+              Result(Bottom, Nil)
 
         case _: Fun =>
           ???
@@ -326,8 +324,7 @@ class Objects {
             else if value.canIgnoreMethodCall(meth) then
               Result(Bottom, Nil)
             else
-              val error = CallUnknown(meth, source, trace.toVector)
-              Result(Bottom, error :: Nil)
+              Result(Bottom, Nil)
           else
             val error = CallCold(meth, source, trace.toVector)
             Result(Bottom, error :: Nil)
@@ -353,8 +350,7 @@ class Objects {
             else if value.canIgnoreMethodCall(target) then
               Result(Bottom, Nil)
             else
-              val error = CallUnknown(target, source, trace.toVector)
-              Result(Bottom, error :: Nil)
+              Result(Bottom, Nil)
           else
             value.select(target, source, needResolve = false)
 
@@ -385,8 +381,7 @@ class Objects {
             else if addr.canIgnoreMethodCall(target) then
               Result(Bottom, Nil)
             else
-              val error = CallUnknown(target, source, trace.toVector)
-              Result(Bottom, error :: Nil)
+              Result(Bottom, Nil)
           else
             value.select(target, source, needResolve = false)
 
@@ -486,7 +481,7 @@ class Objects {
     given Trace = Trace.empty
     given Env = Env.empty
     val res = objRef.access(cls.defTree)
-    res.errors.filterNot(_.isInstanceOf[CallUnknown]).foreach(_.issue)
+    res.errors.foreach(_.issue)
   }
 
 // ----- Semantic definition -------------------------------
@@ -726,7 +721,7 @@ class Objects {
           val rhs = sym.defTree.asInstanceOf[ValDef].rhs
           eval(rhs, thisV, klass, cacheResult = true)
         else
-          Result(Bottom, CallUnknown(sym, source, trace.toVector) :: Nil)
+          Result(Bottom, Nil)
 
       case tmref: TermRef =>
         val sym = tmref.symbol
