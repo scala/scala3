@@ -306,8 +306,11 @@ class Semantic {
 
         case addr: Addr =>
           val target = if needResolve then resolve(addr.klass, field) else field
+          val trace1 = trace.add(source)
           if target.is(Flags.Lazy) then
-            value.call(target, Nil, superType = NoType, source, needResolve = false)
+            given Trace = trace1
+            val rhs = target.defTree.asInstanceOf[ValDef].rhs
+            eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
@@ -357,12 +360,15 @@ class Semantic {
               resolveSuper(addr.klass, superType, meth)
             else
               resolve(addr.klass, meth)
-          if target.isOneOf(Flags.Method | Flags.Lazy) then
+
+          if target.isOneOf(Flags.Method) then
+            val trace1 = trace.add(source)
             if target.hasSource then
+              given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               if target.isPrimaryConstructor then
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)(using env, ctx, trace.add(cls.defTree), promoted)
+                eval(tpl, addr, cls, cacheResult = true)
               else
                 val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
                 eval(rhs, addr, cls, cacheResult = true)
@@ -392,15 +398,18 @@ class Semantic {
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
+      val trace1 = trace.add(source)
       value match {
         case Hot  =>
           Result(Hot, Errors.empty)
 
         case Cold =>
-          val error = CallCold(ctor, source, trace.toVector)
+          val error = CallCold(ctor, source, trace1.toVector)
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
+          given Trace = trace1
+
           // widen the outer to finitize addresses
           val outer = addr match
             case Warm(_, _: Warm, _, _) => Cold
@@ -653,17 +662,15 @@ class Semantic {
         // check args
         val (errors, args) = evalArgs(argss.flatten, thisV, klass)
 
-        val trace2: Trace = trace.add(expr)
-
         ref match
         case Select(supert: Super, _) =>
           val SuperType(thisTp, superTp) = supert.tpe
           val thisValue2 = resolveThis(thisTp.classSymbol.asClass, thisV, klass, ref)
-          Result(thisValue2, errors).call(ref.symbol, args, superTp, expr)(using env, ctx, trace2)
+          Result(thisValue2, errors).call(ref.symbol, args, superTp, expr)
 
         case Select(qual, _) =>
           val res = eval(qual, thisV, klass) ++ errors
-          res.call(ref.symbol, args, superType = NoType, source = expr)(using env, ctx, trace2)
+          res.call(ref.symbol, args, superType = NoType, source = expr)
 
         case id: Ident =>
           id.tpe match
@@ -675,7 +682,7 @@ class Semantic {
             thisValue2.call(id.symbol, args, superType = NoType, expr, needResolve = false)
           case TermRef(prefix, _) =>
             val res = cases(prefix, thisV, klass, id) ++ errors
-            res.call(id.symbol, args, superType = NoType, source = expr)(using env, ctx, trace2)
+            res.call(id.symbol, args, superType = NoType, source = expr)
 
       case Select(qualifier, name) =>
         eval(qualifier, thisV, klass).select(expr.symbol, expr)
@@ -870,7 +877,7 @@ class Semantic {
       // follow constructor
       if cls.hasSource then
         printer.println("init super class " + cls.show)
-        val res2 = thisV.call(ctor, args, superType = NoType, source)(using env, ctx, trace.add(source))
+        val res2 = thisV.call(ctor, args, superType = NoType, source)
         errorBuffer ++= res2.errors
 
     // parents
@@ -957,13 +964,14 @@ class Semantic {
 object Semantic {
 
 // ----- Utility methods and extractors --------------------------------
+  inline def use[T, R](v: T)(inline op: T ?=> R): R = op(using v)
 
   def typeRefOf(tp: Type)(using Context): TypeRef = tp.dealias.typeConstructor match {
     case tref: TypeRef => tref
     case hklambda: HKTypeLambda => typeRefOf(hklambda.resType)
   }
 
-  opaque type Arg  = Tree | ByNameArg
+  type Arg  = Tree | ByNameArg
   case class ByNameArg(tree: Tree)
 
   extension (arg: Arg)
