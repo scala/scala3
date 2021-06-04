@@ -145,7 +145,9 @@ class Semantic {
        *  Invariant: fields are immutable and only set once from `init`
        */
       def updateField(field: Symbol, value: Value): Contextual[Unit] =
-        heap(ref).fields(field) = value
+        val fields = heap(ref).fields
+        assert(!fields.contains(field), field.show + " already init, new = " + value + ", ref =" + ref)
+        fields(field) = value
 
       /** Update the immediate outer of the given `klass` of the abstract object
        *
@@ -400,7 +402,8 @@ class Semantic {
               if target.isPrimaryConstructor then
                 given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                eval(tpl, addr, cls, cacheResult = true)
+                val res = eval(tpl, addr, cls, cacheResult = true)
+                Result(addr, res.errors)
               else if target.isConstructor then
                 given Env = env2
                 eval(ddef.rhs, addr, cls, cacheResult = true)
@@ -441,7 +444,21 @@ class Semantic {
       val trace1 = trace.add(source)
       value match {
         case Hot  =>
-          Result(Hot, Errors.empty)
+          val buffer = new mutable.ArrayBuffer[Error]
+          val args2 = args.map { arg =>
+            val errors = arg.promote("May only use initialized value as arguments", arg.source)
+            buffer ++= errors
+            if errors.isEmpty then Hot
+            else arg.widen
+          }
+          if buffer.isEmpty then Result(Hot, Errors.empty)
+          else
+            val value = Warm(klass, Hot, ctor, args2)
+            if !heap.contains(value) then
+              val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> Hot))
+              heap.update(value, obj)
+            val res = value.call(ctor, args, superType = NoType, source)
+            Result(res.value, res.errors)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
@@ -990,7 +1007,7 @@ class Semantic {
 
     // class body
     tpl.body.foreach {
-      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
+      case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) && !vdef.rhs.isEmpty =>
         given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
