@@ -1178,9 +1178,7 @@ object Build {
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             )).get
 
-          ++ (dir / "js/src/test/require-2.12" ** (("*.scala": FileFilter)
-            -- "JSOptionalTest212FunParamInference.scala" // TODO: #11694
-            )).get
+          ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
           ++ (dir / "js/src/test/require-sam" ** "*.scala").get
           ++ (dir / "js/src/test/scala-new-collections" ** "*.scala").get
         )
