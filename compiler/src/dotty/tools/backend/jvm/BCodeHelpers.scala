@@ -26,6 +26,7 @@ import dotty.tools.dotc.core.Types
 import dotty.tools.dotc.core.Types._
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.GenericSignatures
+import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.report
 
@@ -926,7 +927,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
     val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-    val erasedMemberType = TypeErasure.transformInfo(sym, memberTpe)
+    val erasedMemberType = ElimErasedValueType.elimEVT(TypeErasure.transformInfo(sym, memberTpe))
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
     else null
