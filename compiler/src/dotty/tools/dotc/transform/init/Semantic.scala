@@ -181,6 +181,8 @@ class Semantic {
       def getOrElse(sym: Symbol, default: Value)(using Context): Value = env.getOrElse(sym, default)
 
       def union(other: Env): Env = env ++ other
+
+      def isHot: Boolean = env.values.exists(_ != Hot)
   }
 
   type Env = Env.Env
@@ -401,7 +403,7 @@ class Semantic {
                 eval(ddef.rhs, addr, cls, cacheResult = true)
               else
                 val errors = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
-                use(Env.empty) {
+                use(if isLocal then env else Env.empty) {
                   eval(ddef.rhs, addr, cls, cacheResult = true)
                 }
             else if addr.canIgnoreMethodCall(target) then
@@ -452,7 +454,11 @@ class Semantic {
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
             heap.update(value, obj)
           val res = value.call(ctor, args, superType = NoType, source)
-          Result(value, res.errors)
+
+          // Abstract instances of local classes inside 2nd constructor as Cold
+          // This way, we avoid complicating the domain for Warm unnecessarily
+          if !env.isHot then Result(Cold, res.errors)
+          else Result(value, res.errors)
 
         case Fun(body, params, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -836,16 +842,29 @@ class Semantic {
         Result(Hot, Errors.empty)
 
       case tmref: TermRef if tmref.prefix == NoPrefix =>
-        Result(Hot, Errors.empty)
+        val sym = tmref.symbol
+
+        def default() = Result(Hot, Nil)
+
+        if sym.is(Flags.Param) then
+          if sym.owner.isConstructor then
+            // instances of local classes inside secondary constructors cannot
+            // reach here, as those values are abstracted by Cold instead of Warm.
+            // This enables us to simplify the domain without sacrificing
+            // expressiveness nor soundess, as local classes inside secondary
+            // constructors are uncommon.
+            Result(env.lookup(sym), Nil)
+          else
+            default()
+        else
+          default()
 
       case tmref: TermRef =>
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        if tref.symbol.is(Flags.Package) then Result(Hot, Errors.empty)
-        else
-          val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
-          Result(value, Errors.empty)
+        val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
+        Result(value, Errors.empty)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -891,15 +910,18 @@ class Semantic {
   def init(tpl: Template, thisV: Addr, klass: ClassSymbol): Contextual[Result] = log("init " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     val errorBuffer = new mutable.ArrayBuffer[Error]
 
+    val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
+      vdef.name -> env.lookup(vdef.symbol)
+    }.toMap
+
     // init param fields
-    klass.paramAccessors.foreach { acc =>
-      if (!acc.is(Flags.Method)) {
-        printer.println(acc.show + " initialized")
-        thisV.updateField(acc, Hot)
-      }
+    klass.paramGetters.foreach { acc =>
+      val value = paramsMap(acc.name.toTermName)
+      thisV.updateField(acc, value)
+      printer.println(acc.show + " initialized with " + value)
     }
 
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree)(using Env): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -913,7 +935,7 @@ class Semantic {
         errorBuffer ++= res2.errors
 
     // parents
-    def initParent(parent: Tree) = parent match {
+    def initParent(parent: Tree)(using Env) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         val (erros, args) = evalArgs(argss.flatten, thisV, klass)
@@ -933,6 +955,8 @@ class Semantic {
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
     if !klass.is(Flags.Trait) then
+      given Env = Env.empty
+
       // 1. first init parent class recursively
       // 2. initialize traits according to linearization order
       val superParent = tpl.parents.head
@@ -961,6 +985,7 @@ class Semantic {
     // class body
     tpl.body.foreach {
       case vdef : ValDef if !vdef.symbol.is(Flags.Lazy) =>
+        given Env = Env.empty
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
@@ -968,6 +993,7 @@ class Semantic {
       case _: MemberDef =>
 
       case tree =>
+        given Env = Env.empty
         errorBuffer ++= eval(tree, thisV, klass).errors
     }
 
