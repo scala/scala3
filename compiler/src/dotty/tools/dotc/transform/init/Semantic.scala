@@ -376,6 +376,7 @@ class Semantic {
           Result(Hot, error :: Nil)
 
         case addr: Addr =>
+          val isLocal = meth.owner.isClass
           val target =
             if !needResolve then
               meth
@@ -389,12 +390,20 @@ class Semantic {
             if target.hasSource then
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
+              val ddef = target.defTree.asInstanceOf[DefDef]
+              val env2 = Env(ddef, args.widen)
               if target.isPrimaryConstructor then
+                given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
                 eval(tpl, addr, cls, cacheResult = true)
+              else if target.isConstructor then
+                given Env = env2
+                eval(ddef.rhs, addr, cls, cacheResult = true)
               else
-                val rhs = target.defTree.asInstanceOf[ValOrDefDef].rhs
-                eval(rhs, addr, cls, cacheResult = true)
+                val errors = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
+                use(Env.empty) {
+                  eval(ddef.rhs, addr, cls, cacheResult = true)
+                }
             else if addr.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
