@@ -35,7 +35,7 @@ object Config {
   inline val checkConstraintsPropagated = false
 
   /** Check that constraint bounds do not contain wildcard types */
-  inline val checkNoWildcardsInConstraint = false
+  inline val checkNoWildcardsInConstraint = true
 
   /** If a constraint is over a type lambda `tl` and `tvar` is one of
    *  the type variables associated with `tl` in the constraint, check
@@ -49,7 +49,7 @@ object Config {
    *  compiling all of dotty together (source seems to be in GenBCode which
    *  accesses javac's settings.)
    *
-   *  It is recommended to turn this option on only when chasing down
+   *  It is recommended to turn this option on only w zhen chasing down
    *  a TypeParamRef instantiation error. See comment in Types.TypeVar.instantiate.
    */
   inline val debugCheckConstraintsClosed = false
