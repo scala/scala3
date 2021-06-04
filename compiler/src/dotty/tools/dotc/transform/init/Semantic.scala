@@ -370,13 +370,15 @@ class Semantic {
       }
 
     def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
+      def checkArgs = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
+
       value match {
         case Hot  =>
-          Result(Hot, Errors.empty)
+          Result(Hot, checkArgs)
 
         case Cold =>
           val error = CallCold(meth, source, trace.toVector)
-          Result(Hot, error :: Nil)
+          Result(Hot, error :: checkArgs)
 
         case addr: Addr =>
           val isLocal = meth.owner.isClass
@@ -403,15 +405,14 @@ class Semantic {
                 given Env = env2
                 eval(ddef.rhs, addr, cls, cacheResult = true)
               else
-                val errors = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
                 use(if isLocal then env else Env.empty) {
-                  eval(ddef.rhs, addr, cls, cacheResult = true)
+                  eval(ddef.rhs, addr, cls, cacheResult = true) ++ checkArgs
                 }
             else if addr.canIgnoreMethodCall(target) then
               Result(Hot, Nil)
             else
               val error = CallUnknown(target, source, trace.toVector)
-              Result(Hot, error :: Nil)
+              Result(Hot, error :: checkArgs)
           else
             val obj = heap(addr)
             if obj.fields.contains(target) then
