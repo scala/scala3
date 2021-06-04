@@ -55,8 +55,29 @@ class Semantic {
    *         V ⊑ R if V ∈ R
    *
    */
-  sealed abstract class Value {
+  sealed abstract class Value extends Cloneable {
     def show: String = this.toString()
+
+    /** Source code where the value originates from
+     *
+     *  It is used for displaying friendly messages
+     */
+    private var mySource: Tree = EmptyTree
+
+    def source: Tree = mySource
+
+    def attachSource(source: Tree): this.type =
+      assert(mySource.isEmpty, "Update existing source of value " + this)
+      mySource = source
+      this
+
+    def withSource(source: Tree): Value =
+      if mySource.isEmpty then attachSource(source)
+      else {
+        val value2 = this.clone.asInstanceOf[Value]
+        value2.mySource = source
+        value2
+      }
   }
 
   /** A transitively initialized object */
@@ -238,6 +259,8 @@ class Semantic {
 
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
+
+    def withSource(source: Tree): Result = Result(value.withSource(source), errors)
   }
 
   /** The state that threads through the interpreter */
@@ -626,9 +649,9 @@ class Semantic {
     val ress = args.map { arg =>
       if arg.isByName then
         val fun = Fun(arg.tree, Nil, thisV, klass, env)
-        Result(fun, Nil)
+        Result(fun, Nil).withSource(arg.tree)
       else
-        eval(arg.tree, thisV, klass)
+        eval(arg.tree, thisV, klass).withSource(arg.tree)
     }
     (ress.flatMap(_.errors), ress.map(_.value))
 
