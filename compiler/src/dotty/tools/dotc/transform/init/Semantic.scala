@@ -73,6 +73,7 @@ class Semantic {
 
     def withSource(source: Tree): Value =
       if mySource.isEmpty then attachSource(source)
+      else if this == Hot || this == Cold then this
       else {
         val value2 = this.clone.asInstanceOf[Value]
         value2.mySource = source

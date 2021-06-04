@@ -49,11 +49,16 @@ class Checker extends MiniPhase {
       import semantic._
       val tpl = tree.rhs.asInstanceOf[Template]
       val thisRef = ThisRef(cls)
+
       val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map(cls -> Hot))
+      heap.update(thisRef, obj)
+
+      val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
+
       given Promoted = Promoted.empty
       given Trace = Trace.empty
-      given Env = Env.empty
-      heap.update(thisRef, obj)
+      given Env = Env(paramValues)
+
       val res = eval(tpl, thisRef, cls)
       res.errors.foreach(_.issue)
     }
