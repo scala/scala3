@@ -194,16 +194,22 @@ class Semantic {
   import Env._
 
   object Promoted {
+    class PromotionInfo {
+      var isCurrentObjectPromoted: Boolean = false
+      val values = mutable.Set.empty[Value]
+    }
     /** Values that have been safely promoted */
-    opaque type Promoted = mutable.Set[Value]
+    opaque type Promoted = PromotionInfo
 
     /** Note: don't use `val` to avoid incorrect sharing */
-    def empty: Promoted = mutable.Set.empty
+    def empty: Promoted = new PromotionInfo
 
     extension (promoted: Promoted)
-      def contains(value: Value): Boolean = promoted.contains(value)
-      def add(value: Value): Unit = promoted += value
-      def remove(value: Value): Unit = promoted -= value
+      def isCurrentObjectPromoted: Boolean = promoted.isCurrentObjectPromoted
+      def promoteCurrent(thisRef: ThisRef): Unit = promoted.isCurrentObjectPromoted = true
+      def contains(value: Value): Boolean = promoted.values.contains(value)
+      def add(value: Value): Unit = promoted.values += value
+      def remove(value: Value): Unit = promoted.values -= value
     end extension
   }
   type Promoted = Promoted.Promoted
@@ -374,6 +380,9 @@ class Semantic {
     def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
       def checkArgs = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
 
+      // fast track if the current object is already initialized
+      if promoted.isCurrentObjectPromoted then return Result(Hot, Nil)
+
       value match {
         case Hot  =>
           Result(Hot, checkArgs)
@@ -402,7 +411,7 @@ class Semantic {
               if target.isPrimaryConstructor then
                 given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-                val res = eval(tpl, addr, cls, cacheResult = true)
+                val res = use(trace.add(cls.defTree)) { eval(tpl, addr, cls, cacheResult = true) }
                 Result(addr, res.errors)
               else if target.isConstructor then
                 given Env = env2
@@ -451,6 +460,7 @@ class Semantic {
             if errors.isEmpty then Hot
             else arg.widen
           }
+
           if buffer.isEmpty then Result(Hot, Errors.empty)
           else
             val value = Warm(klass, Hot, ctor, args2)
@@ -496,64 +506,37 @@ class Semantic {
   end extension
 
 // ----- Promotion ----------------------------------------------------
-
-  extension (value: Value)
-    /** Can we promote the value by checking the extrinsic values?
-     *
-     *  The extrinsic values are environment values, e.g. outers for `Warm`
-     *  and `thisV` captured in functions.
-     *
-     *  This is a fast track for early promotion of values.
-     */
-    def canPromoteExtrinsic: Contextual[Boolean] = log("canPromoteExtrinsic " + value + ", promoted = " + promoted, printer) {
-      value match
-      case Hot   =>  true
-      case Cold  =>  false
-
-      case warm: Warm  =>
-        (warm.outer :: warm.args).forall(_.canPromoteExtrinsic) && {
-          promoted.add(warm)
-          true
+  extension (thisRef: ThisRef)
+    def tryPromoteCurrentObject: Contextual[Boolean] = log("tryPromoteCurrentObject ", printer) {
+      promoted.isCurrentObjectPromoted || {
+        val obj = heap(thisRef)
+        // If we have all fields initialized, then we can promote This to hot.
+        val allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
+          val sym = denot.symbol
+          sym.isOneOf(Flags.Lazy | Flags.Deferred) || obj.fields.contains(sym)
         }
-
-      case thisRef: ThisRef =>
-        promoted.contains(thisRef) || {
-          val obj = heap(thisRef)
-          // If we have all fields initialized, then we can promote This to hot.
-          val allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
-            val sym = denot.symbol
-            sym.isOneOf(Flags.Lazy | Flags.Deferred) || obj.fields.contains(sym)
-          }
-          if allFieldsInitialized then promoted.add(thisRef)
-          allFieldsInitialized
-        }
-
-      case fun: Fun =>
-        fun.thisV.canPromoteExtrinsic && {
-          promoted.add(fun)
-          true
-        }
-
-      case RefSet(refs) =>
-        refs.forall(_.canPromoteExtrinsic)
-
+        if allFieldsInitialized then promoted.promoteCurrent(thisRef)
+        allFieldsInitialized
+      }
     }
 
+  extension (value: Value)
     /** Promotion of values to hot */
     def promote(msg: String, source: Tree): Contextual[List[Error]] = log("promoting " + value + ", promoted = " + promoted, printer) {
-      value match
+      if promoted.isCurrentObjectPromoted then Nil else
+
+      value.match
       case Hot   =>  Nil
 
       case Cold  =>  PromoteError(msg, source, trace.toVector) :: Nil
 
       case thisRef: ThisRef =>
         if promoted.contains(thisRef) then Nil
-        else if thisRef.canPromoteExtrinsic then Nil
+        else if thisRef.tryPromoteCurrentObject then Nil
         else PromoteError(msg, source, trace.toVector) :: Nil
 
       case warm: Warm =>
         if promoted.contains(warm) then Nil
-        else if warm.canPromoteExtrinsic then Nil
         else {
           promoted.add(warm)
           val errors = warm.tryPromote(msg, source)
@@ -902,7 +885,7 @@ class Semantic {
   /** Resolve C.this that appear in `klass` */
   def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree): Contextual[Value] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
     if target == klass then thisV
-    else if target.is(Flags.Package) || target.isStaticOwner then Hot
+    else if target.is(Flags.Package) then Hot
     else
       thisV match
         case Hot => Hot
@@ -1005,6 +988,7 @@ class Semantic {
           if ctor.exists then superCall(tref, ctor, Nil, superParent)
       }
 
+    var fieldsChanged = true
 
     // class body
     tpl.body.foreach {
@@ -1013,10 +997,17 @@ class Semantic {
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
         thisV.updateField(vdef.symbol, res.value)
+        fieldsChanged = true
 
       case _: MemberDef =>
 
       case tree =>
+        thisV match
+        case thisRef: ThisRef =>
+          if fieldsChanged then thisRef.tryPromoteCurrentObject
+          fieldsChanged = false
+        case _ =>
+
         given Env = Env.empty
         errorBuffer ++= eval(tree, thisV, klass).errors
     }
