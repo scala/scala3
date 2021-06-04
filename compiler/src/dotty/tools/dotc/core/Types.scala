@@ -5053,6 +5053,11 @@ object Types {
 
   /** Wildcard type, possibly with bounds */
   abstract case class WildcardType(optBounds: Type) extends CachedGroundType with TermType {
+
+    def effectiveBounds(using Context): TypeBounds = optBounds match
+      case bounds: TypeBounds => bounds
+      case _ => TypeBounds.empty
+
     def derivedWildcardType(optBounds: Type)(using Context): WildcardType =
       if (optBounds eq this.optBounds) this
       else if (!optBounds.exists) WildcardType

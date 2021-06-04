@@ -10,6 +10,7 @@ import Flags._
 import config.Config
 import config.Printers.typr
 import reporting.trace
+import typer.ProtoTypes.newTypeVar
 import StdNames.tpnme
 
 /** Methods for adding constraints and solving them.
@@ -102,10 +103,12 @@ trait ConstraintHandling {
         val dropWildcards = new ApproximatingTypeMap:
           if !isUpper then variance = -1
           def apply(t: Type): Type = t match
-            case t: WildcardType if !allowWildcards =>
-              t.optBounds match
-                case TypeBounds(lo, hi) => range(lo, hi)
-                case _ => range(defn.NothingType, defn.AnyType)
+            case t: WildcardType =>
+              if !allowWildcards || ctx.mode.is(Mode.TypevarsMissContext) then
+                val bounds = t.effectiveBounds
+                range(bounds.lo, bounds.hi)
+              else
+                newTypeVar(t.effectiveBounds)
             case _ =>
               mapOver(t)
         // Narrow one of the bounds of type parameter `param`
