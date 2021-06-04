@@ -9,7 +9,7 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <circle id="path-2" cx="32" cy="32" r="32"/>
+    <circle id="path-2" cx="32" cy="35" r="32"/>
     <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-4">
       <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"/>
       <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"/>
@@ -38,13 +38,14 @@
           <mask id="mask-3" fill="white">
             <use xlink:href="#path-2"/>
           </mask>
-          <use id="Mask" fill="saddlebrown" filter="url(#filter-1)" xlink:href="#path-2"/>
+          <use xlink:href="#path-2" stroke="black" stroke-width="3"/>
+          <use id="Mask" fill="white" filter="url(#filter-1)" xlink:href="#path-2"/>
           <mask id="mask-6" fill="white">
             <use xlink:href="#path-5"/>
           </mask>
-          <text id="C" mask="url(#mask-6)" font-family="Open Sans, Helvetica Neueu, Sans-serif" font-size="40" font-weight="normal" fill="#FFFFFF">
-            <tspan x="21" y="43">
-              e
+          <text id="C" mask="url(#mask-6)" font-family="Open Sans, Helvetica Neueu, Sans-serif" font-size="40" font-weight="normal" fill="black">
+            <tspan x="19" y="49">
+              S
             </tspan>
           </text>
         </g>
@@ -52,4 +53,3 @@
     </g>
   </g>
 </svg>
-

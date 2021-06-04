@@ -8,6 +8,7 @@ trait PageEntryJS extends js.Object {
   val t: String = js.native
   val d: String = js.native
   val l: String = js.native
+  val k: String = js.native
 }
 
 case class PageEntry(
@@ -15,6 +16,7 @@ case class PageEntry(
   description: String,
   location: String,
   shortName: String,
+  kind: String,
   tokens: List[String]
 )
 
@@ -24,6 +26,7 @@ object PageEntry {
       jsObj.d,
       jsObj.l,
       jsObj.n.toLowerCase,
+      jsObj.k,
       StringUtils.createCamelCaseTokens(jsObj.n)
     )
 }

@@ -38,13 +38,13 @@
           <mask id="mask-3" fill="white">
             <use xlink:href="#path-2"/>
           </mask>
-          <use id="Mask" fill="saddlebrown" filter="url(#filter-1)" xlink:href="#path-2"/>
+          <use id="Mask" fill="crimson" filter="url(#filter-1)" xlink:href="#path-2"/>
           <mask id="mask-6" fill="white">
             <use xlink:href="#path-5"/>
           </mask>
           <text id="C" mask="url(#mask-6)" font-family="Open Sans, Helvetica Neueu, Sans-serif" font-size="40" font-weight="normal" fill="#FFFFFF">
-            <tspan x="21" y="43">
-              e
+            <tspan x="20" y="48">
+              T
             </tspan>
           </text>
         </g>
@@ -52,4 +52,3 @@
     </g>
   </g>
 </svg>
-

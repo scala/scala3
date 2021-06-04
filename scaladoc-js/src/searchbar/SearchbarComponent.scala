@@ -11,6 +11,10 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       wrapper.classList.add("scaladoc-searchbar-result")
       wrapper.classList.add("monospace")
 
+      val icon = document.createElement("span").asInstanceOf[html.Span]
+      icon.classList.add("micon")
+      icon.classList.add(p.kind.take(2))
+
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
       resultA.href = Globals.pathToRoot + p.location
       resultA.text = s"${p.fullName}"
@@ -20,6 +24,7 @@ class SearchbarComponent(val callback: (String) => List[PageEntry]):
       location.classList.add("scaladoc-searchbar-location")
       location.textContent = p.description
 
+      wrapper.appendChild(icon)
       wrapper.appendChild(resultA)
       wrapper.appendChild(location)
       wrapper.addEventListener("mouseover", {
