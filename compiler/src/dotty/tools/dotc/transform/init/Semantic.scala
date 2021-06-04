@@ -57,28 +57,6 @@ class Semantic {
    */
   sealed abstract class Value extends Cloneable {
     def show: String = this.toString()
-
-    /** Source code where the value originates from
-     *
-     *  It is used for displaying friendly messages
-     */
-    private var mySource: Tree = EmptyTree
-
-    def source: Tree = mySource
-
-    def attachSource(source: Tree): this.type =
-      assert(mySource.isEmpty, "Update existing source of value " + this)
-      mySource = source
-      this
-
-    def withSource(source: Tree): Value =
-      if mySource.isEmpty then attachSource(source)
-      else if this == Hot || this == Cold then this
-      else {
-        val value2 = this.clone.asInstanceOf[Value]
-        value2.mySource = source
-        value2
-      }
   }
 
   /** A transitively initialized object */
@@ -265,13 +243,11 @@ class Semantic {
     def select(f: Symbol, source: Tree): Contextual[Result] =
       value.select(f, source) ++ errors
 
-    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree): Contextual[Result] =
+    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, args, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
-
-    def withSource(source: Tree): Result = Result(value.withSource(source), errors)
   }
 
   /** The state that threads through the interpreter */
@@ -379,8 +355,8 @@ class Semantic {
       }
     }
 
-    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
-      def checkArgs = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
+    def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+      def checkArgs = args.flatMap(_.promote)
 
       // fast track if the current object is already initialized
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
@@ -408,7 +384,7 @@ class Semantic {
               given Trace = trace1
               val cls = target.owner.enclosingClass.asClass
               val ddef = target.defTree.asInstanceOf[DefDef]
-              val env2 = Env(ddef, args.widen)
+              val env2 = Env(ddef, args.map(_.value).widen)
               if target.isPrimaryConstructor then
                 given Env = env2
                 val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -437,7 +413,7 @@ class Semantic {
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else
-            val env3 = Env(params.zip(args.widen).toMap).union(env2)
+            val env3 = Env(params.zip(args.map(_.value).widen).toMap).union(env2)
             use(env3) {
               eval(body, thisV, klass, cacheResult = true)
             }
@@ -451,17 +427,17 @@ class Semantic {
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
       val trace1 = trace.add(source)
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
         case Hot  =>
           val buffer = new mutable.ArrayBuffer[Error]
           val args2 = args.map { arg =>
-            val errors = arg.promote("May only use initialized value as arguments", arg.source)
+            val errors = arg.promote
             buffer ++= errors
             if errors.isEmpty then Hot
-            else arg.widen
+            else arg.value.widen
           }
 
           if buffer.isEmpty then Result(Hot, Errors.empty)
@@ -485,7 +461,7 @@ class Semantic {
             case Warm(_, _: Warm, _, _) => Cold
             case _ => addr
 
-          val value = Warm(klass, outer, ctor, args.widen)
+          val value = Warm(klass, outer, ctor, args.map(_.value).widen)
           if !heap.contains(value) then
             val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
             heap.update(value, obj)
@@ -616,7 +592,7 @@ class Semantic {
           val trace2 = trace.add(m.defTree)
           locally {
             given Trace = trace2
-            val args = m.info.paramInfoss.flatten.map(_ => Hot)
+            val args = m.info.paramInfoss.flatten.map(_ => ArgInfo(Hot, EmptyTree))
             val res = warm.call(m, args, superType = NoType, source = source)
             buffer ++= res.ensureHot(msg, source).errors
           }
@@ -642,6 +618,11 @@ class Semantic {
       cls == defn.ObjectClass
 
 // ----- Semantic definition --------------------------------
+
+  /** Utility definition used for better error-reporting of argument errors */
+  case class ArgInfo(value: Value, source: Tree) {
+    def promote: Contextual[List[Error]] = value.promote("May only use initialized value as arguments", source)
+  }
 
   /** Evaluate an expression with the given value for `this` in a given class `klass`
    *
@@ -678,15 +659,21 @@ class Semantic {
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[Value])] =
-    val ress = args.map { arg =>
-      if arg.isByName then
-        val fun = Fun(arg.tree, Nil, thisV, klass, env)
-        Result(fun, Nil).withSource(arg.tree)
-      else
-        eval(arg.tree, thisV, klass).withSource(arg.tree)
+  def evalArgs(args: List[Arg], thisV: Addr, klass: ClassSymbol): Contextual[(List[Error], List[ArgInfo])] =
+    val errors = new mutable.ArrayBuffer[Error]
+    val argInfos = new mutable.ArrayBuffer[ArgInfo]
+    args.foreach { arg =>
+      val res =
+        if arg.isByName then
+          val fun = Fun(arg.tree, Nil, thisV, klass, env)
+          Result(fun, Nil)
+        else
+          eval(arg.tree, thisV, klass)
+
+      errors ++= res.errors
+      argInfos += ArgInfo(res.value, arg.tree)
     }
-    (ress.flatMap(_.errors), ress.map(_.value))
+    (errors.toList, argInfos.toList)
 
   /** Handles the evaluation of different expressions
    *
@@ -939,7 +926,7 @@ class Semantic {
       printer.println(acc.show + " initialized with " + value)
     }
 
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree)(using Env): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], source: Tree)(using Env): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
