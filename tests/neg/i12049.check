@@ -15,39 +15,22 @@
   |                    case B => String
 
 longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/i12049.scala:14:17 ------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:14:23 ---------------------------------------------------------------------------------
 14 |val y3: String = ??? : Last[Int *: Int *: Boolean *: String *: EmptyTuple]  // error
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                 Found:    Last[EmptyTuple.type]
-   |                 Required: String
+   |                       ^
+   |                       Match type reduction failed since selector  EmptyTuple.type
+   |                       matches none of the cases
    |
-   |                 Note: a match type could not be fully reduced:
-   |
-   |                   trying to reduce  Last[EmptyTuple.type]
-   |                   failed since selector  EmptyTuple.type
-   |                   matches none of the cases
-   |
-   |                     case _ *: _ *: t => Last[t]
-   |                     case t *: EmptyTuple => t
-
-longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg/i12049.scala:22:20 ------------------------------------------------------------
+   |                           case _ *: _ *: t => Last[t]
+   |                           case t *: EmptyTuple => t
+-- Error: tests/neg/i12049.scala:22:26 ---------------------------------------------------------------------------------
 22 |val z3: (A, B, A) = ??? : Reverse[(A, B, A)] // error
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
-   |                    Found:    Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)]
-   |                    Required: (A, B, A)
+   |                          ^
+   |                          Match type reduction failed since selector  A *: EmptyTuple.type
+   |                          matches none of the cases
    |
-   |                    Note: a match type could not be fully reduced:
-   |
-   |                      trying to reduce  Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)]
-   |                      trying to reduce  Reverse[A *: EmptyTuple.type]
-   |                      failed since selector  A *: EmptyTuple.type
-   |                      matches none of the cases
-   |
-   |                        case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
-   |                        case EmptyTuple => EmptyTuple
-
-longer explanation available when compiling with `-explain`
+   |                              case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
+   |                              case EmptyTuple => EmptyTuple
 -- Error: tests/neg/i12049.scala:24:20 ---------------------------------------------------------------------------------
 24 |val _ = summon[M[B]]  // error
    |                    ^
@@ -62,33 +45,22 @@ longer explanation available when compiling with `-explain`
    |                     Therefore, reduction cannot advance to the remaining case
    |
    |                       case B => String
--- Error: tests/neg/i12049.scala:25:78 ---------------------------------------------------------------------------------
+-- Error: tests/neg/i12049.scala:25:26 ---------------------------------------------------------------------------------
 25 |val _ = summon[String =:= Last[Int *: Int *: Boolean *: String *: EmptyTuple]] // error
-   |                                                                              ^
-   |                                                             Cannot prove that String =:= Last[EmptyTuple.type].
+   |                          ^
+   |                          Match type reduction failed since selector  EmptyTuple.type
+   |                          matches none of the cases
    |
-   |                                                             Note: a match type could not be fully reduced:
-   |
-   |                                                               trying to reduce  Last[EmptyTuple.type]
-   |                                                               failed since selector  EmptyTuple.type
-   |                                                               matches none of the cases
-   |
-   |                                                                 case _ *: _ *: t => Last[t]
-   |                                                                 case t *: EmptyTuple => t
--- Error: tests/neg/i12049.scala:26:48 ---------------------------------------------------------------------------------
+   |                              case _ *: _ *: t => Last[t]
+   |                              case t *: EmptyTuple => t
+-- Error: tests/neg/i12049.scala:26:29 ---------------------------------------------------------------------------------
 26 |val _ = summon[(A, B, A) =:= Reverse[(A, B, A)]] // error
-   |                                                ^
-   |                            Cannot prove that (A, B, A) =:= Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)].
+   |                             ^
+   |                             Match type reduction failed since selector  A *: EmptyTuple.type
+   |                             matches none of the cases
    |
-   |                            Note: a match type could not be fully reduced:
-   |
-   |                              trying to reduce  Tuple.Concat[Reverse[A *: EmptyTuple.type], (B, A)]
-   |                              trying to reduce  Reverse[A *: EmptyTuple.type]
-   |                              failed since selector  A *: EmptyTuple.type
-   |                              matches none of the cases
-   |
-   |                                case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
-   |                                case EmptyTuple => EmptyTuple
+   |                                 case t1 *: t2 *: ts => Tuple.Concat[Reverse[ts], (t2, t1)]
+   |                                 case EmptyTuple => EmptyTuple
 -- [E008] Not Found Error: tests/neg/i12049.scala:28:21 ----------------------------------------------------------------
 28 |val _ = (??? : M[B]).length // error
    |        ^^^^^^^^^^^^^^^^^^^
