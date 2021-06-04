@@ -55,7 +55,7 @@ class Semantic {
    *         V ⊑ R if V ∈ R
    *
    */
-  sealed abstract class Value extends Cloneable {
+  sealed abstract class Value {
     def show: String = this.toString()
   }
 
@@ -142,7 +142,14 @@ class Semantic {
 
   /** The environment for method parameters
    *
-   *  For performance and usability, we restrict parameters to be either `Cold` or `Hot`.
+   *  For performance and usability, we restrict parameters to be either `Cold`
+   *  or `Hot`.
+   *
+   *  Despite that we have environment for evaluating expressions in secondary
+   *  constructors (currently we restrict method arguments to be hot), we don't
+   *  need to put environment as the cache key. The reason is that constructor
+   *  parameters are determined by the value of `this` --- it suffices to make
+   *  the value of `this` as part of the cache key.
    */
   object Env {
     opaque type Env = Map[Symbol, Value]
