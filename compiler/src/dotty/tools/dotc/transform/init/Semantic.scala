@@ -329,8 +329,9 @@ class Semantic {
     def widen: List[Value] = values.map(_.widen).toList
 
   extension (value: Value)
-    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] =
-      value match {
+    def select(field: Symbol, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("select " + field.show, printer, res => res.asInstanceOf[Result].show) {
+      if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
+      else value match {
         case Hot  =>
           Result(Hot, Errors.empty)
 
@@ -376,14 +377,14 @@ class Semantic {
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
+    }
 
-    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] =
+    def call(meth: Symbol, args: List[Value], superType: Type, source: Tree, needResolve: Boolean = true): Contextual[Result] = log("call " + meth.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
       def checkArgs = args.flatMap { arg => arg.promote("May only use initialized value as arguments", arg.source) }
 
       // fast track if the current object is already initialized
-      if promoted.isCurrentObjectPromoted then return Result(Hot, Nil)
-
-      value match {
+      if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
+      else value match {
         case Hot  =>
           Result(Hot, checkArgs)
 
@@ -447,11 +448,13 @@ class Semantic {
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
+    }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
       val trace1 = trace.add(source)
-      value match {
+      if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
+      else value match {
         case Hot  =>
           val buffer = new mutable.ArrayBuffer[Error]
           val args2 = args.map { arg =>
@@ -503,6 +506,7 @@ class Semantic {
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
       }
+    }
   end extension
 
 // ----- Promotion ----------------------------------------------------
