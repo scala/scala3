@@ -85,9 +85,9 @@ trait ConstraintHandling {
    */
   protected def approximateWildcards: Boolean = true
 
-  protected def addOneBound(param: TypeParamRef, bound0: Type, isUpper: Boolean)(using Context): Boolean =
+  protected def addOneBound(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(bound0) then
+    else if !isUpper && param.occursIn(rawBound) then
       // We don't allow recursive lower bounds when defining a type,
       // so we shouldn't allow them as constraints either.
       false
@@ -100,16 +100,16 @@ trait ConstraintHandling {
               val bounds = t.effectiveBounds
               range(bounds.lo, bounds.hi)
             else
-              newTypeVar(t.effectiveBounds)
+              newTypeVar(apply(t.effectiveBounds).toBounds)
           case _ =>
             mapOver(t)
-      val bound1 = dropWildcards(bound0)
+      val bound = dropWildcards(rawBound)
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = (if isUpper then lo else hi) eq bound1
-      if equalBounds && !bound1.existsPart(_ eq param, stopAtStatic = true) then
+      val equalBounds = (if isUpper then lo else hi) eq bound
+      if equalBounds && !bound.existsPart(_ eq param, stopAtStatic = true) then
         // The narrowed bounds are equal and not recursive,
         // so we can remove `param` from the constraint.
-        constraint = constraint.replace(param, bound1)
+        constraint = constraint.replace(param, bound)
         true
       else
         // Narrow one of the bounds of type parameter `param`
@@ -119,8 +119,8 @@ trait ConstraintHandling {
           val saved = homogenizeArgs
           homogenizeArgs = Config.alignArgsInAnd
           try
-            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound1)
-            else oldBounds.derivedTypeBounds(lo | bound1, hi)
+            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+            else oldBounds.derivedTypeBounds(lo | bound, hi)
           finally homogenizeArgs = saved
         val c1 = constraint.updateEntry(param, narrowedBounds)
         (c1 eq constraint)
@@ -260,83 +260,11 @@ trait ConstraintHandling {
    *  @pre `param` is in the constraint's domain.
    */
   final def approximation(param: TypeParamRef, fromBelow: Boolean)(using Context): Type =
-
-    /** Substitute wildcards with fresh TypeParamRefs, to be compared with
-     *  other bound, so that they can be instantiated.
-     */
-    object substWildcards extends TypeMap:
-      override def stopAtStatic = true
-
-      var trackedPolis: List[PolyType] = Nil
-      def apply(tp: Type) = tp match
-        case tp: WildcardType =>
-          assert(false)
-          val poly = PolyType(tpnme.EMPTY :: Nil)(pt => tp.bounds :: Nil, pt => defn.AnyType)
-          trackedPolis = poly :: trackedPolis
-          poly.paramRefs.head
-        case _ =>
-          mapOver(tp)
-    end substWildcards
-
-    /** Replace TypeParamRefs substituted for wildcards by `substWildCards`
-     *  and any remaining wildcards by a safe approximation
-     */
-    val replaceWildcards = new TypeMap:
-      override def stopAtStatic = true
-
-      /** Try to instantiate a wildcard or TypeParamRef representing a wildcard
-       *  to a type that is known to conform to it.
-       *  This means:
-       *  If fromBelow is true, we minimize the type overall
-       *  Hence, if variance < 0, pick the maximal safe type: bounds.lo
-       *  (i.e. the whole bounds range is over the type).
-       *  If variance > 0, pick the minimal safe type: bounds.hi
-       *  (i.e. the whole bounds range is under the type).
-       *  If variance == 0, pick bounds.lo anyway (this is arbitrary but in line with
-       *  the principle that we pick the smaller type when in doubt).
-       *  If fromBelow is false, we maximize the type overall and reverse the bounds
-       *  If variance != 0. For variance == 0, we still minimize.
-       *  In summary we pick the bound given by this table:
-       *
-       *  variance    | -1  0   1
-       *  ------------------------
-       *  from below  | lo  lo  hi
-       *  from above  | hi  lo  lo
-       */
-      def pickOneBound(bounds: TypeBounds) =
-        if variance == 0 || fromBelow == (variance < 0) then bounds.lo
-        else bounds.hi
-
-      def apply(tp: Type) = mapOver {
-        tp match
-          case tp: WildcardType =>
-            assert(false)
-            pickOneBound(tp.bounds)
-          case tp: TypeParamRef if substWildcards.trackedPolis.contains(tp.binder) =>
-            pickOneBound(fullBounds(tp))
-          case _ => tp
-      }
-    end replaceWildcards
-
     constraint.entry(param) match
       case entry: TypeBounds =>
         val useLowerBound = fromBelow || param.occursIn(entry.hi)
-        val rawBound = if useLowerBound then fullLowerBound(param) else fullUpperBound(param)
-        val bound = substWildcards(rawBound)
-        val inst =
-          if bound eq rawBound then bound
-          else
-            // Get rid of wildcards by mapping them to fresh TypeParamRefs
-            // with constraints derived from comparing both bounds, and then
-            // instantiating. See pos/i10161.scala for a test where this matters.
-            val saved = constraint
-            try
-              for poly <- substWildcards.trackedPolis do addToConstraint(poly, Nil)
-              if useLowerBound then bound <:< fullUpperBound(param)
-              else fullLowerBound(param) <:< bound
-              replaceWildcards(bound)
-            finally constraint = saved
-        typr.println(s"approx ${param.show}, from below = $fromBelow, bound = ${bound.show}, inst = ${inst.show}")
+        val inst = if useLowerBound then fullLowerBound(param) else fullUpperBound(param)
+        typr.println(s"approx ${param.show}, from below = $fromBelow, inst = ${inst.show}")
         inst
       case inst =>
         assert(inst.exists, i"param = $param\nconstraint = $constraint")
