@@ -39,6 +39,10 @@ public class PositionBridge implements Position {
     public Optional<String> pointerSpace() {
       return Optional.empty();
     }
+
+    public String toString() {
+      return "";
+    }
   };
 
   public PositionBridge(SourcePosition pos, SourceFile src) {
@@ -115,5 +119,10 @@ public class PositionBridge implements Position {
     for (int i = 0; i < fixedPointer; i++)
       result.append(lineContent.charAt(i) == '\t' ? '\t' : ' ');
     return Optional.of(result.toString());
+  }
+
+  @Override
+  public String toString() {
+      return pos.toString();
   }
 }
