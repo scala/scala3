@@ -78,6 +78,8 @@ trait ConstraintHandling {
   def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
+  protected def allowWildcards: Boolean = true
+
   protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
     else if !isUpper && param.occursIn(bound) then
@@ -100,8 +102,10 @@ trait ConstraintHandling {
         val dropWildcards = new ApproximatingTypeMap:
           if !isUpper then variance = -1
           def apply(t: Type): Type = t match
-            case WildcardType => range(param.underlying.loBound, param.underlying.hiBound)
-            case _ => mapOver(t)
+            case WildcardType if !allowWildcards =>
+              range(param.underlying.loBound, param.underlying.hiBound)
+            case _ =>
+              mapOver(t)
         // Narrow one of the bounds of type parameter `param`
         // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
         // that `param >: bound`.
