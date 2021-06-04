@@ -366,7 +366,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     val vparamss = paramLists(sym.info, sym.paramSymss)
     val retTp = sym.info.finalResultType.widenExpr
 
-    api.Def.of(sym.name.toString, apiAccess(sym), apiModifiers(sym),
+    api.Def.of(sym.zincMangledName.toString, apiAccess(sym), apiModifiers(sym),
       apiAnnotations(sym).toArray, tparams.toArray, vparamss.toArray, apiType(retTp))
   }
 
