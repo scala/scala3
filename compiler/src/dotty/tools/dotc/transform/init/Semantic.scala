@@ -419,10 +419,14 @@ class Semantic {
             else
               value.select(target, source, needResolve = false)
 
-        case Fun(body, params, thisV, klass, env) =>
+        case Fun(body, params, thisV, klass, env2) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
-          else eval(body, thisV, klass, cacheResult = true)
+          else
+            val env3 = Env(params.zip(args.widen).toMap).union(env2)
+            use(env3) {
+              eval(body, thisV, klass, cacheResult = true)
+            }
 
         case RefSet(refs) =>
           val resList = refs.map(_.call(meth, args, superType, source))
