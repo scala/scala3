@@ -868,8 +868,11 @@ class Semantic {
         cases(tmref.prefix, thisV, klass, source).select(tmref.symbol, source)
 
       case tp @ ThisType(tref) =>
-        val value = resolveThis(tref.classSymbol.asClass, thisV, klass, source)
-        Result(value, Errors.empty)
+        val cls = tref.classSymbol.asClass
+        if cls.isStaticOwner && !klass.isContainedIn(cls) then Result(Hot, Nil)
+        else
+          val value = resolveThis(cls, thisV, klass, source)
+          Result(value, Errors.empty)
 
       case _: TermParamRef | _: RecThis  =>
         // possible from checking effects of types
@@ -890,7 +893,12 @@ class Semantic {
         case addr: Addr =>
           val obj = heap(addr)
           val outerCls = klass.owner.enclosingClass.asClass
-          resolveThis(target, obj.outers(klass), outerCls, source)
+          if !obj.outers.contains(klass) then
+            val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
+            report.error(error.show + error.stacktrace, source)
+            Hot
+          else
+            resolveThis(target, obj.outers(klass), outerCls, source)
         case RefSet(refs) =>
           refs.map(ref => resolveThis(target, ref, klass, source)).join
         case fun: Fun =>
