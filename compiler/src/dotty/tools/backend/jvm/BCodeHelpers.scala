@@ -926,7 +926,7 @@ trait BCodeHelpers extends BCodeIdiomatic with BytecodeWriters {
     // (one that doesn't erase to the actual signature). See run/t3452b for a test case.
 
     val memberTpe = atPhase(erasurePhase) { moduleClass.denot.thisType.memberInfo(sym) }
-    val erasedMemberType = TypeErasure.fullErasure(memberTpe)
+    val erasedMemberType = TypeErasure.transformInfo(sym, memberTpe)
     if (erasedMemberType =:= sym.denot.info)
       getGenericSignatureHelper(sym, moduleClass, memberTpe).orNull
     else null
