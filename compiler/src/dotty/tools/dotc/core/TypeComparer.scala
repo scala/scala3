@@ -139,7 +139,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     try topLevelSubType(tp1, tp2)
     finally useNecessaryEither = saved
 
-  override protected def allowWildcards: Boolean = !useNecessaryEither
+  override protected def approximateWildcards: Boolean = useNecessaryEither
 
   def testSubType(tp1: Type, tp2: Type): CompareResult =
     GADTused = false

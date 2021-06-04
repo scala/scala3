@@ -439,7 +439,7 @@ object Types {
 
     /** Does this type contain wildcard types? */
     final def containsWildcardTypes(using Context) =
-      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true)
+      existsPart(_.isInstanceOf[WildcardType], stopAtStatic = true, forceLazy = false)
 
 // ----- Higher-order combinators -----------------------------------
 

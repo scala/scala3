@@ -270,6 +270,7 @@ trait ConstraintHandling {
       var trackedPolis: List[PolyType] = Nil
       def apply(tp: Type) = tp match
         case tp: WildcardType =>
+          assert(false)
           val poly = PolyType(tpnme.EMPTY :: Nil)(pt => tp.bounds :: Nil, pt => defn.AnyType)
           trackedPolis = poly :: trackedPolis
           poly.paramRefs.head
@@ -309,6 +310,7 @@ trait ConstraintHandling {
       def apply(tp: Type) = mapOver {
         tp match
           case tp: WildcardType =>
+            assert(false)
             pickOneBound(tp.bounds)
           case tp: TypeParamRef if substWildcards.trackedPolis.contains(tp.binder) =>
             pickOneBound(fullBounds(tp))

@@ -376,6 +376,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       Nil
 
   private def updateEntry(current: This, param: TypeParamRef, tp: Type)(using Context): This = {
+    if Config.checkNoWildcardsInConstraint then assert(!tp.containsWildcardTypes)
     var current1 = boundsLens.update(this, current, param, tp)
     tp match {
       case TypeBounds(lo, hi) =>

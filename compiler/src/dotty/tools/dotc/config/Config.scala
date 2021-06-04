@@ -34,6 +34,9 @@ object Config {
    */
   inline val checkConstraintsPropagated = false
 
+  /** Check that constraint bounds do not contain wildcard types */
+  inline val checkNoWildcardsInConstraint = true
+
   /** If a constraint is over a type lambda `tl` and `tvar` is one of
    *  the type variables associated with `tl` in the constraint, check
    *  that the origin of `tvar` is a parameter of `tl`.
