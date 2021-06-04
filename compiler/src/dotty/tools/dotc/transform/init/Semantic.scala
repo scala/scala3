@@ -505,13 +505,13 @@ class Semantic {
      *
      *  This is a fast track for early promotion of values.
      */
-    def canPromoteExtrinsic: Contextual[Boolean] =
+    def canPromoteExtrinsic: Contextual[Boolean] = log("canPromoteExtrinsic " + value + ", promoted = " + promoted, printer) {
       value match
       case Hot   =>  true
       case Cold  =>  false
 
       case warm: Warm  =>
-        warm.outer.canPromoteExtrinsic && {
+        (warm.outer :: warm.args).forall(_.canPromoteExtrinsic) && {
           promoted.add(warm)
           true
         }
@@ -537,10 +537,10 @@ class Semantic {
       case RefSet(refs) =>
         refs.forall(_.canPromoteExtrinsic)
 
-    end canPromoteExtrinsic
+    }
 
     /** Promotion of values to hot */
-    def promote(msg: String, source: Tree): Contextual[List[Error]] =
+    def promote(msg: String, source: Tree): Contextual[List[Error]] = log("promoting " + value + ", promoted = " + promoted, printer) {
       value match
       case Hot   =>  Nil
 
@@ -574,6 +574,7 @@ class Semantic {
 
       case RefSet(refs) =>
         refs.flatMap(_.promote(msg, source))
+    }
   end extension
 
   extension (warm: Warm)
@@ -594,7 +595,7 @@ class Semantic {
      *  system more flexible in other dimentions: e.g. leak to
      *  methods or constructors, or use ownership for creating cold data structures.
      */
-    def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show, printer) {
+    def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
       if classRef.memberClasses.nonEmpty then
         return PromoteError(msg, source, trace.toVector) :: Nil
