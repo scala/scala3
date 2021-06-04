@@ -183,7 +183,7 @@ class Semantic {
 
       def union(other: Env): Env = env ++ other
 
-      def isHot: Boolean = env.values.exists(_ != Hot)
+      def isHot: Boolean = env.values.forall(_ == Hot)
   }
 
   type Env = Env.Env
