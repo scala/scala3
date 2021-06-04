@@ -102,8 +102,10 @@ trait ConstraintHandling {
         val dropWildcards = new ApproximatingTypeMap:
           if !isUpper then variance = -1
           def apply(t: Type): Type = t match
-            case WildcardType if !allowWildcards =>
-              range(param.underlying.loBound, param.underlying.hiBound)
+            case t: WildcardType if !allowWildcards =>
+              t.optBounds match
+                case TypeBounds(lo, hi) => range(lo, hi)
+                case _ => range(defn.NothingType, defn.AnyType)
             case _ =>
               mapOver(t)
         // Narrow one of the bounds of type parameter `param`
