@@ -515,10 +515,18 @@ class Semantic {
       promoted.isCurrentObjectPromoted || {
         val obj = heap(thisRef)
         // If we have all fields initialized, then we can promote This to hot.
-        val allFieldsInitialized = thisRef.klass.appliedRef.fields.forall { denot =>
-          val sym = denot.symbol
-          sym.isOneOf(Flags.Lazy | Flags.Deferred) || obj.fields.contains(sym)
+        val allFieldsInitialized = thisRef.klass.baseClasses.forall { klass =>
+          if klass.hasSource then
+            val nonInits = klass.info.decls.filter { member =>
+              !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
+              && !member.isType
+              && !obj.fields.contains(member)
+            }
+            nonInits.isEmpty
+          else
+            true
         }
+
         if allFieldsInitialized then promoted.promoteCurrent(thisRef)
         allFieldsInitialized
       }
@@ -535,8 +543,7 @@ class Semantic {
       case Cold  =>  PromoteError(msg, source, trace.toVector) :: Nil
 
       case thisRef: ThisRef =>
-        if promoted.contains(thisRef) then Nil
-        else if thisRef.tryPromoteCurrentObject then Nil
+        if thisRef.tryPromoteCurrentObject then Nil
         else PromoteError(msg, source, trace.toVector) :: Nil
 
       case warm: Warm =>
