@@ -79,42 +79,42 @@ trait ConstraintHandling {
   def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  protected def allowWildcards: Boolean = true
+  /** If true: eliminate wildcards in bounds by avoidance.
+   *  Otherwise replace them by fresh variables, except that
+   *  in mode TypeVarsMissContext, wildcards are always eliminated by approximation.
+   */
+  protected def approximateWildcards: Boolean = true
 
-  protected def addOneBound(param: TypeParamRef, bound: Type, isUpper: Boolean)(using Context): Boolean =
+  protected def addOneBound(param: TypeParamRef, bound0: Type, isUpper: Boolean)(using Context): Boolean =
     if !constraint.contains(param) then true
-    else if !isUpper && param.occursIn(bound) then
+    else if !isUpper && param.occursIn(bound0) then
       // We don't allow recursive lower bounds when defining a type,
       // so we shouldn't allow them as constraints either.
       false
     else
+      val dropWildcards = new ApproximatingTypeMap:
+        if !isUpper then variance = -1
+        def apply(t: Type): Type = t match
+          case t: WildcardType =>
+            if approximateWildcards || ctx.mode.is(Mode.TypevarsMissContext) then
+              val bounds = t.effectiveBounds
+              range(bounds.lo, bounds.hi)
+            else
+              newTypeVar(t.effectiveBounds)
+          case _ =>
+            mapOver(t)
+      val bound1 = dropWildcards(bound0)
       val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
-      val equalBounds = (if isUpper then lo else hi) eq bound
-      if equalBounds
-        && !bound.existsPart(bp => bp.isInstanceOf[WildcardType] || (bp eq param))
-      then
-        // The narrowed bounds are equal and do not contain wildcards,
+      val equalBounds = (if isUpper then lo else hi) eq bound1
+      if equalBounds && !bound1.existsPart(_ eq param, stopAtStatic = true) then
+        // The narrowed bounds are equal and not recursive,
         // so we can remove `param` from the constraint.
-        // (Handling wildcards requires choosing a bound, but we don't know which
-        // bound to choose here, this is handled in `ConstraintHandling#approximation`)
-        constraint = constraint.replace(param, bound)
+        constraint = constraint.replace(param, bound1)
         true
       else
-        val dropWildcards = new ApproximatingTypeMap:
-          if !isUpper then variance = -1
-          def apply(t: Type): Type = t match
-            case t: WildcardType =>
-              if !allowWildcards || ctx.mode.is(Mode.TypevarsMissContext) then
-                val bounds = t.effectiveBounds
-                range(bounds.lo, bounds.hi)
-              else
-                newTypeVar(t.effectiveBounds)
-            case _ =>
-              mapOver(t)
         // Narrow one of the bounds of type parameter `param`
         // If `isUpper` is true, ensure that `param <: `bound`, otherwise ensure
         // that `param >: bound`.
-        val bound1 = dropWildcards(bound)
         val narrowedBounds =
           val saved = homogenizeArgs
           homogenizeArgs = Config.alignArgsInAnd
