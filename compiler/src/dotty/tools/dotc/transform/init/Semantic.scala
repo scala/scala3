@@ -493,25 +493,31 @@ class Semantic {
   end extension
 
 // ----- Promotion ----------------------------------------------------
+  extension (addr: Addr)
+    def isFullyInitialized: Contextual[Boolean] = log("isFullyInitialized " + addr, printer) {
+      val obj = heap(addr)
+      addr.klass.baseClasses.forall { klass =>
+        !klass.hasSource || {
+          val nonInits = klass.info.decls.filter { member =>
+            !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
+            && !member.isType
+            && !obj.fields.contains(member)
+          }
+          printer.println("nonInits = " + nonInits)
+          nonInits.isEmpty
+        }
+      }
+    }
+
   extension (thisRef: ThisRef)
     def tryPromoteCurrentObject: Contextual[Boolean] = log("tryPromoteCurrentObject ", printer) {
       promoted.isCurrentObjectPromoted || {
         val obj = heap(thisRef)
         // If we have all fields initialized, then we can promote This to hot.
-        val allFieldsInitialized = thisRef.klass.baseClasses.forall { klass =>
-          if klass.hasSource then
-            val nonInits = klass.info.decls.filter { member =>
-              !member.isOneOf(Flags.Method | Flags.Lazy | Flags.Deferred)
-              && !member.isType
-              && !obj.fields.contains(member)
-            }
-            nonInits.isEmpty
-          else
-            true
+        thisRef.isFullyInitialized && {
+          promoted.promoteCurrent(thisRef)
+          true
         }
-
-        if allFieldsInitialized then promoted.promoteCurrent(thisRef)
-        allFieldsInitialized
       }
     }
 
@@ -574,7 +580,7 @@ class Semantic {
      */
     def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
-      if classRef.memberClasses.nonEmpty then
+      if classRef.memberClasses.nonEmpty || !warm.isFullyInitialized then
         return PromoteError(msg, source, trace.toVector) :: Nil
 
       val fields  = classRef.fields
@@ -941,7 +947,8 @@ class Semantic {
       printer.println(acc.show + " initialized with " + value)
     }
 
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], source: Tree)(using Env): Unit =
+    type Handler = (() => Unit) => Unit
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], source: Tree, handler: Handler)(using Env): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -950,26 +957,28 @@ class Semantic {
 
       // follow constructor
       if cls.hasSource then
-        printer.println("init super class " + cls.show)
-        val res2 = thisV.call(ctor, args, superType = NoType, source)
-        errorBuffer ++= res2.errors
+        handler { () =>
+          printer.println("init super class " + cls.show)
+          val res2 = thisV.call(ctor, args, superType = NoType, source)
+          errorBuffer ++= res2.errors
+        }
 
     // parents
-    def initParent(parent: Tree)(using Env) = parent match {
+    def initParent(parent: Tree, handler: Handler)(using Env) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         val (erros, args) = evalArgs(argss.flatten, thisV, klass)
         errorBuffer ++= erros
-        superCall(tref, ctor, args, tree)
+        superCall(tref, ctor, args, tree, handler)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
       val (erros, args) = evalArgs(argss.flatten, thisV, klass)
       errorBuffer ++= erros
-      superCall(tref, ctor, args, tree)
+      superCall(tref, ctor, args, tree, handler)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent, handler)
     }
 
     // see spec 5.1 about "Template Evaluation".
@@ -977,17 +986,22 @@ class Semantic {
     if !klass.is(Flags.Trait) then
       given Env = Env.empty
 
+      // outers are set first
+      val tasks = new mutable.ArrayBuffer[() => Unit]
+      val handler: Handler = task => tasks.append(task)
+
       // 1. first init parent class recursively
       // 2. initialize traits according to linearization order
       val superParent = tpl.parents.head
       val superCls = superParent.tpe.classSymbol.asClass
-      initParent(superParent)
+      initParent(superParent, handler)
 
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
+
       mixins.reverse.foreach { mixin =>
         parents.find(_.tpe.classSymbol == mixin) match
-        case Some(parent) => initParent(parent)
+        case Some(parent) => initParent(parent, handler)
         case None =>
           // According to the language spec, if the mixin trait requires
           // arguments, then the class must provide arguments to it explicitly
@@ -998,8 +1012,11 @@ class Semantic {
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then superCall(tref, ctor, Nil, superParent)
+          if ctor.exists then superCall(tref, ctor, Nil, superParent, handler)
       }
+
+      // initialize super classes after outers are set
+      tasks.foreach(task => task())
 
     var fieldsChanged = true
 
