@@ -892,7 +892,7 @@ class Semantic {
         case Hot => Hot
         case addr: Addr =>
           val obj = heap(addr)
-          val outerCls = klass.owner.enclosingClass.asClass
+          val outerCls = klass.owner.lexicallyEnclosingClass.asClass
           if !obj.outers.contains(klass) then
             val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
             report.error(error.show + error.stacktrace, source)
