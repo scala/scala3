@@ -79,9 +79,8 @@ trait ConstraintHandling {
   def fullBounds(param: TypeParamRef)(using Context): TypeBounds =
     nonParamBounds(param).derivedTypeBounds(fullLowerBound(param), fullUpperBound(param))
 
-  /** If true: eliminate wildcards in bounds by avoidance.
-   *  Otherwise replace them by fresh variables, except that
-   *  in mode TypeVarsMissContext, wildcards are always eliminated by approximation.
+  /** If true, eliminate wildcards in bounds by avoidance, otherwise replace
+   *  them by fresh variables.
    */
   protected def approximateWildcards: Boolean = true
 
@@ -96,7 +95,7 @@ trait ConstraintHandling {
         if !isUpper then variance = -1
         def apply(t: Type): Type = t match
           case t: WildcardType =>
-            if approximateWildcards || ctx.mode.is(Mode.TypevarsMissContext) then
+            if approximateWildcards then
               val bounds = t.effectiveBounds
               range(bounds.lo, bounds.hi)
             else
