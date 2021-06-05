@@ -441,7 +441,7 @@ trait Applications extends Compatibility {
             // it might be healed by an implicit conversion
             ()
           else
-            fail(TypeMismatch(methType.resultType, resultType))
+            fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
         matchArgs(orderedArgs, methType.paramInfos, 0)
