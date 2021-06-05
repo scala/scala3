@@ -80,7 +80,7 @@ class Semantic {
   case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Addr
 
   /** A function value */
-  case class Fun(expr: Tree, params: List[Symbol], thisV: Addr, klass: ClassSymbol, env: Env) extends Value
+  case class Fun(expr: Tree, thisV: Addr, klass: ClassSymbol, env: Env) extends Value
 
   /** A value which represents a set of addresses
    *
@@ -416,13 +416,12 @@ class Semantic {
             else
               value.select(target, source, needResolve = false)
 
-        case Fun(body, params, thisV, klass, env2) =>
+        case Fun(body, thisV, klass, env) =>
           // meth == NoSymbol for poly functions
           if meth.name.toString == "tupled" then Result(value, Nil) // a call like `fun.tupled`
           else
-            val env3 = Env(params.zip(args.map(_.value).widen).toMap).union(env2)
-            use(env3) {
-              eval(body, thisV, klass, cacheResult = true)
+            use(env) {
+              eval(body, thisV, klass, cacheResult = true) ++ checkArgs
             }
 
         case RefSet(refs) =>
@@ -479,7 +478,7 @@ class Semantic {
           if !env.isHot then Result(Cold, res.errors)
           else Result(value, res.errors)
 
-        case Fun(body, params, thisV, klass, env) =>
+        case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
           Result(Hot, Nil)
 
@@ -553,7 +552,7 @@ class Semantic {
           errors
         }
 
-      case fun @ Fun(body, params, thisV, klass, env) =>
+      case fun @ Fun(body, thisV, klass, env) =>
         if promoted.contains(fun) then Nil
         else
           val res = eval(body, thisV, klass)
@@ -687,7 +686,7 @@ class Semantic {
     args.foreach { arg =>
       val res =
         if arg.isByName then
-          val fun = Fun(arg.tree, Nil, thisV, klass, env)
+          val fun = Fun(arg.tree, thisV, klass, env)
           Result(fun, Nil)
         else
           eval(arg.tree, thisV, klass)
@@ -774,12 +773,11 @@ class Semantic {
           eval(rhs, thisV, klass).ensureHot("May only assign fully initialized value", rhs)
 
       case closureDef(ddef) =>
-        val params = ddef.termParamss.head.map(_.symbol)
-        val value = Fun(ddef.rhs, params, thisV, klass, env)
+        val value = Fun(ddef.rhs, thisV, klass, env)
         Result(value, Nil)
 
       case PolyFun(body) =>
-        val value = Fun(body, Nil, thisV, klass, env)
+        val value = Fun(body, thisV, klass, env)
         Result(value, Nil)
 
       case Block(stats, expr) =>
