@@ -533,8 +533,6 @@ trait Inferencing { this: Typer =>
   import Inferencing._
   import tpd._
 
-  def qualifyForInterpolation(tvars: TypeVars)(using Context): TypeVars = tvars
-
   /** Interpolate undetermined type variables in the widened type of this tree.
    *  @param tree    the tree whose type is interpolated
    *  @param pt      the expected result type
@@ -565,7 +563,7 @@ trait Inferencing { this: Typer =>
 
     val ownedVars = state.ownedVars
     if ((ownedVars ne locked) && !ownedVars.isEmpty) {
-      val qualifying = qualifyForInterpolation(ownedVars -- locked)
+      val qualifying = ownedVars -- locked
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
         val resultAlreadyConstrained =
