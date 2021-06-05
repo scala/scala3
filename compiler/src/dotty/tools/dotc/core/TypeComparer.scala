@@ -530,8 +530,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               // Note: We would like to replace this by `if (tp1.hasHigherKind)`
               // but right now we cannot since some parts of the standard library rely on the
               // idiom that e.g. `List <: Any`. We have to bootstrap without scalac first.
-            if (cls2 eq AnyClass) return true
-            if (cls2 == defn.SingletonClass && tp1.isStable) return true
+            if (cls2 eq AnyClass) && tp1.noCaptures then return true
+            if cls2 == defn.SingletonClass && tp1.isStable then return true
             return tryBaseType(cls2)
           }
           else if (cls2.is(JavaDefined)) {
@@ -730,7 +730,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         def compareTypeBounds = tp1 match {
           case tp1 @ TypeBounds(lo1, hi1) =>
             ((lo2 eq NothingType) || isSubType(lo2, lo1)) &&
-            ((hi2 eq AnyType) && !hi1.isLambdaSub || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
+            ((hi2 eq AnyType) && !hi1.isLambdaSub && hi1.noCaptures
+             || (hi2 eq AnyKindType) || isSubType(hi1, hi2))
           case tp1: ClassInfo =>
             tp2 contains tp1
           case _ =>
@@ -773,7 +774,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               tp1.symbol.onGadtBounds(gbounds1 =>
                 isSubTypeWhenFrozen(gbounds1.hi, tp2)
                 || narrowGADTBounds(tp1, tp2, approx, isUpper = true))
-              && (tp2.isAny || GADTusage(tp1.symbol))
+              && (tp2.isAny && tp1.noCaptures || GADTusage(tp1.symbol))
 
             isSubType(hi1, tp2, approx.addLow) || compareGADT || tryLiftedToThis1
           case _ =>
@@ -2021,8 +2022,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if (tp1 eq tp2) tp1
     else if (!tp1.exists) tp2
     else if (!tp2.exists) tp1
-    else if tp1.isAny && !tp2.isLambdaSub || tp1.isAnyKind || isBottom(tp2) then tp2
-    else if tp2.isAny && !tp1.isLambdaSub || tp2.isAnyKind || isBottom(tp1) then tp1
+    else if tp1.isAny && !tp2.isLambdaSub && tp2.noCaptures || tp1.isAnyKind || isBottom(tp2) then tp2
+    else if tp2.isAny && !tp1.isLambdaSub && tp1.noCaptures || tp2.isAnyKind || isBottom(tp1) then tp1
     else tp2 match
       case tp2: LazyRef =>
         glb(tp1, tp2.ref)
@@ -2744,7 +2745,7 @@ object TypeComparer {
 
   /** The greatest lower bound of a list types */
   def glb(tps: List[Type])(using Context): Type =
-    tps.foldLeft(defn.AnyType: Type)(glb)
+    tps.foldLeft(defn.TopType: Type)(glb)
 
   def orType(using Context)(tp1: Type, tp2: Type, isSoft: Boolean = true, isErased: Boolean = ctx.erasedTypes): Type =
     comparing(_.orType(tp1, tp2, isSoft = isSoft, isErased = isErased))
