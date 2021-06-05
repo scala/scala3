@@ -22,17 +22,14 @@ object Test {
   xs.lazyZip(xs).lazyZip(xs)
     .map( (x: Int, y: Int, z: Int) => x + y + z )     // OK
 
-  // 4. The single parameter map does not work.
+  // 4. The single parameter map works through an inserted conversion
   xs.lazyZip(xs).lazyZip(xs)
-    .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // error
+    .map( (x: (Int, Int, Int)) => x match { case (x, y, z) => x + y + z })     // now also OK
 
-  // 5. If we leave out the parameter type, we get a "Wrong number of parameters" error instead
+  // 5. If we leave out the parameter type, it now works as well.
   xs.lazyZip(xs).lazyZip(xs)
-    .map( x => x match { case (x, y, z) => x + y + z })     // error
+    .map( x => x match { case (x, y, z) => x + y + z })     // now also OK
 
-  // This means that the following works in Dotty in normal mode, since a `withFilter`
-  // is inserted. But it does no work under -strict. And it will not work in Scala 3.1.
-  // The reason is that without -strict, the code below is mapped to (1), but with -strict
-  // it is mapped to (5).
+  // This means that the following works in Dotty 3.0 as well as 3.x
   for ((x, y, z) <- xs.lazyZip(xs).lazyZip(xs)) yield x + y + z
 }
