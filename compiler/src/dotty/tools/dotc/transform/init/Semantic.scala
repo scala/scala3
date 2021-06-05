@@ -146,10 +146,18 @@ class Semantic {
    *  or `Hot`.
    *
    *  Despite that we have environment for evaluating expressions in secondary
-   *  constructors (currently we restrict method arguments to be hot), we don't
-   *  need to put environment as the cache key. The reason is that constructor
-   *  parameters are determined by the value of `this` --- it suffices to make
-   *  the value of `this` as part of the cache key.
+   *  constructors, we don't need to put environment as the cache key. The
+   *  reason is that constructor parameters are determined by the value of
+   *  `this` --- it suffices to make the value of `this` as part of the cache
+   *  key.
+   *
+   *  This crucially depends on the fact that in the initialization process
+   *  there can be exactly one call to a specific constructor for a given
+   *  receiver. However, once we relax the design to allow non-hot values to
+   *  methods and functions, we have to put the environment as part of the cache
+   *  key. The reason is that given the same receiver, a method or function may
+   *  be called with different arguments -- they are not decided by the receiver
+   *  anymore.
    */
   object Env {
     opaque type Env = Map[Symbol, Value]
@@ -453,7 +461,7 @@ class Semantic {
               val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> Hot))
               heap.update(value, obj)
             val res = value.call(ctor, args, superType = NoType, source)
-            Result(res.value, res.errors)
+            Result(value, res.errors)
 
         case Cold =>
           val error = CallCold(ctor, source, trace1.toVector)
