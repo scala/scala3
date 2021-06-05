@@ -300,7 +300,8 @@ object Completion {
               case name: TermName if include(denot, name) => Some((denot, name))
               case _ => None
 
-        types.flatMap { tpe =>
+        types.flatMap { tp =>
+          val tpe = tp.widenExpr
           tpe.membersBasedOnFlags(required = ExtensionMethod, excluded = EmptyFlags)
             .collect { case DenotWithMatchingName(denot, name) => TermRef(tpe, denot.symbol) -> name }
         }
