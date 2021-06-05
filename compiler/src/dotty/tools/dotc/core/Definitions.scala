@@ -143,11 +143,13 @@ class Definitions {
   private def enterMethod(cls: ClassSymbol, name: TermName, info: Type, flags: FlagSet = EmptyFlags): TermSymbol =
     newMethod(cls, name, info, flags).entered
 
-  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol = {
-    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, TypeAlias(tpe))
+  private def enterType(name: TypeName, info: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    val sym = newPermanentSymbol(ScalaPackageClass, name, flags, info)
     ScalaPackageClass.currentPackageDecls.enter(sym)
     sym
-  }
+
+  private def enterAliasType(name: TypeName, tpe: Type, flags: FlagSet = EmptyFlags): TypeSymbol =
+    enterType(name, TypeAlias(tpe), flags)
 
   private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
     enterAliasType(name,
@@ -440,6 +442,7 @@ class Definitions {
 
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
   @tu lazy val orType: TypeSymbol = enterBinaryAlias(tpnme.OR, OrType(_, _, soft = false))
+  @tu lazy val captureRootType: TypeSymbol = enterType(tpnme.CAPTURE_ROOT, TypeBounds.empty)
 
   /** Marker method to indicate an argument to a call-by-name parameter.
    *  Created by byNameClosures and elimByName, eliminated by Erasure,
@@ -1747,6 +1750,7 @@ class Definitions {
       AnyKindClass,
       andType,
       orType,
+      captureRootType,
       RepeatedParamClass,
       ByNameParamClass2x,
       AnyValClass,

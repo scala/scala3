@@ -103,6 +103,9 @@ abstract class Printer {
   /** Textual representation of a prefix of some reference, ending in `.` or `#` */
   def toTextPrefix(tp: Type): Text
 
+  /** Textual representation of a reference in a capture set */
+  def toTextCaptureRef(tp: Type): Text
+
   /** Textual representation of symbol's declaration */
   def dclText(sym: Symbol): Text
 
