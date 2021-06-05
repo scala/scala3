@@ -1497,9 +1497,8 @@ object SymDenotations {
       case tp: ExprType => hasSkolems(tp.resType)
       case tp: AppliedType => hasSkolems(tp.tycon) || tp.args.exists(hasSkolems)
       case tp: LambdaType => tp.paramInfos.exists(hasSkolems) || hasSkolems(tp.resType)
-      case tp: AndType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: OrType  => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
-      case tp: AnnotatedType => hasSkolems(tp.parent)
+      case tp: AndOrType => hasSkolems(tp.tp1) || hasSkolems(tp.tp2)
+      case tp: AnnotOrCaptType => hasSkolems(tp.parent)
       case _ => false
     }
 
@@ -2150,6 +2149,9 @@ object SymDenotations {
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
             recur(TypeComparer.bounds(tp).hi)
+
+          case tp: CapturingType =>
+            tp.derivedCapturingType(recur(tp.parent), tp.ref)
 
           case tp: TypeProxy =>
             def computeTypeProxy = {

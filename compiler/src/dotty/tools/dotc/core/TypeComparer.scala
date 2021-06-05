@@ -489,7 +489,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // and then need to check that they are indeed supertypes of the original types
             // under -Ycheck. Test case is i7965.scala.
 
-     case tp1: MatchType =>
+      case tp1: CapturingType =>
+        if tp2.captureSet.accountsFor(tp1.ref) then recur(tp1.parent, tp2)
+        else thirdTry
+      case tp1: MatchType =>
         val reduced = tp1.reduced
         if (reduced.exists) recur(reduced, tp2) else thirdTry
       case _: FlexType =>
@@ -737,6 +740,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
+      case tp2: CapturingType =>
+        recur(tp1, tp2.parent) || fourthTry
       case ClassInfo(pre2, cls2, _, _, _) =>
         def compareClassInfo = tp1 match {
           case ClassInfo(pre1, cls1, _, _, _) =>
@@ -778,6 +783,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
+              case CapturingType(tp1, _) => isNullable(tp1)
               case _ => false
             }
             val sym1 = tp1.symbol
@@ -2336,6 +2342,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tp1.underlying & tp2
     case tp1: AnnotatedType if !tp1.isRefining =>
       tp1.underlying & tp2
+    case tp1: CapturingType if !tp2.captureSet.accountsFor(tp1.ref) =>
+      tp1.parent & tp2
     case _ =>
       NoType
   }

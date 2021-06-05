@@ -175,6 +175,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
   private val byNameMarker = marker("ByName")
   private val matchMarker = marker("Match")
   private val superMarker = marker("Super")
+  private val holdsMarker = marker("Holds")
 
   /** Extract the API representation of a source file */
   def apiSource(tree: Tree): Seq[api.ClassLike] = {
@@ -520,6 +521,9 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
       case SuperType(thistpe, supertpe) =>
         val s = combineApiTypes(apiType(thistpe), apiType(supertpe))
         withMarker(s, superMarker)
+      case CapturingType(parent, ref) =>
+        val s = combineApiTypes(apiType(parent), apiType(ref))
+        withMarker(s, holdsMarker)
       case _ => {
         internalError(i"Unhandled type $tp of class ${tp.getClass}")
         Constants.emptyType

@@ -284,6 +284,7 @@ object Checking {
             case AndType(tp1, tp2) => isInteresting(tp1) || isInteresting(tp2)
             case OrType(tp1, tp2) => isInteresting(tp1) && isInteresting(tp2)
             case _: RefinedOrRecType | _: AppliedType => true
+            case tp: AnnotOrCaptType => isInteresting(tp.parent)
             case _ => false
           }
 

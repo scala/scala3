@@ -168,6 +168,9 @@ object TypeOps:
       case _: MatchType =>
         val normed = tp.tryNormalize
         if (normed.exists) normed else mapOver
+      case tp: CapturingType
+      if !ctx.mode.is(Mode.Type) && tp.parent.captureSet.accountsFor(tp.ref) =>
+        simplify(tp.parent, theMap)
       case tp: MethodicType =>
         tp // See documentation of `Types#simplified`
       case _ =>
