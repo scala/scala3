@@ -260,7 +260,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
             case stat: DefDef if stat.symbol == closure.meth.symbol =>
               stat.paramss match
                 case ValDefs(params) :: Nil =>
-                  val (protoFormals, _) = decomposeProtoFunction(pt, params.length, stat.srcPos)
+                  val (protoFormals, _) = decomposeProtoFunction(pt, params.length, stat)
                   val params1 = params.zipWithConserve(protoFormals) {
                     case (param @ ValDef(_, tpt: InferredTypeTree, _), formal)
                     if isFullyDefined(formal, ForceDegree.failBottom) =>
