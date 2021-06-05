@@ -3045,12 +3045,12 @@ class Typer extends Namer
     }
   }
 
-  /** If this tree is a select node `qual.name` that does not conform to `pt`,
-   *  try to insert an implicit conversion `c` around `qual` so that
-   *  `c(qual).name` conforms to `pt`.
+  /** If this tree is a select node `qual.name` (possibly applied to type variables)
+   *  that does not conform to `pt`, try to insert an implicit conversion `c` around
+   *  `qual` so that `c(qual).name` conforms to `pt`.
    */
   def tryInsertImplicitOnQualifier(tree: Tree, pt: Type, locked: TypeVars)(using Context): Option[Tree] = trace(i"try insert impl on qualifier $tree $pt") {
-    tree match {
+    tree match
       case tree @ Select(qual, name) if name != nme.CONSTRUCTOR =>
         val selProto = SelectionProto(name, pt, NoViewsAllowed, privateOK = false)
         if selProto.isMatchedBy(qual.tpe) then None
@@ -3061,8 +3061,9 @@ class Typer extends Namer
             else Some(adapt(tree1, pt, locked))
           } { (_, _) => None
           }
+      case TypeApply(fn, args) if args.forall(_.isInstanceOf[TypeVarBinder[_]]) =>
+        tryInsertImplicitOnQualifier(fn, pt, locked)
       case _ => None
-    }
   }
 
   /** Given a selection `qual.name`, try to convert to an extension method
