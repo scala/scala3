@@ -2398,19 +2398,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
 
   /** Show subtype goal that led to an assertion failure */
-  def showGoal(tp1: Type, tp2: Type)(using Context): Unit = {
-    report.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
-    def explainPoly(tp: Type) = tp match {
-      case tp: TypeParamRef => report.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
-      case tp: TypeRef if tp.symbol.exists => report.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
-      case tp: TypeVar => report.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
-      case _ => report.echo(s"${tp.show} is a ${tp.getClass}")
-    }
-    if (Config.verboseExplainSubtype) {
-      explainPoly(tp1)
-      explainPoly(tp2)
-    }
-  }
+  def showGoal(tp1: Type, tp2: Type)(using Context): Unit =
+    try
+      report.echo(i"assertion failure for ${show(tp1)} <:< ${show(tp2)}, frozen = $frozenConstraint")
+      def explainPoly(tp: Type) = tp match {
+        case tp: TypeParamRef => report.echo(s"TypeParamRef ${tp.show} found in ${tp.binder.show}")
+        case tp: TypeRef if tp.symbol.exists => report.echo(s"typeref ${tp.show} found in ${tp.symbol.owner.show}")
+        case tp: TypeVar => report.echo(s"typevar ${tp.show}, origin = ${tp.origin}")
+        case _ => report.echo(s"${tp.show} is a ${tp.getClass}")
+      }
+      if (Config.verboseExplainSubtype) {
+        explainPoly(tp1)
+        explainPoly(tp2)
+      }
+    catch case NonFatal(ex) =>
+      report.echo(s"assertion failure [[cannot display since $ex was thrown]]")
 
   /** Record statistics about the total number of subtype checks
    *  and the number of "successful" subtype checks, i.e. checks
