@@ -494,6 +494,18 @@ class Semantic {
 
 // ----- Promotion ----------------------------------------------------
   extension (addr: Addr)
+    /** Whether the object is fully initialized
+     *
+     *  It means all fields and outers are set. For performance, we don't check
+     *  outers here, because Scala semantics ensure that they are always set
+     *  before any user code in the constructor.
+     *
+     *  The interesting case is the outers for traits.  The compiler synthesizes
+     *  proxy accessors for the outers in the class that extends the trait. As
+     *  those outers must be stable values, they are initialized immediately
+     *  following class parameters and before super constructor calls and user
+     *  code in the class body.
+     */
     def isFullyInitialized: Contextual[Boolean] = log("isFullyInitialized " + addr, printer) {
       val obj = heap(addr)
       addr.klass.baseClasses.forall { klass =>
@@ -512,7 +524,6 @@ class Semantic {
   extension (thisRef: ThisRef)
     def tryPromoteCurrentObject: Contextual[Boolean] = log("tryPromoteCurrentObject ", printer) {
       promoted.isCurrentObjectPromoted || {
-        val obj = heap(thisRef)
         // If we have all fields initialized, then we can promote This to hot.
         thisRef.isFullyInitialized && {
           promoted.promoteCurrent(thisRef)
@@ -999,6 +1010,11 @@ class Semantic {
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
 
+      // The interesting case is the outers for traits.  The compiler
+      // synthesizes proxy accessors for the outers in the class that extends
+      // the trait. As those outers must be stable values, they are initialized
+      // immediately following class parameters and before super constructor
+      // calls and user code in the class body.
       mixins.reverse.foreach { mixin =>
         parents.find(_.tpe.classSymbol == mixin) match
         case Some(parent) => initParent(parent, handler)
