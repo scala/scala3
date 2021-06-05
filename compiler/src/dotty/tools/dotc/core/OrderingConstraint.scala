@@ -280,9 +280,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     var current = this
     val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
     var i = 0
+    val dropWildcards = AvoidWildcardsMap()
     while (i < poly.paramNames.length) {
       val param = poly.paramRefs(i)
-      val stripped = stripParams(nonParamBounds(param), todos, isUpper = true)
+      val bounds = dropWildcards(nonParamBounds(param))
+      val stripped = stripParams(bounds, todos, isUpper = true)
       current = updateEntry(current, param, stripped)
       while todos.nonEmpty do
         current = todos.head(current, param)

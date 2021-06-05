@@ -5701,6 +5701,15 @@ object Types {
       lo.toText(printer) ~ ".." ~ hi.toText(printer)
   }
 
+  /** Approximate wildcards by their bounds */
+  class AvoidWildcardsMap(using Context) extends ApproximatingTypeMap:
+    protected def mapWild(t: WildcardType) =
+      val bounds = t.effectiveBounds
+      range(atVariance(-variance)(apply(bounds.lo)), apply(bounds.hi))
+    def apply(t: Type): Type = t match
+      case t: WildcardType => mapWild(t)
+      case _ => mapOver(t)
+
   // ----- TypeAccumulators ----------------------------------------------------
 
   abstract class TypeAccumulator[T](implicit protected val accCtx: Context)
