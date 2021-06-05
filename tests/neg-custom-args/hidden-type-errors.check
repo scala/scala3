@@ -1,0 +1,28 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/hidden-type-errors/Test.scala:6:24 --------------------------------
+6 |   val x = X.doSomething("XXX") // error
+  |           ^^^^^^^^^^^^^^^^^^^^
+  |           Found:    String
+  |           Required: Int
+  | This location contains code that was inlined from Test.scala:6
+
+Explanation
+===========
+
+Tree: t12717.A.bar("XXX")
+
+I tried to show that
+  String
+conforms to
+  Int
+but the comparison trace ended with `false`:
+          
+  ==> String  <:  Int
+    ==> String  <:  Int (recurring)
+      ==> String  <:  Int (recurring)
+      <== String  <:  Int (recurring) = false
+    <== String  <:  Int (recurring) = false
+  <== String  <:  Int = false
+
+The tests were made under the empty constraint
+
+1 error found

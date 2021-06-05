@@ -3882,7 +3882,7 @@ class Typer extends Namer
           // - it complicates the protocol
           // - such code patterns usually implies hidden errors in the code
           // - it's safe/sound to reject the code
-          report.error(TypeMismatch(tree.tpe, pt, "\npattern type is incompatible with expected type"), tree.srcPos)
+          report.error(TypeMismatch(tree.tpe, pt, Some(tree), "\npattern type is incompatible with expected type"), tree.srcPos)
         else
           val cmp =
             untpd.Apply(

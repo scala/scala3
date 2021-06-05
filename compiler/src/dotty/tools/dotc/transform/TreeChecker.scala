@@ -592,7 +592,7 @@ class TreeChecker extends Phase with SymTransformer {
           !isPrimaryConstructorReturn &&
           !pt.isInstanceOf[FunOrPolyProto])
         assert(tree.tpe <:< pt, {
-          val mismatch = TypeMismatch(tree.tpe, pt)
+          val mismatch = TypeMismatch(tree.tpe, pt, Some(tree))
           i"""|${mismatch.msg}
               |found: ${infoStr(tree.tpe)}
               |expected: ${infoStr(pt)}
