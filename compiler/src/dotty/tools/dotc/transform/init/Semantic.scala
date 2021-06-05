@@ -494,19 +494,17 @@ class Semantic {
 
 // ----- Promotion ----------------------------------------------------
   extension (addr: Addr)
-    /** Whether the object is fully initialized
+    /** Whether the object is fully assigned
      *
      *  It means all fields and outers are set. For performance, we don't check
      *  outers here, because Scala semantics ensure that they are always set
      *  before any user code in the constructor.
      *
-     *  The interesting case is the outers for traits.  The compiler synthesizes
-     *  proxy accessors for the outers in the class that extends the trait. As
-     *  those outers must be stable values, they are initialized immediately
-     *  following class parameters and before super constructor calls and user
-     *  code in the class body.
+     *  Note that `isFullyFilled = true` does not mean we can use the
+     *  object freely, as its fields or outers may still reach uninitialized
+     *  objects.
      */
-    def isFullyInitialized: Contextual[Boolean] = log("isFullyInitialized " + addr, printer) {
+    def isFullyFilled: Contextual[Boolean] = log("isFullyFilled " + addr, printer) {
       val obj = heap(addr)
       addr.klass.baseClasses.forall { klass =>
         !klass.hasSource || {
@@ -525,7 +523,7 @@ class Semantic {
     def tryPromoteCurrentObject: Contextual[Boolean] = log("tryPromoteCurrentObject ", printer) {
       promoted.isCurrentObjectPromoted || {
         // If we have all fields initialized, then we can promote This to hot.
-        thisRef.isFullyInitialized && {
+        thisRef.isFullyFilled && {
           promoted.promoteCurrent(thisRef)
           true
         }
@@ -591,7 +589,7 @@ class Semantic {
      */
     def tryPromote(msg: String, source: Tree): Contextual[List[Error]] = log("promote " + warm.show + ", promoted = " + promoted, printer) {
       val classRef = warm.klass.appliedRef
-      if classRef.memberClasses.nonEmpty || !warm.isFullyInitialized then
+      if classRef.memberClasses.nonEmpty || !warm.isFullyFilled then
         return PromoteError(msg, source, trace.toVector) :: Nil
 
       val fields  = classRef.fields
