@@ -1114,7 +1114,7 @@ class Typer extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  protected def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], untpd.Tree) = {
+  protected def decomposeProtoFunction(pt: Type, defaultArity: Int, tree: untpd.Tree)(using Context): (List[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => untpd.TypeTree()
       case _ => untpd.TypeTree(tp)
@@ -1133,26 +1133,29 @@ class Typer extends Namer
       report.error(
         i"""Implementation restriction: Expected result type $pt1
            |is a curried dependent context function type. Such types are not yet supported.""",
-        pos)
+        tree.srcPos)
+
     pt1 match {
-      case pt1 if defn.isNonRefinedFunction(pt1) =>
-        // if expected parameter type(s) are wildcards, approximate from below.
-        // if expected result type is a wildcard, approximate from above.
-        // this can type the greatest set of admissible closures.
-        (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
-      case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
-      if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-        (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
-      case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
-        (formals,
-         if (mt.isResultDependent)
-           untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
-         else
-           typeTree(restpe))
       case tp: TypeParamRef =>
-        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, pos)
-      case _ =>
-        (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+        decomposeProtoFunction(ctx.typerState.constraint.entry(tp).bounds.hi, defaultArity, tree)
+      case _ => pt1.findFunctionTypeInUnion match {
+        case pt1 if defn.isNonRefinedFunction(pt1) =>
+          // if expected parameter type(s) are wildcards, approximate from below.
+          // if expected result type is a wildcard, approximate from above.
+          // this can type the greatest set of admissible closures.
+          (pt1.argTypesLo.init, typeTree(interpolateWildcards(pt1.argTypesHi.last)))
+        case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
+        if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
+          (formals, untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef))))
+        case SAMType(mt @ MethodTpe(_, formals, restpe)) =>
+          (formals,
+            if mt.isResultDependent then
+              untpd.DependentTypeTree(syms => restpe.substParams(mt, syms.map(_.termRef)))
+            else
+              typeTree(restpe))
+        case _ =>
+          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+      }
     }
   }
 
@@ -1359,7 +1362,7 @@ class Typer extends Namer
       case _ =>
     }
 
-    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
+    val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree)
 
     def protoFormal(i: Int): Type =
       if (protoFormals.length == params.length) protoFormals(i)
@@ -1463,7 +1466,7 @@ class Typer extends Namer
           typedMatchFinish(tree, tpd.EmptyTree, defn.ImplicitScrutineeTypeRef, cases1, pt)
         }
         else {
-          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree.srcPos)
+          val (protoFormals, _) = decomposeProtoFunction(pt, 1, tree)
           val checkMode =
             if (pt.isRef(defn.PartialFunctionClass)) desugar.MatchCheck.None
             else desugar.MatchCheck.Exhaustive
