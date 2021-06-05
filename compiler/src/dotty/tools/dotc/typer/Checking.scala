@@ -70,11 +70,13 @@ object Checking {
         errorTree(arg,
           showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
     }
-    for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
-      report.error(
-          showInferred(DoesNotConformToBound(arg.tpe, which, bound),
-              app, tpt),
-          arg.srcPos.focus)
+    withMode(Mode.RelaxedCapturing) {
+      for (arg, which, bound) <- TypeOps.boundsViolations(args, boundss, instantiate, app) do
+        report.error(
+            showInferred(DoesNotConformToBound(arg.tpe, which, bound),
+                app, tpt),
+            arg.srcPos.focus)
+    }
 
   /** Check that type arguments `args` conform to corresponding bounds in `tl`
    *  Note: This does not check the bounds of AppliedTypeTrees. These
