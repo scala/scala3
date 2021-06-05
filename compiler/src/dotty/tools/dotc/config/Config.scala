@@ -49,7 +49,7 @@ object Config {
    *  compiling all of dotty together (source seems to be in GenBCode which
    *  accesses javac's settings.)
    *
-   *  It is recommended to turn this option on only w zhen chasing down
+   *  It is recommended to turn this option on only when chasing down
    *  a TypeParamRef instantiation error. See comment in Types.TypeVar.instantiate.
    */
   inline val debugCheckConstraintsClosed = false
