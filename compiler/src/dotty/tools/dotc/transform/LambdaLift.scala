@@ -17,12 +17,10 @@ import ast.Trees._
 import SymUtils._
 import ExplicitOuter.outer
 import util.Store
-import collection.mutable
-import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
+import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
 
-object LambdaLift {
+object LambdaLift:
   import ast.tpd._
-  private class NoPath extends Exception
 
   val name: String = "lambdaLift"
 
@@ -33,11 +31,11 @@ object LambdaLift {
     private val outerParam = new HashMap[Symbol, Symbol]
 
     /** Buffers for lifted out classes and methods, indexed by owner */
-    val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
+    val liftedDefs: HashMap[Symbol, ListBuffer[Tree]] = new HashMap
 
-    val deps = new Dependencies(ctx.withPhase(thisPhase)):
-      def enclosure(using Context) = ctx.owner.enclosingMethod
+    val deps = new Dependencies(ctx.compilationUnit.tpdTree, ctx.withPhase(thisPhase)):
       def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
+      def enclosure(using Context) = ctx.owner.enclosingMethod
 
       override def process(tree: Tree)(using Context): Unit =
         super.process(tree)
@@ -47,7 +45,7 @@ object LambdaLift {
               case Some(vdef) => outerParam(tree.symbol) = vdef.symbol
               case _ =>
           case tree: Template =>
-            liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
+            liftedDefs(tree.symbol.owner) = new ListBuffer
           case _ =>
     end deps
 
@@ -94,7 +92,7 @@ object LambdaLift {
     }
 
     private def liftLocals()(using Context): Unit = {
-      for ((local, lOwner) <- deps.dependentOwner) {
+      for ((local, lOwner) <- deps.logicalOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package) {
             val encClass = local.enclosingClass
@@ -130,14 +128,8 @@ object LambdaLift {
           info = liftedInfo(local)).installAfter(thisPhase)
       }
       for (local <- deps.tracked)
-        if (!deps.dependentOwner.contains(local))
+        if (!deps.logicalOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
-    }
-
-    // initialization
-    atPhase(thisPhase.next) {
-      generateProxies()
-      liftLocals()
     }
 
     def currentEnclosure(using Context): Symbol =
@@ -148,7 +140,7 @@ object LambdaLift {
 
     private def proxy(sym: Symbol)(using Context): Symbol = {
       def liftedEnclosure(sym: Symbol) =
-        deps.dependentOwner.getOrElse(sym, sym.enclosure)
+        deps.logicalOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
@@ -228,9 +220,15 @@ object LambdaLift {
       EmptyTree
     }
 
-    def needsLifting(sym: Symbol): Boolean = deps.dependentOwner.contains(sym)
+    def needsLifting(sym: Symbol): Boolean = deps.logicalOwner.contains(sym)
+
+    // initialization
+    atPhase(thisPhase.next) {
+      generateProxies()
+      liftLocals()
+    }
   end Lifter
-}
+end LambdaLift
 
 /** This phase performs the necessary rewritings to eliminate classes and methods
  *  nested in other methods. In detail:

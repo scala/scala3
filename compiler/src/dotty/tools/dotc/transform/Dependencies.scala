@@ -1,39 +1,41 @@
 package dotty.tools.dotc
 package transform
 
-import MegaPhase._
-import core.Denotations.NonSymSingleDenotation
-import core.DenotTransformers._
-import core.Symbols._
-import core.Contexts._
-import core.Types._
-import core.Flags._
-import core.Decorators._
-import core.StdNames.nme
-import core.Names._
-import core.NameOps._
-import core.NameKinds.ExpandPrefixName
-import ast.Trees._
-import SymUtils._
-import ExplicitOuter.outer
-import util.Store
-import collection.mutable
-import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
+import core.*
+import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
+import ast.Trees.*
+import SymUtils.*
+import collection.mutable.{LinkedHashMap, TreeSet}
 import annotation.constructorOnly
 
-/** Exposes the dependencies of the typed tree in the current compilation unit
- *  in sets `freeVars`, `liftedOwner`.
+/** Exposes the dependencies of the `root` tree in three functions or maps:
+ *  `freeVars`, `tracked`, and `logicalOwner`.
  */
-abstract class Dependencies(@constructorOnly rootContext: Context):
+abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Context):
   import ast.tpd._
 
-  protected def enclosure(using Context): Symbol
+  /** The symbol is a method or a lazy val that will be mapped to a method */
   protected def isExpr(sym: Symbol)(using Context): Boolean
 
-  type SymSet = TreeSet[Symbol]
+  /** The closest enclosing symbol in the current context for which `isExpr` is true */
+  protected def enclosure(using Context): Symbol
+
+  /** The set of free variables of a function, including free variables of its callees */
+  def freeVars(sym: Symbol): collection.Set[Symbol] = free.getOrElse(sym, Set.empty)
+
+  /** The set of functions that have free variables, i.e for which `freeVars` is non-empty */
+  def tracked: Iterable[Symbol] = free.keys
+
+  /** The outermost class that captures all free variables of a function
+   *  that are captured by enclosinh classes (this means that the function could
+   *  be placed in that class without having to add more environment parameters)
+   */
+  def logicalOwner: collection.Map[Symbol, Symbol] = logicOwner
+
+  private type SymSet = TreeSet[Symbol]
 
   /** A map storing free variables of functions and classes */
-  private val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
+  private val free: LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
 
   /** A hashtable storing calls between functions */
   private val called = new LinkedHashMap[Symbol, SymSet]
@@ -45,25 +47,19 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
    *  Note: During tree transform (which runs at phase LambdaLift + 1), liftedOwner
    *  is also used to decide whether a method had a term owner before.
    */
-  private val depOwner = new LinkedHashMap[Symbol, Symbol]
+  private val logicOwner = new LinkedHashMap[Symbol, Symbol]
 
   /** A flag to indicate whether new free variables have been found */
   private var changedFreeVars: Boolean = _
 
   /** A flag to indicate whether lifted owners have changed */
-  private var changedLiftedOwner: Boolean = _
+  private var changedLogicOwner: Boolean = _
 
   private val ord: Ordering[Symbol] = Ordering.by(_.id)
   private def newSymSet = TreeSet.empty[Symbol](ord)
 
   private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =
     f.getOrElseUpdate(sym, newSymSet)
-
-  def freeVars(sym: Symbol): collection.Set[Symbol] = free.getOrElse(sym, Set.empty)
-
-  def tracked: Iterable[Symbol] = free.keys
-
-  def dependentOwner: collection.Map[Symbol, Symbol] = depOwner
 
   /** A symbol is local if it is owned by a term or a local trait,
    *  or if it is a constructor of a local symbol.
@@ -80,16 +76,14 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
   /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
    *  than the previous value of `liftedowner(sym)`.
    */
-  private def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
+  private def narrowLogicOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
     if sym.maybeOwner.isTerm
-        && owner.isProperlyContainedIn(depOwner(sym))
+        && owner.isProperlyContainedIn(logicOwner(sym))
         && owner != sym
     then
       report.log(i"narrow lifted $sym to $owner")
-      changedLiftedOwner = true
-      depOwner(sym) = owner
-
-  private class NoPath extends Exception
+      changedLogicOwner = true
+      logicOwner(sym) = owner
 
   /** Mark symbol `sym` as being free in `enclosure`, unless `sym` is defined
    *  in `enclosure` or there is an intermediate class properly containing `enclosure`
@@ -135,42 +129,40 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
    *    }
    *  }
    */
-  private def markFree(sym: Symbol, enclosure: Symbol)(using Context): Symbol = try {
-    if (!enclosure.exists) throw new NoPath
-    if (enclosure == sym.enclosure) NoSymbol
-    else {
-      def nestedInConstructor(sym: Symbol): Boolean =
-        sym.isConstructor ||
-        sym.isTerm && nestedInConstructor(sym.enclosure)
-      report.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
-      val intermediate =
-        if (enclosure.is(PackageClass)) enclosure
-        else if (enclosure.isConstructor) markFree(sym, enclosure.owner.enclosure)
-        else markFree(sym, enclosure.enclosure)
-      if (intermediate.exists) narrowLiftedOwner(enclosure, intermediate)
-      if !intermediate.isRealClass || nestedInConstructor(enclosure) then
-        // Constructors and methods nested inside traits get the free variables
-        // of the enclosing trait or class.
-        // Conversely, local traits do not get free variables.
-        // Methods inside constructors also don't have intermediates,
-        // need to get all their free variables passed directly.
-        if (!enclosure.is(Trait))
-          if (symSet(free, enclosure).add(sym)) {
-            changedFreeVars = true
-            report.log(i"$sym is free in $enclosure")
-          }
-      if (intermediate.isRealClass) intermediate
-      else if (enclosure.isRealClass) enclosure
-      else if (intermediate.isClass) intermediate
-      else if (enclosure.isClass) enclosure
-      else NoSymbol
-    }
-  }
-  catch {
-    case ex: NoPath =>
+  private def markFree(sym: Symbol, enclosure: Symbol)(using Context): Symbol =
+    import Dependencies.NoPath
+    try
+      if !enclosure.exists then throw NoPath()
+      if enclosure == sym.enclosure then NoSymbol
+      else
+        def nestedInConstructor(sym: Symbol): Boolean =
+          sym.isConstructor
+          || sym.isTerm && nestedInConstructor(sym.enclosure)
+        report.debuglog(i"mark free: ${sym.showLocated} with owner ${sym.maybeOwner} marked free in $enclosure")
+        val intermediate =
+          if enclosure.is(PackageClass) then enclosure
+          else if enclosure.isConstructor then markFree(sym, enclosure.owner.enclosure)
+          else markFree(sym, enclosure.enclosure)
+        if intermediate.exists then
+          narrowLogicOwner(enclosure, intermediate)
+        if !intermediate.isRealClass || nestedInConstructor(enclosure) then
+          // Constructors and methods nested inside traits get the free variables
+          // of the enclosing trait or class.
+          // Conversely, local traits do not get free variables.
+          // Methods inside constructors also don't have intermediates,
+          // need to get all their free variables passed directly.
+          if !enclosure.is(Trait) then
+            if symSet(free, enclosure).add(sym) then
+              changedFreeVars = true
+              report.log(i"$sym is free in $enclosure")
+        if intermediate.isRealClass then intermediate
+        else if enclosure.isRealClass then enclosure
+        else if intermediate.isClass then intermediate
+        else if enclosure.isClass then enclosure
+        else NoSymbol
+    catch case ex: NoPath =>
       println(i"error lambda lifting ${ctx.compilationUnit}: $sym is not visible from $enclosure")
       throw ex
-  }
 
   private def markCalled(callee: Symbol, caller: Symbol)(using Context): Unit = {
     report.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
@@ -184,7 +176,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
     def narrowTo(thisClass: ClassSymbol) =
       val enclMethod = enclosure
       val enclClass = enclMethod.enclosingClass
-      narrowLiftedOwner(enclMethod,
+      narrowLogicOwner(enclMethod,
         if enclClass.isContainedIn(thisClass) then thisClass
         else enclClass) // unknown this reference, play it safe and assume the narrowest possible owner
 
@@ -204,7 +196,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
         narrowTo(tree.symbol.asClass)
       case tree: DefDef =>
         if sym.owner.isTerm then
-          depOwner(sym) = sym.enclosingPackageClass
+          logicOwner(sym) = sym.enclosingPackageClass
             // this will make methods in supercall constructors of top-level classes owned
             // by the enclosing package, which means they will be static.
             // On the other hand, all other methods will be indirectly owned by their
@@ -217,7 +209,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
             // the free variables of the class.
             symSet(called, sym) += sym.owner
       case tree: TypeDef =>
-        if sym.owner.isTerm then depOwner(sym) = sym.topLevelClass.owner
+        if sym.owner.isTerm then logicOwner(sym) = sym.topLevelClass.owner
       case _ =>
   end process
 
@@ -245,29 +237,32 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
     do ()
 
   /** Compute final liftedOwner map by closing over caller dependencies */
-  private def computeLiftedOwners()(using Context): Unit =
+  private def computeLogicOwners()(using Context): Unit =
     while
-      changedLiftedOwner = false
+      changedLogicOwner = false
       for
         caller <- called.keys
         callee <- called(caller)
       do
         val normalizedCallee = callee.skipConstructor
         val calleeOwner = normalizedCallee.owner
-        if calleeOwner.isTerm then narrowLiftedOwner(caller, depOwner(normalizedCallee))
+        if calleeOwner.isTerm then narrowLogicOwner(caller, logicOwner(normalizedCallee))
         else
           assert(calleeOwner.is(Trait))
           // methods nested inside local trait methods cannot be lifted out
           // beyond the trait. Note that we can also call a trait method through
           // a qualifier; in that case no restriction to lifted owner arises.
           if caller.isContainedIn(calleeOwner) then
-            narrowLiftedOwner(caller, calleeOwner)
-      changedLiftedOwner
+            narrowLogicOwner(caller, calleeOwner)
+      changedLogicOwner
     do ()
 
+  // initialization
   inContext(rootContext) {
-    CollectDependencies().traverse(rootContext.compilationUnit.tpdTree)
+    CollectDependencies().traverse(root)
     computeFreeVars()
-    computeLiftedOwners()
+    computeLogicOwners()
   }
+object Dependencies:
+  private class NoPath extends Exception
 end Dependencies
