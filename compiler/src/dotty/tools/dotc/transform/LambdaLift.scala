@@ -50,7 +50,6 @@ object LambdaLift {
             liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
           case _ =>
     end deps
-    export deps.{liftedOwner}
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables
@@ -95,7 +94,7 @@ object LambdaLift {
     }
 
     private def liftLocals()(using Context): Unit = {
-      for ((local, lOwner) <- liftedOwner) {
+      for ((local, lOwner) <- deps.dependentOwner) {
         val (newOwner, maybeStatic) =
           if (lOwner is Package) {
             val encClass = local.enclosingClass
@@ -131,7 +130,7 @@ object LambdaLift {
           info = liftedInfo(local)).installAfter(thisPhase)
       }
       for (local <- deps.tracked)
-        if (!liftedOwner.contains(local))
+        if (!deps.dependentOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
     }
 
@@ -148,7 +147,8 @@ object LambdaLift {
       sym.enclosure == currentEnclosure
 
     private def proxy(sym: Symbol)(using Context): Symbol = {
-      def liftedEnclosure(sym: Symbol) = liftedOwner.getOrElse(sym, sym.enclosure)
+      def liftedEnclosure(sym: Symbol) =
+        deps.dependentOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
           def enclosures(encl: Symbol): List[Symbol] =
@@ -228,7 +228,7 @@ object LambdaLift {
       EmptyTree
     }
 
-    def needsLifting(sym: Symbol): Boolean = liftedOwner contains sym
+    def needsLifting(sym: Symbol): Boolean = deps.dependentOwner.contains(sym)
   end Lifter
 }
 

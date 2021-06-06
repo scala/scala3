@@ -27,8 +27,8 @@ import annotation.constructorOnly
 abstract class Dependencies(@constructorOnly rootContext: Context):
   import ast.tpd._
 
-  def enclosure(using Context): Symbol
-  def isExpr(sym: Symbol)(using Context): Boolean
+  protected def enclosure(using Context): Symbol
+  protected def isExpr(sym: Symbol)(using Context): Boolean
 
   type SymSet = TreeSet[Symbol]
 
@@ -45,7 +45,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
    *  Note: During tree transform (which runs at phase LambdaLift + 1), liftedOwner
    *  is also used to decide whether a method had a term owner before.
    */
-  val liftedOwner = new LinkedHashMap[Symbol, Symbol]
+  private val depOwner = new LinkedHashMap[Symbol, Symbol]
 
   /** A flag to indicate whether new free variables have been found */
   private var changedFreeVars: Boolean = _
@@ -62,6 +62,8 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
   def freeVars(sym: Symbol): collection.Set[Symbol] = free.getOrElse(sym, Set.empty)
 
   def tracked: Iterable[Symbol] = free.keys
+
+  def dependentOwner: collection.Map[Symbol, Symbol] = depOwner
 
   /** A symbol is local if it is owned by a term or a local trait,
    *  or if it is a constructor of a local symbol.
@@ -80,12 +82,12 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
    */
   private def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
     if sym.maybeOwner.isTerm
-        && owner.isProperlyContainedIn(liftedOwner(sym))
+        && owner.isProperlyContainedIn(depOwner(sym))
         && owner != sym
     then
       report.log(i"narrow lifted $sym to $owner")
       changedLiftedOwner = true
-      liftedOwner(sym) = owner
+      depOwner(sym) = owner
 
   private class NoPath extends Exception
 
@@ -202,7 +204,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
         narrowTo(tree.symbol.asClass)
       case tree: DefDef =>
         if sym.owner.isTerm then
-          liftedOwner(sym) = sym.enclosingPackageClass
+          depOwner(sym) = sym.enclosingPackageClass
             // this will make methods in supercall constructors of top-level classes owned
             // by the enclosing package, which means they will be static.
             // On the other hand, all other methods will be indirectly owned by their
@@ -215,7 +217,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
             // the free variables of the class.
             symSet(called, sym) += sym.owner
       case tree: TypeDef =>
-        if sym.owner.isTerm then liftedOwner(sym) = sym.topLevelClass.owner
+        if sym.owner.isTerm then depOwner(sym) = sym.topLevelClass.owner
       case _ =>
   end process
 
@@ -252,7 +254,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
       do
         val normalizedCallee = callee.skipConstructor
         val calleeOwner = normalizedCallee.owner
-        if calleeOwner.isTerm then narrowLiftedOwner(caller, liftedOwner(normalizedCallee))
+        if calleeOwner.isTerm then narrowLiftedOwner(caller, depOwner(normalizedCallee))
         else
           assert(calleeOwner.is(Trait))
           // methods nested inside local trait methods cannot be lifted out
