@@ -47,11 +47,40 @@ import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
  *  has ended. So the phase can be only used for more refined type checking, but
  *  not for code transformation.
  */
-abstract class RefineTypes extends Phase, IdentityDenotTransformer:
+class CheckCaptures extends RefineTypes:
   import ast.tpd.*
 
-  override def isTyper: Boolean = true
+  def phaseName: String = "checkCaptures"
+  override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
 
+  def newRefiner() = CaptureChecker()
+
+  class CaptureChecker extends TypeRefiner:
+    import ast.tpd.*
+    override def newLikeThis: Typer = CaptureChecker()
+
+    private var myDeps: Dependencies = null
+
+    def deps(using Context): Dependencies =
+      if myDeps == null then
+        myDeps = new Dependencies(ctx.compilationUnit.tpdTree, ctx):
+          def isExpr(sym: Symbol)(using Context): Boolean =
+            sym.isRealClass || sym.isOneOf(MethodOrLazy)
+          def enclosure(using Context) =
+            def recur(owner: Symbol): Symbol =
+              if isExpr(owner) || !owner.exists then owner else recur(owner.owner)
+            recur(ctx.owner)
+      myDeps
+
+    override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree =
+      val tree1 = super.typedClosure(tree, pt).asInstanceOf[Closure]
+      val captured = CaptureSet(
+        deps.freeVars(tree1.meth.symbol).toList.map(_.termRef).filter(_.isTracked)*)
+      tree1.withType(tree1.tpe.capturing(captured))
+  end CaptureChecker
+end CheckCaptures
+
+/*
   def run(using Context): Unit =
     refinr.println(i"refine types of ${ctx.compilationUnit}")
     val refiner = newRefiner()
@@ -67,12 +96,20 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
   def preRefinePhase = this.prev.asInstanceOf[PreRefine]
   def thisPhase = this
 
-  def newRefiner(): TypeRefiner
+  def newRefiner(): TypeRefiner = TypeRefiner()
 
   class TypeRefiner extends ReTyper:
     import ast.tpd.*
 
     override def newLikeThis: Typer = new TypeRefiner
+
+   /* override def typedAhead(tree: untpd.Tree, typed: untpd.Tree => Tree)(using Context): Tree =
+      tree.getAttachment(TypedAhead) match
+        case Some(ttree) => ttree
+        case none =>
+          val ttree = typed(tree)
+          tree.putAttachment(TypedAhead, ttree)
+          ttree*/
 
     /** Update the symbol's info to `newInfo` for the current phase, and
      *  to the symbol's orginal info for the phase afterwards.
@@ -117,17 +154,11 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
     override def index(trees: List[untpd.Tree])(using Context): Context =
       for case tree: ValOrDefDef <- trees.asInstanceOf[List[Tree]] do
         val sym = tree.symbol
-        def isLocalOnly =
-          val transOwner = sym.owner.ownersIterator
-            .dropWhile(owner => owner.isClass && !owner.isStatic && !owner.is(Private))
-            .next
-          sym.is(Private) || transOwner.is(Private) || transOwner.isTerm
         if tree.tpt.isInstanceOf[untpd.InferredTypeTree]
-          && isLocalOnly
+          && (sym.is(Private) || sym.owner.isTerm)
           && !sym.isOneOf(Param | JavaDefined)
           && !sym.isOneOf(FinalOrInline, butNot = Method | Mutable)
           && !sym.name.is(DefaultGetterName)
-          && !sym.isConstructor
         then
           updateInfo(sym, RefineCompleter(tree))
       ctx
@@ -175,21 +206,16 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
      *  Compare with `typedTyped` in TreeChecker that does essentially the same thing
      */
     override def typedTyped(tree: untpd.Typed, pt: Type)(using Context): Tree =
-      tree.tpt match
-        case _: untpd.InferredTypeTree =>
-          // type tree was introduced by ensureNoLocalRefs, drop the ascription and reinfer
-          typed(tree.expr, pt)
+      val tpt1 = checkSimpleKinded(typedType(tree.tpt))
+      val expr1 = tree.expr match
+        case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
+          tree.expr.withType(tpt1.tpe)
         case _ =>
-          val tpt1 = checkSimpleKinded(typedType(tree.tpt))
-          val expr1 = tree.expr match
-            case id: untpd.Ident if (ctx.mode is Mode.Pattern) && untpd.isVarPattern(id) && (id.name == nme.WILDCARD || id.name == nme.WILDCARD_STAR) =>
-              tree.expr.withType(tpt1.tpe)
-            case _ =>
-              var pt1 = tpt1.tpe
-              if pt1.isRepeatedParam then
-                pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
-              typed(tree.expr, pt1)
-          untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
+          var pt1 = tpt1.tpe
+          if pt1.isRepeatedParam then
+            pt1 = pt1.translateFromRepeated(toArray = tree.expr.typeOpt.derivesFrom(defn.ArrayClass))
+          typed(tree.expr, pt1)
+      untpd.cpy.Typed(tree)(expr1, tpt1).withType(tree.typeOpt)
 
     /** Replace all type variables in a (possibly embedded) type application
      *  by fresh, uninstantiated type variables that are pairwise linked with
@@ -258,7 +284,7 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
             case stat: DefDef if stat.symbol == closure.meth.symbol =>
               stat.paramss match
                 case ValDefs(params) :: Nil =>
-                  val (protoFormals, untpdProtoResult) = decomposeProtoFunction(pt, params.length, stat)
+                  val (protoFormals, _) = decomposeProtoFunction(pt, params.length, stat)
                   val params1 = params.zipWithConserve(protoFormals) {
                     case (param @ ValDef(_, tpt: InferredTypeTree, _), formal)
                     if isFullyDefined(formal, ForceDegree.failBottom) =>
@@ -267,33 +293,14 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
                     case (param, _) =>
                       param
                   }
-                  def protoResult = untpd.unsplice(untpdProtoResult).asInstanceOf[Tree]
-                  val tpt1 = stat.tpt match
-                    case tpt: InferredTypeTree =>
-                      tpt
-                    case tpt =>
-                      if protoResult.hasType then tpt.withType(protoResult.tpe)
-                      else tpt
-                      // TODO: Handle DependentTypeTrees. The following does not work, unfortunately:
-                      //                      val newType = protoResult match
-                      //                        case untpd.DependentTypeTree(tpFun) =>
-                      //                          tpt.tpe
-                      //                          val ptpe = tpFun(params1.map(_.symbol))
-                      //                          if isFullyDefined(ptpe, ForceDegree.none) then ptpe else tpt.tpe
-                      //                        case _ =>
-                      //                          protoResult.tpe
-                      //                      tpt.withType(newType)
-                  if (params eq params1) && (stat.tpt eq tpt1) then stat
+                  if params eq params1 then stat
                   else
                     val mt = stat.symbol.info.asInstanceOf[MethodType]
                     val formals1 =
                       for i <- mt.paramInfos.indices.toList yield
                         if params(i) eq params1(i) then mt.paramInfos(i) else protoFormals(i)
-                    val resType1 =
-                      if tpt1 eq stat.tpt then mt.resType else tpt1.tpe
-                    updateInfo(stat.symbol,
-                      mt.derivedLambdaType(paramInfos = formals1, resType = resType1))
-                    cpy.DefDef(stat)(paramss = params1 :: Nil, tpt = tpt1)
+                    updateInfo(stat.symbol, mt.derivedLambdaType(paramInfos = formals1))
+                    cpy.DefDef(stat)(paramss = params1 :: Nil)
                 case _ =>
                   stat
           }
@@ -335,23 +342,10 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
       sym.ensureCompleted()
       super.typedValDef(vdef, sym)
 
-    override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val (impl: untpd.Template) = cdef.rhs: @unchecked
-      index(impl.body)
-      super.typedClassDef(cdef, cls)
-
     override def typedPackageDef(tree: untpd.PackageDef)(using Context): Tree =
       if tree.symbol == defn.StdLibPatchesPackage then
         promote(tree) // don't check stdlib patches, since their symbols were highjacked by stdlib classes
       else
         super.typedPackageDef(tree)
   end TypeRefiner
-end RefineTypes
-
-class TestRefineTypes extends RefineTypes:
-  def phaseName: String = "refineTypes"
-  override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
-  def newRefiner() = TypeRefiner()
-
-
-
+*/
