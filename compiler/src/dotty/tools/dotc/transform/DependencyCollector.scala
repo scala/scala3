@@ -19,20 +19,24 @@ import ExplicitOuter.outer
 import util.Store
 import collection.mutable
 import collection.mutable.{ HashMap, HashSet, LinkedHashMap, TreeSet }
+import annotation.constructorOnly
 
-abstract class DependencyCollector:
+/** Exposes the dependencies of the typed tree in the current compilation unit
+ *  in sets `freeVars`, `liftedOwner`.
+ */
+abstract class Dependencies(@constructorOnly rootContext: Context):
   import ast.tpd._
 
   def enclosure(using Context): Symbol
   def isExpr(sym: Symbol)(using Context): Boolean
 
-  protected type SymSet = TreeSet[Symbol]
+  type SymSet = TreeSet[Symbol]
 
   /** A map storing free variables of functions and classes */
   val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
 
   /** A hashtable storing calls between functions */
-  val called = new LinkedHashMap[Symbol, SymSet]
+  private val called = new LinkedHashMap[Symbol, SymSet]
 
   /** A map from local methods and classes to the owners to which they will be lifted as members.
    *  For methods and classes that do not have any dependencies this will be the enclosing package.
@@ -55,9 +59,7 @@ abstract class DependencyCollector:
   private def symSet(f: LinkedHashMap[Symbol, SymSet], sym: Symbol): SymSet =
     f.getOrElseUpdate(sym, newSymSet)
 
-  def freeVars(sym: Symbol): List[Symbol] = free.get(sym) match
-    case Some(set) => set.toList
-    case None => Nil
+  def freeVars(sym: Symbol): collection.Set[Symbol] = free.getOrElse(sym, Set.empty)
 
   /** A symbol is local if it is owned by a term or a local trait,
    *  or if it is a constructor of a local symbol.
@@ -65,7 +67,7 @@ abstract class DependencyCollector:
    *  have to be passed on from their callers. By contrast, class members get their
    *  free variable proxies from their enclosing class.
    */
-  def isLocal(sym: Symbol)(using Context): Boolean =
+  private def isLocal(sym: Symbol)(using Context): Boolean =
     val owner = sym.maybeOwner
     owner.isTerm
     || owner.is(Trait) && isLocal(owner)
@@ -74,7 +76,7 @@ abstract class DependencyCollector:
   /** Set `liftedOwner(sym)` to `owner` if `owner` is more deeply nested
    *  than the previous value of `liftedowner(sym)`.
    */
-  def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
+  private def narrowLiftedOwner(sym: Symbol, owner: Symbol)(using Context): Unit =
     if sym.maybeOwner.isTerm
         && owner.isProperlyContainedIn(liftedOwner(sym))
         && owner != sym
@@ -172,7 +174,7 @@ abstract class DependencyCollector:
     symSet(called, caller) += callee
   }
 
-  def process(tree: Tree)(using Context) =
+  protected def process(tree: Tree)(using Context) =
     val sym = tree.symbol
 
     def narrowTo(thisClass: ClassSymbol) =
@@ -259,8 +261,9 @@ abstract class DependencyCollector:
       changedLiftedOwner
     do ()
 
-  def collectDependencies()(using Context): Unit =
-    CollectDependencies().traverse(ctx.compilationUnit.tpdTree)
+  inContext(rootContext) {
+    CollectDependencies().traverse(rootContext.compilationUnit.tpdTree)
     computeFreeVars()
     computeLiftedOwners()
-end DependencyCollector
+  }
+end Dependencies

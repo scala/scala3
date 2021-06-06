@@ -27,13 +27,7 @@ object LambdaLift {
   val name: String = "lambdaLift"
 
   /** The core lambda lift functionality. */
-  class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context) extends DependencyCollector:
-
-    /** A map storing the free variable proxies of functions and classes.
-     *  For every function and class, this is a map from the free variables
-     *  of that function or class to the proxy symbols accessing them.
-     */
-    private val proxyMap = new LinkedHashMap[Symbol, Map[Symbol, Symbol]]
+  class Lifter(thisPhase: MiniPhase & DenotTransformer)(using Context):
 
     /** The outer parameter of a constructor */
     private val outerParam = new HashMap[Symbol, Symbol]
@@ -41,23 +35,33 @@ object LambdaLift {
     /** Buffers for lifted out classes and methods, indexed by owner */
     val liftedDefs: mutable.HashMap[Symbol, mutable.ListBuffer[Tree]] = new HashMap
 
+    val deps = new Dependencies(ctx.withPhase(thisPhase)):
+      def enclosure(using Context) = ctx.owner.enclosingMethod
+      def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
+
+      override def process(tree: Tree)(using Context): Unit =
+        super.process(tree)
+        tree match
+          case tree: DefDef if tree.symbol.isConstructor =>
+            tree.termParamss.head.find(_.name == nme.OUTER) match
+              case Some(vdef) => outerParam(tree.symbol) = vdef.symbol
+              case _ =>
+          case tree: Template =>
+            liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
+          case _ =>
+    end deps
+    export deps.{liftedOwner, free}
+
+    /** A map storing the free variable proxies of functions and classes.
+     *  For every function and class, this is a map from the free variables
+     *  of that function or class to the proxy symbols accessing them.
+     */
+    private val proxyMap = new LinkedHashMap[Symbol, Map[Symbol, Symbol]]
+
     def proxyOf(sym: Symbol, fv: Symbol): Symbol = proxyMap.getOrElse(sym, Map.empty)(fv)
 
-    def proxies(sym: Symbol): List[Symbol] =  freeVars(sym).map(proxyOf(sym, _))
-
-    def enclosure(using Context) = ctx.owner.enclosingMethod
-    def isExpr(sym: Symbol)(using Context): Boolean = sym.is(Method)
-
-    override def process(tree: Tree)(using Context): Unit =
-      super.process(tree)
-      tree match
-        case tree: DefDef if tree.symbol.isConstructor =>
-          tree.termParamss.head.find(_.name == nme.OUTER) match
-            case Some(vdef) => outerParam(tree.symbol) = vdef.symbol
-            case _ =>
-        case tree: Template =>
-          liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
-        case _ =>
+    def proxies(sym: Symbol): List[Symbol] =
+      deps.freeVars(sym).toList.map(proxyOf(sym, _))
 
     private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
@@ -133,9 +137,6 @@ object LambdaLift {
     }
 
     // initialization
-    atPhase(thisPhase) {
-      collectDependencies()
-    }
     atPhase(thisPhase.next) {
       generateProxies()
       liftLocals()
@@ -205,7 +206,7 @@ object LambdaLift {
 
         /** Initialize proxy fields from proxy parameters and map `rhs` from fields to parameters */
         def copyParams(rhs: Tree) = {
-          val fvs = freeVars(sym.owner)
+          val fvs = deps.freeVars(sym.owner).toList
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")
