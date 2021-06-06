@@ -43,9 +43,6 @@ object LambdaLift {
     /** A hashtable storing calls between functions */
     private val called = new LinkedHashMap[Symbol, SymSet]
 
-    /** Symbols that are called from an inner class. */
-    private val calledFromInner = new HashSet[Symbol]
-
     /** A map from local methods and classes to the owners to which they will be lifted as members.
      *  For methods and classes that do not have any dependencies this will be the enclosing package.
      *  symbols with packages as lifted owners will subsequently represented as static
@@ -189,7 +186,6 @@ object LambdaLift {
       report.debuglog(i"mark called: $callee of ${callee.owner} is called by $caller in ${caller.owner}")
       assert(isLocal(callee))
       symSet(called, caller) += callee
-      if (callee.enclosingClass != caller.enclosingClass) calledFromInner += callee
     }
 
     private class CollectDependencies extends TreeTraverser {
