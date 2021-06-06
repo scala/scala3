@@ -2023,7 +2023,7 @@ object Types {
     def isOverloaded(using Context): Boolean = false
   }
 
-  /** A trait for references in CaptureSets. These can be NamedTypes or ParamRefs */
+  /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs */
   trait CaptureRef extends TypeProxy, ValueType:
     private var myCaptureSet: CaptureSet = _
     private var myCaptureSetRunId: Int = NoRunId
@@ -2826,7 +2826,7 @@ object Types {
    *  Note: we do not pass a class symbol directly, because symbols
    *  do not survive runs whereas typerefs do.
    */
-  abstract case class ThisType(tref: TypeRef) extends CachedProxyType with SingletonType {
+  abstract case class ThisType(tref: TypeRef) extends CachedProxyType, SingletonType, CaptureRef {
     def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
       case cls: ClassSymbol => cls
       case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
@@ -2839,6 +2839,9 @@ object Types {
         case _: ErrorType | NoType if ctx.mode.is(Mode.Interactive) => cls.info
           // can happen in IDE if `cls` is stale
       }
+
+    override def canBeTracked(using Context) = cls.owner.isTerm
+    override def isRootCapability(using Context): Boolean = false
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -3602,6 +3605,11 @@ object Types {
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
           case tp: TermParamRef if tp.binder eq thisLambdaType => TrueDeps
+          case tp: CapturingType =>
+            val status1 = compute(status, tp.parent, theAcc)
+            tp.ref match
+              case tp: TermParamRef if tp.binder eq thisLambdaType => combine(status1, CaptureDeps)
+              case _ => status1
           case _: ThisType | _: BoundType | NoPrefix => status
           case _ =>
             (if theAcc != null then theAcc else DepAcc()).foldOver(status, tp)
@@ -3646,6 +3654,11 @@ object Types {
      *  of this method type which cannot be eliminated by de-aliasing?
      */
     def isParamDependent(using Context): Boolean = paramDependencyStatus == TrueDeps
+
+    /** Is there either a true or false type dependency, or does the result
+     *  type capture a parameter?
+     */
+    def isCaptureDependent(using Context) = dependencyStatus >= CaptureDeps
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
@@ -4028,10 +4041,11 @@ object Types {
     type DependencyStatus = Byte
     final val Unknown: DependencyStatus = 0   // not yet computed
     final val NoDeps: DependencyStatus = 1    // no dependent parameters found
-    final val FalseDeps: DependencyStatus = 2 // all dependent parameters are prefixes of non-depended alias types
-    final val TrueDeps: DependencyStatus = 3  // some truly dependent parameters exist
-    final val StatusMask: DependencyStatus = 3 // the bits indicating actual dependency status
-    final val Provisional: DependencyStatus = 4  // set if dependency status can still change due to type variable instantiations
+    final val CaptureDeps: DependencyStatus = 2
+    final val FalseDeps: DependencyStatus = 3 // all dependent parameters are prefixes of non-depended alias types
+    final val TrueDeps: DependencyStatus = 4  // some truly dependent parameters exist
+    final val StatusMask: DependencyStatus = 7 // the bits indicating actual dependency status
+    final val Provisional: DependencyStatus = 8  // set if dependency status can still change due to type variable instantiations
   }
 
   // ----- Type application: LambdaParam, AppliedType ---------------------
@@ -5125,7 +5139,7 @@ object Types {
       else CapturingType(parent, ref)
 
     def derivedCapturing(parent: Type, capt: Type)(using Context): Type =
-      if  (parent eq this.parent) && (capt eq this.ref) then this
+      if (parent eq this.parent) && (capt eq this.ref) then this
       else parent.capturing(capt.captureSet)
 
     // equals comes from case class; no matching override is needed
