@@ -50,7 +50,7 @@ object LambdaLift {
             liftedDefs(tree.symbol.owner) = new mutable.ListBuffer
           case _ =>
     end deps
-    export deps.{liftedOwner, free}
+    export deps.{liftedOwner}
 
     /** A map storing the free variable proxies of functions and classes.
      *  For every function and class, this is a map from the free variables
@@ -71,19 +71,18 @@ object LambdaLift {
       else sym.name.freshened
 
     private def generateProxies()(using Context): Unit =
-      for ((owner, freeValues) <- free.iterator) {
+      for owner <- deps.tracked do
+        val fvs = deps.freeVars(owner).toList
         val newFlags = Synthetic | (if (owner.isClass) ParamAccessor | Private else Param)
-        report.debuglog(i"free var proxy of ${owner.showLocated}: ${freeValues.toList}%, %")
-        proxyMap(owner) = {
-          for (fv <- freeValues.toList) yield {
+        report.debuglog(i"free var proxy of ${owner.showLocated}: $fvs%, %")
+        val freeProxyPairs =
+          for fv <- fvs yield
             val proxyName = newName(fv)
             val proxy =
               newSymbol(owner, proxyName.asTermName, newFlags, fv.info, coord = fv.coord)
                 .enteredAfter(thisPhase)
             (fv, proxy)
-          }
-        }.toMap
-      }
+        proxyMap(owner) = freeProxyPairs.toMap
 
     private def liftedInfo(local: Symbol)(using Context): Type = local.info match {
       case MethodTpe(pnames, ptypes, restpe) =>
@@ -131,7 +130,7 @@ object LambdaLift {
           initFlags = initFlags,
           info = liftedInfo(local)).installAfter(thisPhase)
       }
-      for (local <- free.keys)
+      for (local <- deps.tracked)
         if (!liftedOwner.contains(local))
           local.copySymDenotation(info = liftedInfo(local)).installAfter(thisPhase)
     }
@@ -190,10 +189,8 @@ object LambdaLift {
     }
 
     def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
-      free get sym match {
-        case Some(fvs) => fvs.toList.map(proxyRef(_)) ++ args
-        case _ => args
-      }
+      val fvs = deps.freeVars(sym)
+      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
 
     def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
       case Nil => tree
@@ -319,7 +316,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     // reload them manually here.
     // Note: If you tweak this code, make sure to test your changes with
     // `Config.reuseSymDenotations` set to false to exercise this path more.
-    if denot.isInstanceOf[NonSymSingleDenotation] && lifter.free.contains(sym) then
+    if denot.isInstanceOf[NonSymSingleDenotation] && lifter.deps.freeVars(sym).nonEmpty then
       tree.qualifier.select(sym).withSpan(tree.span)
     else tree
 
@@ -333,7 +330,7 @@ class LambdaLift extends MiniPhase with IdentityDenotTransformer { thisPhase =>
     val sym = tree.symbol
     val lft = lifter
     val paramsAdded =
-      if (lft.free.contains(sym)) lft.addFreeParams(tree, lft.proxies(sym)).asInstanceOf[DefDef]
+      if lft.deps.freeVars(sym).nonEmpty then lft.addFreeParams(tree, lft.proxies(sym)).asInstanceOf[DefDef]
       else tree
     if (lft.needsLifting(sym)) lft.liftDef(paramsAdded)
     else paramsAdded

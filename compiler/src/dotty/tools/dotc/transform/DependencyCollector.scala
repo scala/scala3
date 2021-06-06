@@ -33,7 +33,7 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
   type SymSet = TreeSet[Symbol]
 
   /** A map storing free variables of functions and classes */
-  val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
+  private val free: mutable.LinkedHashMap[Symbol, SymSet] = new LinkedHashMap
 
   /** A hashtable storing calls between functions */
   private val called = new LinkedHashMap[Symbol, SymSet]
@@ -60,6 +60,8 @@ abstract class Dependencies(@constructorOnly rootContext: Context):
     f.getOrElseUpdate(sym, newSymSet)
 
   def freeVars(sym: Symbol): collection.Set[Symbol] = free.getOrElse(sym, Set.empty)
+
+  def tracked: Iterable[Symbol] = free.keys
 
   /** A symbol is local if it is owned by a term or a local trait,
    *  or if it is a constructor of a local symbol.
