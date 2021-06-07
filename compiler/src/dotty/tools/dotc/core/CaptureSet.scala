@@ -11,7 +11,7 @@ import reporting.trace
 import printing.{Showable, Printer}
 import printing.Texts.*
 
-case class CaptureSet(elems: CaptureSet.Refs) extends Showable:
+case class CaptureSet private (elems: CaptureSet.Refs) extends Showable:
   import CaptureSet.*
 
   def isEmpty: Boolean = elems.isEmpty
@@ -55,9 +55,9 @@ object CaptureSet:
   /** Used as a recursion brake */
   @sharable private[core] val Pending = CaptureSet(SimpleIdentitySet.empty)
 
-  def apply(elems: CaptureRef*): CaptureSet =
+  def apply(elems: CaptureRef*)(using Context): CaptureSet =
     if elems.isEmpty then empty
-    else CaptureSet(SimpleIdentitySet(elems*))
+    else CaptureSet(SimpleIdentitySet(elems.map(_.normalizedRef)*))
 
   def ofType(tp: Type)(using Context): CaptureSet =
     val collect = new TypeAccumulator[Refs]:
