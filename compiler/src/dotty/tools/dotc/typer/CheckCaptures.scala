@@ -72,11 +72,29 @@ class CheckCaptures extends RefineTypes:
             recur(ctx.owner)
       myDeps
 
+    private def capturedVars(sym: Symbol)(using Context): CaptureSet =
+      CaptureSet(deps.freeVars(sym).toList.map(_.termRef).filter(_.isTracked)*)
+
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree =
-      val tree1 = super.typedClosure(tree, pt).asInstanceOf[Closure]
-      val captured = CaptureSet(
-        deps.freeVars(tree1.meth.symbol).toList.map(_.termRef).filter(_.isTracked)*)
-      tree1.withType(tree1.tpe.capturing(captured))
+      super.typedClosure(tree, pt) match
+        case tree1: Closure =>
+          tree1.withType(tree1.tpe.capturing(capturedVars(tree1.meth.symbol)))
+        case tree1 => tree1
+
+    override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
+      super.typedApply(tree, pt) match
+        case tree1 @ Apply(fn, args) =>
+          val tree2 = fn.tpe.widen match
+            case mt: MethodType if mt.isCaptureDependent =>
+              tree1.withType(tree1.tpe.substParams(mt, args.tpes))
+            case _ =>
+              tree1
+          if tree.fun.symbol.isConstructor then
+            //println(i"typing $tree1, ${capturedVars(tree1.tpe.classSymbol)}")
+            tree2.withType(tree2.tpe.capturing(capturedVars(tree1.tpe.classSymbol)))
+          else
+            tree2
+        case tree1 => tree1
   end CaptureChecker
 end CheckCaptures
 
