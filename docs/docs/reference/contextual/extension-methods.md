@@ -24,7 +24,7 @@ circle.circumference
 An extension method translates to a specially labelled method that takes the leading parameter section as its first argument list. The label, expressed
 as `<extension>` here, is compiler-internal. So, the definition of `circumference` above translates to the following method, and can also be invoked as such:
 
-```scala
+```
 <extension> def circumference(c: Circle): Double = c.radius * math.Pi * 2
 
 assert(circle.circumference == circumference(circle))
@@ -49,7 +49,7 @@ x min 3
 
 The three definitions above translate to
 
-```scala
+```
 <extension> def < (x: String)(y: String): Boolean = ...
 <extension> def +: (xs: Seq[Elem])(x: Elem): Seq[Elem] = ...
 <extension> infix def min(x: Number)(y: Number): Number = ...
