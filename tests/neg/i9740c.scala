@@ -11,6 +11,6 @@ class Foo {
   def bar[A <: Txn[A]](x: Exp[A]): Unit = x match
     case IntExp(x) =>
     case StrExp(x) =>
-    case UnitExp =>
+    case UnitExp => // error
     case Obj(o) =>
 }
