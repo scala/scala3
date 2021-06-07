@@ -24,9 +24,3 @@ def h3(x: Cap): A =
 def h4(x: Cap, y: Int): A =
   new A:
     def m() = if x == null then y else y  // error
-
-//def f1(c: Cap): (() => C holds c.type) = () => c // ok
-//def f2(c: Cap): (() => C) holds c.type = () => c
-
-//def h5(x: Cap): () => C =
-//  f(x)
