@@ -2027,11 +2027,17 @@ object Types {
   trait CaptureRef extends TypeProxy, ValueType:
     private var myCaptureSet: CaptureSet = _
     private var myCaptureSetRunId: Int = NoRunId
-    private val singletonCaptureSet = CaptureSet(this)
+    private var mySingletonCaptureSet: CaptureSet = null
 
-    def isRootCapability(using Context): Boolean
     def canBeTracked(using Context): Boolean
-    def isTracked(using Context): Boolean = canBeTracked && captureSetOfInfo.nonEmpty
+    final def isTracked(using Context): Boolean = canBeTracked && captureSetOfInfo.nonEmpty
+    def isRootCapability(using Context): Boolean = false
+    def normalizedRef(using Context): CaptureRef = this
+
+    def singletonCaptureSet(using Context): CaptureSet =
+      if mySingletonCaptureSet == null then
+        mySingletonCaptureSet = CaptureSet(this.normalizedRef)
+      mySingletonCaptureSet
 
     def captureSetOfInfo(using Context): CaptureSet =
       if ctx.runId == myCaptureSetRunId then myCaptureSet
@@ -2387,8 +2393,11 @@ object Types {
     def canBeTracked(using Context) =
       (prefix eq NoPrefix) || symbol.is(TypeParam) || isRootCapability
 
-    def isRootCapability(using Context): Boolean =
+    override def isRootCapability(using Context): Boolean =
       name == tpnme.CAPTURE_ROOT && symbol == defn.captureRootType
+
+    override def normalizedRef(using Context): CaptureRef =
+      if canBeTracked then symbol.namedType else this
 
     private def checkDenot()(using Context) = {}
 
@@ -2841,7 +2850,6 @@ object Types {
       }
 
     override def canBeTracked(using Context) = cls.owner.isTerm
-    override def isRootCapability(using Context): Boolean = false
 
     override def computeHash(bs: Binders): Int = doHash(bs, tref)
 
@@ -4346,7 +4354,6 @@ object Types {
     }
 
     override def canBeTracked(using Context) = true
-    override def isRootCapability(using Context): Boolean = false
 
     override def computeHash(bs: Binders): Int = doHash(paramNum, binder.identityHash(bs))
 
@@ -5161,7 +5168,7 @@ object Types {
 
   object CapturingType:
     def apply(parent: Type, ref: CaptureRef)(using Context): CapturingType =
-      unique(CachedCapturingType(parent, ref))
+      unique(CachedCapturingType(parent, ref.normalizedRef))
     def checked(parent: Type, ref: Type)(using Context): CapturingType = ref match
       case ref: CaptureRef => apply(parent, ref)
   end CapturingType
