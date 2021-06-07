@@ -798,10 +798,7 @@ class Objects {
         val res = eval(vdef.rhs, thisV, klass, cacheResult = true)
         errorBuffer ++= res.errors
         val sym = vdef.symbol
-        val fieldV =
-          if sym.info <:< defn.StringType || sym.info.classSymbol.isPrimitiveValueClass then Bottom
-          else if sym.is(Flags.Mutable) then TypeAbs(sym.info)
-          else res.value
+        val fieldV = if sym.is(Flags.Mutable) then TypeAbs(sym.info) else res.value
         thisV.updateField(sym, fieldV)
 
       case _: MemberDef =>
