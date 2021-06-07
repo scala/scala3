@@ -48,10 +48,7 @@ class Checker extends MiniPhase {
     if (instantiable && cls.enclosingPackageClass != defn.StdLibPatchesPackage.moduleClass) {
       import semantic._
       val tpl = tree.rhs.asInstanceOf[Template]
-      val thisRef = ThisRef(cls)
-
-      val obj = Objekt(cls, fields = mutable.Map.empty, outers = mutable.Map(cls -> Hot))
-      heap.update(thisRef, obj)
+      val thisRef = ThisRef(cls).ensureExists
 
       val paramValues = tpl.constr.termParamss.flatten.map(param => param.symbol -> Hot).toMap
 
