@@ -49,7 +49,7 @@ class Objects {
   case class ObjectRef(klass: ClassSymbol) extends Addr
 
   /** An ClassAbs of class */
-  case class ClassAbs(klass: ClassSymbol) extends Addr
+  case class ClassAbs(klass: ClassSymbol, outer: Value) extends Addr
 
   /** A function value */
   case class Fun(expr: Tree, thisV: Value, klass: ClassSymbol) extends Value
@@ -68,7 +68,7 @@ class Objects {
    *
    *  Note: Object is NOT a value.
    */
-  case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value])
+  case class Objekt(klass: ClassSymbol, fields: mutable.Map[Symbol, Value], outers: mutable.Map[Symbol, Value])
 
   /** Abstract heap stores abstract objects
    *
@@ -93,7 +93,8 @@ class Objects {
       def updateField(field: Symbol, value: Value): Contextual[Unit] =
         heap(ref).fields(field) = value
 
-      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] = ()
+      def updateOuter(klass: ClassSymbol, value: Value): Contextual[Unit] =
+        heap(ref).outers(klass) = value
     end extension
   }
   type Heap = Heap.Heap
@@ -192,6 +193,11 @@ class Objects {
       case (RefSet(refs), b)    => RefSet(b :: refs)
       case (a, b)               => RefSet(a :: b :: Nil)
 
+    def widen(using Context): Value = a.match
+      case RefSet(refs) => refs.map(_.widen).join
+      case ClassAbs(klass, outer: ClassAbs) => ClassAbs(klass, TypeAbs(outer.klass.typeRef))
+      case _ => a
+
   extension (values: Seq[Value])
     def join: Value =
       if values.isEmpty then Bottom
@@ -227,7 +233,7 @@ class Objects {
             eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             given Trace = trace1
-            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty)
+            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty, mutable.Map.empty)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else if target.is(Flags.ParamAccessor) then
@@ -318,14 +324,15 @@ class Objects {
 
         case Bottom | _: TypeAbs | _: ClassAbs | _: ObjectRef =>
           given Trace = trace1
+          val outer = value.widen
           val addr =
             if klass.isStaticObjectRef then
               ObjectRef(klass)
             else
-              ClassAbs(klass)
+              ClassAbs(klass, outer)
 
           if !heap.contains(addr) then
-            val obj = Objekt(klass, fields = mutable.Map.empty)
+            val obj = Objekt(klass, fields = mutable.Map.empty, outers = mutable.Map(klass -> outer))
             heap.update(addr, obj)
 
           val res = addr.call(ctor, args, superType = NoType, source)
@@ -658,7 +665,26 @@ class Objects {
       val res = Result(ObjectRef(target.moduleClass.asClass), Nil)
       if target == klass || elideObjectAccess then res
       else res.ensureAccess(klass, source)
-    else Result(TypeAbs(target.typeRef), Nil)
+    else
+      thisV match
+      case Bottom => Result(Bottom, Nil)
+      case addr: Addr =>
+        val obj = heap(addr)
+        val outerCls = klass.owner.enclosingClass.asClass
+        if !obj.outers.contains(klass) then
+          val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
+          report.error(error.show + error.stacktrace, source)
+          Result(Bottom, Nil)
+        else
+          resolveThis(target, obj.outers(klass), outerCls, source)
+      case RefSet(refs) =>
+        val ress = refs.map(ref => resolveThis(target, ref, klass, source))
+        Result(ress.map(_.value).join, ress.flatMap(_.errors))
+      case fun: Fun =>
+        report.warning("unexpected thisV = " + thisV + ", target = " + target.show + ", klass = " + klass.show, source.srcPos)
+        Result(TypeAbs(defn.AnyType), Nil)
+      case TypeAbs(tp) =>
+        Result(TypeAbs(target.info), Nil)
   }
 
   /** Compute the outer value that correspond to `tref.prefix` */
