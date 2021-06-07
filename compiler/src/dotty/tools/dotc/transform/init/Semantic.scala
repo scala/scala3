@@ -265,8 +265,8 @@ class Semantic {
     def call(meth: Symbol, args: List[ArgInfo], superType: Type, source: Tree): Contextual[Result] =
       value.call(meth, args, superType, source) ++ errors
 
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree, inside: ClassSymbol): Contextual[Result] =
-      value.instantiate(klass, ctor, args, source, inside) ++ errors
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] =
+      value.instantiate(klass, ctor, args, source) ++ errors
   }
 
   /** The state that threads through the interpreter */
@@ -450,7 +450,7 @@ class Semantic {
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree, inside: ClassSymbol): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo], source: Tree): Contextual[Result] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args, printer, res => res.asInstanceOf[Result].show) {
       val trace1 = trace.add(source)
       if promoted.isCurrentObjectPromoted then Result(Hot, Nil)
       else value match {
@@ -489,7 +489,7 @@ class Semantic {
 
           // Approximate instances of local classes inside secondary constructor as Cold.
           // This way, we avoid complicating the domain for Warm unnecessarily
-          if klass.isContainedIn(inside) && inSecondaryConstructor(klass.owner) then Result(Cold, res.errors)
+          if inSecondaryConstructor(klass.owner) then Result(Cold, res.errors)
           else Result(value, res.errors)
 
         case Fun(body, thisV, klass, env) =>
@@ -497,7 +497,7 @@ class Semantic {
           Result(Hot, Nil)
 
         case RefSet(refs) =>
-          val resList = refs.map(_.instantiate(klass, ctor, args, source, inside))
+          val resList = refs.map(_.instantiate(klass, ctor, args, source))
           val value2 = resList.map(_.value).join
           val errors = resList.flatMap(_.errors)
           Result(value2, errors)
@@ -743,7 +743,7 @@ class Semantic {
         val trace2 = trace.add(expr)
         locally {
           given Trace = trace2
-          (res ++ errors).instantiate(cls, ctor, args, source = expr, inside = klass)
+          (res ++ errors).instantiate(cls, ctor, args, source = expr)
         }
 
       case Call(ref, argss) =>
