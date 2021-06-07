@@ -803,7 +803,25 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 case _ => false
             }
           case _ => false
-        comparePaths || isSubType(tp1.underlying.widenExpr, tp2, approx.addLow)
+        comparePaths || {
+          val tp2n = tp1 match
+            case tp1: CaptureRef if tp1.isTracked && tp2.captureSet.accountsFor(tp1) =>
+              // New rule dealing with singleton types on the left:
+              //
+              //   E |- x: S   {x} <: cv(T)   E |- S <: {*} T
+              //   ------------------------------------------
+              //              E |- x.type <:< T
+              //
+              // Note: This would map to the following (Var) rule in deep capture calculus:
+              //
+              //   E |- x: S   {x} <: cv(T)   E |- S <: {*} T
+              //   ------------------------------------------
+              //              E |- x: {x} T
+              //
+              CapturingType(tp2, defn.captureRootType.typeRef)
+            case _ => tp2
+          isSubType(tp1.underlying.widenExpr, tp2n, approx.addLow)
+        }
       case tp1: RefinedType =>
         isNewSubType(tp1.parent)
       case tp1: RecType =>
