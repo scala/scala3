@@ -196,7 +196,7 @@ class Objects {
 
     def widen(using Context): Value = a.match
       case RefSet(refs) => refs.map(_.widen).join
-      case ClassAbs(klass, outer: ClassAbs) => ClassAbs(klass, TypeAbs(outer.klass.typeRef))
+      case ClassAbs(klass, _: ClassAbs) => TypeAbs(klass.typeRef)
       case _ => a
 
   extension (values: Seq[Value])
