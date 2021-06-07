@@ -135,12 +135,13 @@ class Objects {
     def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[Value], source: Tree): Contextual[Result] =
       value.instantiate(klass, ctor, args, source) ++ errors
 
-    def ensureAccess(klass: ClassSymbol, source: Tree): Contextual[Result] =
+    def ensureAccess(klass: ClassSymbol, source: Tree): Contextual[Result] = log("ensure access " + value.show, printer) {
       value match
       case obj: ObjectRef =>
         if obj.klass == klass then this
         else obj.access(source) ++ errors
       case _ => this
+    }
   }
 
   /** The state that threads through the interpreter */
@@ -233,7 +234,7 @@ class Objects {
             eval(rhs, addr, target.owner.asClass, cacheResult = true)
           else
             given Trace = trace1
-            val obj = if heap.contains(addr) then heap(addr) else Objekt(addr.klass, mutable.Map.empty, mutable.Map.empty)
+            val obj = heap(addr)
             if obj.fields.contains(target) then
               Result(obj.fields(target), Nil)
             else if target.is(Flags.ParamAccessor) then
@@ -658,7 +659,7 @@ class Objects {
   }
 
   /** Resolve C.this that appear in `klass` */
-  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree, elideObjectAccess: Boolean = false): Contextual[Result] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Value].show) {
+  def resolveThis(target: ClassSymbol, thisV: Value, klass: ClassSymbol, source: Tree, elideObjectAccess: Boolean = false): Contextual[Result] = log("resolving " + target.show + ", this = " + thisV.show + " in " + klass.show, printer, res => res.asInstanceOf[Result].show) {
     if target == klass then Result(thisV, Nil)
     else if target.is(Flags.Package) then Result(Bottom, Nil)
     else if target.isStaticObjectRef then
@@ -704,7 +705,8 @@ class Objects {
 
     val paramsMap = tpl.constr.termParamss.flatten.map(vdef => vdef.name -> vdef.symbol).toMap
 
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree): Unit =
+    type Handler = (() => Unit) => Unit
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[Value], source: Tree, handler: Handler): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -713,13 +715,17 @@ class Objects {
 
       // follow constructor
       if cls.hasSource then
-        use(trace.add(source)) {
-          val res2 = thisV.call(ctor, args, superType = NoType, source)
-          errorBuffer ++= res2.errors
+        handler { () =>
+          use(trace.add(source)) {
+            val res2 = thisV.call(ctor, args, superType = NoType, source)
+            errorBuffer ++= res2.errors
+          }
         }
+      else
+        handler { () => () }
 
     // parents
-    def initParent(parent: Tree) = parent match {
+    def initParent(parent: Tree, handler: Handler) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         val resArgs = evalArgs(argss.flatten, thisV, klass)
@@ -727,7 +733,7 @@ class Objects {
         val argsErrors = resArgs.flatMap(_.errors)
 
         errorBuffer ++= argsErrors
-        superCall(tref, ctor, argsValues, tree)
+        superCall(tref, ctor, argsValues, tree, handler)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
         val resArgs = evalArgs(argss.flatten, thisV, klass)
@@ -735,31 +741,31 @@ class Objects {
         val argsErrors = resArgs.flatMap(_.errors)
 
         errorBuffer ++= argsErrors
-        superCall(tref, ctor, argsValues, tree)
+        superCall(tref, ctor, argsValues, tree, handler)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent, handler)
     }
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
     if !klass.is(Flags.Trait) then
+      // outers are set first
+      val tasks = new mutable.ArrayBuffer[() => Unit]
+      val handler: Handler = task => tasks.append(task)
+
       // 1. first init parent class recursively
       // 2. initialize traits according to linearization order
       val superParent = tpl.parents.head
       val superCls = superParent.tpe.classSymbol.asClass
-      initParent(superParent)
-
-      // Access to the object possible after this point
-      if klass.isStaticOwner then
-        thisV.updateField(klass, thisV)
+      initParent(superParent, handler)
 
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
       mixins.reverse.foreach { mixin =>
         parents.find(_.tpe.classSymbol == mixin) match
-        case Some(parent) => initParent(parent)
+        case Some(parent) => initParent(parent, handler)
         case None =>
           // According to the language spec, if the mixin trait requires
           // arguments, then the class must provide arguments to it explicitly
@@ -770,8 +776,20 @@ class Objects {
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then superCall(tref, ctor, Nil, superParent)
+          if ctor.exists then superCall(tref, ctor, Nil, superParent, handler)
       }
+
+      // initialize super classes after outers are set
+      // 1. first call super class constructor
+      // 2. make the object accessible
+      // 3. call mixin initializations
+      tasks.head()
+
+      // Access to the object possible after this point
+      if klass.isStaticOwner then
+        thisV.updateField(klass, thisV)
+
+      tasks.tail.foreach(task => task())
 
 
     // class body
