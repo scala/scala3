@@ -671,12 +671,12 @@ class Objects {
       case Bottom => Result(Bottom, Nil)
       case addr: Addr =>
         val obj = heap(addr)
-        val outerCls = klass.owner.enclosingClass.asClass
         if !obj.outers.contains(klass) then
           val error = PromoteError("outer not yet initialized, target = " + target + ", klass = " + klass, source, trace.toVector)
           report.error(error.show + error.stacktrace, source)
           Result(Bottom, Nil)
         else
+          val outerCls = klass.owner.enclosingClass.asClass
           resolveThis(target, obj.outers(klass), outerCls, source)
       case RefSet(refs) =>
         val ress = refs.map(ref => resolveThis(target, ref, klass, source))
