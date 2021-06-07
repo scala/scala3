@@ -1,3 +1,6 @@
+class C
+type Cap = C holds *
+
 def f1(c: Cap): (() => C holds c.type) = () => c // ok
 def f2(c: Cap): (() => C) holds c.type = () => c // error
 
