@@ -155,6 +155,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         // Their info could, for an example, be an AndType. One example where
         // this is important is an enum case that extends its parent and an
         // additional trait - argument-less enum cases desugar to vals.
+        // See run/enum-Tree.scala.
         if tp.classSymbol.exists then tp else tp.info
       case tp => tp
     }
@@ -182,15 +183,15 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
   /** Constrain "simple" patterns (see `constrainPatternType`).
    *
-   *  This function attempts to modify pattern and scrutinee type s.t. the pattern must be a subtype of the scrutinee,
-   *  or otherwise it cannot possibly match. In order to do that, we:
+   *  This function expects to receive two types (scrutinee and pattern), both
+   *  of which have class symbols, one of which is derived from another. If the
+   *  type "being derived from" is an applied type, it will 1) "upcast" the
+   *  deriving type to an applied type with the same constructor and 2) infer
+   *  constraints for the applied types' arguments that follow from both
+   *  types being inhabited by one value (the scrutinee).
    *
-   *  1. Rely on `constrainPatternType` to break the actual scrutinee/pattern types into subcomponents
-   *  2. Widen type parameters of scrutinee type that are not invariantly refined (see below) by the pattern type.
-   *  3. Wrap the pattern type in a skolem to avoid overconstraining top-level abstract types in scrutinee type
-   *  4. Check that `WidenedScrutineeType <: NarrowedPatternType`
-   *
-   *  Importantly, note that the pattern type may contain type variables.
+   *  Importantly, note that the pattern type may contain type variables, which
+   *  are used to infer type arguments to Unapply trees.
    *
    *  ## Invariant refinement
    *  Essentially, we say that `D[B] extends C[B]` s.t. refines parameter `A` of `trait C[A]` invariantly if
