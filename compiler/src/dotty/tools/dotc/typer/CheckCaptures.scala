@@ -84,16 +84,11 @@ class CheckCaptures extends RefineTypes:
     override def typedApply(tree: untpd.Apply, pt: Type)(using Context): Tree =
       super.typedApply(tree, pt) match
         case tree1 @ Apply(fn, args) =>
-          val tree2 = fn.tpe.widen match
-            case mt: MethodType if mt.isCaptureDependent =>
-              tree1.withType(tree1.tpe.substParams(mt, args.tpes))
-            case _ =>
-              tree1
           if tree.fun.symbol.isConstructor then
             //println(i"typing $tree1, ${capturedVars(tree1.tpe.classSymbol)}")
-            tree2.withType(tree2.tpe.capturing(capturedVars(tree1.tpe.classSymbol)))
+            tree1.withType(tree1.tpe.capturing(capturedVars(tree1.tpe.classSymbol)))
           else
-            tree2
+            tree1
         case tree1 => tree1
   end CaptureChecker
 end CheckCaptures
