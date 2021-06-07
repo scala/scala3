@@ -1,8 +1,8 @@
 # Scaladoc
 
 Scaladoc  is the documentation tool for
-[Scala 3](https://github.com/lampepfl/dotty), which is scheduled to become
-Scala 3.  It uses the TastyInspector to access definitions,
+[Scala 3](https://github.com/lampepfl/dotty).
+It uses the TastyInspector to access definitions,
 which is an officially supported way to access Scala 3's perspective of a
 codebase.
 
