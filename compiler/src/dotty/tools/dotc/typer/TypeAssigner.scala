@@ -208,7 +208,9 @@ trait TypeAssigner {
         val constr = tycon.typeSymbol
         if constr == defn.andType then AndType(args(0), args(1))
         else if constr == defn.orType then OrType(args(0), args(1), soft = false)
-        else if constr == defn.Predef_holdsType then captType(args(0), args(1))
+        else if constr == defn.Predef_holdsType then
+          if ctx.settings.YrefineTypes.value then captType(args(0), args(1))
+          else args(0)
         else tp
       case _ => tp
   end processAppliedType
