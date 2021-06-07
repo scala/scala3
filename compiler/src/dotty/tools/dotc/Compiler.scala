@@ -3,7 +3,7 @@ package dotc
 
 import core._
 import Contexts._
-import typer.{FrontEnd, RefChecks, PreRefine, CheckCaptures}
+import typer.{FrontEnd, RefChecks, PreRefine, CheckCaptures, TestRefineTypes}
 import Phases.Phase
 import transform._
 import dotty.tools.backend.jvm.{CollectSuperCalls, GenBCode}
@@ -39,6 +39,7 @@ class Compiler {
     List(new FrontEnd) ::           // Compiler frontend: scanner, parser, namer, typer
     List(new PreRefine) ::
     List(new CheckCaptures) ::
+    List(new TestRefineTypes) ::
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticDB) :: // Extract info into .semanticdb files

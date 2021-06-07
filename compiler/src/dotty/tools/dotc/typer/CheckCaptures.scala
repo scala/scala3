@@ -51,7 +51,7 @@ class CheckCaptures extends RefineTypes:
   import ast.tpd.*
 
   def phaseName: String = "checkCaptures"
-  override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
+  override def isEnabled(using Context) = ctx.settings.Ycc.value
 
   def newRefiner() = CaptureChecker()
 

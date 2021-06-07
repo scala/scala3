@@ -12,7 +12,8 @@ class PreRefine extends Phase, IdentityDenotTransformer:
 
   def phaseName: String = "preRefine"
 
-  override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
+  override def isEnabled(using Context) =
+    ctx.settings.YrefineTypes.value || ctx.settings.Ycc.value
 
   override def changesBaseTypes: Boolean = true
 
