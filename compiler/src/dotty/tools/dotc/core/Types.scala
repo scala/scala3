@@ -4482,7 +4482,8 @@ object Types {
         def msg = i"Inaccessible variables captured in instantation of type variable $this.\n$tp was fixed to $atp"
         typr.println(msg)
         val bound = TypeComparer.fullUpperBound(origin)
-        if !(atp <:< bound) then
+        if !(atp <:< bound) && !ctx.isAfterTyper then
+          // t2444.scala fails refining if the second condition is dropped
           throw new TypeError(i"$msg,\nbut the latter type does not conform to the upper bound $bound")
         atp
       // AVOIDANCE TODO: This really works well only if variables are instantiated from below

@@ -260,7 +260,7 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
             case stat: DefDef if stat.symbol == closure.meth.symbol =>
               stat.paramss match
                 case ValDefs(params) :: Nil =>
-                  val (protoFormals, _) = decomposeProtoFunction(pt, params.length, stat)
+                  val (protoFormals, untpdProtoResult) = decomposeProtoFunction(pt, params.length, stat)
                   val params1 = params.zipWithConserve(protoFormals) {
                     case (param @ ValDef(_, tpt: InferredTypeTree, _), formal)
                     if isFullyDefined(formal, ForceDegree.failBottom) =>
@@ -269,14 +269,33 @@ class RefineTypes extends Phase, IdentityDenotTransformer:
                     case (param, _) =>
                       param
                   }
-                  if params eq params1 then stat
+                  def protoResult = untpd.unsplice(untpdProtoResult).asInstanceOf[Tree]
+                  val tpt1 = stat.tpt match
+                    case tpt: InferredTypeTree =>
+                      tpt
+                    case tpt =>
+                      if protoResult.hasType then tpt.withType(protoResult.tpe)
+                      else tpt
+                      // TODO: Handle DependentTypeTrees. The following does not work, unfortunately:
+                      //                      val newType = protoResult match
+                      //                        case untpd.DependentTypeTree(tpFun) =>
+                      //                          tpt.tpe
+                      //                          val ptpe = tpFun(params1.map(_.symbol))
+                      //                          if isFullyDefined(ptpe, ForceDegree.none) then ptpe else tpt.tpe
+                      //                        case _ =>
+                      //                          protoResult.tpe
+                      //                      tpt.withType(newType)
+                  if (params eq params1) && (stat.tpt eq tpt1) then stat
                   else
                     val mt = stat.symbol.info.asInstanceOf[MethodType]
                     val formals1 =
                       for i <- mt.paramInfos.indices.toList yield
                         if params(i) eq params1(i) then mt.paramInfos(i) else protoFormals(i)
-                    updateInfo(stat.symbol, mt.derivedLambdaType(paramInfos = formals1))
-                    cpy.DefDef(stat)(paramss = params1 :: Nil)
+                    val resType1 =
+                      if tpt1 eq stat.tpt then mt.resType else tpt1.tpe
+                    updateInfo(stat.symbol,
+                      mt.derivedLambdaType(paramInfos = formals1, resType = resType1))
+                    cpy.DefDef(stat)(paramss = params1 :: Nil, tpt = tpt1)
                 case _ =>
                   stat
           }
