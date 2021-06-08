@@ -5517,7 +5517,7 @@ object Types {
           else derivedAnnotatedType(tp, underlying1, mapOver(annot))
 
         case tp @ CapturingType(parent, ref) =>
-          derivedCapturing(tp, this(parent), atVariance(0)(this(ref)))
+          derivedCapturing(tp, this(parent), this(ref))
 
         case _: ThisType
           | _: BoundType
