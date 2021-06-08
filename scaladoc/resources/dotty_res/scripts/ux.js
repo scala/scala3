@@ -39,9 +39,14 @@ window.addEventListener("DOMContentLoaded", () => {
   })
 
   if (location.hash) {
-    var selected = document.getElementById(location.hash.substring(1));
-    if (selected){
-      selected.classList.toggle("expand");
+    var target = location.hash.substring(1);
+    // setting the 'expand' class on the top-level container causes undesireable styles
+    // to apply to the top-level docs, so we avoid this logic for that element.
+    if (target != 'container') {
+      var selected = document.getElementById(location.hash.substring(1));
+      if (selected) {
+        selected.classList.toggle("expand");
+      }
     }
   }
 

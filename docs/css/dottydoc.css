@@ -43,7 +43,7 @@ ul.post-list {
 
 /* headings anchors */
 a.anchor {
-  color: white;
+  color: transparent;
   margin-left: -23px;
   padding-right: 3px;
   transition: color .4s ease-out;

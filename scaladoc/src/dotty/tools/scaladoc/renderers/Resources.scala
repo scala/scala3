@@ -38,7 +38,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   private def dottyRes(path: String) = Resource.Classpath(path, s"dotty_res/$path")
 
-  def linkResources(dri: DRI, resources: Iterable[String]): Iterable[AppliedTag] =
+  def linkResources(dri: DRI, resources: Iterable[String], deferJs: Boolean): Iterable[AppliedTag] =
     def fileExtension(url: String): String =
       val param = url.indexOf('?')
       val end = if param < 0 then url.length else param
@@ -48,8 +48,13 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     for res <- resources yield
       fileExtension(res) match
         case "css" => link(rel := "stylesheet", href := resolveLink(dri, res))
-        case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), defer := "true")
+        case "js" => script(`type` := "text/javascript", src := resolveLink(dri, res), if (deferJs) Seq(defer := "true") else Nil)
         case _ => raw("")
+
+  val earlyMemberResources: Seq[Resource] =
+    List(
+      "scripts/theme.js"
+    ).map(dottyRes)
 
   val memberResources: Seq[Resource] =
     val fromResources = List(
@@ -85,7 +90,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
 
   val searchDataPath = "scripts/searchData.js"
   val memberResourcesPaths = Seq(searchDataPath) ++ memberResources.map(_.path)
-
+  val earlyMemberResourcePaths = earlyMemberResources.map(_.path)
 
   def searchData(pages: Seq[Page]) =
     def flattenToText(signature: Signature): String =
@@ -125,7 +130,7 @@ trait Resources(using ctx: DocContext) extends Locations, Writer:
     Resource.Text(searchDataPath, s"pages = ${jsonList(entries)};")
 
 
-  def allResources(pages: Seq[Page]): Seq[Resource] = memberResources ++ Seq(
+  def allResources(pages: Seq[Page]): Seq[Resource] = earlyMemberResources ++ memberResources ++ Seq(
     dottyRes("favicon.ico"),
     dottyRes("fonts/dotty-icons.woff"),
     dottyRes("fonts/dotty-icons.ttf"),
