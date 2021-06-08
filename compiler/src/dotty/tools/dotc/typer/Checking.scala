@@ -34,8 +34,10 @@ import NameOps._
 import SymDenotations.{NoCompleter, NoDenotation}
 import Applications.unapplyArgs
 import transform.patmat.SpaceEngine.isIrrefutable
-import config.Feature._
+import config.Feature
+import config.Feature.sourceVersion
 import config.SourceVersion._
+import transform.TypeUtils.*
 
 import collection.mutable
 import reporting._
@@ -930,7 +932,7 @@ trait Checking {
                    description: => String,
                    featureUseSite: Symbol,
                    pos: SrcPos)(using Context): Unit =
-    if !enabled(name) then
+    if !Feature.enabled(name) then
       report.featureWarning(name.toString, description, featureUseSite, required = false, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
@@ -1312,6 +1314,10 @@ trait Checking {
     if !tp.derivesFrom(defn.MatchableClass) && sourceVersion.isAtLeast(`future-migration`) then
       val kind = if pattern then "pattern selector" else "value"
       report.warning(MatchableWarning(tp, pattern), pos)
+
+  def checkCanThrow(tp: Type, span: Span)(using Context): Unit =
+    if Feature.enabled(Feature.saferExceptions) && tp.isCheckedException then
+      ctx.typer.implicitArgTree(defn.CanThrowClass.typeRef.appliedTo(tp), span)
 }
 
 trait ReChecking extends Checking {
@@ -1324,6 +1330,7 @@ trait ReChecking extends Checking {
   override def checkAnnotApplicable(annot: Tree, sym: Symbol)(using Context): Boolean = true
   override def checkMatchable(tp: Type, pos: SrcPos, pattern: Boolean)(using Context): Unit = ()
   override def checkNoModuleClash(sym: Symbol)(using Context) = ()
+  override def checkCanThrow(tp: Type, span: Span)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {
