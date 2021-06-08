@@ -51,6 +51,13 @@ object language:
     /** Experimental support for using indentation for arguments
      */
     object fewerBraces
+
+    /** Experimental support for typechecked exception capabilities
+     *
+     *  @see [[https://dotty.epfl.ch/docs/reference/experimental/canthrow]]
+     */
+    object saferExceptions
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

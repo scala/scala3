@@ -657,8 +657,11 @@ class Definitions {
 
   // in scalac modified to have Any as parent
 
-  @tu lazy val ThrowableType: TypeRef          = requiredClassRef("java.lang.Throwable")
-  def ThrowableClass(using Context): ClassSymbol = ThrowableType.symbol.asClass
+  @tu lazy val ThrowableType: TypeRef             = requiredClassRef("java.lang.Throwable")
+  def ThrowableClass(using Context): ClassSymbol  = ThrowableType.symbol.asClass
+  @tu lazy val ExceptionClass: ClassSymbol        = requiredClass("java.lang.Exception")
+  @tu lazy val RuntimeExceptionClass: ClassSymbol = requiredClass("java.lang.RuntimeException")
+
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
 
@@ -829,6 +832,8 @@ class Definitions {
     def CanEqual_canEqualAny(using Context): TermSymbol =
       val methodName = if CanEqualClass.name == tpnme.Eql then nme.eqlAny else nme.canEqualAny
       CanEqualClass.companionModule.requiredMethod(methodName)
+
+  @tu lazy val CanThrowClass: ClassSymbol = requiredClass("scala.CanThrow")
 
   @tu lazy val TypeBoxClass: ClassSymbol = requiredClass("scala.runtime.TypeBox")
     @tu lazy val TypeBox_CAP: TypeSymbol = TypeBoxClass.requiredType(tpnme.CAP)
