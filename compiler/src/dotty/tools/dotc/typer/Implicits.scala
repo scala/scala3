@@ -1120,12 +1120,20 @@ trait Implicits:
         SearchFailure(new DivergingImplicit(cand.ref, wideProto, argument), span)
       else {
         val history = ctx.searchHistory.nest(cand, pt)
-        val result =
-          typedImplicit(cand, pt, argument, span)(using nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history))
+        val typingCtx =
+          nestedContext().setNewTyperState().setFreshGADTBounds.setSearchHistory(history)
+        val result = typedImplicit(cand, pt, argument, span)(using typingCtx)
         result match {
           case res: SearchSuccess =>
             ctx.searchHistory.defineBynameImplicit(wideProto, res)
           case _ =>
+            // Since the search failed, the local typerstate will be discarded
+            // without being committed, but type variables local to that state
+            // might still appear in an error message, so we run `gc()` here to
+            // make sure we don't forget their instantiation. This leads to more
+            // precise error messages in tests/neg/missing-implicit3.check and
+            // tests/neg/implicitSearch.check
+            typingCtx.typerState.gc()
             result
         }
       }
