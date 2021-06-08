@@ -132,6 +132,41 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
   val Whelp: Setting[Boolean] = BooleanSetting("-W", "Print a synopsis of warning options.")
   val XfatalWarnings: Setting[Boolean] = BooleanSetting("-Werror", "Fail the compilation if there are any warnings.", aliases = List("-Xfatal-warnings"))
+  val Wconf: Setting[List[String]] = MultiStringSetting(
+    "-Wconf",
+    "patterns",
+    default = List(),
+    descr =
+      s"""Configure compiler warnings.
+         |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
+         |multiple <filters> are combined with &, i.e., <filter>&...&<filter>
+         |
+         |<filter>
+         |  - Any message: any
+         |
+         |  - Message categories: cat=deprecation, cat=feature
+         |
+         |  - Message content: msg=regex
+         |    The regex need only match some part of the message, not all of it.
+         |
+         |<action>
+         |  - error / e
+         |  - warning / w
+         |  - info / i    (infos are not counted as warnings and don't affect `-Werror`)
+         |  - silent / s
+         |
+         |The default configuration is empty.
+         |
+         |User-defined configurations are added to the left. The leftmost rule matching
+         |a warning message defines the action.
+         |
+         |Examples:
+         |  - change every warning into an error: -Wconf:any:error
+         |  - silence deprecations: -Wconf:cat=deprecation:s
+         |
+         |Note: on the command-line you might need to quote configurations containing `*` or `&`
+         |to prevent the shell from expanding patterns.""".stripMargin,
+  )
 
 /** -X "Extended" or "Advanced" settings */
 private sealed trait XSettings:
