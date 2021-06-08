@@ -977,10 +977,10 @@ class Semantic {
       printer.println(acc.show + " initialized with " + value)
     }
 
-    // Handler is used to schedule super constructor calls.
+    // Tasks is used to schedule super constructor calls.
     // Super constructor calls are delayed until all outers are set.
-    type Handler = (() => Unit) => Unit
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], source: Tree, handler: Handler)(using Env): Unit =
+    type Tasks = mutable.ArrayBuffer[() => Unit]
+    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], source: Tree, tasks: Tasks)(using Env): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass, source)
@@ -989,28 +989,29 @@ class Semantic {
 
       // follow constructor
       if cls.hasSource then
-        handler { () =>
+        tasks.append { () =>
           printer.println("init super class " + cls.show)
           val res2 = thisV.call(ctor, args, superType = NoType, source)
           errorBuffer ++= res2.errors
+          ()
         }
 
     // parents
-    def initParent(parent: Tree, handler: Handler)(using Env) = parent match {
+    def initParent(parent: Tree, tasks: Tasks)(using Env) = parent match {
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass).foreach { res => errorBuffer ++= res.errors }
         val (errors, args) = evalArgs(argss.flatten, thisV, klass)
         errorBuffer ++= errors
-        superCall(tref, ctor, args, tree, handler)
+        superCall(tref, ctor, args, tree, tasks)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
       val (errors, args) = evalArgs(argss.flatten, thisV, klass)
       errorBuffer ++= errors
-      superCall(tref, ctor, args, tree, handler)
+      superCall(tref, ctor, args, tree, tasks)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent, handler)
+        superCall(tref, tref.classSymbol.primaryConstructor, Nil, parent, tasks)
     }
 
     // see spec 5.1 about "Template Evaluation".
@@ -1020,13 +1021,12 @@ class Semantic {
 
       // outers are set first
       val tasks = new mutable.ArrayBuffer[() => Unit]
-      val handler: Handler = task => tasks.append(task)
 
       // 1. first init parent class recursively
       // 2. initialize traits according to linearization order
       val superParent = tpl.parents.head
       val superCls = superParent.tpe.classSymbol.asClass
-      initParent(superParent, handler)
+      initParent(superParent, tasks)
 
       val parents = tpl.parents.tail
       val mixins = klass.baseClasses.tail.takeWhile(_ != superCls)
@@ -1038,7 +1038,7 @@ class Semantic {
       // calls and user code in the class body.
       mixins.reverse.foreach { mixin =>
         parents.find(_.tpe.classSymbol == mixin) match
-        case Some(parent) => initParent(parent, handler)
+        case Some(parent) => initParent(parent, tasks)
         case None =>
           // According to the language spec, if the mixin trait requires
           // arguments, then the class must provide arguments to it explicitly
@@ -1049,7 +1049,7 @@ class Semantic {
           // term arguments to B. That can only be done in a concrete class.
           val tref = typeRefOf(klass.typeRef.baseType(mixin).typeConstructor)
           val ctor = tref.classSymbol.primaryConstructor
-          if ctor.exists then superCall(tref, ctor, Nil, superParent, handler)
+          if ctor.exists then superCall(tref, ctor, Nil, superParent, tasks)
       }
 
       // initialize super classes after outers are set
