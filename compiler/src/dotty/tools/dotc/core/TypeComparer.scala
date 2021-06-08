@@ -140,10 +140,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     finally useNecessaryEither = saved
 
   /** Use avoidance to get rid of wildcards in constraint bounds if
-   *  we are doing a neccessary comparison, or the mode is TypeVarsMissContext.
+   *  we are doing a necessary comparison, or the mode is TypeVarsMissContext.
    *  The idea is that under either of these conditions we are not interested
    *  in creating a fresh type variable to replace the wildcard. I verified
    *  that several tests break if one or the other part of the disjunction is dropped.
+   *  (for instance, i12677.scala demands `useNecessaryEither` in the condition)
    */
   override protected def approximateWildcards: Boolean =
     useNecessaryEither || ctx.mode.is(Mode.TypevarsMissContext)
