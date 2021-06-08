@@ -26,7 +26,7 @@ class InkuireJSSearchEngine {
     )
   }
 
-  def query(s: String)(callback: PageEntry => Node): List[PageEntry] = {
+  def query(s: String)(callback: PageEntry => Node)(errorCallback: String => Node): List[PageEntry] = {
     worker.onmessage = _ => ()
     val res = ListBuffer[PageEntry]()
     val func = (msg: MessageEvent) => {

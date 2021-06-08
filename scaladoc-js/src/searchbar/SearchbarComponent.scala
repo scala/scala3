@@ -5,7 +5,7 @@ import org.scalajs.dom.html.Input
 import scala.scalajs.js.timers._
 import scala.concurrent.duration._
 
-class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireDelegateSearchEngine, parser: QueryParser):
+class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearchEngine, parser: QueryParser):
   val resultsChunkSize = 100
   extension (p: PageEntry)
     def toHTML =
