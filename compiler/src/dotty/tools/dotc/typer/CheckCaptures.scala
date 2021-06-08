@@ -78,7 +78,7 @@ class CheckCaptures extends RefineTypes:
     override def typedClosure(tree: untpd.Closure, pt: Type)(using Context): Tree =
       super.typedClosure(tree, pt) match
         case tree1: Closure =>
-          println(i"typing closure ${tree1.meth.symbol} with fvs ${capturedVars(tree1.meth.symbol)}")
+          refinr.println(i"typing closure ${tree1.meth.symbol} with fvs ${capturedVars(tree1.meth.symbol)}")
           tree1.withType(tree1.tpe.capturing(capturedVars(tree1.meth.symbol)))
         case tree1 => tree1
 
@@ -101,10 +101,14 @@ class CheckCaptures extends RefineTypes:
           for arg <- args do
             //println(i"checking $arg in $tree: ${arg.tpe.captureSet}")
             if arg.tpe.captureSet.accountsFor(defn.captureRootType.typeRef) then
-              val argStr = arg match
-                case arg: InferredTypeTree => i"inferred type argument ${arg.tpe}"
-                case _ => "type argument"
-              report.error(s"$argStr is not allowed to capture the root capability *", arg.srcPos)
+              val notAllowed = " is not allowed to capture the root capability *"
+              def msg = arg match
+                case arg: InferredTypeTree =>
+                  i"""inferred type argument ${arg.tpe}$notAllowed
+                     |
+                     |The inferred arguments are: [$args%, %]"""
+                case _ => s"type argument$notAllowed"
+              report.error(msg, arg.srcPos)
         case _ =>
       traverseChildren(tree)
 
