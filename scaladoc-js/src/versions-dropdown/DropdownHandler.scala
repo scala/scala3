@@ -40,19 +40,19 @@ class DropdownHandler:
 
   window.sessionStorage.getItem(KEY) match
     case null => // If no key, returns null
-      try
-        getURLContent(Globals.versionsDictionaryUrl).onComplete {
-          case Success(json: String) =>
-            window.sessionStorage.setItem(KEY, json)
-            addVersionsList(json)
-          case Failure(_) =>
-            window.sessionStorage.setItem(KEY, UNDEFINED_VERSIONS)
-            disableButton()
-        }
-      catch // Globals.versionDictionaruUrl is undefined
-        case e =>
+      js.typeOf(Globals.versionsDictionaryUrl) match
+        case "undefined" =>
           window.sessionStorage.setItem(KEY, UNDEFINED_VERSIONS)
           disableButton()
+        case _ =>
+          getURLContent(Globals.versionsDictionaryUrl).onComplete {
+            case Success(json: String) =>
+              window.sessionStorage.setItem(KEY, json)
+              addVersionsList(json)
+            case Failure(_) =>
+              window.sessionStorage.setItem(KEY, UNDEFINED_VERSIONS)
+              disableButton()
+          }
     case value => value match
       case UNDEFINED_VERSIONS =>
         disableButton()
