@@ -90,7 +90,6 @@ trait InkuireSupport:
     case AnnotatedType(tpe, _) =>
       inner(tpe, vars)
     case tl @ TypeLambda(params, paramBounds, resType) =>
-      if resType.typeSymbol.name == "Seq" then println(resType)
       inner(resType, vars) //TODO for future
     case r: Refinement =>
       inner(r.info, vars) //TODO for future

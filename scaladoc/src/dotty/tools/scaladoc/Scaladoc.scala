@@ -7,7 +7,7 @@ import java.util.jar._
 import collection.JavaConverters._
 import collection.immutable.ArraySeq
 
-import java.nio.file.Files
+import java.nio.file.{ Files, Paths }
 
 import dotty.tools.dotc.config.Settings._
 import dotty.tools.dotc.config.{ CommonScalaSettings, AllScalaSettings }
@@ -83,19 +83,22 @@ object Scaladoc:
         report.inform("Done")
       else report.error("Failure")
 
-      if parsedArgs.generateInkuire then dumpInkuireDB()
+      if parsedArgs.generateInkuire then dumpInkuireDB(parsedArgs.output.getAbsolutePath)
     }
 
     ctx.reporter
 
-  def dumpInkuireDB() = {
+  def dumpInkuireDB(output: String) = {
+    val path = Paths.get(output, "inkuire-db.json")
+    println("InkuireDB created successfully!")
     println(s"Types: ${Inkuire.db.types.size}")
     println(s"Functions: ${Inkuire.db.functions.size}")
-    val file = new File("./inkuire-db.json")
+    val file = path.toFile()
     file.createNewFile()
-    val myWriter = new FileWriter("./inkuire-db.json", false)
+    val myWriter = new FileWriter(file, false)
     myWriter.write(s"${EngineModelSerializers.serialize(Inkuire.db)}")
     myWriter.close()
+    println(s"Saved InkuireDB in file: ${path.toString}")
   }
 
   def extract(args: Array[String], rootCtx: CompilerContext): (Option[Scaladoc.Args], CompilerContext) =

@@ -39,7 +39,7 @@ class SearchbarComponent(engine: SearchbarEngine, inkuireEngine: InkuireJSSearch
       wrapper.classList.add("monospace")
 
       val resultA = document.createElement("a").asInstanceOf[html.Anchor]
-      resultA.href = Globals.pathToRoot + p.location.drop(21) //TODO change when generating XD
+      resultA.href = p.location
       resultA.text = s"${p.fullName}"
 
       val location = document.createElement("span")
