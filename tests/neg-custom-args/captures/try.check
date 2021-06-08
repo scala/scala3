@@ -1,0 +1,31 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:29:32 ------------------------------------------
+29 |    (x: CanThrow[Exception]) => () => raise(new Exception)(using x)  // error
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                Found:    (() => Nothing) holds x
+   |                                Required: () => Nothing
+
+longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/try.scala:49:2 -------------------------------------------
+44 |val global = handle {
+45 |  (x: CanThrow[Exception]) =>
+46 |    () =>
+47 |      raise(new Exception)(using x)
+48 |      22
+49 |} {  // error
+   |             ^
+   |             Found:    (() => Int) holds *
+   |             Required: () => Int
+50 |  (ex: Exception) => () => 22
+51 |}
+
+longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/try.scala:22:28 ---------------------------------------------------------------
+22 |  val a = handle[Exception, CanThrow[Exception]] { // error
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |                            type argument is not allowed to capture the root capability *
+-- Error: tests/neg-custom-args/captures/try.scala:34:11 ---------------------------------------------------------------
+34 |  val xx = handle {  // error
+   |           ^^^^^^
+   |           inferred type argument ((() => Int) holds *) is not allowed to capture the root capability *
+   |
+   |           The inferred arguments are: [Exception, ((() => Int) holds *)]
