@@ -3074,7 +3074,7 @@ class Typer extends Namer
             else Some(adapt(tree1, pt, locked))
           } { (_, _) => None
           }
-      case TypeApply(fn, args) if args.forall(_.isInstanceOf[TypeVarBinder[_]]) =>
+      case TypeApply(fn, args) if args.forall(_.isInstanceOf[InferredTypeTree]) =>
         tryInsertImplicitOnQualifier(fn, pt, locked)
       case _ => None
   }
