@@ -4,4 +4,5 @@ object Main extends App {
   Searchbar()
   SocialLinks()
   CodeSnippets()
+  DropdownHandler()
 }

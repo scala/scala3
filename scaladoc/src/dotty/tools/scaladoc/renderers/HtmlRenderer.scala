@@ -141,7 +141,10 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
         href := resolveLink(page.link.dri, "favicon.ico")
       ),
       linkResources(page.link.dri, resources).toList,
-      script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";"""))
+      script(raw(s"""var pathToRoot = "${pathToRoot(page.link.dri)}";""")),
+      ctx.args.versionsDictionaryUrl match
+        case Some(url) => script(raw(s"""var versionsDictionaryUrl = "$url";"""))
+        case None => ""
     )
 
   private def buildNavigation(pageLink: Link): AppliedTag =
@@ -220,8 +223,15 @@ class HtmlRenderer(rootPackage: Member, val members: Map[DRI, Member])(using ctx
           span(
             div(cls:="projectName")(args.name)
           ),
-          span(
-            args.projectVersion.map(v => div(cls:="projectVersion")(v)).toList
+          div(id := "version")(
+            div(cls := "versions-dropdown")(
+              div(onclick := "dropdownHandler()", id := "dropdown-button", cls := "dropdownbtn dropdownbtnactive")(
+                args.projectVersion.map(v => div(cls:="projectVersion")(v)).getOrElse("")
+              ),
+              div(id := "dropdown-content", cls := "dropdown-content")(
+                input(`type` := "text", placeholder := "Search...", id := "dropdown-input", onkeyup := "filterFunction()"),
+              ),
+            )
           ),
           div(cls := "socials")(
             socialLinks()

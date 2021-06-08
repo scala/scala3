@@ -99,6 +99,7 @@ object HTML:
   val value = Attr("value")
   val onclick=Attr("onclick")
   val titleAttr =Attr("title")
+  val onkeyup = Attr("onkeyup")
 
   def raw(content: String): AppliedTag = new AppliedTag(content)
   def raw(content: StringBuilder): AppliedTag = content
