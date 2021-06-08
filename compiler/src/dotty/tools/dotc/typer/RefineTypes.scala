@@ -63,11 +63,13 @@ abstract class RefineTypes extends Phase, IdentityDenotTransformer:
     val refinedTree = refiner.typedExpr(unit.tpdTree)(using refineCtx)
     if ctx.settings.Xprint.value.containsPhase(this) then
       report.echo(i"discarded result of $unit after refineTypes:\n\n$refinedTree")
+    postRefinerCheck(refinedTree)
 
   def preRefinePhase = this.prev.asInstanceOf[PreRefine]
   def thisPhase = this
 
   def newRefiner(): TypeRefiner
+  def postRefinerCheck(tree: tpd.Tree)(using Context): Unit
 
   class TypeRefiner extends ReTyper:
     import ast.tpd.*
@@ -352,6 +354,7 @@ class TestRefineTypes extends RefineTypes:
   def phaseName: String = "refineTypes"
   override def isEnabled(using Context) = ctx.settings.YrefineTypes.value
   def newRefiner() = TypeRefiner()
+  def postRefinerCheck(tree: tpd.Tree)(using Context): Unit = ()
 
 
 
