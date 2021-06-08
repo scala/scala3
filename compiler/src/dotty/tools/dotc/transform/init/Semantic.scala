@@ -475,7 +475,6 @@ class Semantic {
 
         case addr: Addr =>
           given Trace = trace1
-
           // widen the outer to finitize addresses
           val outer = addr match
             case Warm(_, _: Warm, _, _) => Cold
@@ -483,14 +482,7 @@ class Semantic {
 
           val value = Warm(klass, outer, ctor, args.map(_.value).widenArgs).ensureExists
           val res = value.call(ctor, args, superType = NoType, source)
-
-          def inSecondaryConstructor(sym: Symbol): Boolean =
-            !sym.isClass && (sym.isConstructor || inSecondaryConstructor(sym.owner))
-
-          // Approximate instances of local classes inside secondary constructor as Cold.
-          // This way, we avoid complicating the domain for Warm unnecessarily
-          if inSecondaryConstructor(klass.owner) then Result(Cold, res.errors)
-          else Result(value, res.errors)
+          Result(value, res.errors)
 
         case Fun(body, thisV, klass, env) =>
           report.error("unexpected tree in instantiating a function, fun = " + body.show, source)
@@ -901,7 +893,12 @@ class Semantic {
           // This enables us to simplify the domain without sacrificing
           // expressiveness nor soundess, as local classes inside secondary
           // constructors are uncommon.
-          Result(env.lookup(sym), Nil)
+          if sym.isContainedIn(klass) then
+            Result(env.lookup(sym), Nil)
+          else
+            // We don't know much about secondary constructor parameters in outer scope.
+            // It's always safe to approximate them with `Cold`.
+            Result(Cold, Nil)
         else
           default()
 

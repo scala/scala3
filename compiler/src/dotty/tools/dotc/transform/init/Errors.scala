@@ -74,7 +74,7 @@ object Errors {
 
   case class AccessCold(field: Symbol, source: Tree, trace: Seq[Tree]) extends Error {
     def show(using Context): String =
-      "Access field " + source.show + " on a value with an unknown initialization status" + "."
+      "Access field " + source.show + " on a value with an unknown initialization status."
   }
 
   case class CallCold(meth: Symbol, source: Tree, trace: Seq[Tree]) extends Error {

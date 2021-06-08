@@ -2,9 +2,9 @@ class A(b: B, x: Int) {
   def this(b: B) = {
     this(b, 5)
     class Inner() {
-      def foo() = println(b.n)
+      def foo() = println(b.n) // error: calling method on cold
     }
-    Inner().foo() // error: calling method on cold
+    Inner().foo()
 
     val f = () => new A(b, 3)
     f() // ok

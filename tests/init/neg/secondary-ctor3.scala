@@ -7,9 +7,9 @@ def foo() =
     def this(b: B) = {
       this(b, 5)
       class Inner() {
-        def foo() = println(b.n)
+        def foo() = println(b.n) // error
       }
-      Inner().foo() // error: calling method on cold
+      Inner().foo()
 
       val l1 = new L1(3)
       println(l1.n)
