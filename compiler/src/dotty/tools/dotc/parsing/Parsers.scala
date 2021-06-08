@@ -1819,8 +1819,9 @@ object Parsers {
       if in.isColon() then { in.nextToken(); toplevelTyp() }
       else TypeTree().withSpan(Span(in.lastOffset))
 
+    /** How much of a type to parse in an ascription */
     def typeDependingOn(location: Location): Tree =
-      if location.inParens then typ()
+      if location.inParens || location == Location.ElseWhere then typ()
       else if location.inPattern then refinedType()
       else infixType()
 
